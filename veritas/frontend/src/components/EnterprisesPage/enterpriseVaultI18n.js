@@ -6,11 +6,12 @@ const LOCALE_BCP47 = {
   it: "it-IT",
   es: "es-ES"
 };
-const CATEGORY_KEYS = ["Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"];
+const CATEGORY_KEYS = ["Facture", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"];
 const ENTERPRISE_VAULT_COPY = {
   fr: {
     categories: {
-      "Facture matériel": "Facture matériel",
+      Facture: "Facture",
+      "Facture matériel": "Facture",
       "Image client": "Image client",
       "Baie de brassage": "Baie de brassage",
       "Plan de réseau": "Plan de réseau",
@@ -104,7 +105,7 @@ const ENTERPRISE_VAULT_COPY = {
       destinationSelected: "Sélectionné",
       categoryLabel: "Type de document",
       descriptionLabel: "Description (optionnel)",
-      descriptionPlaceholder: "Ex. : Facture matériel Q1 2026, Guide utilisateur VPN…",
+      descriptionPlaceholder: "Ex. : Facture Q1 2026, Guide utilisateur VPN…",
       fileLabel: "Fichier",
       dropHint: "Glisser-déposer ou cliquer pour sélectionner",
       dropFormats: "PDF, images, Word, Excel, HTML, ZIP · max 50 Mo",
@@ -122,7 +123,7 @@ const ENTERPRISE_VAULT_COPY = {
       eyebrow: "Coffre-fort",
       title: "Modifier la description",
       descriptionLabel: "Description",
-      descriptionPlaceholder: "Ex. : Facture matériel Q1 2026, Guide utilisateur VPN…",
+      descriptionPlaceholder: "Ex. : Facture Q1 2026, Guide utilisateur VPN…",
       visiblePortalLabel: "Visible sur le portail client",
       visiblePortalHint: "Activé : le contact peut consulter le document. Désactivé : réservé aux agents.",
       visibleOn: "Visible",
@@ -165,7 +166,8 @@ const ENTERPRISE_VAULT_COPY = {
   },
   en: {
     categories: {
-      "Facture matériel": "Hardware invoice",
+      Facture: "Invoice",
+      "Facture matériel": "Invoice",
       "Image client": "Client image",
       "Baie de brassage": "Patch panel",
       "Plan de réseau": "Network plan",
@@ -320,7 +322,8 @@ const ENTERPRISE_VAULT_COPY = {
   },
   de: {
     categories: {
-      "Facture matériel": "Hardware-Rechnung",
+      Facture: "Rechnung",
+      "Facture matériel": "Rechnung",
       "Image client": "Kundenbild",
       "Baie de brassage": "Patchpanel",
       "Plan de réseau": "Netzplan",
@@ -468,7 +471,8 @@ const ENTERPRISE_VAULT_COPY = {
   },
   it: {
     categories: {
-      "Facture matériel": "Fattura hardware",
+      Facture: "Fattura",
+      "Facture matériel": "Fattura",
       "Image client": "Immagine cliente",
       "Baie de brassage": "Pannello patch",
       "Plan de réseau": "Piano di rete",
@@ -616,7 +620,8 @@ const ENTERPRISE_VAULT_COPY = {
   },
   es: {
     categories: {
-      "Facture matériel": "Factura hardware",
+      Facture: "Factura",
+      "Facture matériel": "Factura",
       "Image client": "Imagen cliente",
       "Baie de brassage": "Panel de patch",
       "Plan de réseau": "Plano de red",

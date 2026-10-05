@@ -334,7 +334,11 @@ export default function SupervisionOpsQueue({
     };
     const text = value => String(value || "").toLowerCase();
     const whenMs = item => {
-      const raw = item.notifiedAt || item.alertState?.createdAt;
+      const raw =
+        item.notifiedAt ||
+        item.alertAt ||
+        item.alertState?.meta?.checkmkAlertAt ||
+        item.alertState?.createdAt;
       if (raw == null || raw === "") return 0;
       const ms = typeof raw === "number" ? raw : new Date(raw).getTime();
       return Number.isNaN(ms) ? 0 : ms;
@@ -509,7 +513,12 @@ export default function SupervisionOpsQueue({
               const busy = busyId === item.id;
               const domainLabel = showDomain ? copy.domains?.[item.domain] || item.domain : null;
               const severityLabel = item.severity === "critical" ? copy.kpi.critical : item.severity === "warning" ? copy.kpi.warning : copy.severityInfo || "Info";
-              const when = formatWhen(item.notifiedAt || item.alertState?.createdAt, localeTag);
+              const whenRaw =
+                item.notifiedAt ||
+                item.alertAt ||
+                item.alertState?.meta?.checkmkAlertAt ||
+                item.alertState?.createdAt;
+              const when = formatWhen(whenRaw, localeTag);
               const handler = item.handledByName || item.alertState?.ackedByName || null;
               const remediation = remediationLabel(item, copy);
               const metaBits = [item.subtitle].filter(Boolean);
@@ -552,7 +561,7 @@ export default function SupervisionOpsQueue({
                       <span className={`${styles.wfBadge} ${workflowBadgeClass(wf)}`}>{copy.workflow?.[wf] || wf}</span>
                     </td>
                     <td className={styles.whenCell}>
-                      <time dateTime={item.notifiedAt || item.alertState?.createdAt || undefined}>{when}</time>
+                      <time dateTime={whenRaw || undefined}>{when}</time>
                     </td>
                     <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                       <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>

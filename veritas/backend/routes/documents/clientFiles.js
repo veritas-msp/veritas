@@ -39,7 +39,7 @@ const ALLOWED_MIME = new Set([
   "application/x-zip",
   "multipart/x-zip"
 ]);
-const ALLOWED_CATEGORIES = new Set(["Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"]);
+const ALLOWED_CATEGORIES = new Set(["Facture", "Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"]);
 const ZIP_EXTENSIONS = new Set([".zip"]);
 const HTML_EXTENSIONS = new Set([".html", ".htm"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

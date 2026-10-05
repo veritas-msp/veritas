@@ -161,6 +161,7 @@ function buildLiveSupervisionAlertItem(target, summary) {
     ...(Array.isArray(summary?.failingServices) ? summary.failingServices.slice(0, 3) : [])
   ].join("|");
   const queueItemId = `device-${clientId}:${equipmentId}`;
+  const checkmkAlertAt = summary?.alertAt || null;
   return {
     id: queueItemId,
     queueItemId,
@@ -171,12 +172,14 @@ function buildLiveSupervisionAlertItem(target, summary) {
     title,
     label: title,
     subtitle: target.hostName || null,
+    raisedAt: checkmkAlertAt,
     meta: {
       criterionKey,
       hostName: target.hostName || null,
       family: target.family || null,
       primaryService: summary?.primaryService || null,
       fingerprint,
+      checkmkAlertAt,
       source: "fleet_sync"
     }
   };

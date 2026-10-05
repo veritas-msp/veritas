@@ -11,13 +11,43 @@ const DEFAULT_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const RECENT_ALERT_DAYS = 7;
 /** Keep CheckMK event/notification history bounded (force refresh rebuilds this window). */
 const EVENT_RETENTION_DAYS = 90;
+function normalizeCheckmkTimestampMs(raw) {
+  if (raw == null || raw === "") return null;
+  const num = Number(raw);
+  if (Number.isFinite(num) && num > 0) return num < 1e12 ? num * 1000 : num;
+  const d = new Date(String(raw).trim().replace(" ", "T"));
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
+}
+
 function getEventTimeMs(event) {
   const raw = event?.time ?? event?.log_time ?? event?.timestamp ?? event?.event_time ?? event?.created ?? null;
-  if (raw == null) return null;
-  const num = Number(raw);
-  if (!Number.isNaN(num)) return num < 1e12 ? num * 1000 : num;
-  const d = new Date(String(raw).trim().replace(' ', 'T'));
-  return Number.isNaN(d.getTime()) ? null : d.getTime();
+  return normalizeCheckmkTimestampMs(raw);
+}
+
+/** Prefer CheckMK service last_state_change (when the problem started), then last_check. */
+function getServiceAlertAtMs(service) {
+  if (!service || typeof service !== "object") return null;
+  const raw =
+    service.lastStateChange ??
+    service.last_state_change ??
+    service.extensions?.last_state_change ??
+    service.attributes?.last_state_change ??
+    service.raw?.extensions?.last_state_change ??
+    service.raw?.last_state_change ??
+    service.lastCheck ??
+    service.last_check ??
+    service.extensions?.last_check ??
+    null;
+  return normalizeCheckmkTimestampMs(raw);
+}
+
+function toIsoFromMs(ms) {
+  if (ms == null || !Number.isFinite(ms) || ms <= 0) return null;
+  try {
+    return new Date(ms).toISOString();
+  } catch {
+    return null;
+  }
 }
 /** Unwrap CheckMK REST `{ type, value }` wrappers (and nested value objects). */
 function unwrapCheckmkValue(raw) {
@@ -367,6 +397,35 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     const hostEvents = asCheckmkList(hostEventsRaw).filter(isAlertEvent);
     if (hostEvents.length) failingServices = collectServiceNamesFromEvents(hostEvents);
   }
+
+  // Alert raise time = CheckMK service last_state_change (same clock as Events & notifications).
+  let alertAt = null;
+  if (status === "critical" || status === "warning") {
+    const failingRows = critServiceRows.length ? critServiceRows : warnServiceRows;
+    const primaryName = failingServices[0] || null;
+    const primaryRow =
+      (primaryName
+        ? failingRows.find(row => serviceDisplayName(row) === primaryName)
+        : null) ||
+      failingRows[0] ||
+      null;
+    const primaryMs = getServiceAlertAtMs(primaryRow);
+    const rowTimes = failingRows.map(getServiceAlertAtMs).filter(t => t != null);
+    const bestServiceMs = primaryMs ?? (rowTimes.length ? Math.max(...rowTimes) : null);
+    if (bestServiceMs != null) {
+      alertAt = toIsoFromMs(bestServiceMs);
+    } else if (!liveOnly && recentAlertEvents.length) {
+      const eventTimes = recentAlertEvents.map(e => getEventTimeMs(e)).filter(t => t != null);
+      if (eventTimes.length) alertAt = toIsoFromMs(Math.max(...eventTimes));
+    } else if (hostIsDown) {
+      alertAt = toIsoFromMs(
+        normalizeCheckmkTimestampMs(
+          host?.lastStateChange ?? host?.last_state_change ?? host?.lastCheck ?? host?.last_check ?? null
+        )
+      );
+    }
+  }
+
   return {
     status,
     critServices,
@@ -376,6 +435,7 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     recentWarnAlerts,
     primaryService: failingServices[0] || null,
     failingServices,
+    alertAt,
     hostName: String(host?.name || host?.host_name || host?.hostname || host?.title || "").trim() || null,
     hostState: host?.state ?? null,
     lastSyncedAt: lastSyncedAt || null

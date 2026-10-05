@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.63",
+    date: "2026-10-05",
+    highlights: [
+      "Supervision : la date des alertes reprend le last_state_change CheckMK du service (alignée sur Events & notifications).",
+      "Coffre-fort documentaire : type « Facture » à la place de « Facture matériel »."
+    ]
+  },
+  {
     version: "1.0.62",
     date: "2026-10-02",
     highlights: [

@@ -91,7 +91,8 @@ const DOCUMENTS_HUB = {
       }
     },
     categories: {
-      "Facture matériel": "Facture matériel",
+      Facture: "Facture",
+      "Facture matériel": "Facture",
       "Image client": "Image client",
       "Baie de brassage": "Baie de brassage",
       "Plan de réseau": "Plan de réseau",
@@ -192,7 +193,8 @@ const DOCUMENTS_HUB = {
       }
     },
     categories: {
-      "Facture matériel": "Hardware invoice",
+      Facture: "Invoice",
+      "Facture matériel": "Invoice",
       "Image client": "Client image",
       "Baie de brassage": "Patch panel",
       "Plan de réseau": "Network diagram",
@@ -293,7 +295,8 @@ const DOCUMENTS_HUB = {
       }
     },
     categories: {
-      "Facture matériel": "Hardware-Rechnung",
+      Facture: "Rechnung",
+      "Facture matériel": "Rechnung",
       "Image client": "Kundenbild",
       "Baie de brassage": "Patchpanel",
       "Plan de réseau": "Netzwerkplan",
@@ -394,7 +397,8 @@ const DOCUMENTS_HUB = {
       }
     },
     categories: {
-      "Facture matériel": "Fattura hardware",
+      Facture: "Fattura",
+      "Facture matériel": "Fattura",
       "Image client": "Immagine cliente",
       "Baie de brassage": "Baia di patch",
       "Plan de réseau": "Schema di rete",
@@ -495,7 +499,8 @@ const DOCUMENTS_HUB = {
       }
     },
     categories: {
-      "Facture matériel": "Factura hardware",
+      Facture: "Factura",
+      "Facture matériel": "Factura",
       "Image client": "Imagen cliente",
       "Baie de brassage": "Baia de parcheo",
       "Plan de réseau": "Diagrama de red",
@@ -506,7 +511,7 @@ const DOCUMENTS_HUB = {
     }
   }
 };
-export const CATEGORY_KEYS = ["Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"];
+export const CATEGORY_KEYS = ["Facture", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"];
 export function getDocumentsHubCopy(locale) {
   const t = pickLocaleMessages(DOCUMENTS_HUB, locale);
   return {

@@ -173,6 +173,8 @@ export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
     const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
     const clientName = resolveQueueClientName(equipment, row);
     const assetName = equipment?.name || options.fallbackName || "—";
+    const alertAt = issue?.alertAt || row?.alertAt || null;
+    const alertAtMs = alertAt ? new Date(alertAt).getTime() : NaN;
     return [{
       id: `device-${getEquipmentListKey(equipment)}`,
       domain: "devices",
@@ -190,7 +192,9 @@ export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
       agent: null,
       ticketSubject: [assetName, reason].filter(Boolean).join(" — "),
       priority: issue?.priority ?? row?.priority ?? SEVERITY_RANK[severity] ?? 9,
-      sortTime: null
+      alertAt: alertAt || null,
+      notifiedAt: alertAt || null,
+      sortTime: Number.isFinite(alertAtMs) ? alertAtMs : null
     }];
   });
 }
@@ -373,6 +377,31 @@ export function filterSupervisionQueue(items = [], {
   });
 }
 
+function resolveAlertWhen(...sources) {
+  // Prefer CheckMK service raise time over Veritas created_at.
+  const preferredKeys = [
+    source => source?.meta?.checkmkAlertAt,
+    source => source?.meta?.raisedAt,
+    source => source?.checkmkAlertAt,
+    source => source?.raisedAt,
+    source => source?.alertAt,
+    source => source?.notifiedAt
+  ];
+  for (const pick of preferredKeys) {
+    for (const source of sources) {
+      if (source == null || typeof source !== "object") continue;
+      const value = pick(source);
+      if (value != null && value !== "") return value;
+    }
+  }
+  for (const source of sources) {
+    if (source == null || source === "") continue;
+    if (typeof source !== "object") return source;
+    if (source.createdAt) return source.createdAt;
+  }
+  return null;
+}
+
 export function mergeQueueWithAlertState(items = [], alerts = []) {
   const byId = new Map((Array.isArray(alerts) ? alerts : []).map(a => [a.queueItemId, a]));
   return (Array.isArray(items) ? items : []).map(item => {
@@ -380,26 +409,28 @@ export function mergeQueueWithAlertState(items = [], alerts = []) {
     const clientName = resolveQueueClientName(item, item?.equipment, state, state?.meta);
     const clientId = resolveQueueClientId(item, item?.equipment, state) ?? item.clientId ?? null;
     if (!state) {
+      const when = resolveAlertWhen(item);
       return {
         ...item,
         clientId,
         clientName,
         workflowStatus: "open",
         alertState: null,
-        notifiedAt: null,
+        notifiedAt: when,
         handledByName: null,
         linkedTicketKind: null,
         linkedTicketId: null,
         linkedEventId: null
       };
     }
+    const when = resolveAlertWhen(state, item);
     return {
       ...item,
       clientId,
       clientName,
       workflowStatus: state.status || "open",
       alertState: state,
-      notifiedAt: state.createdAt || null,
+      notifiedAt: when,
       handledByName: state.ackedByName || null,
       linkedTicketKind: state.linkedTicketKind || null,
       linkedTicketId: state.linkedTicketId || null,

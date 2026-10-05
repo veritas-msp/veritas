@@ -219,6 +219,22 @@ export async function ensureSupervisionAlertsSeen(items = []) {
     ).trim();
     const baseMeta = raw?.meta && typeof raw.meta === "object" ? { ...raw.meta } : {};
     if (clientName && !baseMeta.clientName) baseMeta.clientName = clientName;
+    const raisedAtRaw =
+      raw?.raisedAt ||
+      raw?.raised_at ||
+      baseMeta.checkmkAlertAt ||
+      baseMeta.raisedAt ||
+      null;
+    let raisedAt = null;
+    if (raisedAtRaw) {
+      const ms = typeof raisedAtRaw === "number"
+        ? (raisedAtRaw < 1e12 ? raisedAtRaw * 1000 : raisedAtRaw)
+        : new Date(raisedAtRaw).getTime();
+      if (Number.isFinite(ms) && ms > 0) {
+        raisedAt = new Date(ms).toISOString();
+        if (!baseMeta.checkmkAlertAt) baseMeta.checkmkAlertAt = raisedAt;
+      }
+    }
     normalized.push({
       queueItemId,
       domain,
@@ -229,6 +245,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
       title: clip(raw?.title, 255),
       subtitle: raw?.subtitle || null,
       label: clip(raw?.label, 255),
+      raisedAt,
       meta: baseMeta
     });
     if (normalized.length >= 500) break;
@@ -257,11 +274,15 @@ export async function ensureSupervisionAlertsSeen(items = []) {
   const enrichable = normalized.filter(item => {
     const alert = existingById.get(item.queueItemId);
     if (!alert || alert.deletedAt || !ACTIVE_STATUSES.has(alert.status)) return false;
+    const incomingAlertAt = String(item.raisedAt || item.meta?.checkmkAlertAt || "").trim();
+    const existingAlertAt = String(alert.meta?.checkmkAlertAt || "").trim();
+    const alertAtChanged = Boolean(incomingAlertAt && incomingAlertAt !== existingAlertAt);
     // Touch last_seen even when text is identical so the row stays warm.
-    if (sameAlertFingerprint(alert.meta, item.meta) && msSince(alert.lastSeenAt) < 30 * 1000) {
+    if (sameAlertFingerprint(alert.meta, item.meta) && !alertAtChanged && msSince(alert.lastSeenAt) < 30 * 1000) {
       return false;
     }
     return (
+      alertAtChanged ||
       isRicherAlertText(item.title, alert.title) ||
       isRicherAlertText(item.label, alert.label) ||
       isRicherAlertText(item.subtitle, alert.subtitle) ||
@@ -281,8 +302,8 @@ export async function ensureSupervisionAlertsSeen(items = []) {
     for (const item of missing) {
       const insert = await client.query(
         `INSERT INTO v_b_supervision_alerts
-          (queue_item_id, domain, severity, client_id, equipment_id, ref_key, title, subtitle, label, status, meta, last_seen_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'open',$10::jsonb, NOW())
+          (queue_item_id, domain, severity, client_id, equipment_id, ref_key, title, subtitle, label, status, meta, last_seen_at, created_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'open',$10::jsonb, NOW(), COALESCE($11::timestamptz, NOW()))
          ON CONFLICT (queue_item_id) DO NOTHING
          RETURNING *`,
         [
@@ -295,7 +316,8 @@ export async function ensureSupervisionAlertsSeen(items = []) {
           item.title,
           item.subtitle,
           item.label,
-          JSON.stringify(item.meta || {})
+          JSON.stringify(item.meta || {}),
+          item.raisedAt || null
         ]
       );
       const row = insert.rows[0];
@@ -321,6 +343,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              subtitle = COALESCE($4, subtitle),
              label = COALESCE($5, label),
              meta = COALESCE(meta, '{}'::jsonb) || COALESCE($6::jsonb, '{}'::jsonb),
+             created_at = COALESCE($7::timestamptz, created_at),
              closed_at = NULL,
              closed_by = NULL,
              closed_reason = NULL,
@@ -332,7 +355,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              updated_at = NOW()
          WHERE id = $1::uuid
          RETURNING *`,
-        [current.id, item.severity, item.title, item.subtitle, item.label, JSON.stringify(item.meta || {})]
+        [current.id, item.severity, item.title, item.subtitle, item.label, JSON.stringify(item.meta || {}), item.raisedAt || null]
       );
       const row = updated.rows[0];
       if (!row) continue;
@@ -359,6 +382,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              label = COALESCE($4, label),
              severity = COALESCE($5, severity),
              meta = COALESCE(meta, '{}'::jsonb) || COALESCE($6::jsonb, '{}'::jsonb),
+             created_at = COALESCE($8::timestamptz, created_at),
              last_seen_at = NOW(),
              updated_at = NOW()
          WHERE id = $1::uuid
@@ -370,7 +394,8 @@ export async function ensureSupervisionAlertsSeen(items = []) {
           nextLabel,
           item.severity,
           JSON.stringify(item.meta || {}),
-          [...ACTIVE_STATUSES]
+          [...ACTIVE_STATUSES],
+          item.raisedAt || null
         ]
       );
     }

@@ -196,7 +196,8 @@ function mapCriterionToIssue(criterion) {
     detail,
     tone: meta.tone,
     priority: meta.priority,
-    monitorStatus: meta.monitorStatus
+    monitorStatus: meta.monitorStatus,
+    alertAt: d?.alertAt || d?.checkmkAlertAt || null
   };
 }
 
