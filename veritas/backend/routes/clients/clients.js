@@ -17,7 +17,6 @@ import { attachEquipmentCounts, fetchEquipmentCountsByClientId } from '../../uti
 import { fetchEquipmentPurgeList } from '../../utils/equipmentPurgeList.js';
 import { fetchEquipmentInventoryList, bulkUpdateEquipmentInventory } from '../../utils/equipmentInventoryList.js';
 import { fetchEquipmentFleetList } from '../../utils/equipmentFleetList.js';
-import { fetchEquipmentFleetIssues } from '../../utils/equipmentFleetIssues.js';
 import { fetchMonitorableEquipmentStats } from '../../utils/monitorableEquipmentStats.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
 import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClientAsync, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
@@ -972,19 +971,6 @@ router.get('/equipment-fleet', requireAnyPermission('infrastructure.view', 'supe
     console.error('GET /equipment-fleet:', err);
     res.status(500).json({
       error: 'Error loading equipment fleet',
-      details: err.message,
-      code: err.code
-    });
-  }
-});
-router.get('/equipment-fleet/issues', requireAnyPermission('infrastructure.view', 'supervision.view', 'clients.view', 'supervision.manage'), async (req, res) => {
-  try {
-    const payload = await fetchEquipmentFleetIssues();
-    res.json(payload);
-  } catch (err) {
-    console.error('GET /equipment-fleet/issues:', err);
-    res.status(500).json({
-      error: 'Error loading equipment fleet issues',
       details: err.message,
       code: err.code
     });

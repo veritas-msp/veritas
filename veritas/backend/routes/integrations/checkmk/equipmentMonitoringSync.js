@@ -443,6 +443,56 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
 }
 
 /**
+ * Live failing services for supervision reconcile (one alert per service).
+ * Host DOWN is returned separately when no service rows explain the outage.
+ */
+export function listLiveFailingServices(monitoringData, hostDetails = null) {
+  const servicesRaw = monitoringData?.services?.services ?? monitoringData?.services;
+  const services = asCheckmkList(servicesRaw);
+  const host = resolveHostDetails(monitoringData, hostDetails);
+  const hostStateSeverity = normalizeHostStateToSeverity(
+    host?.state ?? host?.host_state ?? host?.extensions?.state ?? host?.attributes?.state ?? null
+  );
+  const hostIsDown = hostStateSeverity === 2;
+  const hostAlertAt = toIsoFromMs(
+    normalizeCheckmkTimestampMs(
+      host?.lastStateChange ?? host?.last_state_change ?? host?.lastCheck ?? host?.last_check ?? null
+    )
+  );
+  const failing = [];
+  const seen = new Set();
+  for (const row of services) {
+    const stateNum = getServiceStateNum(row);
+    if (stateNum !== 1 && stateNum !== 2) continue;
+    const name = serviceDisplayName(row);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    failing.push({
+      serviceName: name,
+      severity: stateNum === 2 ? "critical" : "warning",
+      stateNum,
+      alertAt: toIsoFromMs(getServiceAlertAtMs(row)),
+      pluginOutput: String(
+        row?.plugin_output ||
+          row?.extensions?.plugin_output ||
+          row?.attributes?.plugin_output ||
+          row?.summary ||
+          ""
+      ).trim() || null
+    });
+  }
+  return {
+    services: failing,
+    hostIsDown,
+    hostAlertAt,
+    hostName: String(host?.name || host?.host_name || host?.hostname || host?.title || "").trim() || null,
+    hostState: host?.state ?? null
+  };
+}
+
+/**
  * Count CheckMK events + notifications within the last N days (integration supervision history).
  */
 export function countCheckmkHistoryLastDays(monitoringData, days = 30) {
@@ -957,9 +1007,32 @@ export async function runEquipmentMonitoringSync(req, {
   if (!force && existing?.last_synced_at) {
     const lastSyncMs = new Date(existing.last_synced_at).getTime();
     if (!Number.isNaN(lastSyncMs) && Date.now() - lastSyncMs < syncMinIntervalMs) {
+      // Toujours réconcilier les alertes à partir du cache (règles / retour OK).
+      let alertReconcile = null;
+      if (!mkSettings.surveillanceSuspended) {
+        try {
+          const { reconcileEquipmentSupervisionAlerts } = await import(
+            "../../../utils/supervisionAlertReconcile.js"
+          );
+          alertReconcile = await reconcileEquipmentSupervisionAlerts({
+            clientId,
+            equipmentId,
+            family,
+            hostName,
+            equipmentName: hostName,
+            monitoringData: existing.monitoring_data || null,
+            hostDetails: existing.host_details || null,
+            lastSyncedAt: existing.last_synced_at,
+            mkSettings
+          });
+        } catch (err) {
+          console.error("[checkmk] reconcile supervision alerts (cached):", err?.message || err);
+        }
+      }
       return {
         ...rowToResponse(existing, availabilityPeriod),
         skipped: true,
+        alertReconcile,
         message: `Recent synchronization (< ${mkSettings.syncIntervalMinutes} min), using database data.`
       };
     }
@@ -1012,10 +1085,35 @@ export async function runEquipmentMonitoringSync(req, {
       console.error("[checkmk] evaluateMonitoringAlert:", err.message);
     });
   }
+
+  // Centre de supervision : réconciliation alertes (service-level) après chaque sync réussie.
+  let alertReconcile = null;
+  if (!mkSettings.surveillanceSuspended) {
+    try {
+      const { reconcileEquipmentSupervisionAlerts } = await import(
+        "../../../utils/supervisionAlertReconcile.js"
+      );
+      alertReconcile = await reconcileEquipmentSupervisionAlerts({
+        clientId,
+        equipmentId,
+        family,
+        hostName,
+        equipmentName: hostName,
+        monitoringData,
+        hostDetails: hostDetails || updated?.host_details || null,
+        lastSyncedAt: nowIso,
+        mkSettings
+      });
+    } catch (err) {
+      console.error("[checkmk] reconcile supervision alerts:", err?.message || err);
+    }
+  }
+
   return {
     ...rowToResponse(updated, availabilityPeriod),
     skipped: false,
     summary,
+    alertReconcile,
     message: 'Synchronization completed.'
   };
 }

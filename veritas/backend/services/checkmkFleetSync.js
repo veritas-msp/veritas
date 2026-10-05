@@ -9,8 +9,6 @@ import {
   getLatestRunningCheckmkSyncRun
 } from "../utils/checkmkSyncRuns.js";
 import { runEquipmentMonitoringSync, buildSystemCheckmkReq } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
-import { formatMonitorIssueLabel } from "../utils/equipmentFleetIssues.js";
-import { ensureSupervisionAlertsSeen } from "../utils/supervisionAlerts.js";
 
 const EQUIPMENT_FAMILY_TABLES = {
   servers: "v_b_clients_m_servers",
@@ -145,46 +143,6 @@ async function mapPool(items, concurrency, worker, { shouldStop } = {}) {
   return { results, stopped };
 }
 
-function buildLiveSupervisionAlertItem(target, summary) {
-  const status = String(summary?.status || "").toLowerCase();
-  if (status !== "warning" && status !== "critical") return null;
-  const clientId = target?.clientId;
-  const equipmentId = target?.equipmentId;
-  if (clientId == null || equipmentId == null) return null;
-  const severity = status === "critical" ? "critical" : "warning";
-  const criterionKey = status === "critical" ? "monitor_critical" : "monitor_warning";
-  const severityLabel = status === "critical" ? "Critical" : "Warning";
-  const title = formatMonitorIssueLabel(severityLabel, summary);
-  const fingerprint = [
-    status,
-    String(summary?.primaryService || "").trim(),
-    ...(Array.isArray(summary?.failingServices) ? summary.failingServices.slice(0, 3) : [])
-  ].join("|");
-  const queueItemId = `device-${clientId}:${equipmentId}`;
-  const checkmkAlertAt = summary?.alertAt || null;
-  return {
-    id: queueItemId,
-    queueItemId,
-    domain: "devices",
-    severity,
-    clientId,
-    equipmentId,
-    title,
-    label: title,
-    subtitle: target.hostName || null,
-    raisedAt: checkmkAlertAt,
-    meta: {
-      criterionKey,
-      hostName: target.hostName || null,
-      family: target.family || null,
-      primaryService: summary?.primaryService || null,
-      fingerprint,
-      checkmkAlertAt,
-      source: "fleet_sync"
-    }
-  };
-}
-
 async function executeCheckmkFleetSyncBody({
   trigger,
   force,
@@ -197,8 +155,9 @@ async function executeCheckmkFleetSyncBody({
   let synced = 0;
   let skipped = 0;
   let failed = 0;
+  let alertsCreated = 0;
+  let alertsResolved = 0;
   const failures = [];
-  const liveAlerts = [];
   let processed = 0;
   const total = targets.length;
   let cancelled = false;
@@ -261,8 +220,11 @@ async function executeCheckmkFleetSyncBody({
           skipped += 1;
         } else {
           synced += 1;
-          const alertItem = buildLiveSupervisionAlertItem(target, result?.summary);
-          if (alertItem) liveAlerts.push(alertItem);
+        }
+        const reconcile = result?.alertReconcile;
+        if (reconcile && !reconcile.skipped) {
+          alertsCreated += Number(reconcile.created) || 0;
+          alertsResolved += Number(reconcile.resolved) || 0;
         }
       } catch (err) {
         failed += 1;
@@ -296,37 +258,8 @@ async function executeCheckmkFleetSyncBody({
     cancelled = true;
   }
 
-  let alertsCreated = 0;
-  let alertsResolved = 0;
-  let alertScanSkipped = true;
-  if (!cancelled && !mkSettings.surveillanceSuspended && liveAlerts.length) {
-    if (run?.id) {
-      await updateCheckmkSyncRunProgress(run.id, {
-        synced,
-        skipped,
-        failed,
-        message: "Mise a jour des alertes supervision..."
-      }).catch(() => {});
-    }
-    try {
-      const persisted = await ensureSupervisionAlertsSeen(liveAlerts);
-      const openIds = new Set(
-        persisted.filter(alert => alert.status === "open").map(alert => alert.queueItemId)
-      );
-      alertsCreated = liveAlerts.filter(item => openIds.has(item.queueItemId)).length;
-      alertScanSkipped = false;
-    } catch (err) {
-      console.error("[checkmk-fleet-sync] supervision alerts:", err?.message || err);
-      if (failures.length < 15) {
-        failures.push({
-          stage: "supervision_alerts",
-          error: err?.message || String(err)
-        });
-      }
-    }
-  } else if (cancelled || mkSettings.surveillanceSuspended) {
-    alertScanSkipped = true;
-    if (cancelled) await pushProgress(null, { cancelRequested: true }, { flush: true });
+  if (cancelled) {
+    await pushProgress(null, { cancelRequested: true }, { flush: true });
   }
 
   const status = cancelled
@@ -344,8 +277,8 @@ async function executeCheckmkFleetSyncBody({
         `${failed} failed`
       ];
   if (!cancelled) {
-    if (alertScanSkipped) messageParts.push(liveAlerts.length ? "alertes ignorees" : "aucune alerte live");
-    else messageParts.push(`alertes live ${liveAlerts.length}`);
+    if (mkSettings.surveillanceSuspended) messageParts.push("surveillance suspendue");
+    else messageParts.push(`alertes +${alertsCreated}/-${alertsResolved}`);
   }
 
   if (run?.id) {
@@ -360,7 +293,6 @@ async function executeCheckmkFleetSyncBody({
       details: {
         ...baseDetails,
         syncMode: effectiveSyncMode,
-        liveAlerts: liveAlerts.length,
         failures,
         surveillanceSuspended: mkSettings.surveillanceSuspended,
         syncIntervalMinutes: mkSettings.syncIntervalMinutes,
@@ -374,7 +306,7 @@ async function executeCheckmkFleetSyncBody({
   clearCheckmkFleetSyncCancel(run?.id);
 
   console.log(
-    `[checkmk-fleet-sync] trigger=${trigger} mode=${effectiveSyncMode} targets=${targets.length} synced=${synced} skipped=${skipped} failed=${failed} liveAlerts=${liveAlerts.length} cancelled=${cancelled}`
+    `[checkmk-fleet-sync] trigger=${trigger} mode=${effectiveSyncMode} targets=${targets.length} synced=${synced} skipped=${skipped} failed=${failed} alerts=+${alertsCreated}/-${alertsResolved} cancelled=${cancelled}`
   );
 
   return {
@@ -387,7 +319,6 @@ async function executeCheckmkFleetSyncBody({
     failed,
     alertsCreated,
     alertsResolved,
-    liveAlerts: liveAlerts.length,
     status
   };
 }

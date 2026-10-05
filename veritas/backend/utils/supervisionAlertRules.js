@@ -3,6 +3,9 @@ import { resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
 import { ensureSupervisionAlertRulesSchema } from "../services/ensureSupervisionAlertRulesSchema.js";
 const SINGLETON_ID = 1;
 const SEVERITIES = new Set(["low", "normal", "high", "urgent"]);
+/** Critères consommés par le centre de supervision (réconciliation après sync CheckMK). */
+export const CENTRE_MONITORING_CRITERION_KEYS = ["monitor_critical", "monitor_warning", "no_data"];
+
 export const SUPERVISION_ALERT_CRITERIA = [{
   key: "monitor_critical",
   label: "Critical",

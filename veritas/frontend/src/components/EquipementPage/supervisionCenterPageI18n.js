@@ -5,7 +5,7 @@ const SUPERVISION_COPY = {
   fr: {
     eyebrow: "Services managés",
     pageTitle: "Centre de supervision",
-    subtitle: "Alertes de monitoring",
+    subtitle: "Alertes CheckMK des périphériques mappés (sync auto ou manuelle)",
     loading: "Balayage en cours...",
     tabSectionsAria: "Sections supervision",
     fleetSync: {
@@ -74,28 +74,28 @@ const SUPERVISION_COPY = {
       tourTitle: "Centre de supervision",
       steps: {
         hero: {
-          title: "Centre de notifications",
-          content: "Cette page affiche uniquement les alertes des périphériques mappés à une intégration de monitoring. Consultez-les et agissez depuis une file unique."
+          title: "Centre de supervision",
+          content: "File unique des alertes monitoring (CheckMK). Les données viennent de la sync (poller Admin ou bouton Synchroniser). L'onglet Supervision d'un périphérique montre le détail des services."
         },
         tabs: {
           title: "Vues principales",
-          content: "Alertes = table des alertes actives. Historique = alertes prises en charge ou closes, avec timeline. Règles (admin) = critères de surveillance."
+          content: "Alertes = file active (1 ligne ≈ 1 service en warning/critique). Historique = alertes résolues ou dismiss. Règles = activer critique / warning / no data par type de périphérique."
         },
         kpis: {
           title: "Filtres",
-          content: "Une seule barre de filtres : sévérité (Critiques, Warnings) et statut (Ouvertes, Prises en charge, Liées). Cliquez à nouveau pour retirer un filtre."
+          content: "Filtrez par sévérité (Critiques, Warnings) et statut (Ouvertes, Prises en charge, Liées). Cliquez à nouveau pour retirer un filtre."
         },
         filters: {
           title: "Recherche",
-          content: "Recherchez une alerte ou un client. Les filtres ci-dessous affinent la même file."
+          content: "Recherchez un service, un périphérique ou un client dans la file."
         },
         queue: {
           title: "Table d'alertes",
-          content: "Chaque ligne affiche l'alerte, l'entreprise et le statut. Survolez les icônes d'actions pour voir ce qu'elles font : prise en charge, ticket, planning, résolution."
+          content: "Chaque ligne est une alerte active. Actions : prise en charge, ticket support, résolution. Ouvrir la ligne pour aller à la fiche et voir tous les services."
         },
         history: {
           title: "Historique",
-          content: "Retrouvez les alertes closes ou liées à une remédiation, avec leur timeline d'événements."
+          content: "Alertes fermées automatiquement (retour OK CheckMK) ou manuellement, avec la timeline des actions."
         }
       }
     },
@@ -461,7 +461,7 @@ const SUPERVISION_COPY = {
   en: {
     eyebrow: "Managed services",
     pageTitle: "Monitoring center",
-    subtitle: "Monitoring alerts",
+    subtitle: "CheckMK alerts for mapped devices (auto or manual sync)",
     loading: "Scanning...",
     tabSectionsAria: "Monitoring sections",
         fleetSync: {
@@ -530,32 +530,28 @@ const SUPERVISION_COPY = {
       tourTitle: "Monitoring center",
       steps: {
         hero: {
-          title: "Notification center",
-          content: "This page shows only alerts from devices mapped to a monitoring integration. Review and act from a single queue."
+          title: "Monitoring center",
+          content: "Single queue of CheckMK monitoring alerts. Data comes from sync (Admin poller or Synchronize button). The device Supervision tab shows full service details."
         },
         tabs: {
           title: "Main views",
-          content: "Alerts = active alert table. History = acknowledged or closed alerts with timeline. Rules (admin) = monitoring criteria."
+          content: "Alerts = active queue (1 row ≈ 1 warning/critical service). History = resolved or dismissed alerts. Rules = enable critical / warning / no data per device type."
         },
         kpis: {
           title: "Filters",
-          content: "One filter bar: severity (Critical, Warnings) and status (Open, Acknowledged, Linked). Click again to clear a filter."
+          content: "Filter by severity (Critical, Warnings) and status (Open, Acknowledged, Linked). Click again to clear a filter."
         },
         filters: {
           title: "Search",
-          content: "Search an alert or client. The filters below narrow the same queue."
+          content: "Search a service, device or client in the queue."
         },
         queue: {
-          title: "Alert queue",
-          content: "Every card shares the same format: title, company, status. Acknowledge, open a Support or Service ticket, schedule, resolve, or dismiss."
-        },
-        fleet: {
-          title: "Fleet",
-          content: "Client device listing for remediation outside the alert queue (ticket, planning)."
+          title: "Alert table",
+          content: "Each row is an active alert. Actions: acknowledge, support ticket, resolve. Open a row to go to the device and see all services."
         },
         history: {
           title: "History",
-          content: "Find closed alerts or those linked to a remediation, with their event timeline."
+          content: "Alerts closed automatically (CheckMK back to OK) or manually, with the action timeline."
         }
       }
     },

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.65",
+    date: "2026-10-05",
+    highlights: [
+      "Centre de supervision : une alerte par service CheckMK en warning ou critique, créée à chaque sync (poller ou manuelle).",
+      "Retour à OK : l’alerte disparaît automatiquement et passe en historique (résolue).",
+      "Règles du centre limitées au monitoring : critique, warning et absence de données."
+    ]
+  },
+  {
     version: "1.0.64",
     date: "2026-10-05",
     highlights: [

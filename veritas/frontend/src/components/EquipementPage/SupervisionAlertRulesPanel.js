@@ -9,6 +9,7 @@ import { listMappableSupportFormFields } from "../../utils/supportFormTicketCont
 import {
   buildDefaultMonitoringAlertRules,
   countEnabledRulesForFamily,
+  filterCriteriaForScope,
   getCriteriaForFamily,
   isRuleEnabled,
   normalizeRulesTree,
@@ -42,14 +43,20 @@ export default function MonitoringAlertRulesPanel({
   catalog,
   rules: rulesProp,
   isAdmin = false,
-  onSaved
+  onSaved,
+  /** "centre" = critères monitoring du centre only ; "all" = catalogue complet (Admin). */
+  scope = "all"
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getSupervisionAlertRulesCopy(locale), [locale]);
-  const criteriaCatalog = catalog?.criteria || [];
+  const centreOnly = scope === "centre";
+  const criteriaCatalog = useMemo(
+    () => filterCriteriaForScope(catalog?.criteria || [], scope),
+    [catalog?.criteria, scope]
+  );
   const families = useMemo(() => {
     const source = catalog?.families?.length ? catalog.families : SUPERVISION_FAMILIES;
-    return source.map(family => {
+    const mapped = source.map(family => {
       const local = SUPERVISION_FAMILIES.find(f => f.key === family.key);
       return {
         ...family,
@@ -57,20 +64,28 @@ export default function MonitoringAlertRulesPanel({
         label: copy.getFamilyLabel(family.key, family.label)
       };
     });
-  }, [catalog?.families, copy]);
+    if (!centreOnly) return mapped;
+    return mapped.filter(family => getCriteriaForFamily(family.key, { centreOnly: true }).length > 0);
+  }, [catalog?.families, copy, centreOnly]);
 
   const criteriaByKey = useMemo(() => {
     const map = new Map();
-    const list = criteriaCatalog.length ? criteriaCatalog : null;
+    const full = Array.isArray(catalog?.criteria) ? catalog.criteria : [];
+    const list = full.length ? full : null;
     if (list) {
       list.forEach(c => map.set(c.key, c));
     }
     return map;
-  }, [criteriaCatalog]);
+  }, [catalog?.criteria]);
 
   const baseline = useMemo(
-    () => normalizeRulesTree(rulesProp, criteriaCatalog.length ? criteriaCatalog : undefined, families),
-    [rulesProp, criteriaCatalog, families]
+    () =>
+      normalizeRulesTree(
+        rulesProp,
+        Array.isArray(catalog?.criteria) && catalog.criteria.length ? catalog.criteria : undefined,
+        catalog?.families?.length ? catalog.families : SUPERVISION_FAMILIES
+      ),
+    [rulesProp, catalog?.criteria, catalog?.families]
   );
 
   const [draft, setDraft] = useState(baseline);
@@ -116,8 +131,8 @@ export default function MonitoringAlertRulesPanel({
     if (criteriaCatalog.length) {
       return criteriaCatalog.filter(c => Array.isArray(c.families) && c.families.includes(activeFamily.key));
     }
-    return getCriteriaForFamily(activeFamily.key);
-  }, [activeFamily, criteriaCatalog]);
+    return getCriteriaForFamily(activeFamily.key, { centreOnly });
+  }, [activeFamily, criteriaCatalog, centreOnly]);
 
   const handleToggle = useCallback((familyKey, criterionKey, enabled) => {
     setDraft(prev => {
@@ -196,9 +211,13 @@ export default function MonitoringAlertRulesPanel({
     if (!isAdmin) return;
     setSaving(true);
     try {
-      const payload = normalizeRulesTree(draft, criteriaCatalog.length ? criteriaCatalog : undefined, families);
+      // Toujours normaliser sur le catalogue complet pour ne pas effacer les critères hors centre.
+      const fullCriteria =
+        Array.isArray(catalog?.criteria) && catalog.criteria.length ? catalog.criteria : undefined;
+      const fullFamilies = catalog?.families?.length ? catalog.families : SUPERVISION_FAMILIES;
+      const payload = normalizeRulesTree(draft, fullCriteria, fullFamilies);
       const data = await updateSupervisionAlertRules(payload);
-      const saved = normalizeRulesTree(data.rules, criteriaCatalog.length ? criteriaCatalog : undefined, families);
+      const saved = normalizeRulesTree(data.rules, fullCriteria, fullFamilies);
       invalidateSupervisionAlertRulesCache();
       onSaved?.(saved);
       setDraft(saved);
@@ -214,7 +233,7 @@ export default function MonitoringAlertRulesPanel({
   if (!activeFamily) return null;
 
   const familyRules = draft[activeFamily.key] || {};
-  const enabledOnFamily = countEnabledRulesForFamily(activeFamily.key, draft);
+  const enabledOnFamily = countEnabledRulesForFamily(activeFamily.key, draft, { centreOnly });
 
   return (
     <div className={styles.panel}>
@@ -222,9 +241,9 @@ export default function MonitoringAlertRulesPanel({
         <div>
           <h2 className={styles.title}>
             <Icon icon="mdi:bell-cog-outline" className={styles.titleIcon} aria-hidden />
-            {copy.title}
+            {centreOnly ? copy.centreTitle || copy.title : copy.title}
           </h2>
-          <p className={styles.subtitle}>{copy.subtitle}</p>
+          <p className={styles.subtitle}>{centreOnly ? copy.centreSubtitle || copy.subtitle : copy.subtitle}</p>
         </div>
         {!isAdmin ? <p className={styles.readOnlyNote}>{copy.readOnly}</p> : null}
       </header>
@@ -232,10 +251,10 @@ export default function MonitoringAlertRulesPanel({
       <div className={styles.layout}>
         <nav className={styles.familyNav} aria-label={copy.familyNavAria}>
           {families.map(family => {
-            const enabled = countEnabledRulesForFamily(family.key, draft);
+            const enabled = countEnabledRulesForFamily(family.key, draft, { centreOnly });
             const total = (criteriaCatalog.length
               ? criteriaCatalog.filter(c => Array.isArray(c.families) && c.families.includes(family.key))
-              : getCriteriaForFamily(family.key)
+              : getCriteriaForFamily(family.key, { centreOnly })
             ).length;
             if (!total) return null;
             const isActive = family.key === activeFamily.key;

@@ -15,6 +15,8 @@ import {
   trashSupervisionAlert,
   upsertAndActOnSupervisionAlert
 } from "../../utils/supervisionAlerts.js";
+import { isCheckmkIntegrationEnabled } from "../../utils/checkmkIntegrationStatus.js";
+import { getCheckmkMonitoringSettings } from "../../utils/checkmkMonitoringSettings.js";
 
 const router = express.Router();
 
@@ -43,8 +45,27 @@ function payloadFromBody(body = {}) {
 
 router.get("/active", verifyJWT, requireAnyPermission("supervision.view", "supervision.manage"), async (_req, res) => {
   try {
+    const [enabled, mkSettings] = await Promise.all([
+      isCheckmkIntegrationEnabled(),
+      getCheckmkMonitoringSettings()
+    ]);
+    if (!enabled || mkSettings.surveillanceSuspended) {
+      return res.json({
+        alerts: [],
+        meta: {
+          integrationEnabled: enabled,
+          surveillanceSuspended: Boolean(mkSettings.surveillanceSuspended)
+        }
+      });
+    }
     const alerts = await listActiveSupervisionAlerts();
-    res.json({ alerts });
+    res.json({
+      alerts,
+      meta: {
+        integrationEnabled: true,
+        surveillanceSuspended: false
+      }
+    });
   } catch (err) {
     console.error("[supervision-alerts] GET /active:", err.message);
     res.status(500).json({ error: "Server error" });

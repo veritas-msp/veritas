@@ -1,20 +1,16 @@
-import { buildMonitoringTodoActions } from "./equipmentMspUtils";
-import { getEquipmentDbId, getEquipmentListKey } from "../../utils/equipmentIdentity";
-import { getBackupJobStatus, getBackupJobStatusTitle } from "../CybersecuritePage/backupJobStatusUtils";
-import { formatServeurLieLabel } from "../EnterprisesPage/backupJobUtils";
+import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
 
 function joinMeta(parts, clientName = "") {
   const client = String(clientName || "").trim().toLowerCase();
-  return (Array.isArray(parts) ? parts : []).map(part => String(part || "").trim()).filter(Boolean).filter(part => !client || part.toLowerCase() !== client).join(" · ");
+  return (Array.isArray(parts) ? parts : [])
+    .map(part => String(part || "").trim())
+    .filter(Boolean)
+    .filter(part => !client || part.toLowerCase() !== client)
+    .join(" · ");
 }
 
-function alertReason(reason, fallback = "") {
-  const value = String(reason || "").trim();
-  return value || fallback || "—";
-}
-
-/** Resolve enterprise label from queue/issue/equipment payloads (camel or snake). */
+/** Resolve enterprise label from queue/alert/equipment payloads. */
 export function resolveQueueClientName(...sources) {
   for (const source of sources) {
     if (source == null) continue;
@@ -39,310 +35,88 @@ export function resolveQueueClientName(...sources) {
   return "";
 }
 
-function resolveQueueClientId(...sources) {
-  for (const source of sources) {
-    if (source == null) continue;
-    const id = source.clientId ?? source.client_id ?? source.equipment?.clientId ?? source.equipment?.client_id ?? source.client?.id ?? null;
-    if (id != null && id !== "") return id;
-  }
-  return null;
-}
-
 const SEVERITY_RANK = {
   critical: 0,
   warning: 1,
   info: 2
 };
 
-/** CheckMK is currently the only monitoring integration. */
-const MONITORING_INTEGRATION_ISSUE_KEYS = new Set(["monitor_critical", "monitor_warning", "no_data"]);
-
-export function isMonitoringIntegrationIssue(issue) {
-  return MONITORING_INTEGRATION_ISSUE_KEYS.has(String(issue?.key || ""));
-}
-
-export function isEquipmentMappedViaMonitoringIntegration(equipment, {
-  checkmkEnabled = true,
-  isMkMapped
-} = {}) {
-  if (checkmkEnabled === false) return false;
-  const mapping = equipment?.checkmkMapping;
-  const host = String(
-    mapping?.checkmk_host_name || mapping?.checkmkHostName || equipment?.checkmk_host_name || ""
-  ).trim();
-  if (host && mapping?.is_active !== false) return true;
-  if (typeof isMkMapped === "function" && isMkMapped(equipment)) return true;
-  return false;
-}
-
-function pickMonitoringIntegrationIssue(row) {
-  const issues = Array.isArray(row?.issues) ? row.issues : [];
-  const preferred = issues.find(issue => {
-    const key = String(issue?.key || "");
-    return key === "monitor_critical" || key === "monitor_warning";
-  });
-  if (preferred) return preferred;
-  const fromList = issues.find(isMonitoringIntegrationIssue);
-  if (fromList) return fromList;
-  if (isMonitoringIntegrationIssue(row?.primaryIssue)) return row.primaryIssue;
-  return null;
-}
-
-function severityFromTone(tone, status) {
-  if (tone === "bad" || status === "critical" || status === "offline" || status === "expired") return "critical";
-  if (tone === "warn" || status === "warning" || status === "expiring" || status === "suspended") return "warning";
-  return "info";
-}
-
 /**
- * Unified actionable alert item for Monitoring Center Operations view.
- * The ops queue only contains devices mapped via a monitoring integration (CheckMK).
- * @typedef {object} SupervisionQueueItem
- * @property {string} id
- * @property {"devices"} domain
- * @property {"critical"|"warning"|"info"} severity
- * @property {string} tone
- * @property {string} title
- * @property {string} subtitle
- * @property {string} label
- * @property {string|null} clientId
- * @property {string} clientName
- * @property {object|null} equipment
- * @property {object|null} job
- * @property {object|null} contract
- * @property {object|null} agent
- * @property {string} ticketSubject
- * @property {number} priority
- * @property {number|null} sortTime
+ * File ops du centre = alertes persistées (réconciliées après sync CheckMK).
  */
-
-export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options = {}) {
-  const actions = buildMonitoringTodoActions(statsItems, resolveMonitorStatus, {
-    limit: options.limit ?? 500,
-    alertRules: options.alertRules,
-    checkmkEnabled: options.checkmkEnabled,
-    isMkMapped: options.isMkMapped
-  });
-  return actions.flatMap(action => {
-    const {
-      equipment,
-      status,
-      issue,
-      priority
-    } = action;
-    if (!isEquipmentMappedViaMonitoringIntegration(equipment, options)) return [];
-    if (!isMonitoringIntegrationIssue(issue)) return [];
-    const severity = severityFromTone(issue?.tone, status);
-    const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
-    const clientName = resolveQueueClientName(equipment, action);
-    const assetName = equipment?.name || options.fallbackName || "—";
-    return {
-      id: `device-${getEquipmentListKey(equipment)}`,
-      domain: "devices",
-      severity,
-      tone: issue?.tone || status || "warn",
-      title: reason,
-      subtitle: joinMeta([assetName, equipment?.type, equipment?.ip], clientName),
-      label: reason,
-      clientId: resolveQueueClientId(equipment, action),
-      clientName,
-      equipment,
-      criterionKey: String(issue?.key || "") || null,
-      job: null,
-      contract: null,
-      agent: null,
-      ticketSubject: [assetName, reason].filter(Boolean).join(" — "),
-      priority: priority ?? SEVERITY_RANK[severity] ?? 9,
-      sortTime: null
-    };
-  });
-}
-
-/** Build device queue items from server-evaluated fleet issues (Step 2). */
-export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
-  return (Array.isArray(issueRows) ? issueRows : []).flatMap(row => {
-    const equipment = row?.equipment || {};
-    if (!isEquipmentMappedViaMonitoringIntegration(equipment, {
-      checkmkEnabled: options.checkmkEnabled !== false,
-      isMkMapped: options.isMkMapped
-    })) return [];
-    const issue = pickMonitoringIntegrationIssue(row);
-    if (!issue) return [];
-    const status = issue.monitorStatus || row?.monitorStatus || "ok";
-    const severity = severityFromTone(issue?.tone, status);
-    const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
-    const clientName = resolveQueueClientName(equipment, row);
-    const assetName = equipment?.name || options.fallbackName || "—";
-    const alertAt = issue?.alertAt || row?.alertAt || null;
-    const alertAtMs = alertAt ? new Date(alertAt).getTime() : NaN;
-    return [{
-      id: `device-${getEquipmentListKey(equipment)}`,
-      domain: "devices",
-      severity,
-      tone: issue?.tone || status || "warn",
-      title: reason,
-      subtitle: joinMeta([assetName, equipment?.type, equipment?.ip], clientName),
-      label: reason,
-      clientId: resolveQueueClientId(equipment, row),
-      clientName,
-      equipment,
-      criterionKey: String(issue?.key || "") || null,
-      job: null,
-      contract: null,
-      agent: null,
-      ticketSubject: [assetName, reason].filter(Boolean).join(" — "),
-      priority: issue?.priority ?? row?.priority ?? SEVERITY_RANK[severity] ?? 9,
-      alertAt: alertAt || null,
-      notifiedAt: alertAt || null,
-      sortTime: Number.isFinite(alertAtMs) ? alertAtMs : null
-    }];
-  });
-}
-
-export function buildBackupQueueItems(jobs = [], options = {}) {
-  const list = Array.isArray(jobs) ? jobs : [];
-  return list.map(job => {
-    const status = getBackupJobStatus(job);
-    if (status !== "critical" && status !== "warning") return null;
-    const severity = status === "critical" ? "critical" : "warning";
-    const jobName = job.nom || job.name || options.fallbackName || "—";
-    const clientName = job.clientName || "";
-    const reason = alertReason(options.labels?.[status] || getBackupJobStatusTitle(status), status);
-    return {
-      id: `backup-${job.id || `${job.clientId}-${jobName}`}`,
-      domain: "backups",
-      severity,
-      tone: status === "critical" ? "bad" : "warn",
-      title: reason,
-      subtitle: joinMeta([jobName, job.instanceLogiciel || job.typeBackup, formatServeurLieLabel(job.serveurLie, "")], clientName),
-      label: reason,
-      clientId: job.clientId ?? null,
-      clientName,
-      equipment: null,
-      job,
-      contract: null,
-      agent: null,
-      ticketSubject: `${jobName} — ${reason}`,
-      priority: SEVERITY_RANK[severity],
-      sortTime: job.last_backup_start ? new Date(job.last_backup_start).getTime() : null
-    };
-  }).filter(Boolean);
-}
-
-export function buildContractQueueItems(contractAlerts = [], licenseAlerts = [], options = {}) {
-  const items = [];
-  for (const alert of Array.isArray(contractAlerts) ? contractAlerts : []) {
-    const severity = alert.status === "expired" ? "critical" : "warning";
-    const reason = alertReason(options.statusLabels?.[alert.status] || alert.status);
-    const clientName = alert.name || "";
-    items.push({
-      id: `contract-${alert.id}`,
-      domain: "contracts",
-      severity,
-      tone: severity === "critical" ? "bad" : "warn",
-      title: reason,
-      subtitle: joinMeta([options.contractTypeLabel || "MSP"], clientName),
-      label: reason,
-      clientId: alert.id ?? null,
-      clientName,
-      equipment: null,
-      job: null,
-      contract: {
-        ...alert,
-        typeKey: "contract"
-      },
-      agent: null,
-      ticketSubject: `${clientName} — ${reason}`.trim(),
-      priority: SEVERITY_RANK[severity],
-      sortTime: alert.expiration ? new Date(alert.expiration).getTime() : null
+export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
+  const fallbackName = labels.noName || "—";
+  return (Array.isArray(alerts) ? alerts : [])
+    .filter(alert => {
+      const status = String(alert?.status || "open");
+      return status === "open" || status === "acked" || status === "linked";
+    })
+    .map(alert => {
+      const severity = String(alert.severity || "warning").toLowerCase();
+      const tone = severity === "critical" ? "bad" : severity === "warning" ? "warn" : "info";
+      const clientName = resolveQueueClientName(alert, alert?.meta);
+      const equipmentName =
+        alert?.meta?.equipmentName ||
+        alert?.subtitle?.split(" · ")?.[0] ||
+        alert?.meta?.hostName ||
+        fallbackName;
+      const hostName = alert?.meta?.hostName || null;
+      const equipmentId = alert.equipmentId || null;
+      const clientId = alert.clientId ?? null;
+      const raisedAt =
+        alert?.meta?.checkmkAlertAt ||
+        alert?.createdAt ||
+        alert?.lastSeenAt ||
+        null;
+      const raisedMs = raisedAt ? new Date(raisedAt).getTime() : NaN;
+      const title = alert.title || alert.label || "Alerte";
+      const equipment = equipmentId
+        ? {
+            id: equipmentId,
+            dbId: equipmentId,
+            clientId,
+            clientName,
+            name: equipmentName,
+            checkmkMapping: hostName
+              ? { checkmk_host_name: hostName, is_active: true }
+              : null
+          }
+        : null;
+      return {
+        id: alert.queueItemId || alert.id,
+        queueItemId: alert.queueItemId || alert.id,
+        domain: alert.domain || "devices",
+        severity: SEVERITY_RANK[severity] != null ? severity : "warning",
+        tone,
+        title,
+        subtitle: alert.subtitle || joinMeta([equipmentName, hostName], clientName),
+        label: alert.label || title,
+        clientId,
+        clientName,
+        equipmentId,
+        equipment,
+        criterionKey: alert?.meta?.criterionKey || null,
+        ticketSubject: [equipmentName, title].filter(Boolean).join(" — "),
+        priority: SEVERITY_RANK[severity] ?? 9,
+        alertAt: raisedAt,
+        notifiedAt: raisedAt,
+        sortTime: Number.isFinite(raisedMs) ? raisedMs : null,
+        workflowStatus: alert.status || "open",
+        alertState: alert,
+        handledByName: alert.ackedByName || null,
+        linkedTicketKind: alert.linkedTicketKind || null,
+        linkedTicketId: alert.linkedTicketId || null,
+        linkedEventId: alert.linkedEventId || null
+      };
+    })
+    .sort((a, b) => {
+      const sev = (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9);
+      if (sev !== 0) return sev;
+      const ta = a.sortTime ?? Number.POSITIVE_INFINITY;
+      const tb = b.sortTime ?? Number.POSITIVE_INFINITY;
+      if (ta !== tb) return ta - tb;
+      return (a.priority ?? 9) - (b.priority ?? 9);
     });
-  }
-  for (const alert of Array.isArray(licenseAlerts) ? licenseAlerts : []) {
-    const severity = alert.status === "expired" ? "critical" : "warning";
-    const reason = alertReason(options.statusLabels?.[alert.status] || alert.status);
-    const clientName = alert.clientName || "";
-    items.push({
-      id: `license-${alert.id}`,
-      domain: "contracts",
-      severity,
-      tone: severity === "critical" ? "bad" : "warn",
-      title: reason,
-      subtitle: joinMeta([alert.label, alert.moduleLabel, alert.module], clientName),
-      label: reason,
-      clientId: alert.clientId ?? null,
-      clientName,
-      equipment: null,
-      job: null,
-      contract: {
-        ...alert,
-        typeKey: alert.module || "license"
-      },
-      agent: null,
-      ticketSubject: `${clientName} — ${reason}`.trim(),
-      priority: SEVERITY_RANK[severity],
-      sortTime: alert.expiration ? new Date(alert.expiration).getTime() : null
-    });
-  }
-  return items;
-}
-
-export function buildRmmQueueItems(offlineAgents = [], options = {}) {
-  return (Array.isArray(offlineAgents) ? offlineAgents : []).map(agent => {
-    const hostName = agent.hostname || agent.equipment?.name || options.fallbackName || "—";
-    const clientName = agent.client_name || agent.equipment?.clientName || "";
-    const reason = alertReason(options.offlineLabel, "Offline");
-    return {
-      id: `rmm-${agent.id || agent.machine_id || hostName}`,
-      domain: "rmm",
-      severity: "critical",
-      tone: "bad",
-      title: reason,
-      subtitle: joinMeta([hostName, agent.os, agent.ip], clientName),
-      label: reason,
-      clientId: agent.client_id || agent.equipment?.clientId || null,
-      clientName,
-      equipment: agent.equipment || null,
-      job: null,
-      contract: null,
-      agent,
-      ticketSubject: `${hostName} — ${reason}`,
-      priority: SEVERITY_RANK.critical,
-      sortTime: agent.last_seen_at ? new Date(agent.last_seen_at).getTime() : null
-    };
-  });
-}
-
-export function buildUnifiedSupervisionQueue({
-  statsItems = [],
-  resolveMonitorStatus,
-  deviceIssueItems = null,
-  alertRules = null,
-  checkmkEnabled = false,
-  isMkMapped = () => false,
-  labels = {}
-} = {}) {
-  const deviceOptions = {
-    fallbackName: labels.noName,
-    alertRules,
-    checkmkEnabled,
-    isMkMapped
-  };
-  const devices = Array.isArray(deviceIssueItems)
-    ? buildDeviceQueueItemsFromIssues(deviceIssueItems, {
-        ...deviceOptions,
-        checkmkEnabled: true
-      })
-    : resolveMonitorStatus
-      ? buildDeviceQueueItems(statsItems, resolveMonitorStatus, deviceOptions)
-      : [];
-  return [...devices].sort((a, b) => {
-    const sev = (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9);
-    if (sev !== 0) return sev;
-    const ta = a.sortTime ?? Number.POSITIVE_INFINITY;
-    const tb = b.sortTime ?? Number.POSITIVE_INFINITY;
-    if (ta !== tb) return ta - tb;
-    return (a.priority ?? 9) - (b.priority ?? 9);
-  });
 }
 
 export function filterSupervisionQueue(items = [], {
@@ -377,68 +151,6 @@ export function filterSupervisionQueue(items = [], {
   });
 }
 
-function resolveAlertWhen(...sources) {
-  // Prefer CheckMK service raise time over Veritas created_at.
-  const preferredKeys = [
-    source => source?.meta?.checkmkAlertAt,
-    source => source?.meta?.raisedAt,
-    source => source?.checkmkAlertAt,
-    source => source?.raisedAt,
-    source => source?.alertAt,
-    source => source?.notifiedAt
-  ];
-  for (const pick of preferredKeys) {
-    for (const source of sources) {
-      if (source == null || typeof source !== "object") continue;
-      const value = pick(source);
-      if (value != null && value !== "") return value;
-    }
-  }
-  for (const source of sources) {
-    if (source == null || source === "") continue;
-    if (typeof source !== "object") return source;
-    if (source.createdAt) return source.createdAt;
-  }
-  return null;
-}
-
-export function mergeQueueWithAlertState(items = [], alerts = []) {
-  const byId = new Map((Array.isArray(alerts) ? alerts : []).map(a => [a.queueItemId, a]));
-  return (Array.isArray(items) ? items : []).map(item => {
-    const state = byId.get(item.id);
-    const clientName = resolveQueueClientName(item, item?.equipment, state, state?.meta);
-    const clientId = resolveQueueClientId(item, item?.equipment, state) ?? item.clientId ?? null;
-    if (!state) {
-      const when = resolveAlertWhen(item);
-      return {
-        ...item,
-        clientId,
-        clientName,
-        workflowStatus: "open",
-        alertState: null,
-        notifiedAt: when,
-        handledByName: null,
-        linkedTicketKind: null,
-        linkedTicketId: null,
-        linkedEventId: null
-      };
-    }
-    const when = resolveAlertWhen(state, item);
-    return {
-      ...item,
-      clientId,
-      clientName,
-      workflowStatus: state.status || "open",
-      alertState: state,
-      notifiedAt: when,
-      handledByName: state.ackedByName || null,
-      linkedTicketKind: state.linkedTicketKind || null,
-      linkedTicketId: state.linkedTicketId || null,
-      linkedEventId: state.linkedEventId || null
-    };
-  }).filter(item => item.workflowStatus !== "closed");
-}
-
 export function countQueueByWorkflow(items = []) {
   return items.reduce((acc, item) => {
     const status = item.workflowStatus || "open";
@@ -467,31 +179,17 @@ export function countQueueBySeverity(items = []) {
   });
 }
 
-export function countQueueByDomain(items = []) {
-  return items.reduce((acc, item) => {
-    acc[item.domain] = (acc[item.domain] || 0) + 1;
-    return acc;
-  }, {
-    devices: 0,
-    backups: 0,
-    contracts: 0,
-    rmm: 0
-  });
-}
-
 /**
  * Prefill payload for TicketCreate when opening a Support ticket from the supervision queue.
- * When alert rules define a support form + subject/description field mapping, those are applied.
- * If mapping keys are left on "auto", title/description are still passed so TicketCreate can
- * resolve the matching form fields after the form definition is loaded.
  */
 export function buildSupervisionSupportTicketPrefill(item, rules = null) {
-  const equipment = item?.equipment || item?.agent?.equipment || null;
+  const equipment = item?.equipment || null;
   const clientId = item?.clientId || equipment?.clientId || null;
-  const equipmentId = getEquipmentDbId(equipment) || equipment?.id || null;
+  const equipmentId = getEquipmentDbId(equipment) || equipment?.id || item?.equipmentId || null;
   const checkmkHost = equipment?.checkmkMapping?.checkmk_host_name
     || equipment?.checkmkMapping?.checkmkHostName
     || equipment?.checkmk_host_name
+    || item?.meta?.hostName
     || null;
 
   const lines = [];
@@ -510,7 +208,7 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   const description = lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000);
 
   const familyKey = resolveEquipmentFamilyKey(equipment?.type === "NAS" ? "Storage" : equipment?.type);
-  const criterionKey = String(item?.criterionKey || item?.issue?.key || "").trim();
+  const criterionKey = String(item?.criterionKey || item?.meta?.criterionKey || "").trim();
   const rule = familyKey && criterionKey && rules ? rules?.[familyKey]?.[criterionKey] : null;
   const supportFormId = rule?.supportFormId ? String(rule.supportFormId) : null;
   const subjectFieldKey = rule?.subjectFieldKey ? String(rule.subjectFieldKey) : null;

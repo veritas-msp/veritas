@@ -1,7 +1,7 @@
 import { pool } from "../database/db.js";
 import { listCheckmkHistoryItems } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { ensureSupervisionAlertsSchema } from "../services/ensureSupervisionAlertsSchema.js";
-import { formatMonitorIssueLabel } from "./equipmentFleetIssues.js";
+import { formatMonitorIssueLabel } from "./monitorIssueLabel.js";
 import { SUPERVISION_ALERT_CRITERIA } from "./supervisionAlertRules.js";
 
 const ACTIVE_STATUSES = new Set(["open", "acked", "linked"]);
@@ -191,10 +191,112 @@ export async function listActiveSupervisionAlerts() {
      ${ALERT_ACTOR_JOINS}
      WHERE a.status = ANY($1)
        AND a.deleted_at IS NULL
-     ORDER BY a.updated_at DESC`,
+     ORDER BY
+       CASE a.severity
+         WHEN 'critical' THEN 0
+         WHEN 'warning' THEN 1
+         ELSE 2
+       END,
+       COALESCE(a.created_at, a.last_seen_at) ASC`,
     [["open", "acked", "linked"]]
   );
   return result.rows.map(mapAlert);
+}
+
+export async function listOpenSupervisionAlertsForEquipment(equipmentId) {
+  await ensureSupervisionAlertsSchema();
+  const id = String(equipmentId || "").trim();
+  if (!id) return [];
+  const result = await pool.query(
+    `SELECT ${ALERT_SELECT_WITH_ACTORS}
+     FROM v_b_supervision_alerts a
+     ${ALERT_ACTOR_JOINS}
+     WHERE a.equipment_id = $1
+       AND a.status = ANY($2)
+       AND a.deleted_at IS NULL
+     ORDER BY a.updated_at DESC`,
+    [id, ["open", "acked", "linked"]]
+  );
+  return result.rows.map(mapAlert);
+}
+
+/**
+ * Ferme automatiquement des alertes encore actives (retour OK côté monitoring).
+ * Ne touche pas aux alertes dismiss manuellement déjà closed.
+ */
+export async function autoResolveSupervisionAlertsByQueueItemIds(queueItemIds = [], {
+  reason = "monitoring_ok",
+  meta = {}
+} = {}) {
+  await ensureSupervisionAlertsSchema();
+  const ids = [...new Set(
+    (Array.isArray(queueItemIds) ? queueItemIds : [])
+      .map(id => String(id || "").trim())
+      .filter(Boolean)
+  )];
+  if (!ids.length) return 0;
+
+  const client = await pool.connect();
+  let resolved = 0;
+  try {
+    await client.query("BEGIN");
+    const open = await client.query(
+      `SELECT * FROM v_b_supervision_alerts
+        WHERE queue_item_id = ANY($1::text[])
+          AND status = ANY($2::text[])
+          AND deleted_at IS NULL`,
+      [ids, ["open", "acked", "linked"]]
+    );
+    for (const row of open.rows) {
+      const updated = await client.query(
+        `UPDATE v_b_supervision_alerts
+            SET status = 'closed',
+                closed_at = NOW(),
+                closed_by = NULL,
+                closed_reason = 'resolved',
+                note = COALESCE(note, $2),
+                meta = COALESCE(meta, '{}'::jsonb) || $3::jsonb,
+                updated_at = NOW()
+          WHERE id = $1::uuid
+          RETURNING *`,
+        [
+          row.id,
+          `Auto-resolved (${reason})`,
+          JSON.stringify({
+            ...(meta && typeof meta === "object" ? meta : {}),
+            autoResolved: true,
+            autoResolveReason: reason
+          })
+        ]
+      );
+      const next = updated.rows[0];
+      if (!next) continue;
+      await insertEvent(client, {
+        alertId: next.id,
+        action: "resolved",
+        actorUserId: null,
+        oldStatus: row.status,
+        newStatus: "closed",
+        note: `Auto-resolved (${reason})`,
+        meta: { source: "auto_resolve", reason }
+      });
+      resolved += 1;
+      broadcastSupervisionAlertUpdate({
+        type: "alert",
+        action: "resolved",
+        alert: mapAlert(next),
+        event: null,
+        actorUserId: null
+      });
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+  return resolved;
 }
 
 /**

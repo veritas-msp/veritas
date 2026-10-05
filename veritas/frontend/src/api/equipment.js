@@ -478,26 +478,6 @@ export const getAllHardwareEquipment = async (options = {}) => {
   }
 };
 
-/** Supervision ops: monitoring-integration alerts on mapped devices only. */
-export const getEquipmentFleetIssues = async (options = {}) => {
-  const response = await fetch(`${API_BASE_URL}/clients/equipment-fleet/issues`, {
-    method: "GET",
-    credentials: "include",
-    signal: options.signal,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-  if (!response.ok) {
-    throw new Error(`Error ${response.status}: ${response.statusText}`);
-  }
-  const data = await response.json();
-  return {
-    items: Array.isArray(data?.items) ? data.items : [],
-    meta: data?.meta || {}
-  };
-};
-
 /** Couverture supervision : monitorés / total par famille. */
 export const getEquipmentFleetCoverage = async (options = {}) => {
   const response = await fetch(`${API_BASE_URL}/clients/equipment-fleet/coverage`, {

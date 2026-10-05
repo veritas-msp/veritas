@@ -2,6 +2,9 @@ import { resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAl
 
 const SEVERITIES = new Set(["low", "normal", "high", "urgent"]);
 
+/** Critères qui alimentent le centre de supervision (après sync CheckMK). */
+export const CENTRE_MONITORING_CRITERION_KEYS = ["monitor_critical", "monitor_warning", "no_data"];
+
 export const SUPERVISION_ALERT_CRITERIA = [
   {
     key: "monitor_critical",
@@ -78,7 +81,7 @@ export const SUPERVISION_ALERT_CRITERIA = [
     key: "no_data",
     label: "No monitoring data",
     description: "Device linked to a supervision integration but without recent data.",
-    families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip"],
+    families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"],
     defaultEnabled: false,
     defaultSeverity: "normal",
     parameters: []
@@ -169,9 +172,21 @@ export const SUPERVISION_FAMILIES = [
 
 const criteriaByKey = new Map(SUPERVISION_ALERT_CRITERIA.map(c => [c.key, c]));
 
-export function getCriteriaForFamily(familyKey) {
+export function getCriteriaForFamily(familyKey, { centreOnly = false } = {}) {
   const key = String(familyKey || "").toLowerCase();
-  return SUPERVISION_ALERT_CRITERIA.filter(c => c.families.includes(key));
+  const centreSet = new Set(CENTRE_MONITORING_CRITERION_KEYS);
+  return SUPERVISION_ALERT_CRITERIA.filter(c => {
+    if (!c.families.includes(key)) return false;
+    if (centreOnly && !centreSet.has(c.key)) return false;
+    return true;
+  });
+}
+
+export function filterCriteriaForScope(criteria = [], scope = "all") {
+  const list = Array.isArray(criteria) ? criteria : [];
+  if (scope !== "centre") return list;
+  const centreSet = new Set(CENTRE_MONITORING_CRITERION_KEYS);
+  return list.filter(c => centreSet.has(c.key));
 }
 
 function defaultParametersForCriterion(meta) {
@@ -255,8 +270,8 @@ export function buildDefaultMonitoringAlertRules() {
   return normalizeRulesTree(null);
 }
 
-export function countEnabledRulesForFamily(familyKey, rules) {
-  const criteria = getCriteriaForFamily(familyKey);
+export function countEnabledRulesForFamily(familyKey, rules, { centreOnly = false } = {}) {
+  const criteria = getCriteriaForFamily(familyKey, { centreOnly });
   const familyRules = rules?.[familyKey] || {};
   return criteria.filter(c => isRuleEnabled(familyRules[c.key])).length;
 }

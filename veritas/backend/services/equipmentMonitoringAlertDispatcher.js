@@ -12,7 +12,7 @@ import { enrichAlertRunbook } from "./llmClient.js";
 import { findOrCreateIncidentGroup, linkTicketToIncidentGroup } from "./monitoringIncidentCorrelation.js";
 import { recordMonitoringEvent } from "./monitoringEventQueue.js";
 import { criteriaToActiveMap, diffCriteriaTransitions, evaluateEquipmentSupervisionCriteria } from "../utils/equipmentSupervisionEvaluator.js";
-import { formatMonitorIssueLabel } from "../utils/equipmentFleetIssues.js";
+import { formatMonitorIssueLabel } from "../utils/monitorIssueLabel.js";
 import { getSettingsMap } from "../utils/settingsHelper.js";
 import { ALLOWED_LOCALES, GENERAL_SETTING_KEYS } from "../utils/generalSettings.js";
 const CRITERION_LABELS = new Map(SUPERVISION_ALERT_CRITERIA.map(c => [c.key, c.label]));

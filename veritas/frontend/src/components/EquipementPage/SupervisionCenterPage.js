@@ -11,22 +11,21 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getLocaleTag } from "../../i18n/locales";
 import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
-import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, mergeQueueWithAlertState, countQueueByWorkflow, buildSupervisionSupportTicketPrefill } from "./supervisionQueueUtils";
+import { buildQueueItemsFromSupervisionAlerts, filterSupervisionQueue, countQueueBySeverity, countQueueByWorkflow, buildSupervisionSupportTicketPrefill } from "./supervisionQueueUtils";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
 import SupervisionAlertHistory from "./SupervisionAlertHistory";
 import {
   ackSupervisionAlert,
   unackSupervisionAlert,
   dismissSupervisionAlert,
-  ensureSupervisionAlertsSeen,
-  fetchSupervisionAlertStates,
+  fetchSupervisionAlertsActive,
   fetchSupervisionAlertsHistory,
   linkSupervisionAlert,
   resolveSupervisionAlert,
   subscribeSupervisionAlertStream
 } from "../../api/supervisionAlerts";
 import { toast } from "react-toastify";
-import { getEquipmentFleetIssues, getEquipmentFleetCoverage } from "../../api/equipment";
+import { getEquipmentFleetCoverage } from "../../api/equipment";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { Icon } from "@iconify/react";
@@ -53,14 +52,13 @@ export default function MonitoringCenterPage({
   isMkMapped = () => false
 }) {
   const [activeTab, setActiveTab] = useState("operations");
-  const [deviceIssues, setDeviceIssues] = useState([]);
-  const [deviceIssuesLoading, setDeviceIssuesLoading] = useState(true);
-  const [deviceIssuesError, setDeviceIssuesError] = useState(null);
+  const [activeAlerts, setActiveAlerts] = useState([]);
+  const [alertsLoading, setAlertsLoading] = useState(true);
+  const [alertsError, setAlertsError] = useState(null);
   const [coverageFamilies, setCoverageFamilies] = useState([]);
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
   const [opsSearchQuery, setOpsSearchQuery] = useState("");
   const [opsWorkflowFilter, setOpsWorkflowFilter] = useState("all");
-  const [alertStates, setAlertStates] = useState([]);
   const [alertActionBusyId, setAlertActionBusyId] = useState(null);
   const [historyAlerts, setHistoryAlerts] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -101,24 +99,15 @@ export default function MonitoringCenterPage({
     enabled: checkmkFromHook
   } = useCheckMKIntegrationEnabled();
   const checkmkIntegrationEnabled = checkmkProp ?? checkmkFromHook;
-  const useServerDeviceIssues = typeof resolveMonitorStatus !== "function";
-  const loading = useServerDeviceIssues ? deviceIssuesLoading : parentLoading;
-  const error = useServerDeviceIssues ? deviceIssuesError || parentError : parentError;
-  const unifiedQueue = useMemo(() => buildUnifiedSupervisionQueue({
-    statsItems: useServerDeviceIssues ? [] : statsItems,
-    resolveMonitorStatus: useServerDeviceIssues ? undefined : resolveMonitorStatus,
-    deviceIssueItems: useServerDeviceIssues ? deviceIssues : null,
-    alertRules,
-    checkmkEnabled: checkmkIntegrationEnabled,
-    isMkMapped,
-    labels: {
-      noName: pageCopy.priority?.noName || "-"
-    }
-  }), [useServerDeviceIssues, statsItems, resolveMonitorStatus, deviceIssues, alertRules, checkmkIntegrationEnabled, isMkMapped, pageCopy]);
-  const unifiedQueueIdsKey = useMemo(() => unifiedQueue.map(item => item.id).join("|"), [unifiedQueue]);
-  const unifiedQueueRef = useRef(unifiedQueue);
-  unifiedQueueRef.current = unifiedQueue;
-  const enrichedQueue = useMemo(() => mergeQueueWithAlertState(unifiedQueue, alertStates), [unifiedQueue, alertStates]);
+  const loading = alertsLoading || parentLoading;
+  const error = alertsError || parentError;
+  const enrichedQueue = useMemo(
+    () =>
+      buildQueueItemsFromSupervisionAlerts(activeAlerts, {
+        noName: pageCopy.priority?.noName || "-"
+      }),
+    [activeAlerts, pageCopy.priority?.noName]
+  );
   const filteredQueue = useMemo(() => filterSupervisionQueue(enrichedQueue, {
     severity: opsSeverityFilter,
     query: opsSearchQuery,
@@ -127,30 +116,22 @@ export default function MonitoringCenterPage({
   const severityCounts = useMemo(() => countQueueBySeverity(enrichedQueue), [enrichedQueue]);
   const workflowCounts = useMemo(() => countQueueByWorkflow(enrichedQueue), [enrichedQueue]);
   const totalIssues = enrichedQueue.length;
-  const loadDeviceIssues = useCallback(async signal => {
-    if (!useServerDeviceIssues) {
-      setDeviceIssuesLoading(false);
-      setDeviceIssues([]);
-      setDeviceIssuesError(null);
-      return;
-    }
-    setDeviceIssuesLoading(true);
-    setDeviceIssuesError(null);
+  const loadActiveAlerts = useCallback(async signal => {
+    setAlertsLoading(true);
+    setAlertsError(null);
     try {
-      const payload = await getEquipmentFleetIssues({
-        signal
-      });
+      const alerts = await fetchSupervisionAlertsActive({ signal });
       if (signal?.aborted) return;
-      setDeviceIssues(Array.isArray(payload?.items) ? payload.items : []);
+      setActiveAlerts(Array.isArray(alerts) ? alerts : []);
     } catch (err) {
       if (err?.name === "AbortError") return;
-      console.error("Error loading supervision device issues:", err);
-      setDeviceIssues([]);
-      setDeviceIssuesError(err?.message || "Error loading device issues");
+      console.error("Error loading supervision alerts:", err);
+      setActiveAlerts([]);
+      setAlertsError(err?.message || "Error loading alerts");
     } finally {
-      if (!signal?.aborted) setDeviceIssuesLoading(false);
+      if (!signal?.aborted) setAlertsLoading(false);
     }
-  }, [useServerDeviceIssues]);
+  }, []);
   const loadCoverage = useCallback(async signal => {
     try {
       const payload = await getEquipmentFleetCoverage({
@@ -166,68 +147,33 @@ export default function MonitoringCenterPage({
   }, []);
   useEffect(() => {
     const controller = createTrackedAbortController();
-    loadDeviceIssues(controller.signal);
+    loadActiveAlerts(controller.signal);
     loadCoverage(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       if (controller.signal.aborted) return;
-      loadDeviceIssues(controller.signal);
+      loadActiveAlerts(controller.signal);
       loadCoverage(controller.signal);
     }, 60000);
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [loadDeviceIssues, loadCoverage]);
-  const refreshAlertStates = useCallback(async signal => {
-    try {
-      const items = unifiedQueueRef.current || [];
-      const ids = items.map(item => item.id).filter(Boolean);
-      if (!ids.length) {
-        if (!signal?.aborted) setAlertStates([]);
-        return;
-      }
-      const alerts = await fetchSupervisionAlertStates(ids, {
-        signal
-      });
-      if (signal?.aborted) return;
-      const known = new Set((Array.isArray(alerts) ? alerts : []).map(alert => alert.queueItemId));
-      const missing = items.filter(item => item.id && !known.has(item.id));
-      if (missing.length) {
-        try {
-          const synced = await ensureSupervisionAlertsSeen(missing, {
-            signal
-          });
-          if (signal?.aborted) return;
-          setAlertStates(Array.isArray(synced) && synced.length ? synced : alerts || []);
-          return;
-        } catch (syncErr) {
-          if (syncErr?.name === "AbortError") return;
-          console.error("Error recording supervision alert raise time:", syncErr);
-        }
-      }
-      if (!signal?.aborted) setAlertStates(Array.isArray(alerts) ? alerts : []);
-    } catch (err) {
-      if (err?.name !== "AbortError") {
-        console.error("Error loading supervision alerts:", err);
-      }
-    }
-  }, [unifiedQueueIdsKey]);
+  }, [loadActiveAlerts, loadCoverage]);
 
   const refreshLiveQueue = useCallback(async () => {
     const controller = createTrackedAbortController();
     try {
       await Promise.all([
-        loadDeviceIssues(controller.signal),
+        loadActiveAlerts(controller.signal),
         loadCoverage(controller.signal)
       ]);
-      await refreshAlertStates(controller.signal);
     } catch (err) {
       if (err?.name !== "AbortError") {
         console.error("Error refreshing supervision queue during sync:", err);
       }
     }
-  }, [loadDeviceIssues, loadCoverage, refreshAlertStates]);
+  }, [loadActiveAlerts, loadCoverage]);
 
   const handleFleetSyncProgress = useCallback(progress => {
     setFleetSyncProgress(progress);
@@ -424,36 +370,27 @@ export default function MonitoringCenterPage({
   }, [refreshLiveQueue, refreshHistory, pageCopy.fleetSync]);
   useEffect(() => {
     const controller = createTrackedAbortController();
-    refreshAlertStates(controller.signal);
-    const interval = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      if (controller.signal.aborted) return;
-      refreshAlertStates(controller.signal);
-    }, 60000);
-    return () => {
-      controller.abort();
-      clearInterval(interval);
-    };
-  }, [refreshAlertStates]);
-  useEffect(() => {
-    const controller = createTrackedAbortController();
     refreshHistory(controller.signal);
     return () => controller.abort();
   }, [refreshHistory]);
   const applyAlertResult = useCallback(result => {
-    const alert = result?.alert;
+    const alert = result?.alert || result;
     if (!alert?.queueItemId) {
-      refreshAlertStates();
+      loadActiveAlerts();
       return;
     }
-    setAlertStates(prev => {
+    setActiveAlerts(prev => {
       const next = Array.isArray(prev) ? [...prev] : [];
       const idx = next.findIndex(a => a.queueItemId === alert.queueItemId);
-      // Keep closed alerts in state so the queue can hide them (source issues may still exist).
-      if (idx >= 0) next[idx] = alert;else next.unshift(alert);
+      if (alert.status === "closed" || alert.deletedAt) {
+        if (idx >= 0) next.splice(idx, 1);
+        return next;
+      }
+      if (idx >= 0) next[idx] = alert;
+      else next.unshift(alert);
       return next;
     });
-  }, [refreshAlertStates]);
+  }, [loadActiveAlerts]);
   useEffect(() => {
     const unsubscribe = subscribeSupervisionAlertStream({
       onEvent: payload => {
@@ -462,13 +399,16 @@ export default function MonitoringCenterPage({
         if (payload.alert.status === "closed" || payload.action === "reopen" || payload.action === "resolved" || payload.action === "dismissed") {
           refreshHistory();
         }
+        if (payload.action === "reopen" || payload.action === "opened") {
+          loadActiveAlerts();
+        }
       },
       onError: err => {
         console.warn("[supervision-alerts] stream:", err?.message || err);
       }
     });
     return unsubscribe;
-  }, [applyAlertResult, refreshHistory]);
+  }, [applyAlertResult, refreshHistory, loadActiveAlerts]);
   const runAlertAction = useCallback(async (item, actionFn, successKey) => {
     if (!item?.id) return;
     setAlertActionBusyId(item.id);
@@ -523,7 +463,7 @@ export default function MonitoringCenterPage({
     history: historyAlerts.length,
     settings: 0
   };
-  const showBootLoader = loading && !deviceIssues.length && !statsItems.length;
+  const showBootLoader = loading && !activeAlerts.length;
   if (showBootLoader) {
     return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
         <div className={cyberStyles.mspLayout}>
@@ -740,11 +680,11 @@ export default function MonitoringCenterPage({
                       onStatusFilter={setHistoryStatus}
                       onTrashModeChange={setHistoryTrashMode}
                       onChanged={() => {
-                        refreshAlertStates();
+                        loadActiveAlerts();
                         refreshHistory();
                       }}
                       onReopened={() => {
-                        refreshAlertStates();
+                        loadActiveAlerts();
                         refreshHistory();
                       }}
                       localeTag={localeTag}
@@ -755,7 +695,7 @@ export default function MonitoringCenterPage({
                 </div> : null}
 
               {activeTab === "settings" && canManageAlertRules && !error ? <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                  <MonitoringAlertRulesPanel catalog={alertRulesCatalog} rules={alertRules} isAdmin={canManageAlertRules} onSaved={applyRules} />
+                  <MonitoringAlertRulesPanel catalog={alertRulesCatalog} rules={alertRules} isAdmin={canManageAlertRules} onSaved={applyRules} scope="centre" />
                 </div> : null}
 
               {error ? <div className={styles.panel}>

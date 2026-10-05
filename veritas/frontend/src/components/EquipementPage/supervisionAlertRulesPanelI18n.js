@@ -17,6 +17,8 @@ const ALERT_RULES_COPY = {
   fr: {
     title: "Règles d'alerte par périphérique",
     subtitle: "Règles communes à tous les utilisateurs. Choisissez, pour chaque type de périphérique, les situations qui remontent dans le centre de supervision et peuvent créer un ticket (si les alertes sont actives sur l'équipement).",
+    centreTitle: "Règles du centre de supervision",
+    centreSubtitle: "Critères monitoring uniquement : critique, warning et absence de données. Appliqués après chaque sync CheckMK (poller ou manuelle) pour ouvrir / fermer les alertes du centre.",
     readOnly: "Lecture seule · réservé aux administrateurs.",
     resetAll: "Tout réinitialiser",
     save: "Enregistrer",
@@ -111,6 +113,8 @@ const ALERT_RULES_COPY = {
   en: {
     title: "Alert rules by device type",
     subtitle: "Shared rules for every user. For each device type, choose which situations appear in the supervision center and may create a ticket (when alerts are enabled on the device).",
+    centreTitle: "Supervision center rules",
+    centreSubtitle: "Monitoring criteria only: critical, warning and no data. Applied after each CheckMK sync (poller or manual) to open / close center alerts.",
     readOnly: "Read-only · administrators only.",
     resetAll: "Reset all",
     save: "Save",
