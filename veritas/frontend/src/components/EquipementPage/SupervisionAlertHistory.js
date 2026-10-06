@@ -7,6 +7,7 @@ import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
 import {
+  bulkActOnSupervisionAlerts,
   fetchSupervisionAlertEvents,
   purgeSupervisionAlert,
   reopenSupervisionAlert,
@@ -163,6 +164,8 @@ export default function SupervisionAlertHistory({
   const [eventsByAlert, setEventsByAlert] = useState({});
   const [loadingEvents, setLoadingEvents] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [busyBulk, setBusyBulk] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const columns = copy.columns || {};
   const hints = copy.actionHints || {};
   const [sortKey, setSortKey] = useState(null);
@@ -231,9 +234,50 @@ export default function SupervisionAlertHistory({
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [searchQuery, domainFilter, statusFilter, trashMode]);
+  useEffect(() => {
+    const valid = new Set(sortedAlerts.map(alert => alert.id).filter(Boolean));
+    setSelectedIds(prev => {
+      let changed = false;
+      const next = new Set();
+      for (const id of prev) {
+        if (valid.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed || next.size !== prev.size ? next : prev;
+    });
+  }, [sortedAlerts]);
   const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
     label
   });
+  const pageIds = useMemo(() => pagedAlerts.map(alert => alert.id).filter(Boolean), [pagedAlerts]);
+  const selectedCount = selectedIds.size;
+  const allPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const somePageSelected = pageIds.some(id => selectedIds.has(id));
+  const toggleSelectOne = (alertId, checked) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(alertId);
+      else next.delete(alertId);
+      return next;
+    });
+  };
+  const toggleSelectPage = checked => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      for (const id of pageIds) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  };
+  const selectAllFiltered = () => {
+    setSelectedIds(new Set(sortedAlerts.map(alert => alert.id).filter(Boolean)));
+  };
+  const clearSelection = () => setSelectedIds(new Set());
 
   useEffect(() => {
     if (!expandedId || eventsByAlert[expandedId]) return undefined;
@@ -293,6 +337,42 @@ export default function SupervisionAlertHistory({
     const ok = window.confirm(copy.purgeConfirm || "Delete permanently?");
     if (!ok) return;
     return runRowAction(alert, purgeSupervisionAlert);
+  };
+
+  const runBulkAction = async (action, { confirmMessage } = {}) => {
+    const ids = [...selectedIds];
+    if (!ids.length || busyBulk) return;
+    if (confirmMessage) {
+      const ok = window.confirm(confirmMessage);
+      if (!ok) return;
+    }
+    setBusyBulk(true);
+    try {
+      const result = await bulkActOnSupervisionAlerts(action, ids);
+      const okCount = Number(result?.ok) || 0;
+      const failedCount = Number(result?.failed) || 0;
+      if (failedCount > 0) {
+        toast.warn(
+          interpolate(copy.bulkPartial || "{ok} réussie(s), {failed} en échec", {
+            ok: String(okCount),
+            failed: String(failedCount)
+          })
+        );
+      } else {
+        toast.success(
+          interpolate(copy.bulkSuccess || "{count} alerte(s) traitée(s)", {
+            count: String(okCount)
+          })
+        );
+      }
+      clearSelection();
+      setExpandedId(null);
+      onChanged?.({ bulk: true, action, ids });
+    } catch (err) {
+      toast.error(err?.message || copy.bulkFailed || "Error");
+    } finally {
+      setBusyBulk(false);
+    }
   };
 
   const domainChips = showDomain ? [{
@@ -386,9 +466,65 @@ export default function SupervisionAlertHistory({
             text={trashMode ? (copy.emptyTrashText || "") : copy.emptyText}
           />
         </div> : <>
+        {selectedCount > 0 ? <div className={styles.bulkBar} role="region" aria-label={copy.bulkAria || "Actions de masse"}>
+            <span className={styles.bulkInfo}>
+              {interpolate(copy.bulkSelected || "{count} sélectionnée(s)", { count: String(selectedCount) })}
+              {selectedCount < sortedAlerts.length ? <button type="button" className={styles.bulkLink} onClick={selectAllFiltered} disabled={busyBulk}>
+                  {interpolate(copy.bulkSelectAll || "Tout sélectionner ({count})", { count: String(sortedAlerts.length) })}
+                </button> : null}
+            </span>
+            <div className={styles.bulkActions}>
+              {trashMode ? <>
+                  <button type="button" className={styles.bulkBtn} disabled={busyBulk} onClick={() => runBulkAction("restore")}>
+                    <Icon icon="mdi:delete-restore" aria-hidden />
+                    {copy.bulkRestore || copy.restore || "Restaurer"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
+                    disabled={busyBulk}
+                    onClick={() => runBulkAction("purge", {
+                      confirmMessage: interpolate(copy.bulkPurgeConfirm || "Supprimer définitivement {count} alerte(s) ? Action irréversible.", {
+                        count: String(selectedCount)
+                      })
+                    })}
+                  >
+                    <Icon icon="mdi:delete-forever-outline" aria-hidden />
+                    {copy.bulkPurge || copy.purge || "Supprimer"}
+                  </button>
+                </> : <>
+                  <button
+                    type="button"
+                    className={styles.bulkBtn}
+                    disabled={busyBulk}
+                    onClick={() => runBulkAction("reopen")}
+                  >
+                    <Icon icon="mdi:restore" aria-hidden />
+                    {copy.bulkReopen || copy.reopen || "Réouvrir"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBtn}
+                    disabled={busyBulk}
+                    onClick={() => runBulkAction("trash", {
+                      confirmMessage: interpolate(copy.bulkTrashConfirm || "Mettre {count} alerte(s) à la corbeille ?", {
+                        count: String(selectedCount)
+                      })
+                    })}
+                  >
+                    <Icon icon="mdi:delete-outline" aria-hidden />
+                    {copy.bulkTrash || copy.trashHint || "Corbeille"}
+                  </button>
+                </>}
+              <button type="button" className={styles.bulkBtnGhost} disabled={busyBulk} onClick={clearSelection}>
+                {copy.bulkClear || "Effacer la sélection"}
+              </button>
+            </div>
+          </div> : null}
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <colgroup>
+              <col className={styles.colSelect} />
               <col className={styles.colSev} />
               <col className={styles.colAlert} />
               <col className={styles.colStatus} />
@@ -399,6 +535,19 @@ export default function SupervisionAlertHistory({
             </colgroup>
             <thead>
               <tr>
+                <th className={styles.selectCol}>
+                  <input
+                    type="checkbox"
+                    className={styles.selectCheck}
+                    checked={allPageSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = !allPageSelected && somePageSelected;
+                    }}
+                    onChange={e => toggleSelectPage(e.target.checked)}
+                    aria-label={copy.bulkSelectPage || "Sélectionner la page"}
+                    disabled={busyBulk || pageIds.length === 0}
+                  />
+                </th>
                 <th className={styles.sevCol} aria-hidden />
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
                 <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
@@ -417,8 +566,21 @@ export default function SupervisionAlertHistory({
               const reopenHint = hints.reopen || copy.reopen;
               const display = historyAlertDisplay(alert);
               const when = alertWhen(alert);
+              const isSelected = selectedIds.has(alert.id);
               return <Fragment key={alert.id}>
-                    <tr className={`${styles.dataRow} ${open ? styles.dataRowOpen : ""}`} onClick={() => setExpandedId(open ? null : alert.id)}>
+                    <tr className={`${styles.dataRow} ${open ? styles.dataRowOpen : ""} ${isSelected ? styles.dataRowSelected : ""}`} onClick={() => setExpandedId(open ? null : alert.id)}>
+                      <td className={styles.selectCol} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          className={styles.selectCheck}
+                          checked={isSelected}
+                          onChange={e => toggleSelectOne(alert.id, e.target.checked)}
+                          aria-label={interpolate(copy.bulkSelectRow || "Sélectionner {title}", {
+                            title: display.reason
+                          })}
+                          disabled={busyBulk}
+                        />
+                      </td>
                       <td className={styles.sevCol}>
                         <span className={styles.leadingIcons}>
                           <span className={styles.expandIcon} title={expandHint} aria-hidden>
@@ -464,7 +626,7 @@ export default function SupervisionAlertHistory({
                       </td>
                     </tr>
                     {open ? <tr className={styles.detailRow}>
-                        <td colSpan={showDomain ? 7 : 6}>
+                        <td colSpan={showDomain ? 8 : 7}>
                           <div className={styles.detail}>
                             <div className={styles.detailHeader}>
                               <span className={styles.timelineTitle}>{copy.timelineTitle || "Timeline"}</span>

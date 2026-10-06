@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.68",
+    date: "2026-10-06",
+    highlights: [
+      "Centre de supervision : titres d’alertes condensés (badge sur la même ligne).",
+      "Règles d’alertes : section Contrats (MSP expiré / bientôt / suspendu et licences) avec reconcile automatique.",
+      "Historique : sélection multiple et actions de masse (corbeille, restauration, suppression, réouverture)."
+    ]
+  },
+  {
     version: "1.0.67",
     date: "2026-10-05",
     highlights: [

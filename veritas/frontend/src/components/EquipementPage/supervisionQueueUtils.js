@@ -219,8 +219,12 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   const title = item?.ticketSubject || [equipment?.name, item?.title].filter(Boolean).join(" — ") || "";
   const description = lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000);
 
-  const familyKey = resolveEquipmentFamilyKey(equipment?.type === "NAS" ? "Storage" : equipment?.type);
   const criterionKey = String(item?.criterionKey || item?.meta?.criterionKey || "").trim();
+  const familyFromMeta = String(item?.family || item?.meta?.family || "").trim().toLowerCase();
+  const familyKey =
+    familyFromMeta === "contrats" || String(item?.domain || "").toLowerCase() === "contracts"
+      ? "contrats"
+      : resolveEquipmentFamilyKey(equipment?.type === "NAS" ? "Storage" : equipment?.type);
   const rule = familyKey && criterionKey && rules ? rules?.[familyKey]?.[criterionKey] : null;
   const supportFormId = rule?.supportFormId ? String(rule.supportFormId) : null;
   const subjectFieldKey = rule?.subjectFieldKey ? String(rule.subjectFieldKey) : null;

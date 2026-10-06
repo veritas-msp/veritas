@@ -187,6 +187,17 @@ export async function purgeSupervisionAlert(alert) {
   return handleResponse(response);
 }
 
+/** Bulk history actions: trash | restore | purge | reopen */
+export async function bulkActOnSupervisionAlerts(action, alertIds = []) {
+  const ids = (Array.isArray(alertIds) ? alertIds : []).map(id => String(id || "").trim()).filter(Boolean);
+  if (!ids.length) throw new Error("alertIds required");
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/bulk`, {
+    method: "POST",
+    body: JSON.stringify({ action, alertIds: ids })
+  });
+  return handleResponse(response);
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }

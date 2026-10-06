@@ -3,8 +3,21 @@ import { resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
 import { ensureSupervisionAlertRulesSchema } from "../services/ensureSupervisionAlertRulesSchema.js";
 const SINGLETON_ID = 1;
 const SEVERITIES = new Set(["low", "normal", "high", "urgent"]);
-/** Critères consommés par le centre de supervision (réconciliation après sync CheckMK). */
+/** Critères monitoring du centre (réconciliation après sync CheckMK). */
 export const CENTRE_MONITORING_CRITERION_KEYS = ["monitor_critical", "monitor_warning", "no_data"];
+/** Critères contrats / licences du centre. */
+export const CENTRE_CONTRACT_CRITERION_KEYS = [
+  "contract_expired",
+  "contract_expiring",
+  "contract_suspended",
+  "license_expired",
+  "license_expiring"
+];
+/** Tous les critères exposés dans le panneau « règles du centre ». */
+export const CENTRE_CRITERION_KEYS = [
+  ...CENTRE_MONITORING_CRITERION_KEYS,
+  ...CENTRE_CONTRACT_CRITERION_KEYS
+];
 
 export const SUPERVISION_ALERT_CRITERIA = [{
   key: "monitor_critical",
@@ -181,6 +194,62 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   defaultEnabled: false,
   defaultSeverity: "low",
   parameters: []
+}, {
+  key: "contract_expired",
+  label: "MSP contract expired",
+  description: "Company MSP contract end date has passed.",
+  families: ["contrats"],
+  defaultEnabled: true,
+  defaultSeverity: "high",
+  parameters: []
+}, {
+  key: "contract_expiring",
+  label: "MSP contract expiring soon",
+  description: "MSP contract ends within the configured number of days.",
+  families: ["contrats"],
+  defaultEnabled: true,
+  defaultSeverity: "normal",
+  parameters: [{
+    key: "days",
+    type: "number",
+    label: "Days before expiration",
+    min: 1,
+    max: 365,
+    default: 60,
+    unit: "d"
+  }]
+}, {
+  key: "contract_suspended",
+  label: "MSP contract suspended",
+  description: "Company MSP contract is marked as suspended.",
+  families: ["contrats"],
+  defaultEnabled: true,
+  defaultSeverity: "high",
+  parameters: []
+}, {
+  key: "license_expired",
+  label: "License / module expired",
+  description: "A client license or module (antivirus, domain, SSL, etc.) has expired.",
+  families: ["contrats"],
+  defaultEnabled: true,
+  defaultSeverity: "high",
+  parameters: []
+}, {
+  key: "license_expiring",
+  label: "License / module expiring soon",
+  description: "A client license or module ends within the configured number of days.",
+  families: ["contrats"],
+  defaultEnabled: true,
+  defaultSeverity: "normal",
+  parameters: [{
+    key: "days",
+    type: "number",
+    label: "Days before expiration",
+    min: 1,
+    max: 365,
+    default: 60,
+    unit: "d"
+  }]
 }];
 export const SUPERVISION_FAMILIES = [{
   key: "ordinateurs",
@@ -212,6 +281,9 @@ export const SUPERVISION_FAMILIES = [{
 }, {
   key: "alimentation",
   label: "Power"
+}, {
+  key: "contrats",
+  label: "Contracts"
 }];
 const criteriaByKey = new Map(SUPERVISION_ALERT_CRITERIA.map(c => [c.key, c]));
 export function getCriteriaForFamily(familyKey) {

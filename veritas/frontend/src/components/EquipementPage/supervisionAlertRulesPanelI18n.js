@@ -12,13 +12,41 @@ const SUPERVISION_FAMILY_EQUIPMENT_KEYS = {
   toip: "TOIP",
   alimentation: "Alimentation"
 };
-const CRITERION_KEYS = ["monitor_critical", "monitor_warning", "agent_offline", "updates_pending", "disk_critical", "disk_warn", "unmapped", "no_data", "warranty_expired", "warranty_soon", "maintenance_expired", "maintenance_soon", "battery_expired", "battery_soon", "missing_ip"];
+const CRITERION_KEYS = [
+  "monitor_critical",
+  "monitor_warning",
+  "agent_offline",
+  "updates_pending",
+  "disk_critical",
+  "disk_warn",
+  "unmapped",
+  "no_data",
+  "warranty_expired",
+  "warranty_soon",
+  "maintenance_expired",
+  "maintenance_soon",
+  "battery_expired",
+  "battery_soon",
+  "missing_ip",
+  "contract_expired",
+  "contract_expiring",
+  "contract_suspended",
+  "license_expired",
+  "license_expiring"
+];
+const FAMILY_LABEL_OVERRIDES = {
+  fr: { contrats: "Contrats" },
+  en: { contrats: "Contracts" },
+  de: { contrats: "Verträge" },
+  it: { contrats: "Contratti" },
+  es: { contrats: "Contratos" }
+};
 const ALERT_RULES_COPY = {
   fr: {
     title: "Règles d'alerte par périphérique",
     subtitle: "Règles communes à tous les utilisateurs. Choisissez, pour chaque type de périphérique, les situations qui remontent dans le centre de supervision et peuvent créer un ticket (si les alertes sont actives sur l'équipement).",
     centreTitle: "Règles du centre de supervision",
-    centreSubtitle: "Critères monitoring uniquement : critique, warning et absence de données. Appliqués après chaque sync CheckMK (poller ou manuelle) pour ouvrir / fermer les alertes du centre.",
+    centreSubtitle: "Monitoring (critique, warning, absence de données) et contrats / licences. Appliqués pour ouvrir ou fermer les alertes du centre.",
     readOnly: "Lecture seule · réservé aux administrateurs.",
     resetAll: "Tout réinitialiser",
     save: "Enregistrer",
@@ -107,6 +135,28 @@ const ALERT_RULES_COPY = {
       missing_ip: {
         label: "IP non renseignée",
         description: "Adresse IP manquante sur un équipement réseau."
+      },
+      contract_expired: {
+        label: "Contrat MSP expiré",
+        description: "La date de fin du contrat MSP de l'entreprise est dépassée."
+      },
+      contract_expiring: {
+        label: "Contrat MSP bientôt expiré",
+        description: "Le contrat MSP arrive à échéance dans le nombre de jours configuré.",
+        parameters: { days: "Jours avant expiration" }
+      },
+      contract_suspended: {
+        label: "Contrat MSP suspendu",
+        description: "Le contrat MSP de l'entreprise est marqué comme suspendu."
+      },
+      license_expired: {
+        label: "Licence / module expiré",
+        description: "Une licence ou un module client (antivirus, domaine, SSL…) est expiré."
+      },
+      license_expiring: {
+        label: "Licence / module bientôt expiré",
+        description: "Une licence ou un module client arrive à échéance dans le nombre de jours configuré.",
+        parameters: { days: "Jours avant expiration" }
       }
     }
   },
@@ -114,7 +164,7 @@ const ALERT_RULES_COPY = {
     title: "Alert rules by device type",
     subtitle: "Shared rules for every user. For each device type, choose which situations appear in the supervision center and may create a ticket (when alerts are enabled on the device).",
     centreTitle: "Supervision center rules",
-    centreSubtitle: "Monitoring criteria only: critical, warning and no data. Applied after each CheckMK sync (poller or manual) to open / close center alerts.",
+    centreSubtitle: "Monitoring (critical, warning, no data) and contracts / licenses. Applied to open or close center alerts.",
     readOnly: "Read-only · administrators only.",
     resetAll: "Reset all",
     save: "Save",
@@ -200,6 +250,28 @@ const ALERT_RULES_COPY = {
       missing_ip: {
         label: "IP not set",
         description: "Missing IP address on a network device."
+      },
+      contract_expired: {
+        label: "MSP contract expired",
+        description: "The company MSP contract end date has passed."
+      },
+      contract_expiring: {
+        label: "MSP contract expiring soon",
+        description: "The MSP contract ends within the configured number of days.",
+        parameters: { days: "Days before expiration" }
+      },
+      contract_suspended: {
+        label: "MSP contract suspended",
+        description: "The company MSP contract is marked as suspended."
+      },
+      license_expired: {
+        label: "License / module expired",
+        description: "A client license or module (antivirus, domain, SSL, etc.) has expired."
+      },
+      license_expiring: {
+        label: "License / module expiring soon",
+        description: "A client license or module ends within the configured number of days.",
+        parameters: { days: "Days before expiration" }
       }
     }
   },
@@ -463,6 +535,10 @@ export function getSupervisionAlertRulesCopy(locale) {
     familyNavAria: t.familyNavAria || "Device types",
     unsavedChanges: t.unsavedChanges || "Unsaved changes",
     getFamilyLabel: (familyKey, fallback) => {
+      const override =
+        FAMILY_LABEL_OVERRIDES[String(locale || "").slice(0, 2)]?.[familyKey] ||
+        FAMILY_LABEL_OVERRIDES.fr?.[familyKey];
+      if (override) return override;
       const equipmentKey = SUPERVISION_FAMILY_EQUIPMENT_KEYS[familyKey];
       return equipmentKey ? getEquipmentFamilyLabel(equipmentKey, locale, fallback) : fallback || familyKey;
     },

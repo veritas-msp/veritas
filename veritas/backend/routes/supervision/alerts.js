@@ -10,6 +10,7 @@ import {
   listSupervisionAlertHistory,
   getSupervisionAlertDiagnostic,
   listSupervisionAlertsByQueueItemIds,
+  bulkActOnSupervisionAlerts,
   purgeSupervisionAlert,
   removeSupervisionAlertStreamClient,
   restoreSupervisionAlert,
@@ -18,6 +19,7 @@ import {
 } from "../../utils/supervisionAlerts.js";
 import { isCheckmkIntegrationEnabled } from "../../utils/checkmkIntegrationStatus.js";
 import { getCheckmkMonitoringSettings } from "../../utils/checkmkMonitoringSettings.js";
+import { reconcileContractSupervisionAlerts } from "../../utils/contractSupervisionReconcile.js";
 
 const router = express.Router();
 
@@ -50,21 +52,20 @@ router.get("/active", verifyJWT, requireAnyPermission("supervision.view", "super
       isCheckmkIntegrationEnabled(),
       getCheckmkMonitoringSettings()
     ]);
-    if (!enabled || mkSettings.surveillanceSuspended) {
-      return res.json({
-        alerts: [],
-        meta: {
-          integrationEnabled: enabled,
-          surveillanceSuspended: Boolean(mkSettings.surveillanceSuspended)
-        }
-      });
-    }
+    await reconcileContractSupervisionAlerts().catch(err => {
+      console.warn("[supervision-alerts] contract reconcile:", err?.message || err);
+    });
     const alerts = await listActiveSupervisionAlerts();
+    const surveillanceSuspended = Boolean(mkSettings.surveillanceSuspended);
+    const monitoringActive = Boolean(enabled && !surveillanceSuspended);
+    const visible = monitoringActive
+      ? alerts
+      : alerts.filter(alert => String(alert.domain || "").toLowerCase() === "contracts");
     res.json({
-      alerts,
+      alerts: visible,
       meta: {
-        integrationEnabled: true,
-        surveillanceSuspended: false
+        integrationEnabled: enabled,
+        surveillanceSuspended
       }
     });
   } catch (err) {
@@ -185,6 +186,23 @@ router.get(
     }
   }
 );
+
+router.post("/bulk", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const result = await bulkActOnSupervisionAlerts({
+      action: req.body?.action,
+      alertIds: req.body?.alertIds || req.body?.ids,
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[supervision-alerts] POST bulk:", err.message);
+    const status = err.status && err.status >= 400 && err.status < 600
+      ? err.status
+      : /required|Unknown bulk/i.test(err.message) ? 400 : 500;
+    res.status(status).json({ error: err.message || "Server error" });
+  }
+});
 
 router.post("/item/:alertId/trash", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
   try {

@@ -1341,4 +1341,80 @@ export async function purgeSupervisionAlert({ alertId, queueItemId, actorUserId 
   return { alert: { ...alert, purged: true } };
 }
 
+const BULK_ACTIONS = new Set(["trash", "restore", "purge", "reopen"]);
+const BULK_MAX_IDS = 200;
+
+function normalizeBulkAlertIds(alertIds = []) {
+  return [...new Set(
+    (Array.isArray(alertIds) ? alertIds : [])
+      .map(id => String(id || "").trim())
+      .filter(Boolean)
+  )].slice(0, BULK_MAX_IDS);
+}
+
+/**
+ * Actions de masse sur l'historique / corbeille.
+ * action: trash | restore | purge | reopen
+ */
+export async function bulkActOnSupervisionAlerts({
+  action,
+  alertIds = [],
+  actorUserId = null
+} = {}) {
+  const act = String(action || "").trim().toLowerCase();
+  if (!BULK_ACTIONS.has(act)) {
+    const err = new Error(`Unknown bulk action: ${action}`);
+    err.status = 400;
+    throw err;
+  }
+  const ids = normalizeBulkAlertIds(alertIds);
+  if (!ids.length) {
+    const err = new Error("alertIds required");
+    err.status = 400;
+    throw err;
+  }
+
+  let ok = 0;
+  let failed = 0;
+  const errors = [];
+
+  for (const alertId of ids) {
+    try {
+      if (act === "trash") {
+        await trashSupervisionAlert({ alertId, actorUserId });
+      } else if (act === "restore") {
+        await restoreSupervisionAlert({ alertId, actorUserId });
+      } else if (act === "purge") {
+        await purgeSupervisionAlert({ alertId, actorUserId });
+      } else if (act === "reopen") {
+        const row = await getAlertRowById(alertId);
+        if (!row) throw new Error("Alert not found");
+        await upsertAndActOnSupervisionAlert({
+          queueItemId: row.queue_item_id,
+          domain: row.domain,
+          action: "reopen",
+          actorUserId
+        });
+      }
+      ok += 1;
+    } catch (err) {
+      failed += 1;
+      if (errors.length < 8) {
+        errors.push({ alertId, error: err?.message || "Error" });
+      }
+    }
+  }
+
+  if (ok > 0) {
+    broadcastSupervisionAlertUpdate({
+      type: "bulk",
+      action: act,
+      count: ok,
+      actorUserId: actorUserId || null
+    });
+  }
+
+  return { action: act, requested: ids.length, ok, failed, errors };
+}
+
 export { ACTIVE_STATUSES };

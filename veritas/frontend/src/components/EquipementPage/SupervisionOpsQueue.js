@@ -111,16 +111,18 @@ function minutesUntilTomorrowMorning() {
 function FreshnessBadge({ item, copy, locale }) {
   const last = item?.lastSyncedAt;
   const stale = Boolean(item?.stale) || !last;
+  // Contrats / licences : pas de sync CheckMK — pas de badge fraîcheur.
+  if (String(item?.domain || "").toLowerCase() === "contracts") return null;
   const label = !last
     ? copy?.freshness?.never || "Never"
     : (copy?.freshness?.ago || "Sync {time}").replace("{time}", formatEquipmentDetailRelative(last, locale));
+  const short = stale ? copy?.freshness?.stale || "Stale" : copy?.freshness?.fresh || "Fresh";
   return (
     <span
       className={`${styles.freshBadge} ${stale ? styles.freshBadgeStale : styles.freshBadgeOk}`}
       title={label}
     >
-      {stale ? copy?.freshness?.stale || "Stale" : copy?.freshness?.fresh || "Fresh"}
-      {last ? ` · ${formatEquipmentDetailRelative(last, locale)}` : ""}
+      {short}
     </span>
   );
 }
@@ -719,8 +721,8 @@ export default function SupervisionOpsQueue({
                     </td>
                     <td className={styles.alertCell}>
                       <div className={styles.alertBody}>
-                        <span className={styles.rowTitle}>{item.title}</span>
-                        <span className={styles.rowMetaRow}>
+                        <span className={styles.rowTitleRow}>
+                          <span className={styles.rowTitle}>{item.title}</span>
                           <FreshnessBadge item={item} copy={copy} locale={locale} />
                           {item.muted ? (
                             <span className={styles.muteBadge}>
