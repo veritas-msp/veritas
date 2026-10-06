@@ -16,6 +16,7 @@ import {
 } from "./supervisionAlerts.js";
 import {
   getSupervisionAlertRules,
+  isRetiredSupervisionCriterion,
   isSupervisionCriterionEnabled
 } from "./supervisionAlertRules.js";
 
@@ -270,6 +271,7 @@ export async function reconcileEquipmentSupervisionAlerts({
   const openAlerts = await listOpenSupervisionAlertsForEquipment(equipmentId);
   const toResolve = openAlerts
     .filter(alert => {
+      if (isRetiredSupervisionCriterion(alert.meta?.criterionKey)) return true;
       if (desiredIds.has(alert.queueItemId)) return false;
       const qid = String(alert.queueItemId || "");
       const source = String(alert.meta?.source || "");

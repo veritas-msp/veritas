@@ -2,7 +2,12 @@ import { pool } from "../database/db.js";
 import { listCheckmkHistoryItems } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { ensureSupervisionAlertsSchema } from "../services/ensureSupervisionAlertsSchema.js";
 import { formatMonitorIssueLabel } from "./monitorIssueLabel.js";
-import { SUPERVISION_ALERT_CRITERIA, getSupervisionAlertRules, isSupervisionCriterionEnabled } from "./supervisionAlertRules.js";
+import {
+  SUPERVISION_ALERT_CRITERIA,
+  getSupervisionAlertRules,
+  isRetiredSupervisionCriterion,
+  isSupervisionCriterionEnabled
+} from "./supervisionAlertRules.js";
 import { getCheckmkMonitoringSettings, isCheckmkSyncStale } from "./checkmkMonitoringSettings.js";
 import {
   areMonitoringAlertsEnabled,
@@ -62,6 +67,26 @@ function criterionDisplayLabel(criterionKey) {
   return CRITERION_LABEL_BY_KEY.get(key) || key;
 }
 
+/** Corrige les titres mangled persistés (expirede / Since le / Maintenance license…). */
+export function sanitizeSupervisionAlertTitle(raw) {
+  let t = String(raw || "").trim();
+  if (!t) return t;
+  t = t.replace(/\bexpirede\b/gi, "expirée");
+  t = t.replace(/\bSince\s+le\b/g, "depuis le");
+  t = t.replace(/\bMaintenance license\b/gi, "Licence de maintenance");
+  t = t.replace(/\bLicence maintenance\b/gi, "Licence de maintenance");
+  t = t.replace(/\bIP not set\b/gi, "IP non renseignée");
+  t = t.replace(/\bNot mapped to (?:CheckMK|supervision)\b/gi, "Non mappé à une supervision");
+  t = t.replace(/\bNo monitoring data\b/gi, "Sans données supervision");
+  t = t.replace(/\bBattery to replace\b/gi, "Batterie à remplacer");
+  t = t.replace(/\bBattery to monitor\b/gi, "Batterie à surveiller");
+  t = t.replace(/\s*[—–-]\s*(depuis le)\s+/gi, " $1 ");
+  t = t.replace(/\s+[—–-]\s+/g, " — ");
+  t = t.replace(/\s{2,}/g, " ").trim();
+  if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
+  return t;
+}
+
 function buildMonitoringEventTitle(event) {
   const criterionKey = event?.criterion_key || null;
   const payload = event?.payload && typeof event.payload === "object" ? event.payload : {};
@@ -108,9 +133,9 @@ function mapAlert(row) {
     clientName: resolveAlertClientName(row),
     equipmentId: row.equipment_id,
     refKey: row.ref_key,
-    title: row.title,
+    title: sanitizeSupervisionAlertTitle(row.title),
     subtitle: row.subtitle,
-    label: row.label,
+    label: sanitizeSupervisionAlertTitle(row.label || row.title),
     status: row.status,
     ackedAt: row.acked_at,
     ackedBy: row.acked_by,
@@ -190,6 +215,39 @@ async function getAlertByQueueItemId(client, queueItemId) {
   return result.rows[0] || null;
 }
 
+function isRetiredIpAlertTitle(title) {
+  const t = String(title || "").trim().toLowerCase();
+  if (!t) return false;
+  return (
+    t === "ip not set" ||
+    t === "ip non renseignée" ||
+    t === "missing ip" ||
+    /\bip not set\b/i.test(t) ||
+    /\bip non renseignée\b/i.test(t)
+  );
+}
+
+function isRetiredCentreAlert(alert) {
+  if (!alert) return false;
+  if (isRetiredSupervisionCriterion(alert.meta?.criterionKey)) return true;
+  // Anciennes lignes device-… sans meta.criterionKey (titre seul).
+  if (isRetiredIpAlertTitle(alert.title) || isRetiredIpAlertTitle(alert.label)) return true;
+  return false;
+}
+
+/** Ferme les alertes dont le critère a été retiré du catalogue (ex. missing_ip). */
+export async function autoResolveRetiredSupervisionAlerts(alerts = []) {
+  const ids = (Array.isArray(alerts) ? alerts : [])
+    .filter(isRetiredCentreAlert)
+    .map(a => a.queueItemId)
+    .filter(Boolean);
+  if (!ids.length) return 0;
+  return autoResolveSupervisionAlertsByQueueItemIds(ids, {
+    reason: "criterion_retired",
+    meta: { source: "criterion_retired", retiredCriterion: "missing_ip" }
+  });
+}
+
 export async function listActiveSupervisionAlerts() {
   await ensureSupervisionAlertsSchema();
   const result = await pool.query(
@@ -207,7 +265,13 @@ export async function listActiveSupervisionAlerts() {
        COALESCE(a.created_at, a.last_seen_at) ASC`,
     [["open", "acked", "linked"]]
   );
-  return enrichSupervisionAlertsLiveContext(result.rows.map(mapAlert));
+  const mapped = result.rows.map(mapAlert).filter(Boolean);
+  const retired = mapped.filter(isRetiredCentreAlert);
+  if (retired.length) {
+    await autoResolveRetiredSupervisionAlerts(retired).catch(() => 0);
+  }
+  const active = mapped.filter(a => !isRetiredCentreAlert(a));
+  return enrichSupervisionAlertsLiveContext(active);
 }
 
 function emaSettingsFromRow(row) {
@@ -506,6 +570,14 @@ export async function ensureSupervisionAlertsSeen(items = []) {
     const queueItemId = String(raw?.queueItemId || raw?.queue_item_id || raw?.id || "").trim();
     const domain = String(raw?.domain || "").trim();
     if (!queueItemId || !domain || seenIds.has(queueItemId)) continue;
+    const probeMeta = raw?.meta && typeof raw.meta === "object" ? raw.meta : {};
+    if (
+      isRetiredSupervisionCriterion(probeMeta.criterionKey) ||
+      isRetiredIpAlertTitle(raw?.title) ||
+      isRetiredIpAlertTitle(raw?.label)
+    ) {
+      continue;
+    }
     seenIds.add(queueItemId);
     const clientName = String(
       raw?.clientName ||
@@ -805,7 +877,7 @@ function inferCriterionSeverity(criterionKey) {
   if (["monitor_critical", "agent_offline", "disk_critical", "maintenance_expired", "battery_expired", "warranty_expired"].includes(key)) {
     return "critical";
   }
-  if (["monitor_warning", "disk_warn", "updates_pending", "warranty_soon", "maintenance_soon", "battery_soon", "unmapped", "no_data", "missing_ip"].includes(key)) {
+  if (["monitor_warning", "disk_warn", "updates_pending", "warranty_soon", "maintenance_soon", "battery_soon", "unmapped", "no_data"].includes(key)) {
     return "warning";
   }
   return "info";

@@ -584,10 +584,10 @@ export default function MonitoringCenterPage({
                 <p className={cyberStyles.mspSubtitle}>{pageCopy.subtitle}</p>
               </div>
             </div>
-            <div className={cyberStyles.mspHeroActions}>
+            <div className={`${cyberStyles.mspHeroActions} ${styles.heroActions}`}>
               {checkmkIntegrationEnabled && syncStatus ? (
                 <div
-                  className={`${styles.pollerStatus} ${
+                  className={`${styles.heroStatusCard} ${styles.pollerStatus} ${
                     syncStatus.pollerActive ? styles.pollerStatusActive : styles.pollerStatusSuspended
                   }`}
                   title={
@@ -646,7 +646,7 @@ export default function MonitoringCenterPage({
               ) : null}
               {checkmkIntegrationEnabled ? (
                 fleetSyncActive && !fleetSyncExpanded ? (
-                  <div className={`${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error && fleetSyncProgress?.tone !== "err" ? styles.fleetSyncProgressDone : ""}`}>
+                  <div className={`${styles.heroStatusCard} ${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error && fleetSyncProgress?.tone !== "err" ? styles.fleetSyncProgressDone : ""}`}>
                     <button
                       type="button"
                       className={styles.fleetSyncProgressMain}

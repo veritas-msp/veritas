@@ -160,15 +160,6 @@ export const SUPERVISION_ALERT_CRITERIA = [
     ]
   },
   {
-    key: "missing_ip",
-    label: "IP not set",
-    description: "Missing IP address on a network device.",
-    families: ["servers", "firewall", "switch", "wifi", "routeur", "toip"],
-    defaultEnabled: false,
-    defaultSeverity: "low",
-    parameters: []
-  },
-  {
     key: "contract_expired",
     label: "MSP contract expired",
     description: "Company MSP contract end date has passed.",

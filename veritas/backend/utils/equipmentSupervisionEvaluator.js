@@ -1,7 +1,6 @@
 import { getExpirationStatus, getMaintenanceLicenceExpiration } from "./equipmentExpirationUtils.js";
 const CHECKMK_MAPPABLE_FAMILIES = new Set(["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"]);
 const WARRANTY_FAMILIES = new Set(["firewall", "servers", "stockage"]);
-const NETWORK_IP_FAMILIES = new Set(["firewall", "switch", "routeur", "servers", "wifi", "toip"]);
 function readDataField(data, ...keys) {
   if (!data || typeof data !== "object") return null;
   for (const key of keys) {
@@ -157,11 +156,6 @@ export function evaluateEquipmentSupervisionCriteria({
     });else if (batteryStatus === "soon") pushCriterion(criteria, "battery_soon", {
       date: batteryDate
     });
-  }
-  const resolvedIp = ip || readDataField(d, "ip");
-  const ipNonFixe = readDataField(d, "ipNonFixe", "ip_non_fixe");
-  if (NETWORK_IP_FAMILIES.has(family) && !resolvedIp && !ipNonFixe) {
-    pushCriterion(criteria, "missing_ip");
   }
   return criteria;
 }

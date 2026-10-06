@@ -18,6 +18,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import { sanitizeSupervisionAlertTitle } from "./supervisionQueueUtils";
 import styles from "./SupervisionAlertHistory.module.css";
 
 const DOMAIN_ICONS = {
@@ -95,8 +96,8 @@ function HistoryActionButton({
 
 function historyAlertDisplay(alert) {
   const client = String(alert?.clientName || alert?.meta?.clientName || "").trim().toLowerCase();
-  const title = String(alert?.title || "").trim();
-  const label = String(alert?.label || "").trim();
+  const title = sanitizeSupervisionAlertTitle(alert?.title || "");
+  const label = sanitizeSupervisionAlertTitle(alert?.label || "");
   const titleIsClient = Boolean(client && title.toLowerCase() === client);
   const isBare = value => /^(warning|critical|info)$/i.test(String(value || "").trim());
   const preferTitle = Boolean(
@@ -104,7 +105,9 @@ function historyAlertDisplay(alert) {
       !titleIsClient &&
       (!label || isBare(label) || ((title.includes(" - ") || title.includes(" — ")) && !(label.includes(" - ") || label.includes(" — "))))
   );
-  const reason = (preferTitle ? title : label) || (!titleIsClient ? title : "") || title || alert?.queueItemId || "—";
+  const reason = sanitizeSupervisionAlertTitle(
+    (preferTitle ? title : label) || (!titleIsClient ? title : "") || title || alert?.queueItemId || "—"
+  );
   const parts = [];
   if (title && title !== reason && !titleIsClient) parts.push(title);
   String(alert?.subtitle || "").split(" · ").forEach(bit => {

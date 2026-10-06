@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.69",
+    date: "2026-10-06",
+    highlights: [
+      "Centre de supervision : suppression du critère « IP non renseignée » (aligné sur les règles critique / warning / sans données).",
+      "Titres d’alertes corrigés (libellés FR propres, plus de textes mélangés type expirede / Since le).",
+      "Cartes de statut sync / poller du centre : hauteur et style uniformisés."
+    ]
+  },
+  {
     version: "1.0.68",
     date: "2026-10-06",
     highlights: [

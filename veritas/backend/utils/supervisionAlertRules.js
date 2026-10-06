@@ -18,6 +18,12 @@ export const CENTRE_CRITERION_KEYS = [
   ...CENTRE_MONITORING_CRITERION_KEYS,
   ...CENTRE_CONTRACT_CRITERION_KEYS
 ];
+/** Critères retirés : plus évalués, plus créés, alertes ouvertes auto-résolues. */
+export const RETIRED_SUPERVISION_CRITERION_KEYS = ["missing_ip"];
+const RETIRED_CRITERION_SET = new Set(RETIRED_SUPERVISION_CRITERION_KEYS);
+export function isRetiredSupervisionCriterion(criterionKey) {
+  return RETIRED_CRITERION_SET.has(String(criterionKey || "").trim());
+}
 
 export const SUPERVISION_ALERT_CRITERIA = [{
   key: "monitor_critical",
@@ -186,14 +192,6 @@ export const SUPERVISION_ALERT_CRITERIA = [{
     default: 30,
     unit: "d"
   }]
-}, {
-  key: "missing_ip",
-  label: "IP not set",
-  description: "Missing IP address on a network device.",
-  families: ["servers", "firewall", "switch", "wifi", "routeur", "toip"],
-  defaultEnabled: false,
-  defaultSeverity: "low",
-  parameters: []
 }, {
   key: "contract_expired",
   label: "MSP contract expired",
@@ -474,6 +472,7 @@ export async function isSupervisionAlertAllowed({
   const family = String(equipmentFamily || "").toLowerCase();
   const key = criterionKey || resolveCriterionFromMonitorStatus(monitorStatus, source);
   if (!key) return true;
+  if (isRetiredSupervisionCriterion(key)) return false;
   return isSupervisionCriterionEnabled(family, key, rules);
 }
 export function getSupervisionAlertRulesPayload(rules) {

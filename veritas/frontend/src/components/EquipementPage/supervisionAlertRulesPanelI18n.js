@@ -27,7 +27,6 @@ const CRITERION_KEYS = [
   "maintenance_soon",
   "battery_expired",
   "battery_soon",
-  "missing_ip",
   "contract_expired",
   "contract_expiring",
   "contract_suspended",
@@ -115,11 +114,11 @@ const ALERT_RULES_COPY = {
         parameters: { days: "Jours avant expiration" }
       },
       maintenance_expired: {
-        label: "Licence maintenance expirée",
+        label: "Licence de maintenance expirée",
         description: "Contrat de maintenance firewall expiré."
       },
       maintenance_soon: {
-        label: "Licence maintenance bientôt",
+        label: "Licence de maintenance bientôt expirée",
         description: "Contrat de maintenance firewall à renouveler.",
         parameters: { days: "Jours avant expiration" }
       },

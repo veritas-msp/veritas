@@ -42,6 +42,31 @@ const SEVERITY_RANK = {
 };
 
 /**
+ * Corrige les titres d'alertes historiquement mangled (FR/EN mélangés, fautes d'accord).
+ * Ex. « Maintenance license expirede — Since le 26/06/2026 »
+ *  → « Licence de maintenance expirée depuis le 26/06/2026 »
+ */
+export function sanitizeSupervisionAlertTitle(raw) {
+  let t = String(raw || "").trim();
+  if (!t) return t;
+  t = t.replace(/\bexpirede\b/gi, "expirée");
+  t = t.replace(/\bSince\s+le\b/g, "depuis le");
+  t = t.replace(/\bMaintenance license\b/gi, "Licence de maintenance");
+  t = t.replace(/\bLicence maintenance\b/gi, "Licence de maintenance");
+  t = t.replace(/\bIP not set\b/gi, "IP non renseignée");
+  t = t.replace(/\bNot mapped to (?:CheckMK|supervision)\b/gi, "Non mappé à une supervision");
+  t = t.replace(/\bNo monitoring data\b/gi, "Sans données supervision");
+  t = t.replace(/\bBattery to replace\b/gi, "Batterie à remplacer");
+  t = t.replace(/\bBattery to monitor\b/gi, "Batterie à surveiller");
+  // « … expirée — depuis le DATE » → « … expirée depuis le DATE »
+  t = t.replace(/\s*[—–-]\s*(depuis le)\s+/gi, " $1 ");
+  t = t.replace(/\s+[—–-]\s+/g, " — ");
+  t = t.replace(/\s{2,}/g, " ").trim();
+  if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
+  return t;
+}
+
+/**
  * File ops du centre = alertes persistées (réconciliées après sync CheckMK).
  */
 export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
@@ -69,7 +94,7 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
         alert?.lastSeenAt ||
         null;
       const raisedMs = raisedAt ? new Date(raisedAt).getTime() : NaN;
-      const title = alert.title || alert.label || "Alerte";
+      const title = sanitizeSupervisionAlertTitle(alert.title || alert.label || "Alerte");
       const equipment = equipmentId
         ? {
             id: equipmentId,
@@ -90,7 +115,7 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
         tone,
         title,
         subtitle: alert.subtitle || joinMeta([equipmentName, hostName], clientName),
-        label: alert.label || title,
+        label: sanitizeSupervisionAlertTitle(alert.label || title),
         clientId,
         clientName,
         equipmentId,

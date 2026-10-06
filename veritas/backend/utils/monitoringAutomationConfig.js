@@ -192,16 +192,6 @@ export const DEFAULT_MONITORING_RUNBOOKS = [{
   macroId: null,
   tags: ["preventive", "ups"],
   priority: "normal"
-}, {
-  id: "rb-missing_ip",
-  criterionKey: "missing_ip",
-  enabled: true,
-  title: "Missing IP address",
-  checklist: ["Complete the equipment record with the IP address", "Verify consistency with the network inventory"],
-  docLinks: [],
-  macroId: null,
-  tags: ["hygiene", "inventory"],
-  priority: "low"
 }];
 function deepMerge(base, patch) {
   if (!patch || typeof patch !== "object" || Array.isArray(patch)) return base;

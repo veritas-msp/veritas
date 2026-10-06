@@ -4,7 +4,6 @@ import { getExpirationStatus, getMaintenanceLicenseExpiration, formatDateFr } fr
 import { formatRmmDateTime, getRmmLastInventoryAt, getRmmInventoryFromEquipment, getWindowsUpdateStatus, getWorstDiskUsage, isRmmManagedEquipment } from "./rmmMonitoringUtils";
 import { filterMonitoringIssues, resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
 const WARRANTY_TYPES = new Set(["Firewalls", "Servers", "Storage", "NAS"]);
-const NETWORK_IP_TYPES = new Set(["Firewalls", "Switch", "Routeur", "Servers", "BorneWifi", "TOIP"]);
 function pushIssue(issues, issue) {
   issues.push(issue);
 }
@@ -28,8 +27,8 @@ function expirationIssue(keyPrefix, labelPrefix, rawDate, {
   if (status === "expired") {
     return {
       key: `${keyPrefix}_expired`,
-      label: `${labelPrefix} expirée`,
-      detail: formatted ? `Depuis le ${formatted}` : undefined,
+      // Une seule phrase FR correctement ordonnée (évite « … expirede — Since le … »).
+      label: formatted ? `${labelPrefix} expirée depuis le ${formatted}` : `${labelPrefix} expirée`,
       tone: "bad",
       priority: priorityExpired
     };
@@ -37,8 +36,7 @@ function expirationIssue(keyPrefix, labelPrefix, rawDate, {
   if (status === "soon") {
     return {
       key: `${keyPrefix}_soon`,
-      label: `${labelPrefix} expire bientôt`,
-      detail: formatted ? `Le ${formatted}` : undefined,
+      label: formatted ? `${labelPrefix} expire le ${formatted}` : `${labelPrefix} expire bientôt`,
       tone: "warn",
       priority: prioritySoon
     };
@@ -122,7 +120,7 @@ export function buildEquipmentMonitoringSummary(equipment, {
     }
   }
   if (displayType === "Firewalls") {
-    const maintIssue = expirationIssue("maintenance", "Licence maintenance", readMaintenanceDate(equipment), {
+    const maintIssue = expirationIssue("maintenance", "Licence de maintenance", readMaintenanceDate(equipment), {
       priorityExpired: 0,
       prioritySoon: 1
     });
@@ -167,14 +165,6 @@ export function buildEquipmentMonitoringSummary(equipment, {
         priority: 2
       });
     }
-  }
-  if (NETWORK_IP_TYPES.has(displayType) && !equipment?.ip && !equipment?.rawData?.ipNonFixe) {
-    pushIssue(issues, {
-      key: "missing_ip",
-      label: "IP not set",
-      tone: "warn",
-      priority: 4
-    });
   }
   const displayTypeForRules = equipment?.type === "NAS" ? "Storage" : equipment?.type;
   const filteredIssues = alertRules ? filterMonitoringIssues(issues, displayTypeForRules, alertRules) : issues;
