@@ -13,9 +13,19 @@ export const CENTRE_CONTRACT_CRITERION_KEYS = [
   "license_expired",
   "license_expiring"
 ];
+/** Garantie, licence de maintenance et batterie (par famille de périphérique). */
+export const CENTRE_LIFECYCLE_CRITERION_KEYS = [
+  "warranty_expired",
+  "warranty_soon",
+  "maintenance_expired",
+  "maintenance_soon",
+  "battery_expired",
+  "battery_soon"
+];
 /** Tous les critères exposés dans le panneau « règles du centre ». */
 export const CENTRE_CRITERION_KEYS = [
   ...CENTRE_MONITORING_CRITERION_KEYS,
+  ...CENTRE_LIFECYCLE_CRITERION_KEYS,
   ...CENTRE_CONTRACT_CRITERION_KEYS
 ];
 /** Critères retirés : plus évalués, plus créés, alertes ouvertes auto-résolues. */
@@ -124,7 +134,7 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   key: "warranty_expired",
   label: "Warranty expired",
   description: "Warranty end date has passed.",
-  families: ["servers", "stockage", "firewall"],
+  families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "alimentation"],
   defaultEnabled: true,
   defaultSeverity: "normal",
   parameters: []
@@ -132,7 +142,7 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   key: "warranty_soon",
   label: "Warranty expiring soon",
   description: "Warranty ends within the next days (configurable threshold).",
-  families: ["servers", "stockage", "firewall"],
+  families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "alimentation"],
   defaultEnabled: true,
   defaultSeverity: "low",
   parameters: [{
@@ -148,7 +158,7 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   key: "maintenance_expired",
   label: "Maintenance license expired",
   description: "Firewall maintenance contract has expired.",
-  families: ["firewall"],
+  families: ["firewall", "servers", "stockage"],
   defaultEnabled: true,
   defaultSeverity: "high",
   parameters: []
@@ -156,7 +166,7 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   key: "maintenance_soon",
   label: "Maintenance license soon",
   description: "Firewall maintenance contract due for renewal.",
-  families: ["firewall"],
+  families: ["firewall", "servers", "stockage"],
   defaultEnabled: true,
   defaultSeverity: "normal",
   parameters: [{

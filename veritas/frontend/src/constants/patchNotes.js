@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.70",
+    date: "2026-10-06",
+    highlights: [
+      "Règles d’alertes : garantie, licence de maintenance et batterie réglables par famille de périphérique.",
+      "File du centre : ces alertes n’apparaissent plus si la règle est désactivée.",
+      "Recherche alertes / historique : titre, entreprise, IP, hôte et autres champs du matériel."
+    ]
+  },
+  {
     version: "1.0.69",
     date: "2026-10-06",
     highlights: [

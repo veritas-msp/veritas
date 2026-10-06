@@ -107,6 +107,8 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
               : null
           }
         : null;
+      const ip = alert.ip || alert.meta?.ip || null;
+      if (equipment && ip) equipment.ip = ip;
       return {
         id: alert.queueItemId || alert.id,
         queueItemId: alert.queueItemId || alert.id,
@@ -120,7 +122,13 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
         clientName,
         equipmentId,
         equipment,
+        ip,
+        serial: alert.serial || alert.meta?.serial || null,
+        mac: alert.mac || alert.meta?.mac || null,
+        model: alert.model || alert.meta?.model || null,
         criterionKey: alert?.meta?.criterionKey || null,
+        serviceName: alert?.meta?.serviceName || null,
+        pluginOutput: alert?.meta?.pluginOutput || null,
         ticketSubject: [equipmentName, title].filter(Boolean).join(" — "),
         priority: SEVERITY_RANK[severity] ?? 9,
         alertAt: raisedAt,
@@ -156,6 +164,63 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
     });
 }
 
+/** Texte searchable d’une alerte file / historique (titre, client, IP, hôte…). */
+export function buildSupervisionAlertSearchHaystack(item = {}) {
+  const meta = item?.alertState?.meta || item?.meta || {};
+  return [
+    item.title,
+    item.subtitle,
+    item.label,
+    item.clientName,
+    item.domain,
+    item.hostName,
+    item.ip,
+    item.serial,
+    item.mac,
+    item.model,
+    item.equipment?.name,
+    item.equipment?.ip,
+    item.equipment?.clientName,
+    item.equipmentId,
+    item.queueItemId,
+    item.alertId,
+    item.criterionKey,
+    item.serviceName,
+    item.pluginOutput,
+    item.ticketSubject,
+    item.family,
+    item.checkmkSite,
+    item.handledByName,
+    item.linkedTicketId,
+    item.linkedTicketKind,
+    item.workflowStatus,
+    item.severity,
+    item.note,
+    meta.clientName,
+    meta.equipmentName,
+    meta.hostName,
+    meta.serviceName,
+    meta.serviceKey,
+    meta.pluginOutput,
+    meta.fingerprint,
+    meta.ip,
+    meta.serial,
+    meta.mac,
+    meta.model
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export function matchesSupervisionAlertSearch(item, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  const hay = buildSupervisionAlertSearchHaystack(item);
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return tokens.every(token => hay.includes(token));
+}
+
 export function filterSupervisionQueue(items = [], {
   severity = "all",
   domain = "all",
@@ -163,7 +228,6 @@ export function filterSupervisionQueue(items = [], {
   query = "",
   workflowStatus = "all"
 } = {}) {
-  const q = String(query || "").trim().toLowerCase();
   const clientFilter = String(client || "").trim().toLowerCase();
   return items.filter(item => {
     if (severity !== "all" && item.severity !== severity) return false;
@@ -182,9 +246,8 @@ export function filterSupervisionQueue(items = [], {
       const name = String(item.clientName || "").toLowerCase();
       if (!name.includes(clientFilter) && String(item.clientId || "") !== clientFilter) return false;
     }
-    if (!q) return true;
-    const hay = [item.title, item.subtitle, item.label, item.clientName, item.domain].filter(Boolean).join(" ").toLowerCase();
-    return hay.includes(q);
+    if (item.ruleEnabled === false) return false;
+    return matchesSupervisionAlertSearch(item, query);
   });
 }
 

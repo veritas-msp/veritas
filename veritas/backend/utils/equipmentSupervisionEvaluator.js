@@ -1,6 +1,7 @@
 import { getExpirationStatus, getMaintenanceLicenceExpiration } from "./equipmentExpirationUtils.js";
 const CHECKMK_MAPPABLE_FAMILIES = new Set(["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"]);
-const WARRANTY_FAMILIES = new Set(["firewall", "servers", "stockage"]);
+const WARRANTY_FAMILIES = new Set(["firewall", "servers", "stockage", "switch", "wifi", "routeur", "alimentation"]);
+const MAINTENANCE_FAMILIES = new Set(["firewall", "servers", "stockage"]);
 function readDataField(data, ...keys) {
   if (!data || typeof data !== "object") return null;
   for (const key of keys) {
@@ -138,7 +139,7 @@ export function evaluateEquipmentSupervisionCriteria({
       });
     }
   }
-  if (family === "firewall") {
+  if (MAINTENANCE_FAMILIES.has(family)) {
     const licences = d.licences || [];
     const maintDate = getMaintenanceLicenceExpiration(licences);
     const maintStatus = getExpirationStatus(maintDate, t.maintenanceSoonDays);

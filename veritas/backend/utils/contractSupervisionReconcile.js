@@ -203,6 +203,10 @@ function collectDomainLicenseAlertItems(parsed, ctx, alerts, seen, expiringDays)
 function collectFirewallLicenseAlertItems(parsed, ctx, alerts, seen, expiringDays) {
   if (!Array.isArray(parsed.licences)) return;
   for (const licence of parsed.licences) {
+    const nom = String(licence?.nom || "").toLowerCase();
+    const type = String(licence?.type || "").toLowerCase();
+    // Licence de maintenance matériel : gérée par les règles famille (firewall / serveurs / stockage).
+    if (nom.includes("maintenance") || type.includes("maintenance")) continue;
     pushLicenseAlert(
       alerts,
       seen,

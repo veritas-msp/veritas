@@ -1,5 +1,6 @@
 import { canRunAutoSchemaMigrations } from "../utils/setupState.js";
 import { reconcileContractSupervisionAlerts } from "../utils/contractSupervisionReconcile.js";
+import { reconcileEquipmentLifecycleSupervisionAlerts } from "../utils/equipmentLifecycleSupervisionReconcile.js";
 import { runNotificationSoonScheduler } from "./notificationDispatcher.js";
 
 const TICK_MS = 60 * 60 * 1000;
@@ -25,6 +26,9 @@ async function runTick() {
     await runNotificationSoonScheduler();
     await reconcileContractSupervisionAlerts({ force: true }).catch(err => {
       console.warn("[notification-soon-poller] contract supervision reconcile:", err?.message || err);
+    });
+    await reconcileEquipmentLifecycleSupervisionAlerts({ force: true }).catch(err => {
+      console.warn("[notification-soon-poller] lifecycle supervision reconcile:", err?.message || err);
     });
   } catch (err) {
     console.error("[notification-soon-poller]", err?.message || err);

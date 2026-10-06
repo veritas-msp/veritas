@@ -274,6 +274,21 @@ export async function listActiveSupervisionAlerts() {
   return enrichSupervisionAlertsLiveContext(active);
 }
 
+function inferLifecycleCriterionKey(alert) {
+  const existing = String(alert?.meta?.criterionKey || "").trim();
+  if (existing) return existing;
+  const t = `${alert?.title || ""} ${alert?.label || ""}`.toLowerCase();
+  if (/\bgarantie\b/.test(t) && (/\bbientôt\b/.test(t) || /\bsoon\b/.test(t) || /\bexpire le\b/.test(t))) return "warranty_soon";
+  if (/\bgarantie\b/.test(t) && /\bexpir/.test(t)) return "warranty_expired";
+  if ((/licence de maintenance|maintenance license/).test(t) && (/\bbientôt\b/.test(t) || /\bsoon\b/.test(t) || /\bexpire le\b/.test(t))) {
+    return "maintenance_soon";
+  }
+  if (/licence de maintenance|maintenance license/.test(t)) return "maintenance_expired";
+  if (/\bbatterie\b/.test(t) && /\bsurveiller\b/.test(t)) return "battery_soon";
+  if (/\bbatterie\b/.test(t) && (/\bremplacer\b/.test(t) || /\bexpir/.test(t))) return "battery_expired";
+  return null;
+}
+
 function emaSettingsFromRow(row) {
   if (!row) return null;
   return {
@@ -293,7 +308,7 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
     ...new Set(list.map(a => Number(a.clientId)).filter(id => Number.isFinite(id) && id > 0))
   ];
 
-  const [mkSettings, rules, mkRes, emaRes, clientRes] = await Promise.all([
+  const [mkSettings, rules, mkRes, emaRes, clientRes, eqRes] = await Promise.all([
     getCheckmkMonitoringSettings().catch(() => null),
     getSupervisionAlertRules().catch(() => null),
     equipmentIds.length
@@ -323,6 +338,38 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
             WHERE id = ANY($1::bigint[])`,
           [clientIds]
         )
+      : { rows: [] },
+    equipmentIds.length
+      ? queryOrEmpty(
+          `SELECT id,
+                  COALESCE(NULLIF(TRIM(data->>'ip'), ''), '') AS ip,
+                  COALESCE(
+                    NULLIF(TRIM(data->>'nom'), ''),
+                    NULLIF(TRIM(data->>'name'), ''),
+                    NULLIF(TRIM(name), ''),
+                    NULLIF(TRIM(item_key), ''),
+                    ''
+                  ) AS display_name,
+                  COALESCE(
+                    NULLIF(TRIM(data->>'numeroSerie'), ''),
+                    NULLIF(TRIM(data->>'serial'), ''),
+                    NULLIF(TRIM(data->>'sn'), ''),
+                    ''
+                  ) AS serial,
+                  COALESCE(
+                    NULLIF(TRIM(data->>'adresseMac'), ''),
+                    NULLIF(TRIM(data->>'mac'), ''),
+                    ''
+                  ) AS mac,
+                  COALESCE(
+                    NULLIF(TRIM(data->>'modele'), ''),
+                    NULLIF(TRIM(data->>'model'), ''),
+                    ''
+                  ) AS model
+             FROM v_b_clients_m_custom_equipment
+            WHERE id = ANY($1::uuid[])`,
+          [equipmentIds]
+        )
       : { rows: [] }
   ]);
 
@@ -334,10 +381,12 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
     emaByEqClient.set(`${row.client_id}:${row.equipment_id}`, row);
   }
   const clientById = new Map((clientRes.rows || []).map(row => [Number(row.id), row]));
+  const eqById = new Map((eqRes.rows || []).map(row => [String(row.id), row]));
 
   return list.map(alert => {
     const eqId = String(alert.equipmentId || "").trim();
     const mk = mkByEq.get(eqId);
+    const eq = eqById.get(eqId);
     const ema = emaByEqClient.get(`${alert.clientId}:${eqId}`) || null;
     const clientRow = clientById.get(Number(alert.clientId));
     const eqSettings = emaSettingsFromRow(ema);
@@ -355,11 +404,19 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
       ? isCheckmkSyncStale(lastSyncedAt, mkSettings?.staleAfterMs)
       : true;
     const family = String(alert.meta?.family || ema?.equipment_family || "").trim() || null;
-    const criterionKey = String(alert.meta?.criterionKey || "").trim() || null;
+    const criterionKey = inferLifecycleCriterionKey(alert);
     const ruleEnabled =
       family && criterionKey && rules
         ? isSupervisionCriterionEnabled(family, criterionKey, rules)
         : null;
+    const ip = eq?.ip || alert.meta?.ip || null;
+    const serial = eq?.serial || alert.meta?.serial || null;
+    const mac = eq?.mac || alert.meta?.mac || null;
+    const model = eq?.model || alert.meta?.model || null;
+    const equipmentName =
+      alert.meta?.equipmentName ||
+      eq?.display_name ||
+      null;
     return {
       ...alert,
       lastSyncedAt,
@@ -369,6 +426,10 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
         : null,
       hostName: alert.meta?.hostName || mk?.checkmk_host_name || null,
       checkmkSite: mk?.checkmk_site || null,
+      ip: ip || null,
+      serial: serial || null,
+      mac: mac || null,
+      model: model || null,
       muted,
       muteStatus,
       mutedUntil: eqSettings?.suspendedUntil || clientRow?.monitoring_alerts_suspended_until || null,
@@ -379,7 +440,12 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
       family,
       ruleEnabled,
       eqAlertsEnabled: eqSettings == null ? true : eqSettings.alertsEnabled !== false,
-      eqSuspended: isAlertSuspensionActive(eqSettings)
+      eqSuspended: isAlertSuspensionActive(eqSettings),
+      meta: {
+        ...(alert.meta && typeof alert.meta === "object" ? alert.meta : {}),
+        ...(equipmentName && !alert.meta?.equipmentName ? { equipmentName } : {}),
+        ...(ip && !alert.meta?.ip ? { ip } : {})
+      }
     };
   });
 }
@@ -843,15 +909,54 @@ export async function listSupervisionAlertHistory({
     params.push(Number(clientId));
     where.push(`a.client_id = $${params.length}`);
   }
-  if (query) {
-    params.push(`%${String(query).trim().toLowerCase()}%`);
+  const searchTokens = String(query || "")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  for (const token of searchTokens) {
+    params.push(`%${token}%`);
+    const p = `$${params.length}`;
     where.push(
-      `(LOWER(COALESCE(a.title, '')) LIKE $${params.length}
-        OR LOWER(COALESCE(a.subtitle, '')) LIKE $${params.length}
-        OR LOWER(COALESCE(a.label, '')) LIKE $${params.length}
-        OR LOWER(COALESCE(a.queue_item_id, '')) LIKE $${params.length}
-        OR LOWER(COALESCE(c.name, '')) LIKE $${params.length}
-        OR LOWER(COALESCE(a.meta->>'clientName', '')) LIKE $${params.length})`
+      `(LOWER(COALESCE(a.title, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.subtitle, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.label, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.queue_item_id, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.equipment_id, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.ref_key, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.note, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.severity, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.status, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.linked_ticket_id::text, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.linked_ticket_kind, '')) LIKE ${p}
+        OR LOWER(COALESCE(c.name, '')) LIKE ${p}
+        OR LOWER(COALESCE(ack_u.username, '')) LIKE ${p}
+        OR LOWER(COALESCE(ack_u.email, '')) LIKE ${p}
+        OR LOWER(COALESCE(cls_u.username, '')) LIKE ${p}
+        OR LOWER(COALESCE(cls_u.email, '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'clientName', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'equipmentName', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'hostName', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'serviceName', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'serviceKey', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'pluginOutput', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'criterionKey', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'family', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'fingerprint', '')) LIKE ${p}
+        OR LOWER(COALESCE(a.meta->>'ip', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'ip', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'nom', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'name', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.name, '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.item_key, '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'numeroSerie', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'serial', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'adresseMac', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'mac', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'modele', '')) LIKE ${p}
+        OR LOWER(COALESCE(ce.data->>'model', '')) LIKE ${p}
+        OR LOWER(COALESCE(mk.checkmk_host_name, '')) LIKE ${p}
+        OR LOWER(COALESCE(mk.checkmk_site, '')) LIKE ${p})`
     );
   }
 
@@ -864,6 +969,12 @@ export async function listSupervisionAlertHistory({
     `SELECT ${ALERT_SELECT_WITH_ACTORS}
      FROM v_b_supervision_alerts a
      ${ALERT_ACTOR_JOINS}
+     LEFT JOIN v_b_clients_m_custom_equipment ce
+       ON a.equipment_id IS NOT NULL
+      AND ce.id::text = TRIM(a.equipment_id)
+     LEFT JOIN v_b_equipment_checkmk_monitoring mk
+       ON a.equipment_id IS NOT NULL
+      AND mk.equipment_id::text = TRIM(a.equipment_id)
      WHERE ${where.length ? where.join(" AND ") : "TRUE"}
      ORDER BY COALESCE(a.deleted_at, a.closed_at, a.updated_at, a.created_at) DESC
      LIMIT $${params.length - 1} OFFSET $${params.length}`,

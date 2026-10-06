@@ -20,6 +20,7 @@ import {
 import { isCheckmkIntegrationEnabled } from "../../utils/checkmkIntegrationStatus.js";
 import { getCheckmkMonitoringSettings } from "../../utils/checkmkMonitoringSettings.js";
 import { reconcileContractSupervisionAlerts } from "../../utils/contractSupervisionReconcile.js";
+import { reconcileEquipmentLifecycleSupervisionAlerts } from "../../utils/equipmentLifecycleSupervisionReconcile.js";
 
 const router = express.Router();
 
@@ -55,12 +56,21 @@ router.get("/active", verifyJWT, requireAnyPermission("supervision.view", "super
     await reconcileContractSupervisionAlerts().catch(err => {
       console.warn("[supervision-alerts] contract reconcile:", err?.message || err);
     });
+    await reconcileEquipmentLifecycleSupervisionAlerts().catch(err => {
+      console.warn("[supervision-alerts] lifecycle reconcile:", err?.message || err);
+    });
     const alerts = await listActiveSupervisionAlerts();
     const surveillanceSuspended = Boolean(mkSettings.surveillanceSuspended);
     const monitoringActive = Boolean(enabled && !surveillanceSuspended);
-    const visible = monitoringActive
+    const visible = (monitoringActive
       ? alerts
-      : alerts.filter(alert => String(alert.domain || "").toLowerCase() === "contracts");
+      : alerts.filter(alert => {
+          const domain = String(alert.domain || "").toLowerCase();
+          if (domain === "contracts") return true;
+          const key = String(alert.meta?.criterionKey || "").trim();
+          return ["warranty_expired", "warranty_soon", "maintenance_expired", "maintenance_soon", "battery_expired", "battery_soon"].includes(key);
+        })
+    ).filter(alert => alert.ruleEnabled !== false);
     res.json({
       alerts: visible,
       meta: {

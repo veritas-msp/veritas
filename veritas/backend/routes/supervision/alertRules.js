@@ -3,6 +3,7 @@ import verifyJWT from "../../middleware/auth.js";
 import { requirePermission, requireAnyPermission } from "../../middleware/permissions.js";
 import { buildDefaultSupervisionAlertRules, getSupervisionAlertRules, getSupervisionAlertRulesPayload, saveSupervisionAlertRules } from "../../utils/supervisionAlertRules.js";
 import { reconcileContractSupervisionAlerts } from "../../utils/contractSupervisionReconcile.js";
+import { reconcileEquipmentLifecycleSupervisionAlerts } from "../../utils/equipmentLifecycleSupervisionReconcile.js";
 const router = express.Router();
 router.get("/", verifyJWT, requireAnyPermission("supervision.view", "supervision.manage", "admin_panel.supervision_alerts"), async (_req, res) => {
   try {
@@ -28,6 +29,9 @@ router.put("/", verifyJWT, requireAnyPermission("supervision.manage", "admin_pan
     const saved = await saveSupervisionAlertRules(incoming);
     reconcileContractSupervisionAlerts({ force: true }).catch(err => {
       console.warn("[supervision-alert-rules] contract reconcile after save:", err?.message || err);
+    });
+    reconcileEquipmentLifecycleSupervisionAlerts({ force: true }).catch(err => {
+      console.warn("[supervision-alert-rules] lifecycle reconcile after save:", err?.message || err);
     });
     res.json(getSupervisionAlertRulesPayload(saved));
   } catch (err) {

@@ -3,7 +3,8 @@ import { normalizeServerType } from "./equipmentFormConfig";
 import { getExpirationStatus, getMaintenanceLicenseExpiration, formatDateFr } from "./constants/firewallLicenceUtils";
 import { formatRmmDateTime, getRmmLastInventoryAt, getRmmInventoryFromEquipment, getWindowsUpdateStatus, getWorstDiskUsage, isRmmManagedEquipment } from "./rmmMonitoringUtils";
 import { filterMonitoringIssues, resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
-const WARRANTY_TYPES = new Set(["Firewalls", "Servers", "Storage", "NAS"]);
+const WARRANTY_TYPES = new Set(["Firewalls", "Servers", "Storage", "NAS", "Switch", "BorneWifi", "Alimentation", "Routeur"]);
+const MAINTENANCE_TYPES = new Set(["Firewalls", "Servers", "Storage", "NAS"]);
 function pushIssue(issues, issue) {
   issues.push(issue);
 }
@@ -119,7 +120,7 @@ export function buildEquipmentMonitoringSummary(equipment, {
       if (warrantyIssue) pushIssue(issues, warrantyIssue);
     }
   }
-  if (displayType === "Firewalls") {
+  if (MAINTENANCE_TYPES.has(displayType)) {
     const maintIssue = expirationIssue("maintenance", "Licence de maintenance", readMaintenanceDate(equipment), {
       priorityExpired: 0,
       prioritySoon: 1

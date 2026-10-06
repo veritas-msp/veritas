@@ -144,7 +144,7 @@ const SUPERVISION_COPY = {
         linked: "Ticket associé",
         closed: "Closes"
       },
-      searchPlaceholder: "Rechercher une alerte, un client...",
+      searchPlaceholder: "Rechercher titre, entreprise, IP, hôte…",
       sortBy: "Trier par {label}",
       backupReasons: {
         critical: "Dernière sauvegarde il y a plus de 48 h, ou inconnue",
@@ -266,7 +266,7 @@ const SUPERVISION_COPY = {
       offline: "Hors ligne"
     },
     history: {
-      searchPlaceholder: "Rechercher dans l'historique...",
+      searchPlaceholder: "Historique : titre, entreprise, IP, hôte…",
       sortBy: "Trier par {label}",
       loading: "Chargement de l'historique...",
       loadingEvents: "Chargement de la timeline...",
@@ -667,7 +667,7 @@ const SUPERVISION_COPY = {
         linked: "With ticket",
         closed: "Closed"
       },
-      searchPlaceholder: "Search an alert, a client...",
+      searchPlaceholder: "Search title, company, IP, host…",
       sortBy: "Sort by {label}",
       backupReasons: {
         critical: "Last backup more than 48 h ago, or unknown",
@@ -789,7 +789,7 @@ const SUPERVISION_COPY = {
       offline: "Offline"
     },
     history: {
-      searchPlaceholder: "Search history...",
+      searchPlaceholder: "History: title, company, IP, host…",
       sortBy: "Sort by {label}",
       loading: "Loading history...",
       loadingEvents: "Loading timeline...",
@@ -1138,7 +1138,7 @@ const SUPERVISION_COPY = {
         linked: "Mit Ticket",
         closed: "Geschlossen"
       },
-      searchPlaceholder: "Alarm oder Kunde suchen...",
+      searchPlaceholder: "Titel, Firma, IP, Host suchen…",
       sortBy: "Nach {label} sortieren",
       backupReasons: {
         critical: "Letztes Backup vor mehr als 48 h, oder unbekannt",
@@ -1208,7 +1208,7 @@ const SUPERVISION_COPY = {
       offline: "Offline"
     },
     history: {
-      searchPlaceholder: "Verlauf durchsuchen...",
+      searchPlaceholder: "Verlauf: Titel, Firma, IP, Host…",
       sortBy: "Nach {label} sortieren",
       loading: "Verlauf wird geladen...",
       loadingEvents: "Timeline wird geladen...",
@@ -1528,7 +1528,7 @@ const SUPERVISION_COPY = {
         linked: "Con ticket",
         closed: "Chiuse"
       },
-      searchPlaceholder: "Cerca un allarme, un cliente...",
+      searchPlaceholder: "Cerca titolo, azienda, IP, host…",
       sortBy: "Ordina per {label}",
       backupReasons: {
         critical: "Ultimo backup da più di 48 h, o sconosciuto",
@@ -1598,7 +1598,7 @@ const SUPERVISION_COPY = {
       offline: "Offline"
     },
     history: {
-      searchPlaceholder: "Cerca nella cronologia...",
+      searchPlaceholder: "Cronologia: titolo, azienda, IP, host…",
       sortBy: "Ordina per {label}",
       loading: "Caricamento cronologia...",
       loadingEvents: "Caricamento timeline...",
@@ -1917,7 +1917,7 @@ const SUPERVISION_COPY = {
         linked: "Con ticket",
         closed: "Cerradas"
       },
-      searchPlaceholder: "Buscar una alerta, un cliente...",
+      searchPlaceholder: "Buscar título, empresa, IP, host…",
       sortBy: "Ordenar por {label}",
       backupReasons: {
         critical: "Última copia hace más de 48 h, o desconocida",
@@ -1987,7 +1987,7 @@ const SUPERVISION_COPY = {
       offline: "Fuera de línea"
     },
     history: {
-      searchPlaceholder: "Buscar en el historial...",
+      searchPlaceholder: "Historial: título, empresa, IP, host…",
       sortBy: "Ordenar por {label}",
       loading: "Cargando historial...",
       loadingEvents: "Cargando timeline...",
