@@ -3,6 +3,13 @@
   box-shadow: 0 4px 14px rgba(13, 148, 136, 0.28);
 }
 
+.contentStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
 .shell {
   display: flex;
   flex-direction: column;

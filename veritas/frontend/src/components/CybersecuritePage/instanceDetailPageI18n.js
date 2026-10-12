@@ -7,14 +7,24 @@ const COPY = {
     eyebrow: "Cybersécurité · Sauvegarde",
     openClient: "Ouvrir l’entreprise",
     openJob: "Ouvrir le job",
+    navAria: "Sections",
+    sync: "Synchroniser",
+    syncSuccess: "Synchronisation terminée ({count})",
+    syncNone: "Aucun job mappé à synchroniser.",
+    syncError: "Échec de la synchronisation",
+    mappingHint: "{mapped}/{total} jobs mappés",
+    mappingNone: "Aucun job mappé",
     empty: {
       title: "Instance introuvable",
       text: "Cette instance de sauvegarde n’est plus disponible ou a été supprimée."
     },
     sections: {
       overview: "Instance",
-      jobs: "Jobs de l’instance",
-      history: "Historique des sauvegardes"
+      overviewHint: "Informations générales",
+      jobs: "Jobs",
+      jobsHint: "Jobs de l’instance",
+      history: "Historique",
+      historyHint: "Historique des sauvegardes"
     },
     fields: {
       solution: "Solution",
@@ -51,14 +61,24 @@ const COPY = {
     eyebrow: "Cybersecurity · Backup",
     openClient: "Open company",
     openJob: "Open job",
+    navAria: "Sections",
+    sync: "Sync",
+    syncSuccess: "Sync completed ({count})",
+    syncNone: "No mapped jobs to sync.",
+    syncError: "Sync failed",
+    mappingHint: "{mapped}/{total} mapped jobs",
+    mappingNone: "No mapped jobs",
     empty: {
       title: "Instance not found",
       text: "This backup instance is no longer available or was deleted."
     },
     sections: {
       overview: "Instance",
-      jobs: "Instance jobs",
-      history: "Backup history"
+      overviewHint: "General information",
+      jobs: "Jobs",
+      jobsHint: "Instance jobs",
+      history: "History",
+      historyHint: "Backup history"
     },
     fields: {
       solution: "Solution",

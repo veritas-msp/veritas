@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.79",
+    date: "2026-10-12",
+    highlights: [
+      "Instance de sauvegarde : layout type antivirus (sections à gauche, contenu scrollable), sync si mapping, sans boutons Retour / Entreprise."
+    ]
+  },
+  {
     version: "1.0.78",
     date: "2026-10-12",
     highlights: [
