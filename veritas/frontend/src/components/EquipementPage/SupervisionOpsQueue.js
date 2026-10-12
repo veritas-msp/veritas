@@ -426,13 +426,13 @@ export default function SupervisionOpsQueue({
 
   const severityChips = triageView === "todo" ? [{
     id: "critical",
-    label: copy.kpi.critical,
+    label: copy?.kpi?.critical || "Critical",
     count: kpi.critical || 0,
     icon: "mdi:alert-octagon",
     kpiTone: "red"
   }, {
     id: "warning",
-    label: copy.kpi.warning,
+    label: copy?.kpi?.warning || "Warning",
     count: kpi.warning || 0,
     icon: "mdi:alert",
     kpiTone: "amber"
@@ -667,7 +667,7 @@ export default function SupervisionOpsQueue({
                         {triageView === "todo" || wf === "open" ? (
                           <QueueActionButton
                             hint={actionHint(copy, "ack")}
-                            label={copy.actions.ack}
+                            label={copy?.actions?.ack || "Ack"}
                             icon="mdi:eye-check-outline"
                             disabled={busy}
                             primary
@@ -678,7 +678,7 @@ export default function SupervisionOpsQueue({
                           <>
                             <QueueActionButton
                               hint={actionHint(copy, "resolve")}
-                              label={copy.actions.resolve}
+                              label={copy?.actions?.resolve || "Resolve"}
                               icon="mdi:check-circle-outline"
                               disabled={busy}
                               primary
@@ -687,7 +687,7 @@ export default function SupervisionOpsQueue({
                             {wf !== "linked" ? (
                               <QueueActionButton
                                 hint={actionHint(copy, "support")}
-                                label={copy.actions.support}
+                                label={copy?.actions?.support || "Support"}
                                 icon="mdi:message-processing-outline"
                                 disabled={busy}
                                 onClick={() => onTicketSupport?.(item)}

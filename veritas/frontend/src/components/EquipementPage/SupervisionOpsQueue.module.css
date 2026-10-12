@@ -4,9 +4,8 @@
   gap: 0.75rem;
   min-width: 0;
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 16rem;
 }
 
 .coverageGrid {
@@ -302,15 +301,15 @@
 .emptyWrap {
   padding: 0;
   width: 100%;
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 12rem;
   display: flex;
 }
 
 .emptyStateFill {
   flex: 1;
   width: 100%;
-  min-height: 0;
+  min-height: 12rem;
   box-sizing: border-box;
 }
 

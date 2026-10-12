@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.76",
+    date: "2026-10-12",
+    highlights: [
+      "Centre de supervision : correction page blanche (hauteur flex / layout ops)."
+    ]
+  },
+  {
     version: "1.0.75",
     date: "2026-10-12",
     highlights: [
