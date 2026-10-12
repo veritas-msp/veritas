@@ -4,6 +4,8 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { getIconPath } from "../../utils/assetHelper";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
@@ -225,16 +227,14 @@ export default function ManagedSolutionPickerModal({
   const handleTableSort = columnKey => {
     if (!columnKey || columnKey === "__actions") return;
     setTableSort(prev => {
-      if (prev.key === columnKey) {
-        return {
-          key: columnKey,
-          direction: prev.direction === "asc" ? "desc" : "asc"
-        };
-      }
-      return {
-        key: columnKey,
-        direction: "asc"
-      };
+      const next = cycleSortState({
+        column: columnKey,
+        sortBy: prev.key,
+        sortDirection: prev.direction,
+        defaultSortBy: null,
+        defaultSortDirection: "asc"
+      });
+      return { key: next.sortBy, direction: next.sortDirection };
     });
   };
   const resolveSortValue = useCallback((item, columnKey, index) => {
@@ -328,9 +328,13 @@ export default function ManagedSolutionPickerModal({
                 return <th key={column.key} className={[column.className || undefined, sortable ? pickerStyles.sortableTh : undefined].filter(Boolean).join(" ") || undefined} scope="col" onClick={sortable ? () => handleTableSort(column.key) : undefined} aria-sort={isSorted ? tableSort.direction === "asc" ? "ascending" : "descending" : sortable ? "none" : undefined} title={sortable ? `Sort by ${column.label}` : undefined}>
                           <span className={pickerStyles.thContent}>
                             {column.label}
-                            {sortable ? <span className={pickerStyles.sortIndicator} aria-hidden>
-                                {isSorted ? tableSort.direction === "asc" ? " ↑" : " ↓" : " ↕"}
-                              </span> : null}
+                            {sortable ? (
+                              <SortIcon
+                                active={isSorted}
+                                direction={tableSort.direction}
+                                className={pickerStyles.sortIndicator}
+                              />
+                            ) : null}
                           </span>
                         </th>;
               })}

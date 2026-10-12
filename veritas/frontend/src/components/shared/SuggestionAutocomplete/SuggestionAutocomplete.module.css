@@ -4,6 +4,13 @@
   gap: 0.4rem;
 }
 
+.fieldToolbar {
+  min-width: 0;
+  width: 100%;
+  max-width: 18rem;
+  flex: 0 1 16rem;
+}
+
 .label {
   font-size: 0.82rem;
   font-weight: 700;
@@ -21,11 +28,45 @@
   border: 1px solid var(--msp-border, #dde3ed);
   border-radius: 10px;
   background: var(--msp-surface, #fff);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.inputWrapToolbar {
+  gap: 0.5rem;
+  min-height: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 0.35rem 0 0.65rem;
+  border-color: var(--msp-border);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #eef3f8);
+  overflow: hidden;
+}
+
+.inputWrapToolbar .inputIcon {
+  position: static;
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.inputWrapToolbar .clearBtn {
+  position: static;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.inputWrapToolbar .clearBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
 }
 
 .inputWrapOpen {
   border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-surface, #fff);
   box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
 }
 
@@ -50,6 +91,19 @@
   font-family: inherit;
   font-size: 0.88rem;
   color: var(--msp-text, #0f1c2e);
+}
+
+.inputToolbar {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0.3rem 0;
+  font-size: 0.8125rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.inputToolbar::placeholder {
+  color: var(--msp-muted-light, #8b9bb5);
 }
 
 .input:focus {

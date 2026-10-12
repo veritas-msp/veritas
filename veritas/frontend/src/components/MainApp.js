@@ -8,9 +8,11 @@ import EquipmentPage from "../components/EquipementPage/EquipmentPage";
 import EquipmentDetailPage from "../components/EquipementPage/EquipmentDetailPage";
 import JobDetailPage from "../components/EquipementPage/JobDetailPage";
 import CybersecuritePage from "../components/CybersecuritePage/CybersecuritePage";
+import CampaignsPage from "../components/CampaignsPage/CampaignsPage";
 import CampaignDetailPage from "../components/CybersecuritePage/CampaignDetailPage";
 import AntivirusDetailPage from "../components/CybersecuritePage/AntivirusDetailPage";
 import AntispamDetailPage from "../components/CybersecuritePage/AntispamDetailPage";
+import InstanceDetailPage from "../components/CybersecuritePage/InstanceDetailPage";
 import TenantDetailPage from "../components/ServicePage/TenantDetailPage";
 import ServicePage from "../components/ServicePage/ServicePage";
 import PlanningPage from "../components/PlanningPage/PlanningPage";
@@ -128,6 +130,7 @@ export default function MainApp() {
   const [prestatairePageParams, setPrestatairePageParams] = useState(null);
   const [campaignDetailData, setCampaignDetailData] = useState(null);
   const [antivirusDetailData, setAntivirusDetailData] = useState(null);
+  const [instanceDetailData, setInstanceDetailData] = useState(null);
   const [antispamDetailData, setAntispamDetailData] = useState(null);
   const [tenantDetailData, setTenantDetailData] = useState(null);
   const [ticketDetailData, setTicketDetailData] = useState(null);
@@ -141,12 +144,13 @@ export default function MainApp() {
   const [jobDetailData, setJobDetailData] = useState(null);
   const [computerFleetStatsData, setComputerFleetStatsData] = useState(null);
   const [cybersecuriteParams, setCybersecuriteParams] = useState(null);
+  const [campaignsParams, setCampaignsParams] = useState(null);
   const [serviceParams, setServiceParams] = useState(null);
   const [planningParams, setPlanningParams] = useState(null);
   const [ticketPageParams, setTicketPageParams] = useState(null);
   const [ticketSalesPageParams, setTicketSalesPageParams] = useState(null);
   const [adminTab, setAdminTab] = useState(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { layout: sidebarLayout } = useSidebarLayout();
   const monitoringReportGuardActiveRef = useRef(false);
   const [reportLeaveModalOpen, setReportLeaveModalOpen] = useState(false);
@@ -307,6 +311,14 @@ export default function MainApp() {
         return `job-detail-${data.clientId}-${String(data.nom || data.name).replace(/\s+/g, "-")}`;
       }
     }
+    if (type === "InstanceDetail" && data) {
+      const instanceId = data.instanceId || data.id;
+      if (data.clientId && instanceId) return `instance-detail-${data.clientId}-${instanceId}`;
+      if (instanceId) return `instance-detail-${instanceId}`;
+      if (data.clientId && (data.instanceName || data.logiciel)) {
+        return `instance-detail-${data.clientId}-${String(data.instanceName || data.logiciel).replace(/\s+/g, "-")}`;
+      }
+    }
     if (type === "ComputerFleetStats" && data?.clientId) {
       const equipmentType = data.equipmentType || "Ordinateurs";
       const siteKey = String(data.siteFilter || "all").trim().toLowerCase().replace(/\s+/g, "-");
@@ -353,6 +365,10 @@ export default function MainApp() {
     }
     if (tab.type === "JobDetail" && tab.data) {
       setJobDetailData(tab.data);
+      return;
+    }
+    if (tab.type === "InstanceDetail" && tab.data) {
+      setInstanceDetailData(tab.data);
       return;
     }
     if (tab.type === "ComputerFleetStats" && tab.data) {
@@ -422,7 +438,7 @@ export default function MainApp() {
       return;
     }
     const routeState = routeToMainAppState(parsed);
-    const tabTypes = ["ContratDetail", "ContactDetail", "PrestataireDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
+    const tabTypes = ["ContratDetail", "ContactDetail", "PrestataireDetail", "Equipment", "EquipmentDetail", "JobDetail", "InstanceDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
     const nextTabId = tabTypes.includes(routeState.docType) && parsed.data ? generateTabId(routeState.docType, parsed.data) : null;
     if (routeState.docType !== currentDocType || nextTabId && nextTabId !== activeTabId) {
       abortInFlightPageLoads();
@@ -436,6 +452,7 @@ export default function MainApp() {
     setCampaignDetailData(routeState.campaignDetailData);
     setAntivirusDetailData(routeState.antivirusDetailData);
     setAntispamDetailData(routeState.antispamDetailData);
+    setInstanceDetailData(routeState.instanceDetailData);
     setTenantDetailData(routeState.tenantDetailData);
     setTicketDetailData(routeState.ticketDetailData);
     setTicketCreateData(prev => {
@@ -468,6 +485,7 @@ export default function MainApp() {
     setJobDetailData(routeState.jobDetailData);
     setComputerFleetStatsData(routeState.computerFleetStatsData);
     setCybersecuriteParams(routeState.cybersecuriteParams);
+    setCampaignsParams(routeState.campaignsParams);
     setServiceParams(routeState.serviceParams);
     setPlanningParams(routeState.planningParams);
     if (tabTypes.includes(routeState.docType) && parsed.data) {
@@ -602,6 +620,7 @@ export default function MainApp() {
       setTicketDetailData(null);
       setEquipmentDetailData(null);
       setJobDetailData(null);
+      setInstanceDetailData(null);
       if (type === "Contrat") {
         setContratPageParams(null);
       } else if (type === "Contact") {
@@ -634,7 +653,7 @@ export default function MainApp() {
         console.error("Error while deleting de l'onglet actif:", error);
       }
     }
-    const tabTypes = ["ContratDetail", "ContactDetail", "PrestataireDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
+    const tabTypes = ["ContratDetail", "ContactDetail", "PrestataireDetail", "Equipment", "EquipmentDetail", "JobDetail", "InstanceDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
     if (tabTypes.includes(type) && data) {
       const normalizedData = {
         ...data
@@ -712,6 +731,8 @@ export default function MainApp() {
       setCampaignDetailData(data.campaign || data);
     } else if (!options.background && type === "AntivirusDetail" && data) {
       setAntivirusDetailData(data);
+    } else if (!options.background && type === "InstanceDetail" && data) {
+      setInstanceDetailData(data);
     } else if (!options.background && type === "AntispamDetail" && data) {
       setAntispamDetailData(data);
     } else if (!options.background && type === "TenantDetail" && data) {
@@ -744,6 +765,8 @@ export default function MainApp() {
       setComputerFleetStatsData(data);
     } else if (!options.background && type === "Cybersecurite" && data) {
       setCybersecuriteParams(data);
+    } else if (!options.background && type === "Campaigns" && data) {
+      setCampaignsParams(data);
     } else if (!options.background && type === "Service" && data) {
       setServiceParams(data);
     } else if (!options.background && type === "Planning" && data) {
@@ -752,7 +775,7 @@ export default function MainApp() {
       setTicketPageParams(data || null);
     } else if (!options.background && type === "TicketSales") {
       setTicketSalesPageParams(data || null);
-    } else if (type !== "ContratDetail" && type !== "ContactDetail" && type !== "PrestataireDetail" && type !== "Equipment" && type !== "EquipmentDetail" && type !== "JobDetail" && type !== "ComputerFleetStats" && type !== "MonitoringDetail" && type !== "Cybersecurite" && type !== "Service" && type !== "Planning") {
+    } else if (type !== "ContratDetail" && type !== "ContactDetail" && type !== "PrestataireDetail" && type !== "Equipment" && type !== "EquipmentDetail" && type !== "JobDetail" && type !== "InstanceDetail" && type !== "ComputerFleetStats" && type !== "MonitoringDetail" && type !== "Cybersecurite" && type !== "Service" && type !== "Planning") {
       setContratDetailData(null);
       setContactDetailData(null);
       setPrestataireDetailData(null);
@@ -767,6 +790,9 @@ export default function MainApp() {
     }
     if (type !== "AntivirusDetail") {
       setAntivirusDetailData(null);
+    }
+    if (type !== "InstanceDetail") {
+      setInstanceDetailData(null);
     }
     if (type !== "AntispamDetail") {
       setAntispamDetailData(null);
@@ -808,6 +834,9 @@ export default function MainApp() {
     if (type !== "Cybersecurite") {
       setCybersecuriteParams(null);
     }
+    if (type !== "Campaigns") {
+      setCampaignsParams(null);
+    }
     if (type !== "Service") {
       setServiceParams(null);
     }
@@ -820,7 +849,7 @@ export default function MainApp() {
     if (type !== "TicketSales") {
       setTicketSalesPageParams(null);
     }
-    const urlData = type === "ContratDetail" ? data : type === "ContactDetail" ? data : type === "PrestataireDetail" ? data : type === "TicketDetail" || type === "TicketSalesDetail" ? data : type === "CampaignDetail" ? data?.campaign || data : type === "MonitoringDetail" ? data : type === "Equipment" || type === "Hardware" ? data : type === "EquipmentDetail" ? data : type === "JobDetail" ? data : type === "ComputerFleetStats" ? data : type === "AntivirusDetail" ? data : type === "AntispamDetail" ? data : type === "TenantDetail" ? data : type === "TicketCreate" ? data || ticketCreateData : type === "TicketSalesCreate" ? data || ticketSalesCreateData : type === "Contrat" ? data || contratPageParams : type === "Contact" ? data || contactPageParams : type === "Prestataire" ? data || prestatairePageParams : type === "Cybersecurite" ? data || cybersecuriteParams : type === "Service" ? data || serviceParams : type === "Planning" ? data || planningParams : type === "Ticket" ? data || ticketPageParams : type === "TicketSales" ? data || ticketSalesPageParams : data;
+    const urlData = type === "ContratDetail" ? data : type === "ContactDetail" ? data : type === "PrestataireDetail" ? data : type === "TicketDetail" || type === "TicketSalesDetail" ? data : type === "CampaignDetail" ? data?.campaign || data : type === "MonitoringDetail" ? data : type === "Equipment" || type === "Hardware" ? data : type === "EquipmentDetail" ? data : type === "JobDetail" ? data : type === "InstanceDetail" ? data : type === "ComputerFleetStats" ? data : type === "AntivirusDetail" ? data : type === "AntispamDetail" ? data : type === "TenantDetail" ? data : type === "TicketCreate" ? data || ticketCreateData : type === "TicketSalesCreate" ? data || ticketSalesCreateData : type === "Contrat" ? data || contratPageParams : type === "Contact" ? data || contactPageParams : type === "Prestataire" ? data || prestatairePageParams : type === "Cybersecurite" ? data || cybersecuriteParams : type === "Campaigns" ? data || campaignsParams : type === "Service" ? data || serviceParams : type === "Planning" ? data || planningParams : type === "Ticket" ? data || ticketPageParams : type === "TicketSales" ? data || ticketSalesPageParams : data;
     pushAgentUrl(type, urlData, options);
   };
   const handleTabClick = tab => {
@@ -1138,10 +1167,28 @@ export default function MainApp() {
         }
       case "Cybersecurite":
         return <CybersecuritePage onNavigate={handleDocSelect} cybersecuriteParams={cybersecuriteParams} />;
+      case "Campaigns":
+        return <CampaignsPage onNavigate={handleDocSelect} pageParams={campaignsParams} />;
       case "CampaignDetail":
         return <CampaignDetailPage onNavigate={handleDocSelect} campaignData={campaignDetailData} />;
       case "AntivirusDetail":
         return <AntivirusDetailPage onNavigate={handleDocSelect} antivirusData={antivirusDetailData} />;
+      case "InstanceDetail":
+        {
+          const activeInstanceTab = tabs.find(tab => tab.id === activeTabId && tab.type === "InstanceDetail");
+          const instanceForDetail = activeInstanceTab?.data || instanceDetailData;
+          const instanceDetailKey = generateTabId("InstanceDetail", instanceForDetail) || "instance-detail";
+          return <InstanceDetailPage key={instanceDetailKey} instanceData={instanceForDetail} onNavigate={handleDocSelect} onUpdate={updatedInstance => {
+            setInstanceDetailData(updatedInstance);
+            const tabId = generateTabId("InstanceDetail", updatedInstance);
+            const newTitle = generateTabTitle("InstanceDetail", updatedInstance, appLocale);
+            setTabs(prev => prev.map(tab => tab.id === tabId || tab.id === activeTabId && tab.type === "InstanceDetail" ? {
+              ...tab,
+              data: updatedInstance,
+              title: newTitle
+            } : tab));
+          }} />;
+        }
       case "AntispamDetail":
         return <AntispamDetailPage onNavigate={handleDocSelect} antispamData={antispamDetailData} />;
       case "TenantDetail":

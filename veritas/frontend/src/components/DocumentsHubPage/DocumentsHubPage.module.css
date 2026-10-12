@@ -1,124 +1,26 @@
 
-
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+.toolbarInCard {
+  flex-wrap: wrap;
 }
 
-.kpiRow {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
-}
-
-@media (max-width: 900px) {
-  .kpiRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-.kpiCard {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--msp-border, #c5d0df);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
-}
-
-.kpiIconWrap {
-  width: 42px;
-  height: 42px;
-  border-radius: 11px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-  color: var(--msp-accent, #2b5fab);
-  flex-shrink: 0;
-}
-
-.kpiIcon {
-  font-size: 1.25rem;
-}
-
-.kpiBody {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.kpiValue {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--msp-text, #0f1c2e);
-  line-height: 1.1;
-}
-
-.kpiLabel {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--msp-muted-light, #8b9bb5);
-}
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  border-radius: 14px;
-  border: 1px solid var(--msp-border, #c5d0df);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
-  overflow: hidden;
-}
-
-.toolbar {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 0.65rem;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface-2, #f7f9fc);
+.toolbarSearch {
+  flex: 1 1 14rem;
+  min-width: 12rem;
+  max-width: none;
+  min-height: 34px;
+  height: 34px;
+  box-sizing: border-box;
 }
 
 .bulkBarWrap {
-  padding: 0.75rem 1rem 0;
-}
-
-@media (max-width: 960px) {
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
-}
-
-.searchWrap {
-  position: relative;
+  padding: 0;
+  flex-shrink: 0;
 }
 
 .companySuggest {
   min-width: 0;
-  width: 100%;
 }
 
-.searchIcon {
-  position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 1.1rem;
-  color: var(--msp-muted-light, #8b9bb5);
-  pointer-events: none;
-}
-
-.searchInput,
 .select,
 .formInput {
   width: 100%;
@@ -133,39 +35,11 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.searchInput {
-  padding-left: 2.35rem;
-  padding-right: 2rem;
-}
-
-.searchInput:focus,
 .select:focus,
 .formInput:focus {
   outline: none;
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
-}
-
-.clearBtn {
-  position: absolute;
-  right: 0.35rem;
-  top: 50%;
-  transform: translateY(-50%);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--msp-muted, #5c6b82);
-  cursor: pointer;
-}
-
-.clearBtn:hover {
-  background: var(--msp-surface-3, #f4f7fb);
-  color: var(--msp-text, #0f1c2e);
 }
 
 .primaryBtn {
@@ -216,90 +90,30 @@
   background: var(--msp-surface-2, #f7f9fc);
 }
 
-.loadingState,
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 3.5rem 1.5rem;
-  text-align: center;
-  color: var(--msp-muted, #5c6b82);
-}
-
-.spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--msp-border-light, #e2e8f0);
-  border-top-color: var(--msp-accent, #2b5fab);
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.emptyIconWrap {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-  color: var(--msp-accent, #2b5fab);
-}
-
-.emptyIcon {
-  font-size: 1.75rem;
-}
-
-.emptyTitle {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
-}
-
-.emptyHint {
-  margin: 0;
-  max-width: 36ch;
-  font-size: 0.84rem;
-  line-height: 1.5;
-}
-
-.tableWrap {
-  overflow: auto;
-  max-height: calc(100vh - 320px);
-}
-
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 0.65rem 0.85rem;
+  padding: 0.55rem 0.65rem;
   text-align: left;
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--msp-muted-light, #8b9bb5);
+  white-space: nowrap;
+  color: var(--msp-muted, #5c6b82);
   background: var(--msp-surface-2, #f7f9fc);
   border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
 .table tbody td {
-  padding: 0.65rem 0.85rem;
+  padding: 0.55rem 0.65rem;
   border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
   vertical-align: middle;
 }
@@ -338,49 +152,6 @@
 .actionsCol {
   width: 160px;
   text-align: right;
-}
-
-.sortableTh {
-  padding: 0;
-}
-
-.sortButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  width: 100%;
-  padding: 0.65rem 0.85rem;
-  border: none;
-  background: transparent;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--msp-muted-light, #8b9bb5);
-  cursor: pointer;
-  text-align: left;
-  transition: color 0.12s;
-}
-
-.sortButton:hover {
-  color: var(--msp-accent, #2b5fab);
-}
-
-.sortIcon {
-  font-size: 0.95rem;
-  opacity: 0.45;
-  flex-shrink: 0;
-}
-
-.sortIconActive {
-  opacity: 1;
-  color: var(--msp-accent, #2b5fab);
-}
-
-.actionsCol.sortableTh .sortButton,
-th.actionsCol {
-  justify-content: flex-end;
 }
 
 .fileCell {
@@ -650,8 +421,6 @@ th.actionsCol {
   padding-top: 0.65rem;
 }
 
-:global(html.dark) .panel,
-:global(html.dark) .kpiCard,
 :global(html.dark) .modal {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }

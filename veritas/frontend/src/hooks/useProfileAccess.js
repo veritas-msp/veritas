@@ -11,6 +11,10 @@ const PAGES_ACCESS_CONFIG = [{
   label: "Monitoring center",
   accessKey: "infrastructure_enabled"
 }, {
+  key: "Campaigns",
+  label: "Campaigns",
+  accessKey: "campaigns_enabled"
+}, {
   key: "EquipmentInventory",
   label: "Device inventory",
   accessKey: "equipment_inventory_enabled"

@@ -3,7 +3,7 @@ import { pool } from '../../database/db.js';
 import verifyJWT from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/permissions.js';
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
-import { PORTAL_USER_JOIN, PORTAL_USER_SELECT, createPortalUserForContact, createPortalUserInviteForContact, resendPortalInviteForContact, syncPortalUserFromContact, setPortalActive, setPortalTicketRole, deletePortalUserForContact, resetPortalPassword, getPortalUserByContactId } from '../../utils/contactPortal.js';
+import { PORTAL_USER_JOIN, PORTAL_USER_SELECT, createPortalUserForContact, createPortalUserInviteForContact, resendPortalInviteForContact, syncPortalUserFromContact, setPortalActive, setPortalTicketRole, setPortalLoginEmail, deletePortalUserForContact, resetPortalPassword, getPortalUserByContactId } from '../../utils/contactPortal.js';
 import { registerContactMetaRoutes, fetchTagsByContactIdMap, attachContactTags, fetchTagsForContactId } from './contactMeta.js';
 import { normalizeContactSexe } from '../../utils/contactSexe.js';
 import { normalizeContactCommunications, syncLegacyContactFields, validateContactCommunications } from '../../utils/contactCommunications.js';
@@ -336,7 +336,8 @@ router.post('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts_
     const sendEmail = Boolean(req.body?.sendInvite);
     const portal = await createPortalUserInviteForContact(contact, {
       portalRole: normalizePortalTicketRole(req.body?.portal_role),
-      sendEmail
+      sendEmail,
+      email: req.body?.email || req.body?.portal_email || null
     });
     invalidateContactsListCache(contact.client_id);
     invalidateContactsListCache(null);
@@ -383,9 +384,10 @@ router.patch('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts
   });
   const hasActive = req.body?.is_active !== undefined;
   const hasRole = req.body?.portal_role !== undefined;
-  if (!hasActive && !hasRole) {
+  const hasEmail = req.body?.email !== undefined || req.body?.portal_email !== undefined;
+  if (!hasActive && !hasRole && !hasEmail) {
     return res.status(400).json({
-      error: "Champ is_active or portal_role required."
+      error: "Champ is_active, portal_role or email required."
     });
   }
   try {
@@ -404,6 +406,9 @@ router.patch('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts
     }
     if (hasRole) {
       portal = await setPortalTicketRole(contactId, req.body.portal_role);
+    }
+    if (hasEmail) {
+      portal = await setPortalLoginEmail(contactId, req.body.email ?? req.body.portal_email);
     }
     const contact = await loadContactById(contactId);
     invalidateContactsListCache(contact?.client_id);
@@ -940,7 +945,20 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
       }
     }).catch(() => {});
     try {
-      await syncPortalUserFromContact(updatedContact);
+      const portalBefore = await getPortalUserByContactId(contactId);
+      const oldPrimary = String(current?.email || "").trim().toLowerCase();
+      const oldPortal = String(portalBefore?.email || "").trim().toLowerCase();
+      const newPrimary = String(updatedContact?.email || "").trim().toLowerCase();
+      const syncEmailToPrimary =
+        Boolean(payload.sync_portal_email) ||
+        Boolean(
+          oldPortal &&
+            oldPrimary &&
+            oldPortal === oldPrimary &&
+            newPrimary &&
+            newPrimary !== oldPrimary
+        );
+      await syncPortalUserFromContact(updatedContact, { syncEmailToPrimary });
     } catch (syncErr) {
       console.warn("Sync portail contact:", syncErr.message);
     }

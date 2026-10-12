@@ -239,6 +239,58 @@ export async function addTicketComment(ticketId, content, isInternal = false) {
   });
   return handleJsonResponse(response, "Error adding comment");
 }
+
+export async function fetchTicketSideConversations(ticketId, options = {}) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/side-conversations`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  return handleJsonResponse(response, "Error fetching side conversations");
+}
+
+export async function createTicketSideConversation(ticketId, payload) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/side-conversations`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload || {})
+  });
+  return handleJsonResponse(response, "Error creating side conversation");
+}
+
+export async function replyTicketSideConversation(ticketId, sideConversationId, body) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/side-conversations/${sideConversationId}/messages`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      body
+    })
+  });
+  return handleJsonResponse(response, "Error sending side conversation reply");
+}
+
+export async function updateTicketSideConversationStatus(ticketId, sideConversationId, status) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/side-conversations/${sideConversationId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      status
+    })
+  });
+  return handleJsonResponse(response, "Error updating side conversation");
+}
 export async function updateTicketComment(ticketId, commentId, content, {
   removeAttachmentIds = [],
   removeAttachmentPaths = [],

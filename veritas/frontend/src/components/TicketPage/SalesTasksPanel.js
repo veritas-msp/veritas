@@ -1,8 +1,24 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import TicketConfirmModal from "./TicketConfirmModal";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import eventStyles from "../PlanningPage/PlanningEventFormModal.module.css";
@@ -95,6 +111,47 @@ const TASK_FORM_SECTIONS_BASE = [
   { id: "credits", icon: "mdi:ticket-percent-outline" }
 ];
 
+function SortableTaskRow({ id, canDrag, disabled, done, justAdded, reorderAria, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !canDrag || disabled
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  };
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={[
+        styles.taskGlpiRow,
+        canDrag ? styles.taskGlpiRowSortable : "",
+        done ? styles.taskGlpiRowDone : "",
+        isDragging ? styles.taskGlpiRowDragging : "",
+        justAdded ? styles.taskGlpiRowJustAdded : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {canDrag ? (
+        <button
+          type="button"
+          className={styles.taskDragHandle}
+          aria-label={reorderAria}
+          title={reorderAria}
+          disabled={disabled}
+          {...attributes}
+          {...listeners}
+        >
+          <Icon icon="mdi:drag-vertical" aria-hidden />
+        </button>
+      ) : null}
+      {children}
+    </li>
+  );
+}
+
 export default function SalesTasksPanel({
   tasks = [],
   users = [],
@@ -113,6 +170,7 @@ export default function SalesTasksPanel({
   onUpdateTask,
   onToggleTask,
   onRemoveTask,
+  onReorderTasks,
   onConsumeTaskCredits,
   onRefundTaskCredits,
   onUploadDocuments,
@@ -160,6 +218,56 @@ export default function SalesTasksPanel({
   const [docsBusy, setDocsBusy] = useState(false);
   const assigneePickerRef = useRef(null);
   const documentInputRef = useRef(null);
+  const justAddedTimersRef = useRef(new Map());
+  const [justAddedTaskIds, setJustAddedTaskIds] = useState([]);
+
+  const markTaskJustAdded = useCallback(taskId => {
+    const key = String(taskId || "");
+    if (!key) return;
+    setJustAddedTaskIds(prev => (prev.includes(key) ? prev : [...prev, key]));
+    const existingTimer = justAddedTimersRef.current.get(key);
+    if (existingTimer) window.clearTimeout(existingTimer);
+    const timerId = window.setTimeout(() => {
+      setJustAddedTaskIds(prev => prev.filter(id => id !== key));
+      justAddedTimersRef.current.delete(key);
+    }, 420);
+    justAddedTimersRef.current.set(key, timerId);
+  }, []);
+
+  useEffect(
+    () => () => {
+      justAddedTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
+      justAddedTimersRef.current.clear();
+    },
+    []
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  );
+
+  const taskIds = useMemo(
+    () => (Array.isArray(tasks) ? tasks.map(task => String(task.id)).filter(Boolean) : []),
+    [tasks]
+  );
+
+  const canReorder = Boolean(canManageTasks && onReorderTasks && tasks.length > 1);
+
+  const handleDragEnd = event => {
+    const { active, over } = event;
+    if (!canReorder || !over || active.id === over.id) return;
+    const oldIndex = tasks.findIndex(task => String(task.id) === String(active.id));
+    const newIndex = tasks.findIndex(task => String(task.id) === String(over.id));
+    if (oldIndex < 0 || newIndex < 0) return;
+    onReorderTasks?.(arrayMove(tasks, oldIndex, newIndex));
+  };
 
   const canManageCredits = Boolean(supportCredit?.eligible && creditCopy);
   const fieldsCopy = creditCopy || {};
@@ -501,6 +609,7 @@ export default function SalesTasksPanel({
       });
       if (ok === false) return;
     } else {
+      markTaskJustAdded(taskId);
       const ok = await onAddTask?.({
         id: taskId,
         ...payload,
@@ -508,7 +617,10 @@ export default function SalesTasksPanel({
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
-      if (ok === false) return;
+      if (ok === false) {
+        setJustAddedTaskIds(prev => prev.filter(id => id !== String(taskId)));
+        return;
+      }
     }
 
     const docsOk = await syncTaskDocuments(taskId);
@@ -1024,190 +1136,203 @@ export default function SalesTasksPanel({
         ) : null}
       </div>
 
-      <ul className={styles.taskChatList}>
-        {tasks.length === 0 ? <li className={styles.taskChatEmpty}>{copy.empty}</li> : null}
-        {tasks.map(task => {
-          const schedule = formatTaskSchedule(task, formatDateTime, copy.rangeJoiner);
-          const typeLabel = typeLabels[task.eventType] || typeLabels[task.type] || null;
-          const creditBalance = getTaskCreditBalance(sourceBalances, task.id);
-          const creditDebited = Boolean(creditBalance) || creditDebitedSources?.has?.(`task:${task.id}`);
-          const creditedCount = Number(creditBalance?.total) || (creditDebited ? 1 : 0);
-          const assigneeList =
-            Array.isArray(task.assignees) && task.assignees.length > 0
-              ? task.assignees
-              : task.assigneeId
-                ? [{ id: task.assigneeId, label: task.assigneeLabel }]
-                : [];
-          const assigneeLabels = assigneeList
-            .map(
-              entry =>
-                (entry.id && userOptions.find(u => u.id === String(entry.id))?.label) ||
-                entry.label ||
-                entry.id
-            )
-            .filter(Boolean);
-          const avatarLabel = assigneeLabels[0] || task.createdByLabel || copy.unknownAuthor || "?";
-          const createdRelative = formatRelativeLabel(task.createdAt, copy);
-          const updatedRelative = formatRelativeLabel(task.updatedAt || task.createdAt, copy);
-          const docs = Array.isArray(task.documents) ? task.documents : [];
-          const equipmentLabel =
-            (task.equipmentId && equipmentOptions.find(eq => eq.id === String(task.equipmentId))?.label) ||
-            task.equipmentLabel ||
-            null;
-          return (
-            <li key={task.id} className={`${styles.taskGlpiRow} ${task.done ? styles.taskGlpiRowDone : ""}`}>
-              <div className={styles.taskGlpiAvatar} aria-hidden title={avatarLabel}>
-                {getInitials(avatarLabel)}
-              </div>
-              <article className={styles.taskGlpiCard}>
-                <div className={styles.taskGlpiMetaRow}>
-                  {createdRelative ? (
-                    <span className={styles.taskGlpiMetaPill}>
-                      {copy.createdBy} : <Icon icon="mdi:clock-outline" aria-hidden /> {createdRelative}
-                      {task.createdByLabel ? (
-                        <>
-                          {" "}
-                          {copy.byAuthor} <Icon icon="mdi:account-outline" aria-hidden /> {task.createdByLabel}
-                        </>
-                      ) : null}
-                    </span>
-                  ) : null}
-                  {updatedRelative ? (
-                    <span className={styles.taskGlpiMetaPill}>
-                      {copy.updatedBy} : <Icon icon="mdi:clock-outline" aria-hidden /> {updatedRelative}
-                      {task.updatedByLabel ? (
-                        <>
-                          {" "}
-                          {copy.byAuthor} <Icon icon="mdi:account-outline" aria-hidden /> {task.updatedByLabel}
-                        </>
-                      ) : null}
-                    </span>
-                  ) : null}
-                </div>
-
-                <div className={styles.taskGlpiBody}>
-                  <Icon icon="mdi:wrench-outline" className={styles.taskGlpiWatermark} aria-hidden />
-                  {canManageTasks ? (
-                    <button
-                      type="button"
-                      className={styles.taskGlpiTitleBtn}
-                      onClick={() => openEditModal(task)}
-                      disabled={saving || docsBusy}
-                      title={copy.edit}
-                    >
-                      <span className={styles.taskGlpiTitle}>{task.label}</span>
-                    </button>
-                  ) : (
-                    <span className={styles.taskGlpiTitle}>{task.label}</span>
-                  )}
-                  {task.description ? <p className={styles.taskGlpiDescription}>{task.description}</p> : null}
-                </div>
-
-                <div className={styles.taskGlpiFooter}>
-                  {typeLabel ? (
-                    <span className={styles.taskGlpiTag}>
-                      <Icon icon="mdi:shape-outline" aria-hidden />
-                      {typeLabel}
-                    </span>
-                  ) : null}
-                  <span className={styles.taskGlpiTag}>
-                    <Icon icon="mdi:account-outline" aria-hidden />
-                    {assigneeLabels.length > 0 ? assigneeLabels.join(", ") : copy.assigneeNone}
-                  </span>
-                  <span
-                    className={`${styles.taskGlpiTag} ${!equipmentLabel ? styles.taskGlpiTagMuted : ""}`.trim()}
-                    title={copy.equipment}
-                  >
-                    <Icon icon="mdi:desktop-classic" aria-hidden />
-                    {equipmentLabel || copy.equipmentNone}
-                  </span>
-                  {docs.length > 0 ? (
-                    docs.map(doc => (
-                      <a
-                        key={doc.id || doc.filePath}
-                        href={toAbsoluteUrl(doc.filePath)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`${styles.taskGlpiTag} ${styles.taskGlpiTagLink}`}
-                        title={copy.documentsOpen}
-                      >
-                        <Icon icon="mdi:paperclip" aria-hidden />
-                        {doc.fileName || copy.documents}
-                      </a>
-                    ))
-                  ) : (
-                    <span className={`${styles.taskGlpiTag} ${styles.taskGlpiTagMuted}`} title={copy.documents}>
-                      <Icon icon="mdi:paperclip" aria-hidden />
-                      {copy.documentsEmpty}
-                    </span>
-                  )}
-                  {canManageCredits ? (
-                    <span
-                      className={`${styles.taskGlpiTag} ${creditDebited ? styles.taskGlpiTagCredit : styles.taskGlpiTagMuted}`.trim()}
-                      title={
-                        creditDebited
-                          ? interpolate(copy.creditsDebitedCount || creditAlreadyLabel || copy.creditsDebited || "{count}", {
-                              count: String(creditedCount)
-                            })
-                          : copy.creditsNotDebited
-                      }
-                    >
-                      <Icon icon="mdi:ticket-percent-outline" aria-hidden />
-                      {creditDebited
-                        ? interpolate(copy.creditsDebitedCount || creditAlreadyLabel || copy.creditsDebited || "{count}", {
-                            count: String(creditedCount)
-                          })
-                        : copy.creditsNotDebited}
-                    </span>
-                  ) : null}
-                  {schedule ? (
-                    <span className={`${styles.taskGlpiTag} ${styles.taskGlpiTagSchedule}`}>
-                      <Icon icon="mdi:calendar-clock" aria-hidden />
-                      {schedule}
-                    </span>
-                  ) : null}
-                </div>
-              </article>
-
-              <div className={styles.taskGlpiSideActions}>
-                <button
-                  type="button"
-                  className={`${styles.taskGlpiDoneBtn} ${task.done ? styles.taskGlpiDoneBtnActive : ""}`}
-                  onClick={() => canManageTasks && onToggleTask?.(task.id)}
-                  aria-pressed={task.done}
-                  title={task.done ? copy.markTodo : copy.markDone}
-                  disabled={!canManageTasks || saving || docsBusy}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+          <ul className={styles.taskChatList}>
+            {tasks.length === 0 ? <li className={styles.taskChatEmpty}>{copy.empty}</li> : null}
+            {tasks.map(task => {
+              const schedule = formatTaskSchedule(task, formatDateTime, copy.rangeJoiner);
+              const typeLabel = typeLabels[task.eventType] || typeLabels[task.type] || null;
+              const creditBalance = getTaskCreditBalance(sourceBalances, task.id);
+              const creditDebited = Boolean(creditBalance) || creditDebitedSources?.has?.(`task:${task.id}`);
+              const creditedCount = Number(creditBalance?.total) || (creditDebited ? 1 : 0);
+              const assigneeList =
+                Array.isArray(task.assignees) && task.assignees.length > 0
+                  ? task.assignees
+                  : task.assigneeId
+                    ? [{ id: task.assigneeId, label: task.assigneeLabel }]
+                    : [];
+              const assigneeLabels = assigneeList
+                .map(
+                  entry =>
+                    (entry.id && userOptions.find(u => u.id === String(entry.id))?.label) ||
+                    entry.label ||
+                    entry.id
+                )
+                .filter(Boolean);
+              const avatarLabel = assigneeLabels[0] || task.createdByLabel || copy.unknownAuthor || "?";
+              const createdRelative = formatRelativeLabel(task.createdAt, copy);
+              const updatedRelative = formatRelativeLabel(task.updatedAt || task.createdAt, copy);
+              const docs = Array.isArray(task.documents) ? task.documents : [];
+              const equipmentLabel =
+                (task.equipmentId && equipmentOptions.find(eq => eq.id === String(task.equipmentId))?.label) ||
+                task.equipmentLabel ||
+                null;
+              const taskId = String(task.id);
+              return (
+                <SortableTaskRow
+                  key={taskId}
+                  id={taskId}
+                  canDrag={canReorder}
+                  justAdded={justAddedTaskIds.includes(taskId)}
+                  disabled={saving || docsBusy}
+                  done={task.done}
+                  reorderAria={copy.reorder || copy.reorderAria || "Reorder task"}
                 >
-                  <Icon icon={task.done ? "mdi:check-bold" : "mdi:check"} />
-                </button>
-                {canManageTasks ? (
-                  <>
+                  <div className={styles.taskGlpiAvatar} aria-hidden title={avatarLabel}>
+                    {getInitials(avatarLabel)}
+                  </div>
+                  <article className={styles.taskGlpiCard}>
+                    <div className={styles.taskGlpiMetaRow}>
+                      {createdRelative ? (
+                        <span className={styles.taskGlpiMetaPill}>
+                          {copy.createdBy} : <Icon icon="mdi:clock-outline" aria-hidden /> {createdRelative}
+                          {task.createdByLabel ? (
+                            <>
+                              {" "}
+                              {copy.byAuthor} <Icon icon="mdi:account-outline" aria-hidden /> {task.createdByLabel}
+                            </>
+                          ) : null}
+                        </span>
+                      ) : null}
+                      {updatedRelative ? (
+                        <span className={styles.taskGlpiMetaPill}>
+                          {copy.updatedBy} : <Icon icon="mdi:clock-outline" aria-hidden /> {updatedRelative}
+                          {task.updatedByLabel ? (
+                            <>
+                              {" "}
+                              {copy.byAuthor} <Icon icon="mdi:account-outline" aria-hidden /> {task.updatedByLabel}
+                            </>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className={styles.taskGlpiBody}>
+                      <Icon icon="mdi:wrench-outline" className={styles.taskGlpiWatermark} aria-hidden />
+                      {canManageTasks ? (
+                        <button
+                          type="button"
+                          className={styles.taskGlpiTitleBtn}
+                          onClick={() => openEditModal(task)}
+                          disabled={saving || docsBusy}
+                          title={copy.edit}
+                        >
+                          <span className={styles.taskGlpiTitle}>{task.label}</span>
+                        </button>
+                      ) : (
+                        <span className={styles.taskGlpiTitle}>{task.label}</span>
+                      )}
+                      {task.description ? <p className={styles.taskGlpiDescription}>{task.description}</p> : null}
+                    </div>
+
+                    <div className={styles.taskGlpiFooter}>
+                      {typeLabel ? (
+                        <span className={styles.taskGlpiTag}>
+                          <Icon icon="mdi:shape-outline" aria-hidden />
+                          {typeLabel}
+                        </span>
+                      ) : null}
+                      <span className={styles.taskGlpiTag}>
+                        <Icon icon="mdi:account-outline" aria-hidden />
+                        {assigneeLabels.length > 0 ? assigneeLabels.join(", ") : copy.assigneeNone}
+                      </span>
+                      <span
+                        className={`${styles.taskGlpiTag} ${!equipmentLabel ? styles.taskGlpiTagMuted : ""}`.trim()}
+                        title={copy.equipment}
+                      >
+                        <Icon icon="mdi:desktop-classic" aria-hidden />
+                        {equipmentLabel || copy.equipmentNone}
+                      </span>
+                      {docs.length > 0 ? (
+                        docs.map(doc => (
+                          <a
+                            key={doc.id || doc.filePath}
+                            href={toAbsoluteUrl(doc.filePath)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`${styles.taskGlpiTag} ${styles.taskGlpiTagLink}`}
+                            title={copy.documentsOpen}
+                          >
+                            <Icon icon="mdi:paperclip" aria-hidden />
+                            {doc.fileName || copy.documents}
+                          </a>
+                        ))
+                      ) : (
+                        <span className={`${styles.taskGlpiTag} ${styles.taskGlpiTagMuted}`} title={copy.documents}>
+                          <Icon icon="mdi:paperclip" aria-hidden />
+                          {copy.documentsEmpty}
+                        </span>
+                      )}
+                      {canManageCredits ? (
+                        <span
+                          className={`${styles.taskGlpiTag} ${creditDebited ? styles.taskGlpiTagCredit : styles.taskGlpiTagMuted}`.trim()}
+                          title={
+                            creditDebited
+                              ? interpolate(copy.creditsDebitedCount || creditAlreadyLabel || copy.creditsDebited || "{count}", {
+                                  count: String(creditedCount)
+                                })
+                              : copy.creditsNotDebited
+                          }
+                        >
+                          <Icon icon="mdi:ticket-percent-outline" aria-hidden />
+                          {creditDebited
+                            ? interpolate(copy.creditsDebitedCount || creditAlreadyLabel || copy.creditsDebited || "{count}", {
+                                count: String(creditedCount)
+                              })
+                            : copy.creditsNotDebited}
+                        </span>
+                      ) : null}
+                      {schedule ? (
+                        <span className={`${styles.taskGlpiTag} ${styles.taskGlpiTagSchedule}`}>
+                          <Icon icon="mdi:calendar-clock" aria-hidden />
+                          {schedule}
+                        </span>
+                      ) : null}
+                    </div>
+                  </article>
+
+                  <div className={styles.taskGlpiSideActions}>
                     <button
                       type="button"
-                      className={styles.taskEdit}
-                      onClick={() => openEditModal(task)}
-                      aria-label={copy.edit}
-                      title={copy.edit}
-                      disabled={saving || docsBusy}
+                      className={`${styles.taskGlpiDoneBtn} ${task.done ? styles.taskGlpiDoneBtnActive : ""}`}
+                      onClick={() => canManageTasks && onToggleTask?.(task.id)}
+                      aria-pressed={task.done}
+                      title={task.done ? copy.markTodo : copy.markDone}
+                      disabled={!canManageTasks || saving || docsBusy}
                     >
-                      <Icon icon="mdi:pencil-outline" />
+                      <Icon icon={task.done ? "mdi:check-bold" : "mdi:check"} />
                     </button>
-                    <button
-                      type="button"
-                      className={styles.taskRemove}
-                      onClick={() => setTaskToDelete(task)}
-                      aria-label={copy.remove}
-                      disabled={saving || docsBusy}
-                    >
-                      <Icon icon="mdi:delete-outline" />
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                    {canManageTasks ? (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.taskEdit}
+                          onClick={() => openEditModal(task)}
+                          aria-label={copy.edit}
+                          title={copy.edit}
+                          disabled={saving || docsBusy}
+                        >
+                          <Icon icon="mdi:pencil-outline" />
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.taskRemove}
+                          onClick={() => setTaskToDelete(task)}
+                          aria-label={copy.remove}
+                          disabled={saving || docsBusy}
+                        >
+                          <Icon icon="mdi:delete-outline" />
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </SortableTaskRow>
+              );
+            })}
+          </ul>
+        </SortableContext>
+      </DndContext>
 
       {modal}
 

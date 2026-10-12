@@ -38,58 +38,300 @@
   flex: 1 1 0;
 }
 
-/* —— Listes : tableau épure —— */
-.list {
+/* —— Listes CRM : miroir panelCard + tableSearchBar + dataTable + pagination —— */
+.crmCard {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0.85rem 1rem 1rem;
+  padding: 0.85rem 1rem 0.85rem;
+  overflow: hidden;
   border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 12px);
+  border-radius: 16px;
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow-panel, 0 1px 2px rgba(15, 23, 42, 0.04));
+}
+
+.crmToolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.crmSearch {
+  flex: 1 1 auto;
+  min-width: 8rem;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.crmChips {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.crmChip {
+  flex: 0 0 auto;
+  width: 5.6rem;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.crmChipSm {
+  width: 4.6rem;
+}
+
+.crmChipWide {
+  width: 7.2rem;
+}
+
+.crmChipSep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.15rem;
+  background: var(--msp-border-light, #d5deea);
+}
+
+.crmActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.crmIconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.crmIconBtnPrimary {
+  border-radius: 10px;
+  opacity: 0.92;
+}
+
+.crmTableWrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border-light, #c5d0de);
+  border-radius: 12px;
   background: var(--msp-surface, #fff);
 }
 
-.listHead {
-  height: 0.7rem;
-  width: 38%;
-  max-width: 11rem;
-  margin-bottom: 0.15rem;
-  opacity: 0.85;
-}
-
-.listRows {
+.crmTableInner {
+  min-width: 64rem;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
 }
 
-.listRow {
+.crmThead,
+.crmRow {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) 4.5rem;
-  gap: 0.75rem;
+  grid-template-columns:
+    2rem
+    4.2rem
+    minmax(9rem, 1.5fr)
+    5.2rem
+    minmax(5.5rem, 1fr)
+    minmax(5.5rem, 1fr)
+    minmax(7rem, 1.1fr)
+    5.2rem
+    minmax(4.5rem, 0.9fr)
+    2.4rem
+    1.4rem;
+  gap: 0.35rem;
   align-items: center;
-  padding: 0.35rem 0;
+  padding: 0.55rem 0.65rem;
 }
 
-.listCellWide,
-.listCell,
-.listCellNarrow {
-  height: 0.7rem;
+.crmThead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2, #f7f9fc);
+  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
 }
 
-.listCellWide {
+.crmThead .bone {
+  height: 0.55rem;
+  border-radius: 4px;
+  opacity: 0.75;
+}
+
+.crmRows {
+  display: flex;
+  flex-direction: column;
+}
+
+.crmRow {
+  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
+}
+
+.crmRow:last-child {
+  border-bottom: none;
+}
+
+.crmCheck {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  justify-self: center;
+}
+
+.crmThNum,
+.crmCellNum {
+  width: 2.4rem;
+  height: 0.65rem;
+}
+
+.crmThCompany {
+  width: 55%;
+  height: 0.55rem;
+}
+
+.crmThStatus,
+.crmThText,
+.crmThModules,
+.crmThDate,
+.crmThTags {
+  width: 55%;
+  height: 0.55rem;
+}
+
+.crmThFav,
+.crmThChevron {
+  width: 0.9rem;
+  height: 0.55rem;
+  justify-self: center;
+}
+
+.crmCompany {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.crmCompanyIcon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+.crmCompanyName {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 70%;
+  max-width: 11rem;
+  height: 0.72rem;
+}
+
+.crmStatusPill {
+  width: 3.6rem;
+  height: 1.35rem;
+  border-radius: 999px;
+}
+
+.crmCellText {
   width: 72%;
+  height: 0.68rem;
 }
 
-.listCell {
-  width: 58%;
+.crmPills {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
-.listCellNarrow {
-  width: 100%;
-  justify-self: end;
+.crmPill {
+  width: 3.4rem;
+  height: 1.2rem;
+  border-radius: 999px;
+}
+
+.crmPillSm {
+  width: 2rem;
+}
+
+.crmPillTag {
+  width: 3rem;
+  height: 1.15rem;
+}
+
+.crmCellDate {
+  width: 4.2rem;
+  height: 0.68rem;
+}
+
+.crmFav {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  justify-self: center;
+}
+
+.crmChevron {
+  width: 0.7rem;
+  height: 0.9rem;
+  border-radius: 3px;
+  justify-self: center;
+  opacity: 0.55;
+}
+
+.crmPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.15rem 0.1rem 0;
+}
+
+.crmPagLeft,
+.crmPagRight {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.crmPagLabel {
+  width: 3.2rem;
+  height: 0.65rem;
+}
+
+.crmPagSelect {
+  width: 3.4rem;
+  height: 1.7rem;
+  border-radius: 8px;
+}
+
+.crmPagInfo {
+  width: 5.5rem;
+  height: 0.65rem;
+}
+
+.crmPagBtn {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+}
+
+.crmPagPage {
+  width: 4.2rem;
+  height: 0.65rem;
 }
 
 @keyframes skeletonShimmer {
@@ -101,20 +343,64 @@
   }
 }
 
-@media (max-width: 720px) {
-  .listRow {
-    grid-template-columns: minmax(0, 1fr) 3.5rem;
-  }
-
-  .listRow .listCell:nth-child(2),
-  .listRow .listCell:nth-child(3) {
+@media (max-width: 1100px) {
+  .crmChips .crmChipWide,
+  .crmChips .crmChipSm {
     display: none;
   }
 }
 
-:global(html.dark) .list {
+@media (max-width: 720px) {
+  .crmChips {
+    display: none;
+  }
+
+  .crmTableInner {
+    min-width: 0;
+  }
+
+  .crmThead,
+  .crmRow {
+    grid-template-columns: 2rem minmax(0, 1fr) 5rem 2.4rem;
+  }
+
+  .crmThead > :nth-child(2),
+  .crmThead > :nth-child(4),
+  .crmThead > :nth-child(5),
+  .crmThead > :nth-child(6),
+  .crmThead > :nth-child(7),
+  .crmThead > :nth-child(8),
+  .crmThead > :nth-child(9),
+  .crmThead > :nth-child(11),
+  .crmRow > :nth-child(2),
+  .crmRow > :nth-child(4),
+  .crmRow > :nth-child(5),
+  .crmRow > :nth-child(6),
+  .crmRow > :nth-child(7),
+  .crmRow > :nth-child(8),
+  .crmRow > :nth-child(9),
+  .crmRow > :nth-child(11) {
+    display: none;
+  }
+
+  .crmPagInfo {
+    display: none;
+  }
+}
+
+:global(html.dark) .crmCard,
+:global(html.dark) .crmTableWrap {
   background: var(--msp-surface, #1a2230);
   border-color: var(--msp-border, #2a3548);
+}
+
+:global(html.dark) .crmThead {
+  background: var(--msp-surface-2, #1e293b);
+  border-bottom-color: var(--msp-border, #2a3548);
+}
+
+:global(html.dark) .crmRow {
+  border-bottom-color: var(--msp-border, #2a3548);
 }
 
 :global(html.dark) .bone {

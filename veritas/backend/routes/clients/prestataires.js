@@ -308,6 +308,58 @@ router.get("/:id", requirePermission("prestataires.view"), async (req, res) => {
   }
 });
 
+/** Tickets où le prestataire est destinataire d'une side conversation. */
+router.get("/:id/mentioned-tickets", requirePermission("prestataires.view"), async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: "Invalid provider id" });
+  try {
+    await ensurePrestatairesSchema();
+    const existing = await pool.query(`SELECT id FROM v_b_prestataires WHERE id = $1`, [id]);
+    if (!existing.rows[0]) return res.status(404).json({ error: "Provider not found" });
+
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+    const { rows } = await pool.query(
+      `SELECT
+         t.id,
+         t.ticket_number,
+         t.title,
+         t.status,
+         t.priority,
+         t.category,
+         t.client_id,
+         t.created_at,
+         t.updated_at,
+         COUNT(sc.id)::int AS side_conversation_count,
+         MAX(sc.updated_at) AS last_side_conversation_at,
+         (
+           ARRAY_AGG(sc.subject ORDER BY sc.updated_at DESC NULLS LAST)
+           FILTER (WHERE sc.subject IS NOT NULL AND BTRIM(sc.subject) <> '')
+         )[1] AS side_conversation_subject
+       FROM v_b_ticket_side_conversations sc
+       INNER JOIN v_b_tickets t ON t.id = sc.ticket_id
+       WHERE sc.recipient_type = 'prestataire'
+         AND sc.recipient_ref_id = $1
+       GROUP BY t.id
+       ORDER BY MAX(sc.updated_at) DESC NULLS LAST, t.updated_at DESC NULLS LAST
+       LIMIT $2`,
+      [String(id), limit]
+    );
+    return res.json({
+      prestataire_id: id,
+      tickets: rows || [],
+      total: (rows || []).length
+    });
+  } catch (err) {
+    if (err?.code === "42P01") {
+      return res.json({ prestataire_id: id, tickets: [], total: 0 });
+    }
+    return res.status(500).json({
+      error: "Error retrieving mentioned tickets",
+      details: err.message
+    });
+  }
+});
+
 router.post("/bulk", async (req, res) => {
   try {
     const action = String(req.body?.action || "delete").trim().toLowerCase();

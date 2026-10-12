@@ -5,11 +5,11 @@ import { FaTimes, FaPlus } from "react-icons/fa";
 import styles from "./EquipmentDetailPage.module.css";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
-import SubscribeBellButton from "../shared/SubscribeBellButton/SubscribeBellButton";
+import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import EquipmentFormModal from "./EquipmentFormModal";
 import CustomEquipmentModal from "../EnterprisesPage/CustomEquipmentModal";
 import { fetchClientGeneral, fetchClientCustomEquipment } from "../../api/clients";
-import { normalizeClientSites } from "../../utils/clientSites";
+import { normalizeClientSites, findClientSiteByLocation, getSiteDisplayName } from "../../utils/clientSites";
 import { updateEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
 import { requestRmmAgentSync, cancelRmmAgentSync, requestRmmAgentUpdate, cancelRmmAgentUpdate, requestRmmAgentHeartbeat, fetchRmmAgents } from "../../api/rmm";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
@@ -19,13 +19,22 @@ import RmmMonitoringPanel, { RmmSyncPendingNotice, RmmCollectionStatusLine } fro
 import RmmAgentUpdateStatus from "./RmmAgentUpdateStatus";
 import RmmMetricHistoryPanel from "./RmmMetricHistoryPanel";
 import EquipmentAlertSuspensionModal from "./EquipmentAlertSuspensionModal";
+import SupervisionMaintenanceModal from "./SupervisionMaintenanceModal";
 import { useEquipmentAlertSettings } from "./useEquipmentAlertSettings";
+import { resolveEquipmentFamilyForAlerts, updateEquipmentAlertSuspension } from "../../api/equipmentMonitoringAlerts";
+import {
+  createSupervisionExclusion,
+  deleteSupervisionExclusion,
+  fetchSupervisionExclusions
+} from "../../api/supervisionAlerts";
+import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
 import { useTheme } from "../../hooks/useTheme";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import EquipmentDetailSpecsPanel from "./EquipmentDetailSpecsPanel";
 import EquipmentAlertsGlance from "./EquipmentAlertsGlance";
+import EquipmentOverviewDashboard from "./EquipmentOverviewDashboard";
+import EquipmentDetailAside from "./EquipmentDetailAside";
 import specsStyles from "./EquipmentDetailSpecsPanel.module.css";
-import EquipmentRemoteAccessLaunchButton from "./EquipmentRemoteAccessLaunchButton";
 import { resolveEquipmentRemoteAccessAction } from "./equipmentDetailRemoteAccess";
 import EquipmentDocumentsPanel from "./EquipmentDocumentsPanel";
 import EquipmentNotesPanel from "./EquipmentNotesPanel";
@@ -37,12 +46,23 @@ import { buildDetailFormData } from "./equipmentDetailConfig";
 import { resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
-import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
+import {
+  formatAlertSettingsDateTime,
+  getEquipmentDetailTypeLabel,
+  getEquipmentDetailCopy,
+  formatEquipmentDetailRelative,
+  getEquipmentCreatedAt
+} from "./equipmentDetailPageI18n";
 import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
-import { isCheckMKMappableType } from "./CheckMKMonitoringStatusBadge";
+import {
+  isCheckMKMappableType,
+  normalizeCheckMKEquipmentType,
+  resolveEquipmentCheckmkMapping
+} from "./CheckMKMonitoringStatusBadge";
+import API_BASE_URL from "../../config";
 import { isSynologyBrand, buildQuickConnectUrl } from "./synologyEquipmentUtils";
 import { getLogActionDetails } from "./equipmentLogUtils";
 import EquipmentLogDetailModal from "./EquipmentLogDetailModal";
@@ -53,13 +73,32 @@ import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { notifyProFeature, setProFeaturePromoHandler } from "../Misc/ProFeature/proFeatureUtils";
 import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveEquipmentDbId, getEquipmentListKey, equipmentNeedsHydration } from "../../utils/equipmentIdentity";
 import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
+import { getFleetFamilyIcon } from "../../utils/equipmentFamilyStats";
 import StatusDot from "../shared/StatusDot/StatusDot";
-import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync } from "./rmmMonitoringUtils";
+import {
+  getRmmAgentId,
+  getRmmAgentVersion,
+  buildRmmAgentRowFromEquipment,
+  getRmmSyncRequestedAt,
+  isRmmManagedEquipment,
+  patchEquipmentRmmSyncRequest,
+  resolveRmmSyncRequestState,
+  rmmSyncTimestampsMatch,
+  formatRmmExpectedCollectionLabel,
+  resolveRmmHeartbeatIntervalMinutes,
+  agentSupportsImmediateFullSync,
+  getRmmInventoryFromEquipment,
+  getRmmOsEditionInfo,
+  getRmmChassisInfo,
+  resolveRmmAgentOnline
+} from "./rmmMonitoringUtils";
+import { getCheckMKAvailabilityUp } from "./checkmkMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
 import { fetchEquipmentFamilies, mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const CheckMKMappingModal = EquipmentMappingModal;
+
 export default function EquipmentDetailPage({
   equipment,
   onBack,
@@ -110,6 +149,10 @@ export default function EquipmentDetailPage({
   const [editModalOpening, setEditModalOpening] = useState(false);
   const [customEditFamily, setCustomEditFamily] = useState(null);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [maintenanceModalOpen, setMaintenanceModalOpen] = useState(false);
+  const [maintenanceBusy, setMaintenanceBusy] = useState(false);
+  const [endMaintenanceOpen, setEndMaintenanceOpen] = useState(false);
+  const [activeMaintenance, setActiveMaintenance] = useState(null);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [modalClient, setModalClient] = useState(null);
   const [clientSites, setClientSites] = useState([]);
@@ -118,7 +161,6 @@ export default function EquipmentDetailPage({
   const [peerServers, setPeerServers] = useState([]);
   const [peerStorage, setPeerStorage] = useState([]);
   const [peerBorneWifi, setPeerBorneWifi] = useState([]);
-  const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const [rmmSyncRequesting, setRmmSyncRequesting] = useState(false);
   const [rmmUpdateRequesting, setRmmUpdateRequesting] = useState(false);
   const [rmmUpdateRequestedAt, setRmmUpdateRequestedAt] = useState(null);
@@ -166,7 +208,6 @@ export default function EquipmentDetailPage({
   const logsControllerRef = useRef(null);
   const checkmkControllerRef = useRef(null);
   const availabilityControllerRef = useRef(null);
-  const heroActionsMenuRef = useRef(null);
   const syncRequestOverrideRef = useRef(undefined);
   const syncConfirmedOnAgentRef = useRef(false);
   const lastRmmRefreshSnapshotRef = useRef(null);
@@ -189,6 +230,7 @@ export default function EquipmentDetailPage({
     ...extra
   }), [clientSites, clientSsids, systemExtensionFields]);
   const alertSettings = useEquipmentAlertSettings(equipment);
+  const supervisionCopy = useMemo(() => getSupervisionCenterCopy(locale), [locale]);
   const rmmManaged = isRmmManagedEquipment(equipment);
   const rmmAgentId = getRmmAgentId(equipment);
   const [syncRequestOverride, setSyncRequestOverride] = useState(undefined);
@@ -224,7 +266,17 @@ export default function EquipmentDetailPage({
   const showRmmMetricsTab = equipment?.type === "Ordinateurs" && rmmManaged;
   const showRmmPeripheralsTab = showRmmMetricsTab;
   const showRmmOperationsTab = showRmmMetricsTab;
-  const showSupervisionTab = Boolean(checkmkIntegrationEnabled && checkmkMapping?.checkmk_host_name && isCheckMKMappableType(equipment?.type) && equipment?.type !== "Internet");
+  const resolvedCheckmkMapping = useMemo(
+    () => resolveEquipmentCheckmkMapping(equipment, checkmkMapping),
+    [equipment, checkmkMapping]
+  );
+  const equipmentMkType = normalizeCheckMKEquipmentType(equipment?.type);
+  // Onglet visible dès qu'il y a un mapping CheckMK, ou pour les types mappables (même sans mapping).
+  const showSupervisionTab = Boolean(
+    checkmkIntegrationEnabled &&
+      equipmentMkType !== "Internet" &&
+      (Boolean(resolvedCheckmkMapping?.checkmk_host_name) || isCheckMKMappableType(equipmentMkType))
+  );
   const rmmMetricsAgent = useMemo(() => showRmmMetricsTab ? buildRmmAgentRowFromEquipment(equipment) : null, [equipment, showRmmMetricsTab]);
   useEffect(() => {
     if (!equipment?.id) return;
@@ -234,7 +286,6 @@ export default function EquipmentDetailPage({
     }
   }, [equipment?.id, equipment?.detailTab, showRmmMetricsTab]);
   const handleRmmFullSync = async () => {
-    setHeroMenuOpen(false);
     if (!rmmAgentId) {
       toast.error(copy.toasts.rmmAgentNotFound);
       return;
@@ -265,7 +316,6 @@ export default function EquipmentDetailPage({
     }
   };
   const handleRmmCancelSync = async () => {
-    setHeroMenuOpen(false);
     if (!rmmAgentId) {
       toast.error(copy.toasts.rmmAgentNotFound);
       return;
@@ -286,7 +336,6 @@ export default function EquipmentDetailPage({
     }
   };
   const handleRmmAgentUpdate = async () => {
-    setHeroMenuOpen(false);
     if (!rmmAgentId) {
       toast.error(copy.toasts.rmmAgentNotFound);
       return;
@@ -323,7 +372,6 @@ export default function EquipmentDetailPage({
     }
   };
   const handleRmmCancelAgentUpdate = async () => {
-    setHeroMenuOpen(false);
     if (!rmmAgentId) {
       toast.error(copy.toasts.rmmAgentNotFound);
       return;
@@ -386,7 +434,6 @@ export default function EquipmentDetailPage({
     return () => setProFeaturePromoHandler(null);
   }, []);
   const openCreateEventModal = () => {
-    setHeroMenuOpen(false);
     if (isCommunity) {
       notifyProFeature("Company schedule");
       return;
@@ -422,11 +469,181 @@ export default function EquipmentDetailPage({
   const [formData, setFormData] = useState(() => buildDetailFormData(equipment, { extensionFields: systemExtensionFields }));
   const remoteAccessAction = useMemo(() => resolveEquipmentRemoteAccessAction(equipment, formData, locale), [equipment, formData, locale]);
   const equipmentDbId = useMemo(() => resolveEquipmentDbId(equipment), [equipment]);
+  const {
+    subscribed: equipmentSubscribed,
+    loading: equipmentSubscribeLoading,
+    saving: equipmentSubscribeSaving,
+    toggleSubscribe: toggleEquipmentSubscribe
+  } = useEntitySubscription("equipment", equipmentDbId, {
+    labels: {
+      subscribed: copy.subscribe?.subscribedToast || "Abonnement activé",
+      unsubscribed: copy.subscribe?.unsubscribedToast || "Abonnement retiré"
+    }
+  });
   const equipmentClientId = useMemo(() => getEquipmentClientId(equipment), [equipment]);
   const equipmentIdentityKey = useMemo(() => getEquipmentListKey(equipment), [equipment]);
   const needsHydration = useMemo(() => equipmentNeedsHydration(equipment), [equipment]);
   const lastHydratedKeyRef = useRef(null);
   const canManageEquipmentTags = Boolean(equipmentDbId && equipmentClientId);
+  const maintenanceFamily = useMemo(
+    () => resolveEquipmentFamilyForAlerts(equipment?.type) || equipment?.family || null,
+    [equipment?.type, equipment?.family]
+  );
+  const hasSupervisedMonitoring = Boolean(
+    rmmManaged || String(resolvedCheckmkMapping?.checkmk_host_name || "").trim()
+  );
+  const canLoadMaintenance = Boolean(equipmentDbId && equipmentClientId && maintenanceFamily);
+  /** Maintenance réservée aux équipements RMM ou mappés supervision (CheckMK…). */
+  const canStartMaintenance = Boolean(canLoadMaintenance && hasSupervisedMonitoring);
+  const inMaintenance = Boolean(activeMaintenance);
+  const showMaintenanceControl = canStartMaintenance || inMaintenance;
+
+  const loadActiveMaintenance = useCallback(async () => {
+    if (!canLoadMaintenance) {
+      setActiveMaintenance(null);
+      return null;
+    }
+    try {
+      const rows = await fetchSupervisionExclusions({
+        clientId: equipmentClientId,
+        equipmentId: equipmentDbId
+      });
+      const deviceMaint = (Array.isArray(rows) ? rows : []).find(
+        row =>
+          String(row.equipmentId) === String(equipmentDbId) &&
+          row.scope === "device" &&
+          (row.kind || "maintenance") === "maintenance"
+      );
+      setActiveMaintenance(deviceMaint || null);
+      return deviceMaint || null;
+    } catch {
+      setActiveMaintenance(null);
+      return null;
+    }
+  }, [canLoadMaintenance, equipmentClientId, equipmentDbId]);
+
+  useEffect(() => {
+    loadActiveMaintenance();
+  }, [loadActiveMaintenance]);
+
+  const maintenanceItem = useMemo(() => {
+    if (!canStartMaintenance) return null;
+    return {
+      id: `device-maint-${equipmentDbId}`,
+      clientId: equipmentClientId,
+      equipmentId: equipmentDbId,
+      family: maintenanceFamily,
+      equipmentName: equipment?.name || equipment?.rawData?.nom || "",
+      subtitle: equipment?.name || equipment?.rawData?.nom || "",
+      equipment: {
+        id: equipmentDbId,
+        name: equipment?.name || equipment?.rawData?.nom || "",
+        family: maintenanceFamily
+      }
+    };
+  }, [
+    canStartMaintenance,
+    equipment?.name,
+    equipment?.rawData?.nom,
+    equipmentClientId,
+    equipmentDbId,
+    maintenanceFamily
+  ]);
+
+  const handleConfirmMaintenance = useCallback(
+    async payload => {
+      const exclusion = payload?.exclusion;
+      if (!exclusion || !canStartMaintenance) return;
+      setMaintenanceBusy(true);
+      try {
+        const reason = exclusion.reason || "Maintenance";
+        if (exclusion.excludedUntil) {
+          await updateEquipmentAlertSuspension(equipmentClientId, equipmentDbId, {
+            family: maintenanceFamily,
+            type: equipment?.type,
+            equipmentName: exclusion.equipmentName || equipment?.name,
+            suspensionType: "temporary",
+            alertsEnabled: true,
+            suspendedUntil: exclusion.excludedUntil,
+            reason
+          });
+        } else {
+          await updateEquipmentAlertSuspension(equipmentClientId, equipmentDbId, {
+            family: maintenanceFamily,
+            type: equipment?.type,
+            equipmentName: exclusion.equipmentName || equipment?.name,
+            suspensionType: "permanent",
+            alertsEnabled: true,
+            reason
+          });
+        }
+        await createSupervisionExclusion({
+          clientId: equipmentClientId,
+          equipmentId: equipmentDbId,
+          family: maintenanceFamily,
+          equipmentName: exclusion.equipmentName || equipment?.name,
+          scope: "device",
+          kind: "maintenance",
+          reason,
+          excludedUntil: exclusion.excludedUntil
+        });
+        toast.success(copy.hero.maintenanceOk || "Maintenance enregistrée");
+        setMaintenanceModalOpen(false);
+        await loadActiveMaintenance();
+        await alertSettings.reload?.();
+      } catch (err) {
+        toast.error(err?.message || copy.hero.maintenanceError || "Erreur");
+      } finally {
+        setMaintenanceBusy(false);
+      }
+    },
+    [
+      alertSettings,
+      canStartMaintenance,
+      copy.hero.maintenanceError,
+      copy.hero.maintenanceOk,
+      equipment?.name,
+      equipment?.type,
+      equipmentClientId,
+      equipmentDbId,
+      loadActiveMaintenance,
+      maintenanceFamily
+    ]
+  );
+
+  const handleEndMaintenance = useCallback(async () => {
+    if (!activeMaintenance?.id || !canLoadMaintenance) return;
+    setMaintenanceBusy(true);
+    try {
+      await deleteSupervisionExclusion(activeMaintenance.id);
+      await updateEquipmentAlertSuspension(equipmentClientId, equipmentDbId, {
+        family: maintenanceFamily,
+        type: equipment?.type,
+        equipmentName: equipment?.name,
+        suspensionType: "none",
+        alertsEnabled: true
+      });
+      toast.success(copy.hero.maintenanceEnded || "Maintenance terminée");
+      setEndMaintenanceOpen(false);
+      setActiveMaintenance(null);
+      await alertSettings.reload?.();
+    } catch (err) {
+      toast.error(err?.message || copy.hero.maintenanceError || "Erreur");
+    } finally {
+      setMaintenanceBusy(false);
+    }
+  }, [
+    activeMaintenance?.id,
+    alertSettings,
+    canLoadMaintenance,
+    copy.hero.maintenanceEnded,
+    copy.hero.maintenanceError,
+    equipment?.name,
+    equipment?.type,
+    equipmentClientId,
+    equipmentDbId,
+    maintenanceFamily
+  ]);
   useEffect(() => {
     if (!canManageEquipmentTags) {
       setEquipmentTags([]);
@@ -454,17 +671,66 @@ export default function EquipmentDetailPage({
     if (!(needsHydration && alreadyHydrated)) {
       setFormData(toDetailFormData(equipment));
     }
-    // Prefer prop mapping when present (including explicit null after unmap).
-    const mapping = Object.prototype.hasOwnProperty.call(equipment, "checkmkMapping")
-      ? equipment.checkmkMapping
-      : checkmkMapping || null;
-    setCheckmkMapping(mapping && mapping.checkmk_host_name ? mapping : null);
-    if (checkmkIntegrationEnabled && mapping && mapping.checkmk_host_name) {
+    // Prefer resolved mapping from prop / raw fields (inventory, modules, URL stubs).
+    const mapping = resolveEquipmentCheckmkMapping(
+      equipment,
+      Object.prototype.hasOwnProperty.call(equipment, "checkmkMapping") ? equipment.checkmkMapping : checkmkMapping
+    );
+    setCheckmkMapping(mapping);
+    if (checkmkIntegrationEnabled && mapping?.checkmk_host_name) {
       loadCheckMKData();
     } else if (!needsHydration) {
       setCheckmkData(null);
     }
-  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids, equipment?.checkmkMapping]);
+  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids, equipment?.checkmkMapping, equipment?.checkmk_host_name]);
+  // Si le mapping n'est pas dans le payload (ex. stub URL / inventaire partiel), le récupérer via l'API client.
+  useEffect(() => {
+    if (!checkmkIntegrationEnabled || checkmkMapping?.checkmk_host_name) return undefined;
+    if (equipmentMkType === "Internet") return undefined;
+    const clientId = getEquipmentClientId(equipment);
+    const dbId = String(resolveEquipmentDbId(equipment) || "").trim().toLowerCase();
+    if (!clientId || !dbId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/checkmk/mapping/${clientId}`, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" }
+        });
+        if (!response.ok || cancelled) return;
+        const mappings = await response.json();
+        if (cancelled) return;
+        const row = (Array.isArray(mappings) ? mappings : []).find(item => {
+          const id = String(item?.equipment_id || item?.id || "").trim().toLowerCase();
+          return id === dbId && item?.is_active !== false && String(item?.checkmk_host_name || "").trim();
+        });
+        if (!row) return;
+        const nextMapping = {
+          checkmk_host_name: String(row.checkmk_host_name).trim(),
+          checkmk_site: row.checkmk_site || null,
+          checkmk_service_name: row.checkmk_service_name || null,
+          is_active: row.is_active !== false
+        };
+        setCheckmkMapping(nextMapping);
+        if (onUpdate && equipment) {
+          onUpdate({
+            ...equipment,
+            checkmkMapping: nextMapping,
+            checkmk_host_name: nextMapping.checkmk_host_name,
+            checkmk_site: nextMapping.checkmk_site,
+            checkmk_service_name: nextMapping.checkmk_service_name
+          });
+        }
+      } catch (err) {
+        if (err?.name !== "AbortError") {
+          console.warn("Load CheckMK mapping for equipment detail:", err);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [checkmkIntegrationEnabled, checkmkMapping?.checkmk_host_name, equipmentMkType, equipmentIdentityKey, onUpdate]);
   useEffect(() => {
     if (!needsHydration) return undefined;
     const clientId = getEquipmentClientId(equipment);
@@ -729,20 +995,9 @@ export default function EquipmentDetailPage({
       abortAllPendingFetches();
     };
   }, []);
-  useEffect(() => {
-    if (!heroMenuOpen) return undefined;
-    const handlePointerDown = event => {
-      if (heroActionsMenuRef.current && !heroActionsMenuRef.current.contains(event.target)) {
-        setHeroMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [heroMenuOpen]);
   const openEditEquipmentModal = async event => {
     event?.stopPropagation?.();
     event?.preventDefault?.();
-    setHeroMenuOpen(false);
     const clientId = getEquipmentClientId(equipment);
     if (!clientId) {
       toast.error(copy.toasts.clientNotFound);
@@ -1109,7 +1364,7 @@ export default function EquipmentDetailPage({
     force = false
   } = {}) => {
     if (!checkmkIntegrationEnabled) return;
-    const mapping = checkmkMapping || equipment?.checkmkMapping;
+    const mapping = resolveEquipmentCheckmkMapping(equipment, checkmkMapping);
     if (!mapping?.checkmk_host_name) return;
     const equipmentId = getEquipmentDbIdLocal();
     const clientId = equipment?.clientId;
@@ -1407,6 +1662,15 @@ export default function EquipmentDetailPage({
       background: true
     } : undefined);
   }, [equipment, modalClient?.name, onNavigate]);
+  const handleQuickCreateTicket = useCallback(() => {
+    const clientId = getEquipmentClientId(equipment) || equipment?.clientId;
+    if (!onNavigate || !clientId) return;
+    onNavigate("TicketCreate", {
+      clientId,
+      equipmentId: equipmentDbId || equipment?.id,
+      equipmentName: equipment?.name || formData?.name || ""
+    });
+  }, [equipment, equipmentDbId, formData?.name, onNavigate]);
   const equipmentHeroTitle = equipment?.type === "Internet" ? formData.fournisseur && formData.internetType ? `${formData.fournisseur.toUpperCase()} ${formData.internetType.toUpperCase()}` : equipment.name : equipment?.name;
   const createdAtRaw = getEquipmentCreatedAt(equipment);
   const createdAtFormatted = (() => {
@@ -1424,234 +1688,270 @@ export default function EquipmentDetailPage({
     date: createdAtFormatted
   }) : null;
   const equipmentIsActive = readEquipmentIsActive(equipment);
-  const equipmentStatusLabel = equipmentIsActive ? copy.hero.active : copy.hero.inactive;
+  const rmmOnline = rmmManaged ? resolveRmmAgentOnline(equipmentWithRmmLive || equipment, rmmHeartbeatMinutes) : null;
+  const equipmentStatusOnline = rmmOnline === true;
+  const equipmentStatusOffline = rmmOnline === false;
+  const equipmentStatusLabel = equipmentStatusOnline
+    ? copy.hero.online || "En ligne"
+    : equipmentStatusOffline
+      ? copy.hero.offline || "Hors ligne"
+      : equipmentIsActive
+        ? copy.hero.active
+        : copy.hero.inactive;
+  const equipmentStatusActive = equipmentStatusOnline || (!equipmentStatusOffline && equipmentIsActive);
   const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
   const showCheckmkHeroMenu = Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet");
   const showRmmHeroMenu = Boolean(rmmManaged && rmmAgentId);
-  const hasHeroOverflowMenu = showRmmHeroMenu || showCheckmkHeroMenu;
+  const heroIcon = getFleetFamilyIcon(
+    equipment?.type,
+    equipment?.familyIcon || equipment?.customFamily?.icon
+  );
+  const rmmInventory = getRmmInventoryFromEquipment(equipmentWithRmmLive || equipment);
+  const rmmOsInfo = getRmmOsEditionInfo(rmmInventory, equipment);
+  const rmmChassis = getRmmChassisInfo(rmmInventory);
+  const heroOsLabel = rmmOsInfo.osCaption || formData.systeme || equipment?.systeme || null;
+  const heroManufacturer = rmmChassis.manufacturer || formData.manufacturer || equipment?.manufacturer || null;
+  const heroModel = rmmChassis.model || formData.model || equipment?.model || null;
+  const heroIp = equipment?.ip || formData.ip || rmmInventory?.network?.ip || rmmInventory?.ip || null;
+  const heroSite = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
+  const heroSiteLabel = getSiteDisplayName(heroSite) || formData.location || equipment?.location || null;
+  const heroSubtitleParts = [typeDisplayLabel, heroOsLabel, heroSiteLabel].filter(Boolean);
+  const checkmkServices = checkmkData?.services?.services || [];
+  const heroServiceCounts = {
+    critical: checkmkServices.filter(s => (s.state ?? 3) === 2).length,
+    warning: checkmkServices.filter(s => (s.state ?? 3) === 1).length,
+    ok: checkmkServices.filter(s => (s.state ?? 3) === 0).length
+  };
+  const heroAvailPct = getCheckMKAvailabilityUp(
+    checkmkData?.availability ?? checkmkData?.availabilityByPeriod?.[checkmkAvailabilityPeriod]
+  );
+  const heroAvailTrend = (() => {
+    const byPeriod = checkmkData?.availabilityByPeriod || {};
+    const a1 = getCheckMKAvailabilityUp(byPeriod["1m"]);
+    const a3 = getCheckMKAvailabilityUp(byPeriod["3m"]);
+    if (a1 == null || a3 == null) return null;
+    return Math.round((a1 - a3) * 10) / 10;
+  })();
+  const showHeroAvailWidget = true;
+  const showMonitoredOverview = Boolean(rmmManaged || checkmkMapping?.checkmk_host_name);
+  const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
+  const heroFacts = [
+    heroSiteLabel ? { key: "site", icon: "mdi:map-marker-outline", label: copy.hero.factSite || "Site", value: heroSiteLabel } : null,
+    typeDisplayLabel ? { key: "type", icon: "mdi:devices", label: copy.hero.factType || "Type", value: typeDisplayLabel } : null,
+    heroManufacturer ? { key: "mfr", icon: "mdi:domain", label: copy.hero.factManufacturer, value: heroManufacturer } : null,
+    heroModel ? { key: "model", icon: "mdi:tag-outline", label: copy.hero.factModel, value: heroModel } : null,
+    heroSerial ? { key: "serial", icon: "mdi:barcode", label: copy.hero.factSerial || "N° de série", value: heroSerial } : null,
+    heroOsLabel ? { key: "os", icon: "mdi:microsoft-windows", label: copy.hero.factOs, value: heroOsLabel } : null,
+    heroIp ? { key: "ip", icon: "mdi:ip-network-outline", label: copy.hero.factIp, value: heroIp } : null
+  ].filter(Boolean);
   if (!equipment) {
     return <div className={styles.detailPage}>
         <div className={styles.error}>{copy.notFound}</div>
       </div>;
   }
-  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage}`}>
-      <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
-        <div className={enterpriseDetailStyles.heroRow}>
-          <div className={enterpriseDetailStyles.heroMain}>
-            <div className={enterpriseDetailStyles.heroText}>
-              <h1 className={enterpriseDetailStyles.heroTitle}>
-                <StatusDot active={equipmentIsActive} label={equipmentStatusLabel} className={enterpriseDetailStyles.heroTitleStatus} />
-                <span className={enterpriseDetailStyles.heroTitleName}>{equipmentHeroTitle}</span>
-              </h1>
-              <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
-                {typeDisplayLabel ? <span className={enterpriseDetailStyles.heroMetaItem}>
-                    <Icon icon="mdi:devices" aria-hidden />
-                    {typeDisplayLabel}
-                  </span> : null}
-                {(() => {
-                const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
-                const enterpriseName = equipment?.clientName || modalClient?.name || "";
-                if (!enterpriseName && !enterpriseId) return null;
-                const enterpriseClient = modalClient && String(modalClient.id) === String(enterpriseId) ? modalClient : {
-                  id: enterpriseId,
-                  name: enterpriseName,
-                  client_number: equipment?.clientNumber ?? equipment?.client_number,
-                  clientNumber: equipment?.clientNumber ?? equipment?.client_number
-                };
-                const code = getClientNumber(enterpriseClient);
-                const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
-                if (!label && !code) return null;
-                const companyContent = <>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      {code ? <>
-                          <span className={enterpriseDetailStyles.headerClientCode}>{code}</span>
-                          {label}
-                        </> : label}
-                    </>;
-                if (!enterpriseId || !onNavigate) {
-                  return <span className={enterpriseDetailStyles.heroMetaItem}>
-                        {companyContent}
-                      </span>;
-                }
-                return <button type="button" className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaLink}`} onClick={() => openEnterprise()} onMouseDown={e => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    openEnterprise({
-                      background: true
-                    });
-                  }
-                }} onAuxClick={e => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    openEnterprise({
-                      background: true
-                    });
-                  }
-                }} title={copy.hero.viewEnterprise} aria-label={copy.hero.viewEnterprise}>
-                      {companyContent}
-                    </button>;
-              })()}
-                {createdAtLabel ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.stats.createdInVeritas}>
-                    <Icon icon="mdi:calendar-plus" aria-hidden />
-                    {createdAtLabel}
-                  </span> : null}
-                {loadingEquipmentTags ? <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                    {equipmentTags.map(tag => <span key={tag.id} className={enterpriseDetailStyles.heroTagChip} style={{
-                backgroundColor: `${tag.color || "#2b5fab"}18`,
-                borderColor: `${tag.color || "#2b5fab"}55`,
-                color: tag.color || "#2b5fab"
-              }}>
-                        {tag.label}
-                        {canManageEquipmentTags ? <button type="button" className={enterpriseDetailStyles.heroTagRemove} onClick={() => handleRemoveEquipmentTag(tag.id)} aria-label={interpolate(copy.hero.removeTag, {
-                  label: tag.label
-                })}>
-                          <FaTimes />
-                        </button> : null}
-                      </span>)}
-                    {canManageEquipmentTags ? <div className={enterpriseDetailStyles.heroTagAddWrap}>
-                      <SmartTooltip content={copy.hero.addTag}>
-                        <button type="button" className={enterpriseDetailStyles.heroTagAddTrigger} onClick={() => setEquipmentTagModalOpen(true)} aria-label={copy.hero.addTag}>
-                          <FaPlus />
-                        </button>
-                      </SmartTooltip>
-                    </div> : null}
-                  </>}
-              </div>
-              {showRmmHeroStatus ? <RmmCollectionStatusLine equipment={equipmentWithRmmLive} heartbeatIntervalMinutes={rmmHeartbeatMinutes} locale={locale} copy={copy} compact className={enterpriseDetailStyles.heroMetaItemRmm} /> : null}
-            </div>
-          </div>
 
-          <div className={enterpriseDetailStyles.heroActions} ref={heroActionsMenuRef}>
-            {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice variant="chip" equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} /> : null}
-            {rmmManaged && rmmUpdateRequestedAt ? <RmmAgentUpdateStatus equipment={equipment} requestedAt={rmmUpdateRequestedAt} currentVersion={rmmAgentVersion} targetVersion={rmmUpdateTargetVersion} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelAgentUpdate} cancelling={rmmUpdateRequesting} /> : null}
-            {remoteAccessAction ? <SmartTooltip content={remoteAccessAction.tooltip}>
-                <EquipmentRemoteAccessLaunchButton variant="hero" label={remoteAccessAction.label} icon={remoteAccessAction.icon} title={remoteAccessAction.tooltip} onClick={remoteAccessAction.launch} />
-              </SmartTooltip> : null}
-            {showQuickConnectHero ? <SmartTooltip content={copy.hero.openQuickConnect}>
-                <button type="button" className={`${enterpriseDetailStyles.heroMenuBtn} ${styles.heroQuickConnectBtn}`} onClick={() => {
-              const url = buildQuickConnectUrl(formData.quickConnect);
-              if (url) window.open(url, "_blank", "noopener,noreferrer");
-            }} aria-label={copy.hero.openQuickConnect}>
-                  <Icon icon="mdi:link-variant" aria-hidden />
-                </button>
-              </SmartTooltip> : null}
-            <SmartTooltip content={isCommunity ? `${copy.hero.createEvent} (Pro)` : copy.hero.createEvent}>
-              <button type="button" className={`${enterpriseDetailStyles.heroMenuBtn} ${styles.heroCreateEventBtn}`} onClick={openCreateEventModal} aria-label={copy.hero.createEvent}>
-                <Icon icon="mdi:calendar-plus-outline" aria-hidden />
-              </button>
-            </SmartTooltip>
-            <SubscribeBellButton
-              entityType="equipment"
-              entityId={equipmentDbId}
-              subscribeLabel={copy.subscribe?.subscribe || "S’abonner aux notifications"}
-              unsubscribeLabel={copy.subscribe?.unsubscribe || "Se désabonner"}
-              subscribedToast={copy.subscribe?.subscribedToast || "Abonnement activé"}
-              unsubscribedToast={copy.subscribe?.unsubscribedToast || "Abonnement retiré"}
-            />
-            {alertSettings.available ? <SmartTooltip content={interpolate(copy.hero.alertsTooltip, {
-            status: alertSettings.loading ? "…" : alertSettings.statusLabel
-          })}>
-                <button type="button" className={`${enterpriseDetailStyles.heroMenuBtn} ${styles.heroAlertBtn} ${alertSettings.suspended ? styles.heroAlertBtnSuspended : alertSettings.alertsEnabled ? styles.heroAlertBtnActive : styles.heroAlertBtnDisabled}`} onClick={() => setAlertModalOpen(true)} aria-label={copy.hero.alertsAria}>
-                  <Icon icon={alertSettings.suspended || !alertSettings.alertsEnabled ? "mdi:alarm-light-off" : "mdi:alarm-light"} aria-hidden />
-                </button>
-              </SmartTooltip> : null}
-            <SmartTooltip content={copy.hero.edit}>
-              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={openEditEquipmentModal} disabled={editModalOpening} aria-label={copy.hero.edit}>
-                <Icon icon={editModalOpening ? "mdi:loading" : "mdi:pencil-outline"} className={editModalOpening ? styles.spinning : undefined} aria-hidden />
-              </button>
-            </SmartTooltip>
-            {hasHeroOverflowMenu ? <SmartTooltip content={copy.hero.actionsTooltip}>
-              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={() => setHeroMenuOpen(open => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actionsAria}>
-                <Icon icon="mdi:dots-horizontal" aria-hidden />
-              </button>
-            </SmartTooltip> : null}
-            {hasHeroOverflowMenu && heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
-                {showRmmHeroMenu ? rmmSyncPending ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmSyncRequesting} onClick={handleRmmCancelSync}>
-                      <Icon icon="mdi:sync-off" aria-hidden />
-                      <span>{copy.hero.cancelFullSync}</span>
-                    </button> : <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmSyncRequesting} onClick={handleRmmFullSync}>
-                      <Icon icon="mdi:sync" aria-hidden />
-                      <span>{copy.hero.fullSync}</span>
-                    </button> : null}
-                {showRmmHeroMenu ? rmmUpdateRequestedAt ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmUpdateRequesting} onClick={handleRmmCancelAgentUpdate}>
-                      <Icon icon="mdi:cloud-download-off-outline" aria-hidden />
-                      <span>{copy.hero.cancelAgentUpdate}</span>
-                    </button> : <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmUpdateRequesting} onClick={handleRmmAgentUpdate}>
-                      <Icon icon="mdi:cloud-download-outline" aria-hidden />
-                      <span>{copy.hero.updateAgent}</span>
-                    </button> : null}
-                {showCheckmkHeroMenu ? <>
-                    {showRmmHeroMenu ? <div className={enterpriseDetailStyles.heroMenuDivider} role="separator" /> : null}
-                    <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={!checkmkMapping?.checkmk_host_name || loadingCheckMK} onClick={() => {
-                setHeroMenuOpen(false);
-                loadCheckMKData({
-                  force: true
-                });
-              }}>
-                      <Icon icon="mdi:sync" aria-hidden />
-                      <span>{copy.hero.refreshCheckmk}</span>
-                    </button>
-                    <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" onClick={() => {
-                setHeroMenuOpen(false);
-                setCheckmkMappingModal(true);
-              }}>
-                      <Icon icon="simple-icons:checkmk" aria-hidden />
-                      <span>{checkmkMapping?.checkmk_host_name ? copy.hero.mappingCheckmk : copy.hero.mapCheckmk}</span>
-                    </button>
-                  </> : null}
+  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage} msp-page-grid`}>
+      <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
+        <div className={enterpriseDetailStyles.heroTop}>
+          <div className={enterpriseDetailStyles.heroIdentityBlock}>
+              <div className={enterpriseDetailStyles.heroCover} aria-hidden />
+              <div className={enterpriseDetailStyles.heroIdentityRow}>
+                <div className={enterpriseDetailStyles.heroMain}>
+                  <span className={enterpriseDetailStyles.heroBrandIcon} aria-hidden>
+                    <Icon icon={heroIcon} width={30} height={30} />
+                  </span>
+                  <div className={enterpriseDetailStyles.heroText}>
+                    <h1 className={enterpriseDetailStyles.heroTitle}>
+                      <span className={enterpriseDetailStyles.heroTitleName}>{equipmentHeroTitle}</span>
+                      <span className={`${enterpriseDetailStyles.heroStatusBadge} ${equipmentStatusActive ? "" : enterpriseDetailStyles.heroStatusBadgeInactive}`.trim()}>
+                        <StatusDot active={equipmentStatusActive} label="" className={enterpriseDetailStyles.heroTitleStatus} />
+                        {equipmentStatusLabel}
+                      </span>
+                    </h1>
+                    {heroSubtitleParts.length ? <p className={enterpriseDetailStyles.heroDescription}>
+                        {heroSubtitleParts.join(" · ")}
+                      </p> : null}
+                    <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
+                      {(() => {
+                  const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
+                  const enterpriseName = equipment?.clientName || modalClient?.name || "";
+                  if (!enterpriseName && !enterpriseId) return null;
+                  const enterpriseClient = modalClient && String(modalClient.id) === String(enterpriseId) ? modalClient : {
+                    id: enterpriseId,
+                    name: enterpriseName,
+                    client_number: equipment?.clientNumber ?? equipment?.client_number,
+                    clientNumber: equipment?.clientNumber ?? equipment?.client_number
+                  };
+                  const code = getClientNumber(enterpriseClient);
+                  const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
+                  if (!label && !code) return null;
+                  const companyContent = <>
+                        <Icon icon="mdi:domain" aria-hidden />
+                        {code ? <>
+                            <span className={enterpriseDetailStyles.headerClientCode}>{code}</span>
+                            {label}
+                          </> : label}
+                      </>;
+                  if (!enterpriseId || !onNavigate) {
+                    return <span className={enterpriseDetailStyles.heroMetaItem}>
+                          {companyContent}
+                        </span>;
+                  }
+                  return <button type="button" className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaLink}`} onClick={() => openEnterprise()} onMouseDown={e => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      openEnterprise({
+                        background: true
+                      });
+                    }
+                  }} onAuxClick={e => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      openEnterprise({
+                        background: true
+                      });
+                    }
+                  }} title={copy.hero.viewEnterprise} aria-label={copy.hero.viewEnterprise}>
+                        {companyContent}
+                      </button>;
+                })()}
+                      {createdAtLabel ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.stats.createdInVeritas}>
+                          <Icon icon="mdi:calendar-plus" aria-hidden />
+                          {createdAtLabel}
+                        </span> : null}
+                      {loadingEquipmentTags ? <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span> : <>
+                          {equipmentTags.map(tag => <span key={tag.id} className={enterpriseDetailStyles.heroTagChip} style={{
+                    backgroundColor: `${tag.color || "#2b5fab"}18`,
+                    borderColor: `${tag.color || "#2b5fab"}55`,
+                    color: tag.color || "#2b5fab"
+                  }}>
+                              {tag.label}
+                              {canManageEquipmentTags ? <button type="button" className={enterpriseDetailStyles.heroTagRemove} onClick={() => handleRemoveEquipmentTag(tag.id)} aria-label={interpolate(copy.hero.removeTag, {
+                      label: tag.label
+                    })}>
+                                <FaTimes />
+                              </button> : null}
+                            </span>)}
+                          {canManageEquipmentTags ? <div className={enterpriseDetailStyles.heroTagAddWrap}>
+                            <SmartTooltip content={copy.hero.addTag}>
+                              <button type="button" className={enterpriseDetailStyles.heroTagAddTrigger} onClick={() => setEquipmentTagModalOpen(true)} aria-label={copy.hero.addTag}>
+                                <FaPlus />
+                              </button>
+                            </SmartTooltip>
+                          </div> : null}
+                        </>}
+                    </div>
+                    {showRmmHeroStatus ? <RmmCollectionStatusLine equipment={equipmentWithRmmLive} heartbeatIntervalMinutes={rmmHeartbeatMinutes} locale={locale} copy={copy} compact className={enterpriseDetailStyles.heroMetaItemRmm} /> : null}
+                  </div>
+                </div>
+
+                {showHeroAvailWidget ? <div className={enterpriseDetailStyles.heroRightCluster}>
+                  <div className={enterpriseDetailStyles.heroKpiStrip} aria-label={copy.hero.availabilityLabel}>
+                    <div className={enterpriseDetailStyles.heroKpiCard}>
+                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconSites}`} aria-hidden>
+                        <Icon icon="mdi:chart-donut" />
+                      </span>
+                      <span className={enterpriseDetailStyles.heroKpiValue}>
+                        {heroAvailPct != null ? `${Number(heroAvailPct).toFixed(0)}%` : "—"}
+                        {heroAvailTrend != null ? <em className={heroAvailTrend >= 0 ? styles.heroAvailTrendUp : styles.heroAvailTrendDown}>
+                            {heroAvailTrend >= 0 ? "+" : ""}
+                            {heroAvailTrend}
+                          </em> : null}
+                      </span>
+                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.hero.availabilityLabel}</span>
+                    </div>
+                    <div className={enterpriseDetailStyles.heroKpiCard}>
+                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconCritical}`} aria-hidden>
+                        <Icon icon="mdi:alert-octagon-outline" />
+                      </span>
+                      <span className={enterpriseDetailStyles.heroKpiValue}>{heroServiceCounts.critical}</span>
+                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.overview?.servicesCritical || copy.hero.servicesCritical}</span>
+                    </div>
+                    <div className={enterpriseDetailStyles.heroKpiCard}>
+                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconWarnings}`} aria-hidden>
+                        <Icon icon="mdi:alert-outline" />
+                      </span>
+                      <span className={enterpriseDetailStyles.heroKpiValue}>{heroServiceCounts.warning}</span>
+                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.overview?.servicesWarning || copy.hero.servicesWarning}</span>
+                    </div>
+                    <div className={enterpriseDetailStyles.heroKpiCard}>
+                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconDevices}`} aria-hidden>
+                        <Icon icon="mdi:check-circle-outline" />
+                      </span>
+                      <span className={enterpriseDetailStyles.heroKpiValue}>{heroServiceCounts.ok}</span>
+                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.overview?.servicesOk || copy.hero.servicesOk}</span>
+                    </div>
+                  </div>
+                </div> : null}
+              </div>
+
+            {heroFacts.length ? <div
+              className={styles.heroFactStrip}
+              aria-label={copy.hero.factsAria}
+            >
+                {heroFacts.map(fact => <div key={fact.key} className={styles.heroFactItem}>
+                    <span className={styles.heroFactIcon} aria-hidden>
+                      <Icon icon={fact.icon} />
+                    </span>
+                    <div className={styles.heroFactText}>
+                      <span className={styles.heroFactLabel}>{fact.label}</span>
+                      <span className={styles.heroFactValue} title={String(fact.value)}>{fact.value}</span>
+                    </div>
+                  </div>)}
               </div> : null}
           </div>
         </div>
       </header>
 
-      <div className={styles.shell}>
-        <nav className={styles.tabBar} aria-label={copy.tabs.aria}>
-          <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'dashboard' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('dashboard')}>
-            <Icon icon="mdi:view-dashboard-outline" />
-            {copy.tabs.general}
+      <div className={`${enterpriseDetailStyles.pageBody} ${styles.shell}`}>
+        <div className={styles.pageGridEquip}>
+        <div className={styles.mainColumnEquip}>
+        <nav className={enterpriseDetailStyles.heroTabBar} role="tablist" aria-label={copy.tabs.aria}>
+          <button type="button" role="tab" aria-selected={rightPanelTab === "dashboard"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "dashboard" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("dashboard")}>
+            <Icon icon="mdi:view-dashboard-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.general}</span>
           </button>
-          {showRmmOperationsTab ? <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'operations' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('operations')}>
-              <Icon icon="mdi:shield-lock-outline" />
-              {copy.tabs.cybersecurity || copy.tabs.system}
+          {showRmmOperationsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "operations"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "operations" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("operations")}>
+              <Icon icon="mdi:shield-lock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.cybersecurity || copy.tabs.system}</span>
             </button> : null}
-          {showRmmPeripheralsTab ? <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'peripherals' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('peripherals')}>
-              <Icon icon="mdi:package-variant-closed" />
-              {copy.tabs.inventory || copy.tabs.peripherals}
+          {showRmmPeripheralsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "peripherals"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "peripherals" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("peripherals")}>
+              <Icon icon="mdi:package-variant-closed" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.inventory || copy.tabs.peripherals}</span>
             </button> : null}
-          {showSupervisionTab ? <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'supervision' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('supervision')}>
-              <Icon icon="mdi:radar" />
-              {copy.tabs.supervision}
+          {showSupervisionTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
+              <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.supervision}</span>
             </button> : null}
-          <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics' ? styles.tabBtnActive : ''}`} onClick={() => openActivityTab()}>
-            <Icon icon="mdi:chart-timeline-variant" />
-            {copy.tabs.activity}
+          <button type="button" role="tab" aria-selected={rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => openActivityTab()}>
+            <Icon icon="mdi:chart-timeline-variant" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.activity}</span>
           </button>
-          <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'documents' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('documents')}>
-            <Icon icon="mdi:file-document-outline" />
-            {copy.tabs.documents}
+          <button type="button" role="tab" aria-selected={rightPanelTab === "documents"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "documents" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("documents")}>
+            <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.documents}</span>
           </button>
-          <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'notes' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('notes')}>
-            <Icon icon="mdi:note-text-outline" />
-            {copy.tabs.notes}
+          <button type="button" role="tab" aria-selected={rightPanelTab === "notes"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "notes" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("notes")}>
+            <Icon icon="mdi:note-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.notes}</span>
           </button>
-          <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'logs' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('logs')}>
-            <Icon icon="mdi:history" />
-            {copy.tabs.logs}
+          <button type="button" role="tab" aria-selected={rightPanelTab === "logs"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "logs" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("logs")}>
+            <Icon icon="mdi:history" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.logs}</span>
           </button>
         </nav>
-
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
         <div className={styles.mainContent}>
-          {rightPanelTab === 'dashboard' && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
+          {rightPanelTab === "dashboard" && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? "" : styles.dashboardSplitSolo}`.trim()}>
               <div className={styles.dashboardMain}>
-                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
-
-                <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
-
-                {equipment.type === 'Ordinateurs' && <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} />}
+                {showMonitoredOverview ? <EquipmentOverviewDashboard equipment={equipmentWithRmmLive || equipment} checkmkData={checkmkData} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} loadingCheckMK={loadingCheckMK} /> : <>
+                    <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                    <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+                    {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
+                  </>}
               </div>
-              {showRmmHeroStatus && rmmDeviceHealth ? <div className={styles.dashboardAside}>
+              {showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? <div className={styles.dashboardAside}>
                 <ScoreAside health={rmmDeviceHealth} copy={{
               scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
               breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
@@ -1882,6 +2182,49 @@ export default function EquipmentDetailPage({
                   </>}
               </div>
             </section>}
+        </div>
+        </div>
+
+        <EquipmentDetailAside
+          equipment={equipmentWithRmmLive || equipment}
+          formData={formData}
+          clientSites={clientSites}
+          modalClient={modalClient}
+          copy={copy}
+          checkmkMapping={checkmkMapping}
+          remoteAccessAction={remoteAccessAction}
+          showQuickConnect={showQuickConnectHero}
+          onEdit={openEditEquipmentModal}
+          onCreateEvent={openCreateEventModal}
+          onCreateTicket={handleQuickCreateTicket}
+          onOpenEnterprise={() => openEnterprise()}
+          onRemoteAccess={remoteAccessAction?.launch}
+          onQuickConnect={() => {
+            const url = buildQuickConnectUrl(formData.quickConnect);
+            if (url) window.open(url, "_blank", "noopener,noreferrer");
+          }}
+          onOpenSupervision={showSupervisionTab ? () => setRightPanelTab("supervision") : null}
+          onRefreshCheckmk={checkmkMapping?.checkmk_host_name ? () => loadCheckMKData({ force: true }) : null}
+          onOpenCheckmkMapping={showCheckmkHeroMenu ? () => setCheckmkMappingModal(true) : null}
+          onRmmSync={showRmmHeroMenu ? (rmmSyncPending ? handleRmmCancelSync : handleRmmFullSync) : null}
+          onRmmAgentUpdate={showRmmHeroMenu ? handleRmmAgentUpdate : null}
+          onRmmCancelAgentUpdate={showRmmHeroMenu ? handleRmmCancelAgentUpdate : null}
+          rmmSyncPending={rmmSyncPending}
+          rmmUpdateRequested={Boolean(rmmUpdateRequestedAt)}
+          rmmSyncRequesting={rmmSyncRequesting}
+          rmmUpdateRequesting={rmmUpdateRequesting}
+          loadingCheckMK={loadingCheckMK}
+          onSubscribe={toggleEquipmentSubscribe}
+          subscribed={equipmentSubscribed}
+          subscribeLoading={equipmentSubscribeLoading}
+          subscribeSaving={equipmentSubscribeSaving}
+          showMaintenance={showMaintenanceControl}
+          inMaintenance={inMaintenance}
+          maintenanceBusy={maintenanceBusy}
+          onMaintenance={() => (inMaintenance ? setEndMaintenanceOpen(true) : setMaintenanceModalOpen(true))}
+          showAlerts={Boolean(alertSettings.available)}
+          onAlerts={() => setAlertModalOpen(true)}
+        />
         </div>
       </div>
 
@@ -2423,6 +2766,32 @@ export default function EquipmentDetailPage({
       />
 
       <EquipmentAlertSuspensionModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} equipment={equipment} onNavigate={onNavigate} alert={alertSettings} />
+
+      <SupervisionMaintenanceModal
+        open={maintenanceModalOpen}
+        item={maintenanceItem}
+        copy={supervisionCopy.ops || {}}
+        busy={maintenanceBusy}
+        deviceOnly
+        onConfirm={handleConfirmMaintenance}
+        onClose={() => {
+          if (!maintenanceBusy) setMaintenanceModalOpen(false);
+        }}
+      />
+
+      <ConfirmModal
+        open={endMaintenanceOpen}
+        onClose={() => {
+          if (!maintenanceBusy) setEndMaintenanceOpen(false);
+        }}
+        onConfirm={handleEndMaintenance}
+        title={copy.hero.maintenanceEndConfirmTitle || "Terminer la maintenance ?"}
+        message={copy.hero.maintenanceEndConfirmMessage || ""}
+        icon="mdi:traffic-cone"
+        confirmLabel={copy.hero.maintenanceEndConfirm || "Terminer"}
+        confirmVariant="dangerSolid"
+        confirmLoading={maintenanceBusy}
+      />
 
       <ClientTagModal open={equipmentTagModalOpen} entityKind="equipment" entityName={equipmentHeroTitle || equipment?.name || ""} assignedTags={equipmentTags} saving={addingEquipmentTag} onClose={() => {
       if (addingEquipmentTag) return;

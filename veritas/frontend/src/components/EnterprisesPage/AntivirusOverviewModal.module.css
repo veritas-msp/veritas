@@ -12,6 +12,24 @@
   box-shadow: 0 6px 16px rgba(232, 93, 58, 0.28);
 }
 
+.headerIconLogo {
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 28, 46, 0.12);
+  padding: 0.4rem;
+}
+
+.headerLogoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+:global(html.dark) .headerIconLogo {
+  background: #1a2540;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
 .accentBarMailinblack {
   background: linear-gradient(90deg, #c2410c 0%, #e85d3a 45%, #fb923c 100%);
 }

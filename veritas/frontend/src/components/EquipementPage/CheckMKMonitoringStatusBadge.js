@@ -90,6 +90,60 @@ export default function CheckMKMonitoringStatusBadge({
 export function getEquipmentDbId(equipment) {
   return equipment?.rawData?.id || equipment?.id || null;
 }
+
+/** Normalize UI / API / FR aliases to the CheckMK mappable type set. */
+export function normalizeCheckMKEquipmentType(type) {
+  const value = String(type || "").trim();
+  if (!value) return value;
+  if (value === "Serveurs" || value === "Server") return "Servers";
+  if (value === "Stockage") return "Storage";
+  if (value === "Firewall") return "Firewalls";
+  if (value === "Sauvegarde" || value === "Backup") return "Backup";
+  return value;
+}
+
 export function isCheckMKMappableType(type) {
-  return ['Servers', 'NAS', 'Storage', 'Firewalls', 'Switch', 'BorneWifi', 'Alimentation', 'Routeur', 'TOIP'].includes(type);
+  const normalized = normalizeCheckMKEquipmentType(type);
+  return ["Servers", "NAS", "Storage", "Firewalls", "Switch", "BorneWifi", "Alimentation", "Routeur", "TOIP", "Backup"].includes(normalized);
+}
+
+/** Resolve CheckMK mapping from detail state or any equipment payload shape. */
+export function resolveEquipmentCheckmkMapping(equipment, stateMapping = null) {
+  const candidates = [
+    stateMapping,
+    equipment?.checkmkMapping,
+    equipment?.rawData?.checkmkMapping,
+    equipment?.rawData?.data?.checkmkMapping
+  ];
+  for (const mapping of candidates) {
+    const host = String(mapping?.checkmk_host_name || "").trim();
+    if (!host) continue;
+    return {
+      checkmk_host_name: host,
+      checkmk_site: mapping.checkmk_site || null,
+      checkmk_service_name: mapping.checkmk_service_name || null,
+      is_active: mapping.is_active !== false
+    };
+  }
+  const host = String(
+    equipment?.checkmk_host_name ||
+      equipment?.rawData?.checkmk_host_name ||
+      equipment?.rawData?.data?.checkmk_host_name ||
+      ""
+  ).trim();
+  if (!host) return null;
+  return {
+    checkmk_host_name: host,
+    checkmk_site:
+      equipment?.checkmk_site ||
+      equipment?.rawData?.checkmk_site ||
+      equipment?.rawData?.data?.checkmk_site ||
+      null,
+    checkmk_service_name:
+      equipment?.checkmk_service_name ||
+      equipment?.rawData?.checkmk_service_name ||
+      equipment?.rawData?.data?.checkmk_service_name ||
+      null,
+    is_active: true
+  };
 }

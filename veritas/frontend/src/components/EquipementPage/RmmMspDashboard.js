@@ -7,6 +7,8 @@ import EmbeddedEquipmentActionsMenu from "./EmbeddedEquipmentActionsMenu";
 import { isRmmSyncPending, getRmmAgentOsDisplay } from "./rmmMonitoringUtils";
 import { getOsIconName } from "./osIconUtils";
 import { buildRmmFleetStats, filterRmmFleetByStatus, filterRmmFleetRows, getRmmFleetSortValue, sortRmmFleetRows } from "./rmmMspUtils";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 function getHealthTone(score) {
   if (score == null) return "neutral";
   if (score >= 80) return "good";
@@ -50,19 +52,6 @@ function KpiCard({
       </span>
     </button>;
 }
-function SortableHeader({
-  column,
-  label,
-  sortBy,
-  sortDirection,
-  onSort
-}) {
-  const isActive = sortBy === column;
-  return <th className={styles.sortableTh} onClick={() => onSort(column)} aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      {label}
-      {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
-    </th>;
-}
 async function copyText(value, label, pageCopy) {
   const raw = String(value || "").trim();
   if (!raw) return;
@@ -99,10 +88,17 @@ function RmmFleetTable({
   const [openMenuKey, setOpenMenuKey] = useState(null);
   const [syncingIds, setSyncingIds] = useState(() => new Set());
   const handleSort = key => {
-    setSort(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-    }));
+    setSort(prev => {
+      const next = cycleSortState({
+        column: key,
+        sortBy: prev.key,
+        sortDirection: prev.direction,
+        defaultSortBy: "last_seen_at",
+        defaultSortDirection: "desc",
+        firstDirection: "asc"
+      });
+      return { key: next.sortBy, direction: next.sortDirection };
+    });
   };
   const sortedAgents = useMemo(() => sortRmmFleetRows(agents, sort.key, sort.direction), [agents, sort.key, sort.direction]);
   const buildMenuItems = agent => {

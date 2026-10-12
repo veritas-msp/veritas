@@ -158,9 +158,7 @@ export default function EquipmentNotesPanel({
       </div>
 
       {loading ? <div className={styles.loading}>{notesCopy.loading}</div> : notes.length === 0 ? <div className={enterpriseStyles.clientNotesEmpty}>
-          <button type="button" className={enterpriseStyles.clientNotesAddButton} onClick={openCreateModal}>
-            {notesCopy.addNote}
-          </button>
+          <p className={styles.hint}>{notesCopy.empty || "Aucune note"}</p>
         </div> : <ul className={enterpriseStyles.clientNotesList}>
           {notes.map(note => {
         const visibilityLabel = note.visibility === "public" ? notesCopy.visibilityPublic : notesCopy.visibilityPrivate;

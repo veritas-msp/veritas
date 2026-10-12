@@ -21,7 +21,8 @@
 }
 
 .toolbarGrow {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  row-gap: 0.45rem;
 }
 
 .searchWrapFull {
@@ -93,7 +94,8 @@
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.75rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0;
   padding: 0.7rem 0.85rem;
   border-radius: 12px;
   border: 1px solid var(--msp-border, #dde3ed);
@@ -174,6 +176,12 @@
   top: 0;
   z-index: 1;
   background: var(--msp-surface-2, #f7f9fc);
+}
+
+.thSortInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .table th {
@@ -629,82 +637,40 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-.trashSwitch {
+.trashBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.55rem 0.35rem 0.65rem;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 999px;
+  border-radius: var(--msp-radius-sm, 10px);
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
-  user-select: none;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  font-size: 1.1rem;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
-.trashSwitchOn {
-  border-color: rgba(220, 38, 38, 0.28);
-  background: rgba(220, 38, 38, 0.06);
+.trashBtn:hover {
+  border-color: rgba(220, 38, 38, 0.45);
   color: #b91c1c;
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
 }
 
-.trashSwitchIcon {
-  font-size: 1rem;
-  flex-shrink: 0;
+.trashBtnActive {
+  border-color: rgba(220, 38, 38, 0.45);
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.12);
+  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2);
 }
 
-.trashSwitchLabel {
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.trashSwitchInput {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.trashSwitchSlider {
-  position: relative;
-  width: 34px;
-  height: 18px;
-  border-radius: 999px;
-  background: #cbd5e1;
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-
-.trashSwitchSlider::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
-  transition: transform 0.15s;
-}
-
-.trashSwitchInput:checked + .trashSwitchSlider {
-  background: #dc2626;
-}
-
-.trashSwitchInput:checked + .trashSwitchSlider::before {
-  transform: translateX(16px);
-}
-
-.trashSwitchInput:focus-visible + .trashSwitchSlider {
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25);
+.trashBtnActive:hover {
+  border-color: rgba(220, 38, 38, 0.55);
+  color: #991b1b;
+  background: rgba(220, 38, 38, 0.16);
 }
 
 
@@ -1090,9 +1056,25 @@
 }
 
 .mainColumn > :global(.emptyState),
-.mainColumn > :global(.stateBox) {
+.mainColumn > :global(.stateBox),
+.mainColumn > :global(.listBody) {
   flex: 1;
   min-height: 0;
+}
+
+.mainColumn :global(.listArea),
+.mainColumn :global(.panelCard) {
+  flex: 1;
+  min-height: 0;
+}
+
+.mainColumn .viewsExpandBtn {
+  flex-shrink: 0;
+}
+
+.mainColumn .trashBtn {
+  width: 34px;
+  height: 34px;
 }
 
 .mainColumn :global(.toolbar) {
@@ -1100,7 +1082,7 @@
 }
 
 .mainColumn :global(.pagination) {
-  padding: 0.45rem 0.15rem 0;
+  padding: 0.15rem 0.15rem 0;
 }
 
 @media (max-width: 960px) {
@@ -1314,24 +1296,28 @@
   color: var(--msp-text, #e8edf5);
 }
 
-:global(html.dark) .trashSwitch {
+:global(html.dark) .trashBtn {
   background: var(--msp-surface-2, #152035);
   border-color: var(--msp-border, #2a3a55);
   color: var(--msp-muted, #8fa8c4);
 }
 
-:global(html.dark) .trashSwitchOn {
-  background: rgba(248, 113, 113, 0.12);
-  border-color: rgba(248, 113, 113, 0.35);
+:global(html.dark) .trashBtn:hover {
+  border-color: rgba(248, 113, 113, 0.5);
   color: #fca5a5;
+  background: rgba(248, 113, 113, 0.1);
 }
 
-:global(html.dark) .trashSwitchSlider {
-  background: #475569;
+:global(html.dark) .trashBtnActive {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.16);
 }
 
-:global(html.dark) .trashSwitchInput:checked + .trashSwitchSlider {
-  background: #ef4444;
+:global(html.dark) .trashBtnActive:hover {
+  border-color: rgba(248, 113, 113, 0.65);
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.22);
 }
 
 .satisfactionRow {

@@ -9,6 +9,8 @@ import { FaEthernet } from "react-icons/fa";
 import { IoServerSharp } from "react-icons/io5";
 import MonitoringClientModal from "./MonitoringClientModal";
 import ContentLoader from "react-content-loader";
+import SortIcon from "../../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
 export default function MonitoringClientSkeleton({
   isLoading,
   searchTerm: externalSearchTerm = "",
@@ -117,12 +119,15 @@ export default function MonitoringClientSkeleton({
     return () => ac.abort();
   }, []);
   const toggleSort = key => {
-    if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: null,
+      defaultSortDirection: "asc"
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
   useEffect(() => {
     let filtered = [...clients];
@@ -171,7 +176,7 @@ export default function MonitoringClientSkeleton({
               <th onClick={() => toggleSort('name')} style={{
               cursor: 'pointer'
             }}>
-                NAME {sortKey === 'name' ? sortDir === 'asc' ? '▲' : '▼' : ''}
+                NAME <SortIcon active={sortKey === "name"} direction={sortDir || "asc"} />
               </th>
               <th>FREQUENCY</th>
               <th>ENABLED MODULES</th>

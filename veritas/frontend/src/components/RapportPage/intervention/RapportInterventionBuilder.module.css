@@ -1,8 +1,16 @@
+.builderMain {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
 .formBody {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 1rem;
+  padding: 1.25rem 1.35rem 1.5rem;
+  background: var(--msp-surface-2, #f4f7fb);
 }
 
 .formGrid {
@@ -179,15 +187,21 @@
 .signaturePad {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
 }
 
 .signatureCanvas {
   width: 100%;
-  height: 120px;
+  height: 140px;
   border: 1px dashed var(--msp-border, #c5d0df);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
 }
 
 .validationLayout {
@@ -216,6 +230,13 @@
   font-size: 0.82rem;
   line-height: 1.5;
   color: var(--msp-text, #0f1c2e);
+}
+
+.previewDocBranded {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .previewTitle {
@@ -755,6 +776,374 @@
   border: 0;
 }
 
+.infoTable {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+}
+
+.infoRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.42fr) minmax(0, 1fr);
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoLabel {
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  background: var(--msp-surface-2, #eef3f8);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.infoValue {
+  display: flex;
+  align-items: stretch;
+  background: var(--msp-surface, #fff);
+  min-width: 0;
+}
+
+.infoValue .fieldInput,
+.infoValue .fieldSelect {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  height: 100%;
+}
+
+.infoValue .fieldInput:focus,
+.infoValue .fieldSelect:focus {
+  box-shadow: inset 0 0 0 2px var(--msp-accent-soft, rgba(43, 95, 171, 0.18));
+}
+
+.ticketPickWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.25rem 0;
+}
+
+.ticketPickWrap .fieldSelect,
+.ticketPickWrap .fieldInput {
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  height: auto;
+  box-shadow: none;
+}
+
+.ticketPickHint {
+  margin: 0;
+  padding: 0 0.15rem;
+  font-size: 0.68rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
+.photoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.photoHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.photoActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.photoPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 180px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 8px;
+  background: var(--msp-surface-2, #eef3f8);
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+}
+
+.photoPreview img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+  background: var(--msp-surface, #fff);
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.taskRow {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 2.15rem;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.taskIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.taskInput {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.62rem 0.8rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.875rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.taskInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.taskRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.taskRemove:hover {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.previewTaskList {
+  margin: 0.35rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.operationsTable {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+}
+
+.operationsHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px 40px;
+  gap: 0;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.operationsHeadLabel {
+  padding: 0.7rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.operationsHeadStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-style: italic;
+  font-weight: 700;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.statusOk {
+  color: #7dff9a;
+}
+
+.statusPb {
+  color: #ff8b8b;
+}
+
+.operationsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 64px 40px;
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.operationsRow .movementCellInput {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.statusBtn {
+  appearance: none;
+  border: none;
+  border-left: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.statusBtn:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.statusBtnActiveOk {
+  background: rgba(34, 140, 70, 0.12);
+  color: #168a3c;
+}
+
+.statusBtnActivePb {
+  background: rgba(190, 40, 40, 0.12);
+  color: #c0392b;
+}
+
+.certifyBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.certifyHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.signatureSub {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.previewPhoto {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  margin-top: 0.65rem;
+  object-fit: contain;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+}
+
+.materialHint {
+  margin: 0.15rem 0 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+:global(html.dark) .formBody {
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 88%, #000);
+}
+
+:global(html.dark) .operationsRow {
+  background: var(--msp-surface-2, #152038);
+}
+
+:global(html.dark) .statusBtn,
+:global(html.dark) .operationsTable,
+:global(html.dark) .movementCellInput,
+:global(html.dark) .signatureCanvas,
+:global(html.dark) .previewDoc,
+:global(html.dark) .actionsPanel,
+:global(html.dark) .taskInput {
+  background: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #e8edf5);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .taskIndex {
+  background: rgba(74, 143, 212, 0.18);
+  color: var(--msp-accent, #5a9de0);
+}
+
+:global(html.dark) .taskRemove:hover {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+:global(html.dark) .previewTaskList {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .signaturePad,
+:global(html.dark) .previewPanel,
+:global(html.dark) .certifyBlock {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .operationsHead {
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 85%, #0f1c2e);
+}
+
+:global(html.dark) .operationsRow .movementCellInput {
+  background: transparent;
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .statusBtn {
+  border-left-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .previewBox,
+:global(html.dark) .previewTable th {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+}
+
 @media (max-width: 900px) {
   .formGrid,
   .materialRowGrid,
@@ -763,6 +1152,25 @@
   .previewSignatureGrid,
   .validationLayout {
     grid-template-columns: 1fr;
+  }
+
+  .infoRow,
+  .operationsHead,
+  .operationsRow {
+    grid-template-columns: 1fr;
+  }
+
+  .infoLabel {
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  }
+
+  .operationsHeadStatus,
+  .statusBtn,
+  .movementRowRemove {
+    border-left: none;
+    border-top: 1px solid var(--msp-border-light, #e2e8f0);
+    min-height: 2.4rem;
   }
 
   .actionsPanel {

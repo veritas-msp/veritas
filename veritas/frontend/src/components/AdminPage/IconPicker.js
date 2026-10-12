@@ -18,7 +18,9 @@ export default function IconPicker({
   clearSearchLabel = "Clear search",
   changeLabel = "Change icon",
   pickerAria = "Choose an icon",
-  triggerLabel = ""
+  triggerLabel = "",
+  color = "",
+  bare = false
 }) {
   const rootRef = useRef(null);
   const panelRef = useRef(null);
@@ -112,9 +114,14 @@ export default function IconPicker({
 
   if (popover) {
     const hasTriggerLabel = Boolean(String(triggerLabel || "").trim());
+    const triggerColor = String(color || "").trim();
     return <div ref={rootRef} className={styles.popoverWrap}>
-        <button type="button" className={`${styles.trigger} ${hasTriggerLabel ? styles.triggerLabeled : ""} ${open ? styles.triggerOpen : ""}`} onClick={() => setOpen(current => !current)} aria-expanded={open} aria-haspopup="dialog" title={changeLabel} aria-label={changeLabel}>
-          <Icon icon={selected} className={styles.triggerIcon} />
+        <button type="button" className={`${styles.trigger} ${bare ? styles.triggerBare : ""} ${hasTriggerLabel ? styles.triggerLabeled : ""} ${open ? styles.triggerOpen : ""}`} style={triggerColor ? {
+      color: triggerColor
+    } : undefined} onClick={() => setOpen(current => !current)} aria-expanded={open} aria-haspopup="dialog" title={changeLabel} aria-label={changeLabel}>
+          <Icon icon={selected} className={styles.triggerIcon} style={triggerColor ? {
+        color: triggerColor
+      } : undefined} />
           {hasTriggerLabel ? <span className={styles.triggerLabel}>{triggerLabel}</span> : null}
           <span className={styles.triggerHint}>
             <Icon icon={hasTriggerLabel ? "mdi:chevron-down" : "mdi:pencil-outline"} aria-hidden />

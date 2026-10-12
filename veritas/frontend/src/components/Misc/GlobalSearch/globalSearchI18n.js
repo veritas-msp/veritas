@@ -131,7 +131,7 @@ export const RESULT_TYPE_ICONS = {
   client: "mingcute:building-1-fill",
   contact: "mingcute:contacts-3-fill",
   ticket: "mdi:message-processing-outline",
-  ticket_sales: "mdi:briefcase-edit-outline",
+  ticket_sales: "mdi:briefcase-outline",
   equipment: "mdi:devices",
   tenant: "mdi:cloud-outline",
   antivirus: "mdi:shield-bug-outline",

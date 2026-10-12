@@ -7,7 +7,9 @@ import { mdiWeb, mdiWallFire, mdiWifiMarker, mdiBug } from "@mdi/js";
 import { FaEthernet } from "react-icons/fa";
 import { IoServerSharp } from "react-icons/io5";
 import { fetchMonitoringDocuments } from "../../../api/monitoringDocuments";
+import SharedSortIcon from "../../Misc/SortableHeader/SortIcon";
 import styles from "./MonitoringHome.module.css";
+import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
 export default function MonitoringPage({
   clients = [],
   onNewDocument,
@@ -304,19 +306,20 @@ export default function MonitoringPage({
     return list;
   }, [recentDocs, normalizedSearch, clientFilters, sortBy, sortOrder]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortOrder(o => o === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(column);
-      setSortOrder("asc");
-    }
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection: sortOrder,
+      defaultSortBy: "created_at",
+      defaultSortDirection: "desc",
+      firstDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortOrder(next.sortDirection);
   };
-  const SortIcon = ({
-    column
-  }) => {
-    if (sortBy !== column) return null;
-    return <span className={styles.sortIcon}>{sortOrder === "asc" ? " ↑" : " ↓"}</span>;
-  };
+  const SortIcon = ({ column }) => (
+    <SharedSortIcon active={sortBy === column} direction={sortOrder} className={styles.sortIcon} />
+  );
   const totalPages = Math.ceil(filteredDocs.length / docsPerPage);
   const startIndex = (currentPage - 1) * docsPerPage;
   const endIndex = startIndex + docsPerPage;

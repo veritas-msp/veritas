@@ -10,6 +10,7 @@ const LOCALE_BCP47 = {
 };
 const SUBMIT_ACTION_IDS = ["open", "pending", "on_hold", "solved"];
 const SIDE_CONVERSATION_TEAMS = ["commercial", "n2", "cyber", "external"];
+const SIDE_CONVERSATION_RECIPIENT_TYPES = ["agent", "contact", "prestataire", "email"];
 const DETAIL_COPY = {
   fr: {
     pageTitle: "Ticket",
@@ -38,6 +39,12 @@ const DETAIL_COPY = {
       n2: "Technicien niveau 2",
       cyber: "Agent cybersécurité",
       external: "Prestataire externe"
+    },
+    sideConversationRecipientTypes: {
+      agent: "Agent Veritas",
+      contact: "Contact",
+      prestataire: "Prestataire",
+      email: "Adresse e-mail"
     },
     sidebarExpand: {
       collapseAria: "Réduire la section",
@@ -346,6 +353,7 @@ const DETAIL_COPY = {
       satisfactionFilledAria: "Évaluation client reçue",
       linkedTicket: "Ticket lié",
       searchTicket: "Rechercher un ticket…",
+      typeToSearchTicket: "Tapez un n° ou un titre pour afficher des suggestions",
       noTicket: "Aucun ticket trouvé",
       noLinkedTicket: "Aucun ticket lié",
       removeLinkedTicketAria: "Retirer le lien avec le ticket #{number}",
@@ -470,35 +478,45 @@ const DETAIL_COPY = {
     },
     sideModal: {
       newTitle: "Nouvelle side conversation",
-      newSubtitle: "Renseigne les champs puis envoie la demande",
-      target: "Cible",
+      newSubtitle: "Choisis un destinataire — l'e-mail part et les réponses reviennent ici",
+      target: "Destinataire",
       subject: "Sujet",
       subjectPlaceholder: "Ex: Besoin d'escalade sur ce ticket",
+      agent: "Agent",
+      agentPlaceholder: "Rechercher un agent…",
+      contact: "Contact",
+      contactPlaceholder: "Rechercher un contact…",
+      contactNoClient: "Rattachez une entreprise au ticket pour lister les contacts.",
+      typeToSearch: "Tapez pour afficher des suggestions",
+      noResults: "Aucun résultat",
       prestataire: "Prestataire rattaché",
-      prestatairePlaceholder: "Sélectionner un prestataire…",
+      prestatairePlaceholder: "Rechercher un prestataire…",
       prestataireLoading: "Chargement des prestataires…",
       prestataireEmpty: "Aucun prestataire rattaché à cette entreprise.",
       prestataireNoClient: "Rattachez d'abord une entreprise au ticket pour proposer des prestataires.",
       prestataireContact: "Contact du prestataire",
-      prestataireContactPlaceholder: "Sélectionner un contact…",
+      prestataireContactPlaceholder: "Rechercher un contact…",
       prestataireAppliedHint: "Destinataire et copie préremplis depuis le prestataire.",
-      recipient: "Destinataire",
+      recipient: "Adresse e-mail",
       recipientPlaceholder: "Ex: jean.dupont@client.fr",
       cc: "Copie (CC)",
       ccPlaceholder: "Ex: marie@client.fr, support@client.fr",
       message: "Message",
-      messagePlaceholder: "Décris la demande d'aide...",
+      messagePlaceholder: "Rédige le message envoyé par e-mail…",
       cancel: "Annuler",
-      send: "Envoyer la demande",
+      send: "Envoyer l'e-mail",
+      sending: "Envoi…",
       statusDone: "Terminée",
       statusOpen: "Ouverte",
       toPrefix: "To: ",
       ccPrefix: "CC: ",
-      replyPlaceholder: "Répondre...",
+      replyPlaceholder: "Répondre par e-mail…",
       sendReply: "Envoyer",
       reopen: "Réouvrir",
       close: "Fermer",
-      prestataireSubject: "Ticket #{number} — {provider}"
+      prestataireSubject: "Ticket #{number} — {provider}",
+      mailHint: "Le destinataire reçoit un e-mail. Sa réponse alimente cette conversation.",
+      agentHint: "L'agent est notifié dans Veritas (cloche). Il répond depuis la side conversation du ticket."
     },
     toasts: {
       loadTicketError: "Erreur lors du chargement du ticket",
@@ -640,6 +658,12 @@ const DETAIL_COPY = {
       n2: "Level 2 technician",
       cyber: "Cybersecurity agent",
       external: "External provider"
+    },
+    sideConversationRecipientTypes: {
+      agent: "Veritas agent",
+      contact: "Contact",
+      prestataire: "Provider",
+      email: "Email address"
     },
     sidebarExpand: {
       collapseAria: "Collapse section",
@@ -948,6 +972,7 @@ const DETAIL_COPY = {
       satisfactionFilledAria: "Customer rating received",
       linkedTicket: "Linked ticket",
       searchTicket: "Search for a ticket…",
+      typeToSearchTicket: "Type a number or title to show suggestions",
       noTicket: "No ticket found",
       noLinkedTicket: "No linked ticket",
       removeLinkedTicketAria: "Remove link with ticket #{number}",
@@ -1072,35 +1097,45 @@ const DETAIL_COPY = {
     },
     sideModal: {
       newTitle: "New side conversation",
-      newSubtitle: "Fill in the fields then send the request",
-      target: "Target",
+      newSubtitle: "Pick a recipient — email is sent and replies come back here",
+      target: "Recipient",
       subject: "Subject",
       subjectPlaceholder: "E.g. Escalation needed on this ticket",
+      agent: "Agent",
+      agentPlaceholder: "Search for an agent…",
+      contact: "Contact",
+      contactPlaceholder: "Search for a contact…",
+      contactNoClient: "Link a company to the ticket to list contacts.",
+      typeToSearch: "Type to show suggestions",
+      noResults: "No results",
       prestataire: "Linked provider",
-      prestatairePlaceholder: "Select a provider…",
+      prestatairePlaceholder: "Search for a provider…",
       prestataireLoading: "Loading providers…",
       prestataireEmpty: "No provider linked to this company.",
       prestataireNoClient: "Link a company to the ticket first to suggest providers.",
       prestataireContact: "Provider contact",
-      prestataireContactPlaceholder: "Select a contact…",
+      prestataireContactPlaceholder: "Search for a contact…",
       prestataireAppliedHint: "Recipient and CC prefilled from the provider.",
-      recipient: "Recipient",
+      recipient: "Email address",
       recipientPlaceholder: "E.g. john.doe@client.com",
       cc: "Copy (CC)",
       ccPlaceholder: "E.g. mary@client.com, support@client.com",
       message: "Message",
-      messagePlaceholder: "Describe the help request...",
+      messagePlaceholder: "Write the email message…",
       cancel: "Cancel",
-      send: "Send request",
+      send: "Send email",
+      sending: "Sending…",
       statusDone: "Done",
       statusOpen: "Open",
       toPrefix: "To: ",
       ccPrefix: "CC: ",
-      replyPlaceholder: "Reply...",
+      replyPlaceholder: "Reply by email…",
       sendReply: "Send",
       reopen: "Reopen",
       close: "Close",
-      prestataireSubject: "Ticket #{number} — {provider}"
+      prestataireSubject: "Ticket #{number} — {provider}",
+      mailHint: "The recipient gets an email. Their reply feeds this conversation.",
+      agentHint: "The agent is notified in Veritas (bell). They reply from the ticket side conversation."
     },
     toasts: {
       loadTicketError: "Error loading ticket",
@@ -1437,6 +1472,10 @@ export function getTicketDetailCopy(locale) {
     key,
     label: t.sideConversationTeams[key]
   }));
+  const sideConversationRecipientOptions = SIDE_CONVERSATION_RECIPIENT_TYPES.map(key => ({
+    key,
+    label: (t.sideConversationRecipientTypes || {})[key] || key
+  }));
   return {
     ...base,
     ...t,
@@ -1444,6 +1483,7 @@ export function getTicketDetailCopy(locale) {
     statusOptions,
     submitActions,
     sideConversationTeamOptions,
+    sideConversationRecipientOptions,
     formatDateTime: value => {
       if (!value) return t.fallbackDash;
       const d = new Date(value);

@@ -1,40 +1,9 @@
 
 
 .pageColumn {
-  padding: 1rem 1.25rem 1.25rem;
-  gap: 0.75rem;
-}
-
-.pageColumn > header {
-  margin: 0;
-  width: 100%;
-  max-width: none;
-  box-sizing: border-box;
-}
-
-.heroActions {
-  align-items: stretch;
-}
-
-.heroActions > nav {
-  align-self: center;
-}
-
-.fleetSyncBtn {
-  display: inline-grid;
-  place-items: center;
-  align-self: center;
-  width: 2.45rem;
-  height: 2.45rem;
   padding: 0;
-  border-radius: 12px;
-  border: 1px solid var(--msp-border, #d7e0ec);
-  background: var(--msp-surface, #fff);
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1.15rem;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.05);
-  transition: background 0.15s, border-color 0.15s;
+  gap: 0;
+  min-height: 0;
 }
 
 .pageColumn > main {
@@ -48,12 +17,115 @@
   min-height: 0;
 }
 
+.toolbarTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.12rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #eef3f8);
+  flex-shrink: 0;
+}
+
+.toolbarTab {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 30px;
+  padding: 0.2rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #64748b);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.toolbarTab:hover {
+  color: var(--msp-text, #0f172a);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.toolbarTabActive {
+  background: var(--msp-surface, #fff);
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+}
+
+.toolbarTabIcon {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.toolbarTabLabel {
+  line-height: 1;
+}
+
+.pollerChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #d7e0ec);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #64748b);
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  cursor: default;
+}
+
+.pollerChipActive {
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.28);
+  background: rgba(22, 163, 74, 0.08);
+}
+
+.pollerChipSuspended {
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+
+.pollerTooltip {
+  white-space: pre-line;
+}
+
+.fleetSyncToolbarBtn {
+  color: var(--msp-accent, #2b5fab);
+}
+
+@media (max-width: 1100px) {
+  .toolbarTabLabel {
+    display: none;
+  }
+}
+
+:global(html.dark) .toolbarTabs {
+  background: var(--msp-surface-2);
+  border-color: var(--msp-border);
+}
+
+:global(html.dark) .toolbarTab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:global(html.dark) .toolbarTabActive {
+  background: var(--msp-surface);
+  color: var(--msp-accent);
+}
+
 .pageColumn .contentShell {
   width: 100%;
   max-width: none;
-  margin: 0;
-  padding: 0;
-  gap: 0;
   flex: 1;
   min-height: 0;
 }
@@ -81,6 +153,94 @@
 .pageColumn .content > :global(*) {
   flex: 1;
   min-height: 0;
+}
+
+.opsSplit {
+  display: flex;
+  align-items: stretch;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  transition: gap 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.opsSplitCollapsed {
+  gap: 0;
+}
+
+.opsMain {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.opsSide {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 18.5rem;
+  width: 18.5rem;
+  max-width: 18.5rem;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    flex-basis 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.opsSide > * {
+  width: 18.5rem;
+  min-width: 18.5rem;
+  max-width: 18.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.opsSplitCollapsed .opsSide {
+  flex-basis: 0;
+  width: 0;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(0.75rem);
+  pointer-events: none;
+}
+
+@media (max-width: 1100px) {
+  .opsSplit {
+    flex-direction: column;
+  }
+
+  .opsSide {
+    flex: 0 0 16rem;
+    width: 100%;
+    max-width: none;
+    height: 16rem;
+  }
+
+  .opsSide > * {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .opsSplitCollapsed .opsSide {
+    flex-basis: 0;
+    width: 100%;
+    max-width: none;
+    height: 0;
+    transform: translateY(0.5rem);
+  }
 }
 
 .brandMarkSupervision {

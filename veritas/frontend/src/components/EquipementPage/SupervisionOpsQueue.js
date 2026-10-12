@@ -1,8 +1,8 @@
 import { Icon } from "@iconify/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
@@ -10,31 +10,11 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
+import { SUPERVISION_FAMILIES } from "./supervisionAlertRulesConfig";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionOpsQueue.module.css";
 
-const MUTE_MENU_GAP = 6;
-const MUTE_MENU_VIEWPORT_PAD = 8;
-
-function getMuteMenuPosition(triggerEl, menuEl) {
-  if (!triggerEl) return null;
-  const triggerRect = triggerEl.getBoundingClientRect();
-  const menuWidth = menuEl?.offsetWidth || 200;
-  const menuHeight = menuEl?.offsetHeight || 220;
-  let top = triggerRect.bottom + MUTE_MENU_GAP;
-  let left = triggerRect.right - menuWidth;
-  if (left < MUTE_MENU_VIEWPORT_PAD) left = MUTE_MENU_VIEWPORT_PAD;
-  if (left + menuWidth > window.innerWidth - MUTE_MENU_VIEWPORT_PAD) {
-    left = window.innerWidth - menuWidth - MUTE_MENU_VIEWPORT_PAD;
-  }
-  if (top + menuHeight > window.innerHeight - MUTE_MENU_VIEWPORT_PAD) {
-    top = triggerRect.top - menuHeight - MUTE_MENU_GAP;
-  }
-  return {
-    top: Math.max(MUTE_MENU_VIEWPORT_PAD, top),
-    left: Math.max(MUTE_MENU_VIEWPORT_PAD, left)
-  };
-}
+const FAMILY_BY_KEY = new Map(SUPERVISION_FAMILIES.map(f => [f.key, f]));
 
 function toneClass(tone, severity) {
   if (tone === "bad" || severity === "critical") return styles.sevCritical;
@@ -61,16 +41,20 @@ function alertRowIcon(item) {
   return DOMAIN_ICONS.devices;
 }
 
-function workflowBadgeClass(status) {
-  if (status === "acked") return styles.wfAcked;
-  if (status === "linked") return styles.wfLinked;
-  return styles.wfOpen;
+function resolveDeviceName(item) {
+  return (
+    item?.equipment?.name ||
+    item?.alertState?.meta?.equipmentName ||
+    item?.hostName ||
+    item?.alertState?.meta?.hostName ||
+    null
+  );
 }
 
-function severityBadgeClass(severity) {
-  if (severity === "critical") return styles.sevBadgeCritical;
-  if (severity === "warning") return styles.sevBadgeWarning;
-  return styles.sevBadgeInfo;
+function resolveFamilyMeta(item) {
+  const key = String(item?.family || item?.alertState?.meta?.family || "").trim().toLowerCase();
+  if (!key) return null;
+  return FAMILY_BY_KEY.get(key) || null;
 }
 
 function actionHint(copy, key) {
@@ -100,14 +84,6 @@ function remediationLabel(item, copy) {
   return null;
 }
 
-function minutesUntilTomorrowMorning() {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(8, 0, 0, 0);
-  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
-  return Math.max(30, Math.round((next.getTime() - now.getTime()) / 60000));
-}
-
 function FreshnessBadge({ item, copy, locale }) {
   const last = item?.lastSyncedAt;
   const stale = Boolean(item?.stale) || !last;
@@ -125,113 +101,6 @@ function FreshnessBadge({ item, copy, locale }) {
       {short}
     </span>
   );
-}
-
-function MuteMenu({
-  item,
-  copy,
-  localeTag,
-  anchorRef,
-  onMute,
-  onUnmute,
-  onClose
-}) {
-  const menuRef = useRef(null);
-  const [menuStyle, setMenuStyle] = useState(null);
-  const options = [
-    { id: "2h", label: copy?.mute?.hours2 || "2h", durationMinutes: 120 },
-    { id: "tomorrow", label: copy?.mute?.tomorrow || "Tomorrow 8am", durationMinutes: minutesUntilTomorrowMorning() },
-    { id: "24h", label: copy?.mute?.hours24 || "24h", durationMinutes: 1440 }
-  ];
-
-  const updatePosition = () => {
-    const next = getMuteMenuPosition(anchorRef?.current, menuRef.current);
-    if (next) setMenuStyle(next);
-  };
-
-  useLayoutEffect(() => {
-    updatePosition();
-    const raf = window.requestAnimationFrame(updatePosition);
-    return () => window.cancelAnimationFrame(raf);
-  }, [item?.id, item?.muted, item?.mutedUntil]);
-
-  useEffect(() => {
-    const handleReposition = () => updatePosition();
-    window.addEventListener("resize", handleReposition);
-    window.addEventListener("scroll", handleReposition, true);
-    return () => {
-      window.removeEventListener("resize", handleReposition);
-      window.removeEventListener("scroll", handleReposition, true);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = event => {
-      const target = event.target;
-      if (menuRef.current?.contains(target) || anchorRef?.current?.contains(target)) return;
-      onClose?.();
-    };
-    const handleEscape = event => {
-      if (event.key === "Escape") onClose?.();
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [anchorRef, onClose]);
-
-  const menu = (
-    <div
-      ref={menuRef}
-      className={styles.muteMenu}
-      role="menu"
-      style={menuStyle || { visibility: "hidden" }}
-      onClick={e => e.stopPropagation()}
-    >
-      <p className={styles.muteMenuHint}>{copy?.mute?.hint}</p>
-      {item.muted ? (
-        <button type="button" className={styles.muteMenuItem} onClick={() => onUnmute?.(item)}>
-          {copy?.mute?.unmute || "Unmute"}
-        </button>
-      ) : (
-        <>
-          {options.map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              className={styles.muteMenuItem}
-              onClick={() => onMute?.(item, { mode: "temporary", durationMinutes: opt.durationMinutes })}
-            >
-              {opt.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className={styles.muteMenuItem}
-            onClick={() => onMute?.(item, { mode: "disabled" })}
-          >
-            {copy?.mute?.disabled || "Disable"}
-          </button>
-        </>
-      )}
-      {item.mutedUntil ? (
-        <p className={styles.muteMenuHint}>
-          {(copy?.mute?.until || "until {date}").replace(
-            "{date}",
-            new Date(item.mutedUntil).toLocaleString(localeTag, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
-          )}
-        </p>
-      ) : null}
-      <button type="button" className={styles.muteMenuItem} onClick={onClose}>
-        {copy?.diagnose?.close || "Close"}
-      </button>
-    </div>
-  );
-
-  if (typeof document === "undefined") return null;
-  return createPortal(menu, document.body);
 }
 
 function QueueActionButton({
@@ -290,143 +159,109 @@ function FilterChip({
     </button>;
 }
 
-const COVERAGE_EXCLUDED_KEYS = new Set([
-  "Sauvegarde",
-  "Ordinateurs",
-  "Videosurveillance",
-  "Internet",
-  "TOIP",
-  "Alimentation"
-]);
-
-/** Ordre d’affichage des KPI couverture (aligné sur SUPERVISION_COVERAGE_FAMILY_KEYS). */
-const COVERAGE_FAMILY_ORDER = [
-  "Firewalls",
-  "Routeur",
-  "Serveurs",
-  "Stockage",
-  "Switch",
-  "BorneWifi"
-];
-
-const COVERAGE_FAMILY_ICONS = {
-  Firewalls: "mdi:shield-outline",
-  Routeur: "mdi:router-wireless",
-  Serveurs: "mdi:server",
-  Stockage: "mdi:database-outline",
-  Switch: "mdi:lan-connect",
-  BorneWifi: "mdi:wifi"
-};
-
-function coverageTone(monitored, total) {
-  if (!total) return "empty";
-  if (monitored >= total) return "good";
-  if (monitored <= 0) return "bad";
-  const pct = monitored / total;
-  if (pct >= 0.7) return "warn";
-  return "bad";
-}
-
-function CoverageStrip({
-  families = [],
-  copy
+function MoreMenu({
+  item,
+  copy,
+  triageView,
+  canDiagnose,
+  busy,
+  resyncBusy,
+  onIgnore,
+  onMaintenance,
+  onUnack,
+  onResync,
+  onDiagnose,
+  onOpenItem,
+  onClose
 }) {
-  const coverageCopy = copy?.coverage || {};
-  const labels = coverageCopy.families || {};
-  const byKey = new Map();
-  for (const family of Array.isArray(families) ? families : []) {
-    const key = String(family?.key || "");
-    if (!key || COVERAGE_EXCLUDED_KEYS.has(key) || family?.isCustom) continue;
-    byKey.set(key, family);
-  }
-
-  // Toujours afficher les familles du centre (y compris à 0) pour une grille pleine largeur stable.
-  const ordered = COVERAGE_FAMILY_ORDER.map(key => {
-    const family = byKey.get(key);
-    return family || {
-      key,
-      count: 0,
-      monitoredCount: 0,
-      icon: COVERAGE_FAMILY_ICONS[key] || "mdi:devices"
+  const menuRef = useRef(null);
+  useEffect(() => {
+    const handleClickOutside = event => {
+      if (menuRef.current?.contains(event.target)) return;
+      onClose?.();
     };
-  });
+    const handleEscape = event => {
+      if (event.key === "Escape") onClose?.();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [onClose]);
 
-  return <div
-    className={styles.coverageGrid}
-    role="group"
-    aria-label={coverageCopy.aria || coverageCopy.title || "Coverage"}
-    data-guide="supervision-coverage"
-    style={{ "--coverage-cols": String(Math.max(ordered.length, 1)) }}
-  >
-      {ordered.map(family => {
-      const key = String(family.key || "");
-      const label = labels[key] || family.label || key;
-      const total = Number(family.count) || 0;
-      const monitored = Number(family.monitoredCount ?? family.monitored) || 0;
-      const pct = total > 0 ? Math.round(monitored / total * 100) : 0;
-      const tone = coverageTone(monitored, total);
-      const ratio = interpolate(coverageCopy.ratio || "{monitored}/{total}", {
-        monitored,
-        total
-      });
-      const tip = interpolate(coverageCopy.tooltip || "{label} · {monitored}/{total}", {
-        label,
-        monitored,
-        total
-      });
-      return <article
-        key={key}
-        className={`${styles.coverageCard} ${styles[`coverageTone_${tone}`] || ""}`}
-        title={tip}
-      >
-              <div className={styles.coverageCardHead}>
-                <Icon icon={family.icon || COVERAGE_FAMILY_ICONS[key] || "mdi:devices"} className={styles.coverageIcon} aria-hidden />
-                <span className={styles.coverageLabel}>{label}</span>
-              </div>
-              <div className={styles.coverageRatio}>{ratio}</div>
-              <div className={styles.coveragePct}>{pct}%</div>
-              <div className={styles.coverageBar} aria-hidden>
-                <span className={styles.coverageBarFill} style={{ width: `${pct}%` }} />
-              </div>
-            </article>;
-    })}
-    </div>;
+  const more = copy?.moreMenu || {};
+  return (
+    <div ref={menuRef} className={styles.moreMenu} role="menu" onClick={e => e.stopPropagation()}>
+      {triageView === "todo" ? (
+        <>
+          <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onIgnore?.(item); }}>
+            {more.ignore || copy?.actions?.dismiss || "Ignore"}
+          </button>
+          <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onMaintenance?.(item); }}>
+            {more.maintenance || "Maintenance"}
+          </button>
+        </>
+      ) : null}
+      {triageView === "in_progress" ? (
+        <>
+          <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onUnack?.(item); }}>
+            {more.unack || copy?.actions?.unack || "Release"}
+          </button>
+          <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onMaintenance?.(item); }}>
+            {more.maintenance || "Maintenance"}
+          </button>
+        </>
+      ) : null}
+      <p className={styles.muteMenuHint}>{more.technical || "Technical"}</p>
+      <button type="button" className={styles.muteMenuItem} disabled={busy || resyncBusy} onClick={() => { onClose?.(); onResync?.(item); }}>
+        {more.resync || copy?.actions?.resync || "Resync"}
+      </button>
+      {canDiagnose ? (
+        <button type="button" className={styles.muteMenuItem} disabled={busy || !item.alertId} onClick={() => { onClose?.(); onDiagnose?.(item); }}>
+          {more.diagnose || copy?.actions?.diagnose || "Diagnostic"}
+        </button>
+      ) : null}
+      <button type="button" className={styles.muteMenuItem} onClick={() => { onClose?.(); onOpenItem?.(item); }}>
+        {more.openDevice || copy?.actions?.open || "Open device"}
+      </button>
+    </div>
+  );
 }
 
 export default function SupervisionOpsQueue({
   items = [],
   kpi = {},
-  coverageFamilies = [],
   domainCounts = {},
-  workflowCounts = {},
+  triageCounts = {},
   severityFilter = "all",
   domainFilter = "all",
-  workflowFilter = "all",
+  triageView = "todo",
   searchQuery = "",
   onSeverityFilter,
   onDomainFilter,
-  onWorkflowFilter,
+  onTriageView,
   onSearchChange,
   onOpenItem,
   onTicketSupport,
   onAck,
   onUnack,
   onResolve,
-  onDismiss,
+  onIgnore,
+  onMaintenance,
   onResync,
-  onMute,
-  onUnmute,
   onDiagnose,
+  onEndExclusion,
+  exclusions = [],
   canDiagnose = false,
   resyncBusyId = null,
-  showMuted = false,
-  mutedCount = 0,
-  onToggleMuted,
   busyId = null,
   localeTag,
   copy,
   showDomain = true,
-  animateNewRows = false
+  animateNewRows = false,
+  toolbarActions = null
 }) {
   const columns = copy.columns || {};
   const common = useCommonCopy();
@@ -438,8 +273,7 @@ export default function SupervisionOpsQueue({
   const knownIdsRef = useRef(new Set());
   const primedRef = useRef(false);
   const [enteringIds, setEnteringIds] = useState(() => new Set());
-  const [muteMenuId, setMuteMenuId] = useState(null);
-  const muteAnchorRef = useRef(null);
+  const [moreMenuId, setMoreMenuId] = useState(null);
   const enterTimersRef = useRef(new Map());
 
   useEffect(() => {
@@ -483,12 +317,16 @@ export default function SupervisionOpsQueue({
     enterTimersRef.current.clear();
   }, []);
   const handleSort = column => {
-    if (sortKey === column) {
-      setSortDir(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortKey(column);
-    setSortDir(column === "when" ? "desc" : "asc");
+    const next = cycleSortState({
+      column,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: null,
+      defaultSortDirection: "asc",
+      getFirstDirection: col => (col === "when" ? "desc" : "asc")
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
   const sortedItems = useMemo(() => {
     if (!sortKey) return items;
@@ -527,6 +365,11 @@ export default function SupervisionOpsQueue({
             sensitivity: "base"
           });
           break;
+        case "device":
+          cmp = text(resolveDeviceName(a)).localeCompare(text(resolveDeviceName(b)), undefined, {
+            sensitivity: "base"
+          });
+          break;
         case "domain":
           cmp = text(a.domain).localeCompare(text(b.domain), undefined, {
             sensitivity: "base"
@@ -554,46 +397,34 @@ export default function SupervisionOpsQueue({
   }, [sortedItems, currentPage, pageSize]);
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, severityFilter, domainFilter, workflowFilter, sortKey, sortDir, pageSize]);
+  }, [searchQuery, severityFilter, domainFilter, triageView, sortKey, sortDir, pageSize]);
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
   const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
     label
   });
-  const domainChips = showDomain ? [{
-    id: "all",
-    label: copy.domains.all,
-    count: workflowCounts.total || 0,
-    icon: "mdi:view-grid-outline",
-    kpiTone: "gray"
+  const triageChips = [{
+    id: "todo",
+    label: copy.triage?.todo || "To handle",
+    count: triageCounts.todo || 0,
+    icon: "mdi:alert-circle-outline",
+    kpiTone: "red"
   }, {
-    id: "devices",
-    label: copy.domains.devices,
-    count: domainCounts.devices || 0,
-    icon: DOMAIN_ICONS.devices,
+    id: "in_progress",
+    label: copy.triage?.inProgress || "In progress",
+    count: triageCounts.inProgress || 0,
+    icon: "mdi:account-check",
     kpiTone: "blue"
   }, {
-    id: "backups",
-    label: copy.domains.backups,
-    count: domainCounts.backups || 0,
-    icon: DOMAIN_ICONS.backups,
-    kpiTone: "cyan"
-  }, {
-    id: "contracts",
-    label: copy.domains.contracts,
-    count: domainCounts.contracts || 0,
-    icon: DOMAIN_ICONS.contracts,
+    id: "waiting",
+    label: copy.triage?.waiting || "Waiting",
+    count: triageCounts.waiting || 0,
+    icon: "mdi:wrench-clock",
     kpiTone: "amber"
-  }, {
-    id: "rmm",
-    label: copy.domains.rmm,
-    count: domainCounts.rmm || 0,
-    icon: DOMAIN_ICONS.rmm,
-    kpiTone: "violet"
-  }] : [];
+  }];
 
-  const severityChips = [{
+  const severityChips = triageView === "todo" ? [{
     id: "critical",
     label: copy.kpi.critical,
     count: kpi.critical || 0,
@@ -605,33 +436,14 @@ export default function SupervisionOpsQueue({
     count: kpi.warning || 0,
     icon: "mdi:alert",
     kpiTone: "amber"
-  }];
+  }] : [];
 
-  const workflowChips = [{
-    id: "open",
-    label: copy.workflow?.open || "Open",
-    count: workflowCounts.open || 0,
-    icon: "mdi:circle-outline",
-    kpiTone: "blue"
-  }, {
-    id: "acked",
-    label: copy.workflow?.acked || "Acked",
-    count: workflowCounts.acked || 0,
-    icon: "mdi:account-check",
-    kpiTone: "teal"
-  }, {
-    id: "linked",
-    label: copy.workflow?.linked || "Linked",
-    count: workflowCounts.linked || 0,
-    icon: "mdi:link-variant",
-    kpiTone: "violet"
-  }];
+  const waitingCopy = copy.waitingPanel || {};
 
   return <>
-    <div className={styles.root}>
-      <CoverageStrip families={coverageFamilies} copy={copy} />
-      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`} data-guide="supervision-filters">
-        <div className={layout.searchWrap}>
+    <div className={`${layout.panelCard} ${styles.root}`}>
+      <div className={layout.tableSearchBar} data-guide="supervision-filters">
+        <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
           <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
           <input type="search" inputMode="search" enterKeyHint="search" className={layout.searchInput} value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
           {searchQuery ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
@@ -640,38 +452,109 @@ export default function SupervisionOpsQueue({
               </button>
             </SmartTooltip> : null}
         </div>
-        <div className={layout.statusChips} role="group" aria-label={copy.kpi?.aria || copy.domainAria} data-guide="supervision-kpis">
-          {domainChips.length ? <>
-              {domainChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={domainFilter === chip.id} onClick={() => onDomainFilter?.(chip.id)} />)}
-              <span className={layout.statusChipSeparator} aria-hidden />
-            </> : null}
-          {severityChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={severityFilter === chip.id} onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)} />)}
-          <span className={layout.statusChipSeparator} aria-hidden />
-          {workflowChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={workflowFilter === chip.id} onClick={() => onWorkflowFilter?.(workflowFilter === chip.id ? "all" : chip.id)} />)}
-          {onToggleMuted ? (
+        <div className={layout.statusChips} role="group" aria-label={copy.triage?.aria || copy.kpi?.aria} data-guide="supervision-kpis">
+          {triageChips.map(chip => (
+            <FilterChip
+              key={chip.id}
+              label={chip.label}
+              count={chip.count}
+              icon={chip.icon}
+              kpiTone={chip.kpiTone}
+              active={triageView === chip.id}
+              onClick={() => onTriageView?.(chip.id)}
+            />
+          ))}
+          {severityChips.length ? (
             <>
               <span className={layout.statusChipSeparator} aria-hidden />
-              <FilterChip
-                label={copy.showMuted || "Muted"}
-                count={mutedCount}
-                icon="mdi:alarm-light-off"
-                kpiTone="amber"
-                active={showMuted}
-                onClick={() => onToggleMuted(!showMuted)}
-              />
+              {severityChips.map(chip => (
+                <FilterChip
+                  key={chip.id}
+                  label={chip.label}
+                  count={chip.count}
+                  icon={chip.icon}
+                  kpiTone={chip.kpiTone}
+                  active={severityFilter === chip.id}
+                  onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)}
+                />
+              ))}
             </>
           ) : null}
         </div>
+        {toolbarActions}
       </div>
 
-      {items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
-          <MspEmptyState className={styles.emptyStateFill} icon="mdi:sleep" title={copy.emptyTitle} text={copy.emptyText} />
+      {triageView === "waiting" ? (
+        <div className={styles.tableWrap} data-guide="supervision-queue">
+          {(exclusions || []).length === 0 ? (
+            <div className={styles.emptyWrap}>
+              <MspEmptyState
+                className={styles.emptyStateFill}
+                icon="mdi:wrench-clock"
+                title={waitingCopy.emptyTitle || "No active maintenances"}
+                text={waitingCopy.emptyText || "Device or service exclusions appear here."}
+              />
+            </div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>{waitingCopy.colDevice || "Device"}</th>
+                  <th>{waitingCopy.colServices || "Services"}</th>
+                  <th>{waitingCopy.colReason || "Reason"}</th>
+                  <th>{waitingCopy.colUntil || "Ends"}</th>
+                  <th>{waitingCopy.colActions || "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {exclusions.map(row => (
+                  <tr key={row.id} className={styles.dataRow}>
+                    <td>{row.equipmentName || row.equipmentId || "—"}</td>
+                    <td>
+                      {row.scope === "device"
+                        ? waitingCopy.allServices || "All"
+                        : row.serviceName || row.serviceKey || "—"}
+                    </td>
+                    <td>{row.reason || "—"}</td>
+                    <td>
+                      {row.excludedUntil
+                        ? new Date(row.excludedUntil).toLocaleString(localeTag, {
+                            day: "2-digit",
+                            month: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit"
+                          })
+                        : waitingCopy.indefinite || "Indefinite"}
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.actionBtn}
+                        onClick={() => onEndExclusion?.(row)}
+                      >
+                        {waitingCopy.end || "End"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ) : items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
+          <MspEmptyState
+            className={styles.emptyStateFill}
+            icon="mdi:sleep"
+            title={triageView === "todo" ? (copy.emptyTodoTitle || copy.emptyTitle) : (copy.emptyInProgressTitle || copy.emptyTitle)}
+            text={triageView === "todo" ? (copy.emptyTodoText || copy.emptyText) : (copy.emptyInProgressText || copy.emptyText)}
+          />
         </div> : <>
         <div className={styles.tableWrap} data-guide="supervision-queue">
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colSev} />
               <col className={styles.colAlert} />
+              <col className={styles.colDevice} />
               <col className={styles.colCompany} />
               {showDomain ? <col className={styles.colDomain} /> : null}
               <col className={styles.colSeverity} />
@@ -683,6 +566,7 @@ export default function SupervisionOpsQueue({
               <tr>
                 <th className={styles.sevCol} aria-hidden />
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
+                <SortableHeader column="device" label={columns.device || "Périphérique"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.device || "Périphérique")} />
                 <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
                 {showDomain ? <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} /> : null}
                 <SortableHeader column="severity" label={columns.severity || "Sévérité"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.severity || "Sévérité")} />
@@ -696,7 +580,14 @@ export default function SupervisionOpsQueue({
               const wf = item.workflowStatus || "open";
               const busy = busyId === item.id;
               const domainLabel = showDomain ? copy.domains?.[item.domain] || item.domain : null;
-              const severityLabel = item.severity === "critical" ? copy.kpi.critical : item.severity === "warning" ? copy.kpi.warning : copy.severityInfo || "Info";
+              const severityLabel =
+                copy.severityLabels?.[item.severity] ||
+                (item.severity === "critical"
+                  ? "Critique"
+                  : item.severity === "warning"
+                    ? "Warning"
+                    : copy.severityInfo || "Info");
+              const statusLabel = copy.statusLabels?.[wf] || copy.workflow?.[wf] || wf;
               const whenRaw =
                 item.notifiedAt ||
                 item.alertAt ||
@@ -705,7 +596,15 @@ export default function SupervisionOpsQueue({
               const when = formatWhen(whenRaw, localeTag);
               const handler = item.handledByName || item.alertState?.ackedByName || null;
               const remediation = remediationLabel(item, copy);
-              const metaBits = [item.subtitle].filter(Boolean);
+              const deviceName = resolveDeviceName(item);
+              const familyMeta = resolveFamilyMeta(item);
+              const coverageKey = familyMeta ? FAMILY_COVERAGE_KEY[familyMeta.key] : null;
+              const familyLabel =
+                (coverageKey && copy.coverage?.families?.[coverageKey]) ||
+                familyMeta?.label ||
+                null;
+              const hostName = item.hostName || item.alertState?.meta?.hostName || null;
+              const showHostMeta = Boolean(hostName && deviceName && hostName !== deviceName);
               const collabBits = [];
               if (handler) {
                 collabBits.push(interpolate(copy.collab?.handledBy || "{name}", {
@@ -734,12 +633,20 @@ export default function SupervisionOpsQueue({
                             </span>
                           ) : null}
                         </span>
-                        {metaBits.length ? <span className={styles.rowMeta}>{metaBits.join(" · ")}</span> : null}
+                        {showHostMeta ? <span className={styles.rowMeta}>{hostName}</span> : null}
                         {collabBits.length ? <span className={styles.rowCollab}>
                             <Icon icon="mdi:account-outline" aria-hidden />
                             {collabBits.join(" · ")}
                           </span> : null}
                       </div>
+                    </td>
+                    <td className={styles.deviceCell}>
+                      <span className={styles.deviceCellInner} title={familyLabel || undefined}>
+                        <span className={styles.familyIcon} aria-hidden>
+                          <Icon icon={familyMeta?.icon || "mdi:devices"} />
+                        </span>
+                        <span className={styles.deviceName}>{deviceName || "—"}</span>
+                      </span>
                     </td>
                     <td className={styles.companyCell}>{item.clientName || "—"}</td>
                     {showDomain ? <td className={styles.domainCol}>
@@ -750,68 +657,70 @@ export default function SupervisionOpsQueue({
                         {domainLabel}
                       </span>
                     </td> : null}
-                    <td className={styles.severityCell}>
-                      <span className={`${styles.chipBadge} ${severityBadgeClass(item.severity)}`}>{severityLabel}</span>
-                    </td>
-                    <td className={styles.statusCell}>
-                      <span className={`${styles.wfBadge} ${workflowBadgeClass(wf)}`}>{copy.workflow?.[wf] || wf}</span>
-                    </td>
+                    <td className={styles.severityCell}>{severityLabel}</td>
+                    <td className={styles.statusCell}>{statusLabel}</td>
                     <td className={styles.whenCell}>
                       <time dateTime={whenRaw || undefined}>{when}</time>
                     </td>
                     <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                       <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>
-                        {wf === "open" ? <QueueActionButton hint={actionHint(copy, "ack")} label={copy.actions.ack} icon="mdi:eye-check-outline" disabled={busy} onClick={() => onAck?.(item)} /> : wf === "acked" ? <QueueActionButton hint={actionHint(copy, "unack")} label={copy.actions.unack} icon="mdi:account-remove-outline" disabled={busy} onClick={() => onUnack?.(item)} /> : null}
-                        <QueueActionButton hint={actionHint(copy, "support")} label={copy.actions.support} icon="mdi:message-processing-outline" disabled={busy} onClick={() => onTicketSupport?.(item)} />
-                        <QueueActionButton hint={actionHint(copy, "resolve")} label={copy.actions.resolve} icon="mdi:check-circle-outline" disabled={busy} onClick={() => onResolve?.(item)} />
-                        <QueueActionButton hint={actionHint(copy, "dismiss")} label={copy.actions.dismiss} icon="mdi:close-circle-outline" disabled={busy} onClick={() => onDismiss?.(item)} />
+                        {triageView === "todo" || wf === "open" ? (
+                          <QueueActionButton
+                            hint={actionHint(copy, "ack")}
+                            label={copy.actions.ack}
+                            icon="mdi:eye-check-outline"
+                            disabled={busy}
+                            primary
+                            onClick={() => onAck?.(item)}
+                          />
+                        ) : null}
+                        {triageView === "in_progress" || wf === "acked" || wf === "linked" ? (
+                          <>
+                            <QueueActionButton
+                              hint={actionHint(copy, "resolve")}
+                              label={copy.actions.resolve}
+                              icon="mdi:check-circle-outline"
+                              disabled={busy}
+                              primary
+                              onClick={() => onResolve?.(item)}
+                            />
+                            {wf !== "linked" ? (
+                              <QueueActionButton
+                                hint={actionHint(copy, "support")}
+                                label={copy.actions.support}
+                                icon="mdi:message-processing-outline"
+                                disabled={busy}
+                                onClick={() => onTicketSupport?.(item)}
+                              />
+                            ) : null}
+                          </>
+                        ) : null}
                         <span className={styles.muteWrap}>
                           <QueueActionButton
-                            hint={item.muted ? actionHint(copy, "unmute") : actionHint(copy, "mute")}
-                            label={item.muted ? copy.actions.unmute : copy.actions.mute}
-                            icon={item.muted ? "mdi:alarm-light" : "mdi:alarm-light-off"}
+                            hint={copy.moreMenu?.open || "More"}
+                            label={copy.moreMenu?.open || "More"}
+                            icon="mdi:dots-horizontal"
                             disabled={busy}
-                            buttonRef={muteMenuId === item.id ? muteAnchorRef : undefined}
-                            onClick={e => {
-                              muteAnchorRef.current = e.currentTarget;
-                              setMuteMenuId(id => id === item.id ? null : item.id);
-                            }}
+                            onClick={() => setMoreMenuId(id => (id === item.id ? null : item.id))}
                           />
-                          {muteMenuId === item.id ? (
-                            <MuteMenu
+                          {moreMenuId === item.id ? (
+                            <MoreMenu
                               item={item}
                               copy={copy}
-                              localeTag={localeTag}
-                              anchorRef={muteAnchorRef}
-                              onMute={(target, payload) => {
-                                setMuteMenuId(null);
-                                onMute?.(target, payload);
-                              }}
-                              onUnmute={target => {
-                                setMuteMenuId(null);
-                                onUnmute?.(target);
-                              }}
-                              onClose={() => setMuteMenuId(null)}
+                              triageView={triageView}
+                              canDiagnose={canDiagnose}
+                              busy={busy}
+                              resyncBusy={resyncBusyId === item.id}
+                              onIgnore={onIgnore}
+                              onMaintenance={onMaintenance}
+                              onUnack={onUnack}
+                              onResync={onResync}
+                              onDiagnose={onDiagnose}
+                              onOpenItem={onOpenItem}
+                              onClose={() => setMoreMenuId(null)}
                             />
                           ) : null}
                         </span>
-                        <QueueActionButton
-                          hint={actionHint(copy, "resync")}
-                          label={copy.actions.resync}
-                          icon={resyncBusyId === item.id ? "mdi:loading" : "mdi:sync"}
-                          disabled={busy || resyncBusyId === item.id}
-                          onClick={() => onResync?.(item)}
-                        />
-                        {canDiagnose ? (
-                          <QueueActionButton
-                            hint={actionHint(copy, "diagnose")}
-                            label={copy.actions.diagnose}
-                            icon="mdi:stethoscope"
-                            disabled={busy || !item.alertId}
-                            onClick={() => onDiagnose?.(item)}
-                          />
-                        ) : null}
-                        <QueueActionButton hint={actionHint(copy, "open")} label={copy.actions.open} icon="mdi:open-in-new" primary onClick={() => onOpenItem?.(item)} />
                       </div>
                     </td>
                   </tr>;

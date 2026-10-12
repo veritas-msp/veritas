@@ -10,17 +10,12 @@ import API_BASE_URL from "../../config";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import SmartTooltip from "../SmartTooltip";
 import DomainMspDashboard from "./DomainMspDashboard";
 import SslMspDashboard from "./SslMspDashboard";
 import MicrosoftTenantMspDashboard from "./MicrosoftTenantMspDashboard";
 import { fetchOffice365Data } from "../../api/office365";
 import { getServicePageCopy } from "./servicePageI18n";
 import { listConfiguredDomainIntegrations } from "./servicePageDomainSync";
-import { buildMicrosoftTenantFleetStats } from "./microsoftTenantMspUtils";
-import { buildDomainFleetFromList, buildDomainFleetStats } from "./domainMspUtils";
-import { buildSslFleetFromList, buildSslFleetStats } from "./sslMspUtils";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { buildMicrosoftTenantDetailNavigationPayload } from "../EnterprisesPage/microsoftTenantSolutionUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
@@ -106,16 +101,17 @@ export default function ServicePage({
   }), [locale]);
   const [activeTab, setActiveTab] = useState(MODULE_TABS.includes(serviceParams?.activeTab) ? serviceParams.activeTab : "microsoft");
   const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMicrosoft, setLoadingMicrosoft] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [microsoftSyncConfirmOpen, setMicrosoftSyncConfirmOpen] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('');
   const [allDomains, setAllDomains] = useState([]);
-  const [loadingDomains, setLoadingDomains] = useState(false);
+  const [loadingDomains, setLoadingDomains] = useState(true);
   const [syncingDomains, setSyncingDomains] = useState(false);
   const [allSslCerts, setAllSslCerts] = useState([]);
-  const [loadingSsl, setLoadingSsl] = useState(false);
+  const [loadingSsl, setLoadingSsl] = useState(true);
   const [checkingSsl, setCheckingSsl] = useState(false);
   const [o365DataByClient, setO365DataByClient] = useState({});
   const clientsControllerRef = useRef(null);
@@ -156,9 +152,13 @@ export default function ServicePage({
     const {
       signal
     } = controller;
+    setLoadingMicrosoft(true);
     const clientsWithO365 = sourceClients.filter(client => client.modules_monitoring?.Office365);
     if (clientsWithO365.length === 0) {
-      if (!signal.aborted) setO365DataByClient({});
+      if (!signal.aborted) {
+        setO365DataByClient({});
+        setLoadingMicrosoft(false);
+      }
       return;
     }
     try {
@@ -273,6 +273,8 @@ export default function ServicePage({
     } catch (error) {
       if (error?.name === 'AbortError') return;
       console.error('Error loading O365 data:', error);
+    } finally {
+      if (!signal.aborted) setLoadingMicrosoft(false);
     }
   };
   const loadClients = async ({
@@ -286,6 +288,7 @@ export default function ServicePage({
           const isFresh = parsed?.savedAt && Array.isArray(parsed?.data) && Date.now() - parsed.savedAt < SERVICE_CLIENTS_CACHE_TTL_MS;
           if (isFresh) {
             setClients(parsed.data);
+            setLoading(false);
             return parsed.data;
           }
         }
@@ -329,6 +332,7 @@ export default function ServicePage({
           const isFresh = parsed?.savedAt && Array.isArray(parsed?.data) && Date.now() - parsed.savedAt < SERVICE_DOMAINS_CACHE_TTL_MS;
           if (isFresh) {
             setAllDomains(parsed.data);
+            setLoadingDomains(false);
             return;
           }
         }
@@ -375,6 +379,7 @@ export default function ServicePage({
           const isFresh = parsed?.savedAt && Array.isArray(parsed?.data) && Date.now() - parsed.savedAt < SERVICE_SSL_CACHE_TTL_MS;
           if (isFresh) {
             setAllSslCerts(parsed.data);
+            setLoadingSsl(false);
             return;
           }
         }
@@ -562,9 +567,6 @@ export default function ServicePage({
       }, 1500);
     }
   };
-  const microsoftStats = useMemo(() => buildMicrosoftTenantFleetStats(microsoftData), [microsoftData]);
-  const domainStats = useMemo(() => buildDomainFleetStats(buildDomainFleetFromList(allDomains)), [allDomains]);
-  const sslStats = useMemo(() => buildSslFleetStats(buildSslFleetFromList(allSslCerts)), [allSslCerts]);
   const handleOpenServiceClient = (clientId, clientName) => {
     if (!onNavigate || !clientId) return;
     onNavigate("ContratDetail", {
@@ -589,7 +591,6 @@ export default function ServicePage({
     if (!MODULE_TABS.includes(tabKey)) return;
     setActiveTab(tabKey);
   };
-  const syncingAny = syncing || syncingDomains || checkingSsl;
   const requestSyncMicrosoft = () => {
     if (syncing) return;
     const targets = microsoftData.filter(row => row.clientId);
@@ -603,46 +604,48 @@ export default function ServicePage({
     setMicrosoftSyncConfirmOpen(false);
     handleSyncMicrosoft();
   };
-  const handleHeaderSync = () => {
-    if (activeTab === "microsoft") requestSyncMicrosoft();
-    else if (activeTab === "domain") handleSyncDomains();
-    else if (activeTab === "ssl") handleCheckAllSsl();
-  };
-  const syncTooltip = syncingAny && syncStatus ? syncStatus : activeTab === "domain" ? pageCopy.domain.syncDomains : activeTab === "ssl" ? pageCopy.ssl.checkAll : pageCopy.microsoft.syncTenants;
-  const heroSubtitle = syncingAny && syncStatus ? syncStatus : activeTab === "microsoft" ? pageCopy.microsoft.formatHeroDesc(microsoftStats.issues) : activeTab === "domain" ? pageCopy.domain.formatHeroDesc(domainStats.issues) : activeTab === "ssl" ? pageCopy.ssl.formatHeroDesc(sslStats.issues) : pageCopy.subtitle;
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
   return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
       <div className={cyberStyles.mspMain}>
-        <MspPageHero guideId="service-hero" eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:cloud-outline" actions={<>
-              <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="service-tabs">
-                {moduleTabs.map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} className={`${cyberStyles.mspTab} ${activeTab === tab.key ? cyberStyles.mspTabActive : ""}`} onClick={() => selectTab(tab.key)} title={tab.label}>
-                    <Icon icon={tab.icon} className={cyberStyles.mspTabIcon} aria-hidden />
-                    <span className={cyberStyles.mspTabLabelRow}>
-                      <span>{tab.label}</span>
-                    </span>
-                  </button>)}
-              </nav>
-              <SmartTooltip content={syncTooltip}>
-                <button type="button" className={layout.iconBtn} onClick={handleHeaderSync} disabled={syncingAny} aria-label={syncTooltip} data-guide="service-sync">
-                  <Icon icon={syncingAny ? "mdi:loading" : "mdi:sync"} className={syncingAny ? cyberStyles.spinning : undefined} aria-hidden />
-                </button>
-              </SmartTooltip>
-            </>} />
-
-        <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
+        <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList} ${layout.contentNoHero}`}>
+          <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-          <div className={cyberStyles.tabContent} data-guide="service-dashboard">
-          {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} onSync={requestSyncMicrosoft} syncing={syncing} />}
+            <div className={cyberStyles.cyberLayout}>
+              <aside className={cyberStyles.moduleRail} aria-label={pageCopy.tabSectionsAria} data-guide="service-tabs">
+                <div className={cyberStyles.moduleRailList} role="tablist" aria-orientation="vertical">
+                  {moduleTabs.map(tab => {
+                    const active = activeTab === tab.key;
+                    return <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      className={`${cyberStyles.moduleRailBtn} ${active ? cyberStyles.moduleRailBtnActive : ""}`}
+                      onClick={() => selectTab(tab.key)}
+                      title={tab.label}
+                    >
+                      <span className={cyberStyles.moduleRailIconWrap}>
+                        <Icon icon={tab.icon} className={cyberStyles.moduleRailIcon} aria-hidden />
+                      </span>
+                      <span className={cyberStyles.moduleRailLabel}>{tab.label}</span>
+                      {active ? <span className={cyberStyles.moduleRailActiveBar} aria-hidden /> : null}
+                    </button>;
+                  })}
+                </div>
+              </aside>
 
-          {activeTab === "domain" && <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} onSync={handleSyncDomains} syncing={syncingDomains} />}
+              <div className={`${cyberStyles.cyberMain} ${cyberStyles.tabContent}`} data-guide="service-dashboard">
+                {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading || loadingMicrosoft} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} onSync={requestSyncMicrosoft} syncing={syncing} />}
 
-          {activeTab === "ssl" && <SslMspDashboard certificates={allSslCerts} loading={loadingSsl} copy={pageCopy.ssl} onSync={handleCheckAllSsl} syncing={checkingSsl} onOpenClient={row => {
-                const clientId = row.clientId || clients.find(client => client.name === row.clientName)?.id;
-                if (clientId) handleOpenServiceClient(clientId, row.clientName);
-              }} />}
+                {activeTab === "domain" && <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} onSync={handleSyncDomains} syncing={syncingDomains} />}
 
-          </div>
+                {activeTab === "ssl" && <SslMspDashboard certificates={allSslCerts} loading={loadingSsl} copy={pageCopy.ssl} onSync={handleCheckAllSsl} syncing={checkingSsl} onOpenClient={row => {
+                      const clientId = row.clientId || clients.find(client => client.name === row.clientName)?.id;
+                      if (clientId) handleOpenServiceClient(clientId, row.clientName);
+                    }} />}
+              </div>
+            </div>
           </div>
         </main>
       </div>

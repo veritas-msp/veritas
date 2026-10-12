@@ -5,6 +5,8 @@ import styles from "./EquipmentPage.module.css";
 import { FaTimes, FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCube, FaFileExport, FaColumns, FaChevronUp, FaChevronLeft, FaChevronRight, FaTh, FaList, FaCamera, FaPlus, FaSync, FaDesktop } from "react-icons/fa";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import EquipmentDetailPage from "./EquipmentDetailPage";
 import EquipmentAddFlowModal from "./EquipmentAddFlowModal";
@@ -1916,13 +1918,24 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const handleTableSort = (type, colKey) => {
     if (!isColumnSortable(colKey)) return;
     setTableSort(prev => {
-      const current = prev[type];
-      const nextDir = current?.key === colKey && current?.direction === "asc" ? "desc" : "asc";
+      const current = prev[type] || { key: null, direction: "asc" };
+      const next = cycleSortState({
+        column: colKey,
+        sortBy: current.key,
+        sortDirection: current.direction || "asc",
+        defaultSortBy: null,
+        defaultSortDirection: "asc",
+        firstDirection: "asc"
+      });
+      if (next.sortBy == null) {
+        const { [type]: _removed, ...rest } = prev;
+        return rest;
+      }
       return {
         ...prev,
         [type]: {
-          key: colKey,
-          direction: nextDir
+          key: next.sortBy,
+          direction: next.sortDirection
         }
       };
     });
@@ -3557,9 +3570,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                           return <th key={col.key} className={[isSortable ? styles.sortableTh : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
                                 <span className={styles.thContent}>
                                   {col.label}
-                                  {isSortable && <span className={styles.sortIndicator} aria-hidden="true">
-                                      {isSorted ? sortState.direction === "asc" ? " ↑" : " ↓" : " ↕"}
-                                    </span>}
+                                  {isSortable && (
+                                    <SortIcon
+                                      active={isSorted}
+                                      direction={sortState?.direction || "asc"}
+                                      className={styles.sortIndicator}
+                                    />
+                                  )}
                                 </span>
                               </th>;
                         })}
@@ -4041,9 +4058,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                 return <th key={colKey} className={[isSortable ? styles.sortableTh : undefined, extraClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(sectionKey, colKey)} title={isSortable ? "Trier par " + label : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
                     <span className={styles.thContent}>
                       {label}
-                      {isSortable && <span className={styles.sortIndicator} aria-hidden="true">
-                          {isSorted ? sortState.direction === "asc" ? " ↑" : " ↓" : " ↕"}
-                        </span>}
+                      {isSortable && (
+                        <SortIcon
+                          active={isSorted}
+                          direction={sortState?.direction || "asc"}
+                          className={styles.sortIndicator}
+                        />
+                      )}
                     </span>
                   </th>;
               };

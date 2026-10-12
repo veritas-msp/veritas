@@ -238,6 +238,31 @@ export async function reconcileEquipmentSupervisionAlerts({
     console.warn("[supervision-reconcile] mute check:", err?.message || err);
   }
 
+  let serviceExcluded = () => false;
+  try {
+    const {
+      clearExpiredMonitoringExclusions,
+      isDeviceExcluded,
+      isServiceExcluded,
+      listActiveExclusionsForEquipment
+    } = await import("./equipmentMonitoringExclusions.js");
+    await clearExpiredMonitoringExclusions().catch(() => {});
+    const exclusions = await listActiveExclusionsForEquipment(clientId, equipmentId, familyKey);
+    if (isDeviceExcluded(exclusions)) {
+      return {
+        created: 0,
+        refreshed: 0,
+        resolved: 0,
+        desired: 0,
+        skipped: true,
+        reason: "device_exclusion"
+      };
+    }
+    serviceExcluded = serviceKey => isServiceExcluded(exclusions, serviceKey);
+  } catch (err) {
+    console.warn("[supervision-reconcile] exclusions check:", err?.message || err);
+  }
+
   const rules = rulesArg || (await getSupervisionAlertRules());
   const desired = buildDesiredMonitoringAlerts({
     clientId,
@@ -251,7 +276,7 @@ export async function reconcileEquipmentSupervisionAlerts({
     lastSyncedAt,
     mkSettings,
     rules
-  });
+  }).filter(item => !serviceExcluded(item?.meta?.serviceKey));
   const desiredIds = new Set(desired.map(item => item.queueItemId));
 
   let created = 0;

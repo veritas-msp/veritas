@@ -54,7 +54,8 @@ const SERVICE_PAGE = {
     eyebrow: "Services managés",
     pageTitle: "Cloud IT et services",
     subtitle: "Cloud & SaaS · tenants Microsoft, noms de domaine et certificats SSL.",
-    tabSectionsAria: "Sections services",
+    tabSectionsAria: "Modules cloud IT et services",
+    railSyncLabel: "Sync",
     tabs: {
       overview: "À traiter",
       microsoft: "Tenant Microsoft",
@@ -356,7 +357,8 @@ const SERVICE_PAGE = {
     eyebrow: "Managed services",
     pageTitle: "Cloud IT & Services",
     subtitle: "Cloud & SaaS · Microsoft tenants, domain names and SSL certificates.",
-    tabSectionsAria: "Service sections",
+    tabSectionsAria: "Cloud IT & services modules",
+    railSyncLabel: "Sync",
     tabs: {
       overview: "To do",
       microsoft: "Microsoft tenant",
@@ -658,7 +660,8 @@ const SERVICE_PAGE = {
     eyebrow: "Managed Services",
     pageTitle: "Cloud IT & Services",
     subtitle: "Cloud & SaaS · Microsoft-Mandanten, Domains und SSL-Zertifikate.",
-    tabSectionsAria: "Dienstebereiche",
+    tabSectionsAria: "Cloud-IT- und Dienstmodule",
+    railSyncLabel: "Sync",
     tabs: {
       overview: "Zu erledigen",
       microsoft: "Microsoft-Mandant",
@@ -960,7 +963,8 @@ const SERVICE_PAGE = {
     eyebrow: "Servizi gestiti",
     pageTitle: "Cloud IT e servizi",
     subtitle: "Cloud e SaaS · tenant Microsoft, domini e certificati SSL.",
-    tabSectionsAria: "Sezioni servizi",
+    tabSectionsAria: "Moduli cloud IT e servizi",
+    railSyncLabel: "Sync",
     tabs: {
       overview: "Da trattare",
       microsoft: "Tenant Microsoft",
@@ -1262,7 +1266,8 @@ const SERVICE_PAGE = {
     eyebrow: "Servicios gestionados",
     pageTitle: "Cloud IT y servicios",
     subtitle: "Cloud y SaaS · tenants Microsoft, dominios y certificados SSL.",
-    tabSectionsAria: "Secciones de servicios",
+    tabSectionsAria: "Módulos de cloud IT y servicios",
+    railSyncLabel: "Sync",
     tabs: {
       overview: "Por tratar",
       microsoft: "Tenant Microsoft",

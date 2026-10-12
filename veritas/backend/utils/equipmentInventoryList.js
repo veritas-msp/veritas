@@ -578,7 +578,32 @@ function resolveSupervisionStatus(mkRow, isMapped) {
   return "ok";
 }
 
-function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappingMap) {
+async function loadActiveDeviceMaintenancesById(ids) {
+  const uuids = [...new Set((Array.isArray(ids) ? ids : []).filter(isUuid))];
+  if (!uuids.length) return new Map();
+  const result = await queryOrEmpty(
+    `SELECT equipment_id, excluded_until, reason, kind
+     FROM v_b_equipment_monitoring_exclusions
+     WHERE equipment_id = ANY($1::uuid[])
+       AND scope = 'device'
+       AND kind = 'maintenance'
+       AND (excluded_until IS NULL OR excluded_until > NOW())`,
+    [uuids]
+  );
+  const map = new Map();
+  for (const row of result.rows || []) {
+    const key = String(row.equipment_id || "").trim().toLowerCase();
+    if (!key || map.has(key)) continue;
+    map.set(key, {
+      inMaintenance: true,
+      maintenanceUntil: row.excluded_until || null,
+      maintenanceReason: row.reason || null
+    });
+  }
+  return map;
+}
+
+function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappingMap, maintenanceMap) {
   let settings = null;
   for (const key of settingsLookupKeys(item)) {
     if (settingsMap.has(key)) {
@@ -590,6 +615,7 @@ function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappin
   const dbId = String(item?.dbId || "").trim().toLowerCase();
   const mkRow = dbId ? checkmkMap.get(dbId) : null;
   const mapping = dbId ? mappingMap.get(dbId) : null;
+  const maintenance = dbId ? maintenanceMap?.get(dbId) : null;
   const mappedHost = String(
     mapping?.checkmk_host_name || mkRow?.checkmk_host_name || ""
   ).trim();
@@ -603,6 +629,9 @@ function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappin
     alertStatus,
     alertsEnabled: settings == null ? true : Boolean(settings.alertsEnabled),
     alertSuspended: isAlertSuspensionActive(settings),
+    inMaintenance: Boolean(maintenance?.inMaintenance),
+    maintenanceUntil: maintenance?.maintenanceUntil || null,
+    maintenanceReason: maintenance?.maintenanceReason || null,
     supervisionStatus,
     supervisionMapped,
     checkmkMapping: isMapped
@@ -622,13 +651,16 @@ function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappin
 async function enrichInventoryWithAlerts(items) {
   const list = Array.isArray(items) ? items : [];
   const ids = list.map(item => item.dbId).filter(Boolean);
-  const [settingsMap, nativeCountMap, checkmkMap, mappingMap] = await Promise.all([
+  const [settingsMap, nativeCountMap, checkmkMap, mappingMap, maintenanceMap] = await Promise.all([
     loadAlertSettingsByKey(ids),
     loadAlertCountsLastMonth(ids),
     loadCheckmkMonitoringByIds(ids),
-    loadCheckmkMappingsByIds(ids)
+    loadCheckmkMappingsByIds(ids),
+    loadActiveDeviceMaintenancesById(ids)
   ]);
-  return list.map(item => attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappingMap));
+  return list.map(item =>
+    attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappingMap, maintenanceMap)
+  );
 }
 
 function resolveStandardTable(item) {

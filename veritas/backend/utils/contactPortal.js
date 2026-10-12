@@ -6,6 +6,58 @@ import { listMembershipsForContact, pickHomeClientId, contactBelongsToClient } f
 import { normalizePortalTicketRole } from "./portalTicketRole.js";
 import { ensurePortalTicketRoleSchema } from "../services/ensurePortalTicketRoleSchema.js";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Adresses e-mail déclarées sur la fiche contact (communications + legacy). */
+export function listContactEmails(contact) {
+  const seen = new Set();
+  const out = [];
+  const push = value => {
+    const email = String(value || "").trim();
+    if (!email || !EMAIL_RE.test(email)) return;
+    const key = email.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(email);
+  };
+  let communications = contact?.communications;
+  if (typeof communications === "string") {
+    try {
+      communications = JSON.parse(communications);
+    } catch {
+      communications = [];
+    }
+  }
+  if (Array.isArray(communications)) {
+    const emails = communications
+      .filter(entry => entry && entry.type === "email")
+      .slice()
+      .sort((a, b) => Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary)));
+    emails.forEach(entry => push(entry.value));
+  }
+  push(contact?.email);
+  return out;
+}
+
+export function resolvePortalEmailForContact(contact, requestedEmail = null) {
+  const emails = listContactEmails(contact);
+  if (!emails.length) {
+    const err = new Error("A valid email address is required to activate the portal.");
+    err.status = 400;
+    throw err;
+  }
+  const requested = String(requestedEmail || "").trim();
+  if (requested) {
+    const match = emails.find(email => email.toLowerCase() === requested.toLowerCase());
+    if (!match) {
+      const err = new Error("Selected email is not registered on this contact.");
+      err.status = 400;
+      throw err;
+    }
+    return match;
+  }
+  return emails[0];
+}
+
 export function buildPortalUsername(contact) {
   const parts = [contact.prenom, contact.nom].filter(Boolean).map(s => String(s).trim());
   if (parts.length) return parts.join(" ").slice(0, 50);
@@ -43,7 +95,8 @@ export async function findPortalUserByEmail(email, excludeContactId = null) {
 }
 export async function createPortalUserForContact(contact, password, {
   passwordPending = false,
-  portalRole = "user"
+  portalRole = "user",
+  email: requestedEmail = null
 } = {}) {
   if (!contact?.id) throw new Error("Invalid contact");
   const memberships = Array.isArray(contact.clients) && contact.clients.length
@@ -55,8 +108,7 @@ export async function createPortalUserForContact(contact, password, {
   }
   const resolvedClientId = homeClientId || Number(contact.client_id) || memberships[0]?.client_id;
   if (!resolvedClientId) throw new Error("The contact must be linked to a company.");
-  const email = String(contact.email || "").trim();
-  if (!EMAIL_RE.test(email)) throw new Error("A valid email address is required to activate the portal.");
+  const email = resolvePortalEmailForContact(contact, requestedEmail);
   const existing = await getPortalUserByContactId(contact.id);
   if (existing) throw new Error("A portal account already exists for this contact.");
   const emailTaken = await findPortalUserByEmail(email, contact.id);
@@ -79,12 +131,14 @@ export async function createPortalUserForContact(contact, password, {
 }
 export async function createPortalUserInviteForContact(contact, {
   portalRole = "user",
-  sendEmail = false
+  sendEmail = false,
+  email = null
 } = {}) {
   const pendingPassword = `${randomUUID()}${randomUUID()}`;
   const portal = await createPortalUserForContact(contact, pendingPassword, {
     passwordPending: true,
-    portalRole
+    portalRole,
+    email
   });
   if (!sendEmail) return portal;
   const {
@@ -126,12 +180,25 @@ export async function resendPortalInviteForContact(contactId) {
     email: portal.email
   };
 }
-export async function syncPortalUserFromContact(contact) {
+export async function syncPortalUserFromContact(contact, {
+  syncEmailToPrimary = false
+} = {}) {
   const portal = await getPortalUserByContactId(contact.id);
   if (!portal) return null;
-  const email = String(contact.email || "").trim();
-  if (email && EMAIL_RE.test(email)) {
-    const emailTaken = await findPortalUserByEmail(email, contact.id);
+  const contactEmails = listContactEmails(contact);
+  const primary = String(contact.email || "").trim();
+  const currentPortalEmail = String(portal.email || "").trim();
+  const portalStillValid = contactEmails.some(
+    email => email.toLowerCase() === currentPortalEmail.toLowerCase()
+  );
+  let nextEmail = currentPortalEmail;
+  if (syncEmailToPrimary && primary && EMAIL_RE.test(primary)) {
+    nextEmail = primary;
+  } else if (!portalStillValid) {
+    nextEmail = primary && EMAIL_RE.test(primary) ? primary : contactEmails[0] || currentPortalEmail;
+  }
+  if (nextEmail && EMAIL_RE.test(nextEmail) && nextEmail.toLowerCase() !== currentPortalEmail.toLowerCase()) {
+    const emailTaken = await findPortalUserByEmail(nextEmail, contact.id);
     if (emailTaken) throw new Error("This email address is already used by another account.");
   }
   const username = buildPortalUsername(contact);
@@ -151,8 +218,43 @@ export async function syncPortalUserFromContact(contact) {
          client_id = COALESCE($3, client_id),
          is_active = $4
      WHERE id = $5
-     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at`, [email, username, nextClientId, isActive, portal.id]);
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at`, [nextEmail, username, nextClientId, isActive, portal.id]);
   return rows[0] || null;
+}
+
+export async function setPortalLoginEmail(contactId, requestedEmail) {
+  const portal = await getPortalUserByContactId(contactId);
+  if (!portal) throw new Error("No portal account exists for this contact.");
+  const {
+    rows: contactRows
+  } = await pool.query(
+    `SELECT id, email, COALESCE(communications, '[]'::jsonb) AS communications
+     FROM v_b_contacts WHERE id = $1`,
+    [contactId]
+  );
+  const contact = contactRows[0];
+  if (!contact) throw new Error("Contact not found.");
+  const email = resolvePortalEmailForContact(contact, requestedEmail);
+  if (email.toLowerCase() === String(portal.email || "").toLowerCase()) {
+    return portal;
+  }
+  const emailTaken = await findPortalUserByEmail(email, contactId);
+  if (emailTaken) throw new Error("This email address is already used by another account.");
+  const {
+    rows
+  } = await pool.query(
+    `UPDATE v_b_users
+     SET email = $1
+     WHERE id = $2 AND role = 'client'
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, password_pending, portal_role`,
+    [email, portal.id]
+  );
+  const row = rows[0];
+  if (!row) throw new Error("No portal account exists for this contact.");
+  return {
+    ...row,
+    portal_role: normalizePortalTicketRole(row.portal_role)
+  };
 }
 
 export async function switchPortalCompany(userId, contactId, clientId) {

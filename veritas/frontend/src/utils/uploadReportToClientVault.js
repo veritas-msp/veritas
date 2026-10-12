@@ -87,7 +87,7 @@ export async function uploadReportHtmlFolderToClientVault({
   return { folder, files: uploaded };
 }
 
-export async function uploadInterventionPdfToClientVault({
+export async function uploadReportPdfToClientVault({
   blob,
   fileName,
   clientId,
@@ -99,7 +99,7 @@ export async function uploadInterventionPdfToClientVault({
   if (!blob || !clientId) {
     throw new Error("Données insuffisantes pour archiver le rapport.");
   }
-  const baseName = String(fileName || "rapport-intervention").replace(/[<>:"/\\|?*]+/g, " ").trim().replace(/\s+/g, " ");
+  const baseName = String(fileName || "rapport").replace(/[<>:"/\\|?*]+/g, " ").trim().replace(/\s+/g, " ");
   const pdfName = baseName.toLowerCase().endsWith(".pdf") ? baseName : `${baseName}.pdf`;
   const file = new File([blob], pdfName, {
     type: "application/pdf"
@@ -114,3 +114,35 @@ export async function uploadInterventionPdfToClientVault({
     folderId
   });
 }
+
+export async function uploadReportHtmlToClientVault({
+  blob,
+  fileName,
+  clientId,
+  clientName,
+  description = "",
+  visibleToClient = false,
+  folderId = null
+}) {
+  if (!blob || !clientId) {
+    throw new Error("Données insuffisantes pour archiver le rapport.");
+  }
+  const baseName = String(fileName || "rapport").replace(/[<>:"/\\|?*]+/g, " ").trim().replace(/\s+/g, " ");
+  const htmlName = baseName.toLowerCase().endsWith(".html") ? baseName : `${baseName}.html`;
+  const file = new File([blob], htmlName, {
+    type: "text/html"
+  });
+  return uploadClientFile({
+    clientId,
+    clientName,
+    category: "Rapport",
+    description,
+    file,
+    visibleToClient: Boolean(visibleToClient),
+    folderId
+  });
+}
+
+/** @deprecated Prefer uploadReportPdfToClientVault */
+export const uploadInterventionPdfToClientVault = uploadReportPdfToClientVault;
+export const uploadInterventionHtmlToClientVault = uploadReportHtmlToClientVault;

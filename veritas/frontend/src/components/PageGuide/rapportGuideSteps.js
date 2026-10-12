@@ -7,15 +7,15 @@ const STEP_CONFIG = [{
 }, {
   key: "steps",
   target: '[data-guide="report-steps"]',
-  handler: "showClient"
-}, {
-  key: "client",
-  target: '[data-guide="report-client"]',
-  handler: "showClient"
+  handler: "showTypes"
 }, {
   key: "types",
   target: '[data-guide="report-types"]',
   handler: "showTypes"
+}, {
+  key: "client",
+  target: '[data-guide="report-client"]',
+  handler: "showClient"
 }];
 
 const COPY = {
@@ -24,19 +24,19 @@ const COPY = {
     steps: {
       hero: {
         title: "Générer un rapport client",
-        content: "Cette page crée un document professionnel : état de supervision, compte-rendu d’intervention ou cahier de recette."
+        content: "Cette page crée un document professionnel : état de supervision, compte-rendu d’intervention ou cahier de recette. Choisissez d’abord le type de rapport, puis l’entreprise."
       },
       steps: {
         title: "Deux étapes",
-        content: "1) Choisissez l’entreprise. 2) Choisissez le type de rapport."
-      },
-      client: {
-        title: "Entreprise",
-        content: "Recherchez et cliquez sur le client. Vous passez ensuite directement au choix du type de rapport."
+        content: "1) Choisissez le type de rapport. 2) Choisissez l’entreprise."
       },
       types: {
         title: "Type de rapport",
-        content: "État de supervision, rapport d’intervention ou cahier de recette. Un clic lance l’assistant."
+        content: "État de supervision, rapport d’intervention ou cahier de recette. Un clic passe à la sélection de l’entreprise."
+      },
+      client: {
+        title: "Entreprise",
+        content: "Recherchez et cliquez sur le client : le rapport se lance immédiatement."
       }
     }
   },
@@ -45,19 +45,19 @@ const COPY = {
     steps: {
       hero: {
         title: "Generate a client report",
-        content: "This page builds a professional document: supervision status, intervention report or acceptance booklet."
+        content: "This page builds a professional document: supervision status, intervention report or acceptance booklet. Pick the report type first, then the company."
       },
       steps: {
         title: "Two steps",
-        content: "1) Pick the company. 2) Pick the report type."
-      },
-      client: {
-        title: "Company",
-        content: "Search and click the client. You then go straight to choosing the report type."
+        content: "1) Pick the report type. 2) Pick the company."
       },
       types: {
         title: "Report type",
-        content: "Supervision status, intervention report or acceptance booklet. A click starts the wizard."
+        content: "Supervision status, intervention report or acceptance booklet. A click continues to company selection."
+      },
+      client: {
+        title: "Company",
+        content: "Search and click the client to start the report."
       }
     }
   },
@@ -66,19 +66,19 @@ const COPY = {
     steps: {
       hero: {
         title: "Kundenbericht erzeugen",
-        content: "Diese Seite erstellt ein professionelles Dokument: Überwachungsstatus, Einsatzbericht oder Abnahmeheft."
+        content: "Diese Seite erstellt ein professionelles Dokument: Überwachungsstatus, Einsatzbericht oder Abnahmeheft. Wählen Sie zuerst den Berichtstyp, dann das Unternehmen."
       },
       steps: {
         title: "Zwei Schritte",
-        content: "1) Unternehmen wählen. 2) Berichtstyp wählen. Die Fortschrittsleiste zeigt, wo Sie sind."
-      },
-      client: {
-        title: "Unternehmen",
-        content: "Suchen und wählen Sie den Kunden. Der Bericht wird an diese Akte angehängt."
+        content: "1) Berichtstyp wählen. 2) Unternehmen wählen."
       },
       types: {
         title: "Berichtstyp",
-        content: "Überwachungsstatus, Einsatzbericht oder Abnahmeheft. Ein Klick startet den Assistenten."
+        content: "Überwachungsstatus, Einsatzbericht oder Abnahmeheft. Ein Klick führt zur Unternehmensauswahl."
+      },
+      client: {
+        title: "Unternehmen",
+        content: "Suchen und wählen Sie den Kunden: der Bericht startet sofort."
       }
     }
   },
@@ -87,19 +87,19 @@ const COPY = {
     steps: {
       hero: {
         title: "Generare un report cliente",
-        content: "Questa pagina crea un documento professionale: stato di supervisione, resoconto d’intervento o quaderno di collaudo."
+        content: "Questa pagina crea un documento professionale: stato di supervisione, resoconto d’intervento o quaderno di collaudo. Scegliete prima il tipo, poi l’azienda."
       },
       steps: {
         title: "Due passaggi",
-        content: "1) Scegliete l’azienda. 2) Scegliete il tipo di report. La barra indica a che punto siete."
-      },
-      client: {
-        title: "Azienda",
-        content: "Cercate e selezionate il cliente. Il report sarà collegato a quella scheda."
+        content: "1) Scegliete il tipo di report. 2) Scegliete l’azienda."
       },
       types: {
         title: "Tipo di report",
-        content: "Stato di supervisione, report d’intervento o quaderno di collaudo. Un clic avvia la procedura guidata."
+        content: "Stato di supervisione, report d’intervento o quaderno di collaudo. Un clic passa alla selezione azienda."
+      },
+      client: {
+        title: "Azienda",
+        content: "Cercate e selezionate il cliente: il report si avvia subito."
       }
     }
   },
@@ -108,19 +108,19 @@ const COPY = {
     steps: {
       hero: {
         title: "Generar un informe de cliente",
-        content: "Esta página crea un documento profesional: estado de supervisión, informe de intervención o cuaderno de receta."
+        content: "Esta página crea un documento profesional: estado de supervisión, informe de intervención o cuaderno de receta. Elija primero el tipo, luego la empresa."
       },
       steps: {
         title: "Dos pasos",
-        content: "1) Elija la empresa. 2) Elija el tipo de informe. La barra indica en qué punto está."
-      },
-      client: {
-        title: "Empresa",
-        content: "Busque y seleccione el cliente. El informe se vinculará a esa ficha."
+        content: "1) Elija el tipo de informe. 2) Elija la empresa."
       },
       types: {
         title: "Tipo de informe",
-        content: "Estado de supervisión, informe de intervención o cuaderno de receta. Un clic inicia el asistente."
+        content: "Estado de supervisión, informe de intervención o cuaderno de receta. Un clic pasa a la selección de empresa."
+      },
+      client: {
+        title: "Empresa",
+        content: "Busque y seleccione el cliente: el informe se inicia de inmediato."
       }
     }
   }

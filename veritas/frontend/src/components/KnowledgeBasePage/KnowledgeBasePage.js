@@ -4,6 +4,7 @@ import { getKnowledgeBaseGuide } from "../PageGuide/knowledgeBaseGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCan } from "../../contexts/PermissionsContext";
@@ -13,7 +14,6 @@ import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { createKnowledgeArticle, createKnowledgeFolder, deleteKnowledgeArticle, deleteKnowledgeArticles, deleteKnowledgeFolder, fetchKnowledgeArticles, fetchKnowledgeCategories, fetchKnowledgeEmojis, fetchKnowledgeFolders, moveKnowledgeArticles, permanentlyDeleteKnowledgeArticle, permanentlyDeleteKnowledgeArticles, reorderKnowledgeArticles, reorderKnowledgeFolders, restoreKnowledgeArticleFromTrash, restoreKnowledgeArticlesFromTrash, updateKnowledgeArticle, updateKnowledgeFolder } from "../../api/knowledgeBase";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SmartTooltip from "../SmartTooltip";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
@@ -29,7 +29,7 @@ import styles from "./knowledgeBase.module.css";
 
 function KnowledgeBaseShell({ children }) {
   return (
-    <div className={`${cyberStyles.mspPage} msp-page-grid`}>
+    <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
         <div className={cyberStyles.mspMain}>{children}</div>
       </div>
@@ -428,8 +428,6 @@ export default function KnowledgeBasePage({ onNavigate }) {
 
   const folderOptions = useMemo(() => flattenFolderOptions(folderTree), [folderTree]);
 
-  const drafts = articles.filter(row => row.status === "draft").length;
-  const published = articles.filter(row => row.status === "published").length;
   const selectedCount = selected.size;
   const totalPages = Math.max(1, Math.ceil(articles.length / pageSize) || 1);
   const paginatedArticles = useMemo(() => {
@@ -465,43 +463,10 @@ export default function KnowledgeBasePage({ onNavigate }) {
 
   return (
     <KnowledgeBaseShell>
-      <MspPageHero
-        guideId="kb-hero"
-        eyebrow={copy.eyebrow}
-        title={copy.pageTitle}
-        subtitle={copy.subtitle}
-        icon="mdi:book-open-page-variant-outline"
-        actions={canCreate ? (
-          <button type="button" className={layout.primaryBtn} onClick={() => setTemplateOpen(true)} disabled={creating}>
-            <Icon icon="mdi:plus" /> {copy.newArticle}
-          </button>
-        ) : null}
-      />
-      <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
+      <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList} ${layout.contentNoHero}`}>
+        <h1 className={layout.srOnly}>{copy.pageTitle}</h1>
+        <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
         <div className={styles.content}>
-          <div className={styles.kpiRow} data-guide="kb-kpis">
-            <div className={styles.kpiCard}>
-              <div className={styles.kpiIconWrap}><Icon icon="mdi:book-open-page-variant-outline" width={20} /></div>
-              <div>
-                <div className={styles.kpiValue}>{articles.length}</div>
-                <div className={styles.kpiLabel}>{copy.kpiTotal}</div>
-              </div>
-            </div>
-            <div className={styles.kpiCard}>
-              <div className={styles.kpiIconWrap}><Icon icon="mdi:file-edit-outline" width={20} /></div>
-              <div>
-                <div className={styles.kpiValue}>{drafts}</div>
-                <div className={styles.kpiLabel}>{copy.kpiDrafts}</div>
-              </div>
-            </div>
-            <div className={styles.kpiCard}>
-              <div className={styles.kpiIconWrap}><Icon icon="mdi:check-decagram-outline" width={20} /></div>
-              <div>
-                <div className={styles.kpiValue}>{published}</div>
-                <div className={styles.kpiLabel}>{copy.kpiPublished}</div>
-              </div>
-            </div>
-          </div>
           <div className={styles.contentSplit}>
             <div className={styles.folderColumn} data-guide="kb-folders">
             <KnowledgeFolderTree
@@ -537,28 +502,61 @@ export default function KnowledgeBasePage({ onNavigate }) {
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label={copy.selectAll} />
               </label>
             ) : null : null}
-            <input
-              ref={searchInputRef}
-              className={`${styles.search} ${styles.toolbarSearch}`}
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder={copy.searchPlaceholder}
-            />
-            <div className={styles.filters}>
-              {(isTrashView ? ["all"] : ["all", "draft", "published"]).map(key => (
-                <button
-                  key={key}
-                  type="button"
-                  className={`${styles.filterBtn} ${status === key || isTrashView ? styles.filterBtnActive : ""}`}
-                  onClick={() => setStatus(key)}
-                  disabled={isTrashView}
-                >
-                  {key === "all" ? (isTrashView ? copy.trash : copy.filterAll) : key === "draft" ? copy.filterDraft : copy.filterPublished}
-                </button>
-              ))}
+            <div className={`${layout.searchWrap} ${layout.searchWrapInCard} ${styles.toolbarSearch}`}>
+              <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+              <input
+                ref={searchInputRef}
+                type="search"
+                inputMode="search"
+                enterKeyHint="search"
+                className={layout.searchInput}
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder={copy.searchPlaceholder}
+                aria-label={copy.searchPlaceholder}
+              />
+              {search ? (
+                <SmartTooltip content={copy.clearSearch}>
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className={layout.clearButton}
+                    aria-label={copy.clearSearch}
+                  >
+                    <FaTimes />
+                  </button>
+                </SmartTooltip>
+              ) : null}
+            </div>
+            <div className={layout.statusChips} role="group" aria-label={copy.filterAll}>
+              {(isTrashView
+                ? [{ key: "all", label: copy.trash, icon: "mdi:delete-outline", tone: "gray" }]
+                : [
+                    { key: "all", label: copy.filterAll, icon: "mdi:file-document-multiple-outline", tone: "blue" },
+                    { key: "draft", label: copy.filterDraft, icon: "mdi:file-edit-outline", tone: "amber" },
+                    { key: "published", label: copy.filterPublished, icon: "mdi:check-circle-outline", tone: "green" },
+                  ]
+              ).map(item => {
+                const active = isTrashView || status === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${isTrashView ? layout.statusChipDisabled : ""}`}
+                    onClick={() => setStatus(item.key)}
+                    disabled={isTrashView}
+                    aria-pressed={active}
+                  >
+                    <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.tone}`]}`}>
+                      <Icon icon={item.icon} />
+                    </span>
+                    <span className={layout.statusChipLabel}>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
             <select
-              className={styles.categorySelect}
+              className={layout.sortSelect}
               value={categoryFilter}
               onChange={event => setCategoryFilter(event.target.value)}
               aria-label={copy.categoryFilterAll}
@@ -573,54 +571,22 @@ export default function KnowledgeBasePage({ onNavigate }) {
                 <Icon icon="mdi:tag-outline" /> {copy.categoryManage}
               </button>
             ) : null}
-          </div>
-          {(canDelete || canEdit) && selectedCount > 0 ? (
-            <div className={styles.bulkBar}>
-              <span>{interpolate(copy.bulkSelected, { count: String(selectedCount) })}</span>
-              <div className={styles.bulkActions}>
-                <button type="button" className={styles.secondaryBtn} onClick={() => setSelected(new Set())}>
-                  {copy.deselectAll}
-                </button>
-                {isTrashView ? (
-                  <>
-                    {canDelete ? (
-                      <>
-                        <button type="button" className={styles.secondaryBtn} onClick={restoreSelected} disabled={deleting}>
-                          <Icon icon="mdi:restore" /> {copy.bulkRestore}
-                        </button>
-                        <button type="button" className={styles.dangerBtn} onClick={() => setConfirmPurge("bulk")}>
-                          <Icon icon="mdi:delete-forever-outline" /> {copy.bulkPermanentDelete}
-                        </button>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    {canEdit ? (
-                      <>
-                        <select className={styles.moveSelect} value={moveTarget} onChange={event => setMoveTarget(event.target.value)}>
-                          <option value="">{copy.noFolder}</option>
-                          {folderOptions.map(folder => (
-                            <option key={folder.id} value={folder.id}>
-                              {"— ".repeat(folder.depth)}{folder.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button type="button" className={styles.secondaryBtn} onClick={moveSelected}>
-                          <Icon icon="mdi:folder-move-outline" /> {copy.moveTo}
-                        </button>
-                      </>
-                    ) : null}
-                    {canDelete ? (
-                      <button type="button" className={styles.dangerBtn} onClick={() => setConfirmDelete("bulk")}>
-                        <Icon icon="mdi:trash-can-outline" /> {copy.bulkDelete}
-                      </button>
-                    ) : null}
-                  </>
-                )}
+            {canCreate ? (
+              <div className={`${styles.toolbarActions} ${layout.toolbarActions}`} data-guide="kb-hero">
+                <SmartTooltip content={copy.newArticle}>
+                  <button
+                    type="button"
+                    className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`}
+                    onClick={() => setTemplateOpen(true)}
+                    disabled={creating}
+                    aria-label={copy.newArticle}
+                  >
+                    <Icon icon="mdi:plus" />
+                  </button>
+                </SmartTooltip>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
           {loading ? (
             <PageSkeleton variant="list" rows={8} label={copy.loading} />
           ) : articles.length === 0 ? (
@@ -801,8 +767,56 @@ export default function KnowledgeBasePage({ onNavigate }) {
               </div>
             </div>
           ) : null}
+          {(canDelete || canEdit) && selectedCount > 0 ? (
+            <div className={styles.bulkBar}>
+              <span>{interpolate(copy.bulkSelected, { count: String(selectedCount) })}</span>
+              <div className={styles.bulkActions}>
+                <button type="button" className={styles.secondaryBtn} onClick={() => setSelected(new Set())}>
+                  {copy.deselectAll}
+                </button>
+                {isTrashView ? (
+                  <>
+                    {canDelete ? (
+                      <>
+                        <button type="button" className={styles.secondaryBtn} onClick={restoreSelected} disabled={deleting}>
+                          <Icon icon="mdi:restore" /> {copy.bulkRestore}
+                        </button>
+                        <button type="button" className={styles.dangerBtn} onClick={() => setConfirmPurge("bulk")}>
+                          <Icon icon="mdi:delete-forever-outline" /> {copy.bulkPermanentDelete}
+                        </button>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    {canEdit ? (
+                      <>
+                        <select className={styles.moveSelect} value={moveTarget} onChange={event => setMoveTarget(event.target.value)}>
+                          <option value="">{copy.noFolder}</option>
+                          {folderOptions.map(folder => (
+                            <option key={folder.id} value={folder.id}>
+                              {"— ".repeat(folder.depth)}{folder.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="button" className={styles.secondaryBtn} onClick={moveSelected}>
+                          <Icon icon="mdi:folder-move-outline" /> {copy.moveTo}
+                        </button>
+                      </>
+                    ) : null}
+                    {canDelete ? (
+                      <button type="button" className={styles.dangerBtn} onClick={() => setConfirmDelete("bulk")}>
+                        <Icon icon="mdi:trash-can-outline" /> {copy.bulkDelete}
+                      </button>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+          ) : null}
             </div>
           </div>
+        </div>
         </div>
       </main>
       <KnowledgeCategoryModal

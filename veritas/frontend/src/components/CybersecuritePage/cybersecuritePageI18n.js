@@ -1,10 +1,9 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const TAB_KEYS = ["antivirus", "antispam", "backup", "campaigns"];
+const TAB_KEYS = ["antivirus", "antispam", "backup"];
 const TAB_ICONS = {
   antivirus: "mdi:shield-check-outline",
   antispam: "mdi:email-secure-outline",
-  backup: "mdi:backup-restore",
-  campaigns: "mdi:bullhorn-outline"
+  backup: "mdi:backup-restore"
 };
 const STATUS_FILTER_IDS = ["all", "actif", "expire_bientot", "inactif"];
 const STATUS_FILTER_META = {
@@ -70,7 +69,8 @@ const CYBERSECURITE_PAGE_COPY = {
     eyebrow: "Services managés",
     pageTitle: "Cybersécurité",
     subtitle: "Choisissez un module pour voir les solutions de vos clients.",
-    tabSectionsAria: "Onglets cybersécurité",
+    tabSectionsAria: "Modules cybersécurité",
+    railSyncLabel: "Sync",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
     tabs: {
@@ -207,6 +207,8 @@ const CYBERSECURITE_PAGE_COPY = {
         job: "Job",
         instance: "Instance",
         jobsCount: "Jobs",
+        jobsMonitored: "Surveillés",
+        jobsIssues: "Alertes",
         lastBackup: "Dernière sauvegarde",
         server: "Serveur",
         version: "Version"
@@ -501,7 +503,8 @@ const CYBERSECURITE_PAGE_COPY = {
     eyebrow: "Managed services",
     pageTitle: "Cybersecurity",
     subtitle: "Choose a module to see your clients' solutions.",
-    tabSectionsAria: "Cybersecurity sections",
+    tabSectionsAria: "Cybersecurity modules",
+    railSyncLabel: "Sync",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
     tabs: {
@@ -638,6 +641,8 @@ const CYBERSECURITE_PAGE_COPY = {
         job: "Job",
         instance: "Instance",
         jobsCount: "Jobs",
+        jobsMonitored: "Monitored",
+        jobsIssues: "Alerts",
         lastBackup: "Last backup",
         server: "Server",
         version: "Version"
@@ -932,7 +937,8 @@ const CYBERSECURITE_PAGE_COPY = {
     eyebrow: "Managed Services",
     pageTitle: "Cybersicherheit",
     subtitle: "Wählen Sie ein Modul, um die Lösungen Ihrer Kunden zu sehen.",
-    tabSectionsAria: "Cybersicherheitsbereiche",
+    tabSectionsAria: "Cybersicherheitsmodule",
+    railSyncLabel: "Sync",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
     tabs: {
@@ -1069,6 +1075,8 @@ const CYBERSECURITE_PAGE_COPY = {
         job: "Job",
         instance: "Instanz",
         jobsCount: "Jobs",
+        jobsMonitored: "Überwacht",
+        jobsIssues: "Alarme",
         lastBackup: "Letztes Backup",
         server: "Server",
         version: "Version"
@@ -1363,7 +1371,8 @@ const CYBERSECURITE_PAGE_COPY = {
     eyebrow: "Servizi gestiti",
     pageTitle: "Cybersicurezza",
     subtitle: "Scegliete un modulo per vedere le soluzioni dei clienti.",
-    tabSectionsAria: "Sezioni cybersicurezza",
+    tabSectionsAria: "Moduli cybersicurezza",
+    railSyncLabel: "Sync",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
     tabs: {
@@ -1500,6 +1509,8 @@ const CYBERSECURITE_PAGE_COPY = {
         job: "Job",
         instance: "Istanza",
         jobsCount: "Job",
+        jobsMonitored: "Monitorati",
+        jobsIssues: "Avvisi",
         lastBackup: "Ultimo backup",
         server: "Server",
         version: "Versione"
@@ -1794,7 +1805,8 @@ const CYBERSECURITE_PAGE_COPY = {
     eyebrow: "Servicios gestionados",
     pageTitle: "Ciberseguridad",
     subtitle: "Elija un módulo para ver las soluciones de sus clientes.",
-    tabSectionsAria: "Secciones de ciberseguridad",
+    tabSectionsAria: "Módulos de ciberseguridad",
+    railSyncLabel: "Sync",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
     tabs: {
@@ -1931,6 +1943,8 @@ const CYBERSECURITE_PAGE_COPY = {
         job: "Job",
         instance: "Instancia",
         jobsCount: "Jobs",
+        jobsMonitored: "Supervisados",
+        jobsIssues: "Alertas",
         lastBackup: "Última copia",
         server: "Servidor",
         version: "Versión"
@@ -2255,7 +2269,7 @@ export function getCybersecuritePageCopy(locale) {
       key,
       label: t.tabs[key],
       icon: TAB_ICONS[key],
-      proOnly: key === "campaigns"
+      proOnly: false
     })),
     statusFilters: STATUS_FILTER_IDS.filter(id => id !== "all").map(id => ({
       id,

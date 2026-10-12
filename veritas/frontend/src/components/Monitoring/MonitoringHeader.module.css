@@ -87,7 +87,7 @@
   padding: 1rem 0;
   position: fixed;
   top: var(--tabs-bar-height, 34px);
-  left: 240px; 
+  left: var(--sidebar-expanded-width, 200px); 
   right: 0;
   width: auto;
   margin: 0;

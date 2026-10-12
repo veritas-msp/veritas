@@ -167,7 +167,7 @@ export async function loadFormFieldMetaByKey(formId, { family = "auto" } = {}) {
         : ["v_b_sales_form_fields", "v_b_support_form_fields"];
   try {
     for (const table of tables) {
-      const result = await pool.query(`SELECT field_key, field_type
+      const result = await pool.query(`SELECT field_key, field_type, label
        FROM ${table}
        WHERE form_id = $1
          AND enabled = TRUE`, [String(formId)]);
@@ -178,7 +178,8 @@ export async function loadFormFieldMetaByKey(formId, { family = "auto" } = {}) {
         if (!fieldKey) continue;
         map[fieldKey] = {
           fieldKey,
-          fieldType: String(row.field_type || "").trim().toLowerCase()
+          fieldType: String(row.field_type || "").trim().toLowerCase(),
+          label: String(row.label || "").trim()
         };
       }
       return map;
@@ -344,20 +345,70 @@ function formatTemplateFieldValue(raw) {
   const text = String(raw).trim();
   return text === "[object Object]" ? "" : text;
 }
+function readTemplateFieldValue(fieldKey, values, displayValues) {
+  const key = String(fieldKey || "").trim();
+  if (!key) return null;
+  if (Object.prototype.hasOwnProperty.call(displayValues, key)) {
+    return formatTemplateFieldValue(displayValues[key]);
+  }
+  if (Object.prototype.hasOwnProperty.call(values, key)) {
+    return formatTemplateFieldValue(values[key]);
+  }
+  return null;
+}
+
+function resolveTemplateFieldToken(tokenKey, context = {}) {
+  const key = String(tokenKey || "").trim();
+  if (!key) return "";
+  const values = context.values && typeof context.values === "object" ? context.values : {};
+  const displayValues = context.displayValues && typeof context.displayValues === "object" ? context.displayValues : {};
+
+  const direct = readTemplateFieldValue(key, values, displayValues);
+  if (direct !== null) return direct;
+
+  const sep = " · ";
+  const sepIdx = key.lastIndexOf(sep);
+  if (sepIdx > 0) {
+    const maybeFieldKey = key.slice(sepIdx + sep.length).trim();
+    const fromSuffix = readTemplateFieldValue(maybeFieldKey, values, displayValues);
+    if (fromSuffix !== null) return fromSuffix;
+  }
+
+  const fieldsByKey = context.fieldsByKey && typeof context.fieldsByKey === "object" ? context.fieldsByKey : {};
+  const fieldLabels = context.fieldLabels && typeof context.fieldLabels === "object" ? context.fieldLabels : {};
+  const labelToKeys = new Map();
+  const addLabel = (label, fieldKey) => {
+    const normalizedLabel = String(label || "").trim();
+    const normalizedKey = String(fieldKey || "").trim();
+    if (!normalizedLabel || !normalizedKey) return;
+    if (!labelToKeys.has(normalizedLabel)) labelToKeys.set(normalizedLabel, []);
+    const list = labelToKeys.get(normalizedLabel);
+    if (!list.includes(normalizedKey)) list.push(normalizedKey);
+  };
+  for (const [fieldKey, meta] of Object.entries(fieldsByKey)) {
+    addLabel(meta?.label, fieldKey);
+  }
+  for (const [fieldKey, label] of Object.entries(fieldLabels)) {
+    addLabel(label, fieldKey);
+  }
+
+  const matches = labelToKeys.get(key) || [];
+  for (const fieldKey of matches) {
+    const value = readTemplateFieldValue(fieldKey, values, displayValues);
+    if (value !== null && value !== "") return value;
+  }
+  if (matches.length > 0) {
+    const value = readTemplateFieldValue(matches[0], values, displayValues);
+    if (value !== null) return value;
+  }
+  return "";
+}
+
 export function resolveSalesFormTicketTemplate(template, context = {}) {
   const raw = String(template || "");
   if (!raw.trim()) return "";
-  const values = context.values && typeof context.values === "object" ? context.values : {};
-  const displayValues = context.displayValues && typeof context.displayValues === "object" ? context.displayValues : {};
-  let out = raw.replace(/\{\{\s*field\.([^}]+?)\s*\}\}/gi, (_, key) => {
-    const fieldKey = String(key || "").trim();
-    if (!fieldKey) return "";
-    if (Object.prototype.hasOwnProperty.call(displayValues, fieldKey)) {
-      return formatTemplateFieldValue(displayValues[fieldKey]);
-    }
-    return formatTemplateFieldValue(values[fieldKey]);
-  });
-  const replacements = [["{{form.label}}", context.formLabel], ["{{form.kind}}", context.formKind], ["{{form.key}}", context.formKey], ["{{form.category}}", context.categorySlug], ["{{rule.label}}", context.ruleLabel], ["{{client.name}}", context.clientName], ["{{entreprise.nom}}", context.clientName], ["{{contact.name}}", context.contactName], ["{{contact.email}}", context.contactEmail], ["{{purchase_order}}", context.purchaseOrder], ["{{commercial}}", context.commercial], ["{{project_manager}}", context.projectManager]];
+  let out = raw.replace(/\{\{\s*field\.([^}]+?)\s*\}\}/gi, (_, key) => resolveTemplateFieldToken(key, context));
+  const replacements = [["{{form.label}}", context.formLabel], ["{{form.kind}}", context.formKind], ["{{form.key}}", context.formKey], ["{{form.category}}", context.categorySlug], ["{{rule.label}}", context.ruleLabel], ["{{client.name}}", context.clientName], ["{{client.number}}", context.clientNumber], ["{{entreprise.nom}}", context.clientName], ["{{contact.name}}", context.contactName], ["{{contact.email}}", context.contactEmail], ["{{requester.name}}", context.contactName], ["{{requester.email}}", context.contactEmail], ["{{purchase_order}}", context.purchaseOrder], ["{{commercial}}", context.commercial], ["{{project_manager}}", context.projectManager]];
   for (const [token, value] of replacements) {
     out = out.split(token).join(value == null ? "" : String(value));
   }

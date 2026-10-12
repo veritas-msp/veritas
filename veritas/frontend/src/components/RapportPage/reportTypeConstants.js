@@ -4,8 +4,11 @@ export const REPORT_TYPE_IDS = {
   CAHIER_RECETTE: "cahier-recette",
   ACTIVITE_MENSUELLE: "activite-mensuelle",
   INVENTAIRE_PARC: "inventaire-parc",
-  AUDIT_SECURITE: "audit-securite"
+  AUDIT: "audit",
+  /** @deprecated alias — préférer AUDIT */
+  AUDIT_SECURITE: "audit"
 };
+
 export const REPORT_TYPE_DEFS = [{
   id: REPORT_TYPE_IDS.SUPERVISION_ETAT,
   icon: "mdi:radar",
@@ -13,8 +16,11 @@ export const REPORT_TYPE_DEFS = [{
 }, {
   id: REPORT_TYPE_IDS.INTERVENTION,
   icon: "mdi:toolbox-outline",
-  key: "intervention",
-  comingSoon: true
+  key: "intervention"
+}, {
+  id: REPORT_TYPE_IDS.AUDIT,
+  icon: "mdi:clipboard-search-outline",
+  key: "audit"
 }, {
   id: REPORT_TYPE_IDS.CAHIER_RECETTE,
   icon: "mdi:clipboard-check-outline",
@@ -30,12 +36,8 @@ export const REPORT_TYPE_DEFS = [{
   icon: "mdi:desktop-classic",
   key: "inventaireParc",
   comingSoon: true
-}, {
-  id: REPORT_TYPE_IDS.AUDIT_SECURITE,
-  icon: "mdi:shield-check-outline",
-  key: "auditSecurite",
-  comingSoon: true
 }];
+
 export function normalizeReportTypeId(rawType) {
   const value = String(rawType || "").trim().toLowerCase();
   if (!value) return REPORT_TYPE_IDS.SUPERVISION_ETAT;
@@ -44,7 +46,8 @@ export function normalizeReportTypeId(rawType) {
   }
   if (value.includes("intervention")) return REPORT_TYPE_IDS.INTERVENTION;
   if (value.includes("recette")) return REPORT_TYPE_IDS.CAHIER_RECETTE;
-  if (value.includes("supervision") || value.includes("supervision")) {
+  if (value.includes("audit")) return REPORT_TYPE_IDS.AUDIT;
+  if (value.includes("supervision")) {
     return REPORT_TYPE_IDS.SUPERVISION_ETAT;
   }
   return rawType;

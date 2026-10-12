@@ -28,7 +28,7 @@ const COPY = {
     steps: {
       hero: {
         title: "Pilotage de l’activité",
-        content: "Les indicateurs regroupent le support, le parc, les entreprises et la base de connaissances. Le bandeau rappelle la période analysée."
+        content: "Les indicateurs regroupent le support, le parc, les entreprises et la base de connaissances. La barre d’outils rappelle la période analysée et les actions."
       },
       period: {
         title: "Période d’analyse",
@@ -57,7 +57,7 @@ const COPY = {
     steps: {
       hero: {
         title: "Activity overview",
-        content: "Metrics cover support, fleet, companies and the knowledge base. The header shows the analysis period."
+        content: "Metrics cover support, fleet, companies and the knowledge base. The toolbar shows the analysis period and actions."
       },
       period: {
         title: "Analysis period",

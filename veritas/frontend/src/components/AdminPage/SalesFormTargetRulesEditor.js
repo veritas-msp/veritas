@@ -1,9 +1,9 @@
 import { Icon } from "@iconify/react";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import modalStyles from "./SalesFormModal.module.css";
 import MultiSuggestPicker from "./MultiSuggestPicker";
-import { getSalesFormTemplateVariables, insertTemplateToken } from "../../utils/salesFormTicketTemplates";
+import { getSalesFormTemplateVariables, insertTemplateToken, prettifySalesFormTemplate } from "../../utils/salesFormTicketTemplates";
 import { OPTION_BASED_FIELD_TYPES, buildConditionFieldOptions } from "../../utils/salesFormFieldTypes";
 const PRIORITY_OPTIONS = [{
   value: "",
@@ -94,7 +94,19 @@ function TemplateField({
   onChange
 }) {
   const inputRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const [showVars, setShowVars] = useState(false);
+  const variablesKey = useMemo(
+    () => (Array.isArray(variables) ? variables : []).filter(item => item?.group === "fields").map(item => `${item.fieldKey}:${item.key}`).join("|"),
+    [variables]
+  );
+  useEffect(() => {
+    const pretty = prettifySalesFormTemplate(value, variables);
+    if (pretty !== String(value || "")) onChangeRef.current?.(pretty);
+    // variablesKey tracks field token mapping changes without depending on array identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [value, variablesKey]);
   const insert = token => {
     const el = inputRef.current;
     const start = el?.selectionStart ?? String(value || "").length;
@@ -147,7 +159,7 @@ function TemplateField({
           </div>
         </div>}
       {multiline ? <textarea ref={inputRef} className={layout.input} rows={rows} value={value || ""} placeholder={placeholder} onChange={e => onChange?.(e.target.value)} /> : <input ref={inputRef} className={layout.input} value={value || ""} placeholder={placeholder} onChange={e => onChange?.(e.target.value)} />}
-      <FieldHint>Use {"{{field.key}}"} or context variables. Leave empty to keep the default from ticket creation.</FieldHint>
+      <FieldHint>Use {"{{field.Field name}}"} or context variables. Leave empty to keep the default from ticket creation.</FieldHint>
     </div>;
 }
 function getOperatorsForField(field) {
@@ -220,7 +232,7 @@ function TargetRuleEditor({
   const fieldOptions = buildConditionFieldOptions(formFields, {
     excludeFiles: true
   });
-  const templateVariables = getSalesFormTemplateVariables(formFields);
+  const templateVariables = useMemo(() => getSalesFormTemplateVariables(formFields), [formFields]);
   const assigneeSourceFields = buildConditionFieldOptions(formFields, {
     excludeFiles: true
   }).filter(option => option.field?.fieldType === "user" || option.field?.fieldType === "contact");

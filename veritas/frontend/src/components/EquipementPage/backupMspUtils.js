@@ -152,6 +152,16 @@ export function sortBackupFleetRows(rows, sortBy, sortDirection = "asc") {
         const right = Number(b.jobsCount) || 0;
         return mult * (left - right);
       }
+      case "jobsMonitored": {
+        const left = Number(a.jobsMonitored) || 0;
+        const right = Number(b.jobsMonitored) || 0;
+        return mult * (left - right);
+      }
+      case "jobsIssues": {
+        const left = Number(a.jobsIssues) || 0;
+        const right = Number(b.jobsIssues) || 0;
+        return mult * (left - right);
+      }
       case "version":
         return compareStrings(a.version, b.version);
       case "status":
@@ -268,6 +278,15 @@ export function buildBackupInstanceFleetFromClients(clients = []) {
       const provider = resolveProviderMeta(instance?.logiciel);
       const jobs = Array.isArray(instance?.jobs) ? instance.jobs : [];
       const instanceId = instance?.id ?? instance?.instanceId ?? `instance-${client?.id}-${instance?.logiciel || index}`;
+      const shapedJobs = jobs.map(job => buildBackupJobFromInstance(client, { ...instance, id: instanceId }, job));
+      let jobsMonitored = 0;
+      let jobsIssues = 0;
+      shapedJobs.forEach(job => {
+        const status = getBackupJobStatus(job);
+        if (status === "unmapped" || status === "inactive") return;
+        jobsMonitored += 1;
+        if (status === "critical" || status === "warning") jobsIssues += 1;
+      });
       rows.push({
         id: instanceId,
         clientId: client?.id,
@@ -278,6 +297,8 @@ export function buildBackupInstanceFleetFromClients(clients = []) {
         version: instance?.version || "",
         expiration: instance?.expiration || "",
         jobsCount: instance?.jobsCount ?? jobs.length,
+        jobsMonitored,
+        jobsIssues,
         providerId: provider.id,
         providerName: provider.label,
         providerIcon: provider.icon,
@@ -288,6 +309,93 @@ export function buildBackupInstanceFleetFromClients(clients = []) {
   });
   return rows;
 }
+/** Payload de navigation vers InstanceDetail (depuis row fleet ou job). */
+export function buildBackupInstanceDetailPayload(rowOrJob = {}) {
+  // Une instance peut avoir un champ `nom` : ne pas la traiter comme un job.
+  const isJob =
+    rowOrJob?.type === "job" ||
+    Boolean(rowOrJob?.jobName) ||
+    (Boolean(rowOrJob?.nom) &&
+      rowOrJob?.instanceId != null &&
+      !rowOrJob?.instanceName &&
+      !Array.isArray(rowOrJob?.jobs));
+  const instanceId = isJob
+    ? rowOrJob.instanceId
+    : rowOrJob.id ?? rowOrJob.instanceId;
+  const instanceName = isJob
+    ? rowOrJob.instanceName || rowOrJob.instanceLogiciel || ""
+    : rowOrJob.instanceName || "";
+  const logiciel = isJob
+    ? rowOrJob.instanceLogiciel || rowOrJob.providerName || ""
+    : rowOrJob.logiciel || rowOrJob.providerName || "";
+  return {
+    id: instanceId,
+    instanceId,
+    clientId: rowOrJob.clientId,
+    clientName: rowOrJob.clientName || "",
+    instanceName,
+    logiciel,
+    server: rowOrJob.server || "",
+    version: rowOrJob.version || "",
+    expiration: rowOrJob.expiration || "",
+    jobsCount: rowOrJob.jobsCount,
+    providerId: rowOrJob.providerId || null,
+    providerName: rowOrJob.providerName || logiciel || "",
+    providerIcon: rowOrJob.providerIcon || null,
+    providerImage: rowOrJob.providerImage || null,
+    focusJobId: isJob ? rowOrJob.id : null,
+    raw: isJob ? null : rowOrJob.raw || null
+  };
+}
+
+export function findBackupInstanceInClients(clients, { instanceId, clientId, instanceName, logiciel } = {}) {
+  const list = Array.isArray(clients) ? clients : [];
+  for (const client of list) {
+    if (clientId != null && String(client.id) !== String(clientId)) continue;
+    const instances = listClientBackupInstances(client);
+    for (let index = 0; index < instances.length; index += 1) {
+      const instance = instances[index];
+      const resolvedId =
+        instance?.id ?? instance?.instanceId ?? `instance-${client?.id}-${instance?.logiciel || index}`;
+      const name = resolveInstanceName(instance);
+      const idMatch = instanceId != null && String(resolvedId) === String(instanceId);
+      const nameMatch =
+        !instanceId &&
+        instanceName &&
+        name.toLowerCase() === String(instanceName).toLowerCase();
+      const logicielMatch =
+        !instanceId &&
+        !instanceName &&
+        logiciel &&
+        String(instance?.logiciel || "").toLowerCase() === String(logiciel).toLowerCase();
+      if (!idMatch && !nameMatch && !logicielMatch) continue;
+      const provider = resolveProviderMeta(instance?.logiciel);
+      const jobs = (Array.isArray(instance?.jobs) ? instance.jobs : []).map(job =>
+        buildBackupJobFromInstance(client, { ...instance, id: resolvedId }, job)
+      );
+      return {
+        id: resolvedId,
+        instanceId: resolvedId,
+        clientId: client.id,
+        clientName: client.name || client.nom || "",
+        instanceName: name || provider.label,
+        logiciel: instance?.logiciel || "",
+        server: instance?.server || "",
+        version: instance?.version || "",
+        expiration: instance?.expiration || "",
+        jobsCount: jobs.length,
+        providerId: provider.id,
+        providerName: provider.label,
+        providerIcon: provider.icon,
+        providerImage: provider.image,
+        jobs,
+        raw: instance
+      };
+    }
+  }
+  return null;
+}
+
 export function buildBackupInstanceFleetStats(rows = []) {
   const list = Array.isArray(rows) ? rows : [];
   const clientIds = new Set();

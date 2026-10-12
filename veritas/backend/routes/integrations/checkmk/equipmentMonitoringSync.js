@@ -614,6 +614,65 @@ export function listCheckmkHistoryItems(monitoringData, {
   });
   return items.slice(0, lim);
 }
+
+function startOfLocalDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function localDayKey(date) {
+  const d = startOfLocalDay(date);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+/**
+ * Day buckets of CheckMK events + notifications (warning / critical only) for a client.
+ */
+export function buildCheckmkEvolutionSeries(monitoringRows, { days = 7 } = {}) {
+  const sinceDays = Math.min(Math.max(Number(days) || 7, 1), 365);
+  const buckets = [];
+  const map = new Map();
+  for (let i = sinceDays - 1; i >= 0; i -= 1) {
+    const d = startOfLocalDay(new Date());
+    d.setDate(d.getDate() - i);
+    const key = localDayKey(d);
+    const entry = {
+      key,
+      date: d.toISOString(),
+      critical: 0,
+      warning: 0,
+      total: 0
+    };
+    buckets.push(entry);
+    map.set(key, entry);
+  }
+  const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+  for (const row of Array.isArray(monitoringRows) ? monitoringRows : []) {
+    const data = row?.monitoring_data;
+    if (!data || typeof data !== "object") continue;
+    const events = Array.isArray(data?.events?.events) ? data.events.events : [];
+    const notifications = Array.isArray(data?.notifications?.notifications)
+      ? data.notifications.notifications
+      : Array.isArray(data?.notifications?.events)
+        ? data.notifications.events
+        : [];
+    for (const item of [...events, ...notifications]) {
+      const t = getEventTimeMs(item);
+      if (t == null || t < cutoff) continue;
+      const state = getEventStateNum(item);
+      const sev = state === 2 ? "critical" : state === 1 ? "warning" : null;
+      if (!sev) continue;
+      const entry = map.get(localDayKey(new Date(t)));
+      if (!entry) continue;
+      if (sev === "critical") entry.critical += 1;
+      else entry.warning += 1;
+      entry.total += 1;
+    }
+  }
+  return buckets;
+}
+
 const INTERNAL_BASE = `http://127.0.0.1:${process.env.PORT || 3001}`;
 const EQUIPMENT_FAMILY_TABLES = {
   servers: 'v_b_clients_m_servers',
@@ -1146,6 +1205,40 @@ router.post('/equipment-monitoring/summaries', verifyJWT, async (req, res) => {
     console.error('POST /checkmk/equipment-monitoring/summaries:', err);
     res.status(500).json({
       error: err.message || 'Error reading monitoring summaries'
+    });
+  }
+});
+
+/** Evolution N jours : events + notifications CheckMK (warning / critical). clientId optionnel = parc global. */
+router.post('/equipment-monitoring/evolution', verifyJWT, async (req, res) => {
+  try {
+    const {
+      clientId,
+      days = 7
+    } = req.body || {};
+    const sinceDays = Math.min(Math.max(Number(days) || 7, 1), 365);
+    let result;
+    if (clientId != null && clientId !== '') {
+      result = await pool.query(
+        `SELECT equipment_id, monitoring_data FROM ${TABLE} WHERE client_id = $1`,
+        [clientId]
+      );
+    } else {
+      result = await pool.query(
+        `SELECT equipment_id, monitoring_data FROM ${TABLE}`
+      );
+    }
+    const series = buildCheckmkEvolutionSeries(result.rows || [], {
+      days: sinceDays
+    });
+    res.json({
+      days: sinceDays,
+      series
+    });
+  } catch (err) {
+    console.error('POST /checkmk/equipment-monitoring/evolution:', err);
+    res.status(500).json({
+      error: err.message || 'Error reading monitoring evolution'
     });
   }
 });

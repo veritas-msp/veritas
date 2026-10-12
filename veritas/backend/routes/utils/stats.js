@@ -767,6 +767,8 @@ function rankAndSliceHomeTickets(rows, {
       status: row.status,
       statusLabel: TICKET_STATUS_LABELS[row.status] || row.status,
       priority: row.priority,
+      type: row.type || null,
+      category: row.category || null,
       clientId: row.client_id,
       clientName: row.client_name,
       createdAt: row.created_at,
@@ -826,6 +828,71 @@ function summarizeAssignedHomeTicketsByFamily(rows) {
   return {
     support: summarizeAssignedHomeTickets(supportRows),
     sales: summarizeAssignedHomeTickets(salesRows)
+  };
+}
+function mapHomeTicketSlaRow(row, enriched = null) {
+  const sla = enriched || {};
+  return {
+    id: row.id,
+    ticketNumber: row.ticket_number,
+    title: row.title,
+    status: row.status,
+    statusLabel: TICKET_STATUS_LABELS[row.status] || row.status,
+    priority: row.priority,
+    clientId: row.client_id,
+    clientName: row.client_name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    isMajorIncident: Boolean(row.is_major_incident),
+    slaInfo: sla.sla_info ?? row.sla_info ?? null,
+    firstTakeoverAt: row.first_takeover_at ?? null,
+    slaLabel: sla.sla_label && sla.sla_label !== "—" ? sla.sla_label : null,
+    slaTone: sla.sla_tone || null,
+    _sortSla: sla.sla_remaining_ms != null ? Number(sla.sla_remaining_ms) : Number.POSITIVE_INFINITY
+  };
+}
+function summarizeHomeTicketSla(rows, {
+  slaSettings,
+  attentionLimit = 10
+} = {}) {
+  let breached = 0;
+  let near = 0;
+  let ok = 0;
+  let tracked = 0;
+  const attention = [];
+  for (const row of rows || []) {
+    if (isSalesTicket(row?.type, row?.category)) continue;
+    const enriched = enrichTicketWithSla(row, {
+      clientContrat: row.client_contrat,
+      slaSettings
+    });
+    const tone = String(enriched?.sla_tone || "").toLowerCase();
+    const label = enriched?.sla_label;
+    if (!label || label === "—" || tone === "neutral") continue;
+    tracked += 1;
+    if (tone === "breach" || tone === "breached") {
+      breached += 1;
+      attention.push(mapHomeTicketSlaRow(row, enriched));
+    } else if (tone === "warning") {
+      near += 1;
+      attention.push(mapHomeTicketSlaRow(row, enriched));
+    } else if (tone === "ok" || tone === "active" || tone === "met") {
+      ok += 1;
+    }
+  }
+  attention.sort((a, b) => {
+    if (a._sortSla !== b._sortSla) return a._sortSla - b._sortSla;
+    return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+  });
+  return {
+    breached,
+    near,
+    ok,
+    tracked,
+    attention: attention.slice(0, attentionLimit).map(({
+      _sortSla,
+      ...ticket
+    }) => ticket)
   };
 }
 router.get("/home-dashboard", verifyJWT, async (req, res) => {
@@ -967,11 +1034,35 @@ router.get("/home-dashboard", verifyJWT, async (req, res) => {
         summarizeAssignedHomeTicketsByFamily(recentTicketRows.rows),
         summarizePendingValidationByFamily(pendingValidationRows.rows)
       ),
-      recentTickets: rankAndSliceHomeTickets(recentTicketRows.rows, {
-        hasSlaInfo: isCommunity() ? false : hasSlaInfo,
-        slaSettings,
-        limit: HOME_TICKETS_LIST_LIMIT
-      }),
+      ticketSlaStats: isCommunity() || !hasSlaInfo
+        ? {
+          breached: 0,
+          near: 0,
+          ok: 0,
+          tracked: 0,
+          attention: []
+        }
+        : summarizeHomeTicketSla(recentTicketRows.rows, {
+          slaSettings,
+          attentionLimit: HOME_TICKETS_LIST_LIMIT
+        }),
+      recentTickets: (() => {
+        const slaOpts = {
+          hasSlaInfo: isCommunity() ? false : hasSlaInfo,
+          slaSettings,
+          limit: Math.max(5, Math.floor(HOME_TICKETS_LIST_LIMIT / 2))
+        };
+        const supportRows = [];
+        const salesRows = [];
+        for (const row of recentTicketRows.rows || []) {
+          if (isSalesTicket(row?.type, row?.category)) salesRows.push(row);
+          else supportRows.push(row);
+        }
+        return [
+          ...rankAndSliceHomeTickets(supportRows, slaOpts),
+          ...rankAndSliceHomeTickets(salesRows, slaOpts)
+        ];
+      })(),
       contractAlerts,
       licenseAlerts,
       upcomingEvents: filterHomeEventsForUser(eventRows.rows, userId, HOME_EVENTS_LIST_LIMIT),
@@ -1014,6 +1105,13 @@ router.get("/home-dashboard", verifyJWT, async (req, res) => {
         infrastructure: fullDashboard.infrastructure,
         ticketsByStatus: fullDashboard.ticketsByStatus,
         assignedTicketStats: fullDashboard.assignedTicketStats,
+        ticketSlaStats: {
+          breached: 0,
+          near: 0,
+          ok: 0,
+          tracked: 0,
+          attention: []
+        },
         recentTickets: fullDashboard.recentTickets,
         contractAlerts: fullDashboard.contractAlerts,
         licenseAlerts: fullDashboard.licenseAlerts

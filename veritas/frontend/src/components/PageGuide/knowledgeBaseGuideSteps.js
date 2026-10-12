@@ -5,9 +5,6 @@ const STEP_CONFIG = [{
   key: "hero",
   target: '[data-guide="kb-hero"]'
 }, {
-  key: "kpis",
-  target: '[data-guide="kb-kpis"]'
-}, {
   key: "folders",
   target: '[data-guide="kb-folders"]'
 }, {
@@ -24,11 +21,7 @@ const COPY = {
     steps: {
       hero: {
         title: "Articles internes et portail",
-        content: "Rédigez des procédures pour les agents et, si besoin, partagez-les sur le portail client. Créez un article depuis le bouton du bandeau."
-      },
-      kpis: {
-        title: "Compteurs",
-        content: "Suivez le volume total, les brouillons encore à publier et les articles déjà en ligne."
+        content: "Rédigez des procédures pour les agents et, si besoin, partagez-les sur le portail client. Créez un article depuis le bouton + de la barre d’outils."
       },
       folders: {
         title: "Navigation",
@@ -49,11 +42,7 @@ const COPY = {
     steps: {
       hero: {
         title: "Internal articles and portal",
-        content: "Write procedures for agents and, if needed, share them on the client portal. Create an article from the header button."
-      },
-      kpis: {
-        title: "Counters",
-        content: "Track the total volume, drafts still to publish and articles already live."
+        content: "Write procedures for agents and, if needed, share them on the client portal. Create an article from the toolbar + button."
       },
       folders: {
         title: "Navigation",
@@ -76,10 +65,6 @@ const COPY = {
         title: "Interne Artikel und Portal",
         content: "Schreiben Sie Verfahren für Agenten und teilen Sie sie bei Bedarf im Kundenportal. Ein Artikel entsteht über die Kopfschaltfläche."
       },
-      kpis: {
-        title: "Zähler",
-        content: "Gesamtzahl, Entwürfe und bereits veröffentlichte Artikel im Blick."
-      },
       folders: {
         title: "Ordner",
         content: "Organisieren Sie die Basis als Baum. Ein Ordner filtert die Liste; je nach Recht können Sie Ordner anlegen, umbenennen oder teilen."
@@ -101,10 +86,6 @@ const COPY = {
         title: "Articoli interni e portale",
         content: "Redigete procedure per gli agenti e, se serve, condividetele sul portale cliente. Create un articolo dal pulsante in intestazione."
       },
-      kpis: {
-        title: "Contatori",
-        content: "Seguite il volume totale, le bozze da pubblicare e gli articoli già online."
-      },
       folders: {
         title: "Cartelle",
         content: "Organizzate la base ad albero. Selezionate una cartella per filtrare, oppure create / rinominate / condividete una cartella."
@@ -125,10 +106,6 @@ const COPY = {
       hero: {
         title: "Artículos internos y portal",
         content: "Redacte procedimientos para los agentes y, si hace falta, compártalos en el portal cliente. Cree un artículo desde el botón del encabezado."
-      },
-      kpis: {
-        title: "Contadores",
-        content: "Siga el volumen total, los borradores por publicar y los artículos ya en línea."
       },
       folders: {
         title: "Carpetas",

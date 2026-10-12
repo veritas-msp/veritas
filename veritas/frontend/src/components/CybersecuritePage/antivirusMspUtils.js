@@ -74,7 +74,7 @@ export function buildAntivirusFleetRow(client, solution, index = 0) {
     providerIcon: provider?.icon || "mdi:shield-bug-outline",
     providerImage,
     solutionLabel: summary.providerName || provider?.label || productName,
-    solutionSubtitle: solution?.companyName || summary.label || null,
+    solutionSubtitle: null,
     productName,
     mappingMode: canonicalizeAntivirusMappingMode(solution),
     mappingModeLabel: getAntivirusSolutionModeLabel(solution),

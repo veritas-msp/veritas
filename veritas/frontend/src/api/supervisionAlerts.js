@@ -148,9 +148,83 @@ export async function resolveSupervisionAlert(item, note) {
   return postAction(qid, "resolve", itemPayload(item, { note, closedReason: "resolved" }));
 }
 
-export async function dismissSupervisionAlert(item, note) {
+export async function dismissSupervisionAlert(item, noteOrOptions) {
   const qid = item.queueItemId || item.id;
-  return postAction(qid, "dismiss", itemPayload(item, { note, closedReason: "dismissed" }));
+  const options =
+    noteOrOptions && typeof noteOrOptions === "object"
+      ? noteOrOptions
+      : { note: noteOrOptions };
+  return postAction(
+    qid,
+    "dismiss",
+    itemPayload(item, {
+      note: options.note || null,
+      closedReason: "dismissed",
+      ignoreReason: options.ignoreReason || null,
+      closureDetail: options.closureDetail || null,
+      meta: {
+        ...(item.meta || {}),
+        ...(options.meta || {}),
+        ...(options.ignoreReason ? { ignoreReason: options.ignoreReason } : {}),
+        ...(options.closureDetail ? { closureDetail: options.closureDetail } : {})
+      }
+    })
+  );
+}
+
+export async function fetchSupervisionExclusions(params = {}) {
+  const { signal, ...query } = params || {};
+  const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/exclusions`, query), {
+    signal
+  });
+  const data = await handleResponse(response);
+  return data?.exclusions || [];
+}
+
+/** Tendance disponibilité parc (snapshot semaine courante vs semaine précédente). */
+export async function fetchParkAvailabilityTrend({
+  clientId,
+  signal
+} = {}) {
+  const response = await authFetch(
+    withApiQuery(`${API_BASE_URL}/supervision/park-snapshots/trend`, {
+      ...(clientId != null && clientId !== "" ? { clientId } : {})
+    }),
+    { signal }
+  );
+  return handleResponse(response);
+}
+
+export async function fetchParkSnapshots({
+  clientId,
+  weeks = 12,
+  signal
+} = {}) {
+  const response = await authFetch(
+    withApiQuery(`${API_BASE_URL}/supervision/park-snapshots`, {
+      weeks,
+      ...(clientId != null && clientId !== "" ? { clientId } : {})
+    }),
+    { signal }
+  );
+  const data = await handleResponse(response);
+  return data?.snapshots || [];
+}
+
+export async function createSupervisionExclusion(payload = {}) {
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/exclusions`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+  const data = await handleResponse(response);
+  return data?.exclusion || null;
+}
+
+export async function deleteSupervisionExclusion(id) {
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/exclusions/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
+  return handleResponse(response);
 }
 
 export async function reopenSupervisionAlert(item) {

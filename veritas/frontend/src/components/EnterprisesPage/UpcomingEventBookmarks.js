@@ -340,7 +340,8 @@ function EventBookmark({
   onClick,
   mode = "upcoming",
   menuOpen = false,
-  buttonRef
+  buttonRef,
+  heroCompact = false
 }) {
   const isRecent = mode === "recent";
   const anchorDate = isRecent ? event.event_end ?? event["end"] ?? event.end ?? event.start : event.start;
@@ -397,7 +398,7 @@ function EventBookmark({
   const titleNode = <span className={cardStyles.eventBookmarkTitle} title={titleTruncated ? undefined : titleFull}>
       {titleDisplay}
     </span>;
-  return <button ref={buttonRef} type="button" className={`${styles.bookmark} ${cardStyles.eventBookmark} ${isRecent ? styles.bookmarkPast : ""} ${menuOpen ? `${styles.bookmarkMenuOpen} ${cardStyles.eventBookmarkMenuOpen}` : ""}`} style={{
+  return <button ref={buttonRef} type="button" className={`${styles.bookmark} ${cardStyles.eventBookmark} ${heroCompact ? cardStyles.eventBookmarkHero : ""} ${isRecent ? styles.bookmarkPast : ""} ${menuOpen ? `${styles.bookmarkMenuOpen} ${cardStyles.eventBookmarkMenuOpen}` : ""}`} style={{
     "--bookmark-accent": accent
   }} onClick={() => onClick?.(event)} aria-expanded={menuOpen} aria-haspopup="menu" aria-label={interpolate(labels.formatEventAria, {
     title: eventTitle,
@@ -433,8 +434,7 @@ function EventBookmark({
         </span>
 
         <span className={cardStyles.eventBookmarkExpanded}>
-          <span className={cardStyles.eventBookmarkTop}>
-            <span className={cardStyles.eventBookmarkTopMain}>
+          {heroCompact ? <>
               <span className={`${styles.bookmarkRibbon} ${cardStyles.eventBookmarkRibbonExpanded}`} aria-hidden>
                 <span className={`${styles.bookmarkDay} ${cardStyles.eventBookmarkRibbonDayExpanded}`}>
                   {ribbon.day}
@@ -444,24 +444,45 @@ function EventBookmark({
                   {ribbon.year ? ` ${ribbon.year}` : ""}
                 </span>
               </span>
+              {titleTruncated ? <SmartTooltip content={titleFull} className={cardStyles.eventBookmarkTitleWrap}>
+                  {titleNode}
+                </SmartTooltip> : <span className={cardStyles.eventBookmarkTitleWrap}>{titleNode}</span>}
               {relative ? <span className={cardStyles.eventBookmarkRelative}>{relative}</span> : null}
-            </span>
-          </span>
-          {titleTruncated ? <SmartTooltip content={titleFull} className={cardStyles.eventBookmarkTitleWrap}>
-              {titleNode}
-            </SmartTooltip> : <span className={cardStyles.eventBookmarkTitleWrap}>{titleNode}</span>}
-          <span className={cardStyles.eventBookmarkDetails}>
-            {expandedDetailItems.map(item => <span key={item.key} className={cardStyles.eventBookmarkDetailRow}>
-                <Icon icon={item.icon} className={cardStyles.eventBookmarkDetailIcon} aria-hidden />
-                <span className={cardStyles.eventBookmarkDetailText}>{item.text}</span>
-              </span>)}
-          </span>
-          <span className={cardStyles.eventBookmarkFoot}>
-            <span className={cardStyles.eventBookmarkType} title={typeLabel}>
-              <Icon icon={typeIcon} className={cardStyles.eventBookmarkTypeIcon} aria-hidden />
-              <span>{typeLabel}</span>
-            </span>
-          </span>
+              <span className={cardStyles.eventBookmarkType} title={typeLabel}>
+                <Icon icon={typeIcon} className={cardStyles.eventBookmarkTypeIcon} aria-hidden />
+                <span>{typeLabel}</span>
+              </span>
+            </> : <>
+              <span className={cardStyles.eventBookmarkTop}>
+                <span className={cardStyles.eventBookmarkTopMain}>
+                  <span className={`${styles.bookmarkRibbon} ${cardStyles.eventBookmarkRibbonExpanded}`} aria-hidden>
+                    <span className={`${styles.bookmarkDay} ${cardStyles.eventBookmarkRibbonDayExpanded}`}>
+                      {ribbon.day}
+                    </span>
+                    <span className={`${styles.bookmarkMonth} ${cardStyles.eventBookmarkRibbonMonthExpanded}`}>
+                      {ribbon.month}
+                      {ribbon.year ? ` ${ribbon.year}` : ""}
+                    </span>
+                  </span>
+                  {relative ? <span className={cardStyles.eventBookmarkRelative}>{relative}</span> : null}
+                </span>
+              </span>
+              {titleTruncated ? <SmartTooltip content={titleFull} className={cardStyles.eventBookmarkTitleWrap}>
+                  {titleNode}
+                </SmartTooltip> : <span className={cardStyles.eventBookmarkTitleWrap}>{titleNode}</span>}
+              <span className={cardStyles.eventBookmarkDetails}>
+                {expandedDetailItems.map(item => <span key={item.key} className={cardStyles.eventBookmarkDetailRow}>
+                    <Icon icon={item.icon} className={cardStyles.eventBookmarkDetailIcon} aria-hidden />
+                    <span className={cardStyles.eventBookmarkDetailText}>{item.text}</span>
+                  </span>)}
+              </span>
+              <span className={cardStyles.eventBookmarkFoot}>
+                <span className={cardStyles.eventBookmarkType} title={typeLabel}>
+                  <Icon icon={typeIcon} className={cardStyles.eventBookmarkTypeIcon} aria-hidden />
+                  <span>{typeLabel}</span>
+                </span>
+              </span>
+            </>}
         </span>
       </span>
     </button>;
@@ -501,6 +522,8 @@ export default function UpcomingEventBookmarks({
   onGoToPlanning,
   proLocked = false,
   inPageHero = false,
+  heroInline = false,
+  heroFrise = false,
   collapseStorageKey = "veritas.heroBookmarks.enterpriseEvents.collapsed",
   defaultCollapsed = true
 }) {
@@ -575,7 +598,7 @@ export default function UpcomingEventBookmarks({
   const {
     collapsed,
     toggle
-  } = useHeroBookmarkCollapse(collapseStorageKey, defaultCollapsed);
+  } = useHeroBookmarkCollapse(collapseStorageKey, heroFrise ? false : defaultCollapsed);
   const handleHeaderToggle = () => {
     toggle();
   };
@@ -588,7 +611,12 @@ export default function UpcomingEventBookmarks({
       upcoming: String(upcoming.length)
     });
   }, [proLocked, showLoading, isEmpty, recent.length, upcoming.length, labels]);
-  const bar = <div className={[inPageHero ? styles.barInPageHero : styles.bar, inPageHero ? styles.barInPageHeroShell : "", proLocked && !inPageHero ? styles.barInProPanel : ""].filter(Boolean).join(" ")} aria-label={labels.barAria}>
+  const bar = <div className={[
+    inPageHero || heroFrise ? styles.barInPageHero : styles.bar,
+    inPageHero || heroFrise ? styles.barInPageHeroShell : "",
+    heroFrise ? styles.barHeroFrise : "",
+    proLocked && !inPageHero && !heroFrise ? styles.barInProPanel : ""
+  ].filter(Boolean).join(" ")} aria-label={labels.barAria}>
       <div className={styles.barInner}>
         <div className={[styles.trackWrap, fade.left ? styles.trackFadeLeft : "", fade.right ? styles.trackFadeRight : ""].filter(Boolean).join(" ")}>
           <div className={`${styles.track} ${cardStyles.eventBookmarksTrack}`} ref={trackRef}>
@@ -605,12 +633,12 @@ export default function UpcomingEventBookmarks({
                 <span>{labels.empty}</span>
               </div> : showSections ? <>
                 <SectionLabel icon="mdi:history" title={labels.sectionRecent} count={proLocked ? null : recent.length} variant="recent" />
-                {recent.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneRecent30Days}</span> : recent.map(event => <EventBookmark key={`recent-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="recent" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} />)}
+                {recent.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneRecent30Days}</span> : recent.map(event => <EventBookmark key={`recent-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="recent" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} heroCompact={heroFrise} />)}
 
                 <div className={styles.sectionDivider} aria-hidden />
 
                 <SectionLabel icon="mdi:bookmark-multiple-outline" title={labels.sectionUpcoming} count={proLocked ? null : upcoming.length} />
-                {upcoming.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneUpcoming}</span> : upcoming.map(event => <EventBookmark key={`upcoming-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="upcoming" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} />)}
+                {upcoming.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneUpcoming}</span> : upcoming.map(event => <EventBookmark key={`upcoming-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="upcoming" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} heroCompact={heroFrise} />)}
               </> : null}
           </div>
         </div>
@@ -618,7 +646,11 @@ export default function UpcomingEventBookmarks({
     </div>;
   return <>
       {actionMenu ? <EventActionMenu anchorEl={actionMenu.anchorEl} event={actionMenu.event} labels={menuLabels} onEdit={onEditEvent} onGoToPlanning={onGoToPlanning} onClose={closeActionMenu} /> : null}
-      {inPageHero ? <div className={[styles.heroBookmarkShell, styles.heroBookmarkShellInPageHero, collapsed ? styles.heroBookmarkShellCollapsed : ""].filter(Boolean).join(" ")} data-bookmarks-collapsed={collapsed ? "true" : "false"}>
+      {heroFrise ? <div className={styles.heroFriseShell} data-bookmarks-collapsed="false">
+          <ProFeatureLock locked={proLocked} featureLabel={proFeatureLabel} featureKey={proFeatureKey} badgePosition="none" softLocked={proLocked}>
+            {bar}
+          </ProFeatureLock>
+        </div> : inPageHero ? <div className={[styles.heroBookmarkShell, styles.heroBookmarkShellInPageHero, heroInline ? styles.heroBookmarkShellInline : "", collapsed ? styles.heroBookmarkShellCollapsed : ""].filter(Boolean).join(" ")} data-bookmarks-collapsed={collapsed ? "true" : "false"}>
           <HeroBookmarkCollapseHeader collapsed={collapsed} onToggle={handleHeaderToggle} icon="mdi:calendar-month-outline" title={labels.panelTitle} summary={panelSummary} expandAria={labels.expandPanelAria} collapseAria={labels.collapsePanelAria} />
           <div className={styles.barCollapsePanel} aria-hidden={collapsed}>
             <ProFeatureLock locked={proLocked} featureLabel={proFeatureLabel} featureKey={proFeatureKey} badgePosition="none" softLocked={proLocked}>

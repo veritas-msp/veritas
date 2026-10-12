@@ -16,11 +16,12 @@ const SIDEBAR_COPY = {
       contact: "Contact",
       prestataire: "Prestataires",
       support: "Support",
-      sales: "Prestations et installations",
+      sales: "Prestations",
       planning: "Planning",
       dashboard: "Tableau de bord KPI",
       supervision: "Centre de supervision",
-      inventory: "Inventaire périphériques",
+      campaigns: "Campagnes",
+      inventory: "Matériel",
       cyber: "Cybersécurité",
       cloud: "Cloud IT et services",
       reports: "Rapports",
@@ -43,9 +44,16 @@ const SIDEBAR_COPY = {
       tooltip: "Recherche",
       aria: "Recherche globale"
     },
+    more: {
+      tooltip: "Plus",
+      aria: "Recherche et aide",
+      menu: "Plus"
+    },
     chrome: {
       openMenu: "Ouvrir le menu",
-      closeMenu: "Fermer le menu"
+      closeMenu: "Fermer le menu",
+      expandSidebar: "Afficher les noms",
+      collapseSidebar: "Réduire le menu"
     },
     account: {
       menu: "Compte",
@@ -76,11 +84,12 @@ const SIDEBAR_COPY = {
       contact: "Contacts",
       prestataire: "Providers",
       support: "Support",
-      sales: "Services & installations",
+      sales: "Services",
       planning: "Scheduling",
       dashboard: "KPI Dashboard",
       supervision: "Monitoring center",
-      inventory: "Device inventory",
+      campaigns: "Campaigns",
+      inventory: "Hardware",
       cyber: "Cybersecurity",
       cloud: "Cloud IT & Services",
       reports: "Reports",
@@ -103,9 +112,16 @@ const SIDEBAR_COPY = {
       tooltip: "Search",
       aria: "Global search"
     },
+    more: {
+      tooltip: "More",
+      aria: "Search and help",
+      menu: "More"
+    },
     chrome: {
       openMenu: "Open menu",
-      closeMenu: "Close menu"
+      closeMenu: "Close menu",
+      expandSidebar: "Show labels",
+      collapseSidebar: "Collapse menu"
     },
     account: {
       menu: "Account",
@@ -136,11 +152,12 @@ const SIDEBAR_COPY = {
       contact: "Kontakte",
       prestataire: "Dienstleister",
       support: "Support",
-      sales: "Leistungen & Installationen",
+      sales: "Leistungen",
       planning: "Planung",
       dashboard: "KPI-Dashboard",
       supervision: "Supervisionszentrum",
-      inventory: "Geräteinventar",
+      campaigns: "Kampagnen",
+      inventory: "Hardware",
       cyber: "Cybersicherheit",
       cloud: "Cloud IT & Services",
       reports: "Berichte",
@@ -163,9 +180,16 @@ const SIDEBAR_COPY = {
       tooltip: "Suche",
       aria: "Globale Suche"
     },
+    more: {
+      tooltip: "Mehr",
+      aria: "Suche und Hilfe",
+      menu: "Mehr"
+    },
     chrome: {
       openMenu: "Menü öffnen",
-      closeMenu: "Menü schließen"
+      closeMenu: "Menü schließen",
+      expandSidebar: "Bezeichnungen anzeigen",
+      collapseSidebar: "Menü einklappen"
     },
     account: {
       menu: "Konto",
@@ -196,11 +220,12 @@ const SIDEBAR_COPY = {
       contact: "Contatti",
       prestataire: "Fornitori",
       support: "Supporto",
-      sales: "Prestazioni e installazioni",
+      sales: "Prestazioni",
       planning: "Pianificazione",
       dashboard: "Dashboard KPI",
       supervision: "Centro di supervisione",
-      inventory: "Inventario periferiche",
+      campaigns: "Campagne",
+      inventory: "Materiale",
       cyber: "Cybersicurezza",
       cloud: "Cloud IT e servizi",
       reports: "Report",
@@ -223,9 +248,16 @@ const SIDEBAR_COPY = {
       tooltip: "Ricerca",
       aria: "Ricerca globale"
     },
+    more: {
+      tooltip: "Altro",
+      aria: "Ricerca e aiuto",
+      menu: "Altro"
+    },
     chrome: {
       openMenu: "Apri il menu",
-      closeMenu: "Chiudi il menu"
+      closeMenu: "Chiudi il menu",
+      expandSidebar: "Mostra i nomi",
+      collapseSidebar: "Riduci il menu"
     },
     account: {
       menu: "Account",
@@ -256,11 +288,12 @@ const SIDEBAR_COPY = {
       contact: "Contactos",
       prestataire: "Proveedores",
       support: "Soporte",
-      sales: "Prestaciones e instalaciones",
+      sales: "Prestaciones",
       planning: "Planificación",
       dashboard: "Panel KPI",
       supervision: "Centro de supervisión",
-      inventory: "Inventario de periféricos",
+      campaigns: "Campañas",
+      inventory: "Material",
       cyber: "Ciberseguridad",
       cloud: "Cloud IT y servicios",
       reports: "Informes",
@@ -283,9 +316,16 @@ const SIDEBAR_COPY = {
       tooltip: "Buscar",
       aria: "Búsqueda global"
     },
+    more: {
+      tooltip: "Más",
+      aria: "Búsqueda y ayuda",
+      menu: "Más"
+    },
     chrome: {
       openMenu: "Abrir el menú",
-      closeMenu: "Cerrar el menú"
+      closeMenu: "Cerrar el menú",
+      expandSidebar: "Mostrar nombres",
+      collapseSidebar: "Reducir el menú"
     },
     account: {
       menu: "Cuenta",
@@ -306,6 +346,7 @@ export function localizeDocumentLabel(key, fallbackLabel, locale) {
   const nav = getSidebarCopy(locale).nav;
   if (key === "Mon") return nav.monitoring;
   if (key === "DocumentsHub") return nav.documents;
+  if (key === "Campaigns") return nav.campaigns;
   if (key === "EquipmentInventory") return nav.inventory;
   if (key === "KnowledgeBase") return nav.knowledgeBase;
   return fallbackLabel;

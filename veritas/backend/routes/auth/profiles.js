@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
 import { requirePermission } from "../../middleware/permissions.js";
@@ -167,13 +167,13 @@ router.post("/", requirePermission("admin_panel.users"), async (req, res) => {
       }
       await pool.query(`INSERT INTO v_b_users_profiles
           (name, label, parent_profile,
-           monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
+           monitoring_enabled, infrastructure_enabled, cybersecurite_enabled, campaigns_enabled,
            planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
            configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
            documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order)
          SELECT
            $1, $2, $3,
-           monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
+           monitoring_enabled, infrastructure_enabled, cybersecurite_enabled, campaigns_enabled,
            planning_enabled, service_enabled, TRUE, TRUE, prestataire_enabled,
            configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
            documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled,
@@ -184,13 +184,13 @@ router.post("/", requirePermission("admin_panel.users"), async (req, res) => {
       const flagValues = TOGGLEABLE_FLAGS.map(flag => Boolean(body[flag]));
       await pool.query(`INSERT INTO v_b_users_profiles
          (name, label,
-          monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
+          monitoring_enabled, infrastructure_enabled, cybersecurite_enabled, campaigns_enabled,
           planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
           configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
           documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`, [String(name).trim(), String(label).trim(),
-      // monitoring, infrastructure, cyber, planning, service
-      Boolean(body.monitoring_enabled), Boolean(body.infrastructure_enabled), Boolean(body.cybersecurite_enabled), Boolean(body.planning_enabled), Boolean(body.service_enabled),
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, TRUE, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`, [String(name).trim(), String(label).trim(),
+      // monitoring, infrastructure, cyber, campaigns, planning, service
+      Boolean(body.monitoring_enabled), Boolean(body.infrastructure_enabled), Boolean(body.cybersecurite_enabled), Boolean(body.campaigns_enabled), Boolean(body.planning_enabled), Boolean(body.service_enabled),
       // prestataire, configurateur, tickets, sales, dashboard, documents, inventory, knowledge base, administration
       Boolean(body.prestataire_enabled), Boolean(body.configurateur_enabled), Boolean(body.tickets_enabled), Boolean(body.sales_enabled), Boolean(body.dashboard_enabled), Boolean(body.documents_enabled), Boolean(body.equipment_inventory_enabled), Boolean(body.knowledge_base_enabled), Boolean(body.administration_enabled), Number.isFinite(Number(display_order)) ? Number(display_order) : 999]);
       void flagValues;

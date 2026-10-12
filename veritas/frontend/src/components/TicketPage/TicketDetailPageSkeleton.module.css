@@ -1,0 +1,212 @@
+.bone {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--msp-surface-3, #eef2f7) 25%,
+    var(--msp-surface-2, #f7f9fc) 50%,
+    var(--msp-surface-3, #eef2f7) 75%
+  );
+  background-size: 200% 100%;
+  animation: ticketSkeletonShimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes ticketSkeletonShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.headerIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+.familyIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.numberBar {
+  width: 4.5rem;
+  height: 0.85rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.titleBar {
+  width: min(100%, 16rem);
+  height: 0.9rem;
+  border-radius: 4px;
+}
+
+.badgePill {
+  width: 4.2rem;
+  height: 1.55rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.sectionHead {
+  width: 7rem;
+  height: 0.75rem;
+  border-radius: 4px;
+  margin: 0.85rem 0.95rem 0.55rem;
+}
+
+.fieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 0.95rem 1rem;
+}
+
+.fieldLabel {
+  width: 4.5rem;
+  height: 0.65rem;
+  border-radius: 4px;
+}
+
+.fieldInput {
+  width: 100%;
+  height: 2.15rem;
+  border-radius: 10px;
+}
+
+.centerTabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1px solid var(--msp-border, #c5d0de);
+  border-radius: 14px;
+  background: var(--msp-surface-2, #f4f6fa);
+  flex-shrink: 0;
+}
+
+.centerTab {
+  height: 2.2rem;
+  border-radius: 10px;
+}
+
+.centerPanel {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--msp-border-light, #e8edf4);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.chatBubbleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  max-width: min(92%, 22rem);
+}
+
+.chatBubbleRowOut {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+  margin-left: auto;
+}
+
+.chatAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.chatBubble {
+  flex: 1;
+  min-width: 8rem;
+  height: 4.2rem;
+  border-radius: 14px;
+}
+
+.chatBubbleTall {
+  height: 6.5rem;
+}
+
+.replyBox {
+  margin-top: auto;
+  width: 100%;
+  height: 5.5rem;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.rightSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem 0.95rem;
+}
+
+.rightLine {
+  width: 100%;
+  height: 0.75rem;
+  border-radius: 4px;
+}
+
+.rightLineShort {
+  width: 62%;
+}
+
+.railBtn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9px;
+}
+
+.footerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 56px;
+}
+
+.footerBtn {
+  width: 8.5rem;
+  height: 2.15rem;
+  border-radius: 10px;
+}
+
+.footerBtnWide {
+  width: 11rem;
+}
+
+:global(html.dark) .bone {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 25%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 75%
+  );
+  background-size: 200% 100%;
+}
+
+:global(html.dark) .centerTabs,
+:global(html.dark) .centerPanel {
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bone {
+    animation: none;
+  }
+}

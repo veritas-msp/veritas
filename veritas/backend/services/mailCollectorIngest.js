@@ -7,6 +7,11 @@ import { loadExclusionRulesRaw, loadMailCollectorsRaw, loadMailCollectSettingsRa
 import { normalizeMailCollectSettings } from "./mailCollectSettings.js";
 import { enrichMailContextWithThreadHeaders, isInboundEmailAlreadyProcessed, recordTicketEmailMessage, resolveTicketFromEmailContext } from "./ticketEmailThread.js";
 import { ensureTicketEmailThreadSchema } from "./ensureTicketEmailThreadSchema.js";
+import {
+  attachInboundMailToSideConversation,
+  resolveSideConversationFromEmailContext
+} from "./ticketSideConversations.js";
+import { ensureTicketSideConversationsSchema } from "./ensureTicketSideConversationsSchema.js";
 import { ensureMailCollectSettingsSchema } from "./ensureMailCollectSettingsSchema.js";
 import { buildMailContextFromEnvelope, findMatchingExclusionRule, getAllMatchingExclusionRules, normalizeExclusionRule, normalizeIngestionAction } from "./mailIngestionRules.js";
 import { extractEmailContentFromRfc822, registerCidMapping, rewriteCidReferences } from "./mailCollectorMime.js";
@@ -556,6 +561,35 @@ async function rememberProcessedInboundMail({
     await markMailSeen(client, message?.uid);
   }
 }
+async function tryAttachInboundToSideConversation({
+  collector,
+  matchingRule,
+  client,
+  message,
+  mailContext,
+  stats,
+  actionLabel,
+  subjectPreview,
+  mailCollectSettings
+}) {
+  await ensureTicketSideConversationsSchema().catch(() => {});
+  const sideConversation = await resolveSideConversationFromEmailContext(mailContext).catch(() => null);
+  if (!sideConversation?.id) return false;
+  await attachInboundMailToSideConversation({
+    conversation: sideConversation,
+    mailContext,
+    collectorId: collector?.id
+  });
+  stats.attached += 1;
+  await finalizeAcceptedMail(collector, client, message.uid, mailCollectSettings, matchingRule);
+  await appendCollectorLogInConfig(
+    collector.id,
+    "success",
+    `Email attached to side conversation [SC:${sideConversation.thread_token}] on ticket via rule "${actionLabel}" ("${subjectPreview}").`
+  ).catch(() => {});
+  return true;
+}
+
 async function attachInboundMailToTicket({
   ticketRow,
   collector,
@@ -569,6 +603,19 @@ async function attachInboundMailToTicket({
   logDetail = "",
   mailCollectSettings
 }) {
+  const attachedToSide = await tryAttachInboundToSideConversation({
+    collector,
+    matchingRule,
+    client,
+    message,
+    mailContext,
+    stats,
+    actionLabel,
+    subjectPreview,
+    mailCollectSettings
+  });
+  if (attachedToSide) return;
+
   const subject = mailContext.subject;
   const {
     body,
@@ -726,6 +773,19 @@ async function handleThreadedTicketMail({
   successLogLabel,
   mailCollectSettings
 }) {
+  const attachedToSide = await tryAttachInboundToSideConversation({
+    collector,
+    matchingRule,
+    client,
+    message,
+    mailContext,
+    stats,
+    actionLabel,
+    subjectPreview,
+    mailCollectSettings
+  });
+  if (attachedToSide) return;
+
   const threadLookupEnabled = mailCollectSettings?.threadRepliesEnabled !== false;
   const existingTicket = await resolveTicketFromEmailContext(mailContext, {
     extractTicketNumberFromSubject,

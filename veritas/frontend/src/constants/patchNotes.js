@@ -5,6 +5,50 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.75",
+    date: "2026-10-12",
+    highlights: [
+      "Rapports intervention & audit : branding admin (couleurs plates), aperçu fidèle et téléchargement HTML.",
+      "Centre de supervision : triage (ignorer, maintenance, historiser) et snapshots d’état du parc.",
+      "Tickets : conversations latérales (side conversations) pour les échanges parallèles.",
+      "Fiches entreprise / équipement : vue d’ensemble enrichie, skeletons et icônes client.",
+      "Admin : branding login & rapports, campagnes, et nombreux raffinements UI / i18n."
+    ]
+  },
+  {
+    version: "1.0.74",
+    date: "2026-10-08",
+    highlights: [
+      "Accueil — Mes événements : frise horizontale 7 jours (compteurs) et carte plus compacte."
+    ]
+  },
+  {
+    version: "1.0.73",
+    date: "2026-10-08",
+    highlights: [
+      "Sidebar : libellés des pages visibles par défaut, avec bouton pour plier/déplier le mode icônes."
+    ]
+  },
+  {
+    version: "1.0.72",
+    date: "2026-10-08",
+    highlights: [
+      "Accueil : bloc Centre de supervision sous Mes événements (KPI alertes + état du parc + évolution 7 jours)."
+    ]
+  },
+  {
+    version: "1.0.71",
+    date: "2026-10-08",
+    highlights: [
+      "Fiche entreprise — État global du parc : tous les statuts restent visibles à droite (y compris à 0).",
+      "Vue d'ensemble : Alertes par priorité basées sur le statut supervision des périphériques (Critique / Warning / OK).",
+      "Vue d'ensemble : évolution 7 jours alimentée uniquement par l'historique des alertes en base.",
+      "Fiche entreprise : Contrats & Services en section latérale pliable (icône, libellé, Actif/Inactif).",
+      "Fiche périphérique : onglet Supervision affiché dès qu'un mapping CheckMK existe (aliases FR / types mappables).",
+      "Vue d'ensemble : évolution 7 jours basée sur les events/notifications CheckMK (Critique / Warning)."
+    ]
+  },
+  {
     version: "1.0.70",
     date: "2026-10-06",
     highlights: [

@@ -6,7 +6,7 @@ const SALES_VIEW_DEFS = [{
 }, {
   id: "prestation",
   kind: "prestation",
-  icon: "mdi:briefcase-edit-outline"
+  icon: "mdi:briefcase-outline"
 }, {
   id: "installation",
   kind: "installation",
@@ -55,7 +55,7 @@ const LOCALE_BCP47 = {
 const TICKET_SALES_PAGE = {
   fr: {
     eyebrow: "Exploitation",
-    pageTitle: "Prestations et installations",
+    pageTitle: "Prestations",
     loading: "Chargement des demandes…",
     subtitleActive: "Vue « {view} » · {count} demande",
     subtitleActivePlural: "Vue « {view} » · {count} demandes",
@@ -64,6 +64,8 @@ const TICKET_SALES_PAGE = {
     trashSwitchTitle: "Afficher les demandes supprimées",
     trashSwitchLabel: "Corbeille",
     trashSwitchAria: "Afficher la corbeille",
+    trashSwitchHideTooltip: "Quitter la corbeille",
+    trashSwitchHideAria: "Quitter la corbeille",
     exportCsv: "Exporter en CSV",
     exportCsvAria: "Exporter CSV",
     columnsSettings: "Paramétrer les colonnes",
@@ -71,12 +73,12 @@ const TICKET_SALES_PAGE = {
     newRequest: "Nouvelle demande",
     newRequestAria: "Nouvelle demande",
     views: {
-      paneAria: "Vues prestations et installations",
+      paneAria: "Vues prestations",
       title: "Vues",
       typesGroup: "Types",
       all: {
         name: "Toutes",
-        hint: "Prestations et installations"
+        hint: "Prestations"
       },
       prestation: {
         name: "Prestations",
@@ -275,7 +277,7 @@ const TICKET_SALES_PAGE = {
   },
   en: {
     eyebrow: "Operations",
-    pageTitle: "Services & installations",
+    pageTitle: "Services",
     loading: "Loading requests…",
     subtitleActive: "View « {view} » · {count} request",
     subtitleActivePlural: "View « {view} » · {count} requests",
@@ -284,6 +286,8 @@ const TICKET_SALES_PAGE = {
     trashSwitchTitle: "Show deleted requests",
     trashSwitchLabel: "Trash",
     trashSwitchAria: "Show trash",
+    trashSwitchHideTooltip: "Leave trash",
+    trashSwitchHideAria: "Leave trash",
     exportCsv: "Export to CSV",
     exportCsvAria: "Export CSV",
     columnsSettings: "Configure columns",
@@ -291,12 +295,12 @@ const TICKET_SALES_PAGE = {
     newRequest: "New request",
     newRequestAria: "New request",
     views: {
-      paneAria: "Services & installations views",
+      paneAria: "Services views",
       title: "Views",
       typesGroup: "Types",
       all: {
         name: "All",
-        hint: "Services and installations"
+        hint: "Services"
       },
       prestation: {
         name: "Services",
@@ -495,7 +499,7 @@ const TICKET_SALES_PAGE = {
   },
   de: {
     eyebrow: "Betrieb",
-    pageTitle: "Leistungen & Installationen",
+    pageTitle: "Leistungen",
     loading: "Anfragen werden geladen…",
     subtitleActive: "Ansicht « {view} » · {count} Anfrage",
     subtitleActivePlural: "Ansicht « {view} » · {count} Anfragen",
@@ -504,6 +508,8 @@ const TICKET_SALES_PAGE = {
     trashSwitchTitle: "Gelöschte Anfragen anzeigen",
     trashSwitchLabel: "Papierkorb",
     trashSwitchAria: "Papierkorb anzeigen",
+    trashSwitchHideTooltip: "Papierkorb verlassen",
+    trashSwitchHideAria: "Papierkorb verlassen",
     exportCsv: "Als CSV exportieren",
     exportCsvAria: "CSV exportieren",
     columnsSettings: "Spalten konfigurieren",
@@ -511,12 +517,12 @@ const TICKET_SALES_PAGE = {
     newRequest: "Neue Anfrage",
     newRequestAria: "Neue Anfrage",
     views: {
-      paneAria: "Ansichten Leistungen & Installationen",
+      paneAria: "Ansichten Leistungen",
       title: "Ansichten",
       typesGroup: "Typen",
       all: {
         name: "Alle",
-        hint: "Leistungen und Installationen"
+        hint: "Leistungen"
       },
       prestation: {
         name: "Leistungen",
@@ -715,7 +721,7 @@ const TICKET_SALES_PAGE = {
   },
   it: {
     eyebrow: "Operazioni",
-    pageTitle: "Prestazioni e installazioni",
+    pageTitle: "Prestazioni",
     loading: "Caricamento richieste…",
     subtitleActive: "Vista « {view} » · {count} richiesta",
     subtitleActivePlural: "Vista « {view} » · {count} richieste",
@@ -724,6 +730,8 @@ const TICKET_SALES_PAGE = {
     trashSwitchTitle: "Mostra richieste eliminate",
     trashSwitchLabel: "Cestino",
     trashSwitchAria: "Mostra cestino",
+    trashSwitchHideTooltip: "Esci dal cestino",
+    trashSwitchHideAria: "Esci dal cestino",
     exportCsv: "Esporta in CSV",
     exportCsvAria: "Esporta CSV",
     columnsSettings: "Configura colonne",
@@ -731,12 +739,12 @@ const TICKET_SALES_PAGE = {
     newRequest: "Nuova richiesta",
     newRequestAria: "Nuova richiesta",
     views: {
-      paneAria: "Viste prestazioni e installazioni",
+      paneAria: "Viste prestazioni",
       title: "Viste",
       typesGroup: "Tipi",
       all: {
         name: "Tutte",
-        hint: "Prestazioni e installazioni"
+        hint: "Prestazioni"
       },
       prestation: {
         name: "Prestazioni",
@@ -935,7 +943,7 @@ const TICKET_SALES_PAGE = {
   },
   es: {
     eyebrow: "Operaciones",
-    pageTitle: "Prestaciones e instalaciones",
+    pageTitle: "Prestaciones",
     loading: "Cargando solicitudes…",
     subtitleActive: "Vista « {view} » · {count} solicitud",
     subtitleActivePlural: "Vista « {view} » · {count} solicitudes",
@@ -944,6 +952,8 @@ const TICKET_SALES_PAGE = {
     trashSwitchTitle: "Mostrar solicitudes eliminadas",
     trashSwitchLabel: "Papelera",
     trashSwitchAria: "Mostrar papelera",
+    trashSwitchHideTooltip: "Salir de la papelera",
+    trashSwitchHideAria: "Salir de la papelera",
     exportCsv: "Exportar a CSV",
     exportCsvAria: "Exportar CSV",
     columnsSettings: "Configurar columnas",
@@ -951,12 +961,12 @@ const TICKET_SALES_PAGE = {
     newRequest: "Nueva solicitud",
     newRequestAria: "Nueva solicitud",
     views: {
-      paneAria: "Vistas prestaciones e instalaciones",
+      paneAria: "Vistas prestaciones",
       title: "Vistas",
       typesGroup: "Tipos",
       all: {
         name: "Todas",
-        hint: "Prestaciones e instalaciones"
+        hint: "Prestaciones"
       },
       prestation: {
         name: "Prestaciones",

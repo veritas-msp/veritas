@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
@@ -159,7 +160,8 @@ export default function SupervisionAlertHistory({
   onChanged,
   localeTag,
   copy,
-  showDomain = true
+  showDomain = true,
+  toolbarActions = null
 }) {
   const common = useCommonCopy();
   const locale = useAppLocale();
@@ -176,12 +178,16 @@ export default function SupervisionAlertHistory({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useDefaultPageSize();
   const handleSort = column => {
-    if (sortKey === column) {
-      setSortDir(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortKey(column);
-    setSortDir(column === "when" ? "desc" : "asc");
+    const next = cycleSortState({
+      column,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: null,
+      defaultSortDirection: "asc",
+      getFirstDirection: col => (col === "when" ? "desc" : "asc")
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
   const sortedAlerts = useMemo(() => {
     if (!sortKey) return alerts;
@@ -422,9 +428,9 @@ export default function SupervisionAlertHistory({
     kpiTone: "violet"
   }];
 
-  return <div className={styles.root}>
-      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
-        <div className={layout.searchWrap}>
+  return <div className={`${layout.panelCard} ${styles.root}`}>
+      <div className={layout.tableSearchBar}>
+        <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
           <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
           <input type="search" inputMode="search" enterKeyHint="search" className={layout.searchInput} value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
           {searchQuery ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
@@ -459,6 +465,7 @@ export default function SupervisionAlertHistory({
           <Icon icon="mdi:delete-outline" aria-hidden />
           <span>{copy.trash || "Corbeille"}</span>
         </button>
+        {toolbarActions}
       </div>
 
       {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <div className={styles.emptyWrap}>
@@ -469,61 +476,6 @@ export default function SupervisionAlertHistory({
             text={trashMode ? (copy.emptyTrashText || "") : copy.emptyText}
           />
         </div> : <>
-        {selectedCount > 0 ? <div className={styles.bulkBar} role="region" aria-label={copy.bulkAria || "Actions de masse"}>
-            <span className={styles.bulkInfo}>
-              {interpolate(copy.bulkSelected || "{count} sélectionnée(s)", { count: String(selectedCount) })}
-              {selectedCount < sortedAlerts.length ? <button type="button" className={styles.bulkLink} onClick={selectAllFiltered} disabled={busyBulk}>
-                  {interpolate(copy.bulkSelectAll || "Tout sélectionner ({count})", { count: String(sortedAlerts.length) })}
-                </button> : null}
-            </span>
-            <div className={styles.bulkActions}>
-              {trashMode ? <>
-                  <button type="button" className={styles.bulkBtn} disabled={busyBulk} onClick={() => runBulkAction("restore")}>
-                    <Icon icon="mdi:delete-restore" aria-hidden />
-                    {copy.bulkRestore || copy.restore || "Restaurer"}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
-                    disabled={busyBulk}
-                    onClick={() => runBulkAction("purge", {
-                      confirmMessage: interpolate(copy.bulkPurgeConfirm || "Supprimer définitivement {count} alerte(s) ? Action irréversible.", {
-                        count: String(selectedCount)
-                      })
-                    })}
-                  >
-                    <Icon icon="mdi:delete-forever-outline" aria-hidden />
-                    {copy.bulkPurge || copy.purge || "Supprimer"}
-                  </button>
-                </> : <>
-                  <button
-                    type="button"
-                    className={styles.bulkBtn}
-                    disabled={busyBulk}
-                    onClick={() => runBulkAction("reopen")}
-                  >
-                    <Icon icon="mdi:restore" aria-hidden />
-                    {copy.bulkReopen || copy.reopen || "Réouvrir"}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.bulkBtn}
-                    disabled={busyBulk}
-                    onClick={() => runBulkAction("trash", {
-                      confirmMessage: interpolate(copy.bulkTrashConfirm || "Mettre {count} alerte(s) à la corbeille ?", {
-                        count: String(selectedCount)
-                      })
-                    })}
-                  >
-                    <Icon icon="mdi:delete-outline" aria-hidden />
-                    {copy.bulkTrash || copy.trashHint || "Corbeille"}
-                  </button>
-                </>}
-              <button type="button" className={styles.bulkBtnGhost} disabled={busyBulk} onClick={clearSelection}>
-                {copy.bulkClear || "Effacer la sélection"}
-              </button>
-            </div>
-          </div> : null}
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <colgroup>
@@ -685,6 +637,61 @@ export default function SupervisionAlertHistory({
                   <FaChevronRight />
                 </button>
               </SmartTooltip>
+            </div>
+          </div> : null}
+        {selectedCount > 0 ? <div className={styles.bulkBar} role="region" aria-label={copy.bulkAria || "Actions de masse"}>
+            <span className={styles.bulkInfo}>
+              {interpolate(copy.bulkSelected || "{count} sélectionnée(s)", { count: String(selectedCount) })}
+              {selectedCount < sortedAlerts.length ? <button type="button" className={styles.bulkLink} onClick={selectAllFiltered} disabled={busyBulk}>
+                  {interpolate(copy.bulkSelectAll || "Tout sélectionner ({count})", { count: String(sortedAlerts.length) })}
+                </button> : null}
+            </span>
+            <div className={styles.bulkActions}>
+              {trashMode ? <>
+                  <button type="button" className={styles.bulkBtn} disabled={busyBulk} onClick={() => runBulkAction("restore")}>
+                    <Icon icon="mdi:delete-restore" aria-hidden />
+                    {copy.bulkRestore || copy.restore || "Restaurer"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`}
+                    disabled={busyBulk}
+                    onClick={() => runBulkAction("purge", {
+                      confirmMessage: interpolate(copy.bulkPurgeConfirm || "Supprimer définitivement {count} alerte(s) ? Action irréversible.", {
+                        count: String(selectedCount)
+                      })
+                    })}
+                  >
+                    <Icon icon="mdi:delete-forever-outline" aria-hidden />
+                    {copy.bulkPurge || copy.purge || "Supprimer"}
+                  </button>
+                </> : <>
+                  <button
+                    type="button"
+                    className={styles.bulkBtn}
+                    disabled={busyBulk}
+                    onClick={() => runBulkAction("reopen")}
+                  >
+                    <Icon icon="mdi:restore" aria-hidden />
+                    {copy.bulkReopen || copy.reopen || "Réouvrir"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.bulkBtn}
+                    disabled={busyBulk}
+                    onClick={() => runBulkAction("trash", {
+                      confirmMessage: interpolate(copy.bulkTrashConfirm || "Mettre {count} alerte(s) à la corbeille ?", {
+                        count: String(selectedCount)
+                      })
+                    })}
+                  >
+                    <Icon icon="mdi:delete-outline" aria-hidden />
+                    {copy.bulkTrash || copy.trashHint || "Corbeille"}
+                  </button>
+                </>}
+              <button type="button" className={styles.bulkBtnGhost} disabled={busyBulk} onClick={clearSelection}>
+                {copy.bulkClear || "Effacer la sélection"}
+              </button>
             </div>
           </div> : null}
       </>}

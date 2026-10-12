@@ -860,8 +860,7 @@ export default function CampaignDetailPage({
     try {
       await deleteCampaign(campaign.id);
       toast.success(detailCopy.toasts.deleted);
-      onNavigate('Cybersecurite', {
-        activeTab: 'campaigns',
+      onNavigate('Campaigns', {
         refresh: Date.now()
       }, {
         closeCurrent: true
@@ -883,9 +882,7 @@ export default function CampaignDetailPage({
     return <div className={`${enterpriseStyles.contratDetailPage} ${enterpriseStyles.enterpriseDetailPage} ${styles.campaignDetailPage} msp-page-grid`}>
         <div className={styles.error}>
           {error || detailCopy.notFound}
-          <button type="button" onClick={() => onNavigate('Cybersecurite', {
-          activeTab: 'campaigns'
-        })}>
+          <button type="button" onClick={() => onNavigate('Campaigns')}>
             <FaArrowLeft /> {detailCopy.back}
           </button>
         </div>
@@ -921,9 +918,7 @@ export default function CampaignDetailPage({
   return <div className={`${enterpriseStyles.contratDetailPage} ${enterpriseStyles.enterpriseDetailPage} ${styles.campaignDetailPage} msp-page-grid`}>
       <header className={enterpriseStyles.pageHero}>
         <div className={enterpriseStyles.heroRow}>
-          <button type="button" className={enterpriseStyles.backBtn} onClick={() => onNavigate('Cybersecurite', {
-          activeTab: 'campaigns'
-        })} aria-label={detailCopy.back}>
+          <button type="button" className={enterpriseStyles.backBtn} onClick={() => onNavigate('Campaigns')} aria-label={detailCopy.back}>
             <FaArrowLeft />
           </button>
           <div className={enterpriseStyles.heroMain}>

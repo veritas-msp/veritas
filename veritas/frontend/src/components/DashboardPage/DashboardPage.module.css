@@ -97,6 +97,27 @@
   flex-shrink: 0;
 }
 
+.toolbarMeta {
+  flex: 1 1 12rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
 .scopeHint {
   display: flex;
   align-items: flex-start;

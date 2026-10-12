@@ -7,6 +7,7 @@ import { groupNotificationsByPriority, groupArchivedNotifications } from "../../
 import { getNotificationBellCopy, formatNotificationRelativeTime } from "./notificationBellI18n";
 import { interpolate } from "../../i18n/translate";
 import styles from "./NotificationBell.module.css";
+import { SIDEBAR_FLYOUT_GAP_PX } from "../../utils/sidebarFlyoutPosition";
 function NotificationItem({
   item,
   onOpen,
@@ -54,7 +55,7 @@ export default function NotificationBell({
   const copy = useMemo(() => getNotificationBellCopy(locale), [locale]);
   const [open, setOpen] = useState(false);
   const [fixedStyle, setFixedStyle] = useState(null);
-  const [listMaxHeight, setListMaxHeight] = useState(420);
+  const [listMaxHeight, setListMaxHeight] = useState(520);
   const [archivingId, setArchivingId] = useState(null);
   const [archivingAll, setArchivingAll] = useState(false);
   const triggerRef = useRef(null);
@@ -74,31 +75,37 @@ export default function NotificationBell({
     loadMore
   } = useNotifications();
   // Rail vertical : panneau à droite. Barre horizontale : sous le trigger (sinon hors écran).
-  const openToRight = isCollapsed && !isMobile && !isHorizontal;
+  // Rail vertical desktop : toujours à droite de la sidebar (comme le menu Compte).
+  const openToRight = !isMobile && !isHorizontal;
   const sections = useMemo(() => showArchived ? groupArchivedNotifications(items, copy.sections) : groupNotificationsByPriority(items, copy.sections), [items, showArchived, copy.sections]);
   const updateDropdownPosition = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger || !open) return;
     const rect = trigger.getBoundingClientRect();
-    const width = 360;
-    const gap = 10;
+    const width = 440;
+    const gap = SIDEBAR_FLYOUT_GAP_PX;
     const pad = 8;
     const dropdownEl = dropdownRef.current;
-    const estimatedHeight = dropdownEl?.offsetHeight || 380;
+    const estimatedHeight = dropdownEl?.offsetHeight || 480;
     const chromeHeight = 116;
     if (openToRight) {
-      const centerY = rect.top + rect.height / 2;
-      const minCenter = pad + estimatedHeight / 2;
-      const maxCenter = window.innerHeight - pad - estimatedHeight / 2;
-      const clampedCenter = maxCenter >= minCenter ? Math.max(minCenter, Math.min(maxCenter, centerY)) : window.innerHeight / 2;
-      const maxList = Math.max(160, window.innerHeight - pad * 2 - chromeHeight);
-      setListMaxHeight(Math.min(480, maxList));
+      const maxList = Math.max(280, window.innerHeight - pad * 2 - chromeHeight);
+      setListMaxHeight(Math.min(560, maxList));
+      // Ancré juste à droite du bouton cloche (pas du bord du rail).
+      let top = rect.top;
+      if (top + estimatedHeight > window.innerHeight - pad) {
+        top = window.innerHeight - pad - estimatedHeight;
+      }
+      top = Math.max(pad, top);
+      let left = Math.round(rect.right + gap);
+      left = Math.min(left, window.innerWidth - width - pad);
+      left = Math.max(pad, left);
       setFixedStyle({
         position: "fixed",
-        top: clampedCenter,
-        left: rect.right + gap,
+        top,
+        left,
         width,
-        transform: "translateY(-50%)",
+        transform: "none",
         zIndex: 12000
       });
       return;
@@ -108,9 +115,9 @@ export default function NotificationBell({
     const left = Math.min(Math.max(pad, preferredLeft), window.innerWidth - width - pad);
     const spaceBelow = window.innerHeight - rect.bottom - gap - pad;
     const spaceAbove = rect.top - gap - pad;
-    const openUpward = spaceBelow < Math.min(estimatedHeight, 320) && spaceAbove > spaceBelow;
-    const maxList = Math.max(160, (openUpward ? spaceAbove : spaceBelow) - chromeHeight);
-    setListMaxHeight(Math.min(480, maxList));
+    const openUpward = spaceBelow < Math.min(estimatedHeight, 400) && spaceAbove > spaceBelow;
+    const maxList = Math.max(280, (openUpward ? spaceAbove : spaceBelow) - chromeHeight);
+    setListMaxHeight(Math.min(560, maxList));
     if (openUpward) {
       setFixedStyle({
         position: "fixed",
@@ -132,7 +139,7 @@ export default function NotificationBell({
   useLayoutEffect(() => {
     if (!open) {
       setFixedStyle(null);
-      setListMaxHeight(420);
+      setListMaxHeight(520);
       return undefined;
     }
     updateDropdownPosition();

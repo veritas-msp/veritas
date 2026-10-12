@@ -2,7 +2,7 @@ import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const SALES_KIND_KEYS = ["prestation", "installation"];
 const PRIORITY_KEYS = ["low", "normal", "high", "urgent"];
 const KIND_ICONS = {
-  prestation: "mdi:briefcase-edit-outline",
+  prestation: "mdi:briefcase-outline",
   installation: "mdi:tools"
 };
 const LOCALE_BCP47 = {

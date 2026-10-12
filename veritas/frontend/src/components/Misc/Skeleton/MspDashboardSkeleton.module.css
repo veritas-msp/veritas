@@ -1,0 +1,141 @@
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.kpiCard {
+  height: 4.25rem;
+  border-radius: 12px;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 8rem;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chip {
+  width: 5.4rem;
+  height: 28px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.35rem 0.15rem 0.5rem;
+  min-height: 18rem;
+}
+
+.thead,
+.row {
+  display: grid;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+}
+
+.thead {
+  border-bottom: 1px solid var(--msp-border-light, #e8edf4);
+}
+
+.tbody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.row {
+  border-radius: 10px;
+  background: rgba(15, 28, 46, 0.02);
+}
+
+.th {
+  height: 0.7rem;
+  border-radius: 4px;
+  width: 70%;
+}
+
+.cell {
+  height: 0.75rem;
+  border-radius: 4px;
+  width: 78%;
+}
+
+.cellPrimary {
+  height: 0.85rem;
+  border-radius: 4px;
+  width: 88%;
+}
+
+.pagLabel {
+  width: 5.5rem;
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+.pagSelect {
+  width: 3.5rem;
+  height: 1.7rem;
+  border-radius: 8px;
+}
+
+.pagInfo {
+  width: 6.5rem;
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+.pagBtn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+}
+
+.pagPage {
+  width: 2.4rem;
+  height: 0.75rem;
+  border-radius: 4px;
+}
+
+@media (max-width: 900px) {
+  .kpiStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+:global(html.dark) .row {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:global(html.dark) .thead {
+  border-bottom-color: var(--msp-border, #2a3a55);
+}

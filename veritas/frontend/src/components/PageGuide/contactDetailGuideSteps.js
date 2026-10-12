@@ -18,17 +18,14 @@ const STEP_TARGETS = [{
   target: '[data-guide="contact-shared-access"]',
   handler: "showShare"
 }, {
-  key: "sidebarInfo",
-  target: '[data-guide="contact-sidebar-info"]'
-}, {
   key: "emails",
   target: '[data-guide="contact-sidebar-emails"]'
 }, {
   key: "phones",
   target: '[data-guide="contact-sidebar-phones"]'
 }, {
-  key: "heroActions",
-  target: '[data-guide="contact-hero-actions"]'
+  key: "quickActions",
+  target: '[data-guide="contact-quick-actions"]'
 }];
 export function getContactDetailGuideSteps(handlers = {}, locale = "fr") {
   const {

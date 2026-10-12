@@ -409,6 +409,30 @@
   margin: 0;
 }
 
+.contractSlaBlock {
+  margin-top: 1.35rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--msp-border-light, #d7e0ea);
+}
+
+.subsectionTitle {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.contractSlaBlock .sectionDesc {
+  margin: 0 0 0.85rem;
+}
+
+.contractSlaBlock .slaToggle,
+.contractSlaBlock .slaToggleLocked {
+  margin-top: 0;
+}
+
 .fieldGrid2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -454,12 +478,13 @@
   border: 1px solid var(--msp-border, #dde3ed);
   border-radius: 10px;
   background: var(--msp-surface, #fff);
+  background-color: var(--msp-surface, #fff);
   color: var(--msp-text, #0f1c2e);
   font-size: 0.875rem;
   font-family: inherit;
   box-sizing: border-box;
   transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
-  color-scheme: inherit;
+  color-scheme: light;
 }
 
 
@@ -584,6 +609,99 @@
   font-size: 0.78rem;
   color: var(--msp-muted, #5c6b82);
   line-height: 1.4;
+}
+
+.field .hint {
+  margin: 0;
+}
+
+.iconPickerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.iconAppearanceRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.iconColorField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.iconColorPicker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.iconColorSwatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--swatch-color);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(15, 28, 46, 0.12);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.iconColorSwatch:hover {
+  transform: scale(1.08);
+}
+
+.iconColorSwatchActive {
+  box-shadow: 0 0 0 2px var(--msp-surface, #fff), 0 0 0 4px var(--swatch-color);
+}
+
+.iconColorCustom {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px dashed var(--msp-border, #dde3ed);
+  overflow: hidden;
+  cursor: pointer;
+  background:
+    conic-gradient(from 90deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444);
+}
+
+.iconColorInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.iconClearBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.iconClearBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: var(--msp-surface-2, #f7f9fc);
 }
 
 .primaryContactToggle {
@@ -1686,6 +1804,20 @@
 .dangerBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+:global(html.dark) .input,
+:global(html.dark) .shell select.input {
+  color-scheme: dark;
+  background: var(--msp-surface, #1a2540);
+  background-color: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #e8edf5);
+  border-color: var(--msp-border, #2a3a58);
+}
+
+:global(html.dark) .input option {
+  background-color: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #e8edf5);
 }
 
 :global(html.dark) .shell input.input:hover:not(:disabled),

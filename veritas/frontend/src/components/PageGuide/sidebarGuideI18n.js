@@ -30,11 +30,11 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Réglages rapides",
-      content: "La loupe ouvre la recherche globale (Ctrl+K). Le ? ouvre l'aide de la page en cours lorsqu'elle existe, sinon ce guide du menu. Basculez aussi le thème et consultez vos notifications."
+      content: "Le bouton ··· regroupe la recherche globale (Ctrl+K) et l'aide de la page. Consultez aussi vos notifications."
     },
     account: {
       title: "Votre compte",
-      content: "Profil, administration, support et déconnexion sont accessibles depuis votre avatar."
+      content: "Profil, thème clair/sombre, administration, support et déconnexion sont accessibles depuis votre avatar."
     }
   },
   en: {
@@ -67,11 +67,11 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Quick settings",
-      content: "The magnifier opens global search (Ctrl+K). ? opens help for the current page when available, otherwise this menu tour. Also switch theme and check notifications."
+      content: "The ··· button groups global search (Ctrl+K) and page help. You can also check your notifications."
     },
     account: {
       title: "Your account",
-      content: "Profile, administration, support, and sign-out are available from your avatar."
+      content: "Profile, light/dark theme, administration, support, and sign-out are available from your avatar."
     }
   },
   de: {
@@ -104,11 +104,11 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Schnelleinstellungen",
-      content: "Die Lupe öffnet die globale Suche (Strg+K). ? öffnet die Seitenhilfe, falls vorhanden, sonst diese Menüführung. Thema wechseln und Benachrichtigungen prüfen."
+      content: "Die Schaltfläche ··· bündelt globale Suche (Strg+K) und Seitenhilfe. Prüfen Sie auch Ihre Benachrichtigungen."
     },
     account: {
       title: "Ihr Konto",
-      content: "Profil, Administration, Support und Abmeldung über Ihren Avatar."
+      content: "Profil, Hell-/Dunkelmodus, Administration, Support und Abmeldung über Ihren Avatar."
     }
   },
   it: {
@@ -141,11 +141,11 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Impostazioni rapide",
-      content: "La lente apre la ricerca globale (Ctrl+K). Il ? apre la guida della pagina corrente se disponibile, altrimenti questo tour del menu. Cambiate anche tema e notifiche."
+      content: "Il pulsante ··· raggruppa ricerca globale (Ctrl+K) e aiuto della pagina. Consultate anche le notifiche."
     },
     account: {
       title: "Il vostro account",
-      content: "Profilo, amministrazione, supporto e disconnessione dall'avatar."
+      content: "Profilo, tema chiaro/scuro, amministrazione, supporto e disconnessione dall'avatar."
     }
   },
   es: {
@@ -178,11 +178,11 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Ajustes rápidos",
-      content: "La lupa abre la búsqueda global (Ctrl+K). El ? abre la ayuda de la página actual si existe; si no, este recorrido del menú. También tema y notificaciones."
+      content: "El botón ··· agrupa la búsqueda global (Ctrl+K) y la ayuda de la página. Consulte también sus notificaciones."
     },
     account: {
       title: "Su cuenta",
-      content: "Perfil, administración, soporte y cierre de sesión desde su avatar."
+      content: "Perfil, tema claro/oscuro, administración, soporte y cierre de sesión desde su avatar."
     }
   }
 };

@@ -1,0 +1,211 @@
+.validationLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 0.85rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.previewPanel {
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.previewDocBranded {
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.previewSection {
+  margin-bottom: 0.85rem;
+}
+
+.previewSectionTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.previewBox {
+  padding: 0.65rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.previewBox > * {
+  background: transparent;
+}
+
+.previewText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.previewTaskList {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.previewList {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.previewPhoto {
+  display: block;
+  max-width: 100%;
+  margin-top: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.previewSignatureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.previewSignatureBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: #ffffff;
+}
+
+.previewSignatureImage {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.previewSignatureEmpty {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--msp-muted, #5c6b82);
+  background: #fff;
+  border-radius: 6px;
+}
+
+.actionsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-left: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+}
+
+.actionsTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.saveField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.fieldLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.fieldInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 2px var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.fieldInputConflict {
+  border-color: #e67e22;
+  box-shadow: 0 0 0 1px rgba(230, 126, 34, 0.35);
+}
+
+.saveNameWarning {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #b9770e;
+}
+
+.findingRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.findingRow:last-child {
+  border-bottom: none;
+}
+
+.severity {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 960px) {
+  .validationLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .actionsPanel {
+    border-left: none;
+    border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  }
+}
+
+:global(html.dark) .previewPanel,
+:global(html.dark) .actionsPanel {
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .previewBox,
+:global(html.dark) .previewSignatureBox {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+}

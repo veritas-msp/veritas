@@ -30,6 +30,7 @@ const PLANNING_PAGE = {
       week: "Semaine",
       day: "Jour",
       agenda: "Agenda",
+      viewsAria: "Vues du planning",
       weekLabel: "Semaine {week} · {monthYear}"
     },
     calendar: {
@@ -47,6 +48,7 @@ const PLANNING_PAGE = {
     },
     filters: {
       aria: "Filtres planning",
+      types: "Types d'événements",
       agents: "Agents",
       clients: "Clients",
       all: "Tous",
@@ -160,6 +162,7 @@ const PLANNING_PAGE = {
       week: "Week",
       day: "Day",
       agenda: "Agenda",
+      viewsAria: "Schedule views",
       weekLabel: "Week {week} · {monthYear}"
     },
     calendar: {
@@ -177,6 +180,7 @@ const PLANNING_PAGE = {
     },
     filters: {
       aria: "Schedule filters",
+      types: "Event types",
       agents: "Assignees",
       clients: "Clients",
       all: "All",
@@ -290,6 +294,7 @@ const PLANNING_PAGE = {
       week: "Woche",
       day: "Tag",
       agenda: "Agenda",
+      viewsAria: "Planungsansichten",
       weekLabel: "Woche {week} · {monthYear}"
     },
     calendar: {
@@ -307,6 +312,7 @@ const PLANNING_PAGE = {
     },
     filters: {
       aria: "Planungsfilter",
+      types: "Ereignistypen",
       agents: "Mitarbeiter",
       clients: "Kunden",
       all: "Alle",
@@ -420,6 +426,7 @@ const PLANNING_PAGE = {
       week: "Settimana",
       day: "Giorno",
       agenda: "Agenda",
+      viewsAria: "Viste pianificazione",
       weekLabel: "Settimana {week} · {monthYear}"
     },
     calendar: {
@@ -437,6 +444,7 @@ const PLANNING_PAGE = {
     },
     filters: {
       aria: "Filtri pianificazione",
+      types: "Tipi di evento",
       agents: "Agenti",
       clients: "Clienti",
       all: "Tutti",
@@ -550,6 +558,7 @@ const PLANNING_PAGE = {
       week: "Semana",
       day: "Día",
       agenda: "Agenda",
+      viewsAria: "Vistas de planificación",
       weekLabel: "Semana {week} · {monthYear}"
     },
     calendar: {
@@ -567,6 +576,7 @@ const PLANNING_PAGE = {
     },
     filters: {
       aria: "Filtros de planificación",
+      types: "Tipos de evento",
       agents: "Agentes",
       clients: "Clientes",
       all: "Todos",

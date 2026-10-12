@@ -16,7 +16,9 @@ export default function SuggestionAutocomplete({
   emptyMessage = "No suggestions",
   hintMessage = "",
   minQueryLength = 0,
-  className = ""
+  className = "",
+  variant = "default",
+  clearLabel = "Clear selection"
 }) {
   const rootRef = useRef(null);
   const anchorRef = useRef(null);
@@ -125,19 +127,20 @@ export default function SuggestionAutocomplete({
   const needsMoreQuery = queryLength < minQueryLength;
   const menuEmptyMessage = needsMoreQuery && hintMessage ? hintMessage : emptyMessage;
   const labelId = id ? `${id}-label` : undefined;
-  return <div className={`${styles.field} ${className}`.trim()} ref={rootRef}>
+  const isToolbar = variant === "toolbar";
+  return <div className={`${styles.field} ${isToolbar ? styles.fieldToolbar : ""} ${className}`.trim()} ref={rootRef}>
       {label ? <label className={styles.label} htmlFor={id} id={labelId}>
           {label}
           {required ? <span className={styles.required}> *</span> : null}
         </label> : null}
-      <div ref={anchorRef} className={`${styles.inputWrap} ${open ? styles.inputWrapOpen : ""} ${disabled ? styles.inputWrapDisabled : ""}`}>
+      <div ref={anchorRef} className={`${styles.inputWrap} ${isToolbar ? styles.inputWrapToolbar : ""} ${open ? styles.inputWrapOpen : ""} ${disabled ? styles.inputWrapDisabled : ""}`}>
         <Icon icon="mdi:magnify" className={styles.inputIcon} aria-hidden />
-        <input id={id} type="text" className={styles.input} value={search} placeholder={placeholder} disabled={disabled} autoComplete="off" aria-labelledby={labelId} aria-expanded={open} aria-haspopup="listbox" aria-autocomplete="list" onChange={handleInputChange} onFocus={() => !disabled && setOpen(true)} onKeyDown={handleKeyDown} />
+        <input id={id} type="text" className={`${styles.input} ${isToolbar ? styles.inputToolbar : ""}`} value={search} placeholder={placeholder} disabled={disabled} autoComplete="off" aria-labelledby={labelId} aria-expanded={open} aria-haspopup="listbox" aria-autocomplete="list" onChange={handleInputChange} onFocus={() => !disabled && setOpen(true)} onKeyDown={handleKeyDown} />
         {value ? <button type="button" className={styles.clearBtn} onClick={() => {
         setSearch("");
         onChange?.("");
         setOpen(false);
-      }} disabled={disabled} aria-label="Clear selection">
+      }} disabled={disabled} aria-label={clearLabel}>
             <Icon icon="mdi:close" aria-hidden />
           </button> : null}
       </div>

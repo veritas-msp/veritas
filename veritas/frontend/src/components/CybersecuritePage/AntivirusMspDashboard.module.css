@@ -322,6 +322,29 @@
   cursor: pointer;
 }
 
+.rowOpenCell {
+  width: 2rem;
+  text-align: right;
+  padding-left: 0.35rem;
+  padding-right: 0.75rem;
+  vertical-align: middle;
+}
+
+.rowOpenChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--msp-muted-light, #8b9bb5);
+  font-size: 1.15rem;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.tableRow:hover .rowOpenChevron,
+.tableRow:focus-visible .rowOpenChevron {
+  color: var(--msp-accent, #2b5fab);
+  transform: translateX(2px);
+}
+
 .rowSyncBtn:hover:not(:disabled) {
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
 }
@@ -391,6 +414,9 @@
 }
 
 .thBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   border: none;
   background: none;
   font: inherit;
@@ -939,6 +965,18 @@
 :global(html.dark) .iconBtn:hover,
 :global(body.dark) .iconBtn:hover {
   background: rgba(90, 143, 212, 0.15);
+}
+
+:global(html.dark) .rowOpenChevron,
+:global(body.dark) .rowOpenChevron {
+  color: #7d8da3;
+}
+
+:global(html.dark) .tableRow:hover .rowOpenChevron,
+:global(html.dark) .tableRow:focus-visible .rowOpenChevron,
+:global(body.dark) .tableRow:hover .rowOpenChevron,
+:global(body.dark) .tableRow:focus-visible .rowOpenChevron {
+  color: #7eb0e8;
 }
 
 :global(html.dark) .rowSyncBtn,

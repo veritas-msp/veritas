@@ -1,0 +1,482 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 16px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
+  overflow: hidden;
+}
+
+.span8 {
+  grid-column: span 8;
+}
+
+.span4 {
+  grid-column: span 4;
+}
+
+.span6 {
+  grid-column: span 6;
+}
+
+.span3 {
+  grid-column: span 3;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
+}
+
+.cardTitleIcon {
+  font-size: 1.05rem;
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.cardBody {
+  flex: 1;
+  padding: 0.85rem 1.1rem 1.1rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.chartWrap {
+  width: 100%;
+  min-height: 200px;
+  flex: 1;
+}
+
+.chartWrapSm {
+  min-height: 160px;
+}
+
+.donutLayout {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(110px, 0.9fr);
+  gap: 0.75rem 1rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.donutWrap {
+  position: relative;
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+  gap: 0.1rem;
+  padding: 0 1rem;
+}
+
+.donutCenter strong {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--msp-text, #0f172a);
+  line-height: 1.05;
+}
+
+.donutCenter span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--msp-muted, #64748b);
+}
+
+.ringsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.ringBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.ringWrap {
+  position: relative;
+  width: 100%;
+  max-width: 140px;
+  aspect-ratio: 1;
+}
+
+.ringLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--msp-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ringSub {
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: var(--msp-muted-light, #64748b);
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.legend li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  color: var(--msp-muted, #64748b);
+  font-weight: 550;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendValue {
+  font-weight: 700;
+  color: var(--msp-text, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+
+.driveLegend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.driveLegend li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.driveLegendTop {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.driveBar {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--msp-surface-3, #e8eef5);
+  overflow: hidden;
+}
+
+.driveBarFill {
+  height: 100%;
+  border-radius: inherit;
+}
+
+.netStats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+
+.netStat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f4f7fb);
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.netStatLabel {
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--msp-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.netStatValue {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--msp-text, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  overflow: auto;
+  min-width: 0;
+  max-height: 220px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 0.4rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light, #64748b);
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 0.48rem 0.35rem;
+  border-bottom: 1px solid var(--msp-border-light, #e8eef5);
+  color: var(--msp-text, #0f172a);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.typeDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.statusUp {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+
+.statusDown {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.statusWarn {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.statusInfo {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.processList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.processItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.65rem;
+  align-items: center;
+}
+
+.processName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f172a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.processPct {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--msp-muted, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+
+.processBar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--msp-surface-3, #e8eef5);
+  overflow: hidden;
+}
+
+.processBarFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--msp-accent, #2b5fab);
+}
+
+.empty {
+  margin: 0;
+  padding: 1.25rem 0.5rem;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--msp-muted, #64748b);
+}
+
+.availHero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.availValue {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--msp-text, #0f172a);
+  line-height: 1;
+}
+
+.availHint {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-muted, #64748b);
+}
+
+.deltaUp {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.deltaDown {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 1200px) {
+  .span8,
+  .span4,
+  .span6,
+  .span3 {
+    grid-column: span 12;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .span3:nth-child(n) {
+    grid-column: span 12;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .span8,
+  .span4,
+  .span6,
+  .span3 {
+    grid-column: span 1;
+  }
+
+  .span8 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .ringsRow,
+  .donutLayout,
+  .netStats {
+    grid-template-columns: 1fr;
+  }
+}

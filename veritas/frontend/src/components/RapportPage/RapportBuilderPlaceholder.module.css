@@ -6,6 +6,44 @@
   overflow: hidden;
 }
 
+.builderToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 0.65rem 0.85rem;
+  margin: 0.85rem 1.25rem 0;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 2px 12px rgba(11, 33, 56, 0.04);
+}
+
+.builderToolbarMeta {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.builderToolbarTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.builderToolbarSubtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header {
   display: flex;
   flex-direction: column;
@@ -824,8 +862,35 @@
   }
 }
 
-:global(html.dark) .stepNav {
+:global(html.dark) .builderToolbar,
+:global(html.dark) .stepPanel,
+:global(html.dark) .commentsPane,
+:global(html.dark) .commentsPaneComposer,
+:global(html.dark) .backBtn,
+:global(html.dark) .heroBtn,
+:global(html.dark) .secondaryBtn {
   background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .builderToolbarTitle,
+:global(html.dark) .headerTitle,
+:global(html.dark) .stepPanelTitle,
+:global(html.dark) .commentsPaneTitle,
+:global(html.dark) .commentsPaneTicketTitle {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .builderToolbarSubtitle,
+:global(html.dark) .headerSubtitle,
+:global(html.dark) .stepPanelMeta,
+:global(html.dark) .heroHint {
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .stepNav {
+  background: var(--msp-surface-2, #152038);
   border-color: var(--msp-border, #2f4260);
 }
 
@@ -834,16 +899,26 @@
 }
 
 :global(html.dark) .stepNavItemActive {
-  background: rgba(90, 143, 212, 0.12);
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 14%, var(--msp-surface, #1a2540));
   border-color: rgba(90, 143, 212, 0.35);
   box-shadow: none;
+  color: var(--msp-text, #e8edf5);
 }
 
 :global(html.dark) .stepNavIndex {
   background: rgba(232, 237, 245, 0.06);
 }
 
-:global(html.dark) .stepPanel,
-:global(html.dark) .stepNavItemActive {
+:global(html.dark) .stepPanelHead,
+:global(html.dark) .stepActions,
+:global(html.dark) .commentsPaneHeader,
+:global(html.dark) .commentsPaneComposer {
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .commentsPaneCard,
+:global(html.dark) .commentsPaneTextarea {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
   color: var(--msp-text, #e8edf5);
 }

@@ -1,18 +1,84 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { createContactPortal, resendContactPortalInvite, setContactPortalActive, setContactPortalRole, resetContactPortalPassword, deleteContactPortal, impersonateContactPortal, stopPortalImpersonation, getPortalStatusFromContact, fetchClientPortalUsage } from "../../api/contactPortal";
+import { createContactPortal, resendContactPortalInvite, setContactPortalActive, setContactPortalRole, setContactPortalEmail, resetContactPortalPassword, deleteContactPortal, impersonateContactPortal, stopPortalImpersonation, getPortalStatusFromContact, fetchClientPortalUsage } from "../../api/contactPortal";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getCommunityClientPortalLimit } from "../../config/edition";
+import { normalizeContactCommunications } from "../../utils/contactCommunications";
 import { getContactDetailCopy, interpolate } from "./contactDetailI18n";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ContactPortalPasswordModal from "./ContactPortalPasswordModal";
 import ContactPortalRevokeModal from "./ContactPortalRevokeModal";
 import PortalImpersonationOverlay from "./PortalImpersonationOverlay";
 import s from "./ContactPortalSection.module.css";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function listContactEmails(contact) {
+  const seen = new Set();
+  const out = [];
+  const push = value => {
+    const email = String(value || "").trim();
+    if (!email || !EMAIL_RE.test(email)) return;
+    const key = email.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(email);
+  };
+  normalizeContactCommunications(contact || {})
+    .filter(entry => entry.type === "email")
+    .forEach(entry => push(entry.value));
+  push(contact?.email);
+  push(contact?.portal_email);
+  return out;
+}
+
 function normalizePortalRole(value) {
   return String(value || "").toLowerCase() === "supervisor" ? "supervisor" : "user";
+}
+
+function PortalEmailPicker({
+  value,
+  options,
+  primaryEmail,
+  onChange,
+  disabled,
+  copy,
+  readOnly = false
+}) {
+  if (!options.length) return null;
+  const showSelect = options.length > 1 && !readOnly;
+  return (
+    <div className={s.emailPicker}>
+      <div className={s.emailPickerText}>
+        <span className={s.emailPickerTitle}>{copy.loginEmailLabel}</span>
+        {showSelect ? (
+          <span className={s.emailPickerHint}>{copy.loginEmailHint}</span>
+        ) : null}
+      </div>
+      {showSelect ? (
+        <select
+          className={s.emailSelect}
+          value={value || options[0]}
+          disabled={disabled}
+          aria-label={copy.loginEmailAria || copy.loginEmailLabel}
+          onChange={e => onChange(e.target.value)}
+        >
+          {options.map(email => {
+            const isPrimary = primaryEmail && email.toLowerCase() === primaryEmail.toLowerCase();
+            return (
+              <option key={email} value={email}>
+                {isPrimary ? `${email} (${copy.loginEmailPrimary || "Principale"})` : email}
+              </option>
+            );
+          })}
+        </select>
+      ) : (
+        <span className={s.emailPickerValue}>{value || options[0]}</span>
+      )}
+    </div>
+  );
 }
 function PortalRolePicker({
   value,
@@ -23,12 +89,12 @@ function PortalRolePicker({
   stacked = false
 }) {
   const role = normalizePortalRole(value);
-  return <div className={`${s.roleRow} ${stacked ? s.roleRowStacked : ""}`.trim()}>
+  return <div className={`${s.roleRow} ${stacked ? s.roleRowStacked : ""} ${compact ? s.roleRowCompact : ""}`.trim()}>
       <div className={s.roleText}>
         <span className={s.roleTitle}>{copy.roleTitle}</span>
-        {!compact ? <span className={s.roleHint}>
-            {role === "supervisor" ? copy.roleSupervisorHint : copy.roleUserHint}
-          </span> : null}
+        <span className={s.roleHint}>
+          {role === "supervisor" ? copy.roleSupervisorHint : copy.roleUserHint}
+        </span>
       </div>
       <div className={s.roleSeg} role="radiogroup" aria-label={copy.roleAria}>
         <button type="button" role="radio" aria-checked={role === "user"} className={`${s.roleBtn} ${role === "user" ? s.roleBtnActive : ""}`.trim()} disabled={disabled} onClick={() => onChange("user")} title={copy.roleUserHint}>
@@ -60,6 +126,7 @@ export default function ContactPortalSection({
   const [passwordModal, setPasswordModal] = useState(null);
   const [showRevoke, setShowRevoke] = useState(false);
   const [createPortalRole, setCreatePortalRole] = useState("user");
+  const [selectedPortalEmail, setSelectedPortalEmail] = useState("");
   const [portalUsage, setPortalUsage] = useState({
     active: 0,
     max: maxPortalUsers
@@ -67,6 +134,13 @@ export default function ContactPortalSection({
   const [impersonationOverlay, setImpersonationOverlay] = useState(null);
   const impersonationAbortRef = useRef(null);
   const impersonationStartedRef = useRef(false);
+  const contactEmails = useMemo(() => listContactEmails(contact), [contact]);
+  const primaryEmail = useMemo(() => {
+    const fromComms = normalizeContactCommunications(contact || {}).find(
+      entry => entry.type === "email" && entry.isPrimary
+    );
+    return String(fromComms?.value || contact?.email || "").trim();
+  }, [contact]);
   const loadPortalUsage = useCallback(async () => {
     if (!isCommunity) return;
     try {
@@ -90,6 +164,19 @@ export default function ContactPortalSection({
   useEffect(() => {
     setCreatePortalRole(normalizePortalRole(contact?.portal_role));
   }, [contact?.id, contact?.portal_role]);
+  useEffect(() => {
+    const preferred =
+      String(contact?.portal_email || "").trim() ||
+      primaryEmail ||
+      contactEmails[0] ||
+      "";
+    setSelectedPortalEmail(prev => {
+      if (prev && contactEmails.some(email => email.toLowerCase() === prev.toLowerCase())) {
+        return contactEmails.find(email => email.toLowerCase() === prev.toLowerCase()) || preferred;
+      }
+      return preferred;
+    });
+  }, [contact?.id, contact?.portal_email, primaryEmail, contactEmails]);
   if (!contact?.id) return null;
   const activePortalCount = portalUsage.active;
   const portalAtLimit = maxPortalUsers != null && activePortalCount >= maxPortalUsers;
@@ -100,9 +187,9 @@ export default function ContactPortalSection({
   };
   const status = getPortalStatusFromContact(contact);
   const hasPortal = status !== "none";
-  const canCreate = Boolean(contact.email?.trim() && contact.client_id);
+  const canCreate = Boolean(contactEmails.length && contact.client_id);
   const contactInactive = String(contact.statut || "").toLowerCase().includes("inact");
-  const loginEmail = (contact.portal_email || contact.email || "").trim();
+  const loginEmail = (contact.portal_email || selectedPortalEmail || primaryEmail || "").trim();
   const lastLogin = contact.portal_last_login ? formatDateTime(contact.portal_last_login) : null;
   const refresh = () => {
     onUpdated?.();
@@ -127,11 +214,29 @@ export default function ContactPortalSection({
   const handleCreateAccess = async () => {
     setBusy(true);
     try {
-      await createContactPortal(contact.id, createPortalRole);
+      await createContactPortal(contact.id, createPortalRole, selectedPortalEmail || null);
       toast.success(toastCopy.created);
       refresh();
     } catch (e) {
       toast.error(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handlePortalEmailChange = async nextEmail => {
+    const email = String(nextEmail || "").trim();
+    if (!email) return;
+    setSelectedPortalEmail(email);
+    if (!hasPortal) return;
+    if (email.toLowerCase() === String(contact.portal_email || "").toLowerCase()) return;
+    setBusy(true);
+    try {
+      await setContactPortalEmail(contact.id, email);
+      toast.success(toastCopy.emailUpdated || "E-mail de connexion mis à jour");
+      refresh();
+    } catch (e) {
+      setSelectedPortalEmail(contact.portal_email || primaryEmail || contactEmails[0] || "");
+      toast.error(e.message || toastCopy.emailError);
     } finally {
       setBusy(false);
     }
@@ -298,10 +403,15 @@ export default function ContactPortalSection({
           <div className={s.portalGrid}>
             <div className={s.portalCard}>
               <div className={s.metaList}>
-                <div className={s.metaItem}>
-                  <span className={s.metaLabel}>{portalCopy.loginEmailLabel}</span>
-                  <span className={s.metaValue}>{loginEmail || "-"}</span>
-                </div>
+                <PortalEmailPicker
+                  value={selectedPortalEmail || loginEmail}
+                  options={contactEmails}
+                  primaryEmail={primaryEmail}
+                  onChange={handlePortalEmailChange}
+                  disabled={busy || !canManage}
+                  copy={portalCopy}
+                  readOnly={!canManage}
+                />
                 <div className={s.metaItem}>
                   <span className={s.metaLabel}>{portalCopy.lastLoginLabel}</span>
                   <span className={s.metaValue}>{lastLogin || portalCopy.never}</span>
@@ -339,14 +449,16 @@ export default function ContactPortalSection({
               <Icon icon="mdi:monitor-dashboard" />
             </div>
             <div className={s.portalHeroBody}>
-              <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
+              <div className={s.setupTitleRow}>
+                <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
+                {statusBadge()}
+              </div>
               <p className={s.setupDesc}>
                 {canCreate
                   ? interpolate(portalCopy.emptyDesc, { email: loginEmail })
                   : portalCopy.alertNeedEmail}
               </p>
             </div>
-            {statusBadge()}
           </div>
 
           {maxPortalUsers != null && <p className={s.usageHint}>
@@ -366,7 +478,21 @@ export default function ContactPortalSection({
             </div>}
 
           {canManage && canCreate ? <div className={s.setupFooter}>
-              <PortalRolePicker value={createPortalRole} onChange={setCreatePortalRole} disabled={busy} copy={portalCopy} compact />
+              <PortalEmailPicker
+                value={selectedPortalEmail}
+                options={contactEmails}
+                primaryEmail={primaryEmail}
+                onChange={setSelectedPortalEmail}
+                disabled={busy}
+                copy={portalCopy}
+              />
+              <PortalRolePicker
+                value={createPortalRole}
+                onChange={setCreatePortalRole}
+                disabled={busy}
+                copy={portalCopy}
+                stacked
+              />
               <button type="button" className={s.primaryBtn} onClick={() => {
             if (portalAtLimit) {
               warnPortalLimit();

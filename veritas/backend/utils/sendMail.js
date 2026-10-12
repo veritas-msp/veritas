@@ -14,7 +14,12 @@ export const sendMail = async ({
   subject,
   title,
   htmlContent,
-  attachments = []
+  attachments = [],
+  replyTo = undefined,
+  inReplyTo = undefined,
+  references = undefined,
+  messageId = undefined,
+  headers = undefined
 }) => {
   const smtpReady = await isSmtpConfigured();
   const transporter = await getTransporter();
@@ -25,7 +30,7 @@ export const sendMail = async ({
     }
     fromEmail = "noreply@localhost";
   }
-  const info = await transporter.sendMail({
+  const mailOptions = {
     from: fromEmail,
     to,
     cc,
@@ -35,7 +40,19 @@ export const sendMail = async ({
       content: htmlContent
     }),
     attachments
-  });
+  };
+  if (replyTo) mailOptions.replyTo = replyTo;
+  if (messageId) mailOptions.messageId = String(messageId).replace(/^<|>$/g, "");
+  if (inReplyTo) mailOptions.inReplyTo = String(inReplyTo).trim();
+  if (references) {
+    mailOptions.references = Array.isArray(references)
+      ? references.filter(Boolean).join(" ")
+      : String(references).trim();
+  }
+  if (headers && typeof headers === "object") {
+    mailOptions.headers = headers;
+  }
+  const info = await transporter.sendMail(mailOptions);
   if (!smtpReady) {
     console.info(`[mail:dev] ${subject} → ${to} (from: ${fromEmail})`);
     if (typeof info?.message === "string") {

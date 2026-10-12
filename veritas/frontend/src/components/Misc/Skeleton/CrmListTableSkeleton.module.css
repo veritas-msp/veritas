@@ -1,0 +1,117 @@
+/* Hauteur alignée sur une vraie ligne (icône 1.5rem + padding td 0.55rem×2) */
+.skelRow td {
+  height: 2.85rem;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.cell {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  max-width: 100%;
+}
+
+.cellBlock {
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+  max-width: 100%;
+}
+
+.text {
+  height: 0.875rem;
+  width: 70%;
+  max-width: 100%;
+  border-radius: 5px;
+}
+
+.num {
+  height: 0.8125rem;
+  width: 2.6rem;
+  border-radius: 4px;
+}
+
+.companyIcon {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.companyName {
+  height: 0.875rem;
+  width: 10rem;
+  max-width: 100%;
+  border-radius: 5px;
+}
+
+.statusPill {
+  height: 1.25rem;
+  width: 3.6rem;
+  border-radius: 5px;
+}
+
+.modulePill {
+  height: 1.15rem;
+  width: 3.6rem;
+  border-radius: 5px;
+}
+
+.modulePillSm {
+  width: 1.75rem;
+}
+
+.date {
+  height: 0.75rem;
+  width: 4.6rem;
+  border-radius: 4px;
+}
+
+.tag {
+  height: 1.15rem;
+  width: 3.2rem;
+  border-radius: 5px;
+}
+
+.fav {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  margin: 0 auto;
+}
+
+.chevron {
+  width: 0.75rem;
+  height: 1rem;
+  border-radius: 3px;
+  margin: 0 auto;
+  opacity: 0.5;
+}
+
+.action {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 7px;
+}
+
+.checkbox {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  margin: 0 auto;
+}
+
+.actionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+}
+
+.pillsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.5rem;
+}

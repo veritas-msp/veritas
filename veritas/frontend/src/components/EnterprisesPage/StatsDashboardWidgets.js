@@ -4,7 +4,9 @@ import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { getEquipmentFamilyStatsCopy } from "../../utils/equipmentFamilyStatsI18n";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
 import styles from "./ComputerFleetStats.module.css";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
 export const STATS_CHART_COLORS = ["#2b5fab", "#1d6f42", "#b45309", "#7c3aed", "#0e7490", "#be185d", "#64748b", "#c2410c"];
 const MAX_PIE_SLICES = 6;
@@ -176,15 +178,17 @@ function StatsDistributionModal({
   if (!open) return null;
 
   const toggleSort = key => {
-    if (sortKey === key) {
-      setSortDir(current => current === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortKey(key);
-    setSortDir(key === "name" ? "asc" : "desc");
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: "count",
+      defaultSortDirection: "desc",
+      getFirstDirection: col => (col === "name" ? "asc" : "desc")
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
-
-  const sortMark = key => sortKey === key ? sortDir === "asc" ? " ↑" : " ↓" : "";
 
   return createPortal(<div className={`${styles.root} ${styles.distOverlay}`} onClick={onClose} role="presentation">
       <div className={styles.distModal} onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="stats-dist-title">
@@ -209,13 +213,22 @@ function StatsDistributionModal({
             <thead>
               <tr>
                 <th>
-                  <button type="button" onClick={() => toggleSort("name")}>{copy.colLabel}{sortMark("name")}</button>
+                  <button type="button" onClick={() => toggleSort("name")} style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    {copy.colLabel}
+                    <SortIcon active={sortKey === "name"} direction={sortDir} />
+                  </button>
                 </th>
                 <th className={styles.distNum}>
-                  <button type="button" onClick={() => toggleSort("count")}>{copy.colCount}{sortMark("count")}</button>
+                  <button type="button" onClick={() => toggleSort("count")} style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    {copy.colCount}
+                    <SortIcon active={sortKey === "count"} direction={sortDir} />
+                  </button>
                 </th>
                 <th className={styles.distNum}>
-                  <button type="button" onClick={() => toggleSort("pct")}>{copy.colShare}{sortMark("pct")}</button>
+                  <button type="button" onClick={() => toggleSort("pct")} style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                    {copy.colShare}
+                    <SortIcon active={sortKey === "pct"} direction={sortDir} />
+                  </button>
                 </th>
                 <th className={styles.distBarCol} aria-hidden />
               </tr>

@@ -60,13 +60,32 @@ export default function EquipmentAlertSuspensionModal({
                     <label className={styles.fieldLabel} htmlFor="alert-duration">
                       {modalCopy.duration}
                     </label>
-                    <select id="alert-duration" className={styles.select} value={alert.durationMinutes} onChange={e => alert.setDurationMinutes(Number(e.target.value))}>
+                    <select
+                      id="alert-duration"
+                      className={styles.select}
+                      value={alert.useCustomUntil ? "custom" : alert.durationMinutes}
+                      onChange={e => alert.handleDurationChange(e.target.value)}
+                    >
                       {alert.durationOptions.map(opt => <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>)}
                     </select>
                   </div> : null}
               </div>
+
+              {alert.mode === "temporary" && alert.useCustomUntil ? <div className={styles.reasonField}>
+                  <label className={styles.fieldLabel} htmlFor="alert-until">
+                    {modalCopy.untilDateTime}
+                  </label>
+                  <input
+                    id="alert-until"
+                    type="datetime-local"
+                    className={styles.select}
+                    value={alert.customUntilLocal}
+                    min={alert.datetimeLocalMin}
+                    onChange={e => alert.setCustomUntilLocal(e.target.value)}
+                  />
+                </div> : null}
 
               {alert.mode === "temporary" || alert.mode === "permanent" ? <div className={styles.reasonField}>
                   <label className={styles.fieldLabel} htmlFor="alert-reason">

@@ -14,7 +14,7 @@
 }
 
 .centerPane {
-  padding: 0;
+  padding: 0.7rem 0.7rem 0.8rem;
   overflow: hidden;
 }
 
@@ -91,16 +91,19 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
+  gap: 0.7rem;
 }
 
 .centerTabs {
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.3rem;
-  padding: 0.55rem 0.65rem;
-  border-bottom: 1px solid var(--msp-border-light, #e8edf4);
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border: 1px solid var(--msp-border, #c5d0de);
+  border-radius: 14px;
   background: var(--msp-surface-2, #f4f6fa);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .centerTabsTwo {
@@ -113,7 +116,7 @@
   justify-content: center;
   gap: 0.4rem;
   min-width: 0;
-  padding: 0.48rem 0.55rem;
+  padding: 0.52rem 0.6rem;
   border: 1px solid transparent;
   background: transparent;
   color: var(--msp-muted, #5c6b82);
@@ -121,7 +124,7 @@
   font-weight: 650;
   font-family: inherit;
   cursor: pointer;
-  border-radius: 9px;
+  border-radius: 10px;
   transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -140,14 +143,14 @@
 
 .centerTab:hover {
   color: var(--msp-text, #0f1c2e);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .centerTabActive {
   color: var(--msp-accent, #2b5fab);
   background: var(--msp-surface, #fff);
-  border-color: var(--msp-border, #e2e8f0);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.05);
+  border-color: rgba(43, 95, 171, 0.18);
+  box-shadow: 0 1px 3px rgba(15, 28, 46, 0.08);
 }
 
 .centerTabActive svg {
@@ -186,7 +189,10 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  background: var(--td-surface, var(--msp-surface, #fff));
+  border: 1px solid var(--msp-border-light, #e8edf4);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.03);
 }
 
 .centerTabPanel {
@@ -198,7 +204,7 @@
 }
 
 .centerTabPanelChat {
-  padding: 0;
+  padding: 0.7rem 0.75rem 0.8rem;
 }
 
 .centerTabPanelChat > :first-child {
@@ -208,7 +214,7 @@
 
 .centerTabPanelScroll {
   overflow: auto;
-  padding: 0.75rem 0.8rem 0.85rem;
+  padding: 0.75rem 0.8rem 0.9rem;
 }
 
 .centerTabPanelTasks {
@@ -217,7 +223,7 @@
   min-height: 0;
   flex: 1;
   overflow: hidden;
-  padding: 0.75rem 0.65rem 0.85rem 0.8rem;
+  padding: 0.75rem 0.65rem 0.9rem 0.8rem;
 }
 
 .centerTabPanelTasks > :first-child {
@@ -273,16 +279,17 @@
   flex: 1;
 }
 
-:global(html.dark) .centerTabs,
-:global(html.dark) .centerTabPanels,
-:global(html.dark) .chatPane {
-  border-top-color: var(--msp-border, #2a3a55);
-  border-bottom-color: var(--msp-border, #2a3a55);
+:global(html.dark) .centerTabs {
+  border-color: var(--msp-border, #2a3a55);
   background: var(--msp-surface-2, #152035);
+  box-shadow: none;
 }
 
-:global(html.dark) .centerTabPanels {
+:global(html.dark) .centerTabPanels,
+:global(html.dark) .chatPane {
+  border-color: var(--msp-border, #2a3a55);
   background: var(--msp-surface, #1a2540);
+  box-shadow: none;
 }
 
 :global(html.dark) .centerTab {
@@ -297,7 +304,7 @@
 :global(html.dark) .centerTabActive {
   color: #9ec4f5;
   background: var(--msp-surface, #1a2540);
-  border-color: var(--msp-border, #2a3a55);
+  border-color: rgba(91, 141, 220, 0.28);
 }
 
 :global(html.dark) .centerTabActive:hover {
@@ -489,6 +496,90 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0.55rem;
   align-items: stretch;
+}
+
+@keyframes taskSmsIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.taskGlpiRowJustAdded .taskDragHandle,
+.taskGlpiRowJustAdded .taskGlpiAvatar,
+.taskGlpiRowJustAdded .taskGlpiCard,
+.taskGlpiRowJustAdded .taskGlpiSideActions {
+  animation: taskSmsIn 0.26s ease-out both;
+}
+
+.taskGlpiRowJustAdded .taskGlpiCard {
+  animation-delay: 0.02s;
+}
+
+.taskGlpiRowJustAdded .taskGlpiSideActions {
+  animation-delay: 0.04s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taskGlpiRowJustAdded .taskDragHandle,
+  .taskGlpiRowJustAdded .taskGlpiAvatar,
+  .taskGlpiRowJustAdded .taskGlpiCard,
+  .taskGlpiRowJustAdded .taskGlpiSideActions {
+    animation: none;
+  }
+}
+
+.taskGlpiRowSortable {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.taskGlpiRowDragging {
+  opacity: 0.92;
+  z-index: 2;
+}
+
+.taskGlpiRowDragging .taskGlpiCard {
+  box-shadow: 0 8px 22px rgba(15, 28, 46, 0.14);
+}
+
+.taskDragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #64748b);
+  cursor: grab;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.taskDragHandle:hover:not(:disabled) {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.taskDragHandle:active:not(:disabled) {
+  cursor: grabbing;
+}
+
+.taskDragHandle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.taskDragHandle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--msp-accent-soft, rgba(43, 95, 171, 0.25));
 }
 
 .taskGlpiRowDone {
@@ -761,6 +852,15 @@
 
 .taskDocLink:hover {
   color: var(--msp-accent, #2b5fab);
+}
+
+:global(html.dark) .taskGlpiRowDragging .taskGlpiCard {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .taskDragHandle:hover:not(:disabled) {
+  background: rgba(74, 127, 212, 0.16);
+  color: #93c5fd;
 }
 
 :global(html.dark) .taskGlpiCard {

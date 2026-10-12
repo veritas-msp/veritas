@@ -305,6 +305,15 @@ async function executeCheckmkFleetSyncBody({
 
   clearCheckmkFleetSyncCancel(run?.id);
 
+  if (!cancelled && (status === "success" || status === "partial")) {
+    try {
+      const { captureParkSnapshots } = await import("../utils/supervisionParkSnapshots.js");
+      await captureParkSnapshots({ includeClients: true, source: "sync" });
+    } catch (snapErr) {
+      console.warn("[checkmk-fleet-sync] park snapshot:", snapErr?.message || snapErr);
+    }
+  }
+
   console.log(
     `[checkmk-fleet-sync] trigger=${trigger} mode=${effectiveSyncMode} targets=${targets.length} synced=${synced} skipped=${skipped} failed=${failed} alerts=+${alertsCreated}/-${alertsResolved} cancelled=${cancelled}`
   );

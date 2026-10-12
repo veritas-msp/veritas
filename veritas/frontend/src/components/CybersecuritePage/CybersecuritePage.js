@@ -5,38 +5,29 @@ import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import React from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { getAllCampaigns, createClientCampaign, updateClientCampaign, deleteCampaign } from "../../api/campaigns";
 import { fetchCyberPageData, fetchClientsList } from "../../api/clients";
-import { fetchUsers } from "../../api/users";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getCommonCopy } from "../../i18n/commonI18n";
 import styles from "./CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import AntivirusMspDashboard from "./AntivirusMspDashboard";
 import AntispamMspDashboard from "./AntispamMspDashboard";
 import BackupMspDashboard from "./BackupMspDashboard";
-import CampaignsMspDashboard from "./CampaignsMspDashboard";
-import CampaignFormModal from "./CampaignFormModal";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import SmartTooltip from "../SmartTooltip";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
-import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { buildAntivirusFleetFromClients } from "./antivirusMspUtils";
 import { buildAntispamFleetFromClients, buildAntispamDetailNavigationPayload, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
 import { buildAntivirusDetailNavigationPayload, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
-import { buildBackupFleetFromClients } from "../EquipementPage/backupMspUtils";
+import { buildBackupFleetFromClients, buildBackupInstanceDetailPayload } from "../EquipementPage/backupMspUtils";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import API_BASE_URL from "../../config";
-const MODULE_TABS = ["antivirus", "antispam", "backup", "campaigns"];
+const MODULE_TABS = ["antivirus", "antispam", "backup"];
 export default function CybersecuritePage({
   onNavigate,
   cybersecuriteParams
 }) {
   const {
-    isCommunity,
-    loaded: editionLoaded
+    isCommunity
   } = useVeritasEdition();
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getCybersecuritePageCopy(locale), [locale]);
@@ -46,30 +37,19 @@ export default function CybersecuritePage({
   const cyberGuide = useMemo(() => getCybersecuriteGuide(locale, {
     showAntivirus: () => setActiveTab("antivirus")
   }), [locale]);
-  const commonCopy = useMemo(() => getCommonCopy(locale), [locale]);
-  const campaignsCopy = pageCopy.campaigns;
-  const [campaignProPromoOpen, setCampaignProPromoOpen] = useState(false);
   const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v2";
   const CYBER_PAGE_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
-  const CYBER_CAMPAIGNS_CACHE_KEY = "cyber_campaigns_cache_v1";
-  const CYBER_CAMPAIGNS_CACHE_TTL_MS = 3 * 60 * 1000;
   const [activeTab, setActiveTab] = useState("antivirus");
-  const [campaigns, setCampaigns] = useState([]);
-  const [allCampaigns, setAllCampaigns] = useState([]);
-  const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const clientsWithModulesLoadedRef = useRef(false);
   const loadingClientsRef = useRef(false);
   const clientsLoadPromiseRef = useRef(null);
   const clientsControllerRef = useRef(null);
-  const campaignsRequestRef = useRef(null);
-  const campaignsControllerRef = useRef(null);
   const fleetSyncControllerRef = useRef(null);
   const fleetSyncCancelledRef = useRef(false);
   const mountedRef = useRef(true);
   const skipInitialTabFetchRef = useRef(true);
-  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
-  const [loadingCyberData, setLoadingCyberData] = useState(false);
+  const [loadingCyberData, setLoadingCyberData] = useState(true);
   const [syncingFleet, setSyncingFleet] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('');
@@ -82,19 +62,14 @@ export default function CybersecuritePage({
   const [antivirusCurrentPage, setAntivirusCurrentPage] = useState(1);
   const [antivirusPageSize, setAntivirusPageSize] = useState(50);
   const selectTab = tabKey => {
-    if (tabKey === "campaigns" && isCommunity) {
-      if (editionLoaded) setCampaignProPromoOpen(true);
-      return;
-    }
     if (!MODULE_TABS.includes(tabKey)) return;
     setActiveTab(tabKey);
   };
   useEffect(() => {
     if (!cybersecuriteParams?.activeTab && !cybersecuriteParams?.tab) return;
     const requested = cybersecuriteParams.activeTab || cybersecuriteParams.tab;
-    if (requested === "campaigns" && isCommunity) {
-      if (editionLoaded) setCampaignProPromoOpen(true);
-      setActiveTab("antivirus");
+    if (requested === "campaigns") {
+      onNavigate?.("Campaigns", cybersecuriteParams?.clientId ? { clientId: cybersecuriteParams.clientId } : null);
       return;
     }
     if (requested === "overview" || !MODULE_TABS.includes(requested)) {
@@ -102,62 +77,20 @@ export default function CybersecuritePage({
       return;
     }
     setActiveTab(requested);
-  }, [cybersecuriteParams, editionLoaded, isCommunity]);
-  useEffect(() => {
-    if (!editionLoaded) return;
-    if (!isCommunity) {
-      setCampaignProPromoOpen(false);
-      return;
-    }
-    if (activeTab === "campaigns") {
-      setCampaignProPromoOpen(true);
-      setActiveTab("antivirus");
-    }
-  }, [editionLoaded, isCommunity, activeTab]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingCampaign, setEditingCampaign] = useState(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [confirmText, setConfirmText] = useState('');
+  }, [cybersecuriteParams, onNavigate]);
   const abortInFlightTabFetches = () => {
     clientsControllerRef.current?.abort();
-    campaignsControllerRef.current?.abort();
   };
   const abortFleetSync = () => {
     fleetSyncCancelledRef.current = true;
     fleetSyncControllerRef.current?.abort();
   };
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  };
-  const getOneMonthLater = () => {
-    const date = new Date();
-    date.setMonth(date.getMonth() + 1);
-    return date.toISOString().split('T')[0];
-  };
-  const [formData, setFormData] = useState({
-    client_id: '',
-    name: '',
-    type: 'microsoft_security',
-    provider: 'microsoft',
-    tenant_id: '',
-    azure_credential_id: '',
-    status: 'en_preparation',
-    start_date: getTodayDate(),
-    end_date: getOneMonthLater(),
-    global_progress: 0,
-    description: ''
-  });
   useEffect(() => {
     mountedRef.current = true;
     (async () => {
-      loadUsers();
       await loadClients({
         withModules: true
       });
-      if (!isCommunity) {
-        await Promise.all([loadCampaigns(), loadAllCampaignsForStats()]);
-      }
     })();
     return () => {
       mountedRef.current = false;
@@ -170,12 +103,7 @@ export default function CybersecuritePage({
       skipInitialTabFetchRef.current = false;
       return;
     }
-    let cancelled = false;
     (async () => {
-      if (activeTab === "campaigns") {
-        await Promise.all([loadCampaigns(), loadAllCampaignsForStats()]);
-        return;
-      }
       if (!activeTab || ["antivirus", "antispam", "backup"].includes(activeTab)) {
         await loadClients({
           withModules: true
@@ -183,90 +111,9 @@ export default function CybersecuritePage({
       }
     })();
     return () => {
-      cancelled = true;
       abortInFlightTabFetches();
     };
   }, [activeTab]);
-  const readCache = (key, ttlMs) => {
-    try {
-      const raw = sessionStorage.getItem(key);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      const isFresh = parsed?.savedAt && Date.now() - parsed.savedAt < ttlMs;
-      return isFresh ? parsed.data : null;
-    } catch {
-      return null;
-    }
-  };
-  const writeCache = (key, data) => {
-    try {
-      sessionStorage.setItem(key, JSON.stringify({
-        savedAt: Date.now(),
-        data
-      }));
-    } catch {}
-  };
-  const invalidateCampaignsCache = () => {
-    try {
-      sessionStorage.removeItem(CYBER_CAMPAIGNS_CACHE_KEY);
-    } catch {}
-  };
-  const loadCampaignsDataset = async ({
-    skipCache = false
-  } = {}) => {
-    if (!skipCache) {
-      const cached = readCache(CYBER_CAMPAIGNS_CACHE_KEY, CYBER_CAMPAIGNS_CACHE_TTL_MS);
-      if (Array.isArray(cached)) return cached;
-    }
-    if (campaignsRequestRef.current) {
-      return await campaignsRequestRef.current;
-    }
-    campaignsControllerRef.current?.abort();
-    const controller = createTrackedAbortController();
-    campaignsControllerRef.current = controller;
-    const request = getAllCampaigns({}, {
-      signal: controller.signal
-    }).then(data => {
-      const normalized = Array.isArray(data) ? data : [];
-      writeCache(CYBER_CAMPAIGNS_CACHE_KEY, normalized);
-      return normalized;
-    }).finally(() => {
-      campaignsRequestRef.current = null;
-    });
-    campaignsRequestRef.current = request;
-    return await request;
-  };
-  const loadAllCampaignsForStats = async () => {
-    try {
-      const allCampaignsData = await loadCampaignsDataset();
-      setAllCampaigns(allCampaignsData || []);
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-      console.error('Error while loading des campagnes pour stats:', error);
-      setAllCampaigns([]);
-    }
-  };
-  const loadCampaigns = async (options = {}) => {
-    try {
-      setLoadingCampaigns(true);
-      const campaignsData = await loadCampaignsDataset(options);
-      setCampaigns(campaignsData || []);
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-      console.error('Error while loading des campagnes:', error);
-      setCampaigns([]);
-    } finally {
-      setLoadingCampaigns(false);
-    }
-  };
-  const loadUsers = async () => {
-    try {
-      const usersData = await fetchUsers();
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Error while loading des utilisateurs:', error);
-    }
-  };
   const loadClients = async ({
     withModules = true,
     force = false,
@@ -292,11 +139,6 @@ export default function CybersecuritePage({
                 const isFresh = parsed?.savedAt && parsed?.data && Array.isArray(parsed.data.clients) && Date.now() - parsed.savedAt < CYBER_PAGE_DATA_CACHE_TTL_MS;
                 if (isFresh) {
                   setClients(parsed.data.clients);
-                  if (Array.isArray(parsed.data.campaigns)) {
-                    setCampaigns(parsed.data.campaigns);
-                    setAllCampaigns(parsed.data.campaigns);
-                    writeCache(CYBER_CAMPAIGNS_CACHE_KEY, parsed.data.campaigns);
-                  }
                   clientsWithModulesLoadedRef.current = true;
                   return parsed.data.clients;
                 }
@@ -308,18 +150,13 @@ export default function CybersecuritePage({
           });
           if (controller.signal.aborted) return;
           const clientsData = Array.isArray(payload?.clients) ? payload.clients : [];
-          const campaignsPayload = Array.isArray(payload?.campaigns) ? payload.campaigns : [];
           setClients(clientsData);
-          setCampaigns(campaignsPayload);
-          setAllCampaigns(campaignsPayload);
-          writeCache(CYBER_CAMPAIGNS_CACHE_KEY, campaignsPayload);
           clientsWithModulesLoadedRef.current = true;
           try {
             sessionStorage.setItem(CYBER_PAGE_DATA_CACHE_KEY, JSON.stringify({
               savedAt: Date.now(),
               data: {
-                clients: clientsData,
-                campaigns: campaignsPayload
+                clients: clientsData
               }
             }));
           } catch {}
@@ -573,137 +410,12 @@ export default function CybersecuritePage({
   const handleAntivirusTotalCardClick = () => {
     setSelectedStatuses(new Set());
   };
-  const formatClientDisplay = value => {
-    if (value === null || value === undefined || value === '') return '-';
-    return String(value).replace(/\s*-\s*/g, ' ');
+  const handleViewBackupInstance = (rowOrPayload, options = {}) => {
+    if (!onNavigate || !rowOrPayload) return;
+    const payload = buildBackupInstanceDetailPayload(rowOrPayload);
+    if (!payload.instanceId && !payload.clientId) return;
+    onNavigate("InstanceDetail", payload, options);
   };
-  const resetForm = () => {
-    setFormData({
-      client_id: '',
-      name: '',
-      type: 'microsoft_security',
-      provider: 'microsoft',
-      tenant_id: '',
-      azure_credential_id: '',
-      status: 'en_preparation',
-      start_date: getTodayDate(),
-      end_date: getOneMonthLater(),
-      global_progress: 0,
-      description: ''
-    });
-  };
-  const handleSubmit = async e => {
-    e.preventDefault();
-    if (!formData.client_id || !formData.name || !formData.type) {
-      toast.error(campaignsCopy.toasts.requiredFields);
-      return;
-    }
-    if (!editingCampaign && formData.type === 'microsoft_security' && (!formData.tenant_id || !formData.azure_credential_id)) {
-      toast.error(campaignsCopy.toasts.needMicrosoftTenant);
-      return;
-    }
-    try {
-      if (editingCampaign) {
-        await updateClientCampaign(formData.client_id, editingCampaign.id, formData);
-        toast.success(campaignsCopy.toasts.updated);
-        invalidateCampaignsCache();
-        await loadCampaigns({
-          skipCache: true
-        });
-        await loadAllCampaignsForStats();
-        setShowModal(false);
-        setEditingCampaign(null);
-        resetForm();
-      } else {
-        const newCampaign = await createClientCampaign(formData.client_id, {
-          ...formData,
-          locale
-        });
-        toast.success(campaignsCopy.toasts.created);
-        setShowModal(false);
-        setEditingCampaign(null);
-        resetForm();
-        invalidateCampaignsCache();
-        await loadCampaigns({
-          skipCache: true
-        });
-        await loadAllCampaignsForStats();
-        if (onNavigate && newCampaign) {
-          const campaignData = {
-            ...newCampaign,
-            client_id: formData.client_id,
-            client_name: clients.find(c => c.id === formData.client_id)?.name || `Client ${formData.client_id}`
-          };
-          onNavigate('CampaignDetail', campaignData);
-        }
-      }
-    } catch (error) {
-      console.error('Error saving:', error);
-      toast.error(campaignsCopy.toasts.saveError);
-    }
-  };
-  const handleDelete = async () => {
-    if (confirmText !== campaignsCopy.delete.confirmWord) {
-      toast.error(campaignsCopy.toasts.confirmDelete);
-      return;
-    }
-    try {
-      await deleteCampaign(confirmDeleteId);
-      toast.success(campaignsCopy.toasts.deleted);
-      invalidateCampaignsCache();
-      await loadCampaigns({
-        skipCache: true
-      });
-      await loadAllCampaignsForStats();
-    } catch (error) {
-      console.error('Error during deletion:', error);
-      toast.error(campaignsCopy.toasts.deleteError);
-    } finally {
-      setConfirmDeleteId(null);
-      setConfirmText('');
-    }
-  };
-  const handleOpenCampaignClient = ({
-    clientId,
-    name
-  }) => {
-    if (!onNavigate || !clientId) return;
-    onNavigate("ContratDetail", {
-      clientId,
-      name
-    });
-  };
-  const buildCampaignDataForNavigate = campaign => {
-    if (!campaign) return campaign;
-    const clientName = campaign.client_name || campaign.clientName || formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`);
-    return {
-      ...campaign,
-      clientName,
-      client_name: campaign.client_name || clientName,
-      campaignId: campaign.id || campaign.campaignId
-    };
-  };
-  const handleViewCampaign = (campaign, options = {}) => {
-    if (onNavigate) {
-      const campaignData = buildCampaignDataForNavigate(campaign);
-      onNavigate('CampaignDetail', campaignData, options);
-    }
-  };
-  const antivirusStats = useMemo(() => {
-    const total = antivirusData.length;
-    const active = antivirusData.filter(item => item.status === 'actif').length;
-    const expired = antivirusData.filter(item => item.status === 'inactif').length;
-    const expiring = antivirusData.filter(item => item.status === 'expire_bientot').length;
-    const itemsWithUsage = antivirusData.filter(item => item.usedLicenses !== null && item.totalLicenses !== null && item.totalLicenses > 0);
-    const avgUsagePercent = itemsWithUsage.length > 0 ? itemsWithUsage.reduce((sum, item) => sum + item.usedLicenses / item.totalLicenses, 0) / itemsWithUsage.length : 0;
-    return {
-      total,
-      active,
-      expired,
-      expiringSoon: expiring,
-      avgUsagePercent: Math.round(avgUsagePercent * 100)
-    };
-  }, [antivirusData]);
   const handleViewAntivirusSolution = (row, options = {}) => {
     if (!onNavigate || !row) return;
     const raw = row.raw || {};
@@ -749,73 +461,40 @@ export default function CybersecuritePage({
       name: row.clientName
     });
   };
-  const openAddCampaign = () => {
-    if (isCommunity) {
-      setCampaignProPromoOpen(true);
-      return;
-    }
-    setEditingCampaign(null);
-    setFormData({
-      client_id: cybersecuriteParams?.clientId || "",
-      name: "",
-      type: "microsoft_security",
-      provider: "microsoft",
-      tenant_id: "",
-      azure_credential_id: "",
-      status: "en_preparation",
-      start_date: getTodayDate(),
-      end_date: getOneMonthLater(),
-      global_progress: 0,
-      description: ""
-    });
-    setShowModal(true);
-  };
-  const avIssues = antivirusData.filter(row => row.status === "inactif" || row.status === "expire_bientot").length;
-  const asIssues = antispamData.filter(row => row.status === "inactif" || row.status === "expire_bientot").length;
-  const backupIssues = backupData.filter(row => row.status === "critical" || row.status === "warning").length;
-  const campaignIssues = isCommunity ? 0 : campaigns.filter(campaign => campaign.status === "suspendue").length;
-  const heroSubtitle = syncingFleet && syncStatus ? syncStatus : loadingCyberData && clients.length === 0 ? pageCopy.heroRefreshing : activeTab === "antivirus" ? avIssues > 0 ? pageCopy.formatHeroIssues("antivirus", avIssues) : pageCopy.msp?.antivirus?.heroDescOk : activeTab === "antispam" ? asIssues > 0 ? pageCopy.formatHeroIssues("antispam", asIssues) : pageCopy.msp?.antispam?.heroDescOk : activeTab === "backup" ? backupIssues > 0 ? pageCopy.formatHeroIssues("backup", backupIssues) : pageCopy.msp?.backup?.heroDescOk : activeTab === "campaigns" ? campaignIssues > 0 ? pageCopy.formatCampaignHeroIssues(campaignIssues) : pageCopy.campaigns?.heroDescOk : pageCopy.subtitle;
-  const heroActionsCopy = pageCopy.heroActions || {};
-  const showFleetSync = activeTab === "antivirus" || activeTab === "antispam" || activeTab === "backup";
-  const syncTooltip = syncingFleet && syncStatus
-    ? syncStatus
-    : activeTab === "antispam"
-      ? heroActionsCopy.syncAntispam
-      : activeTab === "backup"
-        ? heroActionsCopy.syncBackup
-        : heroActionsCopy.syncAntivirus;
-  const syncAriaLabel = activeTab === "antispam"
-    ? heroActionsCopy.syncAntispamAria || heroActionsCopy.syncAntispam
-    : activeTab === "backup"
-      ? heroActionsCopy.syncBackupAria || heroActionsCopy.syncBackup
-      : heroActionsCopy.syncAntivirusAria || heroActionsCopy.syncAntivirus;
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
   return <div className={`${styles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={styles.mspLayout}>
       <div className={styles.mspMain}>
-        <MspPageHero guideId="cyber-hero" eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:shield-lock" actions={<>
-              <nav className={styles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="cyber-tabs">
-                {moduleTabs.map(tab => {
-              const locked = tab.proOnly && isCommunity;
-              return <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} className={`${styles.mspTab} ${activeTab === tab.key ? styles.mspTabActive : ""} ${locked ? styles.mspTabProLocked : ""}`} onClick={() => selectTab(tab.key)} title={locked ? `${tab.label}${pageCopy.proTabSuffix || ""}` : tab.label}>
-                      <Icon icon={tab.icon} className={styles.mspTabIcon} aria-hidden />
-                      <span className={styles.mspTabLabelRow}>
-                        <span>{tab.label}</span>
-                        {locked ? <ProFeatureBadge variant="inline" className={styles.mspTabProBadge} /> : null}
-                      </span>
-                    </button>;
-            })}
-              </nav>
-              {showFleetSync ? <SmartTooltip content={syncTooltip}>
-                <button type="button" className={layout.iconBtn} onClick={syncAllFleet} disabled={syncingFleet} aria-label={syncAriaLabel} data-guide="cyber-sync">
-                  <Icon icon={syncingFleet ? "mdi:loading" : "mdi:sync"} className={syncingFleet ? styles.spinning : undefined} aria-hidden />
-                </button>
-              </SmartTooltip> : null}
-            </>} />
-
-        <main className={`${styles.mspContent} ${styles.mspContentList}`}>
+        <main className={`${styles.mspContent} ${styles.mspContentList} ${layout.contentNoHero}`}>
+          <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-          <div className={styles.tabContent} data-guide="cyber-dashboard">
+            <div className={styles.cyberLayout}>
+              <aside className={styles.moduleRail} aria-label={pageCopy.tabSectionsAria} data-guide="cyber-tabs">
+                <div className={styles.moduleRailList} role="tablist" aria-orientation="vertical">
+                  {moduleTabs.map(tab => {
+                    const locked = tab.proOnly && isCommunity;
+                    const active = activeTab === tab.key;
+                    return <button
+                      key={tab.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      className={`${styles.moduleRailBtn} ${active ? styles.moduleRailBtnActive : ""} ${locked ? styles.moduleRailBtnLocked : ""}`}
+                      onClick={() => selectTab(tab.key)}
+                      title={locked ? `${tab.label}${pageCopy.proTabSuffix || ""}` : tab.label}
+                    >
+                      <span className={styles.moduleRailIconWrap}>
+                        <Icon icon={tab.icon} className={styles.moduleRailIcon} aria-hidden />
+                      </span>
+                      <span className={styles.moduleRailLabel}>{tab.label}</span>
+                      {locked ? <ProFeatureBadge variant="inline" className={styles.moduleRailProBadge} /> : null}
+                      {active ? <span className={styles.moduleRailActiveBar} aria-hidden /> : null}
+                    </button>;
+                  })}
+                </div>
+              </aside>
+
+              <div className={`${styles.cyberMain} ${styles.tabContent}`} data-guide="cyber-dashboard">
                 {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
                   withModules: true,
                   force: true,
@@ -826,73 +505,17 @@ export default function CybersecuritePage({
                   force: true,
                   skipCache: true
                 })} /> : null}
-                {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onRefresh={() => loadClients({
+                {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} onOpenInstance={handleViewBackupInstance} onSync={syncAllFleet} syncing={syncingFleet} onRefresh={() => loadClients({
                   withModules: true,
                   force: true,
                   skipCache: true
                 })} /> : null}
-                {activeTab === "campaigns" ? <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={openAddCampaign} onCampaignsChanged={async () => {
-                  invalidateCampaignsCache();
-                  await Promise.all([loadCampaigns({
-                    skipCache: true
-                  }), loadAllCampaignsForStats()]);
-                }} /> : null}
-          </div>
+              </div>
+            </div>
           </div>
         </main>
       </div>
       </div>
-
-        <CampaignFormModal open={showModal} onClose={() => {
-      setShowModal(false);
-      setEditingCampaign(null);
-    }} clients={clients} formData={formData} onFormDataChange={setFormData} editingCampaign={editingCampaign} onSubmit={handleSubmit} copy={campaignsCopy} getCampaignTypeLabel={pageCopy.getCampaignTypeLabel} lockClient={false} />
-
-        {}
-        {confirmDeleteId && <div className={styles.modalOverlay} onClick={() => setConfirmDeleteId(null)}>
-            <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-              <div className={styles.modalHeader}>
-                <h3>{campaignsCopy.delete.title}</h3>
-                <button className={styles.closeButton} onClick={() => setConfirmDeleteId(null)}>
-                  ×
-                </button>
-              </div>
-
-              <div className={styles.modalBody}>
-                <p>{campaignsCopy.delete.message}</p>
-                <div style={{
-            marginTop: '1rem'
-          }}>
-                  <label style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontWeight: '600'
-            }}>
-                    {campaignsCopy.delete.confirmLabel}
-                  </label>
-                  <input type="text" value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder={campaignsCopy.delete.confirmPlaceholder} style={{
-              width: '100%',
-              padding: '0.5rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '0.375rem'
-            }} autoFocus />
-                </div>
-              </div>
-
-              <div className={styles.modalActions}>
-                <button className={styles.secondaryButton} onClick={() => setConfirmDeleteId(null)}>
-                  {commonCopy.cancel}
-                </button>
-                <button className={styles.primaryButton} onClick={handleDelete} disabled={confirmText !== campaignsCopy.delete.confirmWord} style={{
-            backgroundColor: confirmText === campaignsCopy.delete.confirmWord ? '#dc2626' : '#9ca3af',
-            cursor: confirmText === campaignsCopy.delete.confirmWord ? 'pointer' : 'not-allowed'
-          }}>
-                  {commonCopy.delete}
-                </button>
-              </div>
-            </div>
-          </div>}
-      <ProFeaturePromoModal open={campaignProPromoOpen} featureKey={pageCopy.proFeatureKey} onClose={() => setCampaignProPromoOpen(false)} />
       <PageGuideTour open={pageGuideOpen} steps={cyberGuide.steps} title={cyberGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>;
 }

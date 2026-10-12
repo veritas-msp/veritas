@@ -18,7 +18,7 @@ export const TAB_FOLDER_GROUPS = [{
 }, {
   key: "ticketSales",
   types: ["TicketSalesDetail", "TicketSalesCreate", "TicketSales"],
-  icon: "mdi:briefcase-edit-outline"
+  icon: "mdi:briefcase-outline"
 }, {
   key: "planning",
   types: ["Planning"],
@@ -28,12 +28,16 @@ export const TAB_FOLDER_GROUPS = [{
   types: ["Hardware", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats"],
   icon: "mdi:monitor-dashboard"
 }, {
+  key: "campaigns",
+  types: ["Campaigns", "CampaignDetail"],
+  icon: "mdi:bullhorn-outline"
+}, {
   key: "inventory",
   types: ["EquipmentInventory"],
   icon: "mdi:devices"
 }, {
   key: "cyber",
-  types: ["CampaignDetail", "AntivirusDetail", "AntispamDetail", "Cybersecurite"],
+  types: ["AntivirusDetail", "AntispamDetail", "InstanceDetail", "Cybersecurite"],
   icon: "mdi:shield-lock"
 }, {
   key: "service",

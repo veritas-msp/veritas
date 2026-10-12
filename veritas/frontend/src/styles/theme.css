@@ -5,6 +5,7 @@
   --bp-tablet: 1024px;
   --bp-wide: 1440px;
   --sidebar-rail-width: 64px;
+  --sidebar-expanded-width: 200px;
   --sidebar-drawer-width: 200px;
   --app-compact-chrome: 36px;
 }

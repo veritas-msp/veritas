@@ -19,21 +19,13 @@
   overflow: hidden;
 }
 
-.wizardTabContent {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  padding-top: 0.35rem;
-}
-
 .wizardFill {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  gap: 0.65rem;
 }
 
 .createPanel {

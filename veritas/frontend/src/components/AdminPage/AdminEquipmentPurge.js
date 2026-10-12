@@ -409,25 +409,6 @@ export default function AdminEquipmentPurge() {
                 </Btn>
               </div> : null}
 
-            {selectedCount > 0 ? <div className={s.bulkBar}>
-                <span className={s.bulkInfo}>
-                  {deleting && deleteProgress.total > 0
-                    ? interpolate(copy.deletingProgress, { done: deleteProgress.done, total: deleteProgress.total })
-                    : interpolate(copy.selected, { count: selectedCount })}
-                </span>
-                <div className={s.bulkActions}>
-                  {!allFilteredSelected && filtered.length > selectedCount ? <Btn variant="ghost" onClick={selectAllFiltered} disabled={deleting}>
-                      {interpolate(copy.selectAllFiltered, { count: filtered.length })}
-                    </Btn> : null}
-                  <Btn variant="ghost" onClick={() => setSelectedIds(new Set())} disabled={deleting}>
-                    {copy.deselectAll}
-                  </Btn>
-                  <Btn variant="danger" icon="mdi:trash-can-outline" onClick={() => openDelete(selectedItems)} disabled={deleting}>
-                    {copy.deleteSelection}
-                  </Btn>
-                </div>
-              </div> : null}
-
             <div className={s.tableSection}>
               <div className={s.tableWrap}>
                 <table className={s.table}>
@@ -497,6 +478,25 @@ export default function AdminEquipmentPurge() {
               rangeLabel={rangeLabel}
               pageSizeOptions={[25, 50, 100, 200]}
             /> : null}
+
+            {selectedCount > 0 ? <div className={s.bulkBar}>
+                <span className={s.bulkInfo}>
+                  {deleting && deleteProgress.total > 0
+                    ? interpolate(copy.deletingProgress, { done: deleteProgress.done, total: deleteProgress.total })
+                    : interpolate(copy.selected, { count: selectedCount })}
+                </span>
+                <div className={s.bulkActions}>
+                  {!allFilteredSelected && filtered.length > selectedCount ? <Btn variant="ghost" onClick={selectAllFiltered} disabled={deleting}>
+                      {interpolate(copy.selectAllFiltered, { count: filtered.length })}
+                    </Btn> : null}
+                  <Btn variant="ghost" onClick={() => setSelectedIds(new Set())} disabled={deleting}>
+                    {copy.deselectAll}
+                  </Btn>
+                  <Btn variant="danger" icon="mdi:trash-can-outline" onClick={() => openDelete(selectedItems)} disabled={deleting}>
+                    {copy.deleteSelection}
+                  </Btn>
+                </div>
+              </div> : null}
 
             <p className={s.hint}>{copy.hint}</p>
           </div>

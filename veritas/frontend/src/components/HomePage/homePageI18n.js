@@ -2,7 +2,7 @@ import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const HOME_COPY = {
   fr: {
     heroTitle: "Tableau de bord MSP",
-    heroGreeting: "Bonjour, {name}",
+    heroGreeting: "Bonjour, {name} 👋",
     heroSubtitle: "Tout ce qu'il vous faut, au même endroit.",
     loading: "Chargement du tableau de bord…",
     errorLoad: "Impossible de charger le tableau de bord.",
@@ -42,6 +42,7 @@ const HOME_COPY = {
       support: "Support",
       services: "Services",
       events: "Événements",
+      supervision: "Supervision",
       todo: "À traiter"
     },
     panels: {
@@ -65,12 +66,89 @@ const HOME_COPY = {
         weekHint: "7 prochains jours",
         action: "Voir le planning",
         add: "Nouvel événement",
-        pagerAria: "Pagination des événements"
+        pagerAria: "Pagination des événements",
+        stripAria: "Événements des 7 prochains jours",
+        today: "Auj.",
+        dayCount: "{count}",
+        dayAria: "{day} : {count} événement(s)",
+        noneHint: "Aucun événement sur les 7 prochains jours"
       },
       surveillance: {
         title: "Surveillance",
         globalFleet: "Parc global",
         empty: "Aucun équipement surveillé"
+      },
+      supervision: {
+        title: "Centre de supervision",
+        heroSubtitle: "Tout ce qu'il vous faut, au même endroit.",
+        kpiAriaLabel: "Indicateurs du centre de supervision",
+        kpiTodo: "Alertes à traiter",
+        kpiCritical: "Alertes critiques",
+        kpiWarning: "Warnings",
+        kpiInProgress: "Alertes en cours",
+        kpiWaiting: "Alertes en attente",
+        kpiMaintenance: "Périphériques en maintenance",
+        kpiTicketsOpen: "Tickets assignés",
+        kpiSlaBreached: "SLA dépassés",
+        kpiSlaNear: "SLA proches",
+        kpiSlaOk: "SLA OK",
+        ticketKpiAria: "Indicateurs tickets et SLA",
+        slaTicketsTitle: "Tickets SLA à surveiller",
+        emptySlaTickets: "Aucun ticket proche ou hors SLA",
+        colTicket: "Ticket",
+        colSla: "SLA",
+        sinceYesterday: "depuis hier",
+        seeAll: "Voir tout",
+        periodAria: "Période d'analyse",
+        periods: { "24h": "24h", "7d": "7j", "30d": "30j" },
+        parkTitle: "État global du parc",
+        parkOnline: "En ligne",
+        parkAlert: "En alerte",
+        parkDown: "Hors service",
+        parkMaintenance: "En maintenance",
+        parkTotal: "Total",
+        availability: "Disponibilité globale",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Tendance vs semaine précédente",
+        evolutionTitle: "Évolution des alertes",
+        alertDistTitle: "Répartition des alertes",
+        alertDistTotal: "total",
+        severityCritical: "Critique",
+        severityWarning: "Warning",
+        severityInfo: "Info",
+        latestTitle: "Alertes récentes",
+        activityTitle: "Activité récente",
+        emptyAlerts: "Aucune alerte récente",
+        emptyActivity: "Aucune activité récente",
+        activityTicket: "Ticket",
+        activityMaintenance: "Maintenance — {name}",
+        maintenanceTitle: "Périphériques en maintenance",
+        topClientsTitle: "Top 5 des clients en alerte",
+        infraTitle: "Vue d'ensemble de l'infrastructure",
+        infraSeeDetail: "Voir le détail",
+        infraSites: "Sites",
+        infraSitesMeta: "{n} en ligne",
+        infraDevices: "Périphériques",
+        infraDevicesMeta: "{n} en maintenance",
+        infraServers: "Serveurs",
+        infraWorkstations: "Postes clients",
+        infraNetwork: "Réseau",
+        infraBackups: "Sauvegardes",
+        infraAlertMeta: "{n} en alerte",
+        infraBackupsOk: "OK",
+        colName: "Nom",
+        colType: "Type",
+        colClient: "Client",
+        colStart: "Début",
+        colEnd: "Fin prévue",
+        colStatus: "Statut",
+        statusInProgress: "En cours",
+        statusWaiting: "En attente",
+        statusMaintenance: "Maintenance",
+        indefinite: "Indéterminée",
+        emptyMaintenance: "Aucun périphérique en maintenance",
+        emptyTopClients: "Aucun client en alerte"
       },
       todo: {
         title: "À traiter",
@@ -202,6 +280,10 @@ const HOME_COPY = {
           title: "Mes événements",
           content: "Consultez vos prochaines interventions et rendez-vous planifiés, avec le type d'événement et les dates. Le lien ouvre le planning complet."
         },
+        supervision: {
+          title: "Centre de supervision",
+          content: "Vue synthétique des alertes à traiter, du parc et de l'évolution sur 7 jours. Cliquez sur un indicateur pour ouvrir le centre de supervision."
+        },
         todo: {
           title: "À traiter",
           content: "Éléments à traiter remontés depuis la supervision, la cybersécurité et les services : contrats, licences et alertes. Cliquez pour accéder au module concerné."
@@ -215,7 +297,7 @@ const HOME_COPY = {
   },
   en: {
     heroTitle: "MSP dashboard",
-    heroGreeting: "Hello, {name}",
+    heroGreeting: "Hello, {name} 👋",
     heroSubtitle: "Everything you need, in one place.",
     loading: "Loading dashboard…",
     errorLoad: "Unable to load the dashboard.",
@@ -255,6 +337,7 @@ const HOME_COPY = {
       support: "Support",
       services: "Services",
       events: "Events",
+      supervision: "Supervision",
       todo: "To do"
     },
     panels: {
@@ -278,12 +361,89 @@ const HOME_COPY = {
         weekHint: "Next 7 days",
         action: "View schedule",
         add: "New event",
-        pagerAria: "Events pagination"
+        pagerAria: "Events pagination",
+        stripAria: "Events over the next 7 days",
+        today: "Today",
+        dayCount: "{count}",
+        dayAria: "{day}: {count} event(s)",
+        noneHint: "No events in the next 7 days"
       },
       surveillance: {
         title: "Monitoring",
         globalFleet: "Global fleet",
         empty: "No monitored equipment"
+      },
+      supervision: {
+        title: "Supervision center",
+        heroSubtitle: "Everything you need, in one place.",
+        kpiAriaLabel: "Supervision center indicators",
+        kpiTodo: "Alerts to process",
+        kpiCritical: "Critical alerts",
+        kpiWarning: "Warnings",
+        kpiInProgress: "Alerts in progress",
+        kpiWaiting: "Pending alerts",
+        kpiMaintenance: "Devices in maintenance",
+        kpiTicketsOpen: "Assigned tickets",
+        kpiSlaBreached: "SLA breached",
+        kpiSlaNear: "SLA near due",
+        kpiSlaOk: "SLA OK",
+        ticketKpiAria: "Ticket and SLA indicators",
+        slaTicketsTitle: "SLA tickets to watch",
+        emptySlaTickets: "No near-due or breached SLA tickets",
+        colTicket: "Ticket",
+        colSla: "SLA",
+        sinceYesterday: "since yesterday",
+        seeAll: "See all",
+        periodAria: "Analysis period",
+        periods: { "24h": "24h", "7d": "7d", "30d": "30d" },
+        parkTitle: "Global fleet status",
+        parkOnline: "Online",
+        parkAlert: "In alert",
+        parkDown: "Out of service",
+        parkMaintenance: "In maintenance",
+        parkTotal: "Total",
+        availability: "Global availability",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Trend vs previous week",
+        evolutionTitle: "Alert trend",
+        alertDistTitle: "Alert distribution",
+        alertDistTotal: "total",
+        severityCritical: "Critical",
+        severityWarning: "Warning",
+        severityInfo: "Info",
+        latestTitle: "Recent alerts",
+        activityTitle: "Recent activity",
+        emptyAlerts: "No recent alerts",
+        emptyActivity: "No recent activity",
+        activityTicket: "Ticket",
+        activityMaintenance: "Maintenance — {name}",
+        maintenanceTitle: "Devices in maintenance",
+        topClientsTitle: "Top 5 clients in alert",
+        infraTitle: "Infrastructure overview",
+        infraSeeDetail: "View details",
+        infraSites: "Sites",
+        infraSitesMeta: "{n} online",
+        infraDevices: "Devices",
+        infraDevicesMeta: "{n} in maintenance",
+        infraServers: "Servers",
+        infraWorkstations: "Workstations",
+        infraNetwork: "Network",
+        infraBackups: "Backups",
+        infraAlertMeta: "{n} in alert",
+        infraBackupsOk: "OK",
+        colName: "Name",
+        colType: "Type",
+        colClient: "Client",
+        colStart: "Started",
+        colEnd: "Ends",
+        colStatus: "Status",
+        statusInProgress: "In progress",
+        statusWaiting: "Pending",
+        statusMaintenance: "Maintenance",
+        indefinite: "Indefinite",
+        emptyMaintenance: "No devices in maintenance",
+        emptyTopClients: "No clients in alert"
       },
       todo: {
         title: "To do",
@@ -415,6 +575,10 @@ const HOME_COPY = {
           title: "My events",
           content: "Review your upcoming interventions and appointments with event type and dates. Use the link to open the full schedule."
         },
+        supervision: {
+          title: "Supervision center",
+          content: "Summary of alerts to process, fleet status and the 7-day trend. Click an indicator to open the supervision center."
+        },
         todo: {
           title: "To do",
           content: "Items to handle from monitoring, cybersecurity and services: contracts, licenses and alerts. Click to open the relevant module."
@@ -428,7 +592,7 @@ const HOME_COPY = {
   },
   de: {
     heroTitle: "MSP-Dashboard",
-    heroGreeting: "Guten Tag, {name}",
+    heroGreeting: "Guten Tag, {name} 👋",
     heroSubtitle: "Alles, was Sie brauchen · an einem Ort.",
     loading: "Dashboard wird geladen…",
     errorLoad: "Dashboard konnte nicht geladen werden.",
@@ -468,6 +632,7 @@ const HOME_COPY = {
       support: "Support",
       services: "Services",
       events: "Termine",
+      supervision: "Supervision",
       todo: "Aufgaben"
     },
     panels: {
@@ -491,12 +656,49 @@ const HOME_COPY = {
         weekHint: "Nächste 7 Tage",
         action: "Planung anzeigen",
         add: "Neuer Termin",
-        pagerAria: "Termin-Seiten"
+        pagerAria: "Termin-Seiten",
+        stripAria: "Termine der nächsten 7 Tage",
+        today: "Heute",
+        dayCount: "{count}",
+        dayAria: "{day}: {count} Termin(e)",
+        noneHint: "Keine Termine in den nächsten 7 Tagen"
       },
       surveillance: {
         title: "Überwachung",
         globalFleet: "Gesamtbestand",
         empty: "Keine überwachten Geräte"
+      },
+      supervision: {
+        title: "Supervisionszentrum",
+        kpiAriaLabel: "Kennzahlen Supervisionszentrum",
+        kpiTodo: "Zu bearbeiten",
+        kpiInProgress: "In Bearbeitung",
+        kpiWaiting: "Ausstehend",
+        kpiMaintenance: "In Wartung",
+        kpiTicketsOpen: "Zugewiesene Tickets",
+        kpiSlaBreached: "SLA überschritten",
+        kpiSlaNear: "SLA bald fällig",
+        kpiSlaOk: "SLA OK",
+        ticketKpiAria: "Ticket- und SLA-Kennzahlen",
+        slaTicketsTitle: "SLA-Tickets im Blick",
+        emptySlaTickets: "Keine bald fälligen oder überschrittenen SLA-Tickets",
+        colTicket: "Ticket",
+        colSla: "SLA",
+        colClient: "Kunde",
+        colStatus: "Status",
+        parkTitle: "Globaler Flottenstatus",
+        parkOnline: "Online",
+        parkAlert: "In Alarm",
+        parkDown: "Außer Betrieb",
+        parkMaintenance: "In Wartung",
+        parkTotal: "Gesamt",
+        availability: "Globale Verfügbarkeit",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Trend zur Vorwoche",
+        evolutionTitle: "Alarmverlauf (letzte 7 Tage)",
+        severityCritical: "Kritisch",
+        severityWarning: "Warning"
       },
       todo: {
         title: "Zu erledigen",
@@ -628,6 +830,10 @@ const HOME_COPY = {
           title: "Meine Termine",
           content: "Kommende Einsätze und Termine mit Typ und Datum. Link öffnet die vollständige Planung."
         },
+        supervision: {
+          title: "Supervisionszentrum",
+          content: "Kurzüberblick über zu bearbeitende Alarme, Flottenstatus und den 7-Tage-Verlauf. Klick auf einen Indikator öffnet das Supervisionszentrum."
+        },
         todo: {
           title: "Zu erledigen",
           content: "Offene Punkte aus Überwachung, Cybersicherheit und Services: Verträge, Lizenzen und Warnungen. Klick öffnet das passende Modul."
@@ -641,7 +847,7 @@ const HOME_COPY = {
   },
   it: {
     heroTitle: "Dashboard MSP",
-    heroGreeting: "Buongiorno, {name}",
+    heroGreeting: "Buongiorno, {name} 👋",
     heroSubtitle: "Tutto ciò che serve, in un solo posto.",
     loading: "Caricamento dashboard…",
     errorLoad: "Impossibile caricare la dashboard.",
@@ -681,6 +887,7 @@ const HOME_COPY = {
       support: "Supporto",
       services: "Servizi",
       events: "Eventi",
+      supervision: "Supervisione",
       todo: "Da fare"
     },
     panels: {
@@ -704,12 +911,49 @@ const HOME_COPY = {
         weekHint: "Prossimi 7 giorni",
         action: "Vedi planning",
         add: "Nuovo evento",
-        pagerAria: "Paginazione eventi"
+        pagerAria: "Paginazione eventi",
+        stripAria: "Eventi dei prossimi 7 giorni",
+        today: "Oggi",
+        dayCount: "{count}",
+        dayAria: "{day}: {count} evento/i",
+        noneHint: "Nessun evento nei prossimi 7 giorni"
       },
       surveillance: {
         title: "Monitoraggio",
         globalFleet: "Parco globale",
         empty: "Nessun dispositivo monitorato"
+      },
+      supervision: {
+        title: "Centro di supervisione",
+        kpiAriaLabel: "Indicatori del centro di supervisione",
+        kpiTodo: "Da trattare",
+        kpiInProgress: "In corso",
+        kpiWaiting: "In attesa",
+        kpiMaintenance: "In manutenzione",
+        kpiTicketsOpen: "Ticket assegnati",
+        kpiSlaBreached: "SLA superati",
+        kpiSlaNear: "SLA in scadenza",
+        kpiSlaOk: "SLA OK",
+        ticketKpiAria: "Indicatori ticket e SLA",
+        slaTicketsTitle: "Ticket SLA da monitorare",
+        emptySlaTickets: "Nessun ticket vicino o fuori SLA",
+        colTicket: "Ticket",
+        colSla: "SLA",
+        colClient: "Cliente",
+        colStatus: "Stato",
+        parkTitle: "Stato globale del parco",
+        parkOnline: "Online",
+        parkAlert: "In allerta",
+        parkDown: "Fuori servizio",
+        parkMaintenance: "In manutenzione",
+        parkTotal: "Totale",
+        availability: "Disponibilità globale",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Tendenza rispetto alla settimana precedente",
+        evolutionTitle: "Evoluzione alert (ultimi 7 giorni)",
+        severityCritical: "Critico",
+        severityWarning: "Warning"
       },
       todo: {
         title: "Da trattare",
@@ -841,6 +1085,10 @@ const HOME_COPY = {
           title: "I miei eventi",
           content: "Prossimi interventi e appuntamenti con tipo e date. Il link apre il planning completo."
         },
+        supervision: {
+          title: "Centro di supervisione",
+          content: "Sintesi delle alert da trattare, stato del parco e andamento su 7 giorni. Clicca su un indicatore per aprire il centro di supervisione."
+        },
         todo: {
           title: "Da trattare",
           content: "Elementi da trattare da supervisione, cybersicurezza e servizi: contratti, licenze e alert. Clicca per aprire il modulo."
@@ -854,7 +1102,7 @@ const HOME_COPY = {
   },
   es: {
     heroTitle: "Panel MSP",
-    heroGreeting: "Hola, {name}",
+    heroGreeting: "Hola, {name} 👋",
     heroSubtitle: "Todo lo que necesitas, en un solo lugar.",
     loading: "Cargando panel…",
     errorLoad: "No se pudo cargar el panel.",
@@ -894,6 +1142,7 @@ const HOME_COPY = {
       support: "Soporte",
       services: "Servicios",
       events: "Eventos",
+      supervision: "Supervisión",
       todo: "Por tratar"
     },
     panels: {
@@ -917,12 +1166,49 @@ const HOME_COPY = {
         weekHint: "Próximos 7 días",
         action: "Ver planning",
         add: "Nuevo evento",
-        pagerAria: "Paginación de eventos"
+        pagerAria: "Paginación de eventos",
+        stripAria: "Eventos de los próximos 7 días",
+        today: "Hoy",
+        dayCount: "{count}",
+        dayAria: "{day}: {count} evento(s)",
+        noneHint: "Ningún evento en los próximos 7 días"
       },
       surveillance: {
         title: "Supervisión",
         globalFleet: "Parque global",
         empty: "Ningún equipo supervisado"
+      },
+      supervision: {
+        title: "Centro de supervisión",
+        kpiAriaLabel: "Indicadores del centro de supervisión",
+        kpiTodo: "Por tratar",
+        kpiInProgress: "En curso",
+        kpiWaiting: "En espera",
+        kpiMaintenance: "En mantenimiento",
+        kpiTicketsOpen: "Tickets asignados",
+        kpiSlaBreached: "SLA incumplidos",
+        kpiSlaNear: "SLA próximos",
+        kpiSlaOk: "SLA OK",
+        ticketKpiAria: "Indicadores de tickets y SLA",
+        slaTicketsTitle: "Tickets SLA a vigilar",
+        emptySlaTickets: "Ningún ticket cercano o fuera de SLA",
+        colTicket: "Ticket",
+        colSla: "SLA",
+        colClient: "Cliente",
+        colStatus: "Estado",
+        parkTitle: "Estado global del parque",
+        parkOnline: "En línea",
+        parkAlert: "En alerta",
+        parkDown: "Fuera de servicio",
+        parkMaintenance: "En mantenimiento",
+        parkTotal: "Total",
+        availability: "Disponibilidad global",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Tendencia vs semana anterior",
+        evolutionTitle: "Evolución de alertas (últimos 7 días)",
+        severityCritical: "Crítica",
+        severityWarning: "Warning"
       },
       todo: {
         title: "Por tratar",
@@ -1054,6 +1340,10 @@ const HOME_COPY = {
           title: "Mis eventos",
           content: "Próximas intervenciones y citas con tipo y fechas. El enlace abre el planning completo."
         },
+        supervision: {
+          title: "Centro de supervisión",
+          content: "Resumen de alertas por tratar, estado del parque y evolución a 7 días. Pulse un indicador para abrir el centro de supervisión."
+        },
         todo: {
           title: "Por tratar",
           content: "Elementos de supervisión, ciberseguridad y servicios: contratos, licencias y alertas. Pulse para abrir el módulo."
@@ -1146,6 +1436,13 @@ export function getHomePageCopy(locale) {
           title: steps.events.title,
           content: steps.events.content
         });
+        if (steps.supervision) {
+          result.push({
+            target: '[data-guide="home-supervision"]',
+            title: steps.supervision.title,
+            content: steps.supervision.content
+          });
+        }
       }
       result.push({
         target: '[data-guide="home-news"]',

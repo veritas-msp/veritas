@@ -4,6 +4,7 @@ import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchTicketSatisfied } from "../../api/tickets";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
 import styles from "./TicketPage.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
@@ -11,6 +12,7 @@ import { computeSatisfactionAverage, resolveDisplayRatings } from "../../utils/t
 import { getTicketSatisfactionCriteria } from "../../i18n/ticketSatisfactionCriteriaI18n";
 import { formatSatisfactionDate, getSatisfactionSentiment, getSatisfactionSentimentFilters } from "../../utils/ticketSatisfactionUi";
 import { getTicketPageCopy } from "./ticketPageI18n";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
 const LOCALE_BCP47 = {
   fr: "fr-FR",
@@ -43,7 +45,8 @@ function SentimentBadge({
 export default function TicketSatisfiedPanel({
   scope = "mine",
   onNavigate,
-  leadingToolbarContent = null
+  leadingToolbarContent = null,
+  trailingToolbarContent = null
 }) {
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getTicketPageCopy(locale), [locale]);
@@ -105,16 +108,16 @@ export default function TicketSatisfiedPanel({
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("desc");
-  };
-  const getSortIndicator = column => {
-    if (sortBy !== column) return "";
-    return sortDirection === "asc" ? " ▲" : " ▼";
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "created_at",
+      defaultSortDirection: "desc",
+      firstDirection: "desc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const resolveAssigneesLabel = row => {
     const assignees = Array.isArray(row.assignees) ? row.assignees : [];
@@ -143,6 +146,7 @@ export default function TicketSatisfiedPanel({
               {item.label}
             </option>)}
         </select>
+        {trailingToolbarContent}
       </div>
 
       {loading ? <div className={layout.stateBox}>
@@ -161,19 +165,28 @@ export default function TicketSatisfiedPanel({
                 <thead>
                   <tr>
                     <th onClick={() => handleSort("ticket_number")}>
-                      {columns.ticket}{getSortIndicator("ticket_number")}
+                      <span className={styles.thSortInner}>
+                        {columns.ticket}
+                        <SortIcon active={sortBy === "ticket_number"} direction={sortDirection} />
+                      </span>
                     </th>
                     <th>{columns.company}</th>
                     <th>{columns.assignee}</th>
                     <th onClick={() => handleSort("rating")}>
-                      {columns.rating}{getSortIndicator("rating")}
+                      <span className={styles.thSortInner}>
+                        {columns.rating}
+                        <SortIcon active={sortBy === "rating"} direction={sortDirection} />
+                      </span>
                     </th>
                     <th>{columns.sentiment}</th>
                     <th>{columns.criteria}</th>
                     <th>{columns.comment}</th>
                     <th>{columns.author}</th>
                     <th onClick={() => handleSort("created_at")}>
-                      {columns.date}{getSortIndicator("created_at")}
+                      <span className={styles.thSortInner}>
+                        {columns.date}
+                        <SortIcon active={sortBy === "created_at"} direction={sortDirection} />
+                      </span>
                     </th>
                   </tr>
                 </thead>

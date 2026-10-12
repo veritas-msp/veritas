@@ -15,6 +15,40 @@ const DETAIL_COPY = {
     heroMetaAria: "Informations et étiquettes client",
     companyStatusActive: "Actif",
     companyStatusInactive: "Inactif",
+    heroDescriptionFallback: "Société spécialisée dans le secteur de l'industrie et des services.",
+    heroDescriptionSector: "Société spécialisée dans le secteur {sector}.",
+    heroKpis: {
+      sites: "Sites",
+      devices: "Périphériques",
+      openTickets: "Tickets ouverts",
+      criticalAlerts: "Alerte critique",
+      warnings: "Warnings"
+    },
+    heroFacts: {
+      aria: "Informations entreprise",
+      address: "Adresse",
+      contract: "Contrat",
+      optionsCount: "{count} options",
+      creditsBalance: "{count}",
+      microsoft: "Microsoft 365",
+      google: "Google Workspace"
+    },
+    recentInterventionsTitle: "Interventions récentes",
+    recentInterventionsSeeAll: "Voir tout",
+    recentInterventionsEmpty: "Aucune intervention récente",
+    quickActions: {
+      title: "Actions rapides",
+      createTicket: "Créer un ticket",
+      scheduleIntervention: "Planifier une intervention",
+      addEquipment: "Ajouter un équipement",
+      sendEmail: "Envoyer un email",
+      seeAll: "Voir toutes les actions",
+      addContact: "Ajouter un contact",
+      manageSites: "Gérer les sites",
+      editEnterprise: "Éditer l'entreprise",
+      noEmail: "Aucun e-mail de contact disponible"
+    },
+    contractOptionsShort: "Options du contrat",
     equipmentCount: "{count} équipement",
     equipmentCountPlural: "{count} équipements",
     contactCount: "{count} contact",
@@ -37,18 +71,93 @@ const DETAIL_COPY = {
     configureAntivirus: "Configurer l'antivirus",
     configureAntispam: "Configurer l'antispam",
     configureMicrosoftTenant: "Configurer le tenant Microsoft",
+    serviceBrickMenu: {
+      aria: "Actions du service",
+      openPage: "Ouvrir la page",
+      edit: "Éditer"
+    },
     editEnterprise: "Éditer l'entreprise",
     reversibilityDossier: "Dossier de réversibilité",
     generatingDossier: "Génération du dossier…",
     infraMapTitle: "Cartographie infrastructure",
     overviewTabsAria: "Sections entreprise",
+    overviewTabOverview: "Vue d'ensemble",
     overviewTabMap: "Cartographie",
     overviewTabActivity: "Activité",
     overviewTabVault: "Coffre-fort",
+    overviewCharts: {
+      loading: "Chargement de la vue d'ensemble…",
+      loadError: "Impossible de charger la supervision de ce client",
+      noName: "—",
+      periodAria: "Période d'analyse",
+      periods: {
+        "7d": "7 j",
+        "1m": "1 mois",
+        "3m": "3 mois",
+        "1y": "1 an"
+      },
+      park: {
+        title: "État global du parc",
+        availability: "Disponibilité",
+        online: "En ligne",
+        alert: "En alerte",
+        down: "Hors service",
+        maintenance: "En maintenance",
+        devicesInMaintenance: "Périphériques en maintenance",
+        until: "Jusqu’au {date}",
+        indefinite: "Indéterminée",
+        openDevice: "Ouvrir le périphérique",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Tendance vs semaine précédente"
+      },
+      evolution: {
+        title: "Évolution des équipements (7 derniers jours)",
+        hint: "Events et notifications de supervision (Critique / Warning)"
+      },
+      priority: {
+        title: "Alertes par priorité",
+        totalLabel: "au total"
+      },
+      severity: {
+        critical: "Critique",
+        warning: "Warning",
+        info: "Info",
+        ok: "Info"
+      },
+      trend: {
+        delta: "{sign}{value}%",
+        deltaFlat: "0.00%",
+        hintMom: "Tendance vs mois précédent"
+      },
+      support: {
+        title: "Support (tickets + SLA)",
+        openLabel: "Tickets ouverts",
+        slaOk: "SLA OK",
+        slaNone: "—",
+        totalLabel: "Tickets (échantillon)",
+        trendHint: "Tendance des tickets ouverts vs mois précédent"
+      },
+      ticketPriority: {
+        title: "Tickets par priorité",
+        totalLabel: "sur la période",
+        major: "Incident majeur",
+        urgent: "Urgente",
+        high: "Haute",
+        normal: "Normale",
+        low: "Basse"
+      },
+      ticketItil: {
+        title: "Tickets par catégorie ITIL",
+        totalLabel: "sur la période",
+        uncategorized: "Non catégorisé",
+        other: "Autres"
+      }
+    },
     filterBadge: "Filtre : {value}",
     clearSiteFilter: "Retirer le filtre",
-    clearSiteFilterAria: "Retirer le filtre de lieu {value}",
-    peripheralsTitle: "Périphériques",
+    clearSiteFilterAria: "Retirer le filtre de site {value}",
+    peripheralsTitle: "Sites & Équipements",
     mapTabLoadingAria: "Chargement de la cartographie et des périphériques",
     resultCount: "{count} résultat",
     resultCountPlural: "{count} résultats",
@@ -99,7 +208,8 @@ const DETAIL_COPY = {
     addressLabel: "Adresse",
     startDateLabel: "Date de début",
     endDateLabel: "Date de fin",
-    contractOptionsLabel: "Options du contrat",
+    contractOptionsLabel: "Contrats & Services",
+    noContractOptions: "Aucune option de contrat",
     creditsTitle: "Crédits",
     addCredit: "Ajouter un crédit",
     addCreditPack: "Ajouter un carnet de crédits",
@@ -115,7 +225,7 @@ const DETAIL_COPY = {
     noActiveSla: "Aucun SLA activé pour ce client",
     contactsTitle: "Contacts",
     contactPrimary: "Principal",
-    siteContactPrimary: "Principal du lieu",
+    siteContactPrimary: "Principal du site",
     loadingContacts: "Chargement des contacts...",
     noContacts: "Aucun contact",
     addContact: "Ajouter un contact",
@@ -132,12 +242,12 @@ const DETAIL_COPY = {
     shareContactCard: "Partager la fiche contact",
     coordFavorite: "Coordonnée favorite",
     coordFavoriteTitle: "{label} favori",
-    sitesTitle: "Lieux",
-    manageSites: "Gérer les lieux",
-    noSites: "Aucun lieu",
-    searchSites: "Rechercher un lieu…",
-    searchSitesAria: "Rechercher un lieu",
-    noSiteResults: "Aucun lieu ne correspond à la recherche.",
+    sitesTitle: "Sites",
+    manageSites: "Gérer les sites",
+    noSites: "Aucun site",
+    searchSites: "Rechercher un site…",
+    searchSitesAria: "Rechercher un site",
+    noSiteResults: "Aucun site ne correspond à la recherche.",
     searchContacts: "Rechercher un contact…",
     searchContactsAria: "Rechercher un contact",
     noContactResults: "Aucun contact ne correspond à la recherche.",
@@ -189,15 +299,19 @@ const DETAIL_COPY = {
       steps: {
         hero: {
           title: "Vue d'ensemble de l'entreprise",
-          content: "Ici vous retrouvez le nom, le statut du contrat, le commercial référent, le nombre d'équipements et les étiquettes. Le menu ⋮ permet d'exporter le dossier ou de modifier la fiche."
+          content: "Ici vous retrouvez le nom, le statut, l'identifiant légal, le secteur, le commercial, le nombre d'équipements et les étiquettes. Le menu ⋮ permet d'exporter le dossier ou de modifier la fiche."
         },
-        sidebarInfo: {
-          title: "Informations contractuelles",
-          content: "Le panneau de droite regroupe l'identité légale, les dates de contrat et les modules activés pour ce client. Dépliez la section pour voir le SIRET, le secteur et l'adresse."
+        sidebarContracts: {
+          title: "Options du contrat",
+          content: "Les options actives du contrat (Support, Monitoring, Hébergement…) apparaissent ici sous forme d'icônes."
         },
         sidebarContacts: {
           title: "Contacts de l'entreprise",
           content: "Consultez les interlocuteurs rattachés, copiez leur carte ou ouvrez leur fiche. Utilisez le bouton + pour ajouter un nouveau contact."
+        },
+        overview: {
+          title: "Supervision du parc",
+          content: "L'onglet Vue d'ensemble résume la disponibilité du parc, l'évolution des alertes et la répartition Critique / Warning / Info. Les graphiques tickets et évolution permettent de choisir 7 jours, 1 mois, 3 mois ou 1 an."
         },
         infraMap: {
           title: "Cartographie infrastructure",
@@ -274,8 +388,8 @@ const DETAIL_COPY = {
       noteSaveError: "Erreur lors de l'enregistrement de la note",
       noteDeleted: "Note supprimée",
       noteDeleteError: "Erreur lors de la suppression de la note",
-      sitesUpdated: "Lieux mis à jour",
-      sitesUpdateError: "Erreur lors de la mise à jour des lieux: {message}",
+      sitesUpdated: "Sites mis à jour",
+      sitesUpdateError: "Erreur lors de la mise à jour des sites: {message}",
       googleWorkspaceSoon: "L'intégration Google Workspace sera bientôt disponible.",
       domainRemovedMonitoring: "Domaine retiré de la surveillance.",
       domainRemoved: "Domaine retiré.",
@@ -442,6 +556,40 @@ const DETAIL_COPY = {
     heroMetaAria: "Client information and tags",
     companyStatusActive: "Active",
     companyStatusInactive: "Inactive",
+    heroDescriptionFallback: "Company specialized in industry and services.",
+    heroDescriptionSector: "Company specialized in the {sector} sector.",
+    heroKpis: {
+      sites: "Sites",
+      devices: "Devices",
+      openTickets: "Open tickets",
+      criticalAlerts: "Critical alerts",
+      warnings: "Warnings"
+    },
+    heroFacts: {
+      aria: "Company information",
+      address: "Address",
+      contract: "Contract",
+      optionsCount: "{count} options",
+      creditsBalance: "{count}",
+      microsoft: "Microsoft 365",
+      google: "Google Workspace"
+    },
+    recentInterventionsTitle: "Recent interventions",
+    recentInterventionsSeeAll: "See all",
+    recentInterventionsEmpty: "No recent interventions",
+    quickActions: {
+      title: "Quick actions",
+      createTicket: "Create a ticket",
+      scheduleIntervention: "Schedule an intervention",
+      addEquipment: "Add equipment",
+      sendEmail: "Send an email",
+      seeAll: "See all actions",
+      addContact: "Add a contact",
+      manageSites: "Manage sites",
+      editEnterprise: "Edit company",
+      noEmail: "No contact email available"
+    },
+    contractOptionsShort: "Contract options",
     equipmentCount: "{count} device",
     equipmentCountPlural: "{count} devices",
     contactCount: "{count} contact",
@@ -464,6 +612,11 @@ const DETAIL_COPY = {
     configureAntivirus: "Configure antivirus",
     configureAntispam: "Configure antispam",
     configureMicrosoftTenant: "Configure Microsoft tenant",
+    serviceBrickMenu: {
+      aria: "Service actions",
+      openPage: "Open page",
+      edit: "Edit"
+    },
     editEnterprise: "Edit company",
     reversibilityDossier: "Reversibility dossier",
     generatingDossier: "Generating dossier…",
@@ -471,13 +624,83 @@ const DETAIL_COPY = {
     generatingFolder: "Generating dossier…",
     infraMapTitle: "Infrastructure map",
     overviewTabsAria: "Company sections",
+    overviewTabOverview: "Overview",
     overviewTabMap: "Map",
     overviewTabActivity: "Activity",
     overviewTabVault: "Vault",
+    overviewCharts: {
+      loading: "Loading overview…",
+      loadError: "Unable to load monitoring for this client",
+      noName: "—",
+      periodAria: "Analysis period",
+      periods: {
+        "7d": "7d",
+        "1m": "1 mo",
+        "3m": "3 mo",
+        "1y": "1 yr"
+      },
+      park: {
+        title: "Global fleet status",
+        availability: "Availability",
+        online: "Online",
+        alert: "In alert",
+        down: "Out of service",
+        maintenance: "In maintenance",
+        devicesInMaintenance: "Devices in maintenance",
+        until: "Until {date}",
+        indefinite: "Indefinite",
+        openDevice: "Open device",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Trend vs previous week"
+      },
+      evolution: {
+        title: "Equipment evolution (last 7 days)",
+        hint: "Supervision events and notifications (Critical / Warning)"
+      },
+      priority: {
+        title: "Alerts by priority",
+        totalLabel: "in total"
+      },
+      severity: {
+        critical: "Critical",
+        warning: "Warning",
+        info: "Info",
+        ok: "Info"
+      },
+      trend: {
+        delta: "{sign}{value}%",
+        deltaFlat: "0.00%",
+        hintMom: "Trend vs previous month"
+      },
+      support: {
+        title: "Support (tickets + SLA)",
+        openLabel: "Open tickets",
+        slaOk: "SLA OK",
+        slaNone: "—",
+        totalLabel: "Tickets (sample)",
+        trendHint: "Open tickets trend vs previous month"
+      },
+      ticketPriority: {
+        title: "Tickets by priority",
+        totalLabel: "in period",
+        major: "Major incident",
+        urgent: "Urgent",
+        high: "High",
+        normal: "Normal",
+        low: "Low"
+      },
+      ticketItil: {
+        title: "Tickets by ITIL category",
+        totalLabel: "in period",
+        uncategorized: "Uncategorized",
+        other: "Other"
+      }
+    },
     filterBadge: "Filter: {value}",
     clearSiteFilter: "Clear filter",
     clearSiteFilterAria: "Clear location filter {value}",
-    peripheralsTitle: "Peripherals",
+    peripheralsTitle: "Sites & devices",
     mapTabLoadingAria: "Loading infrastructure map and peripherals",
     resultCount: "{count} result",
     resultCountPlural: "{count} results",
@@ -528,7 +751,8 @@ const DETAIL_COPY = {
     addressLabel: "Address",
     startDateLabel: "Start date",
     endDateLabel: "End date",
-    contractOptionsLabel: "Contract options",
+    contractOptionsLabel: "Contracts & Services",
+    noContractOptions: "No contract options",
     creditsTitle: "Credits",
     addCredit: "Add a credit",
     addCreditPack: "Add credit pack",
@@ -618,15 +842,19 @@ const DETAIL_COPY = {
       steps: {
         hero: {
           title: "Company overview",
-          content: "Find the name, contract status, account manager, equipment count and tags here. The ⋮ menu lets you export the dossier or edit the record."
+          content: "Find the name, status, legal ID, sector, account manager, equipment count and tags here. The ⋮ menu lets you export the dossier or edit the record."
         },
-        sidebarInfo: {
-          title: "Contract information",
-          content: "The right panel groups legal identity, contract dates and enabled modules. Expand the section to see legal ID, sector and address."
+        sidebarContracts: {
+          title: "Contract options",
+          content: "Active contract options (Support, Monitoring, Hosting…) appear here as icons."
         },
         sidebarContacts: {
           title: "Company contacts",
           content: "View linked contacts, copy their card or open their record. Use + to add a new contact."
+        },
+        overview: {
+          title: "Fleet supervision",
+          content: "The Overview tab summarizes fleet availability, alert trends, and Critical / Warning / Info breakdown. Ticket and evolution charts can switch between 7 days, 1 month, 3 months, or 1 year."
         },
         infraMap: {
           title: "Infrastructure map",
@@ -871,6 +1099,40 @@ const DETAIL_COPY = {
     heroMetaAria: "Kundeninformationen und Tags",
     companyStatusActive: "Aktiv",
     companyStatusInactive: "Inaktiv",
+    heroDescriptionFallback: "Unternehmen spezialisiert auf Industrie und Dienstleistungen.",
+    heroDescriptionSector: "Unternehmen spezialisiert auf den Bereich {sector}.",
+    heroKpis: {
+      sites: "Standorte",
+      devices: "Geräte",
+      openTickets: "Offene Tickets",
+      criticalAlerts: "Kritische Alarme",
+      warnings: "Warnings"
+    },
+    heroFacts: {
+      aria: "Unternehmensinformationen",
+      address: "Adresse",
+      contract: "Vertrag",
+      optionsCount: "{count} Optionen",
+      creditsBalance: "{count}",
+      microsoft: "Microsoft 365",
+      google: "Google Workspace"
+    },
+    recentInterventionsTitle: "Aktuelle Interventionen",
+    recentInterventionsSeeAll: "Alle anzeigen",
+    recentInterventionsEmpty: "Keine aktuellen Interventionen",
+    quickActions: {
+      title: "Schnellaktionen",
+      createTicket: "Ticket erstellen",
+      scheduleIntervention: "Einsatz planen",
+      addEquipment: "Gerät hinzufügen",
+      sendEmail: "E-Mail senden",
+      seeAll: "Alle Aktionen anzeigen",
+      addContact: "Kontakt hinzufügen",
+      manageSites: "Standorte verwalten",
+      editEnterprise: "Unternehmen bearbeiten",
+      noEmail: "Keine Kontakt-E-Mail verfügbar"
+    },
+    contractOptionsShort: "Vertragsoptionen",
     equipmentCount: "{count} Gerät",
     equipmentCountPlural: "{count} Geräte",
     contactCount: "{count} Kontakt",
@@ -893,18 +1155,92 @@ const DETAIL_COPY = {
     configureAntivirus: "Antivirus konfigurieren",
     configureAntispam: "Antispam konfigurieren",
     configureMicrosoftTenant: "Microsoft-Tenant konfigurieren",
+    serviceBrickMenu: {
+      aria: "Service-Aktionen",
+      openPage: "Seite öffnen",
+      edit: "Bearbeiten"
+    },
     editEnterprise: "Unternehmen bearbeiten",
     reversibilityDossier: "Reversibilitätsdossier",
     generatingDossier: "Dossier wird erstellt…",
     infraMapTitle: "Infrastrukturkarte",
     overviewTabsAria: "Unternehmensbereiche",
+    overviewTabOverview: "Übersicht",
     overviewTabMap: "Kartografie",
     overviewTabActivity: "Aktivität",
     overviewTabVault: "Tresor",
+    overviewCharts: {
+      loading: "Übersicht wird geladen…",
+      loadError: "Überwachung für diesen Kunden konnte nicht geladen werden",
+      noName: "—",
+      periodAria: "Analysezeitraum",
+      periods: {
+        "7d": "7 T",
+        "1m": "1 Mon.",
+        "3m": "3 Mon.",
+        "1y": "1 J"
+      },
+      park: {
+        title: "Globaler Flottenstatus",
+        availability: "Verfügbarkeit",
+        online: "Online",
+        alert: "In Alarm",
+        down: "Außer Betrieb",
+        maintenance: "In Wartung",
+        devicesInMaintenance: "Geräte in Wartung",
+        until: "Bis {date}",
+        indefinite: "Unbefristet",
+        openDevice: "Gerät öffnen",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Trend zur Vorwoche"
+      },
+      evolution: {
+        title: "Geräteentwicklung (letzte 7 Tage)"
+      },
+      priority: {
+        title: "Alarme nach Priorität",
+        totalLabel: "insgesamt"
+      },
+      severity: {
+        critical: "Kritisch",
+        warning: "Warning",
+        info: "Info",
+        ok: "Info"
+      },
+      trend: {
+        delta: "{sign}{value}%",
+        deltaFlat: "0.00%",
+        hintMom: "Trend zum Vormonat"
+      },
+      support: {
+        title: "Support (Tickets + SLA)",
+        openLabel: "Offene Tickets",
+        slaOk: "SLA OK",
+        slaNone: "—",
+        totalLabel: "Tickets (Stichprobe)",
+        trendHint: "Trend offener Tickets zum Vormonat"
+      },
+      ticketPriority: {
+        title: "Tickets nach Priorität",
+        totalLabel: "im Zeitraum",
+        major: "Schwerer Vorfall",
+        urgent: "Dringend",
+        high: "Hoch",
+        normal: "Normal",
+        low: "Niedrig"
+      },
+      ticketItil: {
+        title: "Tickets nach ITIL-Kategorie",
+        totalLabel: "im Zeitraum",
+        uncategorized: "Nicht kategorisiert",
+        other: "Sonstige"
+      }
+    },
     filterBadge: "Filter: {value}",
     clearSiteFilter: "Filter entfernen",
     clearSiteFilterAria: "Standortfilter {value} entfernen",
-    peripheralsTitle: "Peripheriegeräte",
+    peripheralsTitle: "Standorte & Geräte",
     mapTabLoadingAria: "Infrastrukturkarte und Peripheriegeräte werden geladen",
     resultCount: "{count} Ergebnis",
     resultCountPlural: "{count} Ergebnisse",
@@ -955,7 +1291,8 @@ const DETAIL_COPY = {
     addressLabel: "Adresse",
     startDateLabel: "Startdatum",
     endDateLabel: "Enddatum",
-    contractOptionsLabel: "Vertragsoptionen",
+    contractOptionsLabel: "Verträge & Services",
+    noContractOptions: "Keine Vertragsoptionen",
     creditsTitle: "Guthaben",
     addCredit: "Guthaben hinzufügen",
     addCreditPack: "Guthabenpaket hinzufügen",
@@ -1042,15 +1379,19 @@ const DETAIL_COPY = {
       steps: {
         hero: {
           title: "Unternehmensübersicht",
-          content: "Name, Vertragsstatus, Account Manager, Geräteanzahl und Tags. Das ⋮-Menü exportiert das Dossier oder bearbeitet die Fiche."
+          content: "Name, Status, Rechts-ID, Branche, Account Manager, Geräteanzahl und Tags. Das ⋮-Menü exportiert das Dossier oder bearbeitet die Fiche."
         },
-        sidebarInfo: {
-          title: "Vertragsinformationen",
-          content: "Rechtes Panel: Rechtsidentität, Vertragsdaten und aktivierte Module. Aufklappen für ID, Sektor und Adresse."
+        sidebarContracts: {
+          title: "Vertragsoptionen",
+          content: "Aktive Vertragsoptionen (Support, Monitoring, Hosting…) erscheinen hier als Icons."
         },
         sidebarContacts: {
           title: "Unternehmenskontakte",
           content: "Ansprechpartner ansehen, Karte kopieren oder Fiche öffnen. Mit + neuen Kontakt hinzufügen."
+        },
+        overview: {
+          title: "Park-Überwachung",
+          content: "Der Übersicht-Tab fasst Verfügbarkeit, Alarmtrend über 7 Tage und die Aufteilung Kritisch / Warning / Info zusammen."
         },
         infraMap: {
           title: "Infrastruktur-Kartographie",
@@ -1295,6 +1636,40 @@ const DETAIL_COPY = {
     heroMetaAria: "Informazioni ed etichette cliente",
     companyStatusActive: "Attiva",
     companyStatusInactive: "Inattiva",
+    heroDescriptionFallback: "Società specializzata nel settore dell'industria e dei servizi.",
+    heroDescriptionSector: "Società specializzata nel settore {sector}.",
+    heroKpis: {
+      sites: "Sedi",
+      devices: "Dispositivi",
+      openTickets: "Ticket aperti",
+      criticalAlerts: "Allarmi critici",
+      warnings: "Warnings"
+    },
+    heroFacts: {
+      aria: "Informazioni azienda",
+      address: "Indirizzo",
+      contract: "Contratto",
+      optionsCount: "{count} opzioni",
+      creditsBalance: "{count}",
+      microsoft: "Microsoft 365",
+      google: "Google Workspace"
+    },
+    recentInterventionsTitle: "Interventi recenti",
+    recentInterventionsSeeAll: "Vedi tutto",
+    recentInterventionsEmpty: "Nessun intervento recente",
+    quickActions: {
+      title: "Azioni rapide",
+      createTicket: "Crea un ticket",
+      scheduleIntervention: "Pianifica un intervento",
+      addEquipment: "Aggiungi un dispositivo",
+      sendEmail: "Invia un'email",
+      seeAll: "Vedi tutte le azioni",
+      addContact: "Aggiungi un contatto",
+      manageSites: "Gestisci i siti",
+      editEnterprise: "Modifica azienda",
+      noEmail: "Nessuna email di contatto disponibile"
+    },
+    contractOptionsShort: "Opzioni del contratto",
     equipmentCount: "{count} dispositivo",
     equipmentCountPlural: "{count} dispositivi",
     contactCount: "{count} contatto",
@@ -1317,18 +1692,92 @@ const DETAIL_COPY = {
     configureAntivirus: "Configura antivirus",
     configureAntispam: "Configura antispam",
     configureMicrosoftTenant: "Configura tenant Microsoft",
+    serviceBrickMenu: {
+      aria: "Azioni del servizio",
+      openPage: "Apri pagina",
+      edit: "Modifica"
+    },
     editEnterprise: "Modifica azienda",
     reversibilityDossier: "Dossier di reversibilità",
     generatingDossier: "Generazione dossier…",
     infraMapTitle: "Mappa infrastruttura",
     overviewTabsAria: "Sezioni azienda",
+    overviewTabOverview: "Panoramica",
     overviewTabMap: "Cartografia",
     overviewTabActivity: "Attività",
     overviewTabVault: "Cassaforte",
+    overviewCharts: {
+      loading: "Caricamento panoramica…",
+      loadError: "Impossibile caricare la supervisione di questo cliente",
+      noName: "—",
+      periodAria: "Periodo di analisi",
+      periods: {
+        "7d": "7 g",
+        "1m": "1 mese",
+        "3m": "3 mesi",
+        "1y": "1 anno"
+      },
+      park: {
+        title: "Stato globale del parco",
+        availability: "Disponibilità",
+        online: "Online",
+        alert: "In allerta",
+        down: "Fuori servizio",
+        maintenance: "In manutenzione",
+        devicesInMaintenance: "Dispositivi in manutenzione",
+        until: "Fino al {date}",
+        indefinite: "Indeterminata",
+        openDevice: "Apri dispositivo",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Tendenza rispetto alla settimana precedente"
+      },
+      evolution: {
+        title: "Evoluzione delle attrezzature (ultimi 7 giorni)"
+      },
+      priority: {
+        title: "Avvisi per priorità",
+        totalLabel: "in totale"
+      },
+      severity: {
+        critical: "Critico",
+        warning: "Warning",
+        info: "Info",
+        ok: "Info"
+      },
+      trend: {
+        delta: "{sign}{value}%",
+        deltaFlat: "0.00%",
+        hintMom: "Tendenza rispetto al mese precedente"
+      },
+      support: {
+        title: "Supporto (ticket + SLA)",
+        openLabel: "Ticket aperti",
+        slaOk: "SLA OK",
+        slaNone: "—",
+        totalLabel: "Ticket (campione)",
+        trendHint: "Tendenza ticket aperti rispetto al mese precedente"
+      },
+      ticketPriority: {
+        title: "Ticket per priorità",
+        totalLabel: "nel periodo",
+        major: "Incidente grave",
+        urgent: "Urgente",
+        high: "Alta",
+        normal: "Normale",
+        low: "Bassa"
+      },
+      ticketItil: {
+        title: "Ticket per categoria ITIL",
+        totalLabel: "nel periodo",
+        uncategorized: "Senza categoria",
+        other: "Altre"
+      }
+    },
     filterBadge: "Filtro: {value}",
     clearSiteFilter: "Rimuovi filtro",
     clearSiteFilterAria: "Rimuovi il filtro luogo {value}",
-    peripheralsTitle: "Periferiche",
+    peripheralsTitle: "Sedi e dispositivi",
     mapTabLoadingAria: "Caricamento mappa infrastruttura e periferiche",
     resultCount: "{count} risultato",
     resultCountPlural: "{count} risultati",
@@ -1379,7 +1828,8 @@ const DETAIL_COPY = {
     addressLabel: "Indirizzo",
     startDateLabel: "Data di inizio",
     endDateLabel: "Data di fine",
-    contractOptionsLabel: "Opzioni contratto",
+    contractOptionsLabel: "Contratti e servizi",
+    noContractOptions: "Nessuna opzione contratto",
     creditsTitle: "Crediti",
     addCredit: "Aggiungi credito",
     addCreditPack: "Aggiungi carnet crediti",
@@ -1466,15 +1916,19 @@ const DETAIL_COPY = {
       steps: {
         hero: {
           title: "Panoramica azienda",
-          content: "Nome, stato contratto, commerciale, numero dispositivi ed etichette. Il menu ⋮ esporta il dossier o modifica la scheda."
+          content: "Nome, stato, ID legale, settore, commerciale, numero dispositivi ed etichette. Il menu ⋮ esporta il dossier o modifica la scheda."
         },
-        sidebarInfo: {
-          title: "Informazioni contrattuali",
-          content: "Pannello destro: identità legale, date contratto e moduli attivi. Espandi per ID legale, settore e indirizzo."
+        sidebarContracts: {
+          title: "Opzioni del contratto",
+          content: "Le opzioni contratto attive (Support, Monitoring, Hosting…) appaiono qui come icone."
         },
         sidebarContacts: {
           title: "Contatti azienda",
           content: "Consulta i referenti, copia la scheda o apri la ficha. Usa + per aggiungere un contatto."
+        },
+        overview: {
+          title: "Supervisione del parco",
+          content: "La scheda Panoramica riassume disponibilità, andamento avvisi su 7 giorni e ripartizione Critico / Warning / Info."
         },
         infraMap: {
           title: "Cartografia infrastruttura",
@@ -1719,6 +2173,40 @@ const DETAIL_COPY = {
     heroMetaAria: "Información y etiquetas del cliente",
     companyStatusActive: "Activa",
     companyStatusInactive: "Inactiva",
+    heroDescriptionFallback: "Empresa especializada en el sector de la industria y los servicios.",
+    heroDescriptionSector: "Empresa especializada en el sector {sector}.",
+    heroKpis: {
+      sites: "Sitios",
+      devices: "Dispositivos",
+      openTickets: "Tickets abiertos",
+      criticalAlerts: "Alertas críticas",
+      warnings: "Warnings"
+    },
+    heroFacts: {
+      aria: "Información de la empresa",
+      address: "Dirección",
+      contract: "Contrato",
+      optionsCount: "{count} opciones",
+      creditsBalance: "{count}",
+      microsoft: "Microsoft 365",
+      google: "Google Workspace"
+    },
+    recentInterventionsTitle: "Intervenciones recientes",
+    recentInterventionsSeeAll: "Ver todo",
+    recentInterventionsEmpty: "Sin intervenciones recientes",
+    quickActions: {
+      title: "Acciones rápidas",
+      createTicket: "Crear un ticket",
+      scheduleIntervention: "Planificar una intervención",
+      addEquipment: "Añadir un equipo",
+      sendEmail: "Enviar un email",
+      seeAll: "Ver todas las acciones",
+      addContact: "Añadir un contacto",
+      manageSites: "Gestionar sitios",
+      editEnterprise: "Editar empresa",
+      noEmail: "Ningún email de contacto disponible"
+    },
+    contractOptionsShort: "Opciones del contrato",
     equipmentCount: "{count} equipo",
     equipmentCountPlural: "{count} equipos",
     contactCount: "{count} contacto",
@@ -1741,18 +2229,92 @@ const DETAIL_COPY = {
     configureAntivirus: "Configurar antivirus",
     configureAntispam: "Configurar antispam",
     configureMicrosoftTenant: "Configurar tenant Microsoft",
+    serviceBrickMenu: {
+      aria: "Acciones del servicio",
+      openPage: "Abrir página",
+      edit: "Editar"
+    },
     editEnterprise: "Editar empresa",
     reversibilityDossier: "Dossier de reversibilidad",
     generatingDossier: "Generando dossier…",
     infraMapTitle: "Mapa de infraestructura",
     overviewTabsAria: "Secciones de la empresa",
+    overviewTabOverview: "Vista general",
     overviewTabMap: "Cartografía",
     overviewTabActivity: "Actividad",
     overviewTabVault: "Caja fuerte",
+    overviewCharts: {
+      loading: "Cargando vista general…",
+      loadError: "No se pudo cargar la supervisión de este cliente",
+      noName: "—",
+      periodAria: "Periodo de análisis",
+      periods: {
+        "7d": "7 d",
+        "1m": "1 mes",
+        "3m": "3 meses",
+        "1y": "1 año"
+      },
+      park: {
+        title: "Estado global del parque",
+        availability: "Disponibilidad",
+        online: "En línea",
+        alert: "En alerta",
+        down: "Fuera de servicio",
+        maintenance: "En mantenimiento",
+        devicesInMaintenance: "Dispositivos en mantenimiento",
+        until: "Hasta {date}",
+        indefinite: "Indefinida",
+        openDevice: "Abrir dispositivo",
+        delta: "{sign}{value}%",
+        deltaFlat: "0%",
+        trendHint: "Tendencia vs semana anterior"
+      },
+      evolution: {
+        title: "Evolución de equipos (últimos 7 días)"
+      },
+      priority: {
+        title: "Alertas por prioridad",
+        totalLabel: "en total"
+      },
+      severity: {
+        critical: "Crítica",
+        warning: "Warning",
+        info: "Info",
+        ok: "Info"
+      },
+      trend: {
+        delta: "{sign}{value}%",
+        deltaFlat: "0.00%",
+        hintMom: "Tendencia vs mes anterior"
+      },
+      support: {
+        title: "Soporte (tickets + SLA)",
+        openLabel: "Tickets abiertos",
+        slaOk: "SLA OK",
+        slaNone: "—",
+        totalLabel: "Tickets (muestra)",
+        trendHint: "Tendencia de tickets abiertos vs mes anterior"
+      },
+      ticketPriority: {
+        title: "Tickets por prioridad",
+        totalLabel: "en el periodo",
+        major: "Incidente grave",
+        urgent: "Urgente",
+        high: "Alta",
+        normal: "Normal",
+        low: "Baja"
+      },
+      ticketItil: {
+        title: "Tickets por categoría ITIL",
+        totalLabel: "en el periodo",
+        uncategorized: "Sin categoría",
+        other: "Otras"
+      }
+    },
     filterBadge: "Filtro: {value}",
     clearSiteFilter: "Quitar filtro",
     clearSiteFilterAria: "Quitar el filtro de emplazamiento {value}",
-    peripheralsTitle: "Periféricos",
+    peripheralsTitle: "Sitios y equipos",
     mapTabLoadingAria: "Cargando mapa de infraestructura y periféricos",
     resultCount: "{count} resultado",
     resultCountPlural: "{count} resultados",
@@ -1803,7 +2365,8 @@ const DETAIL_COPY = {
     addressLabel: "Dirección",
     startDateLabel: "Fecha de inicio",
     endDateLabel: "Fecha de fin",
-    contractOptionsLabel: "Opciones del contrato",
+    contractOptionsLabel: "Contratos y servicios",
+    noContractOptions: "Sin opciones de contrato",
     creditsTitle: "Créditos",
     addCredit: "Añadir crédito",
     addCreditPack: "Añadir carnet de créditos",
@@ -1890,15 +2453,19 @@ const DETAIL_COPY = {
       steps: {
         hero: {
           title: "Vista general de la empresa",
-          content: "Nombre, estado del contrato, comercial, equipos y etiquetas. El menú ⋮ exporta el dossier o edita la ficha."
+          content: "Nombre, estado, ID legal, sector, comercial, equipos y etiquetas. El menú ⋮ exporta el dossier o edita la ficha."
         },
-        sidebarInfo: {
-          title: "Información contractual",
-          content: "Panel derecho: identidad legal, fechas de contrato y módulos activos. Despliegue para ID, sector y dirección."
+        sidebarContracts: {
+          title: "Opciones del contrato",
+          content: "Las opciones activas del contrato (Support, Monitoring, Hosting…) aparecen aquí como iconos."
         },
         sidebarContacts: {
           title: "Contactos de la empresa",
           content: "Consulte interlocutores, copie su ficha o ábrala. Use + para añadir contacto."
+        },
+        overview: {
+          title: "Supervisión del parque",
+          content: "La pestaña Vista general resume la disponibilidad, la evolución de alertas en 7 días y el reparto Crítica / Warning / Info."
         },
         infraMap: {
           title: "Cartografía de infraestructura",

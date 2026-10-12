@@ -23,6 +23,8 @@ import { normalizeProfileName, isSuperAdminProtectedProfile } from "../../utils/
 import { fetchTeams } from "../../api/teams";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 const COMMUNITY_ACCESS_MODULE_KEYS = new Set(["entreprise", "contact", "tickets"]);
 const PROFILE_MODAL_WIDTH = "760px";
 const SYSTEM_PROFILE_NAMES = new Set([
@@ -494,15 +496,17 @@ export default function AdminUsers({
     }
   }, [page, totalPages]);
   const toggleSort = key => {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: "email",
+      defaultSortDirection: "asc"
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
-  const sortIndicator = key => sortKey === key ? sortDir === "asc" ? " ▲" : " ▼" : "";
-  const filteredProfiles = profiles.filter(p => {
+    const filteredProfiles = profiles.filter(p => {
     const q = profilesSearchTerm.toLowerCase();
     if (!q) return true;
     const displayName = getLocalizedProfileName(p.name, permissionsCopy).toLowerCase();
@@ -553,10 +557,17 @@ export default function AdminUsers({
   const ThSort = ({
     label,
     col
-  }) => <button type="button" className={s.thBtn} onClick={() => toggleSort(col)}>
-      {label}
-      {sortIndicator(col)}
-    </button>;
+  }) => (
+    <SortableHeader
+      as="button"
+      column={col}
+      label={label}
+      sortBy={sortKey}
+      sortDirection={sortDir}
+      onSort={toggleSort}
+      buttonClassName={s.thBtn}
+    />
+  );
   const Pager = ({
     page: p,
     totalPages: tp,

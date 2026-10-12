@@ -17,6 +17,7 @@ import { listSolutionCatalog, createSolutionCatalogEntry, updateSolutionCatalogE
 import { loadExclusionRulesRaw, loadMailCollectorsRaw, loadNotificationSettingsRaw, loadTicketAutomationRawConfig, saveMailCollectorsRaw, saveNotificationLogsRaw, saveTicketAutomationRawConfig } from "../../services/ticketAutomationConfigStore.js";
 import { resolveClientIdForTicket, getTicketCreditStatus, handleTicketStatusCreditChange, resolveSalesTicketType, consumeCreditsOnTicket, refundCreditsOnTicket } from "../../services/supportCredits.js";
 import ticketViewsRoutes from "./ticketViewsRoutes.js";
+import ticketSideConversationsRoutes from "./ticketSideConversationsRoutes.js";
 import { upsertUserSetting } from "../../utils/userSettingsStore.js";
 import {
   loadPublicTicketTableColumns,
@@ -1739,6 +1740,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         formKey: activeFormData?.formKey || "",
         categorySlug: activeFormData?.categorySlug || String(category || "").trim(),
         clientName: activeFormData?.clientName || "",
+        clientNumber: activeFormData?.clientNumber || activeFormData?.clientCode || "",
         contactName: activeFormData?.contactName || "",
         contactEmail: activeFormData?.contactEmail || "",
         purchaseOrder: activeFormData?.purchaseOrder || "",
@@ -1746,7 +1748,9 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         projectManager: activeFormData?.projectManagerLabel || "",
         ruleLabel: rule?.label || "",
         values: formFieldValues,
-        displayValues: activeFormData?.displayValues && typeof activeFormData.displayValues === "object" ? activeFormData.displayValues : {}
+        displayValues: activeFormData?.displayValues && typeof activeFormData.displayValues === "object" ? activeFormData.displayValues : {},
+        fieldLabels: activeFormData?.fieldLabels && typeof activeFormData.fieldLabels === "object" ? activeFormData.fieldLabels : {},
+        fieldsByKey: formFieldsByKey
       };
       const ticketTitle = rule ? buildTicketTitle(String(title).trim(), rule, templateContext) : String(title).trim();
       const ticketDescription = rule ? buildTicketDescription(String(description || ""), rule, templateContext) : String(description || "");
@@ -2821,7 +2825,8 @@ router.put("/table-columns/public", verifyJWT, async (req, res) => {
       ticket: "tickets.public_views",
       ticket_sales: "sales.public_views",
       enterprises: "clients.public_views",
-      contacts: "contacts.public_views"
+      contacts: "contacts.public_views",
+      prestataires: "prestataires.public_views"
     };
     const publicViewsKey = publicViewsKeyByScope[pageScope] || "tickets.public_views";
     if (!(await userHasAnyPermission(req.user, [publicViewsKey]))) {
@@ -2926,6 +2931,7 @@ router.use("/views", ticketViewsRoutes);
 router.use("/sales-forms", requirePro, salesFormsRoutes);
 router.use("/support-forms", supportFormsRoutes);
 router.use("/sales-categories", requirePro, salesTicketCategoriesRoutes);
+router.use("/:id/side-conversations", ticketSideConversationsRoutes);
 router.get("/random", verifyJWT, requirePermission("tickets.random_mode"), [query("excludeId").optional().isUUID()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;

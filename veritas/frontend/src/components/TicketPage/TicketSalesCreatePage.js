@@ -750,7 +750,7 @@ export default function TicketSalesCreatePage({
             eyebrow={copy.eyebrow}
             title={copy.pageTitle}
             subtitle={copy.formatPageSubtitle(agentLabel)}
-            icon="mdi:briefcase-edit-outline"
+            icon="mdi:briefcase-outline"
             actions={<>
               <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("TicketSales")}>
                 <Icon icon="mdi:arrow-left" />

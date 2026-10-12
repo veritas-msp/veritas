@@ -31,7 +31,7 @@ export const MODULE_SECTIONS = [{
     docType: "TicketSales",
     label: "Services",
     description: "Interventions and installations",
-    icon: "mdi:briefcase-edit-outline",
+    icon: "mdi:briefcase-outline",
     proOnly: true
   }, {
     key: "Planning",
@@ -52,10 +52,17 @@ export const MODULE_SECTIONS = [{
     icon: "mdi:radar",
     proOnly: false
   }, {
+    key: "Campaigns",
+    docType: "Campaigns",
+    label: "Campaigns",
+    description: "Security awareness and MFA campaigns",
+    icon: "mdi:bullhorn-outline",
+    proOnly: true
+  }, {
     key: "Cybersecurite",
     docType: "Cybersecurite",
     label: "Cybersecurity",
-    description: "Antivirus, antispam and campaigns",
+    description: "Antivirus, antispam and backup",
     icon: "mdi:shield-lock",
     proOnly: false
   }, {

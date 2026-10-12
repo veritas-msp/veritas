@@ -1,0 +1,610 @@
+/* Formulaires partagés — rapports d'intervention & d'audit */
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.15rem;
+}
+
+.formGridSingle {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formGridFull {
+  grid-column: 1 / -1;
+}
+
+.sectionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 0 rgba(15, 28, 46, 0.03);
+}
+
+.sectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.sectionHint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.sectionHeadRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--msp-muted, #5c6b82);
+  letter-spacing: 0.01em;
+}
+
+.requiredMark {
+  color: #dc2626;
+  margin-left: 0.15rem;
+  font-weight: 700;
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.fieldInput,
+.fieldTextarea,
+.fieldSelect {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.62rem 0.8rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  background-color: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.875rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+  color-scheme: light;
+}
+
+.fieldTextarea {
+  min-height: 6.5rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.fieldInput::placeholder,
+.fieldTextarea::placeholder {
+  color: var(--msp-muted-light, #94a3b8);
+}
+
+.fieldInput:hover:not(:disabled),
+.fieldTextarea:hover:not(:disabled),
+.fieldSelect:hover:not(:disabled) {
+  border-color: rgba(43, 95, 171, 0.35);
+}
+
+.fieldInput:focus,
+.fieldTextarea:focus,
+.fieldSelect:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.fieldInput:disabled,
+.fieldSelect:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.ticketPickWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.ticketSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.ticketSearchWrapOpen {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.ticketSearchIcon {
+  position: absolute;
+  left: 0.72rem;
+  font-size: 1rem;
+  color: var(--msp-muted, #5c6b82);
+  pointer-events: none;
+}
+
+.ticketSearchInput {
+  width: 100%;
+  min-height: 2.5rem;
+  border: none;
+  background: transparent;
+  padding: 0.62rem 2.2rem 0.62rem 2.35rem;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+  box-sizing: border-box;
+}
+
+.ticketSearchInput:focus {
+  outline: none;
+}
+
+.ticketSearchInput:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.ticketSearchClear {
+  position: absolute;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.ticketSearchClear:hover {
+  background: rgba(15, 28, 46, 0.06);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.ticketDropdown {
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.14);
+}
+
+.ticketDropdownEmpty {
+  padding: 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.ticketOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.55rem 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ticketOption:hover,
+.ticketOptionActive {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.ticketOptionSelected .ticketOptionLabel {
+  font-weight: 700;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.ticketOptionLabel {
+  font-size: 0.84rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.ticketOptionMeta {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  text-transform: capitalize;
+}
+
+.photoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.photoHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.photoActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.photoPreview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  border: 1px dashed var(--msp-border, #c5d0df);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f4f7fb);
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+}
+
+.photoPreview img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  background: var(--msp-surface, #fff);
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.8rem;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.addBtn:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, var(--msp-surface-2, #f7f9fc));
+}
+
+.linkBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.78rem;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.linkBtn:hover {
+  text-decoration: underline;
+}
+
+.softPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.softPanelHint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.listStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.equipmentLinkedList {
+  margin-top: 0.85rem;
+}
+
+.equipmentLinkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.equipmentLinkBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.equipmentLinkLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.equipmentLinkMeta {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.listRow,
+.findingRow,
+.actionRow {
+  display: grid;
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.findingRow {
+  grid-template-columns: minmax(0, 1.5fr) 8rem minmax(0, 1fr) auto;
+}
+
+.actionRow {
+  grid-template-columns: minmax(0, 1.3fr) 7.5rem minmax(0, 1fr) 8.5rem auto;
+}
+
+.rowDetail {
+  grid-column: 1 / -2;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.iconBtn:hover {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .formGrid,
+  .findingRow,
+  .actionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .rowDetail {
+    grid-column: auto;
+  }
+
+  .sectionCard {
+    padding: 1.05rem 1.1rem;
+  }
+}
+
+:global(html.dark) .sectionCard {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  box-shadow: none;
+}
+
+:global(html.dark) .sectionHead {
+  border-bottom-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .sectionTitle {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .sectionHint,
+:global(html.dark) .fieldLabel,
+:global(html.dark) .fieldHint,
+:global(html.dark) .softPanelHint {
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .requiredMark {
+  color: #f87171;
+}
+
+:global(html.dark) .ticketSearchWrap {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .ticketSearchWrapOpen {
+  border-color: var(--msp-accent, #4a8fd4);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(74, 143, 212, 0.15));
+}
+
+:global(html.dark) .ticketSearchInput {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .ticketSearchIcon,
+:global(html.dark) .ticketSearchClear,
+:global(html.dark) .ticketDropdownEmpty,
+:global(html.dark) .ticketOptionMeta {
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .ticketDropdown {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .ticketOption:hover,
+:global(html.dark) .ticketOptionActive {
+  background: rgba(74, 143, 212, 0.14);
+}
+
+:global(html.dark) .ticketOptionLabel {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .ticketOptionSelected .ticketOptionLabel {
+  color: var(--msp-accent, #5a9de0);
+}
+
+:global(html.dark) .ticketSearchClear:hover {
+  background: rgba(232, 237, 245, 0.08);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .fieldInput,
+:global(html.dark) .fieldTextarea,
+:global(html.dark) .fieldSelect {
+  color-scheme: dark;
+  background: var(--msp-surface-2, #152038);
+  background-color: var(--msp-surface-2, #152038);
+  color: var(--msp-text, #e8edf5);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .fieldInput option,
+:global(html.dark) .fieldSelect option {
+  background-color: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .fieldInput:hover:not(:disabled),
+:global(html.dark) .fieldTextarea:hover:not(:disabled),
+:global(html.dark) .fieldSelect:hover:not(:disabled) {
+  border-color: rgba(74, 143, 212, 0.45);
+}
+
+:global(html.dark) .fieldInput:focus,
+:global(html.dark) .fieldTextarea:focus,
+:global(html.dark) .fieldSelect:focus {
+  border-color: var(--msp-accent, #4a8fd4);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(74, 143, 212, 0.15));
+}
+
+:global(html.dark) .fieldInput:disabled,
+:global(html.dark) .fieldSelect:disabled {
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .photoPreview {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .photoPreview img {
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .addBtn {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-accent, #5a9de0);
+}
+
+:global(html.dark) .addBtn:hover {
+  border-color: var(--msp-accent, #5a9de0);
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 14%, var(--msp-surface-2, #152038));
+}
+
+:global(html.dark) .softPanel,
+:global(html.dark) .listRow,
+:global(html.dark) .findingRow,
+:global(html.dark) .actionRow,
+:global(html.dark) .equipmentLinkRow {
+  background: var(--msp-surface-2, #152038);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .equipmentLinkLabel {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .equipmentLinkMeta {
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .iconBtn:hover {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}

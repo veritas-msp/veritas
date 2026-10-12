@@ -13,6 +13,8 @@ import s from "./AdminUsers.module.css";
 import { useAdminClientPortalCopy } from "../../hooks/useAdminCopy";
 import { formatAccountCount, interpolate } from "./adminClientPortalI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 export default function AdminClientPortal({
   isCommunity = false
 }) {
@@ -96,21 +98,30 @@ export default function AdminClientPortal({
     }
   }, [page, totalPages]);
   const toggleSort = key => {
-    if (sortKey === key) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc");
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: "contact",
+      defaultSortDirection: "asc"
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
-  const sortIndicator = key => sortKey === key ? sortDir === "asc" ? " ▲" : " ▼" : "";
-  const ThSort = ({
+    const ThSort = ({
     label,
     col
-  }) => <button type="button" className={s.thBtn} onClick={() => toggleSort(col)}>
-      {label}
-      {sortIndicator(col)}
-    </button>;
+  }) => (
+    <SortableHeader
+      as="button"
+      column={col}
+      label={label}
+      sortBy={sortKey}
+      sortDirection={sortDir}
+      onSort={toggleSort}
+      buttonClassName={s.thBtn}
+    />
+  );
   const Pager = ({
     page: p,
     totalPages: tp,

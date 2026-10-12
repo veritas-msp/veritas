@@ -26,6 +26,10 @@ const PRESTATAIRES_COPY = {
     loadingPortfolio: "Chargement des prestataires…",
     subtitle: "{filtered} prestataire affiché sur {total}",
     subtitlePlural: "{filtered} prestataires affichés sur {total}",
+    exportCsv: "Exporter en CSV",
+    exportCsvAria: "Exporter CSV",
+    columnsSettings: "Paramétrer les colonnes",
+    columnsSettingsAria: "Paramétrer les colonnes du tableau",
     newPrestataire: "Nouveau prestataire",
     searchPlaceholder: "Prestataire, type, contact, statut…",
     searchAria: "Rechercher un prestataire",
@@ -42,6 +46,28 @@ const PRESTATAIRES_COPY = {
       status: "Statut",
       enterprises: "Entreprises",
       actions: "Actions"
+    },
+    export: {
+      filename: "prestataires.csv"
+    },
+    columnsModal: {
+      title: "Colonnes du tableau",
+      subtitle: "Choisissez les colonnes visibles dans la liste des prestataires.",
+      privateTab: "Vue privée",
+      publicTab: "Vue publique",
+      privateHintInactive: "Pas encore de vue privée : la vue publique s’affiche. Cochez des colonnes pour créer la vôtre.",
+      privateHintActive: "Votre vue privée remplace la vue publique.",
+      publicHint: "Colonnes visibles par défaut pour tous les utilisateurs sans vue privée.",
+      adminOnly: "Seuls les administrateurs peuvent modifier la vue publique.",
+      resetPrivate: "Revenir à la vue publique",
+      resetSuccess: "Vue privée réinitialisée",
+      savePrivateSuccess: "Vue privée enregistrée",
+      savePublicSuccess: "Vue publique enregistrée",
+      saveError: "Erreur lors de l’enregistrement des colonnes",
+      atLeastOne: "Sélectionnez au moins une colonne.",
+      reorderHint: "Glissez les lignes pour changer l’ordre des colonnes dans le tableau.",
+      dragColumn: "Glisser la colonne {name}",
+      save: "Enregistrer"
     },
     statusFilters: {
       active: "Actifs",
@@ -97,7 +123,8 @@ const PRESTATAIRES_COPY = {
       bulkDeleteSuccess: "{count} prestataire supprimé",
       bulkDeleteSuccessPlural: "{count} prestataires supprimés",
       bulkPartial: "{updated} traités - {failed} échec(s)",
-      bulkError: "Erreur lors de la suppression en masse"
+      bulkError: "Erreur lors de la suppression en masse",
+      loadColumns: "Erreur lors du chargement des colonnes"
     },
     bulk: {
       selected: "prestataire sélectionné",
@@ -134,6 +161,10 @@ const PRESTATAIRES_COPY = {
     loadingPortfolio: "Loading providers…",
     subtitle: "{filtered} provider shown of {total}",
     subtitlePlural: "{filtered} providers shown of {total}",
+    exportCsv: "Export as CSV",
+    exportCsvAria: "Export CSV",
+    columnsSettings: "Configure columns",
+    columnsSettingsAria: "Configure table columns",
     newPrestataire: "New provider",
     searchPlaceholder: "Provider, type, contact, status…",
     searchAria: "Search for a provider",
@@ -150,6 +181,28 @@ const PRESTATAIRES_COPY = {
       status: "Status",
       enterprises: "Companies",
       actions: "Actions"
+    },
+    export: {
+      filename: "providers.csv"
+    },
+    columnsModal: {
+      title: "Table columns",
+      subtitle: "Choose the columns visible in the providers list.",
+      privateTab: "Private view",
+      publicTab: "Public view",
+      privateHintInactive: "No private view yet: the public view is shown. Check columns to create yours.",
+      privateHintActive: "Your private view overrides the public view.",
+      publicHint: "Default columns for all users without a private view.",
+      adminOnly: "Only administrators can edit the public view.",
+      resetPrivate: "Revert to public view",
+      resetSuccess: "Private view reset",
+      savePrivateSuccess: "Private view saved",
+      savePublicSuccess: "Public view saved",
+      saveError: "Error saving columns",
+      atLeastOne: "Select at least one column.",
+      reorderHint: "Drag rows to change the column order in the table.",
+      dragColumn: "Drag column {name}",
+      save: "Save"
     },
     statusFilters: {
       active: "Active",
@@ -205,7 +258,8 @@ const PRESTATAIRES_COPY = {
       bulkDeleteSuccess: "{count} provider deleted",
       bulkDeleteSuccessPlural: "{count} providers deleted",
       bulkPartial: "{updated} processed - {failed} failed",
-      bulkError: "Error during bulk deletion"
+      bulkError: "Error during bulk deletion",
+      loadColumns: "Error loading columns"
     },
     bulk: {
       selected: "provider selected",

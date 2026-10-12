@@ -1,0 +1,44 @@
+.sortableTh {
+  padding: 0;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.12s;
+}
+
+.sortButton:hover {
+  color: var(--msp-text, #0f1c2e);
+}
+
+/* Variante compacte pour tableaux CRM / MSP qui ont déjà le padding sur le th */
+.sortButtonCompact {
+  width: auto;
+  padding: 0;
+}
+
+.sortIcon {
+  font-size: 0.95rem;
+  opacity: 0.45;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.sortIconActive {
+  opacity: 1;
+  color: var(--msp-accent, #2b5fab);
+}

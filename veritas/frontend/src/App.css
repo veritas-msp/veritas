@@ -13,6 +13,8 @@ body,
   --tabs-bar-height: 36px;
   --sidebar-top-height: 56px;
   --sidebar-rail-width: 64px;
+  --sidebar-flyout-gap: 8px;
+  --sidebar-expanded-width: 200px;
 }
 
 body {
@@ -31,10 +33,34 @@ body.dark {
   background-color: #0f0f23 !important;
 }
 
+/* Hover lignes de tableaux (mode dark) — overlay visible sur toutes les tables app */
+html.dark .contentWrapper table tbody tr:hover > td,
+html.dark .contentWrapper table tbody tr:focus-visible > td,
+body.dark .contentWrapper table tbody tr:hover > td,
+body.dark .contentWrapper table tbody tr:focus-visible > td,
+html.dark .main-content table tbody tr:hover > td,
+html.dark .main-content table tbody tr:focus-visible > td,
+body.dark .main-content table tbody tr:hover > td,
+body.dark .main-content table tbody tr:focus-visible > td {
+  box-shadow: inset 0 0 0 999px rgba(90, 143, 212, 0.14);
+  transition: box-shadow 0.12s ease;
+}
+
+html.dark .contentWrapper table tbody tr:hover,
+html.dark .contentWrapper table tbody tr:focus-visible,
+body.dark .contentWrapper table tbody tr:hover,
+body.dark .contentWrapper table tbody tr:focus-visible,
+html.dark .main-content table tbody tr:hover,
+html.dark .main-content table tbody tr:focus-visible,
+body.dark .main-content table tbody tr:hover,
+body.dark .main-content table tbody tr:focus-visible {
+  background-color: rgba(90, 143, 212, 0.1);
+}
+
 
 
 .contentWrapper {
-  margin-left: var(--sidebar-rail-width, 64px);
+  margin-left: var(--sidebar-expanded-width, 240px);
   transition: margin-left 0.4s ease-in-out, top 0.3s ease, height 0.3s ease, background-color 0.3s ease;
   box-sizing: border-box;
   position: fixed;
@@ -140,7 +166,7 @@ html[data-agent-impersonation="1"][data-sidebar-layout="horizontal"] .contentWra
 }
 
 .main-content {
-  margin-left: 240px; 
+  margin-left: var(--sidebar-expanded-width, 200px);
   padding: 2rem;
   background-color: var(--bg-primary);
   color: var(--text-primary);

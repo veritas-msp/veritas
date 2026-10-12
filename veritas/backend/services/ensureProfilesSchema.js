@@ -44,6 +44,13 @@ export async function ensureSuperAdminProfile(client = null) {
       await db.query(`UPDATE v_b_users_profiles
         SET equipment_inventory_enabled = infrastructure_enabled`);
     }
+    const hadCampaigns = await columnExists(db, "v_b_users_profiles", "campaigns_enabled");
+    await db.query(`ALTER TABLE v_b_users_profiles
+      ADD COLUMN IF NOT EXISTS campaigns_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+    if (!hadCampaigns) {
+      await db.query(`UPDATE v_b_users_profiles
+        SET campaigns_enabled = cybersecurite_enabled`);
+    }
     const hadKnowledgeBase = await columnExists(db, "v_b_users_profiles", "knowledge_base_enabled");
     await db.query(`ALTER TABLE v_b_users_profiles
       ADD COLUMN IF NOT EXISTS knowledge_base_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
@@ -82,14 +89,14 @@ export async function ensureSuperAdminProfile(client = null) {
       )`);
     const result = await db.query(`INSERT INTO v_b_users_profiles (
         name, label,
-        monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
+        monitoring_enabled, infrastructure_enabled, cybersecurite_enabled, campaigns_enabled,
         planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
         configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
         documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order
       ) VALUES (
         $1,
         'Accès total non modifiable — propriétaire de l''instance.',
-        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, 1
+        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, 1
       )
       ON CONFLICT (name) DO NOTHING
       RETURNING name`, [SUPER_ADMIN_PROFILE_NAME]);
@@ -97,6 +104,7 @@ export async function ensureSuperAdminProfile(client = null) {
         monitoring_enabled = TRUE,
         infrastructure_enabled = TRUE,
         cybersecurite_enabled = TRUE,
+        campaigns_enabled = TRUE,
         planning_enabled = TRUE,
         service_enabled = TRUE,
         contrat_enabled = TRUE,

@@ -224,6 +224,7 @@ const USER_PROFILE_COPY = {
       prestataire_enabled: "Prestataires",
       infrastructure_enabled: "Infrastructure",
       cybersecurite_enabled: "Cybersécurité",
+      campaigns_enabled: "Campagnes",
       service_enabled: "Services",
       monitoring_enabled: "Rapports",
       tickets_enabled: "Support",
@@ -529,6 +530,7 @@ const USER_PROFILE_COPY = {
       prestataire_enabled: "Providers",
       infrastructure_enabled: "Infrastructure",
       cybersecurite_enabled: "Cybersecurity",
+      campaigns_enabled: "Campaigns",
       service_enabled: "Services",
       monitoring_enabled: "Reports",
       tickets_enabled: "Support",
@@ -834,6 +836,7 @@ const USER_PROFILE_COPY = {
       prestataire_enabled: "Dienstleister",
       infrastructure_enabled: "Infrastruktur",
       cybersecurite_enabled: "Cybersicherheit",
+      campaigns_enabled: "Kampagnen",
       service_enabled: "Services",
       monitoring_enabled: "Berichte",
       tickets_enabled: "Support",
@@ -1139,6 +1142,7 @@ const USER_PROFILE_COPY = {
       prestataire_enabled: "Fornitori",
       infrastructure_enabled: "Infrastruttura",
       cybersecurite_enabled: "Cybersicurezza",
+      campaigns_enabled: "Campagne",
       service_enabled: "Servizi",
       monitoring_enabled: "Report",
       tickets_enabled: "Supporto",
@@ -1444,6 +1448,7 @@ const USER_PROFILE_COPY = {
       prestataire_enabled: "Proveedores",
       infrastructure_enabled: "Infraestructura",
       cybersecurite_enabled: "Ciberseguridad",
+      campaigns_enabled: "Campañas",
       service_enabled: "Servicios",
       monitoring_enabled: "Informes",
       tickets_enabled: "Soporte",
@@ -1543,6 +1548,9 @@ const MSP_MODULE_KEYS = [{
 }, {
   key: "cybersecurite_enabled",
   icon: "mdi:shield-lock-outline"
+}, {
+  key: "campaigns_enabled",
+  icon: "mdi:bullhorn-outline"
 }, {
   key: "service_enabled",
   icon: "mdi:cog-outline"

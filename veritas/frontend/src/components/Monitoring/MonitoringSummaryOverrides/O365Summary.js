@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useTheme } from "../../../hooks/useTheme";
+import SortIcon from "../../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
 import styles from "./O365Summary.module.css";
 import o365Styles from "../Modules/O365.module.css";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -282,28 +284,23 @@ const O365Summary = ({
   }, [securityData?.secureScoreRecommendations, recommendationSort]);
   const handleRecommendationSort = column => {
     setRecommendationSort(prev => {
-      if (prev.column === column) {
-        return {
-          column,
-          direction: prev.direction === 'desc' ? 'asc' : 'desc'
-        };
-      }
-      return {
+      const next = cycleSortState({
         column,
-        direction: 'desc'
-      };
+        sortBy: prev.column,
+        sortDirection: prev.direction,
+        defaultSortBy: "points",
+        defaultSortDirection: "desc",
+        firstDirection: "desc"
+      });
+      return { column: next.sortBy, direction: next.sortDirection };
     });
   };
-  const renderSortIcon = column => {
-    const iconStyle = {
-      marginLeft: '0.35rem',
-      fontSize: '0.75rem'
-    };
-    if (recommendationSort.column !== column) {
-      return <span style={iconStyle}>⇅</span>;
-    }
-    return recommendationSort.direction === 'desc' ? <span style={iconStyle}>↓</span> : <span style={iconStyle}>↑</span>;
-  };
+  const renderSortIcon = column => (
+    <SortIcon
+      active={recommendationSort.column === column}
+      direction={recommendationSort.direction}
+    />
+  );
   const getPriorityLabel = rec => {
     if (rec?.priorityLabel) return rec.priorityLabel;
     return getPriorityLabelFromLevel(computePriorityLevel(rec));

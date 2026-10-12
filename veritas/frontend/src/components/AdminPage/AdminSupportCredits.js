@@ -12,6 +12,8 @@ import { getAdminDeleteConfirmsCopy } from "./adminModalsI18n";
 import { useAdminSupportCreditsCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { formatPackMeta, getPackStatusLabel, getStatusFilterOptions, interpolate } from "./adminSupportCreditsI18n";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 function formatDate(value, bcp47) {
   if (!value) return "-";
   const date = new Date(value);
@@ -126,17 +128,19 @@ export default function AdminSupportCredits() {
     };
   }, [packs]);
   const toggleSort = key => {
-    if (sortKey === key) {
-      setSortDir(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortKey(key);
-    setSortDir("asc");
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: "client_name",
+      defaultSortDirection: "asc"
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
-  const sortIndicator = key => {
-    if (sortKey !== key) return null;
-    return sortDir === "asc" ? " ▲" : " ▼";
-  };
+  const sortIndicator = key => (
+    <SortIcon active={sortKey === key} direction={sortDir} />
+  );
   const sortCol = (key, label, width) => ({
     key,
     label,

@@ -1,8 +1,9 @@
 import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import styles from "./SidebarTooltip.module.css";
+import { SIDEBAR_FLYOUT_GAP_PX } from "../../../utils/sidebarFlyoutPosition";
 
-const GAP = 10;
+const GAP = SIDEBAR_FLYOUT_GAP_PX;
 const EST_WIDTH = 200;
 const DEFAULT_SHOW_DELAY_MS = 400;
 

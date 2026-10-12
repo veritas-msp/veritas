@@ -17,6 +17,8 @@ import { getAdminDeleteConfirmsCopy } from "./adminModalsI18n";
 import { useAdminClientsCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { formatEnterpriseCount, formatSelectedCount, interpolate } from "./adminClientsI18n";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 const PAGE_SIZES = [10, 25, 50, 100];
 export default function AdminEnterpriseModels({
   refreshToken = 0,
@@ -121,13 +123,17 @@ export default function AdminEnterpriseModels({
     });
   }, [clients]);
   const toggleSort = key => {
-    if (sortKey === key) setSortDir(dir => dir === "asc" ? "desc" : "asc");else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: "name",
+      defaultSortDirection: "asc"
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
-  const sortIndicator = key => sortKey === key ? sortDir === "asc" ? " ▲" : " ▼" : "";
-  const toggleSelect = clientId => {
+    const toggleSelect = clientId => {
     setSelectedIds(prev => {
       const next = new Set(prev);
       if (next.has(clientId)) next.delete(clientId);else next.add(clientId);
@@ -245,18 +251,6 @@ export default function AdminEnterpriseModels({
             </div>
           </div>
 
-          {selectedCount > 0 && <div className={s.bulkBar}>
-              <span className={s.bulkInfo}>{formatSelectedCount(locale, selectedCount)}</span>
-              <div className={s.bulkActions}>
-                <Btn variant="ghost" onClick={() => setSelectedIds(new Set())}>
-                  {copy.deselectAll}
-                </Btn>
-                <Btn variant="danger" icon="mdi:trash-can-outline" onClick={() => openDelete([...selectedIds])}>
-                  {copy.deleteSelection}
-                </Btn>
-              </div>
-            </div>}
-
           <div className={s.tableSection}>
             <div className={s.tableWrap}>
               <table className={s.table}>
@@ -268,17 +262,17 @@ export default function AdminEnterpriseModels({
                     <th onClick={() => toggleSort("name")} style={{
                     cursor: "pointer"
                   }}>
-                      {copy.columns.enterprise}{sortIndicator("name")}
+                      {copy.columns.enterprise}<SortIcon active={sortKey === "name"} direction={sortDir} />
                     </th>
                     <th onClick={() => toggleSort("deletable")} style={{
                     cursor: "pointer"
                   }}>
-                      {copy.columns.deletion}{sortIndicator("deletable")}
+                      {copy.columns.deletion}<SortIcon active={sortKey === "deletable"} direction={sortDir} />
                     </th>
                     <th onClick={() => toggleSort("blockers")} style={{
                     cursor: "pointer"
                   }}>
-                      {copy.columns.linked}{sortIndicator("blockers")}
+                      {copy.columns.linked}<SortIcon active={sortKey === "blockers"} direction={sortDir} />
                     </th>
                     <th style={{
                     width: 100
@@ -378,6 +372,18 @@ export default function AdminEnterpriseModels({
                 <button type="button" className={s.paginationBtn} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} aria-label={copy.pagination.nextAria}>
                   <FaChevronRight />
                 </button>
+              </div>
+            </div>}
+
+          {selectedCount > 0 && <div className={s.bulkBar}>
+              <span className={s.bulkInfo}>{formatSelectedCount(locale, selectedCount)}</span>
+              <div className={s.bulkActions}>
+                <Btn variant="ghost" onClick={() => setSelectedIds(new Set())}>
+                  {copy.deselectAll}
+                </Btn>
+                <Btn variant="danger" icon="mdi:trash-can-outline" onClick={() => openDelete([...selectedIds])}>
+                  {copy.deleteSelection}
+                </Btn>
               </div>
             </div>}
 

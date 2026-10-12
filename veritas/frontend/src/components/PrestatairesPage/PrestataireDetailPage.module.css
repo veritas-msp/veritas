@@ -1,70 +1,30 @@
-.fullWidthMain {
-  width: 100%;
-  max-width: none;
+.prestataireDetailPage {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
 }
 
-.coordGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.65rem;
+.panelHint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
 }
 
-.coordCard {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius-sm, 10px);
-  background: var(--msp-surface-2, #f7f9fc);
-  color: inherit;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.coordCard:hover {
-  border-color: var(--msp-accent, #2b5fab);
-  background: var(--msp-surface, #fff);
-  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-}
-
-.coordIconWrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 10px;
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-
-.coordText {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+.heroMetaNotes {
   min-width: 0;
-  flex: 1;
+  max-width: min(28rem, 100%);
 }
 
-.coordLabel {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--msp-muted-light, #8b9bb5);
-}
-
-.coordValue {
-  font-size: 0.875rem;
-  font-weight: 500;
-  word-break: break-word;
+.heroMetaNotes > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .coordValueLink {
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.84rem;
+  font-weight: 600;
   color: var(--msp-accent, #2b5fab);
   text-decoration: none;
   word-break: break-word;
@@ -74,66 +34,72 @@
   text-decoration: underline;
 }
 
-.contactCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.95rem 1rem;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius-sm, 10px);
-  background: var(--msp-surface-2, #f7f9fc);
+.sidebarCommSection {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
 }
 
-.contactName {
-  font-size: 0.92rem;
+.sidebarCommBodyWrap {
+  padding-top: 0.55rem;
+}
+
+.sidebarCommList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sidebarContactCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  min-width: 0;
+}
+
+.sidebarContactCardName {
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
 }
 
-.contactMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-
-.contactMetaRow {
+.sidebarCommLink {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.82rem;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.78rem;
   color: var(--msp-muted, #5c6b82);
   text-decoration: none;
 }
 
-a.contactMetaRow:hover {
+.sidebarCommLink span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebarCommLink:hover {
   color: var(--msp-accent, #2b5fab);
 }
 
-.contactMetaIcon {
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.coordEmpty {
-  font-size: 0.86rem;
-  color: var(--msp-muted, #5c6b82);
-}
-
-:global(html.dark) .coordCard,
-:global(html.dark) .contactCard {
+:global(html.dark) .sidebarContactCard {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(148, 163, 184, 0.22);
 }
 
-:global(html.dark) .coordCard:hover {
-  background: rgba(43, 95, 171, 0.12);
-  border-color: rgba(74, 127, 212, 0.45);
-}
-
-:global(html.dark) .contactName {
+:global(html.dark) .sidebarContactCardName {
   color: #e8eef8;
 }
 
-:global(html.dark) .contactMetaRow {
+:global(html.dark) .sidebarCommLink {
   color: #9aa8bc;
 }

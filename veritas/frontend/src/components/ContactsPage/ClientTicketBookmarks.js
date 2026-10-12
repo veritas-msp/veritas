@@ -97,7 +97,8 @@ function TicketBookmark({
   clients = [],
   bookmarksCopy,
   ticketCopy,
-  formatDate
+  formatDate,
+  heroCompact = false
 }) {
   const isClosed = mode === "closed";
   const statusKey = normalizeTicketStatus(ticket?.status);
@@ -173,7 +174,7 @@ function TicketBookmark({
   const titleNode = <span className={localStyles.ticketBookmarkTitle} title={titleTruncated ? undefined : titleFull}>
       {titleDisplay}
     </span>;
-  return <button type="button" className={`${styles.bookmark} ${localStyles.ticketBookmark} ${isClosed ? styles.bookmarkPast : ""} ${isMajorIncident && !isClosed ? localStyles.ticketBookmarkMajor : ""}`} style={{
+  return <button type="button" className={`${styles.bookmark} ${localStyles.ticketBookmark} ${heroCompact ? localStyles.ticketBookmarkHero : ""} ${isClosed ? styles.bookmarkPast : ""} ${isMajorIncident && !isClosed ? localStyles.ticketBookmarkMajor : ""}`} style={{
     "--bookmark-accent": ribbonAccent,
     "--bookmark-type-accent": typeHint
   }} onClick={() => onClick?.(ticket)} onAuxClick={e => {
@@ -207,39 +208,55 @@ function TicketBookmark({
         </span>
 
         <span className={localStyles.ticketBookmarkExpanded}>
-          <span className={localStyles.ticketBookmarkTop}>
-            <span className={localStyles.ticketBookmarkTopMain}>
+          {heroCompact ? <>
               <span className={`${styles.bookmarkRibbon} ${localStyles.ticketBookmarkRibbonExpanded}`} aria-hidden>
                 <span className={`${styles.bookmarkDay} ${localStyles.ticketBookmarkRibbonDayExpanded}`}>
                   #{ticketNumber}
                 </span>
               </span>
+              {titleTruncated ? <SmartTooltip content={titleFull} className={localStyles.ticketBookmarkTitleWrap}>
+                  {titleNode}
+                </SmartTooltip> : <span className={localStyles.ticketBookmarkTitleWrap}>{titleNode}</span>}
               <span className={localStyles.ticketBookmarkStatus}>{statusLabel}</span>
-            </span>
-            {satisfactionAverage ? <span className={localStyles.satisfactionLine} title={satisfactionLabel} aria-label={interpolate(bookmarksCopy.satisfactionAria, {
+              <span className={localStyles.ticketBookmarkType} title={typeLabel}>
+                <Icon icon={typeIcon} className={localStyles.ticketBookmarkTypeIcon} aria-hidden />
+                <span>{typeLabel}</span>
+              </span>
+            </> : <>
+              <span className={localStyles.ticketBookmarkTop}>
+                <span className={localStyles.ticketBookmarkTopMain}>
+                  <span className={`${styles.bookmarkRibbon} ${localStyles.ticketBookmarkRibbonExpanded}`} aria-hidden>
+                    <span className={`${styles.bookmarkDay} ${localStyles.ticketBookmarkRibbonDayExpanded}`}>
+                      #{ticketNumber}
+                    </span>
+                  </span>
+                  <span className={localStyles.ticketBookmarkStatus}>{statusLabel}</span>
+                </span>
+                {satisfactionAverage ? <span className={localStyles.satisfactionLine} title={satisfactionLabel} aria-label={interpolate(bookmarksCopy.satisfactionAria, {
             rating: formatSatisfactionAverage(satisfactionAverage)
           })}>
-                <Icon icon="mdi:star" className={localStyles.satisfactionStar} aria-hidden />
-                <span>{formatSatisfactionAverage(satisfactionAverage)}</span>
-              </span> : null}
-          </span>
-          {titleTruncated ? <SmartTooltip content={titleFull} className={localStyles.ticketBookmarkTitleWrap}>
-              {titleNode}
-            </SmartTooltip> : <span className={localStyles.ticketBookmarkTitleWrap}>{titleNode}</span>}
-          <span className={localStyles.ticketBookmarkDetails}>
-            {expandedDetailItems.map(item => <span key={item.key} className={localStyles.ticketBookmarkDetailRow}>
-                <Icon icon={item.icon} className={localStyles.ticketBookmarkDetailIcon} aria-hidden />
-                <span className={`${localStyles.ticketBookmarkDetailText} ${item.toneClass || ""}`.trim()}>
-                  {item.text}
+                    <Icon icon="mdi:star" className={localStyles.satisfactionStar} aria-hidden />
+                    <span>{formatSatisfactionAverage(satisfactionAverage)}</span>
+                  </span> : null}
+              </span>
+              {titleTruncated ? <SmartTooltip content={titleFull} className={localStyles.ticketBookmarkTitleWrap}>
+                  {titleNode}
+                </SmartTooltip> : <span className={localStyles.ticketBookmarkTitleWrap}>{titleNode}</span>}
+              <span className={localStyles.ticketBookmarkDetails}>
+                {expandedDetailItems.map(item => <span key={item.key} className={localStyles.ticketBookmarkDetailRow}>
+                    <Icon icon={item.icon} className={localStyles.ticketBookmarkDetailIcon} aria-hidden />
+                    <span className={`${localStyles.ticketBookmarkDetailText} ${item.toneClass || ""}`.trim()}>
+                      {item.text}
+                    </span>
+                  </span>)}
+              </span>
+              <span className={localStyles.ticketBookmarkFoot}>
+                <span className={localStyles.ticketBookmarkType} title={typeLabel}>
+                  <Icon icon={typeIcon} className={localStyles.ticketBookmarkTypeIcon} aria-hidden />
+                  <span>{typeLabel}</span>
                 </span>
-              </span>)}
-          </span>
-          <span className={localStyles.ticketBookmarkFoot}>
-            <span className={localStyles.ticketBookmarkType} title={typeLabel}>
-              <Icon icon={typeIcon} className={localStyles.ticketBookmarkTypeIcon} aria-hidden />
-              <span>{typeLabel}</span>
-            </span>
-          </span>
+              </span>
+            </>}
         </span>
       </span>
     </button>;
@@ -270,7 +287,11 @@ export default function ClientTicketBookmarks({
   statusLabels = {},
   onTicketClick,
   clients = [],
-  inPageHero = false
+  inPageHero = false,
+  heroInline = false,
+  heroFrise = false,
+  collapseStorageKey = "veritas.heroBookmarks.contactTickets.collapsed",
+  defaultCollapsed = true
 }) {
   const locale = useAppLocale();
   const {
@@ -322,7 +343,7 @@ export default function ClientTicketBookmarks({
   const {
     collapsed,
     toggle
-  } = useHeroBookmarkCollapse("veritas.heroBookmarks.contactTickets.collapsed");
+  } = useHeroBookmarkCollapse(collapseStorageKey, heroFrise ? false : defaultCollapsed);
   const panelSummary = useMemo(() => {
     if (loading) return bookmarksCopy.summaryLoading;
     if (isEmpty) return bookmarksCopy.summaryEmpty;
@@ -338,9 +359,14 @@ export default function ClientTicketBookmarks({
     bookmarksCopy,
     ticketCopy,
     formatDate,
-    onClick: onTicketClick
+    onClick: onTicketClick,
+    heroCompact: heroFrise
   };
-  const bar = <div className={[inPageHero ? styles.barInPageHero : styles.bar, inPageHero ? styles.barInPageHeroShell : ""].filter(Boolean).join(" ")} aria-label={bookmarksCopy.ariaLabel}>
+  const bar = <div className={[
+    inPageHero || heroFrise ? styles.barInPageHero : styles.bar,
+    inPageHero || heroFrise ? styles.barInPageHeroShell : "",
+    heroFrise ? styles.barHeroFrise : ""
+  ].filter(Boolean).join(" ")} aria-label={bookmarksCopy.ariaLabel}>
       <div className={styles.barInner}>
         <div className={[styles.trackWrap, fade.left ? styles.trackFadeLeft : "", fade.right ? styles.trackFadeRight : ""].filter(Boolean).join(" ")}>
           <div className={`${styles.track} ${localStyles.ticketBookmarksTrack}`} ref={trackRef}>
@@ -367,10 +393,15 @@ export default function ClientTicketBookmarks({
         </div>
       </div>
     </div>;
+  if (heroFrise) {
+    return <div className={styles.heroFriseShell} data-bookmarks-collapsed="false">
+        {bar}
+      </div>;
+  }
   if (!inPageHero) {
     return bar;
   }
-  return <div className={[styles.heroBookmarkShell, styles.heroBookmarkShellInPageHero, collapsed ? styles.heroBookmarkShellCollapsed : ""].filter(Boolean).join(" ")} data-bookmarks-collapsed={collapsed ? "true" : "false"}>
+  return <div className={[styles.heroBookmarkShell, styles.heroBookmarkShellInPageHero, heroInline ? styles.heroBookmarkShellInline : "", collapsed ? styles.heroBookmarkShellCollapsed : ""].filter(Boolean).join(" ")} data-bookmarks-collapsed={collapsed ? "true" : "false"}>
       <HeroBookmarkCollapseHeader collapsed={collapsed} onToggle={toggle} icon="mdi:ticket-outline" title={bookmarksCopy.panelTitle} summary={panelSummary} expandAria={bookmarksCopy.expandPanelAria} collapseAria={bookmarksCopy.collapsePanelAria} />
       <div className={styles.barCollapsePanel} aria-hidden={collapsed}>
         {bar}

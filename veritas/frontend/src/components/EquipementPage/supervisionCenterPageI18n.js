@@ -75,27 +75,27 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Centre de supervision",
-          content: "File unique des alertes monitoring (CheckMK). Les données viennent de la sync (poller Admin ou bouton Synchroniser). L'onglet Supervision d'un périphérique montre le détail des services."
+          content: "Parcours de triage matinal des alertes CheckMK. Objectif : 0 critique dans « À traiter »."
         },
         tabs: {
           title: "Vues principales",
-          content: "Alertes = file active (1 ligne ≈ 1 service en warning/critique). Historique = alertes résolues ou dismiss. Règles = activer critique / warning / no data par type de périphérique."
+          content: "Alertes = triage (À traiter / En cours / En attente). Historique = alertes terminées. Règles = critères par famille de matériel."
         },
         kpis: {
-          title: "Filtres",
-          content: "Filtrez par sévérité (Critiques, Warnings) et statut (Ouvertes, Prises en charge, Liées). Cliquez à nouveau pour retirer un filtre."
+          title: "Vues de triage",
+          content: "À traiter = décisions du matin. En cours = prises en charge. En attente = maintenances actives. Critiques / Warnings filtrent la vue À traiter."
         },
         filters: {
           title: "Recherche",
           content: "Recherchez un service, un périphérique ou un client dans la file."
         },
         queue: {
-          title: "Table d'alertes",
-          content: "Chaque ligne est une alerte active. Actions : prise en charge, ticket support, résolution. Ouvrir la ligne pour aller à la fiche et voir tous les services."
+          title: "File d’alertes",
+          content: "Sur À traiter : Prendre en charge ou Plus (Ignorer / Maintenance). Sur En cours : Résoudre ou Créer un ticket. Resync et diagnostic restent dans Plus."
         },
         history: {
           title: "Historique",
-          content: "Alertes fermées automatiquement (retour OK CheckMK) ou manuellement, avec la timeline des actions."
+          content: "Alertes résolues, ignorées ou auto-fermées après retour OK CheckMK, avec la timeline des actions."
         }
       }
     },
@@ -110,10 +110,10 @@ const SUPERVISION_COPY = {
         rmm: "RMM offline"
       },
       coverage: {
-        aria: "Couverture supervision par famille",
-        title: "Couverture",
+        aria: "Couverture de supervision par famille",
+        title: "Couverture de supervision",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} · {monitored}/{total} supervisés via une intégration",
+        tooltip: "{label} · {monitored}/{total} supervisés ({pct}%)",
         families: {
           Ordinateurs: "Ordinateurs",
           Internet: "Internet",
@@ -187,7 +187,7 @@ const SUPERVISION_COPY = {
         dismiss: "Ignorer l'alerte et l'envoyer dans l'historique",
         open: "Ouvrir la fiche ou le détail lié",
         resync: "Relancer la sync CheckMK de cet hôte",
-        mute: "Suspendre les alertes de ce périphérique (comme sur la fiche)",
+        mute: "Suspendre les alertes de ce périphérique",
         unmute: "Réactiver les alertes de ce périphérique",
         diagnose: "Voir le diagnostic admin de cette alerte"
       },
@@ -199,10 +199,14 @@ const SUPERVISION_COPY = {
       },
       mute: {
         title: "Mute périphérique",
-        hint: "Même réglage que le bouton Alertes de la fiche matériel.",
+        hint: "",
         hours2: "2 heures",
         tomorrow: "Jusqu’à demain 8h",
         hours24: "24 heures",
+        untilExact: "Jusqu’à une date précise…",
+        untilLabel: "Date et heure",
+        applyUntil: "Appliquer",
+        untilInvalid: "Choisissez une date/heure dans le futur",
         disabled: "Désactiver les alertes",
         unmute: "Réactiver les alertes",
         muted: "Mute",
@@ -210,6 +214,108 @@ const SUPERVISION_COPY = {
         disabledBadge: "Alertes off",
         client: "Client suspendu"
       },
+      triage: {
+        aria: "Vues de triage",
+        todo: "À traiter",
+        inProgress: "En cours",
+        waiting: "En attente",
+        history: "Historique"
+      },
+      moreMenu: {
+        open: "Plus",
+        ignore: "Ignorer",
+        maintenance: "Mettre en maintenance",
+        unack: "Rendre",
+        technical: "Actions techniques",
+        resync: "Relancer la synchronisation",
+        diagnose: "Diagnostic",
+        openDevice: "Voir le périphérique"
+      },
+      ignoreModal: {
+        title: "Ignorer l’alerte",
+        subtitle: "Expliquez pourquoi cette alerte ne nécessite pas d’action.",
+        why: "Pourquoi ?",
+        comment: "Commentaire",
+        commentPlaceholder: "Précisez si besoin…",
+        addComment: "Ajouter un commentaire",
+        nextAlerts: "Prochaines alertes identiques",
+        scope: "Portée",
+        scopeService: "Ce service uniquement",
+        scopeDevice: "Tout le périphérique",
+        untilLabel: "Jusqu’à",
+        untilInvalid: "Choisissez une date/heure dans le futur",
+        cancel: "Annuler",
+        confirm: "Ignorer",
+        working: "En cours…",
+        reasons: {
+          false_positive: "Faux positif",
+          known: "Alerte connue",
+          threshold: "Seuil non pertinent",
+          handled_elsewhere: "Action prévue ailleurs",
+          no_action: "Pas d’action nécessaire",
+          other: "Autre"
+        },
+        exclusions: {
+          none: "Ignorer uniquement cette alerte",
+          h1: "Ignorer ce service pendant 1 heure",
+          h4: "4 heures",
+          h24: "24 heures",
+          custom: "Jusqu’à une date précise",
+          forever: "Toujours ignorer ce service"
+        }
+      },
+      maintenanceModal: {
+        title: "Mettre en maintenance",
+        subtitle: "Suspend les alertes et masque le périphérique du centre de supervision.",
+        scope: "Portée",
+        scopeService: "Ce service uniquement",
+        scopeDevice: "Tous les services de ce périphérique",
+        duration: "Durée",
+        m30: "30 min",
+        h1: "1 heure",
+        h4: "4 heures",
+        h8: "8 heures",
+        d1: "1 jour",
+        d3: "3 jours",
+        d7: "7 jours",
+        m1: "1 mois",
+        m3: "3 mois",
+        tonight: "Jusqu’à ce soir",
+        custom: "Jusqu’à une date/heure",
+        forever: "Indéterminée",
+        untilLabel: "Jusqu’à",
+        untilInvalid: "Choisissez une date/heure dans le futur",
+        reason: "Motif (obligatoire)",
+        reasonPlaceholder: "Maintenance serveur planifiée par le client…",
+        cancel: "Annuler",
+        confirm: "Mettre en maintenance",
+        working: "En cours…"
+      },
+      waitingPanel: {
+        emptyTitle: "Aucune maintenance active",
+        emptyText: "Les exclusions de service ou de périphérique apparaissent ici.",
+        colDevice: "Périphérique",
+        colServices: "Services",
+        colReason: "Motif",
+        colUntil: "Fin",
+        colActions: "Actions",
+        allServices: "Tous",
+        indefinite: "Indéterminée",
+        end: "Terminer"
+      },
+      maintenanceSidebar: {
+        title: "Périphériques en maintenance",
+        until: "Jusqu’au {date}",
+        indefinite: "Indéterminée",
+        emptyTitle: "Aucune maintenance",
+        emptyText: "Aucun périphérique en maintenance pour le moment.",
+        openDevice: "Ouvrir le périphérique",
+        end: "Terminer"
+      },
+      emptyTodoTitle: "Rien à traiter",
+      emptyTodoText: "Aucune alerte ouverte. Objectif du matin atteint.",
+      emptyInProgressTitle: "Rien en cours",
+      emptyInProgressText: "Aucune alerte prise en charge pour le moment.",
       showMuted: "Afficher les alertes en mute",
       mutedCount: "{count} en mute",
       diagnose: {
@@ -239,6 +345,7 @@ const SUPERVISION_COPY = {
       },
       columns: {
         alert: "Alerte",
+        device: "Périphérique",
         company: "Entreprise",
         domain: "Domaine",
         severity: "Sévérité",
@@ -246,14 +353,36 @@ const SUPERVISION_COPY = {
         when: "Date",
         actions: "Actions"
       },
+      severityLabels: {
+        critical: "Critique",
+        warning: "Warning",
+        info: "Info"
+      },
+      statusLabels: {
+        open: "À traiter",
+        acked: "En cours",
+        linked: "Ticket associé",
+        closed: "Fermée"
+      },
       toasts: {
         acked: "Alerte prise en charge",
         unacked: "Alerte rendue — plus personne n'est assigné",
         resolved: "Alerte résolue — déplacée dans l'historique",
         dismissed: "Alerte ignorée — déplacée dans l'historique",
+        resolvedSuspended: "Alerte résolue et périphérique suspendu",
+        dismissedSuspended: "Alerte ignorée et périphérique suspendu",
+        ignored: "Alerte ignorée",
+        maintenanceOk: "Maintenance enregistrée",
+        exclusionEnded: "Maintenance terminée",
+        exclusionFail: "Impossible d’enregistrer l’exclusion",
+        ackRequiredTicket: "Prenez d’abord l’alerte en charge avant de créer un ticket.",
+        ackRequiredResolve: "Prenez d’abord l’alerte en charge avant de la résoudre.",
         linked: "Ticket associé à l'alerte",
         actionFailed: "Action impossible sur l'alerte",
         supportFormRequired: "Configurez un formulaire support dans la règle d'alerte avant de créer un ticket.",
+        ticketCreated: "Ticket #{number} créé",
+        openTicket: "Ouvrir",
+        ticketNeedsForm: "Complétez le formulaire pour créer le ticket.",
         resyncOk: "Hôte resynchronisé",
         resyncFail: "Resync impossible",
         muted: "Alertes suspendues pour ce périphérique",
@@ -598,27 +727,27 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Monitoring center",
-          content: "Single queue of CheckMK monitoring alerts. Data comes from sync (Admin poller or Synchronize button). The device Supervision tab shows full service details."
+          content: "Morning triage for CheckMK alerts. Goal: 0 critical alerts in To handle."
         },
         tabs: {
           title: "Main views",
-          content: "Alerts = active queue (1 row ≈ 1 warning/critical service). History = resolved or dismissed alerts. Rules = enable critical / warning / no data per device type."
+          content: "Alerts = triage (To handle / In progress / Waiting). History = closed alerts. Rules = criteria per device family."
         },
         kpis: {
-          title: "Filters",
-          content: "Filter by severity (Critical, Warnings) and status (Open, Acknowledged, Linked). Click again to clear a filter."
+          title: "Triage views",
+          content: "To handle = morning decisions. In progress = acknowledged. Waiting = active maintenances. Critical / Warning filter the To handle view."
         },
         filters: {
           title: "Search",
           content: "Search a service, device or client in the queue."
         },
         queue: {
-          title: "Alert table",
-          content: "Each row is an active alert. Actions: acknowledge, support ticket, resolve. Open a row to go to the device and see all services."
+          title: "Alert queue",
+          content: "On To handle: Acknowledge or More (Ignore / Maintenance). On In progress: Resolve or Create ticket. Resync and diagnostic stay under More."
         },
         history: {
           title: "History",
-          content: "Alerts closed automatically (CheckMK back to OK) or manually, with the action timeline."
+          content: "Resolved, ignored, or auto-closed alerts after CheckMK returns to OK, with the action timeline."
         }
       }
     },
@@ -634,9 +763,9 @@ const SUPERVISION_COPY = {
       },
       coverage: {
         aria: "Supervision coverage by family",
-        title: "Coverage",
+        title: "Supervision coverage",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} · {monitored}/{total} monitored via an integration",
+        tooltip: "{label} · {monitored}/{total} monitored ({pct}%)",
         families: {
           Ordinateurs: "Computers",
           Internet: "Internet",
@@ -710,7 +839,7 @@ const SUPERVISION_COPY = {
         dismiss: "Dismiss the alert and move it to history",
         open: "Open the related record or details",
         resync: "Re-run CheckMK sync for this host",
-        mute: "Suspend alerts for this device (same as the equipment header)",
+        mute: "Suspend alerts for this device",
         unmute: "Re-enable alerts for this device",
         diagnose: "Open admin diagnostic for this alert"
       },
@@ -722,10 +851,14 @@ const SUPERVISION_COPY = {
       },
       mute: {
         title: "Device mute",
-        hint: "Same setting as the Alerts button on the equipment page.",
+        hint: "",
         hours2: "2 hours",
         tomorrow: "Until tomorrow 8am",
         hours24: "24 hours",
+        untilExact: "Until a specific date…",
+        untilLabel: "Date and time",
+        applyUntil: "Apply",
+        untilInvalid: "Pick a future date/time",
         disabled: "Disable alerts",
         unmute: "Re-enable alerts",
         muted: "Muted",
@@ -733,6 +866,108 @@ const SUPERVISION_COPY = {
         disabledBadge: "Alerts off",
         client: "Client suspended"
       },
+      triage: {
+        aria: "Triage views",
+        todo: "To handle",
+        inProgress: "In progress",
+        waiting: "Waiting",
+        history: "History"
+      },
+      moreMenu: {
+        open: "More",
+        ignore: "Ignore",
+        maintenance: "Put in maintenance",
+        unack: "Release",
+        technical: "Technical actions",
+        resync: "Re-run CheckMK sync",
+        diagnose: "Diagnostic",
+        openDevice: "Open device"
+      },
+      ignoreModal: {
+        title: "Ignore alert",
+        subtitle: "Explain why this alert does not need action.",
+        why: "Why?",
+        comment: "Comment",
+        commentPlaceholder: "Add details if needed…",
+        addComment: "Add a comment",
+        nextAlerts: "Identical future alerts",
+        scope: "Scope",
+        scopeService: "This service only",
+        scopeDevice: "Entire device",
+        untilLabel: "Until",
+        untilInvalid: "Pick a future date/time",
+        cancel: "Cancel",
+        confirm: "Ignore",
+        working: "Working…",
+        reasons: {
+          false_positive: "False positive",
+          known: "Known alert",
+          threshold: "Irrelevant threshold",
+          handled_elsewhere: "Handled elsewhere",
+          no_action: "No action needed",
+          other: "Other"
+        },
+        exclusions: {
+          none: "Ignore this alert only",
+          h1: "Ignore this service for 1 hour",
+          h4: "4 hours",
+          h24: "24 hours",
+          custom: "Until a specific date",
+          forever: "Always ignore this service"
+        }
+      },
+      maintenanceModal: {
+        title: "Put in maintenance",
+        subtitle: "Suspends alerts and hides the device from the supervision center.",
+        scope: "Scope",
+        scopeService: "This service only",
+        scopeDevice: "All services on this device",
+        duration: "Duration",
+        m30: "30 min",
+        h1: "1 hour",
+        h4: "4 hours",
+        h8: "8 hours",
+        d1: "1 day",
+        d3: "3 days",
+        d7: "7 days",
+        m1: "1 month",
+        m3: "3 months",
+        tonight: "Until tonight",
+        custom: "Until date/time",
+        forever: "Indefinite",
+        untilLabel: "Until",
+        untilInvalid: "Pick a future date/time",
+        reason: "Reason (required)",
+        reasonPlaceholder: "Scheduled client maintenance…",
+        cancel: "Cancel",
+        confirm: "Put in maintenance",
+        working: "Working…"
+      },
+      waitingPanel: {
+        emptyTitle: "No active maintenances",
+        emptyText: "Service or device exclusions appear here.",
+        colDevice: "Device",
+        colServices: "Services",
+        colReason: "Reason",
+        colUntil: "Ends",
+        colActions: "Actions",
+        allServices: "All",
+        indefinite: "Indefinite",
+        end: "End"
+      },
+      maintenanceSidebar: {
+        title: "Devices in maintenance",
+        until: "Until {date}",
+        indefinite: "Indefinite",
+        emptyTitle: "No maintenance",
+        emptyText: "No devices currently in maintenance.",
+        openDevice: "Open device",
+        end: "End"
+      },
+      emptyTodoTitle: "Nothing to handle",
+      emptyTodoText: "No open alerts. Morning triage goal reached.",
+      emptyInProgressTitle: "Nothing in progress",
+      emptyInProgressText: "No acknowledged alerts yet.",
       showMuted: "Show muted alerts",
       mutedCount: "{count} muted",
       diagnose: {
@@ -762,6 +997,7 @@ const SUPERVISION_COPY = {
       },
       columns: {
         alert: "Alert",
+        device: "Device",
         company: "Company",
         domain: "Domain",
         severity: "Severity",
@@ -769,14 +1005,36 @@ const SUPERVISION_COPY = {
         when: "Date",
         actions: "Actions"
       },
+      severityLabels: {
+        critical: "Critical",
+        warning: "Warning",
+        info: "Info"
+      },
+      statusLabels: {
+        open: "To handle",
+        acked: "In progress",
+        linked: "Linked ticket",
+        closed: "Closed"
+      },
       toasts: {
         acked: "Alert acknowledged",
         unacked: "Alert released — no longer assigned",
         resolved: "Alert resolved — moved to history",
         dismissed: "Alert dismissed — moved to history",
+        resolvedSuspended: "Alert resolved and device suspended",
+        dismissedSuspended: "Alert dismissed and device suspended",
+        ignored: "Alert ignored",
+        maintenanceOk: "Maintenance recorded",
+        exclusionEnded: "Maintenance ended",
+        exclusionFail: "Unable to save exclusion",
+        ackRequiredTicket: "Acknowledge the alert before creating a ticket.",
+        ackRequiredResolve: "Acknowledge the alert before resolving it.",
         linked: "Remediation linked to alert",
         actionFailed: "Could not update alert",
         supportFormRequired: "Configure a support form in the alert rule before creating a ticket.",
+        ticketCreated: "Ticket #{number} created",
+        openTicket: "Open",
+        ticketNeedsForm: "Complete the form to create the ticket.",
         resyncOk: "Host resynced",
         resyncFail: "Unable to resync host",
         muted: "Alerts suspended for this device",
@@ -1186,12 +1444,24 @@ const SUPERVISION_COPY = {
       },
       columns: {
         alert: "Alarm",
+        device: "Gerät",
         company: "Unternehmen",
         domain: "Bereich",
         severity: "Schweregrad",
         status: "Status",
         when: "Datum",
         actions: "Aktionen"
+      },
+      severityLabels: {
+        critical: "Kritisch",
+        warning: "Warning",
+        info: "Info"
+      },
+      statusLabels: {
+        open: "Offen",
+        acked: "Übernommen",
+        linked: "Mit Ticket",
+        closed: "Geschlossen"
       },
       toasts: {
         acked: "Alarm bestätigt",
@@ -1200,7 +1470,10 @@ const SUPERVISION_COPY = {
         dismissed: "Alarm ignoriert — in den Verlauf verschoben",
         linked: "Maßnahme mit Alarm verknüpft",
         actionFailed: "Alarm konnte nicht aktualisiert werden",
-        supportFormRequired: "Konfigurieren Sie ein Support-Formular in der Alarmregel, bevor Sie ein Ticket erstellen."
+        supportFormRequired: "Konfigurieren Sie ein Support-Formular in der Alarmregel, bevor Sie ein Ticket erstellen.",
+        ticketCreated: "Ticket #{number} erstellt",
+        openTicket: "Öffnen",
+        ticketNeedsForm: "Formular ausfüllen, um das Ticket zu erstellen."
       },
       detailBackups: "Backup-Details",
       detailContracts: "Verträge & Lizenzen",
@@ -1576,12 +1849,24 @@ const SUPERVISION_COPY = {
       },
       columns: {
         alert: "Allarme",
+        device: "Dispositivo",
         company: "Azienda",
         domain: "Dominio",
         severity: "Severità",
         status: "Stato",
         when: "Data",
         actions: "Azioni"
+      },
+      severityLabels: {
+        critical: "Critico",
+        warning: "Warning",
+        info: "Info"
+      },
+      statusLabels: {
+        open: "Aperto",
+        acked: "Preso in carico",
+        linked: "Con ticket",
+        closed: "Chiuso"
       },
       toasts: {
         acked: "Allarme preso in carico",
@@ -1590,7 +1875,10 @@ const SUPERVISION_COPY = {
         dismissed: "Allarme ignorato — spostato in cronologia",
         linked: "Rimedio collegato all'allarme",
         actionFailed: "Impossibile aggiornare l'allarme",
-        supportFormRequired: "Configura un modulo support nella regola di allarme prima di creare un ticket."
+        supportFormRequired: "Configura un modulo support nella regola di allarme prima di creare un ticket.",
+        ticketCreated: "Ticket #{number} creato",
+        openTicket: "Apri",
+        ticketNeedsForm: "Completa il modulo per creare il ticket."
       },
       detailBackups: "Dettaglio backup",
       detailContracts: "Dettaglio contratti e licenze",
@@ -1965,12 +2253,24 @@ const SUPERVISION_COPY = {
       },
       columns: {
         alert: "Alerta",
+        device: "Dispositivo",
         company: "Empresa",
         domain: "Dominio",
         severity: "Severidad",
         status: "Estado",
         when: "Fecha",
         actions: "Acciones"
+      },
+      severityLabels: {
+        critical: "Crítica",
+        warning: "Warning",
+        info: "Info"
+      },
+      statusLabels: {
+        open: "Abierta",
+        acked: "En curso",
+        linked: "Con ticket",
+        closed: "Cerrada"
       },
       toasts: {
         acked: "Alerta acusada",
@@ -1979,7 +2279,10 @@ const SUPERVISION_COPY = {
         dismissed: "Alerta ignorada — movida al historial",
         linked: "Remediación vinculada a la alerta",
         actionFailed: "No se pudo actualizar la alerta",
-        supportFormRequired: "Configure un formulario de soporte en la regla de alerta antes de crear un ticket."
+        supportFormRequired: "Configure un formulario de soporte en la regla de alerta antes de crear un ticket.",
+        ticketCreated: "Ticket #{number} creado",
+        openTicket: "Abrir",
+        ticketNeedsForm: "Complete el formulario para crear el ticket."
       },
       detailBackups: "Detalle backups",
       detailContracts: "Detalle contratos y licencias",

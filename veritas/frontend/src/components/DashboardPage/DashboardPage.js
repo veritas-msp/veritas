@@ -12,7 +12,6 @@ import DashboardExportModal from "./DashboardExportModal";
 import DashboardScheduleModal from "./DashboardScheduleModal";
 import AiBriefingPanel from "../Misc/AiBriefingPanel/AiBriefingPanel";
 import { generateDashboardBriefingAi } from "../../api/ai";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
@@ -193,51 +192,10 @@ export default function DashboardPage() {
   return <div className={`${mspStyles.mspPage} ${styles.dashboardPage} msp-page-insight`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero guideId="kpi-hero" eyebrow={copy.eyebrow} title={copy.title} subtitle={heroSubtitle} icon="mdi:chart-box-outline" actions={<>
-                <button type="button" className={styles.periodOpenBtn} onClick={() => setPeriodModalOpen(true)} aria-label={copy.periodButtonAria} data-guide="kpi-period">
-                  <Icon icon="mdi:calendar-range" aria-hidden />
-                  <span className={styles.periodOpenLabel}>{periodLabel}</span>
-                </button>
-                <div className={styles.exportMenuWrap} ref={exportMenuRef} data-guide="kpi-export">
-                  <SmartTooltip content={copy.export}>
-                    <button type="button" className={layout.iconBtn} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
-                      <Icon icon="mdi:export-variant" aria-hidden />
-                    </button>
-                  </SmartTooltip>
-                  {exportMenuOpen ? <div className={styles.exportMenu} role="menu">
-                      <button type="button" role="menuitem" onClick={() => {
-                    setExportMenuOpen(false);
-                    setExportModal("pdf");
-                  }}>
-                        <Icon icon="mdi:file-pdf-box" aria-hidden />
-                        {copy.exportPdf}
-                      </button>
-                      <button type="button" role="menuitem" onClick={() => {
-                    setExportMenuOpen(false);
-                    setExportModal("email");
-                  }}>
-                        <Icon icon="mdi:email-fast-outline" aria-hidden />
-                        {copy.exportEmail}
-                      </button>
-                    </div> : null}
-                </div>
-                <SmartTooltip content={copy.headerSchedule}>
-                  <button type="button" className={layout.iconBtn} onClick={() => setScheduleOpen(true)} aria-label={copy.headerScheduleAria}>
-                    <Icon icon="mdi:calendar-clock-outline" aria-hidden />
-                  </button>
-                </SmartTooltip>
-                <SmartTooltip content={copy.refresh}>
-                  <button type="button" className={layout.iconBtn} onClick={() => loadDashboard(periodFilter, scopeFilter, {
-                  silent: true
-                })} disabled={loading || refreshing} aria-label={copy.refresh}>
-                    <Icon icon="mdi:refresh" className={refreshing ? styles.spinner : undefined} aria-hidden />
-                  </button>
-                </SmartTooltip>
-              </>} />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{copy.title}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-              <div className={styles.contentToolbar}>
+              <div className={styles.contentToolbar} data-guide="kpi-hero">
                 <div className={`${mspStyles.mspTabBar} ${styles.toolbarTabs}`} role="tablist" aria-label={copy.tabsAria} data-guide="kpi-tabs">
                   {DASHBOARD_TABS.map(({
                 key,
@@ -247,8 +205,50 @@ export default function DashboardPage() {
                       {copy.tabs[key]}
                     </button>)}
                 </div>
-                <div data-guide="kpi-scope">
-                  <DashboardScopeFilter compact copy={copy.scopeFilter} value={scopeFilter} onChange={setScopeFilter} disabled={loading || refreshing} />
+                {heroSubtitle ? <p className={styles.toolbarMeta} title={heroSubtitle}>{heroSubtitle}</p> : null}
+                <div className={styles.toolbarActions}>
+                  <div data-guide="kpi-scope">
+                    <DashboardScopeFilter compact copy={copy.scopeFilter} value={scopeFilter} onChange={setScopeFilter} disabled={loading || refreshing} />
+                  </div>
+                  <button type="button" className={styles.periodOpenBtn} onClick={() => setPeriodModalOpen(true)} aria-label={copy.periodButtonAria} data-guide="kpi-period">
+                    <Icon icon="mdi:calendar-range" aria-hidden />
+                    <span className={styles.periodOpenLabel}>{periodLabel}</span>
+                  </button>
+                  <div className={styles.exportMenuWrap} ref={exportMenuRef} data-guide="kpi-export">
+                    <SmartTooltip content={copy.export}>
+                      <button type="button" className={layout.iconBtn} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
+                        <Icon icon="mdi:export-variant" aria-hidden />
+                      </button>
+                    </SmartTooltip>
+                    {exportMenuOpen ? <div className={styles.exportMenu} role="menu">
+                        <button type="button" role="menuitem" onClick={() => {
+                      setExportMenuOpen(false);
+                      setExportModal("pdf");
+                    }}>
+                          <Icon icon="mdi:file-pdf-box" aria-hidden />
+                          {copy.exportPdf}
+                        </button>
+                        <button type="button" role="menuitem" onClick={() => {
+                      setExportMenuOpen(false);
+                      setExportModal("email");
+                    }}>
+                          <Icon icon="mdi:email-fast-outline" aria-hidden />
+                          {copy.exportEmail}
+                        </button>
+                      </div> : null}
+                  </div>
+                  <SmartTooltip content={copy.headerSchedule}>
+                    <button type="button" className={layout.iconBtn} onClick={() => setScheduleOpen(true)} aria-label={copy.headerScheduleAria}>
+                      <Icon icon="mdi:calendar-clock-outline" aria-hidden />
+                    </button>
+                  </SmartTooltip>
+                  <SmartTooltip content={copy.refresh}>
+                    <button type="button" className={layout.iconBtn} onClick={() => loadDashboard(periodFilter, scopeFilter, {
+                    silent: true
+                  })} disabled={loading || refreshing} aria-label={copy.refresh}>
+                      <Icon icon="mdi:refresh" className={refreshing ? styles.spinner : undefined} aria-hidden />
+                    </button>
+                  </SmartTooltip>
                 </div>
               </div>
               <div className={styles.tabContent} role="tabpanel" data-guide="kpi-content">

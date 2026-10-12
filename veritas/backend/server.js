@@ -70,6 +70,7 @@ import equipmentMetaRouter from "./routes/equipment/equipmentMeta.js";
 import supervisionAlertRulesRouter from "./routes/supervision/alertRules.js";
 import monitoringAutomationRouter from "./routes/supervision/monitoringAutomation.js";
 import supervisionAlertsRouter from "./routes/supervision/alerts.js";
+import supervisionParkSnapshotsRouter from "./routes/supervision/parkSnapshots.js";
 import checkmkRouter from "./routes/integrations/checkmk.js";
 import hycuRouter from "./routes/integrations/hycu.js";
 import ovhRouter from "./routes/integrations/ovh.js";
@@ -185,6 +186,11 @@ app.use('/uploads/login-branding', (req, res, next) => {
   res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'");
   next();
 }, express.static('uploads/login-branding'));
+app.use('/uploads/report-branding', (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  next();
+}, express.static('uploads/report-branding'));
 app.use('/uploads/email-assets', (req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
@@ -274,6 +280,7 @@ app.use("/api/equipment", equipmentMetaRouter);
 app.use("/api/supervision/alert-rules", supervisionAlertRulesRouter);
 app.use("/api/supervision/monitoring-automation", monitoringAutomationRouter);
 app.use("/api/supervision/alerts", supervisionAlertsRouter);
+app.use("/api/supervision/park-snapshots", supervisionParkSnapshotsRouter);
 app.use("/api/checkmk", checkmkRouter);
 app.use("/api/hycu", hycuRouter);
 app.use("/api/unifi", requireProAuth, unifiRouter);

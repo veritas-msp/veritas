@@ -15,19 +15,22 @@ export function SubTabs({
   items,
   active,
   onChange,
-  fullWidth
+  fullWidth,
+  action
 }) {
-  return <div className={`${s.subTabs} ${fullWidth ? s.subTabsFull : ""}`} role="tablist">
-      {items.map(item => {
-      const tabKey = item.key ?? item.id;
-      const isLocked = Boolean(item.proOnly);
-      const isActive = active === tabKey && !isLocked;
-      return <button key={tabKey} type="button" role="tab" aria-selected={isActive} aria-disabled={isLocked || undefined} className={`${s.subTab} ${isActive ? s.subTabActive : ""} ${isLocked ? s.subTabProLocked : ""}`} onClick={() => onChange(tabKey)}>
-          {item.icon && <Icon icon={item.icon} className={s.subTabIcon} />}
-          <span className={s.subTabLabel}>{item.label}</span>
-          {isLocked ? <ProFeatureBadge variant="inline" className={s.subTabProBadge} /> : null}
-        </button>;
-    })}
+  const tabs = items.map(item => {
+    const tabKey = item.key ?? item.id;
+    const isLocked = Boolean(item.proOnly);
+    const isActive = active === tabKey && !isLocked;
+    return <button key={tabKey} type="button" role="tab" aria-selected={isActive} aria-disabled={isLocked || undefined} className={`${s.subTab} ${isActive ? s.subTabActive : ""} ${isLocked ? s.subTabProLocked : ""}`} onClick={() => onChange(tabKey)}>
+        {item.icon && <Icon icon={item.icon} className={s.subTabIcon} />}
+        <span className={s.subTabLabel}>{item.label}</span>
+        {isLocked ? <ProFeatureBadge variant="inline" className={s.subTabProBadge} /> : null}
+      </button>;
+  });
+  return <div className={`${s.subTabs} ${fullWidth ? s.subTabsFull : ""} ${action ? s.subTabsWithAction : ""}`.trim()} role="tablist">
+      {action ? <div className={s.subTabsList}>{tabs}</div> : tabs}
+      {action ? <div className={s.subTabsAction}>{action}</div> : null}
     </div>;
 }
 export function Card({
@@ -449,14 +452,18 @@ export function ChoiceGroup({
   onChange,
   options,
   variant = "cards",
-  ariaLabel
+  ariaLabel,
+  disabled = false
 }) {
-  const groupClass = [s.choiceGroup, variant === "segment" ? s.choiceGroupSegment : "", variant === "pills" ? s.choiceGroupPills : "", variant === "locale" ? s.choiceGroupLocale : "", variant === "theme" ? s.choiceGroupTheme : ""].filter(Boolean).join(" ");
-  return <div className={groupClass} role="radiogroup" aria-label={ariaLabel}>
+  const groupClass = [s.choiceGroup, variant === "segment" ? s.choiceGroupSegment : "", variant === "pills" ? s.choiceGroupPills : "", variant === "locale" ? s.choiceGroupLocale : "", variant === "theme" ? s.choiceGroupTheme : "", disabled ? s.choiceGroupDisabled : ""].filter(Boolean).join(" ");
+  return <div className={groupClass} role="radiogroup" aria-label={ariaLabel} aria-disabled={disabled || undefined}>
       {options.map(option => {
       const active = value === option.value;
-      const btnClass = [s.choiceBtn, active ? s.choiceBtnActive : "", variant === "segment" ? s.choiceBtnSegment : "", variant === "pills" ? s.choiceBtnPill : "", variant === "locale" ? s.choiceBtnLocale : "", variant === "theme" ? s.choiceBtnTheme : ""].filter(Boolean).join(" ");
-      return <button key={option.value} type="button" role="radio" aria-checked={active} className={btnClass} onClick={() => onChange(option.value)} title={option.title || option.label}>
+      const iconOnly = Boolean(option.icon) && !option.label && !option.subtitle && !option.flag && !option.flagIcon;
+      const btnClass = [s.choiceBtn, active ? s.choiceBtnActive : "", variant === "segment" ? s.choiceBtnSegment : "", variant === "pills" ? s.choiceBtnPill : "", variant === "locale" ? s.choiceBtnLocale : "", variant === "theme" ? s.choiceBtnTheme : "", iconOnly ? s.choiceBtnIconOnly : ""].filter(Boolean).join(" ");
+      return <button key={option.value} type="button" role="radio" aria-checked={active} disabled={disabled} className={btnClass} onClick={() => {
+        if (!disabled) onChange(option.value);
+      }} title={option.title || option.label}>
             {option.flagIcon ? <Icon icon={option.flagIcon} className={s.choiceBtnFlagIcon} aria-hidden /> : option.flag ? <span className={s.choiceBtnFlag} aria-hidden>{option.flag}</span> : null}
             {option.icon ? <Icon icon={option.icon} className={s.choiceBtnIcon} aria-hidden /> : null}
             {option.label ? <span className={s.choiceBtnLabel}>{option.label}</span> : null}
@@ -464,6 +471,20 @@ export function ChoiceGroup({
           </button>;
     })}
     </div>;
+}
+export function SegmentField({
+  label,
+  hint,
+  value,
+  onChange,
+  options,
+  disabled = false,
+  ariaLabel,
+  spanFull
+}) {
+  return <Field label={label} hint={hint} spanFull={spanFull}>
+      <ChoiceGroup variant="segment" value={value} onChange={onChange} options={options} disabled={disabled} ariaLabel={ariaLabel || label} />
+    </Field>;
 }
 export function Badge({
   children,

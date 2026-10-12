@@ -97,21 +97,47 @@ export async function recordTicketEmailMessage({
   collectorId = "",
   mailContext = {},
   direction = "inbound",
-  allowMissingTicket = false
+  allowMissingTicket = false,
+  sideConversationId = null
 } = {}) {
   const messageId = normalizeMessageId(mailContext?.messageId);
   const hasTicket = Boolean(ticketId);
   if (!messageId) return false;
   if (!hasTicket && !allowMissingTicket) return false;
-  const params = [hasTicket ? ticketId : null, String(collectorId || "").trim() || null, messageId, String(mailContext?.inReplyTo || "").trim() || null, String(mailContext?.references || "").trim() || null, String(mailContext?.subject || "").trim().slice(0, 500) || null, String(mailContext?.fromAddress || "").trim().toLowerCase() || null, String(direction || "inbound").trim() || "inbound"];
+  const sideId = sideConversationId || null;
+  const params = [
+    hasTicket ? ticketId : null,
+    String(collectorId || "").trim() || null,
+    messageId,
+    String(mailContext?.inReplyTo || "").trim() || null,
+    String(mailContext?.references || "").trim() || null,
+    String(mailContext?.subject || "").trim().slice(0, 500) || null,
+    String(mailContext?.fromAddress || "").trim().toLowerCase() || null,
+    String(direction || "inbound").trim() || "inbound",
+    sideId
+  ];
   const insertSql = `INSERT INTO v_b_ticket_email_messages
-      (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-     ON CONFLICT (message_id) DO NOTHING`;
+      (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, side_conversation_id, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+     ON CONFLICT (message_id) DO UPDATE SET
+       side_conversation_id = COALESCE(v_b_ticket_email_messages.side_conversation_id, EXCLUDED.side_conversation_id),
+       ticket_id = COALESCE(v_b_ticket_email_messages.ticket_id, EXCLUDED.ticket_id)`;
   try {
     await pool.query(insertSql, params);
   } catch (err) {
     const msg = String(err?.message || "");
+    // Column may not exist yet on older DBs — retry without side_conversation_id
+    if (err?.code === "42703" || /side_conversation_id/i.test(msg)) {
+      const legacyParams = params.slice(0, 8);
+      await pool.query(
+        `INSERT INTO v_b_ticket_email_messages
+          (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+         ON CONFLICT (message_id) DO NOTHING`,
+        legacyParams
+      );
+      return true;
+    }
     if (err?.code === "42P10" || /no unique or exclusion constraint matching the ON CONFLICT/i.test(msg)) {
       await ensureTicketEmailThreadSchema();
       try {
@@ -120,8 +146,8 @@ export async function recordTicketEmailMessage({
         // Last resort without ON CONFLICT after ensuring uniqueness failed.
         if (await isInboundEmailAlreadyProcessed(messageId)) return true;
         await pool.query(`INSERT INTO v_b_ticket_email_messages
-            (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`, params);
+            (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, side_conversation_id, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`, params);
       }
       return true;
     }

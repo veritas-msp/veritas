@@ -1,5 +1,42 @@
 import { getEquipmentDbId } from "../../utils/equipmentIdentity";
-import { resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
+import { fetchContacts } from "../../api/clients";
+import { createTicket, fetchSupportForm } from "../../api/tickets";
+import { linkSupervisionAlert } from "../../api/supervisionAlerts";
+import { resolveTicketContentFromSupportForm, stringifyFormValue } from "../../utils/supportFormTicketContent";
+import { serializeEquipmentInfo } from "../TicketPage/ticketEquipmentUtils";
+import { SUPERVISION_FAMILIES, resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
+
+const SUPERVISION_FAMILY_KEYS = new Set(SUPERVISION_FAMILIES.map(f => f.key));
+
+function resolveSupervisionFamilyKey(item, equipment) {
+  const familyFromMeta = String(item?.family || item?.meta?.family || "").trim().toLowerCase();
+  if (familyFromMeta === "contrats" || String(item?.domain || "").toLowerCase() === "contracts") {
+    return "contrats";
+  }
+  const fromType = resolveEquipmentFamilyKey(equipment?.type === "NAS" ? "Storage" : equipment?.type);
+  if (fromType) return fromType;
+  if (familyFromMeta && SUPERVISION_FAMILY_KEYS.has(familyFromMeta)) return familyFromMeta;
+  return null;
+}
+
+function findPrimaryContactForClient(contacts = [], clientId) {
+  if (clientId == null || clientId === "") return null;
+  const cid = String(clientId);
+  const forClient = (Array.isArray(contacts) ? contacts : []).filter(contact => {
+    if (!contact) return false;
+    if (String(contact.client_id) === cid) return true;
+    const memberships = Array.isArray(contact.clients) ? contact.clients : [];
+    return memberships.some(m => String(m.client_id ?? m.id) === cid);
+  });
+  if (!forClient.length) return null;
+  const byMembershipPrimary = forClient.find(c =>
+    (Array.isArray(c.clients) ? c.clients : []).some(m => String(m.client_id ?? m.id) === cid && m.is_primary === true)
+  );
+  if (byMembershipPrimary) return byMembershipPrimary;
+  const byPoste = forClient.find(c => String(c.poste || "").toLowerCase().includes("principal"));
+  if (byPoste) return byPoste;
+  return forClient[0];
+}
 
 function joinMeta(parts, clientName = "") {
   const client = String(clientName || "").trim().toLowerCase();
@@ -289,30 +326,33 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   const checkmkHost = equipment?.checkmkMapping?.checkmk_host_name
     || equipment?.checkmkMapping?.checkmkHostName
     || equipment?.checkmk_host_name
+    || item?.hostName
     || item?.meta?.hostName
     || null;
+  const deviceName =
+    equipment?.name ||
+    item?.alertState?.meta?.equipmentName ||
+    item?.meta?.equipmentName ||
+    null;
+  const familyKey = resolveSupervisionFamilyKey(item, equipment);
 
   const lines = [];
   if (item?.title) lines.push(`Alerte : ${item.title}`);
   if (item?.severity) lines.push(`Sévérité : ${String(item.severity)}`);
   if (item?.clientName) lines.push(`Entreprise : ${item.clientName}`);
-  if (equipment?.name) lines.push(`Périphérique : ${equipment.name}`);
+  if (deviceName) lines.push(`Périphérique : ${deviceName}`);
   if (equipment?.type) lines.push(`Type : ${equipment.type}`);
-  if (equipment?.ip) lines.push(`IP : ${equipment.ip}`);
+  if (item?.family || familyKey) lines.push(`Famille : ${equipment?.type || item?.family || familyKey}`);
+  if (item?.ip || equipment?.ip) lines.push(`IP : ${item?.ip || equipment?.ip}`);
   if (checkmkHost) lines.push(`Hôte CheckMK : ${checkmkHost}`);
   if (item?.subtitle) lines.push(`Contexte : ${item.subtitle}`);
   if (item?.label && item.label !== item.title) lines.push(`Détail : ${item.label}`);
   lines.push("", "Ticket créé depuis le centre de supervision.");
 
-  const title = item?.ticketSubject || [equipment?.name, item?.title].filter(Boolean).join(" — ") || "";
+  const title = item?.ticketSubject || [deviceName, item?.title].filter(Boolean).join(" — ") || "";
   const description = lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000);
 
-  const criterionKey = String(item?.criterionKey || item?.meta?.criterionKey || "").trim();
-  const familyFromMeta = String(item?.family || item?.meta?.family || "").trim().toLowerCase();
-  const familyKey =
-    familyFromMeta === "contrats" || String(item?.domain || "").toLowerCase() === "contracts"
-      ? "contrats"
-      : resolveEquipmentFamilyKey(equipment?.type === "NAS" ? "Storage" : equipment?.type);
+  const criterionKey = String(item?.criterionKey || item?.meta?.criterionKey || item?.alertState?.meta?.criterionKey || "").trim();
   const rule = familyKey && criterionKey && rules ? rules?.[familyKey]?.[criterionKey] : null;
   const supportFormId = rule?.supportFormId ? String(rule.supportFormId) : null;
   const subjectFieldKey = rule?.subjectFieldKey ? String(rule.subjectFieldKey) : null;
@@ -328,6 +368,9 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
     description,
     category: "monitoring",
     preferPrimaryContact: true,
+    familyKey,
+    criterionKey: criterionKey || null,
+    rule: rule || null,
     ...(supportFormId
       ? {
           supportFormId,
@@ -339,4 +382,150 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
         }
       : {})
   };
+}
+
+/**
+ * One-click support ticket from a supervision alert.
+ * @returns {{ ticket, alert, prefill } | { needsManual: true, prefill, reason }}
+ */
+export async function createSupervisionSupportTicket(item, rules = null) {
+  const prefill = buildSupervisionSupportTicketPrefill(item, rules);
+  if (!prefill?.supportFormId) {
+    return { needsManual: true, prefill, reason: "support_form_required" };
+  }
+
+  const form = await fetchSupportForm(prefill.supportFormId);
+  if (!form || form.enabled === false) {
+    return { needsManual: true, prefill, reason: "support_form_unavailable" };
+  }
+
+  const fields = Array.isArray(form.fields) ? form.fields.filter(field => field?.enabled !== false) : [];
+  const values = { ...(prefill.supportFormValues || {}) };
+  const clientId = prefill.clientId;
+  const equipmentId = prefill.equipmentId;
+  const equipment = item?.equipment || null;
+  const deviceName =
+    equipment?.name ||
+    item?.alertState?.meta?.equipmentName ||
+    item?.meta?.equipmentName ||
+    null;
+
+  for (const field of fields) {
+    const key = field?.fieldKey;
+    if (!key || stringifyFormValue(values[key])) continue;
+    const type = String(field.fieldType || "").toLowerCase();
+    if (type === "client" && clientId != null) values[key] = clientId;
+    else if (type === "equipment" && equipmentId) values[key] = equipmentId;
+    else if (type === "text" || type === "textarea" || type === "string") {
+      // already mapped via subject/description keys when configured
+    }
+  }
+
+  // Ensure mapped subject/description keys are filled even if rule keys were empty but auto-detected later.
+  const resolvedPreview = resolveTicketContentFromSupportForm({
+    fields,
+    values,
+    displayValues: values,
+    formLabel: form.label,
+    fallbackTitle: prefill.title,
+    fallbackDescription: prefill.description,
+    subjectFieldKey: prefill.subjectFieldKey,
+    descriptionFieldKey: prefill.descriptionFieldKey
+  });
+  if (resolvedPreview.subjectFieldKey && !stringifyFormValue(values[resolvedPreview.subjectFieldKey])) {
+    values[resolvedPreview.subjectFieldKey] = resolvedPreview.title;
+  }
+  if (resolvedPreview.descriptionFieldKey && !stringifyFormValue(values[resolvedPreview.descriptionFieldKey])) {
+    values[resolvedPreview.descriptionFieldKey] = resolvedPreview.description;
+  }
+
+  const missingRequired = fields.filter(field => {
+    if (!field?.required || !field.fieldKey) return false;
+    const type = String(field.fieldType || "").toLowerCase();
+    if (type === "section" || type === "file") return false;
+    return !stringifyFormValue(values[field.fieldKey]);
+  });
+  if (missingRequired.length) {
+    return {
+      needsManual: true,
+      prefill: {
+        ...prefill,
+        supportFormValues: values,
+        subjectFieldKey: resolvedPreview.subjectFieldKey || prefill.subjectFieldKey,
+        descriptionFieldKey: resolvedPreview.descriptionFieldKey || prefill.descriptionFieldKey
+      },
+      reason: "required_fields",
+      missingFields: missingRequired.map(f => f.label || f.fieldKey)
+    };
+  }
+
+  let requesterContactId = null;
+  if (prefill.preferPrimaryContact && clientId != null) {
+    try {
+      const contacts = await fetchContacts(clientId);
+      const primary = findPrimaryContactForClient(contacts, clientId);
+      if (primary?.id) requesterContactId = primary.id;
+    } catch {
+      // optional
+    }
+  }
+
+  const fieldLabels = Object.fromEntries(
+    fields.filter(field => field?.fieldKey).map(field => [field.fieldKey, String(field.label || "").trim() || field.fieldKey])
+  );
+  const displayValues = Object.fromEntries(
+    Object.entries(values).map(([key, raw]) => [key, stringifyFormValue(raw)])
+  );
+  const resolved = resolveTicketContentFromSupportForm({
+    fields,
+    values,
+    displayValues,
+    formLabel: form.label,
+    fallbackTitle: prefill.title,
+    fallbackDescription: prefill.description,
+    subjectFieldKey: prefill.subjectFieldKey,
+    descriptionFieldKey: prefill.descriptionFieldKey
+  });
+
+  const supportFormData = {
+    formId: form.id,
+    formKey: form.key,
+    formLabel: form.label,
+    kind: form.kind,
+    categorySlug: form.categorySlug,
+    values,
+    displayValues,
+    fieldLabels
+  };
+
+  const equipmentInfo = serializeEquipmentInfo({
+    concerned: Boolean(equipmentId || deviceName),
+    source: equipmentId ? "veritas" : "external",
+    equipmentId,
+    name: deviceName,
+    type: equipment?.type || item?.family || "",
+    clientId
+  });
+
+  const created = await createTicket({
+    title: resolved.title,
+    description: resolved.description,
+    priority: item?.severity === "critical" ? "high" : "normal",
+    status: "new",
+    type: supportFormData.kind || "incident",
+    category: String(form.categorySlug || prefill.category || "monitoring").trim(),
+    channel: "web",
+    clientId: clientId || null,
+    requesterUserId: null,
+    requesterContactId,
+    equipmentInfo,
+    supportFormData
+  });
+
+  const alert = await linkSupervisionAlert(item, {
+    linkedTicketKind: "support",
+    linkedTicketId: created?.id || created?.ticketId || null
+  });
+
+  return { ticket: created, alert, prefill };
 }

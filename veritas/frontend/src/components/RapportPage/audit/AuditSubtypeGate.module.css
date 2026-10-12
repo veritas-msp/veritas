@@ -1,0 +1,189 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1;
+  min-height: 0;
+  padding: 0.85rem 1.25rem 0;
+  overflow: auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 2px 12px rgba(11, 33, 56, 0.04);
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.cardHint {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  align-content: start;
+  overflow: auto;
+  min-height: 0;
+  padding: 0.1rem 0;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.95rem 0.9rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow-soft, 0 2px 10px rgba(11, 33, 56, 0.04));
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.option:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-surface-2, #f7f9fc);
+  box-shadow: 0 4px 14px rgba(43, 95, 171, 0.12);
+}
+
+.optionSelected {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  box-shadow: 0 0 0 1px var(--msp-accent, #2b5fab);
+}
+
+.option:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.optionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 11px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.optionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.optionTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.optionDesc {
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.optionCheck {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  font-size: 1.15rem;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.optionSelected .optionCheck {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.85rem 1.25rem 1.15rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-left: auto;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+  }
+}
+
+:global(html.dark) .card,
+:global(html.dark) .option {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .cardTitle,
+:global(html.dark) .optionTitle {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .cardHint,
+:global(html.dark) .optionDesc {
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .optionSelected,
+:global(html.dark) .option:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 12%, var(--msp-surface, #1a2540));
+  border-color: var(--msp-accent, #5a9de0);
+}

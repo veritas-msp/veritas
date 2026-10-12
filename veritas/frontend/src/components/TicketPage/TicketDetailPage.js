@@ -11,7 +11,6 @@ import heroStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import styles from "./TicketDetailPage.module.css";
 import fs from "./TicketCreatePage.module.css";
 import SmartTooltip from "../SmartTooltip";
-import ClientOnboardingBadge from "../Misc/ClientOnboardingBadge/ClientOnboardingBadge";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
 import TicketExclusionModal from "./TicketExclusionModal";
 import TicketSplitModal from "./TicketSplitModal";
@@ -30,13 +29,15 @@ import TicketAiEnrichMenu from "./TicketAiEnrichMenu";
 import TicketTagSuggestField from "./TicketTagSuggestField";
 import { createEvent, updateEvent, deleteEvent, fetchEvents } from "../../api/events";
 import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
-import { addTicketAssignee, addTicketAssigneeTeam, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketAssigneeTeam, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
+import { addTicketAssignee, addTicketAssigneeTeam, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, createTicketSideConversation, deleteTicket, fetchTicketCategories, fetchTicket, fetchTicketSideConversations, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketAssigneeTeam, removeTicketWatcher, replyTicketSideConversation, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketSideConversationStatus, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
 import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi, suggestTicketPriorityAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
 import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, htmlContainsInlineImage } from "../../utils/ticketEditorImages";
 import { contentLooksLikeHtml, isIncomingEmailContent } from "../../utils/incomingEmailContent";
+import { isChatOutboundComment, isClientResponseComment } from "../../utils/ticketChatLayout";
 import IncomingEmailMessage from "./IncomingEmailMessage";
+import TicketDetailPageSkeleton from "./TicketDetailPageSkeleton";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
 import { fetchActiveUsers, fetchCurrentUser } from "../../api/users";
@@ -66,7 +67,7 @@ import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault
 import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries } from "../../utils/salesTicketUtils";
 import { extractSupportFormSubjectTitle, pickTicketDisplayTitle } from "../../utils/supportFormTicketContent";
 import { formatLinkedEquipmentEventLabel, getEquipmentPickerLabel, getEquipmentSearchText, mapClientEquipmentsForTicketLink } from "./ticketEquipmentUtils";
-import { getContactClientOptions, getContactSiteOptions, resolveSiteLabel } from "./ticketContactClientUtils";
+import { getContactClientOptions, getContactSiteOptions } from "./ticketContactClientUtils";
 import TicketLinkedEquipmentQuickActions from "./TicketLinkedEquipmentQuickActions";
 import { getLocalizedSolutionCatalogLabel } from "./solutionCatalogI18n";
 import { interpolate } from "../../i18n/translate";
@@ -76,6 +77,7 @@ import { getTicketSatisfactionCriteria } from "../../i18n/ticketSatisfactionCrit
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
 import SalesFormFieldValue from "./SalesFormFieldValue";
+import SuggestionAutocomplete from "../shared/SuggestionAutocomplete/SuggestionAutocomplete";
 const CONTRACT_FACT_STATUS_CLASS = {
   active: fs.contractFact_active,
   expiring: fs.contractFact_expiring,
@@ -261,13 +263,15 @@ function buildSideConversationsFromComments(comments = []) {
     const existing = map.get(event.id) || {
       id: event.id,
       team: event.team,
+      recipientType: event.team === "external" ? "prestataire" : "email",
       subject: event.subject,
       to: event.to,
       cc: event.cc,
       status: "open",
       createdAt: event.createdAt || comment?.created_at || new Date().toISOString(),
       updatedAt: comment?.created_at || new Date().toISOString(),
-      messages: []
+      messages: [],
+      legacy: true
     };
     const next = {
       ...existing,
@@ -288,6 +292,53 @@ function buildSideConversationsFromComments(comments = []) {
     map.set(event.id, next);
   });
   return Array.from(map.values()).sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
+}
+
+function mapApiSideConversation(conv) {
+  if (!conv) return null;
+  const toList = Array.isArray(conv.to) ? conv.to : parseAddressListLoose(conv.to);
+  const ccList = Array.isArray(conv.cc) ? conv.cc : parseAddressListLoose(conv.cc);
+  return {
+    id: conv.id,
+    team: conv.recipientType || "email",
+    recipientType: conv.recipientType || "email",
+    recipientRefId: conv.recipientRefId || null,
+    recipientLabel: conv.recipientLabel || null,
+    subject: conv.subject || "",
+    to: toList.join(", "),
+    cc: ccList.join(", "),
+    status: conv.status || "open",
+    threadToken: conv.threadToken || null,
+    createdAt: conv.createdAt,
+    updatedAt: conv.updatedAt,
+    legacy: false,
+    messages: (conv.messages || []).map(msg => ({
+      id: msg.id,
+      author: msg.author || (msg.direction === "inbound" ? "Externe" : "Vous"),
+      createdAt: msg.createdAt,
+      content: msg.content || msg.body || "",
+      direction: msg.direction || "outbound",
+      sendStatus: msg.sendStatus || null
+    }))
+  };
+}
+
+function parseAddressListLoose(value) {
+  if (Array.isArray(value)) return value.map(v => String(v || "").trim()).filter(Boolean);
+  const raw = String(value || "").trim();
+  if (!raw) return [];
+  return raw.split(/[,;]+/).map(v => v.trim()).filter(Boolean);
+}
+
+function mergeSideConversations(apiList = [], legacyList = []) {
+  const byId = new Map();
+  for (const conv of legacyList) {
+    if (conv?.id) byId.set(String(conv.id), conv);
+  }
+  for (const conv of apiList) {
+    if (conv?.id) byId.set(String(conv.id), conv);
+  }
+  return Array.from(byId.values()).sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime());
 }
 function parseLinkedEquipmentEvent(content) {
   const text = String(content || "");
@@ -514,15 +565,6 @@ function isUserEditableCommentContent(content, copy) {
   if (text.startsWith("[Email entrant]")) return false;
   if (text.startsWith("[Macro ")) return false;
   return true;
-}
-function isClientResponseComment(comment) {
-  if (!comment || comment.is_internal) return false;
-  const content = String(comment.content || "").trim();
-  if (content.startsWith("[WhatsApp]")) return true;
-  if (content.startsWith("[Email entrant]")) return true;
-  const authorRole = String(comment.author_role || comment.authorRole || "").toLowerCase();
-  if (authorRole === "client") return true;
-  return false;
 }
 function isCommentEdited(comment) {
   if (!comment?.updated_at) return false;
@@ -1284,7 +1326,8 @@ export default function TicketDetailPage({
   const [linkRequesterEmailModalOpen, setLinkRequesterEmailModalOpen] = useState(false);
   const [orphanRequesterChoiceOpen, setOrphanRequesterChoiceOpen] = useState(false);
   const [sideConversation, setSideConversation] = useState({
-    team: "commercial",
+    recipientType: "email",
+    recipientRefId: "",
     subject: "",
     to: "",
     cc: "",
@@ -1297,6 +1340,7 @@ export default function TicketDetailPage({
   const [sideConversations, setSideConversations] = useState([]);
   const [activeSideConversationId, setActiveSideConversationId] = useState(null);
   const [sideReplyDraft, setSideReplyDraft] = useState("");
+  const [sideConversationBusy, setSideConversationBusy] = useState(false);
   const commentEditorRef = useRef(null);
   const detailAbortRef = useRef(null);
   const resolveAfterReplyRef = useRef(false);
@@ -1304,6 +1348,16 @@ export default function TicketDetailPage({
   const commentEditEditorRef = useRef(null);
   const timelineRef = useRef(null);
   const [showTimelineScrollTop, setShowTimelineScrollTop] = useState(false);
+  const [justSentCommentIds, setJustSentCommentIds] = useState([]);
+  const [metaOpenCommentKey, setMetaOpenCommentKey] = useState(null);
+  const justSentTimersRef = useRef(new Map());
+  const toggleCommentMeta = useCallback(event => {
+    const key = event?.currentTarget?.dataset?.metaKey;
+    if (!key) return;
+    const target = event?.target;
+    if (target?.closest?.("button, a, input, textarea, select, label, [contenteditable='true']")) return;
+    setMetaOpenCommentKey(prev => (prev === key ? null : key));
+  }, []);
   const ticketOptionsWrapRef = useRef(null);
   const ticketOptionsMenuRef = useRef(null);
   const [ticketOptionsMenuStyle, setTicketOptionsMenuStyle] = useState(null);
@@ -1563,6 +1617,10 @@ export default function TicketDetailPage({
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => () => {
+    justSentTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
+    justSentTimersRef.current.clear();
+  }, []);
   const refreshTicketHistory = useCallback(async ({
     showSpinner = false
   } = {}) => {
@@ -1743,6 +1801,18 @@ export default function TicketDetailPage({
     [isPro, ticket, vaultArchiveCopy]
   );
 
+  const markCommentJustSent = useCallback(commentId => {
+    const key = String(commentId || "");
+    if (!key) return;
+    setJustSentCommentIds(prev => prev.includes(key) ? prev : [...prev, key]);
+    const existingTimer = justSentTimersRef.current.get(key);
+    if (existingTimer) window.clearTimeout(existingTimer);
+    const timerId = window.setTimeout(() => {
+      setJustSentCommentIds(prev => prev.filter(id => id !== key));
+      justSentTimersRef.current.delete(key);
+    }, 420);
+    justSentTimersRef.current.set(key, timerId);
+  }, []);
   const submitComment = async () => {
     const draftContentRaw = String(commentDraft || "").trim();
     const extracted = extractInlineDataImagesFromHtml(draftContentRaw);
@@ -1754,44 +1824,68 @@ export default function TicketDetailPage({
     const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
     try {
       copy.validateAttachmentFiles(draftFiles);
+    } catch (error) {
+      toast.error(error.message || copy.toasts.commentAddError);
+      return;
+    }
+    const optimisticId = `pending-${Date.now()}`;
+    const optimisticComment = {
+      id: optimisticId,
+      _clientKey: optimisticId,
+      author_name: currentUserDisplayName,
+      author_user_id: currentUserId || null,
+      content: draftContent,
+      is_internal: draftInternal,
+      created_at: new Date().toISOString(),
+      attachments: draftFiles.map((f, idx) => ({
+        id: `${optimisticId}-${idx}`,
+        name: f.name,
+        filename: f.name,
+        url: "",
+        path: ""
+      })),
+      _pending: true
+    };
+    setTicket(prev => prev ? {
+      ...prev,
+      comments: [...(prev.comments || []), optimisticComment],
+      updated_at: new Date().toISOString()
+    } : prev);
+    markCommentJustSent(optimisticId);
+    setCommentDraft("");
+    if (commentEditorRef.current) commentEditorRef.current.innerHTML = "";
+    setCommentInternal(false);
+    setAttachmentFiles([]);
+    resetVaultArchiveOptions();
+    try {
       let createdComment = null;
       if (draftFiles.length > 0) {
         createdComment = await addTicketCommentWithAttachments(ticketId, {
           content: draftContent,
-          isInternal: commentInternal,
+          isInternal: draftInternal,
           files: draftFiles
         });
       } else {
         createdComment = await addTicketComment(ticketId, draftContent, draftInternal);
       }
+      const nextComment = {
+        id: createdComment?.id || optimisticId,
+        _clientKey: optimisticId,
+        author_name: createdComment?.author_name || currentUserDisplayName,
+        author_user_id: createdComment?.author_user_id || currentUserId || null,
+        content: createdComment?.content || draftContent,
+        is_internal: typeof createdComment?.is_internal === "boolean" ? createdComment.is_internal : draftInternal,
+        created_at: createdComment?.created_at || optimisticComment.created_at,
+        attachments: Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0 ? createdComment.attachments.map(normalizeAttachment).filter(Boolean) : optimisticComment.attachments
+      };
       setTicket(prev => {
         if (!prev) return prev;
-        const nextComment = {
-          id: createdComment?.id || `local-${Date.now()}`,
-          author_name: createdComment?.author_name || currentUserDisplayName,
-          author_user_id: createdComment?.author_user_id || currentUserId || null,
-          content: createdComment?.content || draftContent,
-          is_internal: typeof createdComment?.is_internal === "boolean" ? createdComment.is_internal : draftInternal,
-          created_at: createdComment?.created_at || new Date().toISOString(),
-          attachments: Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0 ? createdComment.attachments.map(normalizeAttachment).filter(Boolean) : draftFiles.map((f, idx) => ({
-            id: `${Date.now()}-${idx}`,
-            name: f.name,
-            filename: f.name,
-            url: "",
-            path: ""
-          }))
-        };
         return {
           ...prev,
-          comments: [...(prev.comments || []), nextComment],
+          comments: (prev.comments || []).map(comment => String(comment.id) === optimisticId || comment._clientKey === optimisticId ? nextComment : comment),
           updated_at: new Date().toISOString()
         };
       });
-      setCommentDraft("");
-      if (commentEditorRef.current) commentEditorRef.current.innerHTML = "";
-      setCommentInternal(false);
-      setAttachmentFiles([]);
-      resetVaultArchiveOptions();
       toast.success(copy.toasts.replySent);
       emitNotificationsUpdated();
       notifyWhatsAppDelivery(createdComment?.whatsappDelivery, copy);
@@ -1799,6 +1893,14 @@ export default function TicketDetailPage({
         await maybeArchiveAttachmentsToVault(vaultEntries);
       }
     } catch (error) {
+      setTicket(prev => prev ? {
+        ...prev,
+        comments: (prev.comments || []).filter(comment => String(comment.id) !== optimisticId)
+      } : prev);
+      setCommentDraft(draftContentRaw);
+      if (commentEditorRef.current) commentEditorRef.current.innerHTML = draftContentRaw;
+      setCommentInternal(draftInternal);
+      setAttachmentFiles(draftFiles);
       toast.error(error.message || copy.toasts.commentAddError);
     }
   };
@@ -1810,7 +1912,7 @@ export default function TicketDetailPage({
   const showConsumeCreditOption = supportCredit?.eligible && !supportCredit?.consumed && selectedSubmitAction === "solved" && !canResolveWithValidation;
   const showRefundCreditOption = supportCredit?.eligible && supportCredit?.consumed && ["resolved", "closed"].includes(String(normalizedTicketStatus || "")) && selectedSubmitAction !== "solved";
   const applyStatusWithFallback = async (targetStatus, creditOptions = {}) => {
-    if (targetStatus === "open") return;
+    if (targetStatus === "open") return null;
     const statusMap = {
       pending: "in_progress",
       on_hold: "pending",
@@ -1818,8 +1920,34 @@ export default function TicketDetailPage({
     };
     const mappedStatus = statusMap[targetStatus] || targetStatus;
     await updateTicketStatus(ticketId, mappedStatus, "", creditOptions);
-    void refreshTicketHistory();
+    return mappedStatus;
   };
+  const softSyncTicketAfterSend = useCallback(async () => {
+    if (!ticketId) return;
+    try {
+      const ticketRes = await fetchTicket(ticketId);
+      setTicket(prev => {
+        if (!prev) return hydrateTicketCommentsWithAttachments(ticketRes);
+        return {
+          ...prev,
+          status: ticketRes.status ?? prev.status,
+          supportCredit: ticketRes.supportCredit ?? prev.supportCredit,
+          resolutionValidation: ticketRes.resolutionValidation ?? prev.resolutionValidation,
+          activityHistory: Array.isArray(ticketRes.activityHistory) ? ticketRes.activityHistory : prev.activityHistory,
+          statusHistory: Array.isArray(ticketRes.statusHistory) ? ticketRes.statusHistory : prev.statusHistory,
+          updated_at: ticketRes.updated_at ?? prev.updated_at
+        };
+      });
+      if (ticketRes?.status != null) {
+        setEditForm(prev => ({
+          ...prev,
+          status: ticketRes.status === "open" ? "new" : ticketRes.status
+        }));
+      }
+    } catch (_) {
+      // silent background sync
+    }
+  }, [ticketId]);
   const submitConversationUpdate = async targetStatus => {
     if (!ticketId) return;
     const draftContentRaw = String(commentDraft || "").trim();
@@ -1830,20 +1958,55 @@ export default function TicketDetailPage({
       toast.error(copy.toasts.submitNeedMessage);
       return false;
     }
-    setSubmittingStatus(targetStatus);
-    const draftInternal = commentInternal;
     try {
       copy.validateAttachmentFiles(draftFiles);
-      const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
+    } catch (error) {
+      toast.error(error.message || copy.toasts.submitError);
+      return false;
+    }
+    setSubmittingStatus(targetStatus);
+    const draftInternal = commentInternal;
+    const resolvedContent = resolveTemplateVariables(extracted.html);
+    const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
+    const optimisticId = `pending-${Date.now()}`;
+    const optimisticComment = {
+      id: optimisticId,
+      _clientKey: optimisticId,
+      author_name: currentUserDisplayName,
+      author_user_id: currentUserId || null,
+      content: resolvedContent,
+      is_internal: draftInternal,
+      created_at: new Date().toISOString(),
+      attachments: draftFiles.map((f, idx) => ({
+        id: `${optimisticId}-${idx}`,
+        name: f.name,
+        filename: f.name,
+        url: "",
+        path: ""
+      })),
+      _pending: true
+    };
+    setTicket(prev => prev ? {
+      ...prev,
+      comments: [...(prev.comments || []), optimisticComment],
+      updated_at: new Date().toISOString()
+    } : prev);
+    markCommentJustSent(optimisticId);
+    setCommentDraft("");
+    if (commentEditorRef.current) commentEditorRef.current.innerHTML = "";
+    setCommentInternal(false);
+    setAttachmentFiles([]);
+    resetVaultArchiveOptions();
+    try {
       let commentResult = null;
       if (draftFiles.length > 0) {
         commentResult = await addTicketCommentWithAttachments(ticketId, {
-          content: resolveTemplateVariables(extracted.html),
-          isInternal: commentInternal,
+          content: resolvedContent,
+          isInternal: draftInternal,
           files: draftFiles
         });
       } else {
-        commentResult = await addTicketComment(ticketId, resolveTemplateVariables(extracted.html), commentInternal);
+        commentResult = await addTicketComment(ticketId, resolvedContent, draftInternal);
       }
       notifyWhatsAppDelivery(commentResult?.whatsappDelivery, copy);
       const creditOptions = {};
@@ -1861,23 +2024,54 @@ export default function TicketDetailPage({
       if (showRefundCreditOption && refundSupportCredit) {
         creditOptions.refundSupportCredit = true;
       }
-      await applyStatusWithFallback(targetStatus, creditOptions);
-      setCommentDraft("");
-      if (commentEditorRef.current) commentEditorRef.current.innerHTML = "";
-      setCommentInternal(false);
-      setAttachmentFiles([]);
-      resetVaultArchiveOptions();
+      const mappedStatus = await applyStatusWithFallback(targetStatus, creditOptions);
+      const nextComment = {
+        id: commentResult?.id || optimisticId,
+        _clientKey: optimisticId,
+        author_name: commentResult?.author_name || currentUserDisplayName,
+        author_user_id: commentResult?.author_user_id || currentUserId || null,
+        content: commentResult?.content || resolvedContent,
+        is_internal: typeof commentResult?.is_internal === "boolean" ? commentResult.is_internal : draftInternal,
+        created_at: commentResult?.created_at || optimisticComment.created_at,
+        attachments: Array.isArray(commentResult?.attachments) && commentResult.attachments.length > 0 ? commentResult.attachments.map(normalizeAttachment).filter(Boolean) : optimisticComment.attachments
+      };
+      setTicket(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          comments: (prev.comments || []).map(comment => String(comment.id) === optimisticId || comment._clientKey === optimisticId ? nextComment : comment),
+          ...(mappedStatus ? {
+            status: mappedStatus
+          } : {}),
+          updated_at: new Date().toISOString()
+        };
+      });
+      if (mappedStatus) {
+        setEditForm(prev => ({
+          ...prev,
+          status: mappedStatus === "open" ? "new" : mappedStatus
+        }));
+      }
       toast.success(copy.toasts.messageSentStatusUpdated);
+      emitNotificationsUpdated();
       if (vaultEntries.length > 0) {
         await maybeArchiveAttachmentsToVault(vaultEntries);
       }
-      await loadDetail();
+      void softSyncTicketAfterSend();
       if (!draftInternal && !isSalesTicketDetail) {
         await advanceToNextRandomTicket(onNavigate, ticketId);
         setPlayMode(isTicketPlayModeEnabled());
       }
       return true;
     } catch (error) {
+      setTicket(prev => prev ? {
+        ...prev,
+        comments: (prev.comments || []).filter(comment => String(comment.id) !== optimisticId)
+      } : prev);
+      setCommentDraft(draftContentRaw);
+      if (commentEditorRef.current) commentEditorRef.current.innerHTML = draftContentRaw;
+      setCommentInternal(draftInternal);
+      setAttachmentFiles(draftFiles);
       toast.error(error.message || copy.toasts.submitError);
       return false;
     } finally {
@@ -2902,7 +3096,8 @@ export default function TicketDetailPage({
 
   const resetSideConversationForm = useCallback(() => {
     setSideConversation({
-      team: "commercial",
+      recipientType: "email",
+      recipientRefId: "",
       subject: "",
       to: "",
       cc: "",
@@ -2943,7 +3138,8 @@ export default function TicketDetailPage({
     setSideConversationContactKey(primary?.key || "");
     setSideConversation(prev => ({
       ...prev,
-      team: "external",
+      recipientType: "prestataire",
+      recipientRefId: String(prestataire.id),
       to: primary?.email || "",
       cc: otherEmails.join(", "),
       subject: prev.subject.trim() ? prev.subject : suggestedSubject
@@ -2951,103 +3147,105 @@ export default function TicketDetailPage({
   }, [copy.sideModal.prestataireSubject, ticket]);
 
   const submitSideConversation = async () => {
-    if (!ticketId) return;
+    if (!ticketId || sideConversationBusy) return;
     if (!sideConversation.message.trim()) {
       toast.error(copy.toasts.sideConversationMessageRequired);
       return;
     }
-    const teamLabel = copy.sideConversationTeamOptions.find(opt => opt.key === sideConversation.team)?.label || sideConversation.team;
-    const sideConversationId = `sc-${Date.now()}`;
-    const safeSubject = String(sideConversation.subject || `Demande ${teamLabel}`).replace(/[\\\]]/g, "");
-    const safeTo = String(sideConversation.to || "").replace(/[\\\]]/g, "");
-    const safeCc = String(sideConversation.cc || "").replace(/[\\\]]/g, "");
-    const sideEventNote = `[Side conversation] [id:${sideConversationId}] [event:opened] [team:${sideConversation.team}] ` + `[subject:${safeSubject}] [to:${safeTo}] [cc:${safeCc}] [created_at:${new Date().toISOString()}]`;
-    const initialMessageNote = `[Side conversation] [id:${sideConversationId}] [event:message] [team:${sideConversation.team}] ` + `[subject:${safeSubject}] [to:${safeTo}] [cc:${safeCc}] ` + `[message:${encodeURIComponent(sideConversation.message.trim())}] [created_at:${new Date().toISOString()}]`;
+    const recipientType = sideConversation.recipientType || "email";
+    const typeLabel = copy.sideConversationRecipientOptions?.find(opt => opt.key === recipientType)?.label || recipientType;
+    setSideConversationBusy(true);
     try {
-      await addTicketComment(ticketId, sideEventNote, true);
-      await addTicketComment(ticketId, initialMessageNote, true);
-      const createdConversation = {
-        id: sideConversationId,
-        team: sideConversation.team,
-        subject: safeSubject,
-        to: safeTo,
-        cc: safeCc,
-        status: "open",
-        updatedAt: new Date().toISOString(),
-        messages: [{
-          id: `${Date.now()}-init`,
-          author: "Vous",
-          createdAt: new Date().toISOString(),
-          content: sideConversation.message.trim()
-        }]
-      };
-      setSideConversations(prev => [createdConversation, ...prev]);
-      setActiveSideConversationId(createdConversation.id);
-      toast.success(copy.formatSideConversationSent(teamLabel));
+      const result = await createTicketSideConversation(ticketId, {
+        subject: sideConversation.subject,
+        body: sideConversation.message.trim(),
+        recipientType,
+        recipientRefId: sideConversation.recipientRefId || sideConversationPrestataireId || null,
+        to: sideConversation.to,
+        cc: sideConversation.cc
+      });
+      const mapped = mapApiSideConversation(result.conversation);
+      if (mapped) {
+        setSideConversations(prev => mergeSideConversations([mapped], prev));
+        setActiveSideConversationId(mapped.id);
+      }
+      if (result.sendStatus === "failed") {
+        toast.error(result.sendError || copy.toasts.sideConversationSendError);
+      } else {
+        toast.success(copy.formatSideConversationSent(typeLabel));
+      }
       setShowSideConversationModal(false);
       resetSideConversationForm();
-      await loadDetail();
     } catch (error) {
       toast.error(error.message || copy.toasts.sideConversationSendError);
+    } finally {
+      setSideConversationBusy(false);
     }
   };
   const activeSideConversation = useMemo(() => sideConversations.find(conv => String(conv.id) === String(activeSideConversationId)) || null, [sideConversations, activeSideConversationId]);
-  const submitSideReply = () => {
-    if (!activeSideConversation || !sideReplyDraft.trim()) return;
+  const submitSideReply = async () => {
+    if (!activeSideConversation || !sideReplyDraft.trim() || sideConversationBusy) return;
     const reply = sideReplyDraft.trim();
-    const messageNote = `[Side conversation] [id:${activeSideConversation.id}] [event:message] [team:${activeSideConversation.team}] ` + `[subject:${String(activeSideConversation.subject || "").replace(/[\\\]]/g, "")}] ` + `[to:${String(activeSideConversation.to || "").replace(/[\\\]]/g, "")}] ` + `[cc:${String(activeSideConversation.cc || "").replace(/[\\\]]/g, "")}] ` + `[message:${encodeURIComponent(reply)}] [created_at:${new Date().toISOString()}]`;
-    addTicketComment(ticketId, messageNote, true).then(createdComment => {
-      const message = {
-        id: createdComment?.id || `${Date.now()}-reply`,
-        author: createdComment?.author_name || "Vous",
-        createdAt: createdComment?.created_at || new Date().toISOString(),
-        content: reply
-      };
-      setSideConversations(prev => prev.map(conv => String(conv.id) === String(activeSideConversation.id) ? {
-        ...conv,
-        updatedAt: new Date().toISOString(),
-        messages: [...(conv.messages || []), message]
-      } : conv));
-      setTicket(prev => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          comments: [...(prev.comments || []), createdComment],
-          updated_at: new Date().toISOString()
-        };
-      });
+    if (activeSideConversation.legacy) {
+      toast.error(copy.toasts.sideConversationReplyError);
+      return;
+    }
+    setSideConversationBusy(true);
+    try {
+      const result = await replyTicketSideConversation(ticketId, activeSideConversation.id, reply);
+      const mapped = mapApiSideConversation(result.conversation);
+      if (mapped) {
+        setSideConversations(prev => prev.map(conv => String(conv.id) === String(mapped.id) ? mapped : conv));
+      }
       setSideReplyDraft("");
-    }).catch(error => {
+      if (result.sendStatus === "failed") {
+        toast.error(result.sendError || copy.toasts.sideConversationReplyError);
+      }
+    } catch (error) {
       toast.error(error.message || copy.toasts.sideConversationReplyError);
-    });
+    } finally {
+      setSideConversationBusy(false);
+    }
   };
-  const markSideConversationDone = () => {
-    if (!activeSideConversation) return;
-    const closeNote = `[Side conversation] [id:${activeSideConversation.id}] [event:closed] [team:${activeSideConversation.team}] ` + `[subject:${String(activeSideConversation.subject || "").replace(/[\\\]]/g, "")}] ` + `[to:${String(activeSideConversation.to || "").replace(/[\\\]]/g, "")}] ` + `[cc:${String(activeSideConversation.cc || "").replace(/[\\\]]/g, "")}] ` + `[created_at:${new Date().toISOString()}]`;
-    addTicketComment(ticketId, closeNote, true).then(() => {
-      setSideConversations(prev => prev.map(conv => String(conv.id) === String(activeSideConversation.id) ? {
-        ...conv,
-        status: "done",
-        updatedAt: new Date().toISOString()
-      } : conv));
+  const markSideConversationDone = async () => {
+    if (!activeSideConversation || sideConversationBusy) return;
+    if (activeSideConversation.legacy) {
+      toast.error(copy.toasts.sideConversationCloseError);
+      return;
+    }
+    setSideConversationBusy(true);
+    try {
+      const result = await updateTicketSideConversationStatus(ticketId, activeSideConversation.id, "done");
+      const mapped = mapApiSideConversation(result.conversation);
+      if (mapped) {
+        setSideConversations(prev => prev.map(conv => String(conv.id) === String(mapped.id) ? mapped : conv));
+      }
       toast.success(copy.toasts.sideConversationClosed);
-    }).catch(error => {
+    } catch (error) {
       toast.error(error.message || copy.toasts.sideConversationCloseError);
-    });
+    } finally {
+      setSideConversationBusy(false);
+    }
   };
-  const reopenSideConversation = () => {
-    if (!activeSideConversation) return;
-    const reopenNote = `[Side conversation] [id:${activeSideConversation.id}] [event:reopened] [team:${activeSideConversation.team}] ` + `[subject:${String(activeSideConversation.subject || "").replace(/[\\\]]/g, "")}] ` + `[to:${String(activeSideConversation.to || "").replace(/[\\\]]/g, "")}] ` + `[cc:${String(activeSideConversation.cc || "").replace(/[\\\]]/g, "")}] ` + `[created_at:${new Date().toISOString()}]`;
-    addTicketComment(ticketId, reopenNote, true).then(() => {
-      setSideConversations(prev => prev.map(conv => String(conv.id) === String(activeSideConversation.id) ? {
-        ...conv,
-        status: "open",
-        updatedAt: new Date().toISOString()
-      } : conv));
+  const reopenSideConversation = async () => {
+    if (!activeSideConversation || sideConversationBusy) return;
+    if (activeSideConversation.legacy) {
+      toast.error(copy.toasts.sideConversationReopenError);
+      return;
+    }
+    setSideConversationBusy(true);
+    try {
+      const result = await updateTicketSideConversationStatus(ticketId, activeSideConversation.id, "open");
+      const mapped = mapApiSideConversation(result.conversation);
+      if (mapped) {
+        setSideConversations(prev => prev.map(conv => String(conv.id) === String(mapped.id) ? mapped : conv));
+      }
       toast.success(copy.toasts.sideConversationReopened);
-    }).catch(error => {
+    } catch (error) {
       toast.error(error.message || copy.toasts.sideConversationReopenError);
-    });
+    } finally {
+      setSideConversationBusy(false);
+    }
   };
   const clientLabel = useMemo(() => {
     if (!ticket) return "-";
@@ -3217,20 +3415,79 @@ export default function TicketDetailPage({
     return editForm.clientId || ticket?.client_id || requesterContact?.client_id || null;
   }, [editForm.clientId, ticket, requesterContact]);
   const effectiveTicketClientId = useMemo(() => breadcrumbClientId || ticket?.client_id || requesterContact?.client_id || null, [breadcrumbClientId, ticket, requesterContact]);
+
+  const sideAgentSuggestOptions = useMemo(
+    () =>
+      users.map(u => {
+        const name = u.ticket_helpdesk_display_name || u.username || u.email || String(u.id);
+        return {
+          id: String(u.id),
+          email: u.email || "",
+          label: u.email && name !== u.email ? `${name} · ${u.email}` : name
+        };
+      }),
+    [users]
+  );
+
+  const sideContactSuggestOptions = useMemo(() => {
+    const scoped = contacts.filter(c => !effectiveTicketClientId || String(c.client_id) === String(effectiveTicketClientId));
+    return scoped.map(c => {
+      const name = [c.prenom, c.nom].filter(Boolean).join(" ") || c.email || `Contact #${c.id}`;
+      return {
+        id: String(c.id),
+        email: c.email || "",
+        label: c.email && name !== c.email ? `${name} · ${c.email}` : name
+      };
+    });
+  }, [contacts, effectiveTicketClientId]);
+
+  const sidePrestataireSuggestOptions = useMemo(
+    () =>
+      sideConversationPrestataires.map(row => ({
+        id: String(row.id),
+        label: `${row.nom || `Prestataire #${row.id}`}${row.type ? ` · ${row.type}` : ""}`
+      })),
+    [sideConversationPrestataires]
+  );
+
+  const sidePrestataireContactSuggestOptions = useMemo(
+    () =>
+      sideConversationPrestataireContacts.map(contact => ({
+        id: String(contact.key),
+        label: formatPrestataireContactLabel(contact)
+      })),
+    [sideConversationPrestataireContacts]
+  );
+
+  const sideSelectedAgentLabel = useMemo(
+    () => sideAgentSuggestOptions.find(opt => opt.id === String(sideConversation.recipientRefId || ""))?.label || "",
+    [sideAgentSuggestOptions, sideConversation.recipientRefId]
+  );
+
+  const sideSelectedContactLabel = useMemo(
+    () => sideContactSuggestOptions.find(opt => opt.id === String(sideConversation.recipientRefId || ""))?.label || "",
+    [sideContactSuggestOptions, sideConversation.recipientRefId]
+  );
+
+  const sideSelectedPrestataireLabel = useMemo(
+    () => sidePrestataireSuggestOptions.find(opt => opt.id === String(sideConversationPrestataireId || ""))?.label || "",
+    [sidePrestataireSuggestOptions, sideConversationPrestataireId]
+  );
+
+  const sideSelectedPrestataireContactLabel = useMemo(
+    () => sidePrestataireContactSuggestOptions.find(opt => opt.id === String(sideConversationContactKey || ""))?.label || "",
+    [sidePrestataireContactSuggestOptions, sideConversationContactKey]
+  );
+
   const contactClientOptions = useMemo(() => getContactClientOptions(requesterContact, clients), [requesterContact, clients]);
   const requiresCompanySelect = contactClientOptions.length > 1;
   const contactSiteOptions = useMemo(
     () => getContactSiteOptions(requesterContact, effectiveTicketClientId, clients),
     [requesterContact, effectiveTicketClientId, clients]
   );
-  const ticketSiteLabel = useMemo(
-    () => resolveSiteLabel(editForm.siteId || ticket?.site_id, contactSiteOptions, clients, effectiveTicketClientId),
-    [editForm.siteId, ticket?.site_id, contactSiteOptions, clients, effectiveTicketClientId]
-  );
-
   useEffect(() => {
     if (!showSideConversationModal) return undefined;
-    if (!canViewPrestataires || sideConversation.team !== "external" || !effectiveTicketClientId) {
+    if (!canViewPrestataires || sideConversation.recipientType !== "prestataire" || !effectiveTicketClientId) {
       setSideConversationPrestataires([]);
       setLoadingSideConversationPrestataires(false);
       return undefined;
@@ -3252,7 +3509,7 @@ export default function TicketDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [showSideConversationModal, canViewPrestataires, sideConversation.team, effectiveTicketClientId]);
+  }, [showSideConversationModal, canViewPrestataires, sideConversation.recipientType, effectiveTicketClientId]);
 
   const breadcrumbClientLabel = useMemo(() => {
     const id = breadcrumbClientId;
@@ -3523,11 +3780,19 @@ export default function TicketDetailPage({
   const linkedEquipmentIds = useMemo(() => new Set(linkedEquipments.map(item => String(item.equipment_id))), [linkedEquipments]);
   const filteredLinkedTicketOptions = useMemo(() => {
     const query = linkedTicketSearch.trim().toLowerCase();
-    return availableLinkTargets.filter(row => !linkedTicketIds.has(String(row.id))).filter(row => {
-      if (!query) return true;
-      const label = getTicketLinkLabel(row).toLowerCase();
-      return label.includes(query);
-    }).slice(0, 40);
+    const available = availableLinkTargets.filter(row => !linkedTicketIds.has(String(row.id)));
+    const byRecent = (a, b) => {
+      const aMs = new Date(a.updated_at || a.created_at || 0).getTime();
+      const bMs = new Date(b.updated_at || b.created_at || 0).getTime();
+      return bMs - aMs;
+    };
+    if (!query) {
+      return [...available].sort(byRecent).slice(0, 8);
+    }
+    return available
+      .filter(row => getTicketLinkLabel(row).toLowerCase().includes(query))
+      .sort(byRecent)
+      .slice(0, 40);
   }, [availableLinkTargets, linkedTicketIds, linkedTicketSearch]);
   const filteredLinkedEquipmentOptions = useMemo(() => {
     const query = linkedEquipmentSearch.trim().toLowerCase();
@@ -3903,7 +4168,7 @@ export default function TicketDetailPage({
         key: "prestation",
         label: salesCopy.kinds?.prestation?.label || "Prestation",
         hint: salesCopy.kinds?.prestation?.hint || "Prestation",
-        icon: "mdi:briefcase-edit-outline"
+        icon: "mdi:briefcase-outline"
       }, {
         key: "installation",
         label: salesCopy.kinds?.installation?.label || "Installation",
@@ -4038,20 +4303,23 @@ export default function TicketDetailPage({
     }
   };
   useEffect(() => {
-    setSideConversations(prev => {
-      const rebuilt = buildSideConversationsFromComments(ticket?.comments || []);
-      if (!Array.isArray(prev) || prev.length === 0) return rebuilt;
-      const prevById = new Map(prev.map(conv => [String(conv.id), conv]));
-      return rebuilt.map(conv => {
-        const existing = prevById.get(String(conv.id));
-        if (!existing) return conv;
-        return {
-          ...conv,
-          messages: Array.isArray(existing.messages) ? existing.messages : []
-        };
+    if (!ticketId) {
+      setSideConversations([]);
+      return undefined;
+    }
+    const controller = new AbortController();
+    const legacy = buildSideConversationsFromComments(ticket?.comments || []);
+    fetchTicketSideConversations(ticketId, { signal: controller.signal })
+      .then(payload => {
+        const apiList = (payload?.conversations || []).map(mapApiSideConversation).filter(Boolean);
+        setSideConversations(mergeSideConversations(apiList, legacy));
+      })
+      .catch(err => {
+        if (err?.name === "AbortError") return;
+        setSideConversations(legacy);
       });
-    });
-  }, [ticket]);
+    return () => controller.abort();
+  }, [ticketId, ticket?.comments]);
   useEffect(() => {
     setLinkedEquipments(buildLinkedEquipmentsFromTicket(ticket));
   }, [ticket]);
@@ -4160,16 +4428,26 @@ export default function TicketDetailPage({
   const handleTimelineScroll = useCallback(() => {
     updateTimelineScrollTopVisibility();
   }, [updateTimelineScrollTopVisibility]);
+  const prevTimelineCommentsLenRef = useRef(0);
   useLayoutEffect(() => {
+    prevTimelineCommentsLenRef.current = 0;
     if (loading || !ticket) return undefined;
     scrollTimelineToBottom();
     const rafId = window.requestAnimationFrame(scrollTimelineToBottom);
-    const timeoutIds = [50, 200, 500].map(delay => window.setTimeout(scrollTimelineToBottom, delay));
+    const timeoutIds = [80, 250].map(delay => window.setTimeout(scrollTimelineToBottom, delay));
     return () => {
       window.cancelAnimationFrame(rafId);
       timeoutIds.forEach(id => window.clearTimeout(id));
     };
-  }, [ticketId, loading, ticket?.comments?.length, scrollTimelineToBottom]);
+  }, [ticketId, loading, scrollTimelineToBottom]);
+  useLayoutEffect(() => {
+    if (loading || !ticket) return;
+    const len = Array.isArray(ticket.comments) ? ticket.comments.length : 0;
+    if (len > prevTimelineCommentsLenRef.current) {
+      scrollTimelineToBottom();
+    }
+    prevTimelineCommentsLenRef.current = len;
+  }, [loading, ticket, ticket?.comments?.length, scrollTimelineToBottom]);
   useEffect(() => {
     const handleClickOutsideSideConversation = event => {
       const target = event.target;
@@ -4676,69 +4954,41 @@ export default function TicketDetailPage({
 
       <div className={styles.ticketHeroTrack} aria-label={copy.header.ticketContextAria}>
         <span
-          className={`${styles.ticketFamilyChip} ${isSalesTicketDetail ? styles.ticketFamilyChip_sales : styles.ticketFamilyChip_support}`}
+          className={`${styles.ticketFamilyIcon} ${isSalesTicketDetail ? styles.ticketFamilyIcon_sales : styles.ticketFamilyIcon_support}`}
           title={isSalesTicketDetail ? copy.header.familyServices : copy.header.familySupport}
+          aria-label={isSalesTicketDetail ? copy.header.familyServices : copy.header.familySupport}
         >
           <Icon icon={isSalesTicketDetail ? "mdi:briefcase-outline" : "mdi:message-processing-outline"} aria-hidden />
-          {isSalesTicketDetail ? copy.header.familyServices : copy.header.familySupport}
         </span>
-        {ticket ? <span className={styles.ticketFamilyChip} title={copy.formatTicketNumber(ticket.ticket_number || ticket.id)}>
+        {ticket ? <span className={styles.ticketNumber} title={copy.formatTicketNumber(ticket.ticket_number || ticket.id)}>
             {copy.formatTicketNumber(ticket.ticket_number || ticket.id)}
           </span> : null}
-        <h1 className={styles.ticketHeroTitle} title={ticketDisplayTitle || undefined}>
-          {ticketDisplayTitle || (ticket ? copy.formatTicketNumber(ticket.ticket_number || ticket.id) : copy.pageTitle)}
-        </h1>
-        <span className={styles.ticketHeroMetaDot} aria-hidden>
-          ·
-        </span>
-        {ticket?.requester_contact_id ? <button type="button" className={styles.ticketHeroMetaLink} onClick={() => onNavigate?.("ContactDetail", {
-        contactId: ticket.requester_contact_id
-      })}>
-            <Icon icon="mdi:account-outline" aria-hidden />
-            {requesterDisplayName}
-          </button> : <span className={styles.ticketHeroMetaItem}>
-            <Icon icon="mdi:account-outline" aria-hidden />
-            <span className={styles.ticketHeroMetaText}>{requesterDisplayName}</span>
-            {renderOrphanRequesterActions("icon")}
-          </span>}
-        <span className={styles.ticketHeroMetaDot} aria-hidden>
-          ·
-        </span>
-        {breadcrumbClientId ? <button type="button" className={styles.ticketHeroMetaLink} onClick={() => onNavigate?.("ContratDetail", {
-        clientId: breadcrumbClientId,
-        name: breadcrumbClientLabel
-      })}>
-            <Icon icon="mdi:office-building-outline" aria-hidden />
-            {breadcrumbClientLabel}
-          </button> : <span className={styles.ticketHeroMetaItem}>
-            <Icon icon="mdi:office-building-outline" aria-hidden />
-            {breadcrumbClientLabel}
-          </span>}
-        {ticketSiteLabel ? <>
-            <span className={styles.ticketHeroMetaSep} aria-hidden>|</span>
-            <span className={styles.ticketHeroMetaItem} title={ticketSiteLabel}>
-              <Icon icon="mdi:map-marker-outline" aria-hidden />
-              <span className={styles.ticketHeroMetaText}>{ticketSiteLabel}</span>
-            </span>
-          </> : null}
-        {!isSalesTicketDetail ? <ClientOnboardingBadge client={ticketClient} label={copy.header.onboardingBadge} /> : null}
-        {!isSalesTicketDetail && !isCommunity && ticket && ticketSlaView.label && ticketSlaView.label !== "-" ? <>
-            <span className={styles.ticketHeroMetaDot} aria-hidden>
-              ·
-            </span>
-            <span className={`${styles.ticketBadge} ${styles[`ticketBadge_${ticketSlaView.tone}`] || styles.ticketBadge_ok}`} title={ticketSlaTitle}>
-              <Icon icon="mdi:timer-outline" aria-hidden />
-              {ticketSlaView.label}
-            </span>
-          </> : null}
-        {ticket ? <div className={styles.ticketHeaderTools} aria-label={copy.header.sideConversationsAria}>
-            <button ref={newSideConversationBtnRef} type="button" className={styles.ticketHeaderIconBtn} onClick={() => {
-          setActiveSideConversationId(null);
-          resetSideConversationForm();
-          setShowSideConversationModal(true);
-        }} title={copy.header.newSideConversationTitle} aria-label={copy.header.newSideConversationAria} disabled={isReadOnly}>
-              <Icon icon="mdi:plus" aria-hidden />
-            </button>
+        {ticket ? <span className={styles.ticketHeroSep} aria-hidden>|</span> : null}
+        <div className={styles.ticketHeroLead}>
+          <h1 className={styles.ticketHeroTitle} title={ticketDisplayTitle || undefined}>
+            {ticketDisplayTitle || (ticket ? copy.formatTicketNumber(ticket.ticket_number || ticket.id) : copy.pageTitle)}
+          </h1>
+          <div className={styles.ticketHeroAfter}>
+            {!isSalesTicketDetail && !isCommunity && ticket && ticketSlaView.label && ticketSlaView.label !== "-" ? <>
+                <span className={styles.ticketHeroSep} aria-hidden>|</span>
+                <span className={`${styles.ticketBadge} ${styles.ticketSlaBadge} ${styles[`ticketBadge_${ticketSlaView.tone}`] || styles.ticketBadge_ok}`} title={ticketSlaTitle}>
+                  <Icon icon="mdi:timer-outline" aria-hidden />
+                  {ticketSlaView.label}
+                </span>
+              </> : null}
+            {ticket ? <button ref={newSideConversationBtnRef} type="button" className={styles.ticketHeaderIconBtn} onClick={() => {
+              setActiveSideConversationId(null);
+              resetSideConversationForm();
+              setShowSideConversationModal(true);
+            }} title={copy.header.newSideConversationTitle} aria-label={copy.header.newSideConversationAria} disabled={isReadOnly}>
+                <Icon icon="mdi:plus" aria-hidden />
+              </button> : null}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.ticketHeaderRight}>
+        {ticket && sortedSideConversations.length > 0 ? <div className={styles.ticketHeaderTools} aria-label={copy.header.sideConversationsAria}>
             {sortedSideConversations.slice(0, 3).map(conv => <button key={conv.id} ref={el => {
           if (el) {
             sideConversationChipRefs.current[String(conv.id)] = el;
@@ -4749,9 +4999,6 @@ export default function TicketDetailPage({
                 <Icon icon={conv.status === "done" ? "mdi:check-circle-outline" : "mdi:message-processing-outline"} aria-hidden />
               </button>)}
           </div> : null}
-      </div>
-
-      <div className={styles.ticketHeaderRight}>
         {!isDeleted && ticket && (canExclude || canSplit) ? <div className={styles.ticketOptionsWrap} ref={ticketOptionsWrapRef}>
             <button type="button" className={styles.ticketHeaderIconBtn} onClick={() => setTicketOptionsMenuOpen(prev => !prev)} title={copy.header.ticketOptionsTitle} aria-label={copy.header.ticketOptionsAria} aria-expanded={ticketOptionsMenuOpen} aria-haspopup="menu">
               <Icon icon="mdi:call-split" aria-hidden />
@@ -4791,6 +5038,14 @@ export default function TicketDetailPage({
         </div>
       </div>;
   }
+  if (loading) {
+    return <TicketDetailPageSkeleton
+      variant="support"
+      loadingAria={copy.empty.loading}
+      onBack={() => onNavigate?.(ticketsListDocType)}
+      backAria={copy.header.backAria}
+    />;
+  }
   return <div className={`${layout.page} ${styles.ticketDetailPage} msp-page-grid`}>
       <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.shell}`} style={{
       "--ticket-chat-text-size": `${Number(chatUiSettings?.textSizePx ?? 16)}px`,
@@ -4798,7 +5053,7 @@ export default function TicketDetailPage({
     }}>
         {ticketTopBar}
 
-      {loading ? <div className={styles.emptyState}>{copy.empty.loading}</div> : !ticket ? <div className={styles.emptyState}>{copy.empty.notFound}</div> : <div className={styles.workspace}>
+      {!ticket ? <div className={styles.emptyState}>{copy.empty.notFound}</div> : <div className={styles.workspace}>
         <div className={styles.layout}>
           <aside className={`${styles.leftPane} ${heroStyles.rightSidebarContent}`}>
             <RightPaneStaticSection title={copy.leftPane.properties} titleId="ticket-detail-properties-label" sectionClassName={styles.paneSectionOverflow} bodyClassName={`${styles.leftPanePropertiesBody} ${fs.settingsPanel}`}>
@@ -5226,7 +5481,11 @@ export default function TicketDetailPage({
                 onEdit={request => openValidationModal(request)}
               />
               <div className={styles.timeline} ref={timelineRef} onScroll={handleTimelineScroll}>
-              <article className={`${styles.commentItem} ${styles.commentItemInitial}`}>
+              <article
+                className={`${styles.commentItem} ${styles.commentItemInbound} ${styles.commentItemInitial} ${metaOpenCommentKey === "initial" || initialRequestEditing ? styles.commentItemMetaOpen : ""}`.trim()}
+                data-meta-key="initial"
+                onClick={toggleCommentMeta}
+              >
                 <UserAvatar
                   className={styles.commentAvatarSide}
                   name={requesterDisplayName !== "-" ? requesterDisplayName : copy.description.requesterFallback}
@@ -5236,17 +5495,12 @@ export default function TicketDetailPage({
                 <div className={styles.commentBubble}>
                   <div className={styles.commentHeader}>
                     <div className={styles.commentHeaderMain}>
-                      <div className={styles.commentMetaStrip}>
-                        <span className={styles.commentMetaLabel}>{copy.comment.createdLabel}</span>
-                        <span className={styles.commentMetaValue}>
-                          <Icon icon="mdi:clock-outline" aria-hidden />
-                          {copy.formatDateTime(ticket.created_at)}
-                        </span>
-                        <span className={styles.commentMetaLabel}>{copy.comment.byLabel}</span>
+                      <div className={styles.commentMetaLine}>
                         <span className={styles.commentMetaAuthor}>
-                          <Icon icon="mdi:account-outline" aria-hidden />
                           {requesterDisplayName !== "-" ? requesterDisplayName : copy.description.requesterFallback}
                         </span>
+                        <span className={styles.commentMetaSep} aria-hidden>·</span>
+                        <span className={styles.commentMetaTime}>{copy.formatDateTime(ticket.created_at)}</span>
                         <span className={styles.initialRequestBadge}>{copy.description.initial}</span>
                       </div>
                     </div>
@@ -5299,28 +5553,33 @@ export default function TicketDetailPage({
                   const showDeleteAction = canDeleteComment(comment);
                   const isDeletingComment = String(deletingCommentId) === String(comment.id);
                   const commentNotification = unreadByCommentId.get(String(comment.id));
-                  return <article key={comment.id} className={`${styles.commentItem} ${comment.is_internal ? styles.commentItemInternal : ""} ${resolutionStatus?.variant === "pending" ? styles.commentItemResolutionPending : resolutionStatus?.variant === "rejected" ? styles.commentItemResolutionRejected : resolutionStatus?.variant === "done" ? styles.commentItemResolutionDone : ""}`.trim()}>
+                  const commentRenderKey = comment._clientKey || comment.id;
+                  const isJustSent = justSentCommentIds.includes(String(commentRenderKey));
+                  const isOutbound = isChatOutboundComment(comment, {
+                    users,
+                    currentUserId
+                  });
+                  const isMetaOpen = metaOpenCommentKey === String(commentRenderKey) || isEditingComment;
+                  return <article key={commentRenderKey} className={`${styles.commentItem} ${isOutbound ? styles.commentItemOutbound : styles.commentItemInbound} ${comment.is_internal ? styles.commentItemInternal : ""} ${resolutionStatus?.variant === "pending" ? styles.commentItemResolutionPending : resolutionStatus?.variant === "rejected" ? styles.commentItemResolutionRejected : resolutionStatus?.variant === "done" ? styles.commentItemResolutionDone : ""} ${isJustSent ? styles.commentItemJustSent : ""} ${isMetaOpen ? styles.commentItemMetaOpen : ""}`.trim()} data-meta-key={String(commentRenderKey)} onClick={toggleCommentMeta}>
                   <UserAvatar
                     className={styles.commentAvatarSide}
                     name={resolveCommentAuthorName(comment)}
                     avatar={resolveCommentAuthorAvatar(comment)}
                     size={40}
-                    variant={comment.is_internal ? "neutral" : "agent"}
+                    variant={comment.is_internal ? "neutral" : isOutbound ? "agent" : "client"}
                   />
                   <div className={styles.commentBubble}>
+                    {comment.is_internal ? <span className={styles.commentInternalDot} title={copy.comment.privateTitle} aria-label={copy.comment.privateTitle}>
+                        <Icon icon="mdi:lock-outline" />
+                      </span> : null}
                     <div className={styles.commentHeader}>
                       <div className={styles.commentHeaderMain}>
-                        <div className={styles.commentMetaStrip}>
-                          <span className={styles.commentMetaLabel}>{copy.comment.createdLabel}</span>
-                          <span className={styles.commentMetaValue}>
-                            <Icon icon="mdi:clock-outline" aria-hidden />
+                        <div className={styles.commentMetaLine}>
+                          <span className={styles.commentMetaAuthor}>{resolveCommentAuthorName(comment)}</span>
+                          <span className={styles.commentMetaSep} aria-hidden>·</span>
+                          <span className={styles.commentMetaTime}>
                             {copy.formatDateTime(comment.created_at)}
                             {isCommentEdited(comment) ? <span className={styles.commentEditedMark}>{copy.comment.editedMark}</span> : null}
-                          </span>
-                          <span className={styles.commentMetaLabel}>{copy.comment.byLabel}</span>
-                          <span className={styles.commentMetaAuthor}>
-                            <Icon icon="mdi:account-outline" aria-hidden />
-                            {resolveCommentAuthorName(comment)}
                           </span>
                           {comment.is_internal ? <span className={styles.commentInternal} title={copy.comment.privateTitle}>
                               <Icon icon="mdi:lock-outline" />
@@ -5681,6 +5940,37 @@ export default function TicketDetailPage({
                 </RightPaneStaticSection>
               </> : null}
 
+            <RightPaneStaticSection title={copy.rightPane.channel} titleId="ticket-detail-channel-label">
+              <div className={fs.channelIconBar} role="radiogroup" aria-labelledby="ticket-detail-channel-label">
+                {copy.channelOptions.map(item => {
+                    const channelDisabled = isTicketChannelDisabled(item.key);
+                    return <button key={item.key} type="button" role="radio" aria-checked={editForm.channel === item.key} aria-label={item.label} aria-disabled={channelDisabled} title={item.key === "whatsapp" && !isWhatsAppNativeTicket ? copy.channelWhatsappDisabled : item.label} className={`${fs.channelIconBtn} ${editForm.channel === item.key ? fs.channelIconBtnActive : ""} ${channelDisabled ? fs.channelIconBtnDisabled : ""}`} disabled={channelDisabled} onClick={async () => {
+                      if (channelDisabled) return;
+                      setEditForm(p => ({
+                        ...p,
+                        channel: item.key
+                      }));
+                      await updateTicketLive({
+                        channel: item.key
+                      }, {
+                        successMessage: copy.toasts.channelUpdated
+                      });
+                    }}>
+                      <Icon icon={item.icon} aria-hidden />
+                    </button>;
+                  })}
+              </div>
+            </RightPaneStaticSection>
+
+            <RightPaneCollapsibleSection sectionId="ticket-detail-dates-body" title={copy.rightPane.ticketSection} expanded={rightPaneCollapse.ticketDates} onToggle={() => toggleRightPaneCollapse("ticketDates")}>
+              <div className={styles.contextLine}><strong>{copy.rightPane.created}</strong> {copy.formatDateTime(ticket.created_at)}</div>
+              <div className={styles.contextLine} title={ticketTakeoverStat ? copy.formatTakeoverTooltip(copy.getStatusLabel(ticketTakeoverStat.newStatus === "open" ? "new" : ticketTakeoverStat.newStatus)) : copy.takeoverTooltipNone}>
+                <strong>{copy.rightPane.takeover}</strong> {ticketTakeoverLabel}
+              </div>
+              <div className={styles.contextLine}><strong>{copy.rightPane.updated}</strong> {copy.formatDateTime(ticket.updated_at)}</div>
+              <div className={styles.contextLine}><strong>{copy.rightPane.closed}</strong> {copy.formatDateTime(ticket.closed_at)}</div>
+            </RightPaneCollapsibleSection>
+
             <RightPaneCollapsibleSection sectionId="ticket-detail-contact-body" title={copy.rightPane.contact} expanded={rightPaneCollapse.contact} onToggle={() => toggleRightPaneCollapse("contact")}>
               <div className={`${styles.contextLine} ${styles.contextLineWithAction}`.trim()}>
                 <div className={styles.contextLineMain}>
@@ -5769,37 +6059,6 @@ export default function TicketDetailPage({
                     <dd className={contractSlaEmpty ? fs.contractFactEmpty : ""}>{contractSlaLabel}</dd>
                   </div>}
                 </dl>
-            </RightPaneCollapsibleSection>
-
-            <RightPaneStaticSection title={copy.rightPane.channel} titleId="ticket-detail-channel-label">
-              <div className={fs.channelIconBar} role="radiogroup" aria-labelledby="ticket-detail-channel-label">
-                {copy.channelOptions.map(item => {
-                    const channelDisabled = isTicketChannelDisabled(item.key);
-                    return <button key={item.key} type="button" role="radio" aria-checked={editForm.channel === item.key} aria-label={item.label} aria-disabled={channelDisabled} title={item.key === "whatsapp" && !isWhatsAppNativeTicket ? copy.channelWhatsappDisabled : item.label} className={`${fs.channelIconBtn} ${editForm.channel === item.key ? fs.channelIconBtnActive : ""} ${channelDisabled ? fs.channelIconBtnDisabled : ""}`} disabled={channelDisabled} onClick={async () => {
-                      if (channelDisabled) return;
-                      setEditForm(p => ({
-                        ...p,
-                        channel: item.key
-                      }));
-                      await updateTicketLive({
-                        channel: item.key
-                      }, {
-                        successMessage: copy.toasts.channelUpdated
-                      });
-                    }}>
-                      <Icon icon={item.icon} aria-hidden />
-                    </button>;
-                  })}
-              </div>
-            </RightPaneStaticSection>
-
-            <RightPaneCollapsibleSection sectionId="ticket-detail-dates-body" title={copy.rightPane.ticketSection} expanded={rightPaneCollapse.ticketDates} onToggle={() => toggleRightPaneCollapse("ticketDates")}>
-              <div className={styles.contextLine}><strong>{copy.rightPane.created}</strong> {copy.formatDateTime(ticket.created_at)}</div>
-              <div className={styles.contextLine} title={ticketTakeoverStat ? copy.formatTakeoverTooltip(copy.getStatusLabel(ticketTakeoverStat.newStatus === "open" ? "new" : ticketTakeoverStat.newStatus)) : copy.takeoverTooltipNone}>
-                <strong>{copy.rightPane.takeover}</strong> {ticketTakeoverLabel}
-              </div>
-              <div className={styles.contextLine}><strong>{copy.rightPane.updated}</strong> {copy.formatDateTime(ticket.updated_at)}</div>
-              <div className={styles.contextLine}><strong>{copy.rightPane.closed}</strong> {copy.formatDateTime(ticket.closed_at)}</div>
             </RightPaneCollapsibleSection>
 
             <RightPaneCollapsibleSection sectionId="ticket-detail-linked-ticket-body" title={copy.rightPane.linkedTicket} count={linkedTickets.length} expanded={rightPaneCollapse.linkedTicket} onToggle={() => toggleRightPaneCollapse("linkedTicket")} sectionClassName={styles.rightPaneSectionPicker} bodyClassName={fs.settingsPanel}>
@@ -6178,11 +6437,16 @@ export default function TicketDetailPage({
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
 
-      {showSideConversationModal && <div className={styles.sideChatPopup} ref={newSideConversationPopupRef} style={newSideConversationPopupStyle || undefined}>
+      {showSideConversationModal && <div className={`${styles.sideChatPopup} ${styles.sideChatPopupCompose}`} ref={newSideConversationPopupRef} style={newSideConversationPopupStyle || undefined}>
           <div className={styles.sideChatHeader}>
-            <div>
-              <div className={styles.sideChatTitle}>{copy.sideModal.newTitle}</div>
-              <div className={styles.sideChatSubtitle}>{copy.sideModal.newSubtitle}</div>
+            <div className={styles.sideChatHeaderMain}>
+              <span className={styles.sideChatHeaderIcon} aria-hidden>
+                <Icon icon="mdi:email-fast-outline" />
+              </span>
+              <div>
+                <div className={styles.sideChatTitle}>{copy.sideModal.newTitle}</div>
+                <div className={styles.sideChatSubtitle}>{copy.sideModal.newSubtitle}</div>
+              </div>
             </div>
             <button type="button" className={styles.closeModalBtn} onClick={() => {
             setShowSideConversationModal(false);
@@ -6192,81 +6456,202 @@ export default function TicketDetailPage({
             </button>
           </div>
           <div className={styles.sideConversationBody}>
-            <label className={styles.fieldLabel}>{copy.sideModal.target}</label>
-            <select className={styles.input} value={sideConversation.team} onChange={e => {
-            const nextTeam = e.target.value;
-            setSideConversation(prev => ({
-              ...prev,
-              team: nextTeam
-            }));
-            if (nextTeam !== "external") {
-              setSideConversationPrestataireId("");
-              setSideConversationContactKey("");
-            }
-          }}>
-              {copy.sideConversationTeamOptions.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
-            </select>
+            <div className={styles.sideRecipientTypeGrid} role="radiogroup" aria-label={copy.sideModal.target}>
+              {(copy.sideConversationRecipientOptions || [])
+                .filter(opt => opt.key !== "prestataire" || canViewPrestataires)
+                .map(opt => {
+                const icons = {
+                  agent: "mdi:account-tie-outline",
+                  contact: "mdi:account-outline",
+                  prestataire: "mdi:handshake-outline",
+                  email: "mdi:email-outline"
+                };
+                const active = sideConversation.recipientType === opt.key;
+                return <button
+                  key={opt.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  className={`${styles.sideRecipientTypeBtn} ${active ? styles.sideRecipientTypeBtnActive : ""}`}
+                  onClick={() => {
+                    setSideConversation(prev => ({
+                      ...prev,
+                      recipientType: opt.key,
+                      recipientRefId: "",
+                      to: opt.key === "email" ? prev.to : "",
+                      cc: opt.key === "email" ? prev.cc : ""
+                    }));
+                    setSideConversationPrestataireId("");
+                    setSideConversationContactKey("");
+                  }}
+                >
+                  <Icon icon={icons[opt.key] || "mdi:email-outline"} aria-hidden />
+                  <span>{opt.label}</span>
+                </button>;
+              })}
+            </div>
+            <p className={styles.sideConversationHint}>
+              {sideConversation.recipientType === "agent" ? copy.sideModal.agentHint : copy.sideModal.mailHint}
+            </p>
 
-            {canViewPrestataires && sideConversation.team === "external" ? <>
-                <label className={styles.fieldLabel}>{copy.sideModal.prestataire}</label>
-                {!effectiveTicketClientId ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireNoClient}</p> : loadingSideConversationPrestataires ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireLoading}</p> : sideConversationPrestataires.length === 0 ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireEmpty}</p> : <select className={styles.input} value={sideConversationPrestataireId} onChange={e => {
-                const nextId = e.target.value;
-                if (!nextId) {
-                  setSideConversationPrestataireId("");
-                  setSideConversationContactKey("");
-                  return;
-                }
-                const picked = sideConversationPrestataires.find(row => String(row.id) === String(nextId));
-                if (picked) applySideConversationPrestataire(picked);
-              }}>
-                    <option value="">{copy.sideModal.prestatairePlaceholder}</option>
-                    {sideConversationPrestataires.map(row => <option key={row.id} value={row.id}>
-                        {row.nom || `Prestataire #${row.id}`}
-                        {row.type ? ` · ${row.type}` : ""}
-                      </option>)}
-                  </select>}
+            <div className={styles.sideComposeFields}>
+            {sideConversation.recipientType === "agent" ? <div className={styles.sideField}>
+                <span className={styles.sideFieldLabel}>
+                  <Icon icon="mdi:account-tie-outline" aria-hidden />
+                  {copy.sideModal.agent}
+                </span>
+                <SuggestionAutocomplete
+                  id="side-conv-agent"
+                  className={styles.sideSuggestField}
+                  placeholder={copy.sideModal.agentPlaceholder}
+                  value={sideSelectedAgentLabel}
+                  options={sideAgentSuggestOptions}
+                  minQueryLength={1}
+                  hintMessage={copy.sideModal.typeToSearch}
+                  emptyMessage={copy.sideModal.noResults}
+                  onChange={label => {
+                    const picked = sideAgentSuggestOptions.find(opt => opt.label === label);
+                    setSideConversation(prev => ({
+                      ...prev,
+                      recipientRefId: picked?.id || "",
+                      to: picked?.email || ""
+                    }));
+                  }}
+                />
+              </div> : null}
 
-                {selectedSideConversationPrestataire && sideConversationPrestataireContacts.length > 1 ? <>
-                    <label className={styles.fieldLabel}>{copy.sideModal.prestataireContact}</label>
-                    <select className={styles.input} value={sideConversationContactKey} onChange={e => {
-                applySideConversationPrestataire(selectedSideConversationPrestataire, e.target.value);
-              }}>
-                      <option value="">{copy.sideModal.prestataireContactPlaceholder}</option>
-                      {sideConversationPrestataireContacts.map(contact => <option key={contact.key} value={contact.key}>
-                          {formatPrestataireContactLabel(contact)}
-                        </option>)}
-                    </select>
-                  </> : null}
+            {sideConversation.recipientType === "contact" ? <div className={styles.sideField}>
+                <span className={styles.sideFieldLabel}>
+                  <Icon icon="mdi:account-outline" aria-hidden />
+                  {copy.sideModal.contact}
+                </span>
+                {!effectiveTicketClientId ? <p className={styles.sideConversationHint}>{copy.sideModal.contactNoClient}</p> : <SuggestionAutocomplete
+                  id="side-conv-contact"
+                  className={styles.sideSuggestField}
+                  placeholder={copy.sideModal.contactPlaceholder}
+                  value={sideSelectedContactLabel}
+                  options={sideContactSuggestOptions}
+                  minQueryLength={1}
+                  hintMessage={copy.sideModal.typeToSearch}
+                  emptyMessage={copy.sideModal.noResults}
+                  onChange={label => {
+                    const picked = sideContactSuggestOptions.find(opt => opt.label === label);
+                    setSideConversation(prev => ({
+                      ...prev,
+                      recipientRefId: picked?.id || "",
+                      to: picked?.email || ""
+                    }));
+                  }}
+                />}
+              </div> : null}
+
+            {canViewPrestataires && sideConversation.recipientType === "prestataire" ? <>
+                <div className={styles.sideField}>
+                  <span className={styles.sideFieldLabel}>
+                    <Icon icon="mdi:handshake-outline" aria-hidden />
+                    {copy.sideModal.prestataire}
+                  </span>
+                {!effectiveTicketClientId ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireNoClient}</p> : loadingSideConversationPrestataires ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireLoading}</p> : sideConversationPrestataires.length === 0 ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireEmpty}</p> : <SuggestionAutocomplete
+                  id="side-conv-prestataire"
+                  className={styles.sideSuggestField}
+                  placeholder={copy.sideModal.prestatairePlaceholder}
+                  value={sideSelectedPrestataireLabel}
+                  options={sidePrestataireSuggestOptions}
+                  minQueryLength={1}
+                  hintMessage={copy.sideModal.typeToSearch}
+                  emptyMessage={copy.sideModal.noResults}
+                  onChange={label => {
+                    if (!label) {
+                      setSideConversationPrestataireId("");
+                      setSideConversationContactKey("");
+                      setSideConversation(prev => ({
+                        ...prev,
+                        recipientRefId: "",
+                        to: "",
+                        cc: ""
+                      }));
+                      return;
+                    }
+                    const pickedOpt = sidePrestataireSuggestOptions.find(opt => opt.label === label);
+                    const picked = sideConversationPrestataires.find(row => String(row.id) === String(pickedOpt?.id || ""));
+                    if (picked) applySideConversationPrestataire(picked);
+                  }}
+                />}
+                </div>
+
+                {selectedSideConversationPrestataire && sideConversationPrestataireContacts.length > 1 ? <div className={styles.sideField}>
+                    <span className={styles.sideFieldLabel}>
+                      <Icon icon="mdi:card-account-mail-outline" aria-hidden />
+                      {copy.sideModal.prestataireContact}
+                    </span>
+                    <SuggestionAutocomplete
+                      id="side-conv-prestataire-contact"
+                      className={styles.sideSuggestField}
+                      placeholder={copy.sideModal.prestataireContactPlaceholder}
+                      value={sideSelectedPrestataireContactLabel}
+                      options={sidePrestataireContactSuggestOptions}
+                      minQueryLength={1}
+                      hintMessage={copy.sideModal.typeToSearch}
+                      emptyMessage={copy.sideModal.noResults}
+                      onChange={label => {
+                        const picked = sidePrestataireContactSuggestOptions.find(opt => opt.label === label);
+                        if (picked) applySideConversationPrestataire(selectedSideConversationPrestataire, picked.id);
+                      }}
+                    />
+                  </div> : null}
 
                 {sideConversationPrestataireId ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireAppliedHint}</p> : null}
               </> : null}
 
-            <label className={styles.fieldLabel}>{copy.sideModal.subject}</label>
-            <input className={styles.input} type="text" placeholder={copy.sideModal.subjectPlaceholder} value={sideConversation.subject} onChange={e => setSideConversation(prev => ({
-            ...prev,
-            subject: e.target.value
-          }))} />
+            <label className={styles.sideField}>
+              <span className={styles.sideFieldLabel}>
+                <Icon icon="mdi:format-title" aria-hidden />
+                {copy.sideModal.subject}
+              </span>
+              <input className={styles.input} type="text" placeholder={copy.sideModal.subjectPlaceholder} value={sideConversation.subject} onChange={e => setSideConversation(prev => ({
+              ...prev,
+              subject: e.target.value
+            }))} />
+            </label>
 
-            <label className={styles.fieldLabel}>{copy.sideModal.recipient}</label>
-            <input className={styles.input} type="text" list="side-conversation-users" placeholder={copy.sideModal.recipientPlaceholder} value={sideConversation.to} onChange={e => setSideConversation(prev => ({
-            ...prev,
-            to: e.target.value
-          }))} />
+            {sideConversation.recipientType !== "agent" && (sideConversation.recipientType === "email" || sideConversation.to) ? <label className={styles.sideField}>
+              <span className={styles.sideFieldLabel}>
+                <Icon icon="mdi:email-outline" aria-hidden />
+                {copy.sideModal.recipient}
+              </span>
+              <input className={styles.input} type="text" list="side-conversation-users" placeholder={copy.sideModal.recipientPlaceholder} value={sideConversation.to} onChange={e => setSideConversation(prev => ({
+              ...prev,
+              to: e.target.value
+            }))} />
+            </label> : null}
 
-            <label className={styles.fieldLabel}>{copy.sideModal.cc}</label>
-            <input className={styles.input} type="text" list="side-conversation-users" placeholder={copy.sideModal.ccPlaceholder} value={sideConversation.cc} onChange={e => setSideConversation(prev => ({
-            ...prev,
-            cc: e.target.value
-          }))} />
+            {sideConversation.recipientType !== "agent" ? <>
+            <label className={styles.sideField}>
+              <span className={styles.sideFieldLabel}>
+                <Icon icon="mdi:email-multiple-outline" aria-hidden />
+                {copy.sideModal.cc}
+              </span>
+              <input className={styles.input} type="text" list="side-conversation-users" placeholder={copy.sideModal.ccPlaceholder} value={sideConversation.cc} onChange={e => setSideConversation(prev => ({
+              ...prev,
+              cc: e.target.value
+            }))} />
+            </label>
             <datalist id="side-conversation-users">
               {userSearchOptions.map(opt => <option key={opt.id} value={opt.label} />)}
             </datalist>
+            </> : null}
 
-            <label className={styles.fieldLabel}>{copy.sideModal.message}</label>
-            <textarea className={styles.editor} rows={5} placeholder={copy.sideModal.messagePlaceholder} value={sideConversation.message} onChange={e => setSideConversation(prev => ({
-            ...prev,
-            message: e.target.value
-          }))} />
+            <label className={styles.sideField}>
+              <span className={styles.sideFieldLabel}>
+                <Icon icon="mdi:message-text-outline" aria-hidden />
+                {copy.sideModal.message}
+              </span>
+              <textarea className={`${styles.editor} ${styles.sideComposeEditor}`} rows={5} placeholder={copy.sideModal.messagePlaceholder} value={sideConversation.message} onChange={e => setSideConversation(prev => ({
+              ...prev,
+              message: e.target.value
+            }))} />
+            </label>
+            </div>
           </div>
           <div className={styles.sideConversationFooter}>
             <button type="button" className={styles.secondaryBtn} onClick={() => {
@@ -6275,53 +6660,87 @@ export default function TicketDetailPage({
           }}>
               {copy.sideModal.cancel}
             </button>
-            <button type="button" className={styles.primaryBtn} onClick={submitSideConversation}>
+            <button type="button" className={styles.primaryBtn} onClick={submitSideConversation} disabled={sideConversationBusy}>
               <Icon icon="mdi:send" />
-              {copy.sideModal.send}
+              {sideConversationBusy ? copy.sideModal.sending : copy.sideModal.send}
             </button>
           </div>
         </div>}
 
-      {activeSideConversation && <div className={styles.sideChatPopup} ref={activeSideConversationPopupRef} style={activeSideConversationPopupStyle || undefined}>
+      {activeSideConversation && <div className={`${styles.sideChatPopup} ${styles.sideChatPopupThread}`} ref={activeSideConversationPopupRef} style={activeSideConversationPopupStyle || undefined}>
           <div className={styles.sideChatHeader}>
-            <div>
-              <div className={styles.sideChatTitle}>{activeSideConversation.subject}</div>
-              <div className={styles.sideChatSubtitle}>
-                {copy.sideConversationTeamOptions.find(opt => opt.key === activeSideConversation.team)?.label || activeSideConversation.team}
-                {" · "}
-                {activeSideConversation.status === "done" ? copy.sideModal.statusDone : copy.sideModal.statusOpen}
-                {activeSideConversation.to ? ` · To: ${activeSideConversation.to}` : ""}
-                {activeSideConversation.cc ? ` · CC: ${activeSideConversation.cc}` : ""}
+            <div className={styles.sideChatHeaderMain}>
+              <span className={styles.sideChatHeaderIcon} aria-hidden>
+                <Icon icon={{
+                  agent: "mdi:account-tie-outline",
+                  contact: "mdi:account-outline",
+                  prestataire: "mdi:handshake-outline",
+                  email: "mdi:email-outline"
+                }[activeSideConversation.recipientType] || "mdi:forum-outline"} />
+              </span>
+              <div className={styles.sideChatHeaderText}>
+                <div className={styles.sideChatTitle}>{activeSideConversation.subject}</div>
+                <div className={styles.sideChatSubtitle}>
+                  <span className={`${styles.sideChatStatusPill} ${activeSideConversation.status === "done" ? styles.sideChatStatusDone : styles.sideChatStatusOpen}`}>
+                    {activeSideConversation.status === "done" ? copy.sideModal.statusDone : copy.sideModal.statusOpen}
+                  </span>
+                  <span>
+                    {copy.sideConversationRecipientOptions?.find(opt => opt.key === activeSideConversation.recipientType)?.label
+                      || copy.sideConversationTeamOptions.find(opt => opt.key === activeSideConversation.team)?.label
+                      || activeSideConversation.recipientType
+                      || activeSideConversation.team}
+                  </span>
+                  {activeSideConversation.to ? <span title={activeSideConversation.to}>{activeSideConversation.to}</span> : null}
+                </div>
               </div>
             </div>
-            <button type="button" className={styles.closeModalBtn} onClick={() => setActiveSideConversationId(null)}>
-              <Icon icon="mdi:close" />
-            </button>
+            <div className={styles.sideChatHeaderActions}>
+              {activeSideConversation.status === "done" ? <button type="button" className={styles.ticketHeaderIconBtn} onClick={reopenSideConversation} disabled={sideConversationBusy || activeSideConversation.legacy} title={copy.sideModal.reopen} aria-label={copy.sideModal.reopen}>
+                  <Icon icon="mdi:reload" aria-hidden />
+                </button> : <button type="button" className={styles.ticketHeaderIconBtn} onClick={markSideConversationDone} disabled={sideConversationBusy || activeSideConversation.legacy} title={copy.sideModal.close} aria-label={copy.sideModal.close}>
+                  <Icon icon="mdi:check" aria-hidden />
+                </button>}
+              <button type="button" className={styles.closeModalBtn} onClick={() => setActiveSideConversationId(null)}>
+                <Icon icon="mdi:close" />
+              </button>
+            </div>
           </div>
           <div className={styles.sideChatMessages}>
-            {activeSideConversation.messages.map(msg => <div key={msg.id} className={styles.sideChatMessage}>
-                <div className={styles.sideChatMessageMeta}>
-                  <strong>{msg.author}</strong>
-                  <span>{copy.formatDateTime(msg.createdAt)}</span>
-                  {canDeleteSideConversationMessage(msg.id) && <SmartTooltip content={copy.comment.deleteTooltip}>
-                      <button type="button" className={styles.commentDeleteBtn} onClick={() => deleteComment(msg.id)} disabled={String(deletingCommentId) === String(msg.id)} aria-label={copy.comment.deleteAria}>
-                        <Icon icon="mdi:trash-can-outline" />
-                      </button>
-                    </SmartTooltip>}
+            {activeSideConversation.messages.length === 0 ? <div className={styles.sideChatEmpty}>
+                <Icon icon="mdi:email-outline" aria-hidden />
+                <span>{copy.sideModal.mailHint}</span>
+              </div> : null}
+            {activeSideConversation.messages.map(msg => {
+              const inbound = msg.direction === "inbound";
+              return <div key={msg.id} className={`${styles.sideChatBubbleRow} ${inbound ? styles.sideChatBubbleRowInbound : styles.sideChatBubbleRowOutbound}`}>
+                <div className={`${styles.sideChatMessage} ${inbound ? styles.sideChatMessageInbound : styles.sideChatMessageOutbound}`}>
+                  <div className={styles.sideChatMessageMeta}>
+                    <strong>{msg.author}</strong>
+                    <span>{copy.formatDateTime(msg.createdAt)}</span>
+                    {msg.sendStatus === "failed" ? <span className={styles.sideChatSendFailed}>échec</span> : null}
+                    {msg.sendStatus === "sent" || msg.sendStatus === "skipped" || msg.sendStatus === "notified" ? <Icon icon={msg.sendStatus === "notified" ? "mdi:bell-check-outline" : "mdi:check-all"} className={styles.sideChatSendOk} aria-hidden /> : null}
+                    {activeSideConversation.legacy && canDeleteSideConversationMessage(msg.id) && <SmartTooltip content={copy.comment.deleteTooltip}>
+                        <button type="button" className={styles.commentDeleteBtn} onClick={() => deleteComment(msg.id)} disabled={String(deletingCommentId) === String(msg.id)} aria-label={copy.comment.deleteAria}>
+                          <Icon icon="mdi:trash-can-outline" />
+                        </button>
+                      </SmartTooltip>}
+                  </div>
+                  <p>{msg.content}</p>
                 </div>
-                <p>{msg.content}</p>
-              </div>)}
+              </div>;
+            })}
           </div>
           <div className={styles.sideChatComposer}>
-            <input className={styles.input} type="text" placeholder={copy.sideModal.replyPlaceholder} value={sideReplyDraft} onChange={e => setSideReplyDraft(e.target.value)} disabled={activeSideConversation.status === "done"} />
-            <button type="button" className={styles.secondaryBtn} onClick={submitSideReply} disabled={activeSideConversation.status === "done"}>
-              {copy.sideModal.sendReply}
+            <input className={styles.input} type="text" placeholder={copy.sideModal.replyPlaceholder} value={sideReplyDraft} onChange={e => setSideReplyDraft(e.target.value)} onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submitSideReply();
+              }
+            }} disabled={activeSideConversation.status === "done" || sideConversationBusy || activeSideConversation.legacy} />
+            <button type="button" className={styles.primaryBtn} onClick={submitSideReply} disabled={activeSideConversation.status === "done" || sideConversationBusy || activeSideConversation.legacy || !sideReplyDraft.trim()} title={copy.sideModal.sendReply} aria-label={copy.sideModal.sendReply}>
+              <Icon icon="mdi:send" aria-hidden />
+              <span>{copy.sideModal.sendReply}</span>
             </button>
-            {activeSideConversation.status === "done" ? <button type="button" className={styles.primaryBtn} onClick={reopenSideConversation}>
-                {copy.sideModal.reopen}
-              </button> : <button type="button" className={styles.primaryBtn} onClick={markSideConversationDone}>
-                {copy.sideModal.close}
-              </button>}
           </div>
         </div>}
       </div>

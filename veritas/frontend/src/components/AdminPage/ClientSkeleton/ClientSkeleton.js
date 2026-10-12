@@ -6,6 +6,8 @@ import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import ClientModal from "./ClientModal";
+import SortIcon from "../../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
 const formatDate = dateString => {
   if (!dateString) return null;
   try {
@@ -136,12 +138,15 @@ export default function ClientSkeleton({
   const allDeletablePageSelected = deletablePaginatedClients.length > 0 && deletablePaginatedClients.every(client => selectedClientIds.has(client.id));
   const selectedCount = selectedClientIds.size;
   const toggleSort = key => {
-    if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+    const next = cycleSortState({
+      column: key,
+      sortBy: sortKey,
+      sortDirection: sortDir,
+      defaultSortBy: null,
+      defaultSortDirection: "asc"
+    });
+    setSortKey(next.sortBy);
+    setSortDir(next.sortDirection);
   };
   const toggleSelectClient = clientId => {
     setSelectedClientIds(prev => {
@@ -263,21 +268,6 @@ export default function ClientSkeleton({
             {filteredClients.length} company{filteredClients.length > 1 ? "s" : ""} found{filteredClients.length > 1 ? "s" : ""}
           </div>
 
-          {selectedCount > 0 && <div className={styles.bulkActionsBar}>
-              <span className={styles.bulkActionsInfo}>
-                {selectedCount} company{selectedCount > 1 ? "s" : ""} selected{selectedCount > 1 ? "s" : ""}
-              </span>
-              <div className={styles.bulkActionsButtons}>
-                <button type="button" className={styles.bulkActionButton} onClick={clearSelection}>
-                  Deselect all
-                </button>
-                <button type="button" className={`${styles.bulkActionButton} ${styles.bulkActionButtonDanger}`} onClick={openBulkDeleteConfirmation}>
-                  <Icon icon="mingcute:delete-2-fill" />
-                  Delete selection
-                </button>
-              </div>
-            </div>}
-
           {}
           <div className={`${styles.userTableWrapper} ${styles.cleanTableWrapper}`}>
             <table className={`${styles.userTable} ${styles.clientTable}`}>
@@ -289,22 +279,22 @@ export default function ClientSkeleton({
                   <th onClick={() => toggleSort('name')} style={{
                   cursor: 'pointer'
                 }}>
-                    NAME {sortKey === 'name' ? sortDir === 'asc' ? '▲' : '▼' : ''}
+                    NAME <SortIcon active={sortKey === "name"} direction={sortDir || "asc"} />
                   </th>
                   <th onClick={() => toggleSort("infra_count")} style={{
                   cursor: 'pointer'
                 }}>
-                    INFRA {sortKey === "infra_count" ? sortDir === "asc" ? "▲" : "▼" : ""}
+                    INFRA <SortIcon active={sortKey === "infra_count"} direction={sortDir || "asc"} />
                   </th>
                   <th onClick={() => toggleSort("cyber_count")} style={{
                   cursor: 'pointer'
                 }}>
-                    CYBER {sortKey === "cyber_count" ? sortDir === "asc" ? "▲" : "▼" : ""}
+                    CYBER <SortIcon active={sortKey === "cyber_count"} direction={sortDir || "asc"} />
                   </th>
                   <th onClick={() => toggleSort("service_count")} style={{
                   cursor: 'pointer'
                 }}>
-                    SERVICE {sortKey === "service_count" ? sortDir === "asc" ? "▲" : "▼" : ""}
+                    SERVICE <SortIcon active={sortKey === "service_count"} direction={sortDir || "asc"} />
                   </th>
                   <th>ACTIONS</th>
                 </tr>
@@ -366,6 +356,20 @@ export default function ClientSkeleton({
                 <span className={styles.paginationInfo}>Page {currentPage} / {totalPages}</span>
                 <button type="button" className={styles.paginationButton} onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} title="Next page">
                   <FaChevronRight />
+                </button>
+              </div>
+            </div>}
+          {selectedCount > 0 && <div className={styles.bulkActionsBar}>
+              <span className={styles.bulkActionsInfo}>
+                {selectedCount} company{selectedCount > 1 ? "s" : ""} selected{selectedCount > 1 ? "s" : ""}
+              </span>
+              <div className={styles.bulkActionsButtons}>
+                <button type="button" className={styles.bulkActionButton} onClick={clearSelection}>
+                  Deselect all
+                </button>
+                <button type="button" className={`${styles.bulkActionButton} ${styles.bulkActionButtonDanger}`} onClick={openBulkDeleteConfirmation}>
+                  <Icon icon="mingcute:delete-2-fill" />
+                  Delete selection
                 </button>
               </div>
             </div>}

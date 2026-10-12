@@ -11,9 +11,11 @@ import tableStyles from "../TicketPage/TicketPage.module.css";
 import portalStyles from "./ClientPortalTickets.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { getPortalPriorityVisual, getPortalStatusFilters, getPortalTicketActionRequiredBadge, isPortalTicketActionRequired, isPortalTicketPendingClientResponse, isPortalTicketPendingValidation, sortPortalTickets } from "./clientPortalTicketUi";
 import { filterPortalTicketsBySite, getPortalEquipmentSiteById } from "./portalSiteFilter";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 function computePortalStatusCounts(tickets, openStatuses) {
   const rows = Array.isArray(tickets) ? tickets : [];
   return {
@@ -86,16 +88,16 @@ export default function ClientTicketListPage() {
   }, [filteredByStatus, search]);
   const sortedTickets = useMemo(() => sortPortalTickets(filteredTickets, sortBy, sortDirection, copy), [filteredTickets, sortBy, sortDirection, copy]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
-  };
-  const getSortIndicator = column => {
-    if (sortBy !== column) return "";
-    return sortDirection === "asc" ? " ▲" : " ▼";
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "updated_at",
+      defaultSortDirection: "desc",
+      firstDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const getColumnAriaSort = column => {
     if (sortBy !== column) return "none";
@@ -163,44 +165,64 @@ export default function ClientTicketListPage() {
                   <thead>
                     <tr>
                       <th scope="col" aria-sort={getColumnAriaSort("ticket_number")} onClick={() => handleSort("ticket_number")}>
-                        {t.tableId}
-                        {getSortIndicator("ticket_number")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableId}
+                          <SortIcon active={sortBy === "ticket_number"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("title")} onClick={() => handleSort("title")}>
-                        {t.tableSubject}
-                        {getSortIndicator("title")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableSubject}
+                          <SortIcon active={sortBy === "title"} direction={sortDirection} />
+                        </span>
                       </th>
                       {isSupervisor ? <th scope="col" aria-sort={getColumnAriaSort("requester_name")} onClick={() => handleSort("requester_name")}>
-                          {t.tableRequester}
-                          {getSortIndicator("requester_name")}
+                          <span className={tableStyles.thSortInner}>
+                            {t.tableRequester}
+                            <SortIcon active={sortBy === "requester_name"} direction={sortDirection} />
+                          </span>
                         </th> : null}
                       <th scope="col" aria-sort={getColumnAriaSort("channel")} onClick={() => handleSort("channel")}>
-                        {t.tableChannel}
-                        {getSortIndicator("channel")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableChannel}
+                          <SortIcon active={sortBy === "channel"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("type")} onClick={() => handleSort("type")}>
-                        {t.tableType}
-                        {getSortIndicator("type")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableType}
+                          <SortIcon active={sortBy === "type"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("status")} onClick={() => handleSort("status")}>
-                        {t.tableStatus}
-                        {getSortIndicator("status")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableStatus}
+                          <SortIcon active={sortBy === "status"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("priority")} onClick={() => handleSort("priority")}>
-                        {t.tablePriority}
-                        {getSortIndicator("priority")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tablePriority}
+                          <SortIcon active={sortBy === "priority"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("created_at")} onClick={() => handleSort("created_at")}>
-                        {t.tableCreated}
-                        {getSortIndicator("created_at")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableCreated}
+                          <SortIcon active={sortBy === "created_at"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("updated_at")} onClick={() => handleSort("updated_at")}>
-                        {t.tableUpdated}
-                        {getSortIndicator("updated_at")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableUpdated}
+                          <SortIcon active={sortBy === "updated_at"} direction={sortDirection} />
+                        </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("rating")} onClick={() => handleSort("rating")}>
-                        {t.tableRating}
-                        {getSortIndicator("rating")}
+                        <span className={tableStyles.thSortInner}>
+                          {t.tableRating}
+                          <SortIcon active={sortBy === "rating"} direction={sortDirection} />
+                        </span>
                       </th>
                     </tr>
                   </thead>

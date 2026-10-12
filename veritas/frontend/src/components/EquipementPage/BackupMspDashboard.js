@@ -4,6 +4,8 @@ import { FaSync } from "react-icons/fa";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import { buildBackupFleetFromJobs, buildBackupFleetStats, filterBackupFleetRows, groupBackupFleetByProvider, sortBackupFleetRows } from "./backupMspUtils";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 function formatDateTime(value, bcp47 = "en-US") {
   if (!value) return "-";
   const d = new Date(value);
@@ -81,19 +83,6 @@ function SolutionCell({
       </div>
     </div>;
 }
-function SortableHeader({
-  column,
-  label,
-  sortBy,
-  sortDirection,
-  onSort
-}) {
-  const isActive = sortBy === column;
-  return <th className={styles.sortableTh} onClick={() => onSort(column)} aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      {label}
-      {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
-    </th>;
-}
 function FleetTableRow({
   row,
   onOpen,
@@ -161,12 +150,15 @@ export default function BackupMspDashboard({
   const sortedRows = useMemo(() => sortBackupFleetRows(filteredRows, sortBy, sortDirection), [filteredRows, sortBy, sortDirection]);
   const providerGroups = useMemo(() => groupBackupFleetByProvider(sortedRows), [sortedRows]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "jobName",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const providerTabs = useMemo(() => {
     const counts = new Map();

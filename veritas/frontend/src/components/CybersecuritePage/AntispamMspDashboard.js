@@ -3,10 +3,10 @@ import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
-import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import SmartTooltip from "../SmartTooltip";
+import StatusDot from "../shared/StatusDot/StatusDot";
 import { bulkRemoveAntispamSolutions, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./AntivirusMspDashboard.module.css";
@@ -14,27 +14,24 @@ import { buildAntispamFleetFromClients, buildAntispamFleetStats, filterAntispamF
 import CyberBulkBar from "./CyberBulkBar";
 import { fleetRowKey, useCyberBulkSelection } from "./useCyberBulkSelection";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
-function SortableHeader({
-  column,
-  label,
-  sortBy,
-  sortDirection,
-  onSort
-}) {
-  const isActive = sortBy === column;
-  return <th aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      <button type="button" className={styles.thBtn} onClick={() => onSort(column)}>
-        {label}
-        {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
-      </button>
-    </th>;
-}
 
 function expiryClass(status) {
   if (status === "expire_bientot") return styles.cellExpiry_warn;
   if (status === "inactif") return styles.cellExpiry_bad;
   return "";
+}
+
+function StatusPill({ status, label }) {
+  const isActive = status === "actif";
+  return (
+    <span className={`${layout.statusPill} ${isActive ? layout.statusPillActive : layout.statusPillInactive}`}>
+      <StatusDot active={isActive} label="" aria-hidden />
+      <span>{label}</span>
+    </span>
+  );
 }
 
 function formatLicenseCount(row) {
@@ -97,11 +94,16 @@ function FleetTableRow({
       <td>
         <SolutionCell label={row.solutionLabel || row.providerName || "-"} subtitle={row.solutionSubtitle || null} image={row.providerImage} icon={row.providerIcon || "mdi:email-secure-outline"} />
       </td>
-      <td>{statusMeta.label}</td>
+      <td>
+        <StatusPill status={row.status} label={statusMeta.label} />
+      </td>
       <td className={styles.cellMuted}>{formatLicenseCount(row)}</td>
       <td className={styles.cellMuted}>{formatDomainCount(row.domainesSurveilles)}</td>
       <td className={`${styles.cellExpiry} ${expiryClass(row.status)}`.trim()}>{formatDate(row.expirationDate || row.expiration)}</td>
       <td className={styles.cellMuted}>{formatDateTime(row.lastSync)}</td>
+      <td className={styles.rowOpenCell} aria-hidden>
+        <Icon icon="mdi:chevron-right" className={styles.rowOpenChevron} />
+      </td>
     </tr>;
 }
 
@@ -165,12 +167,15 @@ export default function AntispamMspDashboard({
     setCurrentPage(page => Math.min(page, totalPages));
   }, [totalPages]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "clientName",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const toggleStatus = next => {
     setStatusFilter(statusFilter === next ? "all" : next);
@@ -249,98 +254,118 @@ export default function AntispamMspDashboard({
   if (!msp || !as) return null;
   const statusFilterItems = copy.statusFilters || [];
   return <div className={styles.dashboard}>
-      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
-        <div className={layout.searchWrap}>
-          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-          <input type="search" inputMode="search" enterKeyHint="search" placeholder={as.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={as.searchPlaceholder} />
-          {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
-              <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
-                <FaTimes />
-              </button>
-            </SmartTooltip> : null}
-        </div>
-        <div className={layout.statusChips} role="group">
-          {statusFilterItems.map(item => {
-            const count = stats.statusCounts[item.id] || 0;
-            const active = statusFilter === item.id;
-            return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={loading || count === 0}>
-                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                  <Icon icon={item.icon} />
-                </span>
-                <span className={layout.statusChipLabel}>{item.label}</span>
-                <span className={layout.statusChipCount}>{count}</span>
-              </button>;
-          })}
-        </div>
-        {onSync ? <div className={styles.toolbarActions}>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              title={copy.heroActions?.syncAntispam}
-              aria-label={copy.heroActions?.syncAntispamAria || copy.heroActions?.syncAntispam}
-              onClick={onSync}
-              disabled={syncing || fleetRows.length === 0}
-            >
-              <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
-            </button>
-          </div> : null}
-      </div>
-
       {loading ? (
-        <PageSkeleton variant="list" rows={8} label={as.loading} />
-      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:email-off-outline" title={fleetRows.length === 0 ? as.emptyTitle : as.noResultsTitle} text={fleetRows.length === 0 ? as.emptyText : as.noResultsText} /> : <section className={styles.panel}>
-          <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
-          <div className={styles.tableWrap}>
-            <div className={styles.tableScroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.checkboxCell}>
-                    <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label={copy.bulk.selectAll} />
-                  </th>
-                  <SortableHeader column="clientName" label={msp.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="solutionLabel" label={msp.table.solution} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="status" label={msp.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="totalLicenses" label={msp.table.licenses || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="domainesSurveilles" label={msp.table.domains || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="expirationDate" label={msp.table.expiration} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="lastSync" label={msp.table.lastSync} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedRows.map(row => <FleetTableRow key={fleetRowKey(row)} row={row} selected={selectedIds.has(fleetRowKey(row))} selectLabel={copy.formatBulkSelectRow(row.clientName)} onToggleSelect={toggleItem} onOpen={onOpenSolution} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
-              e.preventDefault();
-              onOpenSolution?.(item, {
-                background: true
-              });
-            }} />)}
-              </tbody>
-            </table>
+        <MspDashboardSkeleton rows={8} chipCount={4} columnCount={8} label={as.loading} />
+      ) : (
+        <div className={layout.listBody}>
+          <div className={layout.listArea}>
+            <div className={layout.panelCard}>
+              <div className={layout.tableSearchBar}>
+                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={as.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={as.searchPlaceholder} />
+                  {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
+                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
+                        <FaTimes />
+                      </button>
+                    </SmartTooltip> : null}
+                </div>
+                <div className={layout.statusChips} role="group">
+                  {statusFilterItems.map(item => {
+                    const count = stats.statusCounts[item.id] || 0;
+                    const active = statusFilter === item.id;
+                    return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={count === 0}>
+                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                          <Icon icon={item.icon} />
+                        </span>
+                        <span className={layout.statusChipLabel}>{item.label}</span>
+                        <span className={layout.statusChipCount}>{count}</span>
+                      </button>;
+                  })}
+                </div>
+                {onSync ? <div className={layout.toolbarActions} data-guide="cyber-sync">
+                    <SmartTooltip content={copy.heroActions?.syncAntispam}>
+                      <button
+                        type="button"
+                        className={layout.iconBtn}
+                        aria-label={copy.heroActions?.syncAntispamAria || copy.heroActions?.syncAntispam}
+                        onClick={onSync}
+                        disabled={syncing || fleetRows.length === 0}
+                      >
+                        <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
+                      </button>
+                    </SmartTooltip>
+                  </div> : null}
+              </div>
+
+              {filteredRows.length === 0 ? (
+                <div className={layout.emptyStateInCard}>
+                  <Icon icon="mdi:email-off-outline" className={layout.emptyStateIcon} aria-hidden />
+                  <p className={layout.emptyStateTitle}>{fleetRows.length === 0 ? as.emptyTitle : as.noResultsTitle}</p>
+                  <p className={layout.emptyStateHint}>{fleetRows.length === 0 ? as.emptyText : as.noResultsText}</p>
+                </div>
+              ) : (
+                <>
+                  <div className={layout.dataTableWrap}>
+                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th className={styles.checkboxCell}>
+                              <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label={copy.bulk.selectAll} />
+                            </th>
+                            <SortableHeader buttonClassName={styles.thBtn} column="clientName" label={msp.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="solutionLabel" label={msp.table.solution} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="status" label={msp.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="totalLicenses" label={msp.table.licenses || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="domainesSurveilles" label={msp.table.domains || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="expirationDate" label={msp.table.expiration} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="lastSync" label={msp.table.lastSync} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <th className={styles.rowOpenCell} aria-label={as.openDetail || msp.openDetail || "Détail"} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedRows.map(row => <FleetTableRow key={fleetRowKey(row)} row={row} selected={selectedIds.has(fleetRowKey(row))} selectLabel={copy.formatBulkSelectRow(row.clientName)} onToggleSelect={toggleItem} onOpen={onOpenSolution} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
+                        e.preventDefault();
+                        onOpenSolution?.(item, {
+                          background: true
+                        });
+                      }} />)}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                    <div className={layout.paginationLeft}>
+                      <span className={layout.paginationLabel}>{msp.rowsPerPage}</span>
+                      <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    <div className={layout.paginationRight}>
+                      <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={msp.prevPage}>
+                        <FaChevronLeft />
+                      </button>
+                      <span className={layout.paginationInfo}>
+                        {copy.formatMspPageInfo(currentPage, totalPages)}
+                      </span>
+                      <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={msp.nextPage}>
+                        <FaChevronRight />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
-              <div className={styles.paginationLeft}>
-                <span className={styles.paginationLabel}>{msp.rowsPerPage}</span>
-                <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              <div className={styles.paginationRight}>
-                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={msp.prevPage}>
-                  <FaChevronLeft />
-                </button>
-                <span className={styles.paginationInfo}>
-                  {copy.formatMspPageInfo(currentPage, totalPages)}
-                </span>
-                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={msp.nextPage}>
-                  <FaChevronRight />
-                </button>
-              </div>
-            </div> : null}
           </div>
-        </section>}
+          {selectedCount > 0 ? (
+            <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
+          ) : null}
+        </div>
+      )}
       <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;
 }

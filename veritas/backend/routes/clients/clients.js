@@ -63,6 +63,23 @@ function normalizeClientStatut(value) {
   if (raw.includes("act")) return "actif";
   return "actif";
 }
+function normalizeClientIcon(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  // Iconify id: prefix:name (letters, digits, hyphen, underscore, slash)
+  if (!/^[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_/-]*$/i.test(trimmed)) return null;
+  return trimmed.slice(0, 120);
+}
+function normalizeClientIconColor(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed)) return null;
+  return trimmed.slice(0, 20);
+}
 async function fetchTagsByClientId() {
   const byClientId = {};
   try {
@@ -470,7 +487,7 @@ const buildChanges = (modifiedFields, valueMap) => modifiedFields.map(field => (
   newValue: valueMap[field] !== undefined ? valueMap[field] : null
 }));
 async function getClientSnapshotForNotification(clientId) {
-  const preferredColumns = ["id", "name", "client_number", "email", "phone", "address", "siret", "secteur", "statut", "commercial_id", "contrat", "options", "modules", "sites", "office365_data"];
+  const preferredColumns = ["id", "name", "client_number", "email", "phone", "address", "siret", "secteur", "statut", "icon", "icon_color", "commercial_id", "contrat", "options", "modules", "sites", "office365_data"];
   try {
     const result = await pool.query(`SELECT ${preferredColumns.join(", ")}
        FROM v_b_clients
@@ -580,7 +597,7 @@ function appendClientSsidUpdate({
   });
   return paramIndex;
 }
-const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "statut", "contrat", "options", "modules", "sites", "commercial_id", "created_at", "updated_at"];
+const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "statut", "icon", "icon_color", "contrat", "options", "modules", "sites", "commercial_id", "created_at", "updated_at"];
 async function queryClientsListBaseRows() {
   const available = await getClientsAvailableColumns();
   const clientCols = CLIENTS_LIST_SELECT_COLUMNS.filter(col => available.has(col));
@@ -2689,9 +2706,14 @@ router.post('/general', requirePermission('clients.create'), async (req, res) =>
       address,
       siret,
       secteur,
-      statut
+      statut,
+      icon,
+      iconColor,
+      icon_color
     } = req.body;
     const resolvedClientNumber = normalizeClientNumber(clientNumber !== undefined ? clientNumber : client_number);
+    const resolvedIcon = normalizeClientIcon(icon);
+    const resolvedIconColor = normalizeClientIconColor(iconColor !== undefined ? iconColor : icon_color);
     const defaultOptions = options || modules || {
       Support: false,
       Curatif: false,
@@ -2733,10 +2755,21 @@ router.post('/general', requirePermission('clients.create'), async (req, res) =>
       insertFields.push("statut");
       insertValues.push(normalizeClientStatut(statut));
     }
+    if (availableColumns.has("icon") && resolvedIcon !== undefined) {
+      insertFields.push("icon");
+      insertValues.push(resolvedIcon);
+    }
+    if (availableColumns.has("icon_color") && resolvedIconColor !== undefined) {
+      insertFields.push("icon_color");
+      insertValues.push(resolvedIconColor);
+    }
     const placeholders = insertValues.map((_, i) => `$${i + 1}`).join(', ');
-    const returningCols = availableColumns.has("statut")
-      ? "id, name, client_number, contrat, options, sites, commercial_id, statut, created_at, updated_at"
-      : "id, name, client_number, contrat, options, sites, commercial_id, created_at, updated_at";
+    const returningParts = ["id", "name", "client_number", "contrat", "options", "sites", "commercial_id"];
+    if (availableColumns.has("statut")) returningParts.push("statut");
+    if (availableColumns.has("icon")) returningParts.push("icon");
+    if (availableColumns.has("icon_color")) returningParts.push("icon_color");
+    returningParts.push("created_at", "updated_at");
+    const returningCols = returningParts.join(", ");
     const result = await pool.query(`INSERT INTO v_b_clients (${insertFields.join(', ')})
        VALUES (${placeholders})
        RETURNING ${returningCols}`, insertValues);
@@ -2796,7 +2829,12 @@ router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) 
     const hasExpiration = Object.prototype.hasOwnProperty.call(updates, "contratExpiration");
     const hasOptions = updates.options !== undefined && typeof updates.options === "object" && !Array.isArray(updates.options);
     const hasStatut = Object.prototype.hasOwnProperty.call(updates, "statut");
-    if (!hasCommercial && !hasDebut && !hasExpiration && !hasOptions && !hasStatut) {
+    const hasIcon = Object.prototype.hasOwnProperty.call(updates, "icon") || Object.prototype.hasOwnProperty.call(updates, "iconColor") || Object.prototype.hasOwnProperty.call(updates, "icon_color");
+    const resolvedBulkIcon = Object.prototype.hasOwnProperty.call(updates, "icon") ? normalizeClientIcon(updates.icon) : undefined;
+    const resolvedBulkIconColor = Object.prototype.hasOwnProperty.call(updates, "iconColor") || Object.prototype.hasOwnProperty.call(updates, "icon_color")
+      ? normalizeClientIconColor(updates.iconColor !== undefined ? updates.iconColor : updates.icon_color)
+      : undefined;
+    if (!hasCommercial && !hasDebut && !hasExpiration && !hasOptions && !hasStatut && !hasIcon) {
       return res.status(400).json({
         error: "No updates provided"
       });
@@ -2806,6 +2844,8 @@ router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) 
     const hasContratCol = availableColumns.has("contrat");
     const hasOptionsCol = availableColumns.has("options");
     const hasStatutCol = availableColumns.has("statut");
+    const hasIconCol = availableColumns.has("icon");
+    const hasIconColorCol = availableColumns.has("icon_color");
     const updatedIds = [];
     const failed = [];
     for (const id of clientIds) {
@@ -2849,6 +2889,14 @@ router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) 
         if (hasStatut && hasStatutCol) {
           updateFields.push(`statut = $${paramIndex++}`);
           updateValues.push(normalizeClientStatut(updates.statut));
+        }
+        if (resolvedBulkIcon !== undefined && hasIconCol) {
+          updateFields.push(`icon = $${paramIndex++}`);
+          updateValues.push(resolvedBulkIcon);
+        }
+        if (resolvedBulkIconColor !== undefined && hasIconColorCol) {
+          updateFields.push(`icon_color = $${paramIndex++}`);
+          updateValues.push(resolvedBulkIconColor);
         }
         if (updateFields.length === 0) {
           failed.push({
@@ -2907,10 +2955,17 @@ router.put('/:id', verifyJWT, requireClientUpdatePermissions, async (req, res) =
       commercialId,
       siret,
       secteur,
-      statut
+      statut,
+      icon,
+      iconColor,
+      icon_color
     } = req.body;
     const resolvedClientNumber = clientNumber !== undefined || client_number !== undefined ? normalizeClientNumber(clientNumber !== undefined ? clientNumber : client_number) : undefined;
-    if (name !== undefined || clientNumber !== undefined || client_number !== undefined || email !== undefined || phone !== undefined || address !== undefined || office365_data !== undefined || sites !== undefined || ssid !== undefined || ssids !== undefined || options !== undefined || modules !== undefined || contrat !== undefined || commercialId !== undefined || siret !== undefined || secteur !== undefined || modules_monitoring !== undefined || statut !== undefined) {
+    const resolvedIcon = icon !== undefined ? normalizeClientIcon(icon) : undefined;
+    const resolvedIconColor = iconColor !== undefined || icon_color !== undefined
+      ? normalizeClientIconColor(iconColor !== undefined ? iconColor : icon_color)
+      : undefined;
+    if (name !== undefined || clientNumber !== undefined || client_number !== undefined || email !== undefined || phone !== undefined || address !== undefined || office365_data !== undefined || sites !== undefined || ssid !== undefined || ssids !== undefined || options !== undefined || modules !== undefined || contrat !== undefined || commercialId !== undefined || siret !== undefined || secteur !== undefined || modules_monitoring !== undefined || statut !== undefined || icon !== undefined || iconColor !== undefined || icon_color !== undefined) {
       const previousClientSnapshot = await getClientSnapshotForNotification(req.params.id);
       let updateFields = [];
       let updateValues = [];
@@ -2946,6 +3001,14 @@ router.put('/:id', verifyJWT, requireClientUpdatePermissions, async (req, res) =
       if (statut !== undefined && hasClientColumn("statut")) {
         updateFields.push(`statut = $${paramIndex++}`);
         updateValues.push(normalizeClientStatut(statut));
+      }
+      if (resolvedIcon !== undefined && hasClientColumn("icon")) {
+        updateFields.push(`icon = $${paramIndex++}`);
+        updateValues.push(resolvedIcon);
+      }
+      if (resolvedIconColor !== undefined && hasClientColumn("icon_color")) {
+        updateFields.push(`icon_color = $${paramIndex++}`);
+        updateValues.push(resolvedIconColor);
       }
       if (commercialId !== undefined && commercialId !== "" && hasClientColumn("commercial_id")) {
         updateFields.push(`commercial_id = $${paramIndex++}`);
@@ -3169,9 +3232,16 @@ router.put('/general/:id', verifyJWT, requireClientUpdatePermissions, async (req
       commercialId,
       siret,
       secteur,
-      statut
+      statut,
+      icon,
+      iconColor,
+      icon_color
     } = req.body;
     const resolvedClientNumber = clientNumber !== undefined || client_number !== undefined ? normalizeClientNumber(clientNumber !== undefined ? clientNumber : client_number) : undefined;
+    const resolvedIcon = icon !== undefined ? normalizeClientIcon(icon) : undefined;
+    const resolvedIconColor = iconColor !== undefined || icon_color !== undefined
+      ? normalizeClientIconColor(iconColor !== undefined ? iconColor : icon_color)
+      : undefined;
     const previousClientSnapshot = await getClientSnapshotForNotification(req.params.id);
     let updateFields = [];
     let updateValues = [];
@@ -3207,6 +3277,14 @@ router.put('/general/:id', verifyJWT, requireClientUpdatePermissions, async (req
     if (statut !== undefined && hasClientColumn("statut")) {
       updateFields.push(`statut = $${paramIndex++}`);
       updateValues.push(normalizeClientStatut(statut));
+    }
+    if (resolvedIcon !== undefined && hasClientColumn("icon")) {
+      updateFields.push(`icon = $${paramIndex++}`);
+      updateValues.push(resolvedIcon);
+    }
+    if (resolvedIconColor !== undefined && hasClientColumn("icon_color")) {
+      updateFields.push(`icon_color = $${paramIndex++}`);
+      updateValues.push(resolvedIconColor);
     }
     if (commercialId !== undefined && commercialId !== "" && hasClientColumn("commercial_id")) {
       updateFields.push(`commercial_id = $${paramIndex++}`);

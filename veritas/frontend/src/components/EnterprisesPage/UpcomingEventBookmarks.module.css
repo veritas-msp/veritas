@@ -26,6 +26,140 @@
   margin-right: 0;
 }
 
+/* Inline frise in enterprise header (between identity and KPIs) */
+.heroFriseShell {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+}
+
+.barHeroFrise {
+  --hero-frise-card-h: 4.5rem;
+  margin: 0;
+  padding: 0;
+  border-top: none;
+  max-width: none;
+  overflow: visible;
+}
+
+.barHeroFrise .barInner,
+.barHeroFrise .trackWrap {
+  min-height: 0;
+  overflow: visible;
+}
+
+.barHeroFrise .barInner,
+.barHeroFrise .track {
+  min-height: var(--hero-frise-card-h);
+}
+
+.barHeroFrise .track {
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0.1rem 0.1rem 0.15rem;
+  /* visible so hover expand is not clipped (overflow-x:auto would force clip on Y) */
+  overflow: visible;
+}
+
+.barHeroFrise .bookmark:hover,
+.barHeroFrise .bookmark:focus-visible,
+.barHeroFrise .bookmarkMenuOpen {
+  /* Widen only — same height as compact */
+  transform: none;
+  z-index: 6;
+}
+
+.barHeroFrise .empty {
+  min-height: var(--hero-frise-card-h);
+  height: var(--hero-frise-card-h);
+  max-height: var(--hero-frise-card-h);
+  padding: 0.25rem 0.45rem;
+  font-size: 0.7rem;
+}
+
+.barHeroFrise .sectionLabel,
+.barHeroFrise .sectionEmptyHint {
+  min-height: var(--hero-frise-card-h);
+  height: var(--hero-frise-card-h);
+  max-height: var(--hero-frise-card-h);
+  padding: 0.3rem 0.35rem;
+  font-size: 0.62rem;
+  box-sizing: border-box;
+}
+
+.barHeroFrise .bookmark,
+.barHeroFrise .bookmarkSkeleton {
+  align-self: center;
+  min-height: var(--hero-frise-card-h);
+  height: var(--hero-frise-card-h);
+  max-height: var(--hero-frise-card-h);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.barHeroFrise .bookmarkBody {
+  padding: 0.25rem 0.45rem 0.3rem;
+}
+
+.barHeroFrise .bookmarkDay {
+  font-size: 0.92rem;
+}
+
+.barHeroFrise .bookmarkTitle {
+  font-size: 0.68rem;
+  -webkit-line-clamp: 1;
+}
+
+/* Compact planning chip in the enterprise hero row (between identity and actions) */
+.heroBookmarkShellInline {
+  margin: 0;
+  border-top: none;
+  border: 1px solid var(--msp-border, #9aabc0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #eef3f8);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.heroBookmarkShellInline .barCollapseToggle {
+  padding: 0.35rem 0.55rem;
+  min-height: 34px;
+}
+
+.heroBookmarkShellInline .barCollapseToggleTitle {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.heroBookmarkShellInline .barCollapseToggleSummary {
+  font-size: 0.68rem;
+}
+
+.heroBookmarkShellInline .barCollapsePanel {
+  border-top: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.08));
+  background: var(--msp-surface, #fff);
+}
+
+.heroBookmarkShellInline .barInPageHero {
+  margin: 0;
+  padding: 0.35rem 0.45rem 0.45rem;
+  border-top: none;
+  max-width: none;
+}
+
+.heroBookmarkShellInline.heroBookmarkShellCollapsed {
+  margin-top: 0;
+}
+
+.heroBookmarkShellInline[data-bookmarks-collapsed="false"] .barInner,
+.heroBookmarkShellInline[data-bookmarks-collapsed="false"] .track {
+  min-height: 5.5rem;
+}
+
 .heroBookmarkShell .barInPageHero,
 .heroBookmarkShell .barInProPanel {
   margin-top: 0;

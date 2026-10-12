@@ -3,7 +3,7 @@
 .tabsBar {
   position: fixed;
   top: 0;
-  left: 240px;
+  left: var(--sidebar-expanded-width, 200px);
   right: 0;
   height: var(--tabs-bar-height, 36px);
   background: var(--msp-surface-2, #eef2f7);
@@ -20,7 +20,7 @@
 }
 
 .tabsBar.sidebarCollapsed {
-  left: 64px;
+  left: var(--sidebar-rail-width, 64px);
 }
 
 .tabsBar.sidebarTop {

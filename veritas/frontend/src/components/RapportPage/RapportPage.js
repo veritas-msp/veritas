@@ -10,6 +10,8 @@ import ReportCreateWizard from "./RapportCreateWizard";
 import ReportBuilderPlaceholder from "./RapportBuilderPlaceholder";
 import SupervisionPeriodGate from "./SupervisionPeriodGate";
 import ReportInterventionBuilder from "./intervention/RapportInterventionBuilder";
+import AuditSubtypeGate from "./audit/AuditSubtypeGate";
+import RapportAuditBuilder from "./audit/RapportAuditBuilder";
 import { REPORT_TYPE_IDS } from "./reportTypeConstants";
 import MonitoringSteps, { getEnabledMonitoringSteps, MODULE_LABELS } from "./monitoring/MonitoringSteps";
 import BuilderCommentsPane from "./monitoring/BuilderCommentsPane";
@@ -35,7 +37,7 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getRapportGuide } from "../PageGuide/rapportGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { getRapportPageCopy, getReportTypes } from "./rapportPageI18n";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const RAPPORT_CLIENTS_CACHE_KEY = "rapport_clients_list_cache_v1";
 const RAPPORT_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -103,15 +105,17 @@ export default function ReportPage({
   const [builderType, setBuilderType] = useState(null);
   const [builderClient, setBuilderClient] = useState(null);
   const [builderStepIndex, setBuilderStepIndex] = useState(0);
-  const [createWizardStep, setCreateWizardStep] = useState("client");
-  const rapportGuide = useMemo(() => getRapportGuide(locale, {
-    showClient: () => setCreateWizardStep("client"),
-    showTypes: () => {
-      if (selectedClientId) setCreateWizardStep("type");
-    }
-  }), [locale, selectedClientId]);
+  const [createWizardStep, setCreateWizardStep] = useState("type");
   const [selectedReportTypeId, setSelectedReportTypeId] = useState(null);
+  const rapportGuide = useMemo(() => getRapportGuide(locale, {
+    showTypes: () => setCreateWizardStep("type"),
+    showClient: () => {
+      if (selectedReportTypeId) setCreateWizardStep("client");
+    }
+  }), [locale, selectedReportTypeId]);
   const [draftReport, setDraftReport] = useState(null);
+  const [launchDisclaimerOpen, setLaunchDisclaimerOpen] = useState(false);
+  const [pendingLaunchAction, setPendingLaunchAction] = useState(null);
   const [reportStartDate, setReportStartDate] = useState("");
   const [reportEndDate, setReportEndDate] = useState("");
   const builderSectionRef = useRef(null);
@@ -239,30 +243,61 @@ export default function ReportPage({
     setBuilderLeaveModalOpen(false);
     action?.();
   };
-  const selectedClient = useMemo(() => clients.find(c => String(c.id) === selectedClientId) || null, [clients, selectedClientId]);
-  const handleWizardSelectClient = clientId => {
-    setSelectedClientId(clientId);
-    setSelectedReportTypeId(null);
+  const handleWizardSelectType = typeId => {
+    setSelectedReportTypeId(typeId);
+    setSelectedClientId("");
     setDraftReport(null);
   };
-  const handleStartDraftReport = async reportTypeId => {
+  const handleWizardSelectClient = clientId => {
+    setSelectedClientId(clientId);
+    setDraftReport(null);
+  };
+  const handleStartDraftReport = async (reportTypeId, clientId) => {
     const resolvedTypeId = reportTypeId ?? selectedReportTypeId;
-    if (!selectedClient || !resolvedTypeId || startingReportRef.current) return;
+    const resolvedClientId = clientId != null ? String(clientId) : selectedClientId;
+    const client = clients.find(entry => String(entry.id) === resolvedClientId) || null;
+    if (!client || !resolvedTypeId || startingReportRef.current) return;
     const type = reportTypes.find(entry => entry.id === resolvedTypeId);
     if (!type || type.comingSoon) return;
     startingReportRef.current = true;
+    setSelectedClientId(resolvedClientId);
     setSelectedReportTypeId(resolvedTypeId);
     try {
-      const clientForDraft = type.id === REPORT_TYPE_IDS.INTERVENTION ? await enrichBuilderClientWithSites(selectedClient) : selectedClient;
-      setDraftReport({
+      const needsSites = type.id === REPORT_TYPE_IDS.INTERVENTION || type.id === REPORT_TYPE_IDS.AUDIT;
+      const clientForDraft = needsSites ? await enrichBuilderClientWithSites(client) : client;
+      const nextDraft = {
         type,
         client: clientForDraft,
         documentId: null,
         initialData: null,
-        documentName: ""
-      });
+        documentName: "",
+        auditSubtypeId: type.id === REPORT_TYPE_IDS.AUDIT ? null : undefined
+      };
+      if (type.id === REPORT_TYPE_IDS.INTERVENTION) {
+        setPendingLaunchAction({ kind: "draft", draft: nextDraft });
+        setLaunchDisclaimerOpen(true);
+        return;
+      }
+      setDraftReport(nextDraft);
     } finally {
       startingReportRef.current = false;
+    }
+  };
+  const handleLaunchDisclaimerClose = () => {
+    setLaunchDisclaimerOpen(false);
+    setPendingLaunchAction(null);
+  };
+  const handleLaunchDisclaimerConfirm = () => {
+    const action = pendingLaunchAction;
+    setLaunchDisclaimerOpen(false);
+    setPendingLaunchAction(null);
+    if (!action) return;
+    if (action.kind === "draft" && action.draft) {
+      setDraftReport(action.draft);
+      return;
+    }
+    if (action.kind === "auditSubtype" && action.subtypeId) {
+      setDraftReport(prev => (prev ? { ...prev, auditSubtypeId: action.subtypeId } : prev));
     }
   };
   const loadPeriodInsights = async (client, startDate, endDate) => {
@@ -1206,6 +1241,9 @@ export default function ReportPage({
   const isSupervisionBuilder = isSupervisionReportBuilderType(builderType) && builderClient;
   const isDraftWizard = Boolean(draftReport);
   const isInterventionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.INTERVENTION;
+  const isAuditDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.AUDIT;
+  const isAuditGate = isAuditDraft && !draftReport?.auditSubtypeId;
+  const isAuditBuilder = isAuditDraft && Boolean(draftReport?.auditSubtypeId);
   const isSupervisionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.SUPERVISION_ETAT;
   const builderCommentsPane = showBuilderCommentsPane ? (
     <BuilderCommentsPane
@@ -1231,53 +1269,50 @@ export default function ReportPage({
     />
   ) : null;
   return <>
-      <div className={`${cyberStyles.mspPage} msp-page-insight`}>
+      <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-insight`}>
         {isSupervisionBuilder ? <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
             <div className={shellStyles.shell}>
-              <MspPageHero
-                guideId="report-hero"
-                eyebrow={pageCopy.eyebrow}
-                title={pageCopy.reportTypes.supervisionEtat.title}
-                subtitle={builderClient?.reportStartDate && builderClient?.reportEndDate
-                  ? `${builderClient?.name || builderClient?.nom || pageCopy.create.getClientLabel(builderClient?.id)} · Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}`
-                  : `${builderClient?.name || builderClient?.nom || ""} — ${pageCopy.supervisionBuilder.builderHint || ""}`}
-                icon="mdi:radar"
-                actions={
-                  <div className={shellStyles.heroActions}>
-                    <button
-                      type="button"
-                      className={shellStyles.heroBtn}
-                      onClick={() => { void handleSyncAllMonitoring(); }}
-                      disabled={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open}
-                    >
-                      <Icon
-                        icon="mdi:sync"
-                        className={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open ? shellStyles.heroSpin : undefined}
-                        aria-hidden
-                      />
-                      {pageCopy.supervisionBuilder.builderSync}
+              <div className={shellStyles.builderToolbar} data-guide="report-hero">
+                <div className={shellStyles.builderToolbarMeta}>
+                  <h1 className={shellStyles.builderToolbarTitle}>{pageCopy.reportTypes.supervisionEtat.title}</h1>
+                  <p className={shellStyles.builderToolbarSubtitle}>
+                    {builderClient?.reportStartDate && builderClient?.reportEndDate
+                      ? `${builderClient?.name || builderClient?.nom || pageCopy.create.getClientLabel(builderClient?.id)} · Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}`
+                      : `${builderClient?.name || builderClient?.nom || ""} — ${pageCopy.supervisionBuilder.builderHint || ""}`}
+                  </p>
+                </div>
+                <div className={shellStyles.heroActions}>
+                  <button
+                    type="button"
+                    className={shellStyles.heroBtn}
+                    onClick={() => { void handleSyncAllMonitoring(); }}
+                    disabled={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open}
+                  >
+                    <Icon
+                      icon="mdi:sync"
+                      className={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open ? shellStyles.heroSpin : undefined}
+                      aria-hidden
+                    />
+                    {pageCopy.supervisionBuilder.builderSync}
+                  </button>
+                  {isOnSummaryStep ? (
+                    <button type="button" className={shellStyles.heroBtn} onClick={handleDownloadZip} disabled={!builderClient}>
+                      <Icon icon="mdi:download" aria-hidden />
+                      {pageCopy.supervisionBuilder.builderDownload}
                     </button>
-                    {isOnSummaryStep ? (
-                      <button type="button" className={shellStyles.heroBtn} onClick={handleDownloadZip} disabled={!builderClient}>
-                        <Icon icon="mdi:download" aria-hidden />
-                        {pageCopy.supervisionBuilder.builderDownload}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className={shellStyles.heroBtnPrimary}
-                      onClick={() => builderClient && setShowSaveModal(true)}
-                      disabled={!builderClient}
-                    >
-                      <Icon icon="mdi:content-save-outline" aria-hidden />
-                      {pageCopy.supervisionBuilder.builderSave}
-                    </button>
-                  </div>
-                }
-              >
-                <p className={shellStyles.heroHint}>{pageCopy.supervisionBuilder.builderHint}</p>
-              </MspPageHero>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={shellStyles.heroBtnPrimary}
+                    onClick={() => builderClient && setShowSaveModal(true)}
+                    disabled={!builderClient}
+                  >
+                    <Icon icon="mdi:content-save-outline" aria-hidden />
+                    {pageCopy.supervisionBuilder.builderSave}
+                  </button>
+                </div>
+              </div>
 
               <div ref={builderSectionRef} className={shellStyles.builderBody}>
 
@@ -1385,30 +1420,56 @@ export default function ReportPage({
               </div>
             </div>
             </div>
-          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isSupervisionDraft ? <div className={cyberStyles.mspLayout}>
+          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isAuditGate ? <div className={cyberStyles.mspLayout}>
+            <div className={cyberStyles.mspMain}>
+              <AuditSubtypeGate
+                locale={pageCopy.localeCode || locale}
+                reportType={draftReport.type}
+                client={draftReport.client}
+                initialSubtypeId={draftReport.initialData?.subtypeId}
+                onBack={handleBackFromDraftReport}
+                onConfirm={({ subtypeId }) => {
+                  setPendingLaunchAction({ kind: "auditSubtype", subtypeId });
+                  setLaunchDisclaimerOpen(true);
+                }}
+              />
+            </div>
+          </div> : isAuditBuilder ? <RapportAuditBuilder
+            copy={pageCopy}
+            reportType={draftReport.type}
+            client={draftReport.client}
+            subtypeId={draftReport.auditSubtypeId}
+            initialData={draftReport.initialData}
+            documentId={draftReport.documentId}
+            documentName={draftReport.documentName}
+            onBack={handleBackFromDraftReport}
+            onChangeSubtype={() => {
+              setDraftReport(prev => prev ? { ...prev, auditSubtypeId: null, initialData: null } : prev);
+            }}
+          /> : isSupervisionDraft ? <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
               <SupervisionPeriodGate copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} onConfirm={handleConfirmSupervisionPeriod} confirming={startingSupervisionBuilder} />
             </div>
           </div> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
-              <header className={cyberStyles.mspHero} data-guide="report-hero">
-                <div className={cyberStyles.mspHeroMain}>
-                  <div className={cyberStyles.mspBrandMark}>
-                    <Icon icon="mingcute:report-forms-fill" className={cyberStyles.mspBrandMarkIcon} />
-                  </div>
-                  <div className={cyberStyles.mspHeroCopy}>
-                    <span className={cyberStyles.mspEyebrow}>{pageCopy.eyebrow}</span>
-                    <h1 className={cyberStyles.mspTitle}>{pageCopy.pageTitle}</h1>
-                    <p className={cyberStyles.mspSubtitle}>{pageCopy.subtitle}</p>
-                  </div>
-                </div>
-              </header>
-
-              <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
-                <div className={`${cyberStyles.tabContent} ${styles.wizardTabContent}`}>
+              <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList} ${layout.contentNoHero}`} data-guide="report-hero">
+                <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
+                <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
                   <div className={styles.wizardFill}>
                     {error ? <div className={styles.alertError}>{error}</div> : null}
-                    <ReportCreateWizard copy={pageCopy} reportTypes={reportTypes} clients={clients} loading={loading} step={createWizardStep} onStepChange={setCreateWizardStep} selectedClientId={selectedClientId} onSelectClient={handleWizardSelectClient} onStartReport={handleStartDraftReport} />
+                    <ReportCreateWizard
+                      copy={pageCopy}
+                      reportTypes={reportTypes}
+                      clients={clients}
+                      loading={loading}
+                      step={createWizardStep}
+                      onStepChange={setCreateWizardStep}
+                      selectedClientId={selectedClientId}
+                      onSelectClient={handleWizardSelectClient}
+                      selectedReportTypeId={selectedReportTypeId}
+                      onSelectType={handleWizardSelectType}
+                      onStartReport={handleStartDraftReport}
+                    />
                   </div>
                 </div>
               </main>
@@ -1435,6 +1496,16 @@ export default function ReportPage({
         icon="mdi:content-save-alert-outline"
         onClose={handleBuilderLeaveCancel}
         onConfirm={handleBuilderLeaveConfirm}
+      />
+      <ConfirmModal
+        open={launchDisclaimerOpen}
+        title={pageCopy.supervisionBuilder.unsavedTitle}
+        message={pageCopy.supervisionBuilder.unsavedMessage}
+        confirmLabel={pageCopy.supervisionBuilder.unsavedConfirm}
+        cancelLabel={pageCopy.supervisionBuilder.unsavedCancel || pageCopy.wizard?.back}
+        icon="mdi:content-save-alert-outline"
+        onClose={handleLaunchDisclaimerClose}
+        onConfirm={handleLaunchDisclaimerConfirm}
       />
     </>;
 }

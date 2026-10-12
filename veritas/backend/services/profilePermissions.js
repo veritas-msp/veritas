@@ -4,6 +4,7 @@ export const PROFILE_PERMISSION_FLAGS = [
   "monitoring_enabled",
   "infrastructure_enabled",
   "cybersecurite_enabled",
+  "campaigns_enabled",
   "planning_enabled",
   "service_enabled",
   "contrat_enabled",

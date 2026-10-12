@@ -47,6 +47,7 @@ import td from "./TicketDetailPage.module.css";
 import fs from "./TicketCreatePage.module.css";
 import heroStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import styles from "./TicketSalesDetailPage.module.css";
+import TicketDetailPageSkeleton from "./TicketDetailPageSkeleton";
 
 function normalizeStatus(status) {
   return status === "open" ? "new" : status;
@@ -373,7 +374,7 @@ function RightPaneStaticSection({ title, titleId, count = 0, headerExtra = null,
 }
 
 const SALES_TYPE_OPTIONS = [
-  { key: "prestation", icon: "mdi:briefcase-edit-outline" },
+  { key: "prestation", icon: "mdi:briefcase-outline" },
   { key: "installation", icon: "mdi:tools" }
 ];
 
@@ -533,6 +534,62 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       setLoading(false);
     }
   }, [ticketId, copy.loadError]);
+
+  const softReloadTicket = useCallback(async () => {
+    if (!ticketId) return;
+    try {
+      const row = await fetchTicket(ticketId);
+      setTicket(prev => {
+        if (!prev) return row;
+        return {
+          ...prev,
+          ...row,
+          comments: Array.isArray(row?.comments) ? row.comments : prev.comments,
+          sales_form_data: row?.sales_form_data || row?.salesFormData || prev.sales_form_data,
+          supportCredit: row?.supportCredit ?? prev.supportCredit,
+          attachments: Array.isArray(row?.attachments) ? row.attachments : prev.attachments
+        };
+      });
+      setPmTasks(buildPmTasksFromTicket(row));
+      if (!titleEditing) {
+        setTitleDraft(String(row?.title || ""));
+      }
+    } catch (_) {
+      // silent background sync
+    }
+  }, [ticketId, titleEditing]);
+
+  const applyCommentChange = useCallback(createdComment => {
+    if (createdComment?._deleted && createdComment.id) {
+      setTicket(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          comments: (Array.isArray(prev.comments) ? prev.comments : []).filter(
+            row => String(row.id) !== String(createdComment.id)
+          ),
+          updated_at: new Date().toISOString()
+        };
+      });
+      return;
+    }
+    if (createdComment?.id) {
+      setTicket(prev => {
+        if (!prev) return prev;
+        const list = Array.isArray(prev.comments) ? prev.comments : [];
+        const exists = list.some(row => String(row.id) === String(createdComment.id));
+        return {
+          ...prev,
+          comments: exists
+            ? list.map(row => (String(row.id) === String(createdComment.id) ? { ...row, ...createdComment } : row))
+            : [...list, createdComment],
+          updated_at: new Date().toISOString()
+        };
+      });
+      return;
+    }
+    void softReloadTicket();
+  }, [softReloadTicket]);
 
   useEffect(() => {
     loadTicket();
@@ -991,8 +1048,9 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         prev
           ? {
               ...prev,
-              ...(updated || {}),
-              sales_form_data: nextForm
+              sales_form_data: nextForm,
+              salesFormData: nextForm,
+              updated_at: updated?.updated_at || new Date().toISOString()
             }
           : prev
       );
@@ -1000,7 +1058,6 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       setFormDraftValues({});
       setFormFieldErrors(false);
       toast.success(copy.form.saved);
-      await loadTicket();
     } catch (error) {
       toast.error(error.message || copy.form.saveError);
     } finally {
@@ -1229,14 +1286,25 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
           prev
             ? {
                 ...prev,
-                ...(updated || {}),
                 sales_form_data: nextForm,
+                salesFormData: nextForm,
                 progress_percent: updated?.progress_percent ?? updated?.progressPercent ?? nextProgress,
-                attachments: updated?.attachments || prev.attachments || []
+                progressPercent: updated?.progress_percent ?? updated?.progressPercent ?? nextProgress,
+                attachments: updated?.attachments || prev.attachments || [],
+                updated_at: updated?.updated_at || new Date().toISOString()
               }
             : prev
         );
-        setPmTasks(buildPmTasksFromTicket(nextTicketBase, nextForm));
+        setPmTasks(prev => {
+          const rebuilt = buildPmTasksFromTicket(nextTicketBase, nextForm);
+          const prevById = new Map((Array.isArray(prev) ? prev : []).map(task => [String(task.id), task]));
+          return rebuilt.map(task => {
+            const previous = prevById.get(String(task.id));
+            if (!previous) return task;
+            const nextDocs = Array.isArray(task.documents) && task.documents.length > 0 ? task.documents : previous.documents;
+            return nextDocs ? { ...task, documents: nextDocs } : task;
+          });
+        });
         return true;
       } catch (error) {
         toast.error(error.message || copy.tasks.saveError);
@@ -1447,11 +1515,11 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
           toast.success(interpolate(copy.credits.toast.success, { count: String(total) }));
         }
         if (result?.ticket) {
-          setTicket(result.ticket);
+          setTicket(prev => (prev ? { ...prev, ...result.ticket, supportCredit: result.ticket.supportCredit ?? result.supportCredit ?? prev.supportCredit } : result.ticket));
         } else if (result?.supportCredit) {
           setTicket(prev => (prev ? { ...prev, supportCredit: result.supportCredit } : prev));
         } else {
-          await loadTicket();
+          await softReloadTicket();
         }
       } else if (!isTask) {
         toast.info(copy.credits.toast.skipped);
@@ -1460,7 +1528,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     } catch (error) {
       const insufficient = /insufficient|insuffisant|402/i.test(String(error?.message || ""));
       toast.error(insufficient ? copy.credits.toast.insufficient : error.message || copy.credits.toast.error);
-      if (isTask) await loadTicket();
+      if (isTask) await softReloadTicket();
     } finally {
       setSavingCredits(false);
     }
@@ -1488,11 +1556,11 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         toast.success(interpolate(copy.credits.toast.success, { count: String(total) }));
       }
       if (result?.ticket) {
-        setTicket(result.ticket);
+        setTicket(prev => (prev ? { ...prev, ...result.ticket, supportCredit: result.ticket.supportCredit ?? result.supportCredit ?? prev.supportCredit } : result.ticket));
       } else if (result?.supportCredit) {
         setTicket(prev => (prev ? { ...prev, supportCredit: result.supportCredit } : prev));
       } else {
-        await loadTicket();
+        await softReloadTicket();
       }
       return true;
     } catch (error) {
@@ -1522,11 +1590,11 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         toast.success(interpolate(copy.credits.toast.refundSuccess || copy.credits.toast.success, { count: String(total) }));
       }
       if (result?.ticket) {
-        setTicket(result.ticket);
+        setTicket(prev => (prev ? { ...prev, ...result.ticket, supportCredit: result.ticket.supportCredit ?? result.supportCredit ?? prev.supportCredit } : result.ticket));
       } else if (result?.supportCredit) {
         setTicket(prev => (prev ? { ...prev, supportCredit: result.supportCredit } : prev));
       } else {
-        await loadTicket();
+        await softReloadTicket();
       }
       return true;
     } catch (error) {
@@ -1550,6 +1618,15 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       return;
     }
     setCreditModal(null);
+  };
+
+  const handleReorderTasks = async nextTasks => {
+    if (!Array.isArray(nextTasks)) return false;
+    const previous = pmTasks;
+    setPmTasks(nextTasks);
+    const ok = await persistTasks(nextTasks);
+    if (!ok) setPmTasks(previous);
+    return ok;
   };
 
   const handleRemoveTask = async taskId => {
@@ -1769,11 +1846,12 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   if (loading) {
     return (
-      <div className={`${layout.page} ${td.ticketDetailPage} ${styles.page} msp-page-grid`}>
-        <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${td.shell}`}>
-          <div className={td.emptyState}>{copy.loading}</div>
-        </div>
-      </div>
+      <TicketDetailPageSkeleton
+        variant="sales"
+        loadingAria={copy.loading}
+        onBack={() => onNavigate?.("TicketSales")}
+        backAria={copy.back}
+      />
     );
   }
 
@@ -1797,67 +1875,76 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${td.shell}`}>
         <header className={`${td.ticketChromeBar} ${td.ticketHeaderBar}`}>
           <button type="button" className={td.ticketHeaderIconBtn} onClick={() => onNavigate?.("TicketSales")} aria-label={copy.back} title={copy.back}>
-            <Icon icon="mdi:arrow-left" />
+            <Icon icon="mdi:arrow-left" aria-hidden />
           </button>
 
-          <div className={td.ticketHeroTrack}>
-            <h1 className={td.ticketHeroTitle}>{copy.formatTicketNumber(ticket.ticket_number || ticket.id)}</h1>
-            <span className={`${td.ticketFamilyChip} ${td.ticketFamilyChip_sales}`} title={copy.family?.services || "Services"}>
+          <div className={td.ticketHeroTrack} aria-label={detailCopy.header?.ticketContextAria || copy.family?.services}>
+            <span
+              className={`${td.ticketFamilyIcon} ${td.ticketFamilyIcon_sales}`}
+              title={copy.family?.services || "Services"}
+              aria-label={copy.family?.services || "Services"}
+            >
               <Icon icon="mdi:briefcase-outline" aria-hidden />
-              {copy.family?.services || "Services"}
             </span>
-            {kindLabel ? (
-              <>
-                <span className={td.ticketHeroMetaDot} aria-hidden>
-                  ·
+            <span className={td.ticketNumber} title={copy.formatTicketNumber(ticket.ticket_number || ticket.id)}>
+              {copy.formatTicketNumber(ticket.ticket_number || ticket.id)}
+            </span>
+            <span className={td.ticketHeroSep} aria-hidden>
+              |
+            </span>
+            <div className={td.ticketHeroLead}>
+              {titleEditing ? (
+                <input
+                  ref={titleInputRef}
+                  className={td.ticketHeroSubjectInput}
+                  type="text"
+                  value={titleDraft}
+                  disabled={savingMeta}
+                  aria-label={detailCopy.header?.titleAria || copy.tasks.label}
+                  placeholder={detailCopy.header?.titlePlaceholder || copy.tasks.placeholder}
+                  onChange={e => setTitleDraft(e.target.value)}
+                  onBlur={() => void commitTitleEdit()}
+                  onKeyDown={e => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void commitTitleEdit();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      cancelTitleEdit();
+                    }
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={td.ticketHeroSubjectBtn}
+                  onClick={startTitleEdit}
+                  disabled={savingMeta}
+                  title={detailCopy.header?.editTitleTitle || detailCopy.description?.editTitle}
+                  aria-label={detailCopy.header?.editTitleAria || detailCopy.header?.titleAria}
+                >
+                  <span className={`${td.ticketHeroTitle} ${!ticket.title ? td.ticketHeroSubjectPlaceholder : ""}`.trim()} title={ticket.title || undefined}>
+                    {ticket.title || detailCopy.header?.titlePlaceholder || "—"}
+                  </span>
+                </button>
+              )}
+              <div className={td.ticketHeroAfter}>
+                {kindLabel ? (
+                  <>
+                    <span className={td.ticketHeroSep} aria-hidden>
+                      |
+                    </span>
+                    <span className={`${td.ticketBadge} ${td.ticketBadge_ok}`}>{kindLabel}</span>
+                  </>
+                ) : null}
+                <span className={td.ticketHeroSep} aria-hidden>
+                  |
                 </span>
-                <span className={`${td.ticketBadge} ${td.ticketBadge_ok}`}>{kindLabel}</span>
-              </>
-            ) : null}
-            <span className={td.ticketHeroMetaDot} aria-hidden>
-              ·
-            </span>
-            {titleEditing ? (
-              <input
-                ref={titleInputRef}
-                className={td.ticketHeroSubjectInput}
-                type="text"
-                value={titleDraft}
-                disabled={savingMeta}
-                aria-label={detailCopy.header?.titleAria || copy.tasks.label}
-                placeholder={detailCopy.header?.titlePlaceholder || copy.tasks.placeholder}
-                onChange={e => setTitleDraft(e.target.value)}
-                onBlur={() => void commitTitleEdit()}
-                onKeyDown={e => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void commitTitleEdit();
-                  } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    cancelTitleEdit();
-                  }
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                className={`${td.ticketHeroSubjectBtn} ${td.ticketHeroMetaItem}`}
-                onClick={startTitleEdit}
-                disabled={savingMeta}
-                title={detailCopy.header?.editTitleTitle || detailCopy.description?.editTitle}
-                aria-label={detailCopy.header?.editTitleAria || detailCopy.header?.titleAria}
-              >
-                <span className={`${td.ticketHeroMetaText} ${!ticket.title ? td.ticketHeroSubjectPlaceholder : ""}`.trim()}>
-                  {ticket.title || detailCopy.header?.titlePlaceholder || "—"}
+                <span className={`${td.ticketBadge} ${progressValue >= 100 ? td.ticketBadge_ok : ""}`} title={copy.progress}>
+                  {copy.progress}: {progressValue}%
                 </span>
-              </button>
-            )}
-            <span className={td.ticketHeroMetaDot} aria-hidden>
-              ·
-            </span>
-            <span className={`${td.ticketBadge} ${progressValue >= 100 ? td.ticketBadge_ok : ""}`} title={copy.progress}>
-              {copy.progress}: {progressValue}%
-            </span>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -2553,7 +2640,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         validationRequests={Array.isArray(ticket?.validationRequests) ? ticket.validationRequests : []}
                         formatDateTime={copy.formatDateTime}
                         emptyLabel={copy.comments.empty}
-                        onCommentAdded={loadTicket}
+                        onCommentAdded={applyCommentChange}
                         clientId={clientId}
                         clientName={ticket?.client_name || ticket?.client_nom || ""}
                         permissionPrefix="sales_detail"
@@ -2590,6 +2677,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         onUpdateTask={handleUpdateTask}
                         onToggleTask={handleToggleTask}
                         onRemoveTask={handleRemoveTask}
+                        onReorderTasks={handleReorderTasks}
                         onConsumeTaskCredits={handleConsumeTaskCreditsFromForm}
                         onRefundTaskCredits={handleRefundTaskCreditsFromForm}
                         onUploadDocuments={handleUploadTaskDocuments}

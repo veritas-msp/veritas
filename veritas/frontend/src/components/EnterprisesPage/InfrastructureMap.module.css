@@ -23,7 +23,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: stretch;
-  gap: 1rem;
+  gap: 1.25rem;
   width: 100%;
   min-width: 0;
 }
@@ -36,9 +36,9 @@
   min-width: 0;
   padding: 0;
   border: 1px solid var(--msp-border, #9aabc0);
-  border-radius: var(--msp-radius, 16px);
+  border-radius: 14px;
   background-color: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.08), 0 10px 28px rgba(15, 28, 46, 0.14));
+  box-shadow: 0 2px 12px rgba(11, 33, 56, 0.04);
   overflow: hidden;
 }
 
@@ -47,37 +47,38 @@
   align-items: center;
   gap: 0.4rem;
   margin: 0;
-  padding: 0.7rem 0.85rem;
-  border-bottom: 1px solid var(--msp-border, #9aabc0);
-  background-color: var(--msp-surface-2, #eef3f8);
-  background-image: linear-gradient(180deg, var(--msp-surface, #fff) 0%, var(--msp-surface-2, #eef3f8) 100%);
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--msp-border-light, #e8eef5);
+  background: var(--msp-surface, #fff);
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted, #4a5a70);
   white-space: nowrap;
   text-align: left;
   width: 100%;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .mapModuleZoneIcon {
   font-size: 1rem;
   flex-shrink: 0;
   opacity: 0.9;
+  color: var(--msp-accent, #2b5fab);
 }
 
 :global(html.dark) .mapModuleGroup {
   border-color: var(--msp-border, #2a3a55);
   background-color: var(--msp-surface, #1a2540);
-  box-shadow: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
 }
 
 :global(html.dark) .mapModuleZoneLabel {
-  border-bottom-color: var(--msp-border, #2a3a55);
-  background-color: var(--msp-surface-2, #162338);
-  background-image: linear-gradient(180deg, var(--msp-surface, #1a2540) 0%, var(--msp-surface-2, #162338) 100%);
+  border-bottom-color: var(--msp-border-light, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  background-image: none;
   color: var(--msp-muted, #8fa8c4);
 }
 

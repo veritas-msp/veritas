@@ -11,8 +11,8 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
 import { useTablePagination } from "../AdminPage/useTablePagination";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import EquipmentBrandIcon from "../EquipementPage/constants/EquipmentBrandIcon";
 import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
@@ -355,13 +355,12 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [clientFilterSearch, setClientFilterSearch] = useState("");
   const [selectedClients, setSelectedClients] = useState(() => new Set());
   const [selectedTypes, setSelectedTypes] = useState(() => new Set());
-  const [typeFilterSearch, setTypeFilterSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState(() => new Set());
-  const [tagFilterSearch, setTagFilterSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [openFilterSection, setOpenFilterSection] = useState("clients");
+  const [facetQuery, setFacetQuery] = useState("");
   const [sort, setSort] = useState({ key: "company", dir: "asc" });
   const [openMenuKey, setOpenMenuKey] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -478,10 +477,11 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   }, [items, filterState, selectedClients, locale]);
 
   const filteredClientsForPane = useMemo(() => {
-    const q = clientFilterSearch.trim().toLowerCase();
+    if (openFilterSection !== "clients") return clientOptions;
+    const q = facetQuery.trim().toLowerCase();
     if (!q) return clientOptions;
     return clientOptions.filter(opt => opt.name.toLowerCase().includes(q));
-  }, [clientOptions, clientFilterSearch]);
+  }, [clientOptions, facetQuery, openFilterSection]);
 
   const typeOptions = useMemo(() => {
     const map = new Map();
@@ -519,14 +519,15 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   }, [items, filterState, selectedTypes, locale]);
 
   const filteredTypesForPane = useMemo(() => {
-    const q = typeFilterSearch.trim().toLowerCase();
+    if (openFilterSection !== "types") return typeOptions;
+    const q = facetQuery.trim().toLowerCase();
     if (!q) return typeOptions;
     return typeOptions.filter(opt => {
       const name = String(opt.name || "").toLowerCase();
       const id = String(opt.id || "").toLowerCase();
       return name.includes(q) || id.includes(q);
     });
-  }, [typeOptions, typeFilterSearch]);
+  }, [typeOptions, facetQuery, openFilterSection]);
 
   const tagOptions = useMemo(() => {
     const map = new Map();
@@ -569,10 +570,11 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   }, [items, filterState, selectedTags, locale]);
 
   const filteredTagsForPane = useMemo(() => {
-    const q = tagFilterSearch.trim().toLowerCase();
+    if (openFilterSection !== "tags") return tagOptions;
+    const q = facetQuery.trim().toLowerCase();
     if (!q) return tagOptions;
     return tagOptions.filter(opt => opt.label.toLowerCase().includes(q));
-  }, [tagOptions, tagFilterSearch]);
+  }, [tagOptions, facetQuery, openFilterSection]);
 
   const filtered = useMemo(() => {
     let list = items.filter(item => itemMatchesInventoryFilters(item, filterState));
@@ -754,27 +756,37 @@ export default function EquipmentInventoryPage({ onNavigate }) {
 
   const clearFilters = () => {
     setSearch("");
-    setClientFilterSearch("");
-    setTypeFilterSearch("");
-    setTagFilterSearch("");
+    setFacetQuery("");
     setSelectedClients(new Set());
     setSelectedTypes(new Set());
     setSelectedTags(new Set());
     setStatusFilter("all");
   };
 
+  const openFacetSection = sectionKey => {
+    if (sectionKey === openFilterSection) return;
+    setFacetQuery("");
+    setOpenFilterSection(sectionKey);
+  };
+
+  const clearFacetSection = sectionKey => {
+    if (sectionKey === "clients") setSelectedClients(new Set());
+    else if (sectionKey === "types") setSelectedTypes(new Set());
+    else if (sectionKey === "tags") setSelectedTags(new Set());
+    setFacetQuery("");
+  };
+
   const toggleSort = key => {
-    setSort(prev =>
-      prev.key === key
-        ? {
-            key,
-            dir: prev.dir === "asc" ? "desc" : "asc"
-          }
-        : {
-            key,
-            dir: "asc"
-          }
-    );
+    setSort(prev => {
+      const next = cycleSortState({
+        column: key,
+        sortBy: prev.key,
+        sortDirection: prev.dir,
+        defaultSortBy: "company",
+        defaultSortDirection: "asc"
+      });
+      return { key: next.sortBy, dir: next.sortDirection };
+    });
   };
 
   const openItem = item => {
@@ -794,6 +806,8 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const hasFilters = Boolean(
     search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || selectedTags.size > 0 || statusFilter !== "all"
   );
+  const activeSideFilterCount =
+    (statusFilter !== "all" ? 1 : 0) + selectedClients.size + selectedTypes.size + selectedTags.size;
 
   const getColumnLabel = key => {
     if (isCustomColumnKey(key)) {
@@ -846,14 +860,49 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       );
     }
     switch (columnId) {
-      case "company":
-        return <td key={columnId}>{item.clientName || "—"}</td>;
-      case "name":
+      case "company": {
+        const company = item.clientName || "—";
         return (
-          <td key={columnId} className={layout.colCompany}>
-            {item.name || "—"}
+          <td key={columnId} className={styles.companyCell} title={company === "—" ? undefined : company}>
+            {company}
           </td>
         );
+      }
+      case "name": {
+        const name = item.name || "—";
+        const maintenanceTitle = item.inMaintenance
+          ? [
+              copy.maintenance?.badge || "En maintenance",
+              item.maintenanceUntil
+                ? interpolate(copy.maintenance?.until || "Jusqu’au {date}", {
+                    date: new Date(item.maintenanceUntil).toLocaleString(
+                      locale === "en" ? "en-GB" : locale === "de" ? "de-DE" : locale === "it" ? "it-IT" : locale === "es" ? "es-ES" : "fr-FR",
+                      { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
+                    )
+                  })
+                : copy.maintenance?.indefinite || "Durée indéterminée",
+              item.maintenanceReason || null
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : null;
+        return (
+          <td key={columnId} className={layout.colCompany}>
+            <span className={styles.nameCell}>
+              {item.inMaintenance ? (
+                <SmartTooltip content={maintenanceTitle}>
+                  <span className={styles.maintenanceIcon} aria-label={copy.maintenance?.badge || "En maintenance"}>
+                    <Icon icon="mdi:traffic-cone" aria-hidden />
+                  </span>
+                </SmartTooltip>
+              ) : null}
+              <span className={styles.nameText} title={name === "—" ? undefined : name}>
+                {name}
+              </span>
+            </span>
+          </td>
+        );
+      }
       case "type":
         return <td key={columnId}>{typeLabel(item, locale)}</td>;
       case "ip":
@@ -927,296 +976,408 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     );
   };
 
-  const renderFilterItem = (key, label, count, active, onClick, iconNode) => (
-    <button
-      key={key}
-      type="button"
-      className={`${styles.filterItem} ${active ? styles.filterItemActive : ""} ${count === 0 ? styles.filterItemDisabled : ""}`}
-      onClick={onClick}
-      disabled={count === 0 && !active}
-    >
-      <span className={styles.filterItemMain}>
-        <span className={styles.filterItemCount}>{count}</span>
-        {iconNode}
-        <span className={styles.filterItemLabel}>{label}</span>
-      </span>
-    </button>
-  );
+  const facetSections = [
+    {
+      key: "clients",
+      title: copy.filters?.companies || "Companies",
+      selectedCount: selectedClients.size,
+      searchPlaceholder: copy.filters?.searchCompany || copy.filterClientAll,
+      emptyLabel: copy.filters?.noCompanyFound || "—",
+      options: filteredClientsForPane,
+      renderOption: opt => ({
+        id: opt.id,
+        label: opt.name,
+        count: opt.count,
+        active: selectedClients.has(opt.id),
+        onToggle: () => toggleClient(opt.id),
+        leading: null
+      })
+    },
+    {
+      key: "types",
+      title: copy.filters?.types || "Types",
+      selectedCount: selectedTypes.size,
+      searchPlaceholder: copy.filters?.searchType || copy.filterTypeAll,
+      emptyLabel: copy.filters?.noTypeFound || "—",
+      options: filteredTypesForPane,
+      renderOption: opt => ({
+        id: opt.id,
+        label: opt.name,
+        count: opt.count,
+        active: selectedTypes.has(opt.id),
+        onToggle: () => toggleType(opt.id),
+        leading: (
+          <span className={styles.facetOptionIcon} aria-hidden>
+            <InventoryDeviceIcon
+              item={opt.familyIcon ? { isCustom: true, familyIcon: opt.familyIcon } : { type: opt.id }}
+              className={styles.chipIcon}
+            />
+          </span>
+        )
+      })
+    },
+    {
+      key: "tags",
+      title: copy.filters?.tags || "Tags",
+      selectedCount: selectedTags.size,
+      searchPlaceholder: copy.filters?.searchTag || "Tag…",
+      emptyLabel: copy.filters?.noTagFound || "—",
+      options: filteredTagsForPane,
+      renderOption: opt => ({
+        id: opt.id,
+        label: opt.label,
+        count: opt.count,
+        active: selectedTags.has(opt.id),
+        onToggle: () => toggleTag(opt.id),
+        leading: <span className={styles.facetTagDot} style={getTagChipStyle(opt.color)} aria-hidden />
+      })
+    }
+  ];
+
+  const openFacet = facetSections.find(section => section.key === openFilterSection) || facetSections[0];
 
   return (
     <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
         <div className={cyberStyles.mspMain}>
-          <MspPageHero
-            guideId="inventory-hero"
-            eyebrow={copy.eyebrow}
-            title={copy.pageTitle}
-            subtitle={loading ? copy.loadingPortfolio : copy.formatSubtitle(filtered.length, items.length)}
-            icon="mdi:devices"
-            actions={
-              <>
-                <SmartTooltip content={copy.exportCsv}>
-                  <button
-                    type="button"
-                    className={layout.iconBtn}
-                    onClick={handleExportCsv}
-                    disabled={loading || filtered.length === 0}
-                    aria-label={copy.exportCsvAria}
-                  >
-                    <Icon icon="mdi:download-outline" />
-                  </button>
-                </SmartTooltip>
-                <SmartTooltip content={copy.refresh}>
-                  <button
-                    type="button"
-                    className={layout.iconBtn}
-                    onClick={load}
-                    disabled={loading}
-                    aria-label={copy.refresh}
-                  >
-                    <Icon icon="mdi:refresh" />
-                  </button>
-                </SmartTooltip>
-              </>
-            }
-          />
-
-          <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
+          <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{copy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.inventoryShell}`}>
               <div className={styles.viewsLayout}>
                 <aside className={styles.filtersPane} aria-label={copy.filters?.aria || "Filters"} data-guide="inventory-filters">
-                  <div className={styles.filtersPaneSection}>
-                    <div className={styles.filtersPaneHeader}>
-                      <span className={styles.filtersPaneTitle}>{copy.filters?.status || "Status"}</span>
+                  <div className={styles.filtersTop}>
+                    <div className={styles.filtersTopRow}>
+                      <div className={styles.filtersTitleBlock}>
+                        <span className={styles.filtersTitle}>{copy.filters?.title || copy.filters?.aria || "Filters"}</span>
+                        {activeSideFilterCount > 0 ? (
+                          <span className={styles.filtersCountBadge}>{activeSideFilterCount}</span>
+                        ) : null}
+                      </div>
                       {hasFilters ? (
-                        <button type="button" className={styles.filtersPaneAction} onClick={clearFilters}>
+                        <button type="button" className={styles.filtersResetBtn} onClick={clearFilters}>
                           {copy.filters?.clearAll || "Reset"}
                         </button>
                       ) : null}
                     </div>
-                    <div className={styles.filtersList}>
-                      {copy.statusFilterItems.map(item =>
-                        renderFilterItem(
-                          item.key,
-                          item.label,
-                          statusCounts[item.key] || 0,
-                          statusFilter === item.key,
-                          () => setStatusFilter(item.key),
-                          <Icon icon={item.icon} className={styles.filterItemIcon} aria-hidden />
-                        )
-                      )}
+
+                    <div className={styles.statusSegment} role="group" aria-label={copy.filters?.status || "Status"}>
+                      {copy.statusFilterItems.map(item => {
+                        const active = statusFilter === item.key;
+                        const count = statusCounts[item.key] || 0;
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            className={`${styles.statusSegmentBtn} ${active ? styles.statusSegmentBtnActive : ""}`}
+                            onClick={() => setStatusFilter(item.key)}
+                            aria-pressed={active}
+                          >
+                            <span className={styles.statusSegmentLabel}>{item.label}</span>
+                            <span className={styles.statusSegmentCount}>{count}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionGrow}`}>
-                    <div className={styles.filtersPaneHeader}>
-                      <span className={styles.filtersPaneTitle}>{copy.filters?.companies || "Companies"}</span>
-                      {selectedClients.size > 0 ? (
+                  <div className={styles.facetNav} role="tablist" aria-label={copy.filters?.facetsAria || copy.filters?.aria}>
+                    {facetSections.map(section => {
+                      const isOpen = openFilterSection === section.key;
+                      return (
+                        <button
+                          key={section.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={isOpen}
+                          className={`${styles.facetNavBtn} ${isOpen ? styles.facetNavBtnActive : ""}`}
+                          onClick={() => openFacetSection(section.key)}
+                        >
+                          <span className={styles.facetNavLabel}>{section.title}</span>
+                          {section.selectedCount > 0 ? (
+                            <span className={styles.facetNavBadge}>{section.selectedCount}</span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className={styles.facetBody} role="tabpanel">
+                    <div className={styles.facetBodyHeader}>
+                      <span className={styles.facetBodyTitle}>{openFacet.title}</span>
+                      {openFacet.selectedCount > 0 ? (
                         <button
                           type="button"
-                          className={styles.filtersPaneAction}
-                          onClick={() => setSelectedClients(new Set())}
+                          className={styles.filtersResetBtn}
+                          onClick={() => clearFacetSection(openFacet.key)}
                         >
                           {copy.filters?.clear || "Clear"}
                         </button>
                       ) : null}
                     </div>
-                    <div className={styles.filterSearchWrap}>
-                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
+
+                    <div className={styles.facetSearchWrap}>
+                      <Icon icon="mdi:magnify" className={styles.facetSearchIcon} aria-hidden />
                       <input
                         type="text"
-                        className={styles.filterSearchInput}
-                        value={clientFilterSearch}
-                        onChange={e => setClientFilterSearch(e.target.value)}
-                        placeholder={copy.filters?.searchCompany || copy.filterClientAll}
+                        className={styles.facetSearchInput}
+                        value={facetQuery}
+                        onChange={e => setFacetQuery(e.target.value)}
+                        placeholder={openFacet.searchPlaceholder}
                         autoComplete="off"
-                        aria-label={copy.filters?.searchCompany || copy.filterClientAll}
+                        aria-label={openFacet.searchPlaceholder}
                       />
-                      {clientFilterSearch ? (
+                      {facetQuery ? (
                         <button
                           type="button"
-                          className={styles.filterSearchClear}
-                          onClick={() => setClientFilterSearch("")}
+                          className={styles.facetSearchClear}
+                          onClick={() => setFacetQuery("")}
                           aria-label={copy.clearSearch}
                         >
                           <FaTimes />
                         </button>
                       ) : null}
                     </div>
-                    <div className={styles.filtersList}>
-                      {filteredClientsForPane.length === 0 ? (
-                        <p className={styles.filterHint}>{copy.filters?.noCompanyFound || "—"}</p>
-                      ) : (
-                        filteredClientsForPane.map(opt =>
-                          renderFilterItem(
-                            opt.id,
-                            opt.name,
-                            opt.count,
-                            selectedClients.has(opt.id),
-                            () => toggleClient(opt.id),
-                            <Icon icon="mdi:office-building-outline" className={styles.filterItemIcon} aria-hidden />
-                          )
-                        )
-                      )}
-                    </div>
-                  </div>
 
-                  <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionGrow}`}>
-                    <div className={styles.filtersPaneHeader}>
-                      <span className={styles.filtersPaneTitle}>{copy.filters?.types || "Types"}</span>
-                      {selectedTypes.size > 0 ? (
-                        <button
-                          type="button"
-                          className={styles.filtersPaneAction}
-                          onClick={() => setSelectedTypes(new Set())}
-                        >
-                          {copy.filters?.clear || "Clear"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className={styles.filterSearchWrap}>
-                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
-                      <input
-                        type="text"
-                        className={styles.filterSearchInput}
-                        value={typeFilterSearch}
-                        onChange={e => setTypeFilterSearch(e.target.value)}
-                        placeholder={copy.filters?.searchType || copy.filterTypeAll}
-                        autoComplete="off"
-                        aria-label={copy.filters?.searchType || copy.filterTypeAria}
-                      />
-                      {typeFilterSearch ? (
-                        <button
-                          type="button"
-                          className={styles.filterSearchClear}
-                          onClick={() => setTypeFilterSearch("")}
-                          aria-label={copy.clearSearch}
-                        >
-                          <FaTimes />
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className={styles.filtersList}>
-                      {filteredTypesForPane.length === 0 ? (
-                        <p className={styles.filterHint}>{copy.filters?.noTypeFound || "—"}</p>
+                    <div className={styles.facetList}>
+                      {openFacet.options.length === 0 ? (
+                        <p className={styles.facetEmpty}>{openFacet.emptyLabel}</p>
                       ) : (
-                        filteredTypesForPane.map(opt =>
-                          renderFilterItem(
-                            opt.id,
-                            opt.name,
-                            opt.count,
-                            selectedTypes.has(opt.id),
-                            () => toggleType(opt.id),
-                            <span className={styles.filterTypeIcon}>
-                              <InventoryDeviceIcon
-                                item={
-                                  opt.familyIcon
-                                    ? { isCustom: true, familyIcon: opt.familyIcon }
-                                    : { type: opt.id }
-                                }
-                                className={styles.chipIcon}
-                              />
-                            </span>
-                          )
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionGrow}`}>
-                    <div className={styles.filtersPaneHeader}>
-                      <span className={styles.filtersPaneTitle}>{copy.filters?.tags || "Tags"}</span>
-                      {selectedTags.size > 0 ? (
-                        <button
-                          type="button"
-                          className={styles.filtersPaneAction}
-                          onClick={() => setSelectedTags(new Set())}
-                        >
-                          {copy.filters?.clear || "Clear"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className={styles.filterSearchWrap}>
-                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
-                      <input
-                        type="text"
-                        className={styles.filterSearchInput}
-                        value={tagFilterSearch}
-                        onChange={e => setTagFilterSearch(e.target.value)}
-                        placeholder={copy.filters?.searchTag || "Rechercher un tag…"}
-                        autoComplete="off"
-                        aria-label={copy.filters?.searchTag || "Rechercher un tag…"}
-                      />
-                      {tagFilterSearch ? (
-                        <button
-                          type="button"
-                          className={styles.filterSearchClear}
-                          onClick={() => setTagFilterSearch("")}
-                          aria-label={copy.clearSearch}
-                        >
-                          <FaTimes />
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className={styles.filtersList}>
-                      {filteredTagsForPane.length === 0 ? (
-                        <p className={styles.filterHint}>{copy.filters?.noTagFound || "—"}</p>
-                      ) : (
-                        filteredTagsForPane.map(opt =>
-                          renderFilterItem(
-                            opt.id,
-                            opt.label,
-                            opt.count,
-                            selectedTags.has(opt.id),
-                            () => toggleTag(opt.id),
-                            <span
-                              className={styles.filterTagSwatch}
-                              style={getTagChipStyle(opt.color)}
-                              aria-hidden
-                            />
-                          )
-                        )
+                        openFacet.options.map(opt => {
+                          const row = openFacet.renderOption(opt);
+                          return (
+                            <button
+                              key={row.id}
+                              type="button"
+                              className={`${styles.facetOption} ${row.active ? styles.facetOptionActive : ""} ${
+                                row.count === 0 && !row.active ? styles.facetOptionDisabled : ""
+                              }`}
+                              onClick={row.onToggle}
+                              disabled={row.count === 0 && !row.active}
+                              aria-pressed={row.active}
+                            >
+                              <span className={`${styles.facetCheck} ${row.active ? styles.facetCheckOn : ""}`} aria-hidden>
+                                {row.active ? <Icon icon="mdi:check" width={12} height={12} /> : null}
+                              </span>
+                              {row.leading}
+                              <span className={styles.facetOptionLabel}>{row.label}</span>
+                              <span className={styles.facetOptionCount}>{row.count}</span>
+                            </button>
+                          );
+                        })
                       )}
                     </div>
                   </div>
                 </aside>
 
                 <div className={styles.mainColumn}>
-                  <div className={`${layout.toolbar} ${styles.toolbarGrow}`} data-guide="inventory-search">
-                    <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
-                      <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                      <input
-                        type="text"
-                        inputMode="search"
-                        enterKeyHint="search"
-                        className={layout.searchInput}
-                        placeholder={copy.searchPlaceholder}
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        aria-label={copy.searchAria}
-                      />
-                      {search ? (
-                        <button
-                          type="button"
-                          className={layout.clearButton}
-                          onClick={() => setSearch("")}
-                          aria-label={copy.clearSearch}
-                        >
-                          <FaTimes />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
                   {loading ? (
                     <PageSkeleton variant="list" rows={8} label={copy.loading} />
-                  ) : filtered.length === 0 ? (
-                    <div className={layout.emptyState} data-guide="inventory-table">
-                      <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
-                      <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
-                      <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
-                    </div>
                   ) : (
-                    <>
+                    <div className={layout.listBody}>
+                      <div className={layout.listArea}>
+                        <div className={layout.panelCard}>
+                          <div className={layout.tableSearchBar} data-guide="inventory-search">
+                            <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+                              <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+                              <input
+                                type="text"
+                                inputMode="search"
+                                enterKeyHint="search"
+                                className={layout.searchInput}
+                                placeholder={copy.searchPlaceholder}
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                aria-label={copy.searchAria}
+                              />
+                              {search ? (
+                                <button
+                                  type="button"
+                                  className={layout.clearButton}
+                                  onClick={() => setSearch("")}
+                                  aria-label={copy.clearSearch}
+                                >
+                                  <FaTimes />
+                                </button>
+                              ) : null}
+                            </div>
+                            <div className={layout.toolbarActions} data-guide="inventory-hero">
+                              <SmartTooltip content={copy.exportCsv}>
+                                <button
+                                  type="button"
+                                  className={layout.iconBtn}
+                                  onClick={handleExportCsv}
+                                  disabled={filtered.length === 0}
+                                  aria-label={copy.exportCsvAria}
+                                >
+                                  <Icon icon="mdi:download-outline" />
+                                </button>
+                              </SmartTooltip>
+                              <SmartTooltip content={copy.refresh}>
+                                <button
+                                  type="button"
+                                  className={layout.iconBtn}
+                                  onClick={load}
+                                  aria-label={copy.refresh}
+                                >
+                                  <Icon icon="mdi:refresh" />
+                                </button>
+                              </SmartTooltip>
+                            </div>
+                          </div>
+
+                          {filtered.length === 0 ? (
+                            <div className={layout.emptyStateInCard} data-guide="inventory-table">
+                              <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
+                              <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
+                              <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className={layout.dataTableWrap} data-guide="inventory-table">
+                                <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                                  <table className={styles.table}>
+                                    <thead>
+                                      <tr>
+                                        {canBulkEdit ? (
+                                          <th className={styles.checkboxCell}>
+                                            <input
+                                              type="checkbox"
+                                              className={styles.rowCheckbox}
+                                              checked={allOnPageSelected}
+                                              onChange={toggleSelectAllOnPage}
+                                              onClick={e => e.stopPropagation()}
+                                              aria-label={copy.bulk.selectAll}
+                                            />
+                                          </th>
+                                        ) : null}
+                                        <th className={styles.brandCol} aria-hidden />
+                                        {tableColumns.map(columnId => renderSortHeader(columnId, getColumnLabel(columnId)))}
+                                        <th className={styles.actionsCol}>{copy.columns.actions}</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {paginatedItems.map(item => {
+                                        const isSelected = selectedIds.has(item.id);
+                                        const alertMeta = alertStatusMeta(item, copy);
+                                        const supervisionMeta = supervisionStatusMeta(item, copy);
+                                        const monthCount = Number(item.alertsLastMonth) || 0;
+                                        const monthTitle = copy.formatAlertsMonthBreakdown
+                                          ? copy.formatAlertsMonthBreakdown(
+                                              item.alertsNativeLastMonth,
+                                              item.alertsSupervisionLastMonth
+                                            )
+                                          : copy.alertsMonthHint;
+                                        return (
+                                          <tr
+                                            key={item.id}
+                                            className={isSelected ? styles.selectedRow : undefined}
+                                            onClick={() => openItem(item)}
+                                            onMouseDown={e => {
+                                              if (e.button === 1) openItemInBackground(e, item);
+                                            }}
+                                            onAuxClick={e => {
+                                              if (e.button === 1) openItemInBackground(e, item);
+                                            }}
+                                            onKeyDown={e => {
+                                              if (e.key === "Enter" || e.key === " ") {
+                                                e.preventDefault();
+                                                openItem(item);
+                                              }
+                                            }}
+                                            role="button"
+                                            tabIndex={0}
+                                          >
+                                            {canBulkEdit ? (
+                                              <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
+                                                <input
+                                                  type="checkbox"
+                                                  className={styles.rowCheckbox}
+                                                  checked={isSelected}
+                                                  onChange={e => toggleItemSelection(item.id, e.target.checked)}
+                                                  aria-label={copy.formatBulkSelectRow(item.name)}
+                                                />
+                                              </td>
+                                            ) : null}
+                                            <td className={styles.brandCol}>
+                                              <InventoryDeviceIcon item={item} className={styles.brandIcon} />
+                                            </td>
+                                            {tableColumns.map(columnId =>
+                                              renderColumnCell(item, columnId, {
+                                                alertMeta,
+                                                supervisionMeta,
+                                                monthTitle,
+                                                monthCount
+                                              })
+                                            )}
+                                            <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
+                                              <InventoryEquipmentActions
+                                                equipment={item}
+                                                locale={locale}
+                                                menuKey={item.id}
+                                                openMenuKey={openMenuKey}
+                                                onOpenChange={setOpenMenuKey}
+                                                onOpen={openItem}
+                                              />
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+
+                              <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                                <div className={layout.paginationLeft}>
+                                  <span className={layout.paginationLabel}>{copy.perPage}</span>
+                                  <select
+                                    className={layout.paginationSelect}
+                                    value={pageSize}
+                                    onChange={e => setPageSize(Number(e.target.value))}
+                                  >
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                  </select>
+                                  <span className={layout.paginationInfo}>
+                                    {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
+                                      start: String((page - 1) * pageSize + 1),
+                                      end: String(Math.min(page * pageSize, filtered.length)),
+                                      total: String(filtered.length)
+                                    })}
+                                  </span>
+                                </div>
+                                <div className={layout.paginationRight}>
+                                  <SmartTooltip content={copy.prevPage}>
+                                    <button
+                                      type="button"
+                                      className={layout.pageBtn}
+                                      onClick={() => setPage(Math.max(1, page - 1))}
+                                      disabled={page <= 1}
+                                      aria-label={copy.prevPage}
+                                    >
+                                      <FaChevronLeft />
+                                    </button>
+                                  </SmartTooltip>
+                                  <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
+                                  <SmartTooltip content={copy.nextPage}>
+                                    <button
+                                      type="button"
+                                      className={layout.pageBtn}
+                                      onClick={() => setPage(Math.min(totalPages, page + 1))}
+                                      disabled={page >= totalPages}
+                                      aria-label={copy.nextPage}
+                                    >
+                                      <FaChevronRight />
+                                    </button>
+                                  </SmartTooltip>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
                       {selectedCount > 0 && canBulkEdit ? (
                         <div className={layout.bulkBar}>
                           <div className={layout.bulkInfo}>
@@ -1239,151 +1400,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                           </div>
                         </div>
                       ) : null}
-
-                      <div className={styles.tablePanel} data-guide="inventory-table">
-                        <div className={styles.tableScroll}>
-                          <table className={styles.table}>
-                            <thead>
-                              <tr>
-                                {canBulkEdit ? (
-                                  <th className={styles.checkboxCell}>
-                                    <input
-                                      type="checkbox"
-                                      className={styles.rowCheckbox}
-                                      checked={allOnPageSelected}
-                                      onChange={toggleSelectAllOnPage}
-                                      onClick={e => e.stopPropagation()}
-                                      aria-label={copy.bulk.selectAll}
-                                    />
-                                  </th>
-                                ) : null}
-                                <th className={styles.brandCol} aria-hidden />
-                                {tableColumns.map(columnId => renderSortHeader(columnId, getColumnLabel(columnId)))}
-                                <th className={styles.actionsCol}>{copy.columns.actions}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {paginatedItems.map(item => {
-                                const isSelected = selectedIds.has(item.id);
-                                const alertMeta = alertStatusMeta(item, copy);
-                                const supervisionMeta = supervisionStatusMeta(item, copy);
-                                const monthCount = Number(item.alertsLastMonth) || 0;
-                                const monthTitle = copy.formatAlertsMonthBreakdown
-                                  ? copy.formatAlertsMonthBreakdown(
-                                      item.alertsNativeLastMonth,
-                                      item.alertsSupervisionLastMonth
-                                    )
-                                  : copy.alertsMonthHint;
-                                return (
-                                  <tr
-                                    key={item.id}
-                                    className={isSelected ? styles.selectedRow : undefined}
-                                    onClick={() => openItem(item)}
-                                    onMouseDown={e => {
-                                      if (e.button === 1) openItemInBackground(e, item);
-                                    }}
-                                    onAuxClick={e => {
-                                      if (e.button === 1) openItemInBackground(e, item);
-                                    }}
-                                    onKeyDown={e => {
-                                      if (e.key === "Enter" || e.key === " ") {
-                                        e.preventDefault();
-                                        openItem(item);
-                                      }
-                                    }}
-                                    role="button"
-                                    tabIndex={0}
-                                  >
-                                    {canBulkEdit ? (
-                                      <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
-                                        <input
-                                          type="checkbox"
-                                          className={styles.rowCheckbox}
-                                          checked={isSelected}
-                                          onChange={e => toggleItemSelection(item.id, e.target.checked)}
-                                          aria-label={copy.formatBulkSelectRow(item.name)}
-                                        />
-                                      </td>
-                                    ) : null}
-                                    <td className={styles.brandCol}>
-                                      <InventoryDeviceIcon item={item} className={styles.brandIcon} />
-                                    </td>
-                                    {tableColumns.map(columnId =>
-                                      renderColumnCell(item, columnId, {
-                                        alertMeta,
-                                        supervisionMeta,
-                                        monthTitle,
-                                        monthCount
-                                      })
-                                    )}
-                                    <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
-                                      <InventoryEquipmentActions
-                                        equipment={item}
-                                        locale={locale}
-                                        menuKey={item.id}
-                                        openMenuKey={openMenuKey}
-                                        onOpenChange={setOpenMenuKey}
-                                        onOpen={openItem}
-                                      />
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-
-                      {filtered.length > 0 ? (
-                        <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
-                          <div className={layout.paginationLeft}>
-                            <span className={layout.paginationLabel}>{copy.perPage}</span>
-                            <select
-                              className={layout.paginationSelect}
-                              value={pageSize}
-                              onChange={e => setPageSize(Number(e.target.value))}
-                            >
-                              <option value={10}>10</option>
-                              <option value={25}>25</option>
-                              <option value={50}>50</option>
-                              <option value={100}>100</option>
-                            </select>
-                            <span className={layout.paginationInfo}>
-                              {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
-                                start: String((page - 1) * pageSize + 1),
-                                end: String(Math.min(page * pageSize, filtered.length)),
-                                total: String(filtered.length)
-                              })}
-                            </span>
-                          </div>
-                          <div className={layout.paginationRight}>
-                            <SmartTooltip content={copy.prevPage}>
-                              <button
-                                type="button"
-                                className={layout.pageBtn}
-                                onClick={() => setPage(Math.max(1, page - 1))}
-                                disabled={page <= 1}
-                                aria-label={copy.prevPage}
-                              >
-                                <FaChevronLeft />
-                              </button>
-                            </SmartTooltip>
-                            <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
-                            <SmartTooltip content={copy.nextPage}>
-                              <button
-                                type="button"
-                                className={layout.pageBtn}
-                                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                                disabled={page >= totalPages}
-                                aria-label={copy.nextPage}
-                              >
-                                <FaChevronRight />
-                              </button>
-                            </SmartTooltip>
-                          </div>
-                        </div>
-                      ) : null}
-                      </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

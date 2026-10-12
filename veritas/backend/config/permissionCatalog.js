@@ -142,7 +142,10 @@ export const PERMISSION_CATALOG = [{
   section: "crm",
   moduleFlag: "prestataire_enabled",
   coreDefault: true,
-  actions: ["view", "create", "export"]
+  actions: ["view", "create", "export", {
+    action: "public_views",
+    label: "Public table views"
+  }]
 }, {
   group: "prestataires_detail",
   label: "Provider detail",
@@ -336,6 +339,13 @@ export const PERMISSION_CATALOG = [{
   moduleFlag: "monitoring_enabled",
   matrix: false,
   actions: ["view"]
+}, {
+  group: "campaigns",
+  label: "Campaigns",
+  section: "supervision",
+  moduleFlag: "campaigns_enabled",
+  matrix: false,
+  actions: ["view", "edit"]
 }, {
   group: "cybersecurite",
   label: "Cybersecurity",
@@ -652,6 +662,7 @@ export const VIEW_PERMISSION_TO_MODULE_FLAG = {
   "equipment_inventory.view": "equipment_inventory_enabled",
   "monitoring.view": "monitoring_enabled",
   "cybersecurite.view": "cybersecurite_enabled",
+  "campaigns.view": "campaigns_enabled",
   "documents.view": "documents_enabled",
   "vault.view": "documents_enabled",
   "knowledge_base.view": "knowledge_base_enabled",
@@ -670,6 +681,7 @@ export const ACCESS_KEY_TO_VIEW_PERMISSIONS = {
   Contact: ["contacts.view"],
   Prestataire: ["prestataires.view"],
   Hardware: ["infrastructure.view", "supervision.view"],
+  Campaigns: ["campaigns.view"],
   EquipmentInventory: ["equipment_inventory.view"],
   Cybersecurite: ["cybersecurite.view"],
   Mon: ["monitoring.view"],
@@ -690,6 +702,7 @@ export const MODULE_FLAG_TO_GROUPS = {
   infrastructure_enabled: ["infrastructure", "supervision"],
   equipment_inventory_enabled: ["equipment_inventory"],
   monitoring_enabled: ["monitoring"],
+  campaigns_enabled: ["campaigns"],
   cybersecurite_enabled: ["cybersecurite"],
   documents_enabled: ["documents", "vault"],
   knowledge_base_enabled: ["knowledge_base"],

@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import CrmListTableSkeleton from "../Misc/Skeleton/CrmListTableSkeleton";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import styles from "./EnterprisesPage.module.css";
 import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
 import { Icon } from "@iconify/react";
@@ -34,6 +34,8 @@ import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { collectTagSearchValues, matchesSearchQuery } from "../../utils/tableSearch";
+import { resolveEnterpriseIcon, resolveEnterpriseIconColor } from "./enterpriseIconChoices";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
 const ENTERPRISES_PAGE_SCOPE = "enterprises";
 const ENTERPRISES_FAVORITES_SETTING = "enterprises_favorites";
@@ -88,7 +90,7 @@ export default function EnterprisesPage({
 }) {
   const locale = useAppLocale();
   const formatters = useAppFormatters();
-  const { isPhone, isCompact } = useBreakpoint();
+  const { isCompact } = useBreakpoint();
   const {
     can
   } = usePermissions();
@@ -458,6 +460,7 @@ export default function EnterprisesPage({
   }, [clients]);
   const pageIds = useMemo(() => paginatedClients.map(client => String(client.id)), [paginatedClients]);
   const selectedCount = selectedIds.size;
+  const bulkClientIds = useMemo(() => [...selectedIds], [selectedIds]);
   const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
   const clearSelection = () => setSelectedIds(new Set());
   const toggleClientSelection = (clientId, checked) => {
@@ -494,7 +497,6 @@ export default function EnterprisesPage({
       silent: true
     });
   };
-  const portfolioTotal = clients.length;
   const toggleStatusFilter = statusKey => {
     setStatusFilters(prev => {
       const next = new Set(prev);
@@ -612,111 +614,316 @@ export default function EnterprisesPage({
   };
   const formatDate = dateString => formatters.formatDate(dateString);
   const toggleSort = column => {
-    if (sortBy === column) {
-      setSortOrder(prev => prev === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(column);
-      setSortOrder("asc");
-    }
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection: sortOrder,
+      defaultSortBy: "name",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortOrder(next.sortDirection);
   };
-  const sortIndicator = column => sortBy === column ? sortOrder === "asc" ? " ▲" : " ▼" : "";
   const renderCompanyStatus = client => {
     const status = copy.getCompanyStatus(client.statut);
-    return <SmartTooltip content={status.label}>
-        <StatusDot active={status.key === "active"} label={status.label} />
-      </SmartTooltip>;
+    const isActive = status.key === "active";
+    return <span className={`${styles.statusPill} ${isActive ? styles.statusPillActive : styles.statusPillInactive}`}>
+        <StatusDot active={isActive} label="" aria-hidden />
+        <span>{status.label}</span>
+      </span>;
   };
   const ThSort = ({
     label,
     col
-  }) => <button type="button" className={styles.thBtn} onClick={e => {
-    e.stopPropagation();
-    toggleSort(col);
-  }} aria-pressed={sortBy === col}>
-      {label}
-      {sortIndicator(col)}
-    </button>;
+  }) => (
+    <SortableHeader
+      as="button"
+      column={col}
+      label={label}
+      sortBy={sortBy}
+      sortDirection={sortOrder}
+      onSort={toggleSort}
+      buttonClassName={styles.thBtn}
+    />
+  );
+  const tableToolbar = <>
+      <div className={`${styles.searchWrap} ${styles.searchWrapInCard}`}>
+        <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
+        <input type="text" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.searchInput} aria-label={copy.searchAria} />
+        {searchQuery ? <SmartTooltip content={copy.clearSearch}>
+            <button type="button" onClick={() => setSearchQuery("")} className={styles.clearButton} aria-label={copy.clearSearch}>
+              <FaTimes />
+            </button>
+          </SmartTooltip> : null}
+      </div>
+      <div className={styles.statusChips} role="group">
+        {copy.companyStatusFilterItems.map(item => {
+        const count = companyStatusCounts[item.key] || 0;
+        const active = companyStatusFilters.has(item.key);
+        return <button key={`company-${item.key}`} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleCompanyStatusFilter(item.key)} disabled={loading || error || count === 0}>
+              <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
+                <Icon icon={item.icon} />
+              </span>
+              <span className={styles.statusChipLabel}>{item.label}</span>
+              <span className={styles.statusChipCount}>{count}</span>
+            </button>;
+      })}
+        <span className={styles.statusChipSeparator} aria-hidden />
+        {copy.statusFilterItems.map(item => {
+        const count = statusCounts[item.key] || 0;
+        const active = statusFilters.has(item.key);
+        return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
+              <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
+                <Icon icon={item.icon} />
+              </span>
+              <span className={styles.statusChipLabel}>{item.label}</span>
+              <span className={styles.statusChipCount}>{count}</span>
+            </button>;
+      })}
+      </div>
+      <div className={styles.toolbarActions}>
+        <SmartTooltip content={copy.columnsSettings}>
+          <button type="button" className={styles.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={copy.columnsSettingsAria}>
+            <Icon icon="mdi:table-cog" />
+          </button>
+        </SmartTooltip>
+        {canExportEnterprises ? <SmartTooltip content={copy.exportCsv}>
+            <button type="button" className={styles.iconBtn} onClick={handleExportCsv} aria-label={copy.exportCsvAria}>
+              <Icon icon="mdi:download-outline" />
+            </button>
+          </SmartTooltip> : null}
+        {canCreateEnterprise ? <SmartTooltip content={copy.newEnterprise}>
+            <button type="button" className={`${styles.primaryBtn} ${styles.primaryBtnIconOnly}`} onClick={() => {
+          setClientModalInitial(null);
+          setShowClientModal(true);
+        }} aria-label={copy.newEnterprise}>
+              <FaPlus />
+            </button>
+          </SmartTooltip> : null}
+      </div>
+    </>;
+  const showSkeleton = Boolean(loading);
   return <div className={`${mspStyles.mspPage} ${styles.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={isPhone ? null : loading ? copy.loadingPortfolio : copy.formatSubtitle(filteredAndSortedClients.length, portfolioTotal)} icon="mdi:briefcase-outline" stackOnMobile actions={<>
-                <SmartTooltip content={copy.columnsSettings}>
-                  <button type="button" className={styles.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={copy.columnsSettingsAria}>
-                    <Icon icon="mdi:table-cog" />
-                  </button>
-                </SmartTooltip>
-                {canExportEnterprises ? <SmartTooltip content={copy.exportCsv}>
-                  <button type="button" className={styles.iconBtn} onClick={handleExportCsv} aria-label={copy.exportCsvAria}>
-                    <Icon icon="mdi:download-outline" />
-                  </button>
-                </SmartTooltip> : null}
-                {canCreateEnterprise ? <SmartTooltip content={copy.newEnterprise}>
-                  <button type="button" className={`${styles.primaryBtn} ${styles.primaryBtnIconOnly}`} onClick={() => {
-              setClientModalInitial(null);
-              setShowClientModal(true);
-            }} aria-label={copy.newEnterprise}>
-                    <FaPlus />
-                  </button>
-                </SmartTooltip> : null}
-              </>} />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${styles.contentNoHero}`}>
+            <h1 className={styles.srOnly}>{copy.pageTitle}</h1>
             <div className={`${styles.shell} ${styles.shellWide} ${styles.shellFull}`}>
-        <div className={`${styles.toolbar} ${styles.toolbarWithFilters}`}>
-          <div className={styles.searchWrap}>
-            <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
-            <input type="text" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.searchInput} aria-label={copy.searchAria} />
-            {searchQuery && <SmartTooltip content={copy.clearSearch}>
-                <button type="button" onClick={() => setSearchQuery("")} className={styles.clearButton} aria-label={copy.clearSearch}>
-                  <FaTimes />
-                </button>
-              </SmartTooltip>}
-          </div>
-          <div className={styles.statusChips} role="group">
-              {copy.companyStatusFilterItems.map(item => {
-                const count = companyStatusCounts[item.key] || 0;
-                const active = companyStatusFilters.has(item.key);
-                return <button key={`company-${item.key}`} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleCompanyStatusFilter(item.key)} disabled={loading || error || count === 0}>
-                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
-                      <Icon icon={item.icon} />
-                    </span>
-                    <span className={styles.statusChipLabel}>{item.label}</span>
-                    <span className={styles.statusChipCount}>{count}</span>
-                  </button>;
-              })}
-              <span className={styles.statusChipSeparator} aria-hidden />
-              {copy.statusFilterItems.map(item => {
-                const count = statusCounts[item.key] || 0;
-                const active = statusFilters.has(item.key);
-                return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
-                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
-                      <Icon icon={item.icon} />
-                    </span>
-                    <span className={styles.statusChipLabel}>{item.label}</span>
-                    <span className={styles.statusChipCount}>{count}</span>
-                  </button>;
-              })}
-            </div>
-        </div>
-
-        {loading ? (
-          <PageSkeleton variant="list" rows={8} label={copy.loading} />
-        ) : error ? <div className={`${styles.stateBox} ${styles.stateBoxError}`}>
+        {error && !showSkeleton ? <div className={`${styles.stateBox} ${styles.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />
             <span>{error}</span>
-          </div> : paginatedClients.length === 0 ? <div className={styles.emptyState}>
-            <Icon icon="mdi:office-building-outline" className={styles.emptyStateIcon} />
-            <p className={styles.emptyStateTitle}>{copy.emptyTitle}</p>
-            <p className={styles.emptyStateHint}>{copy.emptyHint}</p>
-            {canCreateEnterprise ? <button type="button" className={styles.primaryBtn} onClick={() => {
+          </div> : <div className={styles.listBody}>
+            <div className={styles.listArea}>
+              <div className={styles.panelCard}>
+                <div className={styles.tableSearchBar}>
+                  {tableToolbar}
+                </div>
+
+                {!showSkeleton && paginatedClients.length === 0 ? <div className={styles.emptyStateInCard}>
+                    <Icon icon="mdi:office-building-outline" className={styles.emptyStateIcon} />
+                    <p className={styles.emptyStateTitle}>{copy.emptyTitle}</p>
+                    <p className={styles.emptyStateHint}>{copy.emptyHint}</p>
+                    {canCreateEnterprise ? <button type="button" className={styles.primaryBtn} onClick={() => {
                 setClientModalInitial(null);
                 setShowClientModal(true);
               }}>
-              <Icon icon="mdi:plus" />
-              {copy.newEnterprise}
-            </button> : null}
-          </div> : <div className={styles.listBody}>
-            {selectedCount > 0 && showBulkSelection ? <div className={styles.bulkBar}>
+                        <Icon icon="mdi:plus" />
+                        {copy.newEnterprise}
+                      </button> : null}
+                  </div> : <>
+                    <div className={styles.dataTableWrap}>
+                    <div className={styles.dataTableScroll}>
+                      <table className={styles.dataTable} aria-busy={showSkeleton || undefined} aria-label={showSkeleton ? copy.loading : undefined}>
+                        <thead>
+                          <tr>
+                            {showBulkSelection ? <th className={styles.checkboxCell}>
+                                <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} disabled={showSkeleton} />
+                              </th> : null}
+                            {tableColumns.map(columnId => {
+                    const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
+                    const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
+                    const label = copy.table[labelKey] || columnId;
+                    const columnClass = enterprisesColumnClass(columnId);
+                    if (!sortKey) {
+                      return <th key={columnId} className={columnClass || undefined}>{label}</th>;
+                    }
+                    return <th key={columnId} className={columnClass || undefined} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
+                                  <ThSort label={label} col={sortKey} />
+                                </th>;
+                  })}
+                            <th className={styles.favoriteCell}>{copy.favorites.columnLabel}</th>
+                            <th className={styles.chevronCell} aria-hidden />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {showSkeleton ? (
+                            <CrmListTableSkeleton
+                              layout={styles}
+                              columns={tableColumns}
+                              rows={pageSize || 50}
+                              showCheckbox={showBulkSelection}
+                              preset="enterprises"
+                              showFavorite
+                              showChevron
+                            />
+                          ) : null}
+                          {!showSkeleton && paginatedClients.map(client => {
+                    const modules = client.options || client.contrat?.modules || {};
+                    const activeModules = getAllActiveModuleKeys(modules, contractModules);
+                    const contractStatus = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu);
+                    const tags = client.tags || [];
+                    const visibleTags = tags.slice(0, 2);
+                    const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
+                    const clientIdStr = String(client.id);
+                    const isSelected = selectedIds.has(clientIdStr);
+                    const rowName = getClientNameWithoutCode(client) || client.name || clientIdStr;
+                    const favorited = isFavorite(client.id);
+                    const companyIcon = resolveEnterpriseIcon(client.icon);
+                    const companyIconColor = resolveEnterpriseIconColor(client.icon_color || client.iconColor);
+                    return <tr key={client.id} className={`${styles.dataTableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => openClient(client)} onAuxClick={e => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        openClient(client, true);
+                      }
+                    }} onKeyDown={e => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openClient(client);
+                      }
+                    }} role="button" tabIndex={0}>
+                                {showBulkSelection ? <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
+                                    <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleClientSelection(client.id, e.target.checked)} aria-label={copy.formatBulkSelectRow(rowName)} />
+                                  </td> : null}
+                                {tableColumns.map(columnId => {
+                        if (columnId === "client_number") {
+                          return <td key={columnId} className={styles.colClientNumber}>
+                                        {getClientNumber(client) || "—"}
+                                      </td>;
+                        }
+                        if (columnId === "company") {
+                          const onboarding = getClientOnboardingInfo(client);
+                          return <td key={columnId} className={styles.colCompany}>
+                                        <div className={styles.companyCell}>
+                                          <span className={styles.companyIcon} style={{ color: companyIconColor }} aria-hidden>
+                                            <Icon icon={companyIcon} width={24} height={24} />
+                                          </span>
+                                          <SmartTooltip content={formatClientTabLabel(client)} as="span" className={styles.clientNameText}>
+                                            {getClientNameWithoutCode(client) || client.name || "-"}
+                                          </SmartTooltip>
+                                          {onboarding ? <SmartTooltip content={onboarding.ageDays < 1 ? interpolate(copy.onboardingTooltipToday, {
+                                  remaining: onboarding.remainingDays
+                                }) : interpolate(copy.onboardingTooltip, {
+                                  days: onboarding.ageDays,
+                                  remaining: onboarding.remainingDays
+                                })} as="span" className={styles.onboardingBadge}>
+                                              {copy.onboardingBadge}
+                                            </SmartTooltip> : null}
+                                        </div>
+                                      </td>;
+                        }
+                        if (columnId === "company_status") {
+                          return <td key={columnId} className={styles.colCompanyStatus}>
+                                        {renderCompanyStatus(client)}
+                                      </td>;
+                        }
+                        if (columnId === "primary_contact") {
+                          return <td key={columnId} className={`${styles.colMuted} ${styles.colContact}`}>{client.primaryContactName || "-"}</td>;
+                        }
+                        if (columnId === "commercial") {
+                          return <td key={columnId} className={`${styles.colMuted} ${styles.colCommercial}`}>{client.commercial || "-"}</td>;
+                        }
+                        if (columnId === "modules") {
+                          const moduleLabels = activeModules.map(key => resolveModuleLabel(key));
+                          const modulesTooltip = moduleLabels.join(" · ");
+                          const visibleLimit = 2;
+                          const visibleModules = activeModules.slice(0, visibleLimit);
+                          const hiddenCount = Math.max(0, activeModules.length - visibleLimit);
+                          return <td key={columnId} className={styles.colModules}>
+                                        {activeModules.length > 0 ? <SmartTooltip content={modulesTooltip} as="div" className={styles.tableModulesClip}>
+                                            <div className={styles.tableModules}>
+                                              {visibleModules.map(key => <span key={key} className={styles.moduleTag}>
+                                                  {resolveModuleLabel(key)}
+                                                </span>)}
+                                              {hiddenCount > 0 ? <span className={`${styles.moduleTag} ${styles.moduleTagMore}`}>+{hiddenCount}</span> : null}
+                                            </div>
+                                          </SmartTooltip> : <span className={styles.moduleTag}>{copy.noModuleOptions}</span>}
+                                      </td>;
+                        }
+                        if (columnId === "expiration") {
+                          return <td key={columnId} className={`${styles.colExpiry} ${getExpiryClass(contractStatus.status)}`.trim()}>
+                                        {formatDate(client.contrat?.expiration)}
+                                      </td>;
+                        }
+                        if (columnId === "tags") {
+                          return <td key={columnId} className={styles.colTags}>
+                                        {tags.length > 0 ? <div className={styles.tableTags} aria-label={copy.tagsAria}>
+                                            {visibleTags.map(tag => {
+                                  const tagColor = tag.color || "#2b5fab";
+                                  return <span key={tag.id} className={styles.clientTagChip} style={{
+                                    borderColor: `${tagColor}55`,
+                                    color: tagColor
+                                  }}>
+                                                {tag.label}
+                                              </span>;
+                                })}
+                                            {hiddenTagCount > 0 ? <span className={`${styles.clientTagChip} ${styles.tagMore}`}>+{hiddenTagCount}</span> : null}
+                                          </div> : <span className={styles.colEmpty}>-</span>}
+                                      </td>;
+                        }
+                        return <td key={columnId}>-</td>;
+                      })}
+                                <td className={styles.favoriteCell} onClick={e => e.stopPropagation()}>
+                                  <SmartTooltip content={favorited ? copy.favorites.remove : copy.favorites.add}>
+                                    <button type="button" className={`${styles.favoriteBtn} ${favorited ? styles.favoriteBtnActive : ""}`} aria-label={favorited ? copy.favorites.remove : copy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(client.id)}>
+                                      <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />
+                                    </button>
+                                  </SmartTooltip>
+                                </td>
+                                <td className={styles.chevronCell} aria-hidden>
+                                  <Icon icon="mdi:chevron-right" className={styles.rowChevron} />
+                                </td>
+                              </tr>;
+                  })}
+                        </tbody>
+                      </table>
+                    </div>
+                    </div>
+
+                    <div className={`${styles.pagination} ${styles.paginationEmbedded}`}>
+                      <div className={styles.paginationLeft}>
+                        <span className={styles.paginationLabel}>{copy.perPage}</span>
+                        <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} disabled={showSkeleton}>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                        <span className={styles.paginationInfo}>
+                          {showSkeleton
+                            ? "—"
+                            : copy.formatRangeInfo((currentPage - 1) * pageSize + 1, Math.min(currentPage * pageSize, filteredAndSortedClients.length), filteredAndSortedClients.length)}
+                        </span>
+                      </div>
+                      <div className={styles.paginationRight}>
+                        <SmartTooltip content={copy.prevPage}>
+                          <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={showSkeleton || currentPage <= 1} aria-label={copy.prevPage}>
+                            <FaChevronLeft />
+                          </button>
+                        </SmartTooltip>
+                        <span className={styles.paginationInfo}>
+                          {showSkeleton ? "—" : copy.formatPageInfo(currentPage, totalPages)}
+                        </span>
+                        <SmartTooltip content={copy.nextPage}>
+                          <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={showSkeleton || currentPage >= totalPages} aria-label={copy.nextPage}>
+                            <FaChevronRight />
+                          </button>
+                        </SmartTooltip>
+                      </div>
+                    </div>
+                  </>}
+              </div>
+            </div>
+            {selectedCount > 0 && showBulkSelection && !showSkeleton ? <div className={styles.bulkBar}>
                 <div className={styles.bulkInfo}>
                   <strong>{selectedCount}</strong>
                   <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
@@ -731,173 +938,6 @@ export default function EnterprisesPage({
                   </button>
                 </div>
               </div> : null}
-            <div className={styles.listArea}>
-              <div className={styles.dataTableWrap}>
-                <div className={styles.dataTableScroll}>
-                <table className={styles.dataTable}>
-                  <thead>
-                    <tr>
-                      {showBulkSelection ? <th className={styles.checkboxCell}>
-                          <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} />
-                        </th> : null}
-                      {tableColumns.map(columnId => {
-                        const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
-                        const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
-                        const label = copy.table[labelKey] || columnId;
-                        const columnClass = enterprisesColumnClass(columnId);
-                        if (!sortKey) {
-                          return <th key={columnId} className={columnClass || undefined}>{label}</th>;
-                        }
-                        return <th key={columnId} className={columnClass || undefined} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
-                            <ThSort label={label} col={sortKey} />
-                          </th>;
-                      })}
-                      <th className={styles.favoriteCell}>{copy.favorites.columnLabel}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedClients.map(client => {
-                      const modules = client.options || client.contrat?.modules || {};
-                      const activeModules = getAllActiveModuleKeys(modules, contractModules);
-                      const contractStatus = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu);
-                      const tags = client.tags || [];
-                      const visibleTags = tags.slice(0, 2);
-                      const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
-                      const clientIdStr = String(client.id);
-                      const isSelected = selectedIds.has(clientIdStr);
-                      const rowName = getClientNameWithoutCode(client) || client.name || clientIdStr;
-                      const favorited = isFavorite(client.id);
-                      return <tr key={client.id} className={`${styles.dataTableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => openClient(client)} onAuxClick={e => {
-                        if (e.button === 1) {
-                          e.preventDefault();
-                          openClient(client, true);
-                        }
-                      }} onKeyDown={e => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          openClient(client);
-                        }
-                      }} role="button" tabIndex={0}>
-                          {showBulkSelection ? <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
-                              <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleClientSelection(client.id, e.target.checked)} aria-label={copy.formatBulkSelectRow(rowName)} />
-                            </td> : null}
-                          {tableColumns.map(columnId => {
-                            if (columnId === "client_number") {
-                              return <td key={columnId} className={styles.colClientNumber}>
-                                  {getClientNumber(client) || "—"}
-                                </td>;
-                            }
-                            if (columnId === "company") {
-                              const onboarding = getClientOnboardingInfo(client);
-                              return <td key={columnId} className={styles.colCompany}>
-                                  <div className={styles.companyCell}>
-                                    <SmartTooltip content={formatClientTabLabel(client)} as="span" className={styles.clientNameText}>
-                                      {getClientNameWithoutCode(client) || client.name || "-"}
-                                    </SmartTooltip>
-                                    {onboarding ? <SmartTooltip content={onboarding.ageDays < 1 ? interpolate(copy.onboardingTooltipToday, {
-                                  remaining: onboarding.remainingDays
-                                }) : interpolate(copy.onboardingTooltip, {
-                                  days: onboarding.ageDays,
-                                  remaining: onboarding.remainingDays
-                                })} as="span" className={styles.onboardingBadge}>
-                                        {copy.onboardingBadge}
-                                      </SmartTooltip> : null}
-                                  </div>
-                                </td>;
-                            }
-                            if (columnId === "company_status") {
-                              return <td key={columnId} className={styles.colCompanyStatus}>
-                                  {renderCompanyStatus(client)}
-                                </td>;
-                            }
-                            if (columnId === "primary_contact") {
-                              return <td key={columnId} className={`${styles.colMuted} ${styles.colContact}`}>{client.primaryContactName || "-"}</td>;
-                            }
-                            if (columnId === "commercial") {
-                              return <td key={columnId} className={`${styles.colMuted} ${styles.colCommercial}`}>{client.commercial || "-"}</td>;
-                            }
-                            if (columnId === "modules") {
-                              const moduleLabels = activeModules.map(key => resolveModuleLabel(key));
-                              const modulesTooltip = moduleLabels.join(" · ");
-                              const visibleLimit = 2;
-                              const visibleModules = activeModules.slice(0, visibleLimit);
-                              const hiddenCount = Math.max(0, activeModules.length - visibleLimit);
-                              return <td key={columnId} className={styles.colModules}>
-                                  {activeModules.length > 0 ? <SmartTooltip content={modulesTooltip} as="div" className={styles.tableModulesClip}>
-                                      <div className={styles.tableModules}>
-                                        {visibleModules.map(key => <span key={key} className={styles.moduleTag}>
-                                            {resolveModuleLabel(key)}
-                                          </span>)}
-                                        {hiddenCount > 0 ? <span className={`${styles.moduleTag} ${styles.moduleTagMore}`}>+{hiddenCount}</span> : null}
-                                      </div>
-                                    </SmartTooltip> : <span className={styles.moduleTag}>{copy.noModuleOptions}</span>}
-                                </td>;
-                            }
-                            if (columnId === "expiration") {
-                              return <td key={columnId} className={`${styles.colExpiry} ${getExpiryClass(contractStatus.status)}`.trim()}>
-                                  {formatDate(client.contrat?.expiration)}
-                                </td>;
-                            }
-                            if (columnId === "tags") {
-                              return <td key={columnId} className={styles.colTags}>
-                                  {tags.length > 0 ? <div className={styles.tableTags} aria-label={copy.tagsAria}>
-                                      {visibleTags.map(tag => <span key={tag.id} className={styles.clientTagChip} style={{
-                                        backgroundColor: `${tag.color || "#2b5fab"}18`,
-                                        borderColor: `${tag.color || "#2b5fab"}55`,
-                                        color: tag.color || "#2b5fab"
-                                      }}>
-                                          {tag.label}
-                                        </span>)}
-                                      {hiddenTagCount > 0 ? <span className={styles.tagMore}>+{hiddenTagCount}</span> : null}
-                                    </div> : <span className={styles.colEmpty}>-</span>}
-                                </td>;
-                            }
-                            return <td key={columnId}>-</td>;
-                          })}
-                          <td className={styles.favoriteCell} onClick={e => e.stopPropagation()}>
-                            <SmartTooltip content={favorited ? copy.favorites.remove : copy.favorites.add}>
-                              <button type="button" className={`${styles.favoriteBtn} ${favorited ? styles.favoriteBtnActive : ""}`} aria-label={favorited ? copy.favorites.remove : copy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(client.id)}>
-                                <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />
-                              </button>
-                            </SmartTooltip>
-                          </td>
-                        </tr>;
-                    })}
-                  </tbody>
-                </table>
-                </div>
-
-                {filteredAndSortedClients.length > 0 ? <div className={`${styles.pagination} ${styles.paginationEmbedded}`}>
-                <div className={styles.paginationLeft}>
-                  <span className={styles.paginationLabel}>{copy.perPage}</span>
-                  <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                  <span className={styles.paginationInfo}>
-                    {copy.formatRangeInfo((currentPage - 1) * pageSize + 1, Math.min(currentPage * pageSize, filteredAndSortedClients.length), filteredAndSortedClients.length)}
-                  </span>
-                </div>
-                <div className={styles.paginationRight}>
-                  <SmartTooltip content={copy.prevPage}>
-                    <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label={copy.prevPage}>
-                      <FaChevronLeft />
-                    </button>
-                  </SmartTooltip>
-                  <span className={styles.paginationInfo}>
-                    {copy.formatPageInfo(currentPage, totalPages)}
-                  </span>
-                  <SmartTooltip content={copy.nextPage}>
-                    <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label={copy.nextPage}>
-                      <FaChevronRight />
-                    </button>
-                  </SmartTooltip>
-                </div>
-              </div> : null}
-              </div>
-            </div>
           </div>}
             </div>
           </main>
@@ -908,7 +948,7 @@ export default function EnterprisesPage({
       setShowClientModal(false);
       setClientModalInitial(null);
     }} onSaved={() => window.dispatchEvent(new Event("refreshEnterprises"))} />, document.getElementById("modal-root") || document.body)}
-      <EnterpriseBulkEditModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} clientIds={[...selectedIds]} onSuccess={handleBulkSuccess} />
+      <EnterpriseBulkEditModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} clientIds={bulkClientIds} onSuccess={handleBulkSuccess} />
       <TicketColumnsModal
         open={columnsModalOpen}
         onClose={() => setColumnsModalOpen(false)}

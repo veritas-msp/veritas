@@ -1708,6 +1708,32 @@ export const getEquipmentMonitoringSummaries = async ({
   }
   return response.json();
 };
+
+/** Events + notifications CheckMK (warning / critical) agrégés par jour. Sans clientId = parc global. */
+export const getEquipmentMonitoringEvolution = async ({
+  clientId,
+  days = 7
+} = {}, options = {}) => {
+  const body = {
+    days
+  };
+  if (clientId != null && clientId !== '') {
+    body.clientId = clientId;
+  }
+  const response = await fetch(`${API_BASE_URL}/checkmk/equipment-monitoring/evolution`, {
+    method: 'POST',
+    credentials: 'include',
+    signal: options.signal,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+};
 export const syncEquipmentCheckMKMonitoring = async (payload, options = {}) => {
   const response = await fetch(`${API_BASE_URL}/checkmk/equipment-monitoring/sync`, {
     method: 'POST',

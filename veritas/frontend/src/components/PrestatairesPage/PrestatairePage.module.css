@@ -16,8 +16,8 @@
 }
 
 .colStatus {
-  width: 3.5rem;
-  text-align: center;
+  width: auto;
+  white-space: nowrap;
 }
 
 .colActions {

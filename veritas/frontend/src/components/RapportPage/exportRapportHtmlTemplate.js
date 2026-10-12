@@ -1,7 +1,17 @@
+import { resolveLoginAssetUrl } from "../../utils/loginBrandingUtils";
+
 export const REPORT_META = {
   supervision: {
     label: "Rapport de supervision",
     shortLabel: "Supervision"
+  },
+  intervention: {
+    label: "Rapport d'intervention",
+    shortLabel: "Intervention"
+  },
+  audit: {
+    label: "Rapport d'audit",
+    shortLabel: "Audit"
   },
   infrastructure: {
     label: "Rapport infrastructure",
@@ -22,6 +32,9 @@ export const REPORT_META = {
 };
 function escapeHtml(value) {
   return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function resolveReportLogoSrc(path) {
+  return resolveLoginAssetUrl(path) || "";
 }
 export function formatReportDate(value) {
   if (!value) return "";
@@ -149,8 +162,7 @@ export function buildExportPrintStyles(branding = null) {
     /* ── En-tête export ── */
     .vex-header {
       position: relative;
-      background:
-        linear-gradient(135deg, var(--vex-header-bg) 0%, color-mix(in srgb, var(--vex-header-bg) 40%, var(--vex-header-bg-end)) 42%, var(--vex-header-bg-end) 100%);
+      background: var(--vex-header-bg);
       color: var(--vex-header-text);
       border-bottom: none;
     }
@@ -159,7 +171,7 @@ export function buildExportPrintStyles(branding = null) {
       position: absolute;
       inset: auto 0 0 0;
       height: 4px;
-      background: linear-gradient(90deg, var(--vex-header-bar) 0%, color-mix(in srgb, var(--vex-header-bar) 55%, var(--vex-header-bar-end)) 40%, var(--vex-header-bar-end) 100%);
+      background: var(--vex-header-bar);
     }
     .vex-header-inner {
       max-width: var(--vex-max);
@@ -173,6 +185,31 @@ export function buildExportPrintStyles(branding = null) {
       justify-content: space-between;
       gap: 0.65rem 1rem;
       margin-bottom: 1.15rem;
+    }
+    .vex-brand-identity {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      min-width: 0;
+    }
+    .vex-logo {
+      display: block;
+      max-width: 110px;
+      max-height: 56px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      flex-shrink: 0;
+      background: transparent;
+    }
+    .vex-footer-logo {
+      display: block;
+      max-width: 120px;
+      max-height: 48px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto 0.75rem;
     }
     .vex-brand {
       font-size: var(--vex-brand-size);
@@ -189,7 +226,7 @@ export function buildExportPrintStyles(branding = null) {
       font-weight: 600;
       letter-spacing: -0.01em;
       color: var(--vex-header-text);
-      font-family: var(--vex-font-sans);
+      font-family: var(--vex-font-serif);
     }
     .vex-generated {
       margin: 0;
@@ -971,17 +1008,30 @@ export function buildExportPrintStyles(branding = null) {
     .vex-footer-social {
       margin-top: 0.85rem;
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 0.9rem;
+      gap: 0.55rem 0.9rem;
     }
     .vex-footer-social a {
-      color: var(--vex-footer-muted);
+      color: var(--vex-footer-link);
       text-decoration: none;
       display: inline-flex;
-      width: 2rem;
-      height: 2rem;
       align-items: center;
       justify-content: center;
+      gap: 0.35rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .vex-footer-social--icons a {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 999px;
+      border: 1px solid var(--vex-border);
+      background: var(--vex-footer-bg);
+      color: var(--vex-footer-muted);
+    }
+    .vex-footer-social--both a {
+      padding: 0.3rem 0.65rem;
       border-radius: 999px;
       border: 1px solid var(--vex-border);
       background: var(--vex-footer-bg);
@@ -1064,77 +1114,142 @@ export function buildExportHeaderHtml({
   branding = null
 }) {
   const meta = REPORT_META[reportType] || {
-    label: "Rapport de supervision"
+    label: "Rapport"
   };
-  const brandLabel = String(branding?.brandLabel || "PSI × Veritas").trim() || "PSI × Veritas";
+  const brandLabel = String(branding?.brandLabel || "").trim();
   const companyName = String(branding?.companyName || "").trim();
-  const showGeneratedAt = branding?.showGeneratedAt !== false;
+  const showHeaderLogo = branding?.showHeaderLogo !== false;
+  const showHeaderBrand = branding?.showHeaderBrand !== false;
+  const showHeaderCompany = branding?.showHeaderCompany !== false;
+  const showHeaderClient = branding?.showHeaderClient !== false;
+  const showHeaderPeriod = branding?.showHeaderPeriod !== false;
+  const showHeaderPill = branding?.showHeaderPill !== false;
+  const showHeaderGeneratedAt = branding?.showHeaderGeneratedAt !== false;
   const generatedAt = new Date().toLocaleString("fr-FR");
-  const companyHtml = companyName && companyName.toLowerCase() !== brandLabel.toLowerCase()
-    ? `<p class="vex-company">${escapeHtml(companyName)}</p>`
-    : "";
+  const companyHtml =
+    showHeaderCompany &&
+    companyName &&
+    (!showHeaderBrand || !brandLabel || companyName.toLowerCase() !== brandLabel.toLowerCase())
+      ? `<p class="vex-company">${escapeHtml(companyName)}</p>`
+      : "";
+  const brandHtml =
+    showHeaderBrand && brandLabel ? `<p class="vex-brand">${escapeHtml(brandLabel)}</p>` : "";
+  const logoSrc = showHeaderLogo ? resolveReportLogoSrc(branding?.logoPath) : "";
+  const logoHtml = logoSrc ? `<img class="vex-logo" src="${escapeHtml(logoSrc)}" alt="" />` : "";
   return `
   <header class="vex-header">
     <div class="vex-header-inner">
       <div class="vex-brand-row">
-        <div>
-          <p class="vex-brand">${escapeHtml(brandLabel)}</p>
-          ${companyHtml}
+        <div class="vex-brand-identity">
+          ${logoHtml}
+          <div>
+            ${brandHtml}
+            ${companyHtml}
+          </div>
         </div>
-        ${showGeneratedAt ? `<p class="vex-generated">Généré le ${escapeHtml(generatedAt)}</p>` : ""}
+        ${showHeaderGeneratedAt ? `<p class="vex-generated">Généré le ${escapeHtml(generatedAt)}</p>` : ""}
       </div>
-      <h1 class="vex-client">${escapeHtml(clientName)}</h1>
-      ${periodLabel ? `<p class="vex-period">${escapeHtml(periodLabel)}</p>` : ""}
-      <span class="vex-report-pill">${escapeHtml(meta.label)}</span>
+      ${showHeaderClient ? `<h1 class="vex-client">${escapeHtml(clientName)}</h1>` : ""}
+      ${showHeaderPeriod && periodLabel ? `<p class="vex-period">${escapeHtml(periodLabel)}</p>` : ""}
+      ${showHeaderPill ? `<span class="vex-report-pill">${escapeHtml(meta.label)}</span>` : ""}
     </div>
   </header>`;
 }
 export function buildExportFooterHtml(branding = null) {
-  const brandLabel = String(branding?.brandLabel || "PSI × Veritas").trim() || "PSI × Veritas";
+  const brandLabel = String(branding?.brandLabel || "").trim();
   const companyName = String(branding?.companyName || "").trim();
   const supportEmail = String(branding?.supportEmail || "").trim();
   const supportPhone = String(branding?.supportPhone || "").trim();
   const website = String(branding?.website || "").trim();
   const address = String(branding?.address || "").trim();
-  const footerNote = String(branding?.footerNote || "Confidentiel — usage client").trim();
+  const footerNote = String(branding?.footerNote || "").trim();
   const showGeneratedAt = branding?.showGeneratedAt !== false;
+  const showFooterLogo = branding?.showFooterLogo !== false;
+  const showFooterCompany = branding?.showFooterCompany !== false;
+  const showFooterBrand = branding?.showFooterBrand !== false;
+  const showFooterEmail = branding?.showFooterEmail !== false;
+  const showFooterPhone = branding?.showFooterPhone !== false;
+  const showFooterWebsite = branding?.showFooterWebsite !== false;
+  const showFooterAddress = branding?.showFooterAddress !== false;
+  const showFooterSocials = branding?.showFooterSocials !== false;
+  const showFooterNote = branding?.showFooterNote !== false;
   const socials = Array.isArray(branding?.socials) ? branding.socials : [];
   const generatedAt = new Date().toLocaleString("fr-FR");
+  const footerLogoSrc =
+    resolveReportLogoSrc(branding?.footerLogoPath) || resolveReportLogoSrc(branding?.logoPath);
+  const footerLogoHtml =
+    showFooterLogo && footerLogoSrc
+      ? `<img class="vex-footer-logo" src="${escapeHtml(footerLogoSrc)}" alt="" />`
+      : "";
 
   const contactParts = [];
-  if (supportEmail) {
+  if (showFooterEmail && supportEmail) {
     contactParts.push(`<a href="mailto:${escapeHtml(supportEmail)}">${escapeHtml(supportEmail)}</a>`);
   }
-  if (supportPhone) {
+  if (showFooterPhone && supportPhone) {
     const telHref = supportPhone.replace(/[^\d+]/g, "");
     contactParts.push(`<a href="tel:${escapeHtml(telHref)}">${escapeHtml(supportPhone)}</a>`);
   }
-  if (website) {
+  if (showFooterWebsite && website) {
     contactParts.push(`<a href="${escapeHtml(website)}" target="_blank" rel="noreferrer">${escapeHtml(website.replace(/^https?:\/\//i, ""))}</a>`);
   }
-  if (address) {
+  if (showFooterAddress && address) {
     contactParts.push(`<span>${escapeHtml(address)}</span>`);
   }
 
-  const socialHtml = socials.length
-    ? `<div class="vex-footer-social">${socials.map(item => `
-        <a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer" title="${escapeHtml(item.title || "")}">
-          <iconify-icon icon="${escapeHtml(item.icon || "mdi:link")}" width="18" height="18"></iconify-icon>
-        </a>`).join("")}
+  const socialDisplay = ["icons", "links", "both"].includes(branding?.socialDisplay)
+    ? branding.socialDisplay
+    : "icons";
+  const socialModeClass =
+    socialDisplay === "links"
+      ? "vex-footer-social--links"
+      : socialDisplay === "both"
+        ? "vex-footer-social--both"
+        : "vex-footer-social--icons";
+  const socialHtml =
+    showFooterSocials && socials.length
+      ? `<div class="vex-footer-social ${socialModeClass}">${socials.map(item => {
+          const iconHtml =
+            socialDisplay !== "links"
+              ? `<iconify-icon icon="${escapeHtml(item.icon || "mdi:link")}" width="18" height="18"></iconify-icon>`
+              : "";
+          const labelHtml =
+            socialDisplay !== "icons"
+              ? `<span>${escapeHtml(item.title || item.url)}</span>`
+              : "";
+          return `
+        <a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer" title="${escapeHtml(item.title || "")}" aria-label="${escapeHtml(item.title || "Social")}">
+          ${iconHtml}${labelHtml}
+        </a>`;
+        }).join("")}
       </div>`
-    : "";
+      : "";
 
   const noteParts = [];
   if (showGeneratedAt) noteParts.push(`Document généré le ${escapeHtml(generatedAt)}`);
-  if (footerNote) noteParts.push(escapeHtml(footerNote));
-  const footerBrand = companyName || brandLabel;
+  if (showFooterNote && footerNote) noteParts.push(escapeHtml(footerNote));
+  const footerMain =
+    showFooterCompany && companyName
+      ? companyName
+      : showFooterBrand && brandLabel
+        ? brandLabel
+        : "";
+  const footerBrandAlt =
+    showFooterCompany &&
+    companyName &&
+    showFooterBrand &&
+    brandLabel &&
+    brandLabel.toLowerCase() !== companyName.toLowerCase()
+      ? brandLabel
+      : "";
 
   return `
   <footer class="vex-footer">
     <div class="vex-footer-inner">
-      <div class="vex-footer-brand">${escapeHtml(footerBrand)}</div>
-      ${brandLabel && companyName && brandLabel.toLowerCase() !== companyName.toLowerCase()
-        ? `<div class="vex-footer-brand" style="margin-top:0.35rem;font-size:0.7rem;letter-spacing:0.12em;opacity:0.75">${escapeHtml(brandLabel)}</div>`
+      ${footerLogoHtml}
+      ${footerMain ? `<div class="vex-footer-brand">${escapeHtml(footerMain)}</div>` : ""}
+      ${footerBrandAlt
+        ? `<div class="vex-footer-brand" style="margin-top:0.35rem;font-size:0.7rem;letter-spacing:0.12em;opacity:0.75">${escapeHtml(footerBrandAlt)}</div>`
         : ""}
       ${contactParts.length ? `<div class="vex-footer-contacts">${contactParts.join("")}</div>` : ""}
       ${socialHtml}

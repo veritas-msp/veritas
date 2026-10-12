@@ -1,15 +1,17 @@
 import { isProOnlyDocType } from "../config/edition";
 export const DOC_TYPE_ACCESS_KEY = {
   Hardware: "Hardware",
+  Campaigns: "Campaigns",
+  CampaignDetail: "Campaigns",
   EquipmentInventory: "EquipmentInventory",
   Equipment: "Hardware",
   EquipmentDetail: "Hardware",
   JobDetail: "Hardware",
   ComputerFleetStats: "Hardware",
   Cybersecurite: "Cybersecurite",
-  CampaignDetail: "Cybersecurite",
   AntivirusDetail: "Cybersecurite",
   AntispamDetail: "Cybersecurite",
+  InstanceDetail: "Cybersecurite",
   Planning: "Planning",
   Dashboard: "Dashboard",
   Ticket: "Ticket",
@@ -41,8 +43,10 @@ const QUERY_KEYS = {
   AntispamDetail: ["customerId", "mailinblackTenantId", "productName", "logiciel", "solution"],
   EquipmentDetail: ["id", "clientId", "type", "name"],
   JobDetail: ["id", "clientId", "nom", "name"],
+  InstanceDetail: ["instanceId", "id", "clientId", "instanceName", "logiciel", "name"],
   ComputerFleetStats: ["equipmentType", "siteFilter", "client_number", "familyLabel", "familyIcon"],
   Cybersecurite: ["tab", "clientId"],
+  Campaigns: ["clientId"],
   Service: ["tab", "clientId"],
   Contrat: ["openClientId", "highlight"],
   Contact: ["openContactId", "highlight"],
@@ -85,10 +89,23 @@ export function buildAgentPath(docType, data = null, options = {}) {
         return `/supervision/clients/${encodeSeg(d.clientId)}/equipment/${encodeSeg(d.equipmentType)}`;
       }
       return "/supervision";
+    case "Campaigns":
+      return appendQuery("/campaigns", d, docType);
+    case "CampaignDetail":
+      {
+        const campaignId = d.campaignId || d.id;
+        return campaignId ? `/campaigns/${encodeSeg(campaignId)}` : "/campaigns";
+      }
     case "EquipmentDetail":
       return appendQuery("/supervision/items", d, docType);
     case "JobDetail":
       return appendQuery("/supervision/backup-jobs", d, docType);
+    case "InstanceDetail":
+      {
+        const clientId = d.clientId;
+        if (!clientId) return "/cybersecurity";
+        return appendQuery(`/cybersecurity/backup-instances/${encodeSeg(clientId)}`, d, docType);
+      }
     case "ComputerFleetStats":
       {
         const clientId = d.clientId;
@@ -97,11 +114,6 @@ export function buildAgentPath(docType, data = null, options = {}) {
       }
     case "Cybersecurite":
       return appendQuery("/cybersecurity", d, docType);
-    case "CampaignDetail":
-      {
-        const campaignId = d.campaignId || d.id;
-        return campaignId ? `/cybersecurity/campaigns/${encodeSeg(campaignId)}` : "/cybersecurity";
-      }
     case "AntivirusDetail":
       {
         const clientId = d.clientId;
@@ -279,6 +291,23 @@ export function parseAgentPath(pathname, search = "") {
       adminTab: null
     })
   }, {
+    re: /^\/campaigns\/([^/]+)$/,
+    run: ([, campaignId]) => ({
+      docType: "CampaignDetail",
+      data: {
+        campaignId: decodeURIComponent(campaignId),
+        id: decodeURIComponent(campaignId)
+      },
+      adminTab: null
+    })
+  }, {
+    re: /^\/campaigns$/,
+    run: () => ({
+      docType: "Campaigns",
+      data: Object.keys(query).length ? query : null,
+      adminTab: null
+    })
+  }, {
     re: /^\/cybersecurity\/campaigns\/([^/]+)$/,
     run: ([, campaignId]) => ({
       docType: "CampaignDetail",
@@ -299,6 +328,16 @@ export function parseAgentPath(pathname, search = "") {
       adminTab: null
     })
   }, {
+    re: /^\/cybersecurity\/backup-instances\/([^/]+)$/,
+    run: ([, clientId]) => ({
+      docType: "InstanceDetail",
+      data: {
+        clientId: decodeURIComponent(clientId),
+        ...query
+      },
+      adminTab: null
+    })
+  }, {
     re: /^\/cybersecurity\/antispam\/([^/]+)$/,
     run: ([, clientId]) => ({
       docType: "AntispamDetail",
@@ -310,11 +349,22 @@ export function parseAgentPath(pathname, search = "") {
     })
   }, {
     re: /^\/cybersecurity$/,
-    run: () => ({
-      docType: "Cybersecurite",
-      data: Object.keys(query).length ? query : null,
-      adminTab: null
-    })
+    run: () => {
+      if (query.tab === "campaigns" || query.activeTab === "campaigns") {
+        const data = {};
+        if (query.clientId) data.clientId = query.clientId;
+        return {
+          docType: "Campaigns",
+          data: Object.keys(data).length ? data : null,
+          adminTab: null
+        };
+      }
+      return {
+        docType: "Cybersecurite",
+        data: Object.keys(query).length ? query : null,
+        adminTab: null
+      };
+    }
   }, {
     re: /^\/services\/tenants\/([^/]+)$/,
     run: ([, clientId]) => ({
@@ -601,6 +651,7 @@ export function routeToMainAppState(parsed) {
     jobDetailData: null,
     computerFleetStatsData: null,
     cybersecuriteParams: null,
+    campaignsParams: null,
     serviceParams: null,
     planningParams: null
   };
@@ -628,6 +679,9 @@ export function routeToMainAppState(parsed) {
       break;
     case "AntivirusDetail":
       state.antivirusDetailData = data;
+      break;
+    case "InstanceDetail":
+      state.instanceDetailData = data;
       break;
     case "AntispamDetail":
       state.antispamDetailData = data;
@@ -661,6 +715,9 @@ export function routeToMainAppState(parsed) {
       break;
     case "Cybersecurite":
       state.cybersecuriteParams = data;
+      break;
+    case "Campaigns":
+      state.campaignsParams = data;
       break;
     case "Service":
       state.serviceParams = data;

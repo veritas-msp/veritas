@@ -1,6 +1,6 @@
 .shell {
-  width: min(480px, 100%);
-  max-height: min(88vh, 560px);
+  width: min(520px, 100%);
+  max-height: min(92vh, 640px);
 }
 
 .body {
@@ -89,6 +89,10 @@
   border-radius: 12px;
   border: 1px solid var(--msp-border, #dde3ed);
   background: var(--msp-surface, #fff);
+}
+
+.visibilityRowMuted {
+  opacity: 0.72;
 }
 
 .visibilityCopy {

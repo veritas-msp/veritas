@@ -21,8 +21,15 @@ import { createDefaultClientSla } from "../../utils/ticketSlaUtils";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
+import IconPicker from "../AdminPage/IconPicker";
 import { getPrimaryCommunicationValue, normalizeContactCommunications, primaryContactToFormInitial, buildContactApiPayload } from "../../utils/contactCommunications";
 import { emptyPrimaryContact, formatPrimaryContactLabel, getContactSearchText, mapContactToPrimary, buildAdditiveMembershipsForEnterprise } from "./enterpriseFormUtils";
+import {
+  DEFAULT_ENTERPRISE_ICON,
+  ENTERPRISE_ICON_CHOICES,
+  ENTERPRISE_ICON_COLOR_PRESETS,
+  resolveEnterpriseIconColor
+} from "./enterpriseIconChoices";
 import styles from "./EnterpriseFormModal.module.css";
 function getCommercialUserLabel(user) {
   if (!user) return "";
@@ -90,13 +97,7 @@ export default function EnterpriseFormModal({
     return Array.from(byId.values());
   }, [usersProp, usersLocal, usersExtra]);
   const loadingUsers = usersProp ? loadingUsersProp : loadingUsersLocal;
-  const visibleSections = useMemo(() => {
-    let sections = copy.sections;
-    if (isCreate || isCommunity) {
-      sections = sections.filter(section => section.id !== "support");
-    }
-    return sections;
-  }, [copy.sections, isCommunity, isCreate]);
+  const visibleSections = useMemo(() => copy.sections, [copy.sections]);
   const isSlaCommunityLocked = isCommunity && isCreate;
   useEffect(() => {
     if (!visibleSections.some(section => section.id === activeSection)) {
@@ -459,13 +460,16 @@ export default function EnterpriseFormModal({
   const activeModulesCount = useMemo(() => Object.values(form?.modules || {}).filter(Boolean).length, [form?.modules]);
   const sectionMeta = useMemo(() => {
     const contact = form?.primaryContact || {};
+    const hasContractDates = Boolean(form?.contrat?.debut || form?.contrat?.expiration);
+    const hasCommercial = Boolean(getCommercialId(form));
+    const slaEnabled = Boolean(form?.contrat?.sla?.enabled);
     return {
       identity: Boolean(form?.name?.trim()),
       location: clientSites.length > 0,
       contact: Boolean(contact.nom?.trim()),
-      contract: false,
+      contract: hasContractDates || hasCommercial || slaEnabled,
       modules: activeModulesCount > 0,
-      support: Boolean(form?.contrat?.sla?.enabled)
+      status: Boolean(form?.statut)
     };
   }, [form, activeModulesCount, clientSites.length]);
   // Contact principal obligatoire uniquement à la création : en édition, on peut
@@ -509,7 +513,17 @@ export default function EnterpriseFormModal({
       {deleteLoading ? copy.deleting : loadingDeletionCheck ? copy.checking : copy.delete}
     </button>;
   const requiredHint = isCreate ? copy.footer.requiredHint : copy.footer.requiredHintEdit;
-  const footerHint = !requiredFieldsValid ? requiredHint : activeSection === "contact" && isCreate ? copy.footer.contactAttachHint : activeSection === "support" && isSlaCommunityLocked ? copy.footer.proSlaHint : !isCreate ? hasChanges ? copy.footer.unsavedChanges : copy.footer.noChanges : "";
+  const footerHint = !requiredFieldsValid
+    ? requiredHint
+    : activeSection === "contact" && isCreate
+      ? copy.footer.contactAttachHint
+      : activeSection === "contract" && isSlaCommunityLocked
+        ? copy.footer.proSlaHint
+        : !isCreate
+          ? hasChanges
+            ? copy.footer.unsavedChanges
+            : copy.footer.noChanges
+          : "";
   const modalTitle = title || copy.formatTitle(isCreate, form.name);
   const modalSubtitle = subtitle || (isCreate ? copy.subtitleCreate : copy.subtitleEdit);
   const f = copy.fields;
@@ -554,6 +568,63 @@ export default function EnterpriseFormModal({
                 <ActivitySectorSelect id="enterprise-form-secteur" className={styles.input} value={form.secteur || ""} onChange={e => patchForm({
                 secteur: e.target.value
               })} />
+              </div>
+              <div className={`${styles.field} ${styles.fieldFull}`}>
+                <span className={styles.label}>{f.icon}</span>
+                <p className={styles.hint}>{f.iconHint}</p>
+                <div className={styles.iconAppearanceRow}>
+                  <div className={styles.iconPickerRow}>
+                    <IconPicker
+                      value={form.icon || DEFAULT_ENTERPRISE_ICON}
+                      onChange={icon => patchForm({ icon })}
+                      choices={ENTERPRISE_ICON_CHOICES}
+                      searchable
+                      popover
+                      bare
+                      color={resolveEnterpriseIconColor(form.iconColor)}
+                      searchPlaceholder={f.iconSearchPlaceholder}
+                      searchAria={f.iconSearchAria}
+                      clearSearchLabel={f.iconClearSearch}
+                      changeLabel={f.iconChangeLabel}
+                      pickerAria={f.iconPickerAria}
+                    />
+                    {form.icon ? (
+                      <button
+                        type="button"
+                        className={styles.iconClearBtn}
+                        onClick={() => patchForm({ icon: "", iconColor: "" })}
+                      >
+                        {f.iconClear}
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className={styles.iconColorField}>
+                    <span className={styles.label}>{f.iconColor}</span>
+                    <div className={styles.iconColorPicker} role="group" aria-label={f.iconColorAria}>
+                      {ENTERPRISE_ICON_COLOR_PRESETS.map(color => {
+                        const selected = resolveEnterpriseIconColor(form.iconColor).toLowerCase() === color.toLowerCase();
+                        return <button
+                          key={color}
+                          type="button"
+                          className={`${styles.iconColorSwatch} ${selected ? styles.iconColorSwatchActive : ""}`}
+                          style={{ "--swatch-color": color }}
+                          onClick={() => patchForm({ iconColor: color })}
+                          aria-label={`${f.iconColor} ${color}`}
+                          aria-pressed={selected}
+                        />;
+                      })}
+                      <label className={styles.iconColorCustom} title={f.iconColorCustom}>
+                        <input
+                          type="color"
+                          className={styles.iconColorInput}
+                          value={resolveEnterpriseIconColor(form.iconColor)}
+                          onChange={e => patchForm({ iconColor: e.target.value })}
+                          aria-label={f.iconColorCustom}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </>;
@@ -662,7 +733,10 @@ export default function EnterpriseFormModal({
           </>;
         }
       case "contract":
-        return <>
+        {
+          const sla = form.contrat?.sla || createDefaultClientSla();
+          const previewSla = createDefaultClientSla();
+          return <>
             <div className={styles.sectionHead}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
               <p className={styles.sectionDesc}>{section?.description}</p>
@@ -693,31 +767,96 @@ export default function EnterpriseFormModal({
               </div>
               <MultiSuggestPicker singleSelect maxResults={8} inputId="enterprise-form-commercial" placeholder={loadingUsers ? f.loadingAgents : f.commercialSearchPlaceholder} options={commercialUserOptions} selectedIds={commercialId ? [commercialId] : []} emptyHint={f.noAgentSelected} emptyResultsHint={f.noAgentFound} onChange={ids => setCommercialId(ids[0] ? String(ids[0]) : "")} />
             </div>
-          </>;
-      case "status":
-        {
-          const isInactive = form.statut === "inactive" || form.statut === "inactif";
-          const isActive = !isInactive;
-          return <>
-            <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
-            </div>
-            <div className={styles.modulesGrid}>
-              <button type="button" className={`${styles.moduleTile} ${isActive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-              statut: "actif"
-            })} aria-pressed={isActive}>
-                {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
-              </button>
-              <button type="button" className={`${styles.moduleTile} ${isInactive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-              statut: "inactive"
-            })} aria-pressed={isInactive}>
-                {isInactive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
-              </button>
+
+            <div className={styles.contractSlaBlock}>
+              <div className={styles.sectionHeadRow}>
+                <h4 className={styles.subsectionTitle}>{copy.sla.subsectionTitle}</h4>
+                {isSlaCommunityLocked ? <span className={styles.navProBadge}>Pro</span> : null}
+              </div>
+              <p className={styles.sectionDesc}>{copy.sla.subsectionDesc}</p>
+
+              {isSlaCommunityLocked ? <>
+                <div className={styles.slaToggleLocked} aria-disabled="true">
+                  <span className={styles.slaToggleLabel}>{copy.sla.enable}</span>
+                  <span className={`${styles.switchWrap} ${styles.switchWrapLocked}`} aria-hidden="true">
+                    <span className={styles.switchTrack}>
+                      <span className={styles.switchThumb} />
+                    </span>
+                  </span>
+                </div>
+                <div className={styles.slaTableWrap}>
+                  <table className={`${styles.slaTable} ${styles.slaTablePreview}`}>
+                    <thead>
+                      <tr>
+                        <th>{copy.sla.priority}</th>
+                        <th>{copy.sla.firstResponse}</th>
+                        <th>{copy.sla.resolution}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {copy.slaPriorityEntries.map(([priorityKey, priorityLabel]) => <tr key={priorityKey}>
+                          <td>{priorityLabel}</td>
+                          <td>{previewSla.byPriority[priorityKey]?.firstResponseHours}</td>
+                          <td>{previewSla.byPriority[priorityKey]?.resolutionHours}</td>
+                        </tr>)}
+                    </tbody>
+                  </table>
+                  <p className={styles.slaHint}>{copy.sla.previewHint}</p>
+                </div>
+              </> : <>
+                <label className={styles.slaToggle}>
+                  <span className={styles.slaToggleLabel}>{copy.sla.enable}</span>
+                  <span className={styles.switchWrap}>
+                    <input type="checkbox" className={styles.switchInput} checked={Boolean(sla.enabled)} onChange={e => patchSlaField({
+                    enabled: e.target.checked
+                  })} role="switch" aria-checked={Boolean(sla.enabled)} />
+                    <span className={styles.switchTrack} aria-hidden="true">
+                      <span className={styles.switchThumb} />
+                    </span>
+                  </span>
+                </label>
+                {sla.enabled ? <div className={styles.slaTableWrap}>
+                    <table className={styles.slaTable}>
+                      <thead>
+                        <tr>
+                          <th>{copy.sla.priority}</th>
+                          <th>{copy.sla.firstResponse}</th>
+                          <th>{copy.sla.resolution}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {copy.slaPriorityEntries.map(([priorityKey, priorityLabel]) => <tr key={priorityKey}>
+                            <td>{priorityLabel}</td>
+                            <td>
+                              <input type="number" min="0.25" step="0.25" className={styles.input} value={sla.byPriority?.[priorityKey]?.firstResponseHours ?? ""} onChange={e => patchSlaField(current => ({
+                            ...current,
+                            byPriority: {
+                              ...current.byPriority,
+                              [priorityKey]: {
+                                ...current.byPriority[priorityKey],
+                                firstResponseHours: Number(e.target.value)
+                              }
+                            }
+                          }))} />
+                            </td>
+                            <td>
+                              <input type="number" min="0.25" step="0.25" className={styles.input} value={sla.byPriority?.[priorityKey]?.resolutionHours ?? ""} onChange={e => patchSlaField(current => ({
+                            ...current,
+                            byPriority: {
+                              ...current.byPriority,
+                              [priorityKey]: {
+                                ...current.byPriority[priorityKey],
+                                resolutionHours: Number(e.target.value)
+                              }
+                            }
+                          }))} />
+                            </td>
+                          </tr>)}
+                      </tbody>
+                    </table>
+                    <p className={styles.slaHint}>{copy.sla.editHint}</p>
+                  </div> : null}
+              </>}
             </div>
           </>;
         }
@@ -745,107 +884,31 @@ export default function EnterpriseFormModal({
                 </button> : null}
             </div>
           </>;
-      case "support":
+      case "status":
         {
-          const sla = form.contrat?.sla || createDefaultClientSla();
-          const previewSla = createDefaultClientSla();
-          if (isSlaCommunityLocked) {
-            return <>
-              <div className={styles.sectionHead}>
-                <div className={styles.sectionHeadRow}>
-                  <h3 className={styles.sectionTitle}>{section?.label}</h3>
-                  <span className={styles.navProBadge}>Pro</span>
-                </div>
-                <p className={styles.sectionDesc}>{section?.description}</p>
-              </div>
-
-              <div className={styles.slaToggleLocked} aria-disabled="true">
-                <span className={styles.slaToggleLabel}>{copy.sla.enable}</span>
-                <span className={`${styles.switchWrap} ${styles.switchWrapLocked}`} aria-hidden="true">
-                  <span className={styles.switchTrack}>
-                    <span className={styles.switchThumb} />
-                  </span>
-                </span>
-              </div>
-
-              <div className={styles.slaTableWrap}>
-                <table className={`${styles.slaTable} ${styles.slaTablePreview}`}>
-                  <thead>
-                    <tr>
-                      <th>{copy.sla.priority}</th>
-                      <th>{copy.sla.firstResponse}</th>
-                      <th>{copy.sla.resolution}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {copy.slaPriorityEntries.map(([priorityKey, priorityLabel]) => <tr key={priorityKey}>
-                        <td>{priorityLabel}</td>
-                        <td>{previewSla.byPriority[priorityKey]?.firstResponseHours}</td>
-                        <td>{previewSla.byPriority[priorityKey]?.resolutionHours}</td>
-                      </tr>)}
-                  </tbody>
-                </table>
-                <p className={styles.slaHint}>{copy.sla.previewHint}</p>
-              </div>
-            </>;
-          }
+          const isInactive = form.statut === "inactive" || form.statut === "inactif";
+          const isActive = !isInactive;
           return <>
             <div className={styles.sectionHead}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
               <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
-            <label className={styles.slaToggle}>
-              <span className={styles.slaToggleLabel}>{copy.sla.enable}</span>
-              <span className={styles.switchWrap}>
-                <input type="checkbox" className={styles.switchInput} checked={Boolean(sla.enabled)} onChange={e => patchSlaField({
-                  enabled: e.target.checked
-                })} role="switch" aria-checked={Boolean(sla.enabled)} />
-                <span className={styles.switchTrack} aria-hidden="true">
-                  <span className={styles.switchThumb} />
-                </span>
-              </span>
-            </label>
-            {sla.enabled && <div className={styles.slaTableWrap}>
-                <table className={styles.slaTable}>
-                  <thead>
-                    <tr>
-                      <th>{copy.sla.priority}</th>
-                      <th>{copy.sla.firstResponse}</th>
-                      <th>{copy.sla.resolution}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {copy.slaPriorityEntries.map(([priorityKey, priorityLabel]) => <tr key={priorityKey}>
-                        <td>{priorityLabel}</td>
-                        <td>
-                          <input type="number" min="0.25" step="0.25" className={styles.input} value={sla.byPriority?.[priorityKey]?.firstResponseHours ?? ""} onChange={e => patchSlaField(current => ({
-                        ...current,
-                        byPriority: {
-                          ...current.byPriority,
-                          [priorityKey]: {
-                            ...current.byPriority[priorityKey],
-                            firstResponseHours: Number(e.target.value)
-                          }
-                        }
-                      }))} />
-                        </td>
-                        <td>
-                          <input type="number" min="0.25" step="0.25" className={styles.input} value={sla.byPriority?.[priorityKey]?.resolutionHours ?? ""} onChange={e => patchSlaField(current => ({
-                        ...current,
-                        byPriority: {
-                          ...current.byPriority,
-                          [priorityKey]: {
-                            ...current.byPriority[priorityKey],
-                            resolutionHours: Number(e.target.value)
-                          }
-                        }
-                      }))} />
-                        </td>
-                      </tr>)}
-                  </tbody>
-                </table>
-                <p className={styles.slaHint}>{copy.sla.editHint}</p>
-              </div>}
+            <div className={styles.modulesGrid}>
+              <button type="button" className={`${styles.moduleTile} ${isActive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+              statut: "actif"
+            })} aria-pressed={isActive}>
+                {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
+              </button>
+              <button type="button" className={`${styles.moduleTile} ${isInactive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+              statut: "inactive"
+            })} aria-pressed={isInactive}>
+                {isInactive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
+              </button>
+            </div>
           </>;
         }
       default:
@@ -886,8 +949,11 @@ export default function EnterpriseFormModal({
                 </span>
                 {section.id === "location" && clientSites.length > 0 && <span className={styles.navBadge}>{clientSites.length}</span>}
                 {section.id === "modules" && activeModulesCount > 0 && <span className={styles.navBadge}>{activeModulesCount}</span>}
-                {section.id === "support" && isSlaCommunityLocked ? <span className={styles.navProBadge}>Pro</span> : null}
-                {section.id !== "location" && section.id !== "modules" && section.id !== "support" && sectionMeta[section.id] && <span className={styles.navBadge}>✓</span>}
+                {section.id === "contract" && isSlaCommunityLocked ? <span className={styles.navProBadge}>Pro</span> : null}
+                {section.id !== "location" &&
+                  section.id !== "modules" &&
+                  !(section.id === "contract" && isSlaCommunityLocked) &&
+                  sectionMeta[section.id] && <span className={styles.navBadge}>✓</span>}
               </button>)}
           </nav>
 

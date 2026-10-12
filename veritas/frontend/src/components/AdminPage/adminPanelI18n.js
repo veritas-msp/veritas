@@ -129,7 +129,7 @@ const ADMIN_PANEL_COPY = {
       },
       reports: {
         label: "Rapports",
-        description: "Identité, contacts et réseaux sociaux des exports"
+        description: "En-tête et pied de page globaux de tous les rapports"
       },
       "tech-news-feeds": {
         label: "Flux actualités",
@@ -260,7 +260,7 @@ const ADMIN_PANEL_COPY = {
       },
       reports: {
         label: "Reports",
-        description: "Identity, contacts, and social links for exports"
+        description: "Global header and footer for all reports"
       },
       "tech-news-feeds": {
         label: "News feeds",
@@ -391,7 +391,7 @@ const ADMIN_PANEL_COPY = {
       },
       reports: {
         label: "Berichte",
-        description: "Identität, Kontakte und soziale Netzwerke der Exporte"
+        description: "Globale Kopf- und Fußzeile für alle Berichte"
       },
       "tech-news-feeds": {
         label: "Nachrichten-Feeds",
@@ -526,7 +526,7 @@ const ADMIN_PANEL_COPY = {
       },
       reports: {
         label: "Rapporti",
-        description: "Identità, contatti e social degli export"
+        description: "Intestazione e piè di pagina globali di tutti i rapporti"
       },
       "tech-news-feeds": {
         label: "Feed notizie",
@@ -661,7 +661,7 @@ const ADMIN_PANEL_COPY = {
       },
       reports: {
         label: "Informes",
-        description: "Identidad, contactos y redes sociales de los exports"
+        description: "Encabezado y pie de página globales de todos los informes"
       },
       "tech-news-feeds": {
         label: "Fuentes de noticias",

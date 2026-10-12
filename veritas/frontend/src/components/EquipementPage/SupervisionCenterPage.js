@@ -1,8 +1,8 @@
 import MonitoringAlertRulesPanel from "./SupervisionAlertRulesPanel";
 import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import PageGuideTour from "../PageGuide/PageGuideTour";
+import SupervisionCenterPageSkeleton from "./SupervisionCenterPageSkeleton";
 import { getSupervisionCenterGuideSteps } from "../PageGuide/supervisionCenterGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -11,28 +11,34 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getLocaleTag } from "../../i18n/locales";
 import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
-import { buildQueueItemsFromSupervisionAlerts, filterSupervisionQueue, countQueueBySeverity, countQueueByWorkflow, buildSupervisionSupportTicketPrefill } from "./supervisionQueueUtils";
+import { buildQueueItemsFromSupervisionAlerts, filterSupervisionQueue, countQueueBySeverity, createSupervisionSupportTicket } from "./supervisionQueueUtils";
+import { interpolate } from "../../i18n/translate";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
+import SupervisionMaintenanceSidebar from "./SupervisionMaintenanceSidebar";
 import SupervisionAlertHistory from "./SupervisionAlertHistory";
 import SupervisionAlertDiagnosticModal from "./SupervisionAlertDiagnosticModal";
+import SupervisionIgnoreModal from "./SupervisionIgnoreModal";
+import SupervisionMaintenanceModal from "./SupervisionMaintenanceModal";
 import { syncEquipmentCheckMKMonitoring } from "../../api/equipment";
 import { updateEquipmentAlertSuspension } from "../../api/equipmentMonitoringAlerts";
 import {
   ackSupervisionAlert,
   unackSupervisionAlert,
+  createSupervisionExclusion,
+  deleteSupervisionExclusion,
   dismissSupervisionAlert,
   fetchSupervisionAlertsActive,
   fetchSupervisionAlertsHistory,
-  linkSupervisionAlert,
+  fetchSupervisionExclusions,
   resolveSupervisionAlert,
   subscribeSupervisionAlertStream
 } from "../../api/supervisionAlerts";
 import { toast } from "react-toastify";
-import { getEquipmentFleetCoverage } from "../../api/equipment";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { Icon } from "@iconify/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import SmartTooltip from "../SmartTooltip";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
@@ -43,6 +49,7 @@ import {
   fetchActiveCheckmkSyncRun,
   fetchCheckmkSyncStatus
 } from "../../api/checkmkSyncLogs";
+import { countTriageBuckets } from "./supervisionTriageUtils";
 
 export default function MonitoringCenterPage({
   loading: parentLoading = false,
@@ -58,13 +65,15 @@ export default function MonitoringCenterPage({
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [alertsError, setAlertsError] = useState(null);
-  const [coverageFamilies, setCoverageFamilies] = useState([]);
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
   const [opsSearchQuery, setOpsSearchQuery] = useState("");
-  const [opsWorkflowFilter, setOpsWorkflowFilter] = useState("all");
-  const [showMutedAlerts, setShowMutedAlerts] = useState(false);
+  const [triageView, setTriageView] = useState("todo");
+  const [exclusions, setExclusions] = useState([]);
   const [resyncBusyId, setResyncBusyId] = useState(null);
   const [diagnoseAlertId, setDiagnoseAlertId] = useState(null);
+  const [ignoreItem, setIgnoreItem] = useState(null);
+  const [maintenanceItem, setMaintenanceItem] = useState(null);
+  const [triageModalBusy, setTriageModalBusy] = useState(false);
   const [alertActionBusyId, setAlertActionBusyId] = useState(null);
   const [historyAlerts, setHistoryAlerts] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -114,19 +123,33 @@ export default function MonitoringCenterPage({
       }),
     [activeAlerts, pageCopy.priority?.noName]
   );
-  const mutedCount = useMemo(() => enrichedQueue.filter(item => item.muted).length, [enrichedQueue]);
   const visibleQueue = useMemo(
-    () => (showMutedAlerts ? enrichedQueue : enrichedQueue.filter(item => !item.muted)),
-    [enrichedQueue, showMutedAlerts]
+    () => enrichedQueue.filter(item => !item.muted),
+    [enrichedQueue]
   );
-  const filteredQueue = useMemo(() => filterSupervisionQueue(visibleQueue, {
-    severity: opsSeverityFilter,
-    query: opsSearchQuery,
-    workflowStatus: opsWorkflowFilter
-  }), [visibleQueue, opsSeverityFilter, opsSearchQuery, opsWorkflowFilter]);
-  const severityCounts = useMemo(() => countQueueBySeverity(visibleQueue), [visibleQueue]);
-  const workflowCounts = useMemo(() => countQueueByWorkflow(visibleQueue), [visibleQueue]);
-  const totalIssues = visibleQueue.length;
+  const triageCounts = useMemo(
+    () => countTriageBuckets(enrichedQueue, exclusions),
+    [enrichedQueue, exclusions]
+  );
+  const filteredQueue = useMemo(() => {
+    if (triageView === "waiting") return [];
+    const base = filterSupervisionQueue(visibleQueue, {
+      severity: triageView === "todo" ? opsSeverityFilter : "all",
+      query: opsSearchQuery,
+      workflowStatus: triageView === "todo" ? "open" : "all"
+    });
+    if (triageView === "in_progress") {
+      return base.filter(item => {
+        const wf = item.workflowStatus || "open";
+        return wf === "acked" || wf === "linked";
+      });
+    }
+    return base;
+  }, [visibleQueue, opsSeverityFilter, opsSearchQuery, triageView]);
+  const severityCounts = useMemo(
+    () => countQueueBySeverity(visibleQueue.filter(item => (item.workflowStatus || "open") === "open")),
+    [visibleQueue]
+  );
   const loadActiveAlerts = useCallback(async signal => {
     setAlertsLoading(true);
     setAlertsError(null);
@@ -143,48 +166,47 @@ export default function MonitoringCenterPage({
       if (!signal?.aborted) setAlertsLoading(false);
     }
   }, []);
-  const loadCoverage = useCallback(async signal => {
+  const loadExclusions = useCallback(async signal => {
     try {
-      const payload = await getEquipmentFleetCoverage({
-        signal
-      });
+      const rows = await fetchSupervisionExclusions({ signal });
       if (signal?.aborted) return;
-      setCoverageFamilies(Array.isArray(payload?.families) ? payload.families : []);
+      setExclusions(Array.isArray(rows) ? rows : []);
     } catch (err) {
       if (err?.name === "AbortError") return;
-      console.error("Error loading supervision coverage KPIs:", err);
-      if (!signal?.aborted) setCoverageFamilies([]);
+      console.error("Error loading supervision exclusions:", err);
+      if (!signal?.aborted) setExclusions([]);
     }
   }, []);
+
   useEffect(() => {
     const controller = createTrackedAbortController();
     loadActiveAlerts(controller.signal);
-    loadCoverage(controller.signal);
+    loadExclusions(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       if (controller.signal.aborted) return;
       loadActiveAlerts(controller.signal);
-      loadCoverage(controller.signal);
+      loadExclusions(controller.signal);
     }, 60000);
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [loadActiveAlerts, loadCoverage]);
+  }, [loadActiveAlerts, loadExclusions]);
 
   const refreshLiveQueue = useCallback(async () => {
     const controller = createTrackedAbortController();
     try {
       await Promise.all([
         loadActiveAlerts(controller.signal),
-        loadCoverage(controller.signal)
+        loadExclusions(controller.signal)
       ]);
     } catch (err) {
       if (err?.name !== "AbortError") {
         console.error("Error refreshing supervision queue during sync:", err);
       }
     }
-  }, [loadActiveAlerts, loadCoverage]);
+  }, [loadActiveAlerts, loadExclusions]);
 
   const handleFleetSyncProgress = useCallback(progress => {
     setFleetSyncProgress(progress);
@@ -439,12 +461,163 @@ export default function MonitoringCenterPage({
   }, [applyAlertResult, pageCopy.ops, refreshHistory]);
   const handleAckAlert = useCallback(item => runAlertAction(item, i => ackSupervisionAlert(i), "acked"), [runAlertAction]);
   const handleUnackAlert = useCallback(item => runAlertAction(item, i => unackSupervisionAlert(i), "unacked"), [runAlertAction]);
-  const handleResolveAlert = useCallback(item => runAlertAction(item, i => resolveSupervisionAlert(i), "resolved"), [runAlertAction]);
-  const handleDismissAlert = useCallback(item => runAlertAction(item, i => dismissSupervisionAlert(i), "dismissed"), [runAlertAction]);
 
   const resolveMuteFamily = useCallback(item => {
     return item?.family || item?.alertState?.meta?.family || item?.equipment?.family || null;
   }, []);
+
+  const applyEquipmentMute = useCallback(async (item, payload = {}) => {
+    const equipmentId = item?.equipmentId || item?.equipment?.id;
+    const clientId = item?.clientId;
+    const family = resolveMuteFamily(item);
+    if (!equipmentId || !clientId || !family) {
+      const err = new Error(pageCopy.ops?.toasts?.muteFail || "Mute impossible");
+      throw err;
+    }
+    const body =
+      payload.mode === "disabled"
+        ? {
+            family,
+            equipmentName: item?.equipment?.name || item?.subtitle,
+            suspensionType: "none",
+            alertsEnabled: false
+          }
+        : {
+            family,
+            equipmentName: item?.equipment?.name || item?.subtitle,
+            suspensionType: "temporary",
+            alertsEnabled: true,
+            ...(payload.suspendedUntil
+              ? { suspendedUntil: payload.suspendedUntil }
+              : { durationMinutes: payload.durationMinutes || 120 }),
+            reason: payload.reason || "Mute depuis le centre de supervision"
+          };
+    await updateEquipmentAlertSuspension(clientId, equipmentId, body);
+  }, [pageCopy.ops?.toasts?.muteFail, resolveMuteFamily]);
+
+  const handleResolveAlert = useCallback(item => {
+    const wf = item?.workflowStatus || "open";
+    if (wf === "open") {
+      toast.info(pageCopy.ops?.toasts?.ackRequiredResolve || "Prenez d’abord l’alerte en charge.");
+      return;
+    }
+    return runAlertAction(item, i => resolveSupervisionAlert(i), "resolved");
+  }, [pageCopy.ops?.toasts, runAlertAction]);
+
+  const upsertExclusionFromPayload = useCallback(async exclusion => {
+    if (!exclusion) return null;
+    const family = exclusion.family || exclusion.equipmentFamily;
+    if (!exclusion.clientId || !exclusion.equipmentId || !family) {
+      throw new Error(pageCopy.ops?.toasts?.exclusionFail || "Exclusion impossible");
+    }
+    if (exclusion.scope === "device") {
+      await applyEquipmentMute(
+        {
+          clientId: exclusion.clientId,
+          equipmentId: exclusion.equipmentId,
+          family,
+          equipment: { name: exclusion.equipmentName },
+          subtitle: exclusion.equipmentName
+        },
+        exclusion.excludedUntil
+          ? {
+              mode: "temporary",
+              suspendedUntil: exclusion.excludedUntil,
+              reason: exclusion.reason || "Maintenance supervision"
+            }
+          : {
+              mode: "disabled",
+              reason: exclusion.reason || "Maintenance supervision"
+            }
+      );
+    }
+    return createSupervisionExclusion({
+      clientId: exclusion.clientId,
+      equipmentId: exclusion.equipmentId,
+      family,
+      equipmentName: exclusion.equipmentName,
+      scope: exclusion.scope || "service",
+      kind: exclusion.kind || "maintenance",
+      serviceKey: exclusion.serviceKey,
+      serviceName: exclusion.serviceName,
+      reason: exclusion.reason,
+      excludedUntil: exclusion.excludedUntil
+    });
+  }, [applyEquipmentMute, pageCopy.ops?.toasts?.exclusionFail]);
+
+  const handleConfirmIgnore = useCallback(async payload => {
+    const item = ignoreItem;
+    if (!item) return;
+    setTriageModalBusy(true);
+    setAlertActionBusyId(item.id);
+    try {
+      if (payload?.exclusion) {
+        await upsertExclusionFromPayload(payload.exclusion);
+      }
+      const result = await dismissSupervisionAlert(item, {
+        ignoreReason: payload?.ignoreReason,
+        closureDetail: payload?.closureDetail
+      });
+      applyAlertResult(result);
+      toast.success(pageCopy.ops?.toasts?.ignored || pageCopy.ops?.toasts?.dismissed || "Ignored");
+      refreshHistory();
+      await loadExclusions();
+      setIgnoreItem(null);
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
+    } finally {
+      setTriageModalBusy(false);
+      setAlertActionBusyId(null);
+    }
+  }, [applyAlertResult, ignoreItem, loadExclusions, pageCopy.ops?.toasts, refreshHistory, upsertExclusionFromPayload]);
+
+  const handleConfirmMaintenance = useCallback(async payload => {
+    const item = maintenanceItem;
+    if (!item) return;
+    setTriageModalBusy(true);
+    setAlertActionBusyId(item.id);
+    try {
+      await upsertExclusionFromPayload(payload?.exclusion);
+      if (payload?.dismissAlert) {
+        const result = await dismissSupervisionAlert(item, {
+          ignoreReason: "maintenance",
+          closureDetail: payload?.exclusion?.reason || null,
+          meta: { maintenance: true }
+        });
+        applyAlertResult(result);
+        refreshHistory();
+      }
+      toast.success(pageCopy.ops?.toasts?.maintenanceOk || "Maintenance recorded");
+      await loadExclusions();
+      setMaintenanceItem(null);
+      setTriageView("waiting");
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
+    } finally {
+      setTriageModalBusy(false);
+      setAlertActionBusyId(null);
+    }
+  }, [applyAlertResult, loadExclusions, maintenanceItem, pageCopy.ops?.toasts, refreshHistory, upsertExclusionFromPayload]);
+
+  const handleEndExclusion = useCallback(async row => {
+    if (!row?.id) return;
+    try {
+      await deleteSupervisionExclusion(row.id);
+      if (row.scope === "device" && row.clientId && row.equipmentId && row.equipmentFamily) {
+        await updateEquipmentAlertSuspension(row.clientId, row.equipmentId, {
+          family: row.equipmentFamily,
+          equipmentName: row.equipmentName,
+          suspensionType: "none",
+          alertsEnabled: true
+        });
+      }
+      toast.success(pageCopy.ops?.toasts?.exclusionEnded || "Maintenance ended");
+      await loadExclusions();
+      await loadActiveAlerts();
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
+    }
+  }, [loadActiveAlerts, loadExclusions, pageCopy.ops?.toasts]);
 
   const handleResyncHost = useCallback(async item => {
     const equipmentId = item?.equipmentId || item?.equipment?.id;
@@ -473,81 +646,67 @@ export default function MonitoringCenterPage({
     }
   }, [loadActiveAlerts, pageCopy.ops?.toasts, resolveMuteFamily]);
 
-  const handleMuteEquipment = useCallback(async (item, payload = {}) => {
-    const equipmentId = item?.equipmentId || item?.equipment?.id;
-    const clientId = item?.clientId;
-    const family = resolveMuteFamily(item);
-    if (!equipmentId || !clientId || !family) {
-      toast.error(pageCopy.ops?.toasts?.muteFail || "Mute impossible");
-      return;
-    }
-    try {
-      const body =
-        payload.mode === "disabled"
-          ? {
-              family,
-              equipmentName: item?.equipment?.name || item?.subtitle,
-              suspensionType: "none",
-              alertsEnabled: false
-            }
-          : {
-              family,
-              equipmentName: item?.equipment?.name || item?.subtitle,
-              suspensionType: "temporary",
-              alertsEnabled: true,
-              durationMinutes: payload.durationMinutes || 120,
-              reason: "Mute depuis le centre de supervision"
-            };
-      await updateEquipmentAlertSuspension(clientId, equipmentId, body);
-      await loadActiveAlerts();
-      toast.success(pageCopy.ops?.toasts?.muted || "Muted");
-    } catch (err) {
-      toast.error(err?.message || pageCopy.ops?.toasts?.muteFail || "Mute impossible");
-    }
-  }, [loadActiveAlerts, pageCopy.ops?.toasts, resolveMuteFamily]);
-
-  const handleUnmuteEquipment = useCallback(async item => {
-    const equipmentId = item?.equipmentId || item?.equipment?.id;
-    const clientId = item?.clientId;
-    const family = resolveMuteFamily(item);
-    if (!equipmentId || !clientId || !family) {
-      toast.error(pageCopy.ops?.toasts?.muteFail || "Mute impossible");
-      return;
-    }
-    try {
-      await updateEquipmentAlertSuspension(clientId, equipmentId, {
-        family,
-        equipmentName: item?.equipment?.name || item?.subtitle,
-        suspensionType: "none",
-        alertsEnabled: true
-      });
-      await loadActiveAlerts();
-      toast.success(pageCopy.ops?.toasts?.unmuted || "Unmuted");
-    } catch (err) {
-      toast.error(err?.message || pageCopy.ops?.toasts?.muteFail || "Mute impossible");
-    }
-  }, [loadActiveAlerts, pageCopy.ops?.toasts, resolveMuteFamily]);
-  const linkRemediation = useCallback(async (item, link) => {
+  const handleTicketSupport = useCallback(async item => {
     if (!item?.id) return;
+    const wf = item?.workflowStatus || "open";
+    if (wf === "open") {
+      toast.info(pageCopy.ops?.toasts?.ackRequiredTicket || "Prenez d’abord l’alerte en charge avant de créer un ticket.");
+      return;
+    }
+    setAlertActionBusyId(item.id);
     try {
-      const result = await linkSupervisionAlert(item, link);
-      applyAlertResult(result);
-      toast.success(pageCopy.ops?.toasts?.linked || "Linked");
+      const result = await createSupervisionSupportTicket(item, alertRules);
+      if (result?.needsManual) {
+        if (result.reason === "support_form_required" || result.reason === "support_form_unavailable") {
+          toast.error(pageCopy.ops?.toasts?.supportFormRequired || "Configure a support form in the alert rule before creating a ticket.");
+          return;
+        }
+        if (result.reason === "required_fields") {
+          toast.info(pageCopy.ops?.toasts?.ticketNeedsForm || "Complétez le formulaire pour créer le ticket.");
+          onNavigate?.("TicketCreate", result.prefill);
+          return;
+        }
+        onNavigate?.("TicketCreate", result.prefill);
+        return;
+      }
+      if (result?.alert) applyAlertResult(result.alert);
+      const ticket = result?.ticket;
+      const ticketId = ticket?.id || ticket?.ticketId;
+      const ticketNumber = ticket?.ticketNumber || ticket?.ticket_number || ticket?.number;
+      const title = ticket?.title || item?.title || "";
+      const createdMsg = interpolate(pageCopy.ops?.toasts?.ticketCreated || "Ticket #{number} créé", {
+        number: ticketNumber || "—"
+      });
+      const openLabel = pageCopy.ops?.toasts?.openTicket || "Ouvrir";
+      toast.success(
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          <span>{createdMsg}</span>
+          {ticketId ? (
+            <button
+              type="button"
+              onClick={() => onNavigate?.("TicketDetail", { ticketId, ticketNumber, title })}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                color: "inherit",
+                textDecoration: "underline",
+                cursor: "pointer",
+                fontWeight: 700
+              }}
+            >
+              {ticketNumber ? `#${ticketNumber}` : openLabel}
+            </button>
+          ) : null}
+        </span>,
+        { autoClose: 8000 }
+      );
     } catch (err) {
       toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
+    } finally {
+      setAlertActionBusyId(null);
     }
-  }, [applyAlertResult, pageCopy.ops]);
-  const handleTicketSupport = useCallback(item => {
-    const prefill = buildSupervisionSupportTicketPrefill(item, alertRules);
-    if (!prefill?.supportFormId) {
-      toast.error(pageCopy.ops?.toasts?.supportFormRequired || "Configure a support form in the alert rule before creating a ticket.");
-      return;
-    }
-    linkRemediation(item, {
-      linkedTicketKind: "support"
-    });
-    onNavigate?.("TicketCreate", prefill);
-  }, [onNavigate, linkRemediation, alertRules, pageCopy.ops?.toasts?.supportFormRequired]);
+  }, [alertRules, applyAlertResult, onNavigate, pageCopy.ops?.toasts]);
   const handleOpenQueueItem = useCallback(item => {
     if (!item?.equipment) return;
     onEquipmentOpen?.(item.equipment);
@@ -556,243 +715,248 @@ export default function MonitoringCenterPage({
     return (pageCopy.tabs || []).filter(tab => tab.id !== "settings" || canManageAlertRules);
   }, [pageCopy.tabs, canManageAlertRules]);
   const tabBadges = {
-    operations: totalIssues,
+    operations: triageCounts.todo,
     history: historyAlerts.length,
     settings: 0
   };
+  const pollerTooltip = useMemo(() => {
+    if (!checkmkIntegrationEnabled || !syncStatus) return "";
+    const poller = pageCopy.fleetSync?.poller || {};
+    const fmt = value =>
+      value
+        ? new Date(value).toLocaleString(localeTag, {
+            day: "2-digit",
+            month: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        : poller.never || "Jamais";
+    const state = syncStatus.pollerActive ? poller.active || "Actif" : poller.suspended || "Suspendu";
+    const interval =
+      syncStatus.pollerActive && syncStatus.syncIntervalMinutes
+        ? (poller.interval || "toutes les {minutes} min").replace(
+            "{minutes}",
+            String(syncStatus.syncIntervalMinutes)
+          )
+        : null;
+    return [
+      `${poller.label || "Sync auto"} · ${state}${interval ? ` · ${interval}` : ""}`,
+      `${poller.lastAuto || "Dernière auto"} · ${fmt(syncStatus.lastPollerAt)}`,
+      `${poller.lastManual || "Dernière manuelle"} · ${fmt(syncStatus.lastManualAt)}`
+    ].join("\n");
+  }, [checkmkIntegrationEnabled, syncStatus, pageCopy.fleetSync?.poller, localeTag]);
+
+  const pageToolbarActions = (
+    <div className={layout.toolbarActions} data-guide="supervision-hero">
+      <nav className={styles.toolbarTabs} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="supervision-tabs">
+        {visibleTabs.map(tab => {
+          const badge = tabBadges[tab.id] || 0;
+          const isActive = activeTab === tab.id;
+          const showBadge = tab.id === "operations" || tab.id === "history";
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              className={`${styles.toolbarTab} ${isActive ? styles.toolbarTabActive : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+              title={tab.label}
+            >
+              <Icon icon={tab.icon} className={styles.toolbarTabIcon} aria-hidden />
+              <span className={styles.toolbarTabLabel}>{tab.label}</span>
+              {showBadge ? (
+                <span className={`${styles.tabCount} ${badge === 0 ? styles.tabCountMuted : ""}`}>{badge}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </nav>
+      {checkmkIntegrationEnabled && syncStatus ? (
+        <SmartTooltip
+          content={pollerTooltip}
+          className={`${styles.pollerChip} ${
+            syncStatus.pollerActive ? styles.pollerChipActive : styles.pollerChipSuspended
+          }`}
+          aria-label={
+            syncStatus.pollerActive
+              ? pageCopy.fleetSync?.poller?.titleActive
+              : pageCopy.fleetSync?.poller?.titleSuspended
+          }
+        >
+          <Icon icon="mdi:cloud-sync-outline" aria-hidden />
+        </SmartTooltip>
+      ) : null}
+      {checkmkIntegrationEnabled ? (
+        fleetSyncActive && !fleetSyncExpanded ? (
+          <>
+            <SmartTooltip content={pageCopy.fleetSync?.expandTitle || "Afficher la synchronisation"}>
+              <button
+                type="button"
+                className={`${layout.iconBtn} ${styles.fleetSyncToolbarBtn}`}
+                onClick={() => setFleetSyncExpanded(true)}
+                aria-label={pageCopy.fleetSync?.expandAria || "Afficher la synchronisation"}
+              >
+                <Icon
+                  icon={
+                    fleetSyncProgress?.error || fleetSyncProgress?.tone === "err"
+                      ? "mdi:alert-circle-outline"
+                      : fleetSyncProgress?.isTerminal
+                        ? fleetSyncProgress?.tone === "muted"
+                          ? "mdi:cancel"
+                          : "mdi:check-circle-outline"
+                        : "mdi:sync"
+                  }
+                  className={!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? styles.fleetSyncSpin : ""}
+                  aria-hidden
+                />
+              </button>
+            </SmartTooltip>
+            {!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? (
+              <SmartTooltip content={pageCopy.fleetSync?.cancel || "Arrêter"}>
+                <button
+                  type="button"
+                  className={layout.iconBtn}
+                  onClick={stopFleetSync}
+                  disabled={fleetSyncCancelling}
+                  aria-label={pageCopy.fleetSync?.cancelAria || "Arrêter la synchronisation"}
+                >
+                  <Icon
+                    icon={fleetSyncCancelling ? "mdi:loading" : "mdi:stop-circle-outline"}
+                    className={fleetSyncCancelling ? styles.fleetSyncSpin : ""}
+                    aria-hidden
+                  />
+                </button>
+              </SmartTooltip>
+            ) : (
+              <SmartTooltip content={pageCopy.fleetSync?.close || "Fermer"}>
+                <button
+                  type="button"
+                  className={layout.iconBtn}
+                  onClick={dismissFleetSync}
+                  aria-label={pageCopy.fleetSync?.closeAria || "Fermer"}
+                >
+                  <Icon icon="mdi:close" aria-hidden />
+                </button>
+              </SmartTooltip>
+            )}
+          </>
+        ) : (
+          <SmartTooltip content={pageCopy.fleetSync?.buttonTitle || "Synchroniser"}>
+            <button
+              type="button"
+              className={layout.iconBtn}
+              aria-label={pageCopy.fleetSync?.buttonAria || pageCopy.fleetSync?.buttonTitle || "Synchroniser"}
+              onClick={startFleetSync}
+              disabled={fleetSyncActive}
+            >
+              <Icon
+                icon={fleetSyncActive ? "mdi:loading" : "mdi:sync"}
+                className={fleetSyncActive ? styles.fleetSyncSpin : ""}
+                aria-hidden
+              />
+            </button>
+          </SmartTooltip>
+        )
+      ) : null}
+    </div>
+  );
+
   const showBootLoader = loading && !activeAlerts.length;
   if (showBootLoader) {
-    return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
-        <div className={cyberStyles.mspLayout}>
-          <div className={`${cyberStyles.mspMain} ${styles.pageColumn}`}>
-            <PageSkeleton variant="panels" panels={3} label={pageCopy.loading} />
-          </div>
-        </div>
-      </div>;
+    return <SupervisionCenterPageSkeleton label={pageCopy.loading} />;
   }
   return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
         <div className={`${cyberStyles.mspMain} ${styles.pageColumn}`}>
-          <header className={cyberStyles.mspHero} data-guide="supervision-hero">
-            <div className={cyberStyles.mspHeroMain}>
-              <div className={`${cyberStyles.mspBrandMark} ${styles.brandMarkSupervision}`} aria-hidden>
-                <Icon icon="mdi:radar" className={cyberStyles.mspBrandMarkIcon} />
-              </div>
-              <div className={cyberStyles.mspHeroCopy}>
-                <span className={cyberStyles.mspEyebrow}>{pageCopy.eyebrow}</span>
-                <h1 className={cyberStyles.mspTitle}>{pageCopy.pageTitle}</h1>
-                <p className={cyberStyles.mspSubtitle}>{pageCopy.subtitle}</p>
-              </div>
-            </div>
-            <div className={`${cyberStyles.mspHeroActions} ${styles.heroActions}`}>
-              {checkmkIntegrationEnabled && syncStatus ? (
-                <div
-                  className={`${styles.heroStatusCard} ${styles.pollerStatus} ${
-                    syncStatus.pollerActive ? styles.pollerStatusActive : styles.pollerStatusSuspended
-                  }`}
-                  title={
-                    syncStatus.pollerActive
-                      ? pageCopy.fleetSync?.poller?.titleActive
-                      : pageCopy.fleetSync?.poller?.titleSuspended
-                  }
+          <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
+            <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.contentShell}`}>
+              {(activeTab === "operations" || activeTab === "history") && !error ? <div
+                  className={`${dashStyles.dashboard} ${styles.dashboard}`}
+                  data-guide={activeTab === "operations" ? "supervision-ops" : "supervision-history"}
                 >
-                  <div className={styles.pollerStatusRow}>
-                    <span className={styles.pollerStatusDot} aria-hidden />
-                    <span className={styles.pollerStatusStrong}>
-                      {pageCopy.fleetSync?.poller?.label || "Sync auto"}
-                      {" · "}
-                      {syncStatus.pollerActive
-                        ? pageCopy.fleetSync?.poller?.active || "Actif"
-                        : pageCopy.fleetSync?.poller?.suspended || "Suspendu"}
-                    </span>
-                    {syncStatus.pollerActive && syncStatus.syncIntervalMinutes ? (
-                      <span className={styles.pollerStatusMeta}>
-                        {(pageCopy.fleetSync?.poller?.interval || "toutes les {minutes} min").replace(
-                          "{minutes}",
-                          String(syncStatus.syncIntervalMinutes)
+                  <div className={`${cyberStyles.tabContent} ${styles.content}`}>
+                    <div className={`${styles.opsSplit} ${activeTab === "history" ? styles.opsSplitCollapsed : ""}`}>
+                      <div className={styles.opsMain}>
+                        {activeTab === "operations" ? (
+                          <SupervisionOpsQueue
+                            items={filteredQueue}
+                            kpi={severityCounts}
+                            triageCounts={{ ...triageCounts, history: historyAlerts.length }}
+                            severityFilter={opsSeverityFilter}
+                            triageView={triageView}
+                            searchQuery={opsSearchQuery}
+                            onSeverityFilter={setOpsSeverityFilter}
+                            onTriageView={setTriageView}
+                            onSearchChange={setOpsSearchQuery}
+                            onOpenItem={handleOpenQueueItem}
+                            onTicketSupport={handleTicketSupport}
+                            onAck={handleAckAlert}
+                            onUnack={handleUnackAlert}
+                            onResolve={handleResolveAlert}
+                            onIgnore={item => setIgnoreItem(item)}
+                            onMaintenance={item => setMaintenanceItem(item)}
+                            onResync={handleResyncHost}
+                            onDiagnose={item => setDiagnoseAlertId(item.alertId)}
+                            onEndExclusion={handleEndExclusion}
+                            exclusions={exclusions}
+                            canDiagnose={canManageAlertRules}
+                            resyncBusyId={resyncBusyId}
+                            busyId={alertActionBusyId}
+                            localeTag={localeTag}
+                            copy={pageCopy.ops}
+                            showDomain={false}
+                            animateNewRows
+                            toolbarActions={pageToolbarActions}
+                          />
+                        ) : (
+                          <SupervisionAlertHistory
+                            alerts={historyAlerts}
+                            loading={historyLoading}
+                            searchQuery={historySearch}
+                            statusFilter={historyStatus}
+                            trashMode={historyTrashMode}
+                            onSearchChange={setHistorySearch}
+                            onStatusFilter={setHistoryStatus}
+                            onTrashModeChange={setHistoryTrashMode}
+                            onChanged={() => {
+                              loadActiveAlerts();
+                              refreshHistory();
+                            }}
+                            onReopened={() => {
+                              loadActiveAlerts();
+                              refreshHistory();
+                            }}
+                            localeTag={localeTag}
+                            copy={pageCopy.history}
+                            showDomain={false}
+                            toolbarActions={pageToolbarActions}
+                          />
                         )}
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className={styles.pollerStatusRow}>
-                    <span>
-                      {(pageCopy.fleetSync?.poller?.lastAuto || "Dernière auto") +
-                        " · " +
-                        (syncStatus.lastPollerAt
-                          ? new Date(syncStatus.lastPollerAt).toLocaleString(localeTag, {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })
-                          : pageCopy.fleetSync?.poller?.never || "Jamais")}
-                    </span>
-                  </div>
-                  <div className={styles.pollerStatusRow}>
-                    <span>
-                      {(pageCopy.fleetSync?.poller?.lastManual || "Dernière manuelle") +
-                        " · " +
-                        (syncStatus.lastManualAt
-                          ? new Date(syncStatus.lastManualAt).toLocaleString(localeTag, {
-                              day: "2-digit",
-                              month: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })
-                          : pageCopy.fleetSync?.poller?.never || "Jamais")}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-              {checkmkIntegrationEnabled ? (
-                fleetSyncActive && !fleetSyncExpanded ? (
-                  <div className={`${styles.heroStatusCard} ${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error && fleetSyncProgress?.tone !== "err" ? styles.fleetSyncProgressDone : ""}`}>
-                    <button
-                      type="button"
-                      className={styles.fleetSyncProgressMain}
-                      onClick={() => setFleetSyncExpanded(true)}
-                      title={pageCopy.fleetSync?.expandTitle || "Afficher la synchronisation"}
-                      aria-label={pageCopy.fleetSync?.expandAria || "Afficher la synchronisation"}
-                    >
-                      <span className={styles.fleetSyncProgressTop}>
-                        <Icon
-                          icon={
-                            fleetSyncProgress?.error || fleetSyncProgress?.tone === "err"
-                              ? "mdi:alert-circle-outline"
-                              : fleetSyncProgress?.isTerminal
-                                ? (fleetSyncProgress?.tone === "muted" ? "mdi:cancel" : "mdi:check-circle-outline")
-                                : "mdi:sync"
-                          }
-                          className={!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? styles.fleetSyncSpin : ""}
-                          aria-hidden
+                      </div>
+                      <div className={styles.opsSide} aria-hidden={activeTab !== "operations"}>
+                        <SupervisionMaintenanceSidebar
+                          exclusions={exclusions}
+                          localeTag={localeTag}
+                          copy={pageCopy.ops?.maintenanceSidebar || {}}
+                          onOpenDevice={onEquipmentOpen}
+                          onEndExclusion={handleEndExclusion}
                         />
-                        <span className={styles.fleetSyncProgressLabel}>
-                          {fleetSyncProgress?.statusLabel || pageCopy.fleetSync?.buttonBusy || "Sync en cours..."}
-                        </span>
-                        <strong className={styles.fleetSyncProgressPct}>
-                          {fleetSyncProgress?.total > 0
-                            ? `${fleetSyncProgress.pct}%`
-                            : fleetSyncProgress?.starting
-                              ? "..."
-                              : fleetSyncProgress?.isTerminal
-                                ? "100%"
-                                : ""}
-                        </strong>
-                      </span>
-                      <span className={styles.fleetSyncProgressTrack} aria-hidden>
-                        <span
-                          className={styles.fleetSyncProgressFill}
-                          style={{ width: `${Math.max(fleetSyncProgress?.pct || 0, fleetSyncProgress?.starting ? 4 : 0)}%` }}
-                        />
-                      </span>
-                      <span className={styles.fleetSyncProgressMeta}>
-                        {fleetSyncProgress?.startedBy || fleetSyncProgress?.run?.details?.startedBy ? (
-                          <span>
-                            {(pageCopy.fleetSync?.startedBy || "Lancee par {user}").replace(
-                              "{user}",
-                              fleetSyncProgress?.startedBy || fleetSyncProgress?.run?.details?.startedBy
-                            )}
-                          </span>
-                        ) : null}
-                        {fleetSyncProgress?.currentHost && !fleetSyncProgress?.isTerminal ? (
-                          <span>
-                            {(pageCopy.fleetSync?.currentHost || "En cours - {host}").replace("{host}", fleetSyncProgress.currentHost)}
-                          </span>
-                        ) : null}
-                      </span>
-                    </button>
-                    {!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? (
-                      <button
-                        type="button"
-                        className={styles.fleetSyncProgressStop}
-                        onClick={stopFleetSync}
-                        disabled={fleetSyncCancelling}
-                        aria-label={pageCopy.fleetSync?.cancelAria || "Arreter la synchronisation"}
-                        title={pageCopy.fleetSync?.cancel || "Arreter"}
-                      >
-                        <Icon icon={fleetSyncCancelling ? "mdi:loading" : "mdi:stop-circle-outline"} className={fleetSyncCancelling ? styles.fleetSyncSpin : ""} aria-hidden />
-                      </button>
-                    ) : null}
-                    {fleetSyncProgress?.isTerminal || fleetSyncProgress?.error ? (
-                      <button
-                        type="button"
-                        className={styles.fleetSyncProgressDismiss}
-                        onClick={dismissFleetSync}
-                        aria-label={pageCopy.fleetSync?.closeAria || "Fermer"}
-                        title={pageCopy.fleetSync?.close || "Fermer"}
-                      >
-                        <Icon icon="mdi:close" aria-hidden />
-                      </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.fleetSyncBtn}
-                    title={pageCopy.fleetSync?.buttonTitle}
-                    aria-label={pageCopy.fleetSync?.buttonAria || pageCopy.fleetSync?.buttonTitle || "Synchroniser"}
-                    onClick={startFleetSync}
-                    disabled={fleetSyncActive}
-                  >
-                    <Icon icon={fleetSyncActive ? "mdi:loading" : "mdi:sync"} className={fleetSyncActive ? styles.fleetSyncSpin : ""} aria-hidden />
-                  </button>
-                )
-              ) : null}
-              <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="supervision-tabs">
-              {visibleTabs.map(tab => {
-              const badge = tabBadges[tab.id] || 0;
-              const isActive = activeTab === tab.id;
-              const showBadge = tab.id === "operations" || tab.id === "history";
-              return <button key={tab.id} type="button" role="tab" aria-selected={isActive} className={`${cyberStyles.mspTab} ${isActive ? cyberStyles.mspTabActive : ""}`} onClick={() => setActiveTab(tab.id)}>
-                    <Icon icon={tab.icon} className={cyberStyles.mspTabIcon} />
-                    <span className={cyberStyles.mspTabLabelRow}>
-                      <span>{tab.label}</span>
-                      {showBadge ? <span className={`${styles.tabCount} ${badge === 0 ? styles.tabCountMuted : ""}`}>
-                          {badge}
-                        </span> : null}
-                    </span>
-                  </button>;
-            })}
-              </nav>
-            </div>
-          </header>
-
-          <main className={cyberStyles.mspContent}>
-            <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
-              {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
-                  <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} onResync={handleResyncHost} onMute={handleMuteEquipment} onUnmute={handleUnmuteEquipment} onDiagnose={item => setDiagnoseAlertId(item.alertId)} canDiagnose={canManageAlertRules} resyncBusyId={resyncBusyId} showMuted={showMutedAlerts} mutedCount={mutedCount} onToggleMuted={setShowMutedAlerts} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} animateNewRows />
+                      </div>
+                    </div>
                   </div>
                 </div> : null}
 
-              {activeTab === "history" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-history">
-                  <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionAlertHistory
-                      alerts={historyAlerts}
-                      loading={historyLoading}
-                      searchQuery={historySearch}
-                      statusFilter={historyStatus}
-                      trashMode={historyTrashMode}
-                      onSearchChange={setHistorySearch}
-                      onStatusFilter={setHistoryStatus}
-                      onTrashModeChange={setHistoryTrashMode}
-                      onChanged={() => {
-                        loadActiveAlerts();
-                        refreshHistory();
-                      }}
-                      onReopened={() => {
-                        loadActiveAlerts();
-                        refreshHistory();
-                      }}
-                      localeTag={localeTag}
-                      copy={pageCopy.history}
-                      showDomain={false}
-                    />
-                  </div>
-                </div> : null}
-
-              {activeTab === "settings" && canManageAlertRules && !error ? <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                  <MonitoringAlertRulesPanel catalog={alertRulesCatalog} rules={alertRules} isAdmin={canManageAlertRules} onSaved={applyRules} scope="centre" />
+              {activeTab === "settings" && canManageAlertRules && !error ? <div className={`${cyberStyles.tabContent} ${styles.content}`} data-guide="supervision-settings">
+                  <MonitoringAlertRulesPanel
+                    catalog={alertRulesCatalog}
+                    rules={alertRules}
+                    isAdmin={canManageAlertRules}
+                    onSaved={applyRules}
+                    scope="centre"
+                    toolbarActions={pageToolbarActions}
+                  />
                 </div> : null}
 
               {error ? <div className={styles.panel}>
@@ -808,6 +972,28 @@ export default function MonitoringCenterPage({
         locale={locale}
         copy={pageCopy.ops?.diagnose}
         onClose={() => setDiagnoseAlertId(null)}
+      />
+      <SupervisionIgnoreModal
+        open={Boolean(ignoreItem)}
+        item={ignoreItem}
+        copy={pageCopy.ops}
+        busy={triageModalBusy}
+        onConfirm={handleConfirmIgnore}
+        onClose={() => {
+          if (triageModalBusy) return;
+          setIgnoreItem(null);
+        }}
+      />
+      <SupervisionMaintenanceModal
+        open={Boolean(maintenanceItem)}
+        item={maintenanceItem}
+        copy={pageCopy.ops}
+        busy={triageModalBusy}
+        onConfirm={handleConfirmMaintenance}
+        onClose={() => {
+          if (triageModalBusy) return;
+          setMaintenanceItem(null);
+        }}
       />
       <PageGuideTour open={pageGuideOpen} steps={guideSteps} title={pageCopy.guide?.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
       <SupervisionFleetSyncModal

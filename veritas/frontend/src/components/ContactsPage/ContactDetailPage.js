@@ -9,8 +9,8 @@ import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
 import contactStyles from "./ContactDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
-import SubscribeBellButton from "../shared/SubscribeBellButton/SubscribeBellButton";
 import ClientTicketBookmarks from "./ClientTicketBookmarks";
+import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import { getContactSexeIcon, normalizeContactSexe } from "../../utils/contactSexe";
 import { FaTimes, FaPlus } from "react-icons/fa";
 import API_BASE_URL from "../../config";
@@ -68,6 +68,13 @@ function SidebarSectionHeader({
     </div>;
 }
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import {
+  DETAIL_CACHE_NS,
+  getDetailCache,
+  invalidateDetailCache,
+  setDetailCache
+} from "../../utils/detailPageCache";
+import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
 import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
 const normalizePhone = value => {
   let normalized = (value || "").toString().trim();
@@ -135,6 +142,7 @@ export default function ContactDetailPage({
   const canDeleteContact = can("contacts_detail.delete");
   const canManagePortal = can("contacts_detail.portal");
   const canAccessSharing = can("contacts_detail.access_sharing");
+  const resolveContactId = () => contactData?.contactId || contactData?.id || urlContactId || null;
   const [contact, setContact] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -148,7 +156,7 @@ export default function ContactDetailPage({
   const [emailSectionExpanded, setEmailSectionExpanded] = useState(false);
   const [phoneSectionExpanded, setPhoneSectionExpanded] = useState(false);
   const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(false);
-  const [contactActionsMenuOpen, setContactActionsMenuOpen] = useState(false);
+  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [deleteContactModalOpen, setDeleteContactModalOpen] = useState(false);
   const [deletingContact, setDeletingContact] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
@@ -157,7 +165,17 @@ export default function ContactDetailPage({
   useRegisterPageGuide(openPageGuide);
   const loadControllerRef = useRef(null);
   const clientsListControllerRef = useRef(null);
-  const contactActionsMenuRef = useRef(null);
+  const {
+    subscribed: contactSubscribed,
+    loading: contactSubscribeLoading,
+    saving: contactSubscribeSaving,
+    toggleSubscribe: toggleContactSubscribe
+  } = useEntitySubscription("contact", contact?.id || resolveContactId(), {
+    labels: {
+      subscribed: copy.subscribe?.subscribedToast || "Abonnement activé",
+      unsubscribed: copy.subscribe?.unsubscribedToast || "Abonnement retiré"
+    }
+  });
   const isMountedRef = useRef(true);
   const loadRequestIdRef = useRef(0);
   const [formData, setFormData] = useState({
@@ -370,16 +388,6 @@ export default function ContactDetailPage({
     if (!contact?.client_id) return;
     ensureClientsLoaded();
   }, [contact?.client_id]);
-  useEffect(() => {
-    if (!contactActionsMenuOpen) return undefined;
-    const handleClickOutside = event => {
-      if (contactActionsMenuRef.current && !contactActionsMenuRef.current.contains(event.target)) {
-        setContactActionsMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [contactActionsMenuOpen]);
   const handleAddContactTag = async ({
     label,
     color
@@ -450,18 +458,84 @@ export default function ContactDetailPage({
     if (membershipBusy) return;
     setCompanyModalOpen(false);
   };
+  const applyContactSnapshot = useCallback((fetchedContact, extras = {}) => {
+    if (!fetchedContact) return;
+    const newFormData = extras.formData || {
+      nom: fetchedContact.nom || "",
+      prenom: fetchedContact.prenom || "",
+      sexe: normalizeContactSexe(fetchedContact.sexe) || "",
+      email: fetchedContact.email || "",
+      telephone: fetchedContact.telephone || "",
+      poste: fetchedContact.poste || "",
+      statut: fetchedContact.statut || "actif",
+      client_id: fetchedContact.client_id || null
+    };
+    const associatedClient =
+      extras.client !== undefined
+        ? extras.client
+        : fetchedContact.client_name || fetchedContact.client_id
+          ? {
+              id: fetchedContact.client_id || null,
+              name: fetchedContact.client_name || `Client #${fetchedContact.client_id}`
+            }
+          : null;
+    const tags = Array.isArray(extras.tags)
+      ? extras.tags
+      : Array.isArray(fetchedContact.tags)
+        ? fetchedContact.tags
+        : [];
+    setContact(fetchedContact);
+    setContactTags(tags);
+    setFormData(newFormData);
+    setClient(associatedClient);
+    if (Array.isArray(extras.supportTickets)) setSupportTickets(extras.supportTickets);
+    if (Array.isArray(extras.prestationTickets)) setPrestationTickets(extras.prestationTickets);
+    if (window.updateTabTitle && fetchedContact.nom) {
+      window.updateTabTitle("ContactDetail", {
+        contactId: fetchedContact.id,
+        nom: fetchedContact.nom,
+        prenom: fetchedContact.prenom
+      });
+    }
+  }, []);
+
+  const writeContactCache = useCallback((contactId, snapshot) => {
+    if (!contactId || !snapshot?.contact) return;
+    setDetailCache(DETAIL_CACHE_NS.contact, contactId, {
+      contact: snapshot.contact,
+      client: snapshot.client ?? null,
+      formData: snapshot.formData || null,
+      tags: Array.isArray(snapshot.tags) ? snapshot.tags : [],
+      supportTickets: Array.isArray(snapshot.supportTickets) ? snapshot.supportTickets : [],
+      prestationTickets: Array.isArray(snapshot.prestationTickets) ? snapshot.prestationTickets : []
+    });
+  }, []);
+
   const loadContactData = async signal => {
     const requestId = ++loadRequestIdRef.current;
     const isCurrentRequest = () => loadRequestIdRef.current === requestId && loadControllerRef.current?.signal === signal;
-    setLoading(true);
+    const contactIdToUse = resolveContactId();
     setError(null);
-    setLoadingTags(true);
+    if (!contactIdToUse) {
+      setLoading(false);
+      return;
+    }
+
+    const cached = getDetailCache(DETAIL_CACHE_NS.contact, contactIdToUse);
+    if (cached?.contact && String(cached.contact.id) === String(contactIdToUse)) {
+      applyContactSnapshot(cached.contact, cached);
+      setLoading(false);
+      setLoadingTags(false);
+      if (!Array.isArray(cached.supportTickets)) setLoadingActivity(true);
+    } else {
+      setContact(null);
+      setSupportTickets([]);
+      setPrestationTickets([]);
+      setLoading(true);
+      setLoadingTags(true);
+    }
+
     try {
-      const contactIdToUse = contactData?.contactId || contactData?.id || urlContactId;
-      if (!contactIdToUse) {
-        setLoading(false);
-        return;
-      }
       const response = await fetch(`${API_BASE_URL}/contacts/${contactIdToUse}`, {
         credentials: "include",
         signal,
@@ -472,15 +546,6 @@ export default function ContactDetailPage({
       }
       const fetchedContact = await response.json();
       if (signal?.aborted || !isMountedRef.current || !isCurrentRequest()) return;
-      setContact(fetchedContact);
-      setContactTags(Array.isArray(fetchedContact.tags) ? fetchedContact.tags : []);
-      if (window.updateTabTitle && fetchedContact.nom) {
-        window.updateTabTitle("ContactDetail", {
-          contactId: contactIdToUse,
-          nom: fetchedContact.nom,
-          prenom: fetchedContact.prenom
-        });
-      }
       const newFormData = {
         nom: fetchedContact.nom || "",
         prenom: fetchedContact.prenom || "",
@@ -491,19 +556,36 @@ export default function ContactDetailPage({
         statut: fetchedContact.statut || "actif",
         client_id: fetchedContact.client_id || null
       };
-      setFormData(newFormData);
       const associatedClient = fetchedContact.client_name || fetchedContact.client_id ? {
         id: fetchedContact.client_id || null,
         name: fetchedContact.client_name || `Client #${fetchedContact.client_id}`
       } : null;
-      setClient(associatedClient);
+      const tags = Array.isArray(fetchedContact.tags) ? fetchedContact.tags : [];
+      applyContactSnapshot(fetchedContact, {
+        formData: newFormData,
+        client: associatedClient,
+        tags
+      });
+      const previousCache = getDetailCache(DETAIL_CACHE_NS.contact, contactIdToUse) || {};
+      writeContactCache(contactIdToUse, {
+        contact: fetchedContact,
+        client: associatedClient,
+        formData: newFormData,
+        tags,
+        supportTickets: Array.isArray(previousCache.supportTickets) ? previousCache.supportTickets : [],
+        prestationTickets: Array.isArray(previousCache.prestationTickets)
+          ? previousCache.prestationTickets
+          : []
+      });
       activityControllerRef.current?.abort();
       const activityController = createTrackedAbortController();
       activityControllerRef.current = activityController;
       loadContactActivity(fetchedContact.id, fetchedContact.client_id, activityController.signal);
     } catch (err) {
       if (err?.name === "AbortError") return;
-      setError(err.message || copy.loadError);
+      if (!getDetailCache(DETAIL_CACHE_NS.contact, contactIdToUse)?.contact) {
+        setError(err.message || copy.loadError);
+      }
       console.error("Error chargement contact:", err);
     } finally {
       if (isCurrentRequest() && isMountedRef.current) {
@@ -524,8 +606,17 @@ export default function ContactDetailPage({
       if (signal?.aborted || !isMountedRef.current) return;
       const tickets = Array.isArray(contactTicketRows) ? contactTicketRows : [];
       const supportOnly = tickets.filter(t => !isPrestationTicket(t));
-      setPrestationTickets(isCommunity ? [] : tickets.filter(isPrestationTicket));
+      const prestationsOnly = isCommunity ? [] : tickets.filter(isPrestationTicket);
+      setPrestationTickets(prestationsOnly);
       setSupportTickets(supportOnly);
+      const cached = getDetailCache(DETAIL_CACHE_NS.contact, contactId);
+      if (cached?.contact) {
+        writeContactCache(contactId, {
+          ...cached,
+          supportTickets: supportOnly,
+          prestationTickets: prestationsOnly
+        });
+      }
     } catch (err) {
       if (err?.name === "AbortError") return;
       console.error("Error loading contact activity:", err);
@@ -556,7 +647,6 @@ export default function ContactDetailPage({
     } : undefined);
   };
   const handleOpenEditModal = async (options = {}) => {
-    setContactActionsMenuOpen(false);
     const ok = await ensureClientsLoaded();
     if (!ok) return;
     setContactModalOptions({
@@ -580,29 +670,44 @@ export default function ContactDetailPage({
   };
   const handleContactModalSuccess = updated => {
     if (updated?.id) {
-      setContact(prev => ({
-        ...(prev || {}),
-        ...updated,
-        tags: Array.isArray(updated.tags) ? updated.tags : prev?.tags || [],
-        portal_email: prev?.portal_user_id ? updated.email || prev.portal_email : prev?.portal_email
-      }));
-      setFormData({
-        nom: updated.nom || "",
-        prenom: updated.prenom || "",
-        sexe: normalizeContactSexe(updated.sexe) || "",
-        email: updated.email || "",
-        telephone: updated.telephone || "",
-        poste: updated.poste || "",
-        statut: updated.statut || "actif",
-        client_id: updated.client_id ?? null
-      });
-      if (updated.client_name || updated.client_id || Array.isArray(updated.clients) && updated.clients.length > 0) {
-        const primary = Array.isArray(updated.clients) ? updated.clients.find(c => c.is_primary) || updated.clients[0] : null;
-        setClient({
-          id: updated.client_id ?? primary?.id ?? primary?.client_id ?? null,
-          name: updated.client_name || primary?.name || (updated.client_id ? `Client #${updated.client_id}` : "")
+      setContact(prev => {
+        const next = {
+          ...(prev || {}),
+          ...updated,
+          tags: Array.isArray(updated.tags) ? updated.tags : prev?.tags || [],
+          portal_email: prev?.portal_user_id ? updated.email || prev.portal_email : prev?.portal_email
+        };
+        const form = {
+          nom: updated.nom || "",
+          prenom: updated.prenom || "",
+          sexe: normalizeContactSexe(updated.sexe) || "",
+          email: updated.email || "",
+          telephone: updated.telephone || "",
+          poste: updated.poste || "",
+          statut: updated.statut || "actif",
+          client_id: updated.client_id ?? null
+        };
+        setFormData(form);
+        let nextClient = null;
+        if (updated.client_name || updated.client_id || Array.isArray(updated.clients) && updated.clients.length > 0) {
+          const primary = Array.isArray(updated.clients) ? updated.clients.find(c => c.is_primary) || updated.clients[0] : null;
+          nextClient = {
+            id: updated.client_id ?? primary?.id ?? primary?.client_id ?? null,
+            name: updated.client_name || primary?.name || (updated.client_id ? `Client #${updated.client_id}` : "")
+          };
+          setClient(nextClient);
+        }
+        const previousCache = getDetailCache(DETAIL_CACHE_NS.contact, updated.id) || {};
+        writeContactCache(updated.id, {
+          contact: next,
+          client: nextClient ?? previousCache.client ?? null,
+          formData: form,
+          tags: next.tags,
+          supportTickets: previousCache.supportTickets || [],
+          prestationTickets: previousCache.prestationTickets || []
         });
-      }
+        return next;
+      });
     }
     window.dispatchEvent(new Event("refreshContacts"));
   };
@@ -616,22 +721,36 @@ export default function ContactDetailPage({
   };
   const applyMembershipResult = updatedContact => {
     if (!updatedContact?.id) return;
-    setContact(prev => ({
-      ...(prev || {}),
-      ...updatedContact,
-      tags: Array.isArray(updatedContact.tags) ? updatedContact.tags : prev?.tags || []
-    }));
+    let nextClient = null;
     if (updatedContact.client_id || Array.isArray(updatedContact.clients)) {
       const primary = Array.isArray(updatedContact.clients) ? updatedContact.clients.find(c => c.is_primary) || updatedContact.clients[0] : null;
-      setClient({
+      nextClient = {
         id: updatedContact.client_id ?? primary?.id ?? primary?.client_id ?? null,
         name: updatedContact.client_name || primary?.name || (updatedContact.client_id ? `Client #${updatedContact.client_id}` : "")
-      });
+      };
+      setClient(nextClient);
       setFormData(prev => ({
         ...prev,
         client_id: updatedContact.client_id ?? prev.client_id
       }));
     }
+    setContact(prev => {
+      const next = {
+        ...(prev || {}),
+        ...updatedContact,
+        tags: Array.isArray(updatedContact.tags) ? updatedContact.tags : prev?.tags || []
+      };
+      const previousCache = getDetailCache(DETAIL_CACHE_NS.contact, updatedContact.id) || {};
+      writeContactCache(updatedContact.id, {
+        contact: next,
+        client: nextClient ?? previousCache.client ?? null,
+        formData: previousCache.formData || null,
+        tags: next.tags,
+        supportTickets: previousCache.supportTickets || [],
+        prestationTickets: previousCache.prestationTickets || []
+      });
+      return next;
+    });
     window.dispatchEvent(new Event("refreshContacts"));
   };
   const handleAddCompanyMembership = async clientRow => {
@@ -664,7 +783,6 @@ export default function ContactDetailPage({
     }
   };
   const openDeleteContactModal = () => {
-    setContactActionsMenuOpen(false);
     setDeleteContactModalOpen(true);
   };
   const closeDeleteContactModal = () => {
@@ -675,7 +793,9 @@ export default function ContactDetailPage({
     if (!contact?.id || deletingContact) return;
     setDeletingContact(true);
     try {
-      await deleteContact(contact.id);
+      const deletedId = contact.id;
+      await deleteContact(deletedId);
+      invalidateDetailCache(DETAIL_CACHE_NS.contact, deletedId);
       toast.success(copy.toast.deleted);
       setDeleteContactModalOpen(false);
       window.dispatchEvent(new Event("refreshContacts"));
@@ -689,13 +809,26 @@ export default function ContactDetailPage({
       setDeletingContact(false);
     }
   };
-  if (loading) {
-    return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
-        <div className={styles.loading}>
-          <Icon icon="mdi:loading" className={styles.spinning} />
-          <span>{copy.loading}</span>
-        </div>
-      </div>;
+  if (loading && !contact) {
+    const titleHint = formatContactName(
+      {
+        prenom: contactData?.prenom,
+        nom: contactData?.nom
+      },
+      ""
+    );
+    return (
+      <CrmDetailPageSkeleton
+        className={contactStyles.contactDetailPage}
+        loadingAria={copy.loading || "Chargement…"}
+        titleHint={titleHint}
+        showMidSlot
+        tabCount={3}
+        body="activity"
+        showAside
+        asideSections={4}
+      />
+    );
   }
   if (error || !contact) {
     return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
@@ -712,129 +845,90 @@ export default function ContactDetailPage({
   }, copy.defaultName);
   return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
       <header className={styles.pageHero} data-guide="contact-hero">
-        <div className={styles.heroRow}>
-          <div className={styles.heroMain}>
-            <div className={styles.heroText}>
-              <h1 className={styles.heroTitle}>
-                <StatusDot active={contactStatus.status === "active"} label={contactStatus.label} className={styles.heroTitleStatus} />
-                <span className={styles.heroTitleName}>{displayName}</span>
-              </h1>
-              <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                {formData.sexe && <span className={styles.heroMetaItem}>
-                    <Icon icon={getContactSexeIcon(formData.sexe)} aria-hidden />
-                    {getContactSexeLabelLocalized(formData.sexe, locale)}
-                  </span>}
-                {formData.poste && <span className={styles.heroMetaItem}>
-                    <Icon icon="mdi:briefcase-outline" aria-hidden />
-                    {formData.poste}
-                  </span>}
-                {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                    {contactTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
-                  backgroundColor: `${tag.color || "#2b5fab"}18`,
-                  borderColor: `${tag.color || "#2b5fab"}55`,
-                  color: tag.color || "#2b5fab"
-                }}>
-                        {tag.label}
-                        <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveContactTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
-                    label: tag.label
-                  })}>
-                          <FaTimes />
-                        </button>
-                      </span>)}
-                    <div className={styles.heroTagAddWrap}>
-                      {canEditContact ? <SmartTooltip content={copy.addTag}>
-                        <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
-                          <FaPlus />
-                        </button>
-                      </SmartTooltip> : null}
-                    </div>
-                  </>}
+        <div className={styles.heroTop}>
+          <div className={styles.heroIdentityBlock}>
+            <div className={styles.heroCover} aria-hidden />
+            <div className={styles.heroIdentityRow}>
+              <div className={styles.heroMain}>
+                <span className={styles.heroBrandIcon} aria-hidden>
+                  <Icon icon={formData.sexe ? getContactSexeIcon(formData.sexe) : "mdi:account"} width={30} height={30} />
+                </span>
+                <div className={styles.heroText}>
+                  <h1 className={styles.heroTitle}>
+                    <span className={styles.heroTitleName}>{displayName}</span>
+                    <span className={`${styles.heroStatusBadge} ${contactStatus.status === "active" ? "" : styles.heroStatusBadgeInactive}`.trim()}>
+                      <StatusDot active={contactStatus.status === "active"} label="" className={styles.heroTitleStatus} />
+                      {contactStatus.label}
+                    </span>
+                  </h1>
+                  <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                    {formData.sexe && <span className={styles.heroMetaItem}>
+                        <Icon icon={getContactSexeIcon(formData.sexe)} aria-hidden />
+                        {getContactSexeLabelLocalized(formData.sexe, locale)}
+                      </span>}
+                    {formData.poste && <span className={styles.heroMetaItem}>
+                        <Icon icon="mdi:briefcase-outline" aria-hidden />
+                        {formData.poste}
+                      </span>}
+                    {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
+                        {contactTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
+                      backgroundColor: `${tag.color || "#2b5fab"}18`,
+                      borderColor: `${tag.color || "#2b5fab"}55`,
+                      color: tag.color || "#2b5fab"
+                    }}>
+                            {tag.label}
+                            <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveContactTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
+                        label: tag.label
+                      })}>
+                              <FaTimes />
+                            </button>
+                          </span>)}
+                        <div className={styles.heroTagAddWrap}>
+                          {canEditContact ? <SmartTooltip content={copy.addTag}>
+                            <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
+                              <FaPlus />
+                            </button>
+                          </SmartTooltip> : null}
+                        </div>
+                      </>}
+                  </div>
+                </div>
+              </div>
+              <div className={styles.heroPlanningFrise} data-guide="contact-ticket-bookmarks">
+                <ClientTicketBookmarks
+                  openTickets={openContactTickets}
+                  closedTickets={closedContactTickets}
+                  loading={loadingActivity}
+                  statusLabels={ticketStatusLabels}
+                  onTicketClick={handleOpenTicket}
+                  clients={allClients}
+                  heroFrise
+                />
               </div>
             </div>
           </div>
-
-          <div className={styles.heroActions} ref={contactActionsMenuRef} data-guide="contact-hero-actions">
-            <SubscribeBellButton
-              entityType="contact"
-              entityId={contact?.id || formData?.id}
-              subscribeLabel={copy.subscribe?.subscribe || "S’abonner aux notifications"}
-              unsubscribeLabel={copy.subscribe?.unsubscribe || "Se désabonner"}
-              subscribedToast={copy.subscribe?.subscribedToast || "Abonnement activé"}
-              unsubscribedToast={copy.subscribe?.unsubscribedToast || "Abonnement retiré"}
-            />
-            <SmartTooltip content={copy.actionsMenu}>
-              <button type="button" className={styles.heroMenuBtn} onClick={() => setContactActionsMenuOpen(open => !open)} aria-expanded={contactActionsMenuOpen} aria-haspopup="menu" aria-label={copy.actionsMenu}>
-                <Icon icon="mdi:dots-horizontal" aria-hidden />
-              </button>
-            </SmartTooltip>
-            {contactActionsMenuOpen && <div className={styles.heroClientMenu} role="menu">
-                {canEditContact ? <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={handleOpenEditModal}>
-                  <Icon icon="mdi:pencil-outline" aria-hidden />
-                  <span>{copy.editContact}</span>
-                </button> : null}
-                <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-              setContactActionsMenuOpen(false);
-              handleCopyContact();
-            }}>
-                  <Icon icon="mdi:content-copy" aria-hidden />
-                  <span>{copy.copyCard}</span>
-                </button>
-                <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-              setContactActionsMenuOpen(false);
-              handleShareContact();
-            }}>
-                  <Icon icon="mdi:share-variant" aria-hidden />
-                  <span>{copy.shareCard}</span>
-                </button>
-                {contactCompanies.length > 0 && <>
-                    <div className={styles.heroMenuDivider} role="separator" />
-                    {contactCompanies.map(company => <button key={company.id} type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-                setContactActionsMenuOpen(false);
-                openEnterprise({
-                  id: company.id,
-                  name: company.name
-                });
-              }}>
-                        <Icon icon="mdi:domain" aria-hidden />
-                        <span>{company.name || copy.viewEnterprise}</span>
-                      </button>)}
-                  </>}
-                {canDeleteContact ? <>
-                <div className={styles.heroMenuDivider} role="separator" />
-                <button type="button" className={`${styles.heroMenuItem} ${styles.heroMenuItemDanger}`} role="menuitem" onClick={openDeleteContactModal} disabled={deletingContact}>
-                  <Icon icon="mdi:trash-can-outline" aria-hidden />
-                  <span>{deletingContact ? copy.deleting : copy.deleteContact}</span>
-                </button>
-                </> : null}
-              </div>}
-          </div>
-        </div>
-        <div className={`${styles.pageHeroBookmarks}`} data-guide="contact-ticket-bookmarks">
-        <ClientTicketBookmarks openTickets={openContactTickets} closedTickets={closedContactTickets} loading={loadingActivity} statusLabels={ticketStatusLabels} onTicketClick={handleOpenTicket} clients={allClients} inPageHero />
         </div>
       </header>
 
       <div className={styles.pageBody}>
         <div className={styles.pageGrid}>
           <main className={styles.mainColumn}>
-            <div className={styles.overviewTabsWrap}>
-              <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
-                <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
-                  {copy.overviewTabActivity}
-                </button>
-                <button type="button" role="tab" aria-selected={overviewTab === "portal"} className={`${styles.overviewTab} ${overviewTab === "portal" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("portal")} data-guide="contact-portal">
-                  {copy.overviewTabPortal}
-                </button>
-                <button type="button" role="tab" aria-selected={overviewTab === "share"} className={`${styles.overviewTab} ${overviewTab === "share" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("share")} data-guide="contact-shared-access">
-                  <span className={styles.overviewTabLabelRow}>
-                    <span>{copy.overviewTabShare}</span>
-                    {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                  </span>
-                </button>
-              </nav>
-            </div>
-
-            {overviewTab === "activity" ? <div className={styles.activityLayout} data-guide="contact-activity-panel">
+            <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
+              <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
+                <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "portal"} className={`${styles.heroTab} ${overviewTab === "portal" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("portal")} data-guide="contact-portal">
+                <Icon icon="mdi:web" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabPortal}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "share"} className={`${styles.heroTab} ${overviewTab === "share" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("share")} data-guide="contact-shared-access">
+                <Icon icon="mdi:share-variant-outline" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabShare}</span>
+                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+              </button>
+            </nav>
+            {overviewTab === "activity" ? <div className={`${styles.activityLayout} ${styles.overviewTabPanel}`} data-guide="contact-activity-panel">
                     <div className={styles.activityKpiRow}>
                       <div className={styles.activityKpiCard}>
                         <span className={styles.activityKpiValue}>{supportTickets.length}</span>
@@ -1025,36 +1119,107 @@ export default function ContactDetailPage({
             </section> : null}
           </main>
 
+          <div className={styles.asideStack}>
+            <section className={styles.quickActionsCard} data-guide="contact-quick-actions" aria-label={copy.quickActions?.title || "Actions rapides"}>
+              <h3 className={styles.quickActionsTitle}>{copy.quickActions?.title || "Actions rapides"}</h3>
+              <ul className={styles.quickActionsList}>
+                <li>
+                  <button
+                    type="button"
+                    className={styles.quickActionItem}
+                    onClick={toggleContactSubscribe}
+                    disabled={!contact?.id || contactSubscribeLoading || contactSubscribeSaving}
+                    aria-pressed={contactSubscribed}
+                  >
+                    <span className={styles.quickActionIcon} aria-hidden>
+                      <Icon icon={contactSubscribed ? "mdi:bell-ring" : "mdi:bell-outline"} />
+                    </span>
+                    <span className={styles.quickActionLabel}>
+                      {contactSubscribed
+                        ? copy.subscribe?.unsubscribe || "Se désabonner"
+                        : copy.subscribe?.subscribe || "S’abonner aux notifications"}
+                    </span>
+                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                  </button>
+                </li>
+                {canEditContact ? (
+                  <li>
+                    <button type="button" className={styles.quickActionItem} onClick={handleOpenEditModal}>
+                      <span className={styles.quickActionIcon} aria-hidden>
+                        <Icon icon="mdi:pencil-outline" />
+                      </span>
+                      <span className={styles.quickActionLabel}>{copy.quickActions?.editContact || copy.editContact}</span>
+                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                    </button>
+                  </li>
+                ) : null}
+                <li>
+                  <button type="button" className={styles.quickActionItem} onClick={handleCopyContact}>
+                    <span className={styles.quickActionIcon} aria-hidden>
+                      <Icon icon="mdi:content-copy" />
+                    </span>
+                    <span className={styles.quickActionLabel}>{copy.quickActions?.copyCard || copy.copyCard}</span>
+                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className={styles.quickActionItem} onClick={handleShareContact}>
+                    <span className={styles.quickActionIcon} aria-hidden>
+                      <Icon icon="mdi:share-variant" />
+                    </span>
+                    <span className={styles.quickActionLabel}>{copy.quickActions?.shareCard || copy.shareCard}</span>
+                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                  </button>
+                </li>
+                {quickActionsExpanded ? (
+                  <>
+                    {contactCompanies.map(company => (
+                      <li key={company.id}>
+                        <button
+                          type="button"
+                          className={styles.quickActionItem}
+                          onClick={() => openEnterprise({ id: company.id, name: company.name })}
+                        >
+                          <span className={styles.quickActionIcon} aria-hidden>
+                            <Icon icon="mdi:domain" />
+                          </span>
+                          <span className={styles.quickActionLabel}>{company.name || copy.viewEnterprise}</span>
+                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                    {canDeleteContact ? (
+                      <li>
+                        <button
+                          type="button"
+                          className={styles.quickActionItem}
+                          onClick={openDeleteContactModal}
+                          disabled={deletingContact}
+                        >
+                          <span className={styles.quickActionIcon} aria-hidden>
+                            <Icon icon="mdi:trash-can-outline" />
+                          </span>
+                          <span className={styles.quickActionLabel}>
+                            {deletingContact ? copy.deleting : copy.quickActions?.deleteContact || copy.deleteContact}
+                          </span>
+                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ) : null}
+                  </>
+                ) : null}
+              </ul>
+              <button
+                type="button"
+                className={styles.quickActionsSeeAll}
+                onClick={() => setQuickActionsExpanded(prev => !prev)}
+              >
+                {copy.quickActions?.seeAll || "Voir toutes les actions"}
+                <Icon icon={quickActionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
+              </button>
+            </section>
           <aside className={styles.asidePanel}>
             <div className={styles.rightSidebarContent}>
-              <section className={styles.sidebarSection} data-guide="contact-sidebar-info">
-                <div className={styles.sidebarInfoHeader}>
-                  <span className={styles.sidebarInfoTitle}>{copy.sidebarInfo}</span>
-                </div>
-                <div className={styles.sidebarSummaryList}>
-                  <div className={styles.sidebarFieldsRow}>
-                    <div className={styles.sidebarSummaryItem}>
-                      <span className={styles.sidebarSummaryLabel}>{copy.fields.lastName}</span>
-                      <span className={styles.sidebarSummaryValue}>{formData.nom || "-"}</span>
-                    </div>
-                    <div className={styles.sidebarSummaryItem}>
-                      <span className={styles.sidebarSummaryLabel}>{copy.fields.firstName}</span>
-                      <span className={styles.sidebarSummaryValue}>{formData.prenom || "-"}</span>
-                    </div>
-                  </div>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.civility}</span>
-                    <span className={styles.sidebarSummaryValue}>
-                      {formData.sexe ? getContactSexeLabelLocalized(formData.sexe, locale) : "-"}
-                    </span>
-                  </div>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.role}</span>
-                    {formData.poste ? <span className={styles.sidebarSummaryValue}>{formData.poste}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
-                  </div>
-                </div>
-              </section>
-
               <section className={`${styles.sidebarSection} ${contactStyles.sidebarCommSection}`} data-guide="contact-sidebar-companies">
                 <SidebarSectionHeader
                   title={copy.companies || copy.share.lines.enterprise}
@@ -1218,6 +1383,7 @@ export default function ContactDetailPage({
               </section>
             </div>
           </aside>
+          </div>
         </div>
       </div>
 

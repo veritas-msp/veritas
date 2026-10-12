@@ -6,6 +6,7 @@
   width: 100%;
   flex: 1;
   min-height: 0;
+  height: 100%;
 }
 
 .toolbar {
@@ -130,8 +131,8 @@
   width: 100%;
   flex: 1;
   overflow: auto;
-  border: 1px solid var(--msp-border, #2f4260);
-  border-radius: 14px;
+  border: 1px solid var(--msp-border-light, #c5d0de);
+  border-radius: 12px;
   background: var(--msp-surface, #1a2540);
   box-sizing: border-box;
 }
@@ -180,6 +181,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
+  margin-top: 0.75rem;
   padding: 0.55rem 0.85rem;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, var(--msp-border, #2f4260));
@@ -751,7 +753,7 @@
 :global(html:not(.dark)) .toolbar,
 :global(html:not(.dark)) .tableWrap {
   background: var(--msp-surface, #fff);
-  border-color: var(--msp-border, #c5d0df);
+  border-color: var(--msp-border-light, #c5d0de);
 }
 
 :global(html:not(.dark)) .bulkBar {

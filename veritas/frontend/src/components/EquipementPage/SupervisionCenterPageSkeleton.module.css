@@ -1,0 +1,269 @@
+.queueCard {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.toolbar {
+  flex-shrink: 0;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 10rem;
+  max-width: 18rem;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chip,
+.chipWide {
+  height: 28px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.chip {
+  width: 5.2rem;
+}
+
+.chipWide {
+  width: 7rem;
+}
+
+.chipSep {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--msp-border-light, #e2e8f0);
+  flex-shrink: 0;
+  margin: 0 0.15rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem 0.65rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.thead,
+.row {
+  display: grid;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.5rem 0.35rem;
+}
+
+.thead {
+  border-bottom: 1px solid var(--msp-border-light, #e8edf4);
+  flex-shrink: 0;
+}
+
+.tbody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.row {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 80%, transparent);
+}
+
+.th {
+  height: 0.6rem;
+  width: 65%;
+  border-radius: 4px;
+}
+
+.cell {
+  height: 0.75rem;
+  width: 78%;
+  border-radius: 5px;
+}
+
+.cellPrimary {
+  height: 0.8rem;
+  width: 90%;
+  border-radius: 5px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid var(--msp-border-light, #e8edf4);
+  flex-shrink: 0;
+}
+
+.pagLabel {
+  width: 5rem;
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+.pagInfo {
+  width: 4rem;
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+.pagRight {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.pagBtn {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 6px;
+}
+
+.pagPage {
+  width: 2.2rem;
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+.sideCard {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 2px 12px rgba(11, 33, 56, 0.04);
+  overflow: hidden;
+}
+
+.sideHead {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
+  flex-shrink: 0;
+}
+
+.sideIcon {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.sideTitle {
+  width: 8.5rem;
+  height: 0.8rem;
+  border-radius: 5px;
+}
+
+.sideList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem 1rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sideItem {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.sideAvatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+}
+
+.sideCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: 0;
+}
+
+.sideItemTitle {
+  width: 85%;
+  height: 0.7rem;
+  border-radius: 4px;
+}
+
+.sideItemMeta {
+  width: 55%;
+  height: 0.55rem;
+  border-radius: 4px;
+}
+
+@media (max-width: 1100px) {
+  .sideCard {
+    min-height: 14rem;
+  }
+}
+
+:global(html.dark) .sideCard,
+:global(body.dark) .sideCard {
+  background: var(--msp-surface);
+  border-color: var(--msp-border);
+}
+
+:global(html.dark) .row,
+:global(body.dark) .row {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+:global(html.dark) .chipSep,
+:global(html.dark) .thead,
+:global(html.dark) .pagination,
+:global(html.dark) .sideHead,
+:global(body.dark) .chipSep,
+:global(body.dark) .thead,
+:global(body.dark) .pagination,
+:global(body.dark) .sideHead {
+  border-color: var(--msp-border);
+  background-color: transparent;
+}
+
+:global(html.dark) .chipSep,
+:global(body.dark) .chipSep {
+  background: var(--msp-border);
+}

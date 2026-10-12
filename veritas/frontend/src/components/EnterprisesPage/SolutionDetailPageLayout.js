@@ -16,6 +16,7 @@ export default function SolutionDetailPageLayout({
   eyebrow,
   title,
   titleIcon,
+  titleImage = null,
   subtitle,
   backLabel = "Back",
   onBack,
@@ -130,7 +131,8 @@ export default function SolutionDetailPageLayout({
             title={title}
             subtitle={subtitle}
             icon={titleIcon}
-            brandMarkClassName={BRAND_MARK[accentKey] || ""}
+            image={titleImage}
+            brandMarkClassName={titleImage ? "" : BRAND_MARK[accentKey] || ""}
             actions={
               <>
                 {onBack ? (

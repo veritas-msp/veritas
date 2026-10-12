@@ -96,7 +96,7 @@ export async function ensurePermissionsSchema() {
       ensuredCatalogSize = -1;
     }
     const profiles = await client.query(`SELECT name, label,
-              monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
+              monitoring_enabled, infrastructure_enabled, cybersecurite_enabled, campaigns_enabled,
               planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
               configurateur_enabled, tickets_enabled, dashboard_enabled, documents_enabled,
               equipment_inventory_enabled, knowledge_base_enabled

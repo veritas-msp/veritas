@@ -50,6 +50,22 @@ export async function fetchPrestataire(prestataireId, options = {}) {
   return await res.json();
 }
 
+export async function fetchPrestataireMentionedTickets(prestataireId, options = {}) {
+  const params = new URLSearchParams();
+  if (options.limit != null) params.set("limit", String(options.limit));
+  const query = params.toString();
+  const res = await fetch(`${BASE_URL}/${prestataireId}/mentioned-tickets${query ? `?${query}` : ""}`, {
+    credentials: "include",
+    signal: options.signal,
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error fetching mentioned tickets");
+  }
+  return await res.json();
+}
+
 export async function addPrestataire(prestataire) {
   const res = await fetch(BASE_URL, {
     method: "POST",

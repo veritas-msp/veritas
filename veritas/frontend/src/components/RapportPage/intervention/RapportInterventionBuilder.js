@@ -1,29 +1,91 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import SignatureCanvas from "react-signature-canvas";
 import { toast } from "react-toastify";
 import { fetchClientGeneral } from "../../../api/clients";
-import { fetchMonitoringDocuments, isMonitoringDocumentNameTaken, saveMonitoringDocument, updateMonitoringDocument } from "../../../api/monitoringDocuments";
+import { getDownloadUrl } from "../../../api/clientFiles";
+import {
+  fetchMonitoringDocuments,
+  isMonitoringDocumentNameTaken,
+  saveMonitoringDocument,
+  updateMonitoringDocument
+} from "../../../api/monitoringDocuments";
+import { addTicketComment, fetchTickets } from "../../../api/tickets";
 import { useAppGeneralSettings, useAppLocale } from "../../../hooks/useAppGeneralSettings";
+import { interpolate } from "../../../i18n/translate";
+import { getModalDropdownZIndex } from "../../../utils/dropdownPortal";
 import { REPORT_TYPE_IDS } from "../reportTypeConstants";
 import ConfirmModal from "../../Misc/ConfirmModal/ConfirmModal";
+import { getTicketLinkLabel, getTicketLinkSearchText } from "../../TicketPage/ticketLinkUtils";
+import {
+  getEquipmentPickerLabel,
+  getEquipmentSearchText,
+  loadClientEquipments
+} from "../../TicketPage/ticketEquipmentUtils";
 import InterventionSaveModal from "./InterventionSaveModal";
-import { uploadInterventionPdfToClientVault } from "../../../utils/uploadReportToClientVault";
+import { uploadInterventionHtmlToClientVault } from "../../../utils/uploadReportToClientVault";
+import { exportBrandedReportHtmlFromElement } from "../exportBrandedReportHtmlFromElement";
+import cyberStyles from "../../CybersecuritePage/CybersecuritePage.module.css";
 import shellStyles from "../RapportBuilderPlaceholder.module.css";
+import formStyles from "../reportBuilderForm.module.css";
+import ReportValidationLayout, {
+  ReportPreviewBlock,
+  reportValidationStyles as valStyles
+} from "../ReportValidationLayout";
 import styles from "./RapportInterventionBuilder.module.css";
 import { getInterventionReportCopy } from "./interventionReportI18n";
-import { buildDefaultInterventionData, buildDefaultSaveName, buildInterventionReportPeriod, createTodoItem, isDuplicateMonitoringSaveResult, mergeInterventionData, getInterventionStepValidationAlert, serializeInterventionSavePayload, validateInterventionStep } from "./interventionReportModel";
-import { buildInterventionPdfLabels, exportInterventionPdf } from "./exportInterventionPdf";
-import { ModernToggle, MovementTypePicker, NumberStepper } from "./InterventionFormControls";
-function PreviewBlock({
-  title,
-  children
-}) {
-  return <section className={styles.previewSection}>
-      <h3 className={styles.previewSectionTitle}>{title}</h3>
-      {children}
-    </section>;
+import {
+  buildDefaultInterventionData,
+  buildDefaultSaveName,
+  buildInterventionReportPeriod,
+  createTaskItem,
+  deriveMaterielFieldsFromEquipments,
+  isDuplicateMonitoringSaveResult,
+  mergeInterventionData,
+  getInterventionStepValidationAlert,
+  normalizeLinkedEquipments,
+  serializeInterventionSavePayload,
+  validateInterventionStep
+} from "./interventionReportModel";
+const TICKET_DROPDOWN_MAX_HEIGHT = 240;
+const TICKET_SUGGESTION_LIMIT = 40;
+const EQUIPMENT_SUGGESTION_LIMIT = 40;
+
+function normalizeTicketList(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.tickets)) return payload.tickets;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
 }
+
+function resolveAbsoluteUrl(pathOrUrl) {
+  const value = String(pathOrUrl || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (typeof window === "undefined") return value;
+  try {
+    return new URL(value, window.location.origin).href;
+  } catch {
+    return value;
+  }
+}
+
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+
+function Field({ label, hint, children, full = false, required = false }) {
+  return (
+    <label className={`${formStyles.field} ${full ? formStyles.formGridFull : ""}`.trim()}>
+      <span className={formStyles.fieldLabel}>
+        {label}
+        {required ? <span className={formStyles.requiredMark} aria-hidden>*</span> : null}
+      </span>
+      {children}
+      {hint ? <span className={formStyles.fieldHint}>{hint}</span> : null}
+    </label>
+  );
+}
+
 export default function ReportInterventionBuilder({
   copy: pageCopy,
   reportType,
@@ -35,55 +97,131 @@ export default function ReportInterventionBuilder({
   documentName = ""
 }) {
   const locale = useAppLocale();
-  const {
-    settings
-  } = useAppGeneralSettings();
-  const interventionCopy = useMemo(() => getInterventionReportCopy(pageCopy?.localeCode || locale), [pageCopy?.localeCode, locale]);
+  const { settings } = useAppGeneralSettings();
+  const interventionCopy = useMemo(
+    () => getInterventionReportCopy(pageCopy?.localeCode || locale),
+    [pageCopy?.localeCode, locale]
+  );
   const steps = useMemo(() => reportType?.steps || [], [reportType?.steps]);
   const [stepIndex, setStepIndex] = useState(0);
-  const [formData, setFormData] = useState(() => mergeInterventionData(buildDefaultInterventionData({
-    client,
-    organizationName: settings?.app_organization_name || "",
-    organizationAddress: settings?.app_organization_address || ""
-  }), initialData));
+  const [formData, setFormData] = useState(() =>
+    mergeInterventionData(
+      buildDefaultInterventionData({
+        client,
+        organizationName: settings?.app_organization_name || "",
+        organizationAddress: settings?.app_organization_address || "",
+        copy: interventionCopy
+      }),
+      initialData
+    )
+  );
   const [saveName, setSaveName] = useState(documentName || "");
   const [saving, setSaving] = useState(false);
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedDocuments, setSavedDocuments] = useState([]);
   const [saveVisibleToClient, setSaveVisibleToClient] = useState(false);
+  const [clientTickets, setClientTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketSearch, setTicketSearch] = useState(() => String(initialData?.numeroTicket || "").trim());
+  const [ticketMenuOpen, setTicketMenuOpen] = useState(false);
+  const [ticketHighlight, setTicketHighlight] = useState(0);
+  const [ticketMenuStyle, setTicketMenuStyle] = useState(null);
+  const [clientEquipments, setClientEquipments] = useState([]);
+  const [equipmentsLoading, setEquipmentsLoading] = useState(false);
+  const [equipmentSearch, setEquipmentSearch] = useState("");
+  const [equipmentMenuOpen, setEquipmentMenuOpen] = useState(false);
+  const [equipmentHighlight, setEquipmentHighlight] = useState(0);
+  const [equipmentMenuStyle, setEquipmentMenuStyle] = useState(null);
   const prestataireRef = useRef(null);
   const clientSignRef = useRef(null);
+  const previewDocRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const ticketPickerRef = useRef(null);
+  const ticketAnchorRef = useRef(null);
+  const ticketMenuRef = useRef(null);
+  const equipmentPickerRef = useRef(null);
+  const equipmentAnchorRef = useRef(null);
+  const equipmentMenuRef = useRef(null);
   const saveNameTouchedRef = useRef(Boolean(documentName?.trim()));
   const saveNameInitializedRef = useRef(Boolean(documentName?.trim()));
-  const clientLabel = client?.name || client?.nom || (client?.id ? pageCopy.create.getClientLabel(client.id) : "-");
+  const clientLabel =
+    client?.name || client?.nom || (client?.id ? pageCopy.create.getClientLabel(client.id) : "-");
+
   useEffect(() => {
     let cancelled = false;
     const clientId = client?.id ?? client?.uuid;
     if (!clientId) return undefined;
-    fetchClientGeneral(clientId).then(generalData => {
-      if (cancelled) return;
-      setFormData(prev => {
-        const next = {
-          ...prev
-        };
-        if (!String(next.adresse || "").trim() && generalData?.address) {
-          next.adresse = generalData.address;
-        }
-        const firstSite = Array.isArray(generalData?.sites) ? generalData.sites[0] : null;
-        if (!String(next.contactSite || "").trim() && firstSite) {
-          next.contactSite = firstSite.contact || firstSite.contact_name || next.contactSite;
-        }
-        if (!String(next.adresse || "").trim() && firstSite?.address) {
-          next.adresse = firstSite.address;
-        }
-        return next;
-      });
-    }).catch(() => {});
+    fetchClientGeneral(clientId)
+      .then(generalData => {
+        if (cancelled) return;
+        setFormData(prev => {
+          const next = { ...prev };
+          if (!String(next.adresse || "").trim() && generalData?.address) {
+            next.adresse = generalData.address;
+          }
+          const firstSite = Array.isArray(generalData?.sites) ? generalData.sites[0] : null;
+          if (!String(next.adresse || "").trim() && firstSite?.address) {
+            next.adresse = firstSite.address;
+          }
+          return next;
+        });
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [client]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const clientId = client?.id ?? client?.uuid;
+    if (!clientId) {
+      setClientTickets([]);
+      setTicketsLoading(false);
+      return undefined;
+    }
+    setTicketsLoading(true);
+    fetchTickets({ clientId, limit: 200, includeClosed: true, forLinking: true })
+      .then(payload => {
+        if (cancelled) return;
+        setClientTickets(normalizeTicketList(payload));
+      })
+      .catch(() => {
+        if (!cancelled) setClientTickets([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTicketsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const clientId = client?.id ?? client?.uuid;
+    if (!clientId) {
+      setClientEquipments([]);
+      setEquipmentsLoading(false);
+      return undefined;
+    }
+    setEquipmentsLoading(true);
+    loadClientEquipments(clientId)
+      .then(rows => {
+        if (!cancelled) setClientEquipments(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setClientEquipments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEquipmentsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
   useEffect(() => {
     if (documentName?.trim()) {
       setSaveName(documentName);
@@ -93,31 +231,38 @@ export default function ReportInterventionBuilder({
     }
     if (stepIndex === 3 && !saveNameInitializedRef.current && !documentId) {
       saveNameInitializedRef.current = true;
-      setSaveName(buildDefaultSaveName(clientLabel, interventionCopy, {
-        withRandom: true
-      }));
+      setSaveName(
+        buildDefaultSaveName(clientLabel, interventionCopy, {
+          withRandom: true
+        })
+      );
     }
   }, [stepIndex, clientLabel, documentName, documentId, interventionCopy]);
+
   useEffect(() => {
-    if (stepIndex !== 3) return;
+    if (stepIndex !== 2 && stepIndex !== 3) return;
     setFormData(prev => ({
       ...prev,
-      signatureDate: prev.signatureDate || prev.dateIntervention || "",
+      signatureDate: prev.signatureDate || new Date().toISOString().split("T")[0],
       signatureLieu: prev.signatureLieu || prev.adresse || ""
     }));
   }, [stepIndex]);
+
   useEffect(() => {
     if (stepIndex !== 3) return undefined;
     let cancelled = false;
-    fetchMonitoringDocuments().then(docs => {
-      if (!cancelled) setSavedDocuments(Array.isArray(docs) ? docs : []);
-    }).catch(() => {
-      if (!cancelled) setSavedDocuments([]);
-    });
+    fetchMonitoringDocuments()
+      .then(docs => {
+        if (!cancelled) setSavedDocuments(Array.isArray(docs) ? docs : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedDocuments([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [stepIndex]);
+
   const nameConflict = useMemo(() => {
     if (!saveName.trim()) return false;
     return isMonitoringDocumentNameTaken(saveName, {
@@ -125,73 +270,145 @@ export default function ReportInterventionBuilder({
       documents: savedDocuments
     });
   }, [saveName, savedDocuments, documentId]);
+
   const updateField = patch => {
     setFormData(prev => ({
       ...prev,
       ...patch
     }));
   };
+
   const handleChange = event => {
-    const {
-      name,
-      value,
-      type,
-      checked
-    } = event.target;
-    updateField({
-      [name]: type === "checkbox" ? checked : value
-    });
+    const { name, value } = event.target;
+    updateField({ [name]: value });
   };
-  const handleMouvementChange = (index, field, value) => {
+
+  const updateTaskList = (listKey, updater) => {
     setFormData(prev => {
-      const mouvements = [...(prev.mouvements || [])];
-      mouvements[index] = {
-        ...mouvements[index],
-        [field]: value
-      };
-      return {
-        ...prev,
-        mouvements
-      };
+      const current = Array.isArray(prev[listKey]) ? prev[listKey] : [];
+      const next = updater(current);
+      return { ...prev, [listKey]: next };
     });
   };
-  const addMouvement = () => {
-    setFormData(prev => ({
-      ...prev,
-      mouvements: [...(prev.mouvements || []), {
-        designation: "",
-        quantite: "",
-        type: "déposé",
-        commentaire: ""
-      }]
-    }));
+
+  const handleTaskChange = (listKey, index, value) => {
+    updateTaskList(listKey, list =>
+      list.map((task, i) => (i === index ? { ...task, label: value } : task))
+    );
   };
-  const removeMouvement = index => {
-    setFormData(prev => ({
-      ...prev,
-      mouvements: (prev.mouvements || []).filter((_, i) => i !== index)
-    }));
+
+  const addTask = listKey => {
+    updateTaskList(listKey, list => [...list, createTaskItem("")]);
   };
+
+  const removeTask = (listKey, index) => {
+    updateTaskList(listKey, list => {
+      const next = list.filter((_, i) => i !== index);
+      return next.length ? next : [createTaskItem("")];
+    });
+  };
+
+  const renderTaskSection = ({
+    listKey,
+    title,
+    hint,
+    addLabel,
+    placeholder,
+    emptyLabel,
+    removeLabel,
+    required = false
+  }) => {
+    const tasks = Array.isArray(formData[listKey]) ? formData[listKey] : [];
+    return (
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <div className={formStyles.sectionHeadRow}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 className={formStyles.sectionTitle}>
+                {title}
+                {required ? <span className={formStyles.requiredMark} aria-hidden>*</span> : null}
+              </h3>
+              {hint ? <p className={formStyles.sectionHint}>{hint}</p> : null}
+            </div>
+            <button type="button" className={formStyles.addBtn} onClick={() => addTask(listKey)}>
+              <Icon icon="mdi:plus" aria-hidden />
+              {addLabel}
+            </button>
+          </div>
+        </header>
+        <div className={styles.taskList}>
+          {tasks.length === 0 ? (
+            <p className={formStyles.sectionHint}>{emptyLabel}</p>
+          ) : (
+            tasks.map((task, index) => (
+              <div key={task.id || `${listKey}-${index}`} className={styles.taskRow}>
+                <span className={styles.taskIndex} aria-hidden>
+                  {index + 1}
+                </span>
+                <input
+                  className={styles.taskInput}
+                  value={task.label || ""}
+                  onChange={e => handleTaskChange(listKey, index, e.target.value)}
+                  placeholder={placeholder}
+                  aria-label={`${placeholder} ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  className={styles.taskRemove}
+                  onClick={() => removeTask(listKey, index)}
+                  aria-label={removeLabel}
+                >
+                  <Icon icon="mdi:close" aria-hidden />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    );
+  };
+
+  const handlePhotoSelect = event => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      toast.error(interventionCopy.alerts.photoInvalid);
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      toast.error(interventionCopy.alerts.photoTooLarge);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateField({ photoInstallation: String(reader.result || "") });
+    };
+    reader.onerror = () => toast.error(interventionCopy.alerts.photoInvalid);
+    reader.readAsDataURL(file);
+  };
+
   const getSignatureDataUrl = ref => {
     const pad = ref?.current;
     if (!pad) return "";
     try {
       if (typeof pad.isEmpty === "function" && pad.isEmpty()) return "";
-      if (typeof pad.toDataURL === "function") {
-        return pad.toDataURL("image/png") || "";
-      }
+      if (typeof pad.toDataURL === "function") return pad.toDataURL("image/png") || "";
       const canvas = typeof pad.getCanvas === "function" ? pad.getCanvas() : null;
       return canvas?.toDataURL?.("image/png") || "";
     } catch {
       return "";
     }
   };
+
   const captureSignatures = () => ({
     ...formData,
     signaturePrestataire: getSignatureDataUrl(prestataireRef) || formData.signaturePrestataire,
     signatureClient: getSignatureDataUrl(clientSignRef) || formData.signatureClient,
-    documentSigne: formData.requireSignature ? true : formData.documentSigne
+    documentSigne: true,
+    requireSignature: true
   });
+
   const syncSignatureToForm = () => {
     setFormData(prev => ({
       ...prev,
@@ -199,90 +416,424 @@ export default function ReportInterventionBuilder({
       signatureClient: getSignatureDataUrl(clientSignRef) || prev.signatureClient
     }));
   };
-  const getStepAlert = (index, data = formData) => getInterventionStepValidationAlert(index, data, interventionCopy.alerts) || interventionCopy.alerts.stepReport;
-  const getValidationPayload = () => captureSignatures();
+
+  const getStepAlert = (index, data = formData) =>
+    getInterventionStepValidationAlert(index, data, interventionCopy.alerts) ||
+    interventionCopy.alerts.stepReport;
+
   const goNext = () => {
-    const payload = stepIndex === 3 ? getValidationPayload() : formData;
+    const payload = stepIndex === 2 ? captureSignatures() : formData;
+    if (stepIndex === 2) setFormData(payload);
     if (!validateInterventionStep(stepIndex, payload)) {
       toast.error(getStepAlert(stepIndex, payload));
       return;
     }
     setStepIndex(value => Math.min(steps.length - 1, value + 1));
   };
-  const goBack = () => {
-    setStepIndex(value => Math.max(0, value - 1));
+
+  const goBack = () => setStepIndex(value => Math.max(0, value - 1));
+
+  const linkedTicket = useMemo(() => {
+    const linkedId = formData.linkedTicketId;
+    if (linkedId == null || linkedId === "") return null;
+    return (
+      clientTickets.find(t => String(t.id) === String(linkedId)) || {
+        id: linkedId,
+        ticket_number: formData.numeroTicket || linkedId,
+        title: ""
+      }
+    );
+  }, [clientTickets, formData.linkedTicketId, formData.numeroTicket]);
+
+  useEffect(() => {
+    if (!linkedTicket) return;
+    setTicketSearch(getTicketLinkLabel(linkedTicket));
+  }, [linkedTicket]);
+
+  const filteredTickets = useMemo(() => {
+    const isLinkedLabel =
+      linkedTicket && ticketSearch.trim() === getTicketLinkLabel(linkedTicket).trim();
+    const q = isLinkedLabel ? "" : ticketSearch.trim().toLowerCase();
+    const base = q
+      ? clientTickets.filter(ticket => getTicketLinkSearchText(ticket).includes(q))
+      : clientTickets;
+    return base.slice(0, TICKET_SUGGESTION_LIMIT);
+  }, [clientTickets, linkedTicket, ticketSearch]);
+
+  const updateTicketMenuPosition = useCallback(() => {
+    const anchor = ticketAnchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(TICKET_DROPDOWN_MAX_HEIGHT, openUp ? spaceAbove : spaceBelow));
+    setTicketMenuStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      zIndex: getModalDropdownZIndex(),
+      maxHeight,
+      pointerEvents: "auto",
+      ...(openUp
+        ? { top: rect.top - 4, transform: "translateY(-100%)" }
+        : { top: rect.bottom - 1 })
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!ticketMenuOpen) {
+      setTicketMenuStyle(null);
+      return undefined;
+    }
+    updateTicketMenuPosition();
+    return undefined;
+  }, [ticketMenuOpen, updateTicketMenuPosition, filteredTickets.length]);
+
+  useEffect(() => {
+    if (!ticketMenuOpen) return undefined;
+    const handleClickOutside = event => {
+      const target = event.target;
+      if (ticketPickerRef.current?.contains(target) || ticketMenuRef.current?.contains(target)) return;
+      setTicketMenuOpen(false);
+    };
+    const onReposition = () => updateTicketMenuPosition();
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [ticketMenuOpen, updateTicketMenuPosition]);
+
+  useEffect(() => {
+    setTicketHighlight(0);
+  }, [ticketSearch, ticketMenuOpen]);
+
+  const resolveLinkedTicket = payload => {
+    if (payload?.linkedTicketId != null && payload.linkedTicketId !== "") {
+      const byId = clientTickets.find(t => String(t.id) === String(payload.linkedTicketId));
+      if (byId) return byId;
+      return {
+        id: payload.linkedTicketId,
+        ticket_number: payload.numeroTicket || payload.linkedTicketId,
+        title: ""
+      };
+    }
+    const number = String(payload?.numeroTicket || "").trim().replace(/^#/, "");
+    if (!number) return null;
+    return (
+      clientTickets.find(t => {
+        const candidates = [t.ticket_number, t.ticketNumber, t.reference, t.ref, t.id]
+          .filter(Boolean)
+          .map(v => String(v).replace(/^#/, ""));
+        return candidates.includes(number);
+      }) || null
+    );
   };
-  const pdfLabels = useMemo(() => buildInterventionPdfLabels(interventionCopy), [interventionCopy]);
+
+  const selectTicketSuggestion = ticket => {
+    if (!ticket) return;
+    const number = String(ticket.ticket_number || ticket.ticketNumber || ticket.id || "");
+    setTicketSearch(getTicketLinkLabel(ticket));
+    setTicketMenuOpen(false);
+    updateField({
+      linkedTicketId: ticket.id,
+      numeroTicket: number,
+      postTicketFollowUp: formData.postTicketFollowUp !== false
+    });
+  };
+
+  const handleTicketSearchChange = value => {
+    setTicketSearch(value);
+    setTicketMenuOpen(true);
+    setTicketHighlight(0);
+    const exact = clientTickets.find(t => {
+      const number = String(t.ticket_number || t.ticketNumber || "").replace(/^#/, "");
+      const typed = value.trim().replace(/^#/, "");
+      return number && typed && number.toLowerCase() === typed.toLowerCase();
+    });
+    if (exact) {
+      updateField({
+        linkedTicketId: exact.id,
+        numeroTicket: String(exact.ticket_number || exact.ticketNumber || exact.id || ""),
+        postTicketFollowUp: formData.postTicketFollowUp !== false
+      });
+      return;
+    }
+    updateField({
+      linkedTicketId: null,
+      numeroTicket: value.trim()
+    });
+  };
+
+  const clearTicketSelection = () => {
+    setTicketSearch("");
+    setTicketMenuOpen(false);
+    updateField({ linkedTicketId: null, numeroTicket: "" });
+  };
+
+  const handleTicketSearchKeyDown = event => {
+    if (!ticketMenuOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      setTicketMenuOpen(true);
+      return;
+    }
+    if (!ticketMenuOpen || filteredTickets.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setTicketHighlight(h => Math.min(h + 1, filteredTickets.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setTicketHighlight(h => Math.max(h - 1, 0));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      selectTicketSuggestion(filteredTickets[ticketHighlight]);
+    } else if (event.key === "Escape") {
+      setTicketMenuOpen(false);
+    }
+  };
+
+  const linkedEquipmentIds = useMemo(
+    () => new Set(normalizeLinkedEquipments(formData.linkedEquipments).map(item => String(item.id))),
+    [formData.linkedEquipments]
+  );
+
+  const filteredEquipments = useMemo(() => {
+    const q = equipmentSearch.trim().toLowerCase();
+    const available = clientEquipments.filter(eq => !linkedEquipmentIds.has(String(eq.id)));
+    const base = q
+      ? available.filter(eq => getEquipmentSearchText(eq, locale).includes(q))
+      : available;
+    return base.slice(0, EQUIPMENT_SUGGESTION_LIMIT);
+  }, [clientEquipments, equipmentSearch, linkedEquipmentIds, locale]);
+
+  const updateEquipmentMenuPosition = useCallback(() => {
+    const anchor = equipmentAnchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(TICKET_DROPDOWN_MAX_HEIGHT, openUp ? spaceAbove : spaceBelow));
+    setEquipmentMenuStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      zIndex: getModalDropdownZIndex(),
+      maxHeight,
+      pointerEvents: "auto",
+      ...(openUp
+        ? { top: rect.top - 4, transform: "translateY(-100%)" }
+        : { top: rect.bottom - 1 })
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!equipmentMenuOpen) {
+      setEquipmentMenuStyle(null);
+      return undefined;
+    }
+    updateEquipmentMenuPosition();
+    return undefined;
+  }, [equipmentMenuOpen, updateEquipmentMenuPosition, filteredEquipments.length]);
+
+  useEffect(() => {
+    if (!equipmentMenuOpen) return undefined;
+    const handleClickOutside = event => {
+      const target = event.target;
+      if (equipmentPickerRef.current?.contains(target) || equipmentMenuRef.current?.contains(target)) return;
+      setEquipmentMenuOpen(false);
+    };
+    const onReposition = () => updateEquipmentMenuPosition();
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [equipmentMenuOpen, updateEquipmentMenuPosition]);
+
+  useEffect(() => {
+    setEquipmentHighlight(0);
+  }, [equipmentSearch, equipmentMenuOpen]);
+
+  const applyLinkedEquipments = nextList => {
+    const linkedEquipments = normalizeLinkedEquipments(nextList);
+    updateField({
+      linkedEquipments,
+      ...deriveMaterielFieldsFromEquipments(linkedEquipments)
+    });
+  };
+
+  const addLinkedEquipment = equipment => {
+    if (!equipment) return;
+    const id = String(equipment.id);
+    if (linkedEquipmentIds.has(id)) return;
+    const row = {
+      id,
+      name: String(equipment.name || equipment.model || "").trim(),
+      type: String(equipment.type || "").trim(),
+      serial: String(equipment.serial || "").trim(),
+      manufacturer: String(equipment.manufacturer || "").trim(),
+      model: String(equipment.model || "").trim(),
+      label: getEquipmentPickerLabel(equipment, { locale })
+    };
+    applyLinkedEquipments([...(formData.linkedEquipments || []), row]);
+    setEquipmentSearch("");
+    setEquipmentMenuOpen(false);
+  };
+
+  const removeLinkedEquipment = equipmentId => {
+    applyLinkedEquipments(
+      (formData.linkedEquipments || []).filter(item => String(item.id) !== String(equipmentId))
+    );
+  };
+
+  const handleEquipmentSearchKeyDown = event => {
+    if (!equipmentMenuOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+      setEquipmentMenuOpen(true);
+      return;
+    }
+    if (!equipmentMenuOpen || filteredEquipments.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setEquipmentHighlight(h => Math.min(h + 1, filteredEquipments.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setEquipmentHighlight(h => Math.max(h - 1, 0));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      addLinkedEquipment(filteredEquipments[equipmentHighlight]);
+    } else if (event.key === "Escape") {
+      setEquipmentMenuOpen(false);
+    }
+  };
+
+  const interventionTypeOptions = useMemo(() => {
+    const fromCopy = Array.isArray(interventionCopy?.context?.interventionTypes)
+      ? interventionCopy.context.interventionTypes
+      : [];
+    const current = String(formData.typeIntervention || "").trim();
+    if (current && !fromCopy.includes(current)) return [...fromCopy, current];
+    return fromCopy;
+  }, [interventionCopy?.context?.interventionTypes, formData.typeIntervention]);
+
+  const buildInterventionHtmlBlob = async (_payload, docName) => {
+    const fileName = `${docName}.html`;
+    if (!previewDocRef.current) {
+      throw new Error("Aperçu du rapport indisponible pour l'export HTML");
+    }
+    const blob = await exportBrandedReportHtmlFromElement(previewDocRef.current, {
+      asBlob: true,
+      fileName,
+      documentTitle: docName
+    });
+    if (!blob) throw new Error("HTML generation failed");
+    return blob;
+  };
+
   const archiveInterventionToClientVault = async ({
     visibleToClient,
-    documentName,
+    documentName: docName,
     reportPeriod,
     payload
   }) => {
     const clientId = client?.id ?? client?.uuid;
-    if (!clientId) return {
-      skipped: true
-    };
+    if (!clientId) return { skipped: true };
     try {
-      const blob = exportInterventionPdf(payload, pdfLabels, {
-        asBlob: true,
-        fileName: `${documentName}.pdf`
-      });
-      if (!blob) throw new Error("PDF generation failed");
-      await uploadInterventionPdfToClientVault({
+      const blob = await buildInterventionHtmlBlob(payload, docName);
+      if (!blob) throw new Error("HTML generation failed");
+      const uploaded = await uploadInterventionHtmlToClientVault({
         blob,
-        fileName: documentName,
+        fileName: docName,
         clientId,
         clientName: client?.name || client?.nom || "",
         description: reportPeriod || "",
         visibleToClient
       });
-      return {
-        success: true
-      };
+      return { success: true, file: uploaded };
     } catch (err) {
       console.error("Archivage coffre intervention:", err);
-      return {
-        success: false,
-        error: err.message
-      };
+      return { success: false, error: err.message };
     }
   };
-  const handleDownloadPdf = () => {
-    const payload = getValidationPayload();
-    if (!validateInterventionStep(3, payload)) {
-      toast.error(getStepAlert(3, payload));
+
+  const postTicketFollowUpComment = async ({ ticket, documentName: docName, file }) => {
+    if (!ticket?.id || !file?.id) return { skipped: true };
+    const downloadPath = getDownloadUrl(file.id);
+    const url = resolveAbsoluteUrl(downloadPath);
+    const number = String(ticket.ticket_number || ticket.ticketNumber || ticket.id || "").replace(/^#/, "");
+    const htmlTemplate =
+      interventionCopy.ticketFollowUp?.commentHtml ||
+      "<p><strong>Rapport d'intervention généré</strong></p><p><a href=\"{url}\">{name}</a></p>";
+    const content = interpolate(htmlTemplate, {
+      url,
+      name: docName,
+      number
+    });
+    try {
+      await addTicketComment(ticket.id, content, false);
+      return { success: true, number };
+    } catch (err) {
+      console.error("Suivi ticket rapport intervention:", err);
+      return { success: false, error: err?.message, number };
+    }
+  };
+
+  const handleDownloadHtml = async () => {
+    const payload = captureSignatures();
+    if (!validateInterventionStep(2, payload)) {
+      toast.error(getStepAlert(2, payload));
+      return;
+    }
+    if (!previewDocRef.current) {
+      toast.error("Aperçu du rapport indisponible pour l'export HTML");
       return;
     }
     const safeName = (saveName.trim() || "rapport-intervention").replace(/[^\w\- ]+/g, "");
-    exportInterventionPdf(payload, pdfLabels, {
-      fileName: `${safeName}.pdf`
-    });
+    const fileName = `${safeName}.html`;
+    try {
+      await exportBrandedReportHtmlFromElement(previewDocRef.current, {
+        fileName,
+        documentTitle: safeName
+      });
+    } catch (err) {
+      console.warn("HTML preview export failed:", err);
+      toast.error(err?.message || "Impossible de générer le HTML à partir de l'aperçu");
+    }
   };
+
   const handleSave = async (forceOverwrite = false) => {
-    const payload = getValidationPayload();
+    const payload = captureSignatures();
     setSaving(true);
     try {
-      const {
-        config,
-        data
-      } = serializeInterventionSavePayload(client, payload, REPORT_TYPE_IDS.INTERVENTION);
+      const { config, data } = serializeInterventionSavePayload(
+        client,
+        payload,
+        REPORT_TYPE_IDS.INTERVENTION
+      );
       const clientName = client?.name || client?.nom || "CLIENT";
       const reportPeriod = buildInterventionReportPeriod(payload);
-      const result = documentId ? await updateMonitoringDocument(documentId, {
-        name: saveName.trim(),
-        client_name: clientName,
-        report_period: reportPeriod,
-        config,
-        data
-      }) : await saveMonitoringDocument({
-        name: saveName.trim(),
-        client_name: clientName,
-        report_period: reportPeriod,
-        config,
-        data,
-        overwrite: forceOverwrite
-      });
+      const result = documentId
+        ? await updateMonitoringDocument(documentId, {
+            name: saveName.trim(),
+            client_name: clientName,
+            report_period: reportPeriod,
+            config,
+            data
+          })
+        : await saveMonitoringDocument({
+            name: saveName.trim(),
+            client_name: clientName,
+            report_period: reportPeriod,
+            config,
+            data,
+            overwrite: forceOverwrite
+          });
       if (result?.success) {
         const vaultResult = await archiveInterventionToClientVault({
           visibleToClient: saveVisibleToClient,
@@ -291,12 +842,36 @@ export default function ReportInterventionBuilder({
           payload
         });
         if (vaultResult.success) {
-          toast.success(saveVisibleToClient ? interventionCopy.alerts.saveSuccessVisible : interventionCopy.alerts.saveSuccessInternal);
+          toast.success(
+            saveVisibleToClient
+              ? interventionCopy.alerts.saveSuccessVisible
+              : interventionCopy.alerts.saveSuccessInternal
+          );
         } else if (!vaultResult.skipped) {
           toast.warn(interventionCopy.alerts.saveVaultError);
         } else {
           toast.success(interventionCopy.alerts.saveSuccess);
         }
+
+        const wantFollowUp = payload.postTicketFollowUp !== false;
+        const ticketForFollowUp = wantFollowUp ? resolveLinkedTicket(payload) : null;
+        if (wantFollowUp && ticketForFollowUp?.id && vaultResult.success && vaultResult.file?.id) {
+          const followUp = await postTicketFollowUpComment({
+            ticket: ticketForFollowUp,
+            documentName: saveName.trim(),
+            file: vaultResult.file
+          });
+          if (followUp.success) {
+            toast.success(
+              interpolate(interventionCopy.alerts.ticketFollowUpOk || "#{number}", {
+                number: followUp.number
+              })
+            );
+          } else if (!followUp.skipped) {
+            toast.warn(interventionCopy.alerts.ticketFollowUpError);
+          }
+        }
+
         onSaved?.();
         onBack?.();
         return;
@@ -313,19 +888,24 @@ export default function ReportInterventionBuilder({
       setSaving(false);
     }
   };
+
   const openSaveModal = () => {
     if (!saveName.trim()) {
       toast.error(interventionCopy.alerts.saveName);
       return;
     }
-    const payload = getValidationPayload();
-    if (!validateInterventionStep(3, payload)) {
-      toast.error(getStepAlert(3, payload));
+    const payload = captureSignatures();
+    if (!validateInterventionStep(2, payload)) {
+      toast.error(getStepAlert(2, payload));
       return;
     }
     setSaveVisibleToClient(false);
+    if (payload.linkedTicketId || String(payload.numeroTicket || "").trim()) {
+      updateField({ postTicketFollowUp: payload.postTicketFollowUp !== false });
+    }
     setShowSaveModal(true);
   };
+
   const confirmSave = () => {
     setShowSaveModal(false);
     if (!documentId && nameConflict) {
@@ -334,492 +914,745 @@ export default function ReportInterventionBuilder({
     }
     handleSave(false);
   };
+
   const currentStep = steps[stepIndex] || steps[0] || pageCopy.wizard.stepBuild;
   const isFirst = stepIndex <= 0;
   const isLast = stepIndex >= steps.length - 1;
   const ctx = interventionCopy.context;
-  const inter = interventionCopy.interventions;
-  const rep = interventionCopy.report;
-  const todosCopy = interventionCopy.todos;
+  const opsCopy = interventionCopy.operations;
+  const rem = interventionCopy.remarks;
   const val = interventionCopy.validation;
-  const movementOptions = useMemo(() => [{
-    value: "déposé",
-    label: inter.depose,
-    icon: "mdi:package-down",
-    tone: "deposit"
-  }, {
-    value: "enlevé",
-    label: inter.enleve,
-    icon: "mdi:package-up",
-    tone: "remove"
-  }, {
-    value: "réparé",
-    label: inter.repare,
-    icon: "mdi:wrench-outline",
-    tone: "repair"
-  }], [inter.depose, inter.enleve, inter.repare]);
-  const handleTodoChange = (index, field, value) => {
-    setFormData(prev => {
-      const todos = [...(prev.todos || [])];
-      todos[index] = {
-        ...todos[index],
-        [field]: value
-      };
-      return {
-        ...prev,
-        todos
-      };
-    });
-  };
-  const addTodo = () => {
-    setFormData(prev => ({
-      ...prev,
-      todos: [...(prev.todos || []), createTodoItem("")]
-    }));
-  };
-  const removeTodo = index => {
-    setFormData(prev => ({
-      ...prev,
-      todos: (prev.todos || []).filter((_, i) => i !== index)
-    }));
-  };
-  const renderContextStep = () => <div className={styles.formGrid}>
-      <fieldset className={styles.fieldset}>
-        <legend className={styles.fieldsetLegend}>{ctx.intervenant}</legend>
-        <div className={styles.formGridSingle}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{ctx.companyName} *</span>
-            <input className={styles.fieldInput} name="companyName" value={formData.companyName || ""} onChange={handleChange} />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{ctx.companyAddress} *</span>
-            <input className={styles.fieldInput} name="companyAddress" value={formData.companyAddress || ""} onChange={handleChange} />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{ctx.companyTaxId}</span>
-            <input className={styles.fieldInput} name="companyTaxId" value={formData.companyTaxId || ""} onChange={handleChange} />
-          </label>
-        </div>
-      </fieldset>
+  const orgLabel = formData.companyName || rem.providerFallback;
 
-      <fieldset className={styles.fieldset}>
-        <legend className={styles.fieldsetLegend}>{ctx.beneficiaire}</legend>
-        <div className={styles.formGridSingle}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{ctx.client} *</span>
-            <input className={styles.fieldInput} name="client" value={formData.client || ""} onChange={handleChange} />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{ctx.adresse} *</span>
-            <input className={styles.fieldInput} name="adresse" value={formData.adresse || ""} onChange={handleChange} />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{ctx.contactSite}</span>
-            <input className={styles.fieldInput} name="contactSite" value={formData.contactSite || ""} onChange={handleChange} />
-          </label>
-        </div>
-      </fieldset>
-    </div>;
-  const renderInterventionsStep = () => <div className={styles.formGridSingle}>
-      <div className={styles.formGrid}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>{inter.dateIntervention} *</span>
-          <input type="date" className={styles.fieldInput} name="dateIntervention" value={formData.dateIntervention || ""} onChange={handleChange} />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>{inter.duree} *</span>
-          <NumberStepper value={formData.dureeIntervention || ""} onChange={value => updateField({
-          dureeIntervention: value
-        })} min={0} step={0.5} decimals={1} ariaLabel={inter.duree} />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>{inter.numero}</span>
-          <input className={styles.fieldInput} name="numeroIntervention" value={formData.numeroIntervention || ""} onChange={handleChange} placeholder="456789" />
-        </label>
-      </div>
-
-      <label className={styles.field}>
-        <span className={styles.fieldLabel}>{inter.descriptionDemande} *</span>
-        <textarea className={styles.fieldTextarea} name="descriptionDemande" value={formData.descriptionDemande || ""} onChange={handleChange} placeholder={inter.descriptionDemande} />
-      </label>
-
-      <div className={styles.materialBlock}>
-        <div className={styles.materialHead}>
-          <h3 className={styles.materialTitle}>{inter.materielTitle}</h3>
-          <button type="button" className={styles.addMovementBtn} onClick={addMouvement}>
-            <Icon icon="mdi:plus" aria-hidden />
-            {inter.addLine}
-          </button>
-        </div>
-
-        {(formData.mouvements || []).length === 0 ? <p className={styles.emptyMovements}>{inter.emptyMovements}</p> : <div className={styles.movementTableWrap}>
-            <div className={styles.movementTable} role="table">
-              <div className={styles.movementTableHead} role="row">
-                <span role="columnheader" aria-hidden />
-                <span role="columnheader">{inter.designation}</span>
-                <span role="columnheader">{inter.quantite}</span>
-                <span role="columnheader">{inter.mouvement}</span>
-                <span role="columnheader">{inter.commentaire}</span>
-                <span role="columnheader" aria-hidden />
-              </div>
-              {(formData.mouvements || []).map((row, index) => <div key={index} className={styles.movementRow} role="row">
-                  <span className={styles.movementRowIndex} role="cell">
-                    {index + 1}
-                  </span>
-                  <input role="cell" className={styles.movementCellInput} value={row.designation || ""} onChange={e => handleMouvementChange(index, "designation", e.target.value)} placeholder={inter.designation} aria-label={`${inter.designation} ${index + 1}`} />
-                  <div role="cell">
-                    <NumberStepper compact value={row.quantite || ""} onChange={value => handleMouvementChange(index, "quantite", value)} min={0} step={1} ariaLabel={`${inter.quantite} ${index + 1}`} />
-                  </div>
-                  <div role="cell">
-                    <MovementTypePicker compact value={row.type || "déposé"} options={movementOptions} onChange={value => handleMouvementChange(index, "type", value)} />
-                  </div>
-                  <input role="cell" className={styles.movementCellInput} value={row.commentaire || ""} onChange={e => handleMouvementChange(index, "commentaire", e.target.value)} placeholder={inter.commentaire} aria-label={`${inter.commentaire} ${index + 1}`} />
-                  <button type="button" role="cell" className={styles.movementRowRemove} onClick={() => removeMouvement(index)} aria-label={inter.removeLine}>
+  const renderContextStep = () => (
+    <div className={formStyles.formStack}>
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{ctx.sectionClient}</h3>
+        </header>
+        <div className={formStyles.formGrid}>
+          <Field label={ctx.client} required>
+            <input
+              className={formStyles.fieldInput}
+              name="client"
+              value={formData.client || ""}
+              onChange={handleChange}
+            />
+          </Field>
+          <Field label={ctx.adresse} required>
+            <input
+              className={formStyles.fieldInput}
+              name="adresse"
+              value={formData.adresse || ""}
+              onChange={handleChange}
+            />
+          </Field>
+          <Field label={ctx.numeroTicket} hint={ctx.ticketPickerHint} full>
+            <div className={formStyles.ticketPickWrap} ref={ticketPickerRef}>
+              <div
+                ref={ticketAnchorRef}
+                className={`${formStyles.ticketSearchWrap} ${ticketMenuOpen ? formStyles.ticketSearchWrapOpen : ""}`.trim()}
+              >
+                <Icon icon="mdi:magnify" className={formStyles.ticketSearchIcon} aria-hidden />
+                <input
+                  id="intervention-ticket-search"
+                  className={formStyles.ticketSearchInput}
+                  type="text"
+                  value={ticketSearch}
+                  onChange={e => handleTicketSearchChange(e.target.value)}
+                  onFocus={() => !ticketsLoading && setTicketMenuOpen(true)}
+                  onKeyDown={handleTicketSearchKeyDown}
+                  placeholder={ticketsLoading ? ctx.ticketLoading : ctx.ticketSearchPlaceholder}
+                  disabled={ticketsLoading}
+                  autoComplete="off"
+                  aria-label={ctx.numeroTicket}
+                  aria-expanded={ticketMenuOpen}
+                  aria-haspopup="listbox"
+                  aria-autocomplete="list"
+                />
+                {ticketSearch ? (
+                  <button
+                    type="button"
+                    className={formStyles.ticketSearchClear}
+                    onClick={clearTicketSelection}
+                    aria-label={ctx.ticketClear}
+                  >
                     <Icon icon="mdi:close" aria-hidden />
                   </button>
-                </div>)}
+                ) : null}
+              </div>
+              {ticketMenuOpen && ticketMenuStyle && typeof document !== "undefined"
+                ? createPortal(
+                    <div
+                      ref={ticketMenuRef}
+                      className={formStyles.ticketDropdown}
+                      style={ticketMenuStyle}
+                      role="listbox"
+                      aria-label={ctx.numeroTicket}
+                    >
+                      {filteredTickets.length === 0 ? (
+                        <div className={formStyles.ticketDropdownEmpty}>
+                          {ticketsLoading
+                            ? ctx.ticketLoading
+                            : !clientTickets.length
+                              ? ctx.ticketEmpty
+                              : ctx.ticketNoMatch}
+                        </div>
+                      ) : (
+                        filteredTickets.map((ticket, idx) => (
+                          <button
+                            key={ticket.id}
+                            type="button"
+                            role="option"
+                            aria-selected={
+                              String(formData.linkedTicketId) === String(ticket.id) ||
+                              idx === ticketHighlight
+                            }
+                            className={`${formStyles.ticketOption} ${
+                              idx === ticketHighlight ? formStyles.ticketOptionActive : ""
+                            } ${
+                              String(formData.linkedTicketId) === String(ticket.id)
+                                ? formStyles.ticketOptionSelected
+                                : ""
+                            }`.trim()}
+                            onMouseEnter={() => setTicketHighlight(idx)}
+                            onClick={() => selectTicketSuggestion(ticket)}
+                          >
+                            <span className={formStyles.ticketOptionLabel}>
+                              {getTicketLinkLabel(ticket)}
+                            </span>
+                            {ticket.status ? (
+                              <span className={formStyles.ticketOptionMeta}>{ticket.status}</span>
+                            ) : null}
+                          </button>
+                        ))
+                      )}
+                    </div>,
+                    document.body
+                  )
+                : null}
             </div>
-          </div>}
-      </div>
-    </div>;
-  const renderReportStep = () => <div className={styles.formGridSingle}>
-      <label className={styles.field}>
-        <span className={styles.fieldLabel}>{rep.compteRendu}</span>
-        <textarea className={styles.fieldTextarea} name="compteRendu" value={formData.compteRendu || ""} onChange={handleChange} style={{
-        minHeight: "8rem"
-      }} placeholder={rep.compteRendu} />
-      </label>
+          </Field>
+          <Field label={ctx.typeIntervention} required>
+            <select
+              className={formStyles.fieldSelect}
+              name="typeIntervention"
+              value={formData.typeIntervention || ""}
+              onChange={handleChange}
+            >
+              <option value="">{ctx.typeInterventionPlaceholder}</option>
+              {interventionTypeOptions.map(type => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </section>
 
-      <section className={styles.todosBlock}>
-        <div className={styles.todosHead}>
-          <div>
-            <h3 className={styles.materialTitle}>{todosCopy.title}</h3>
-            <p className={styles.materialHint}>{todosCopy.hint}</p>
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{ctx.sectionEquipment}</h3>
+          {ctx.sectionEquipmentHint ? (
+            <p className={formStyles.sectionHint}>{ctx.sectionEquipmentHint}</p>
+          ) : null}
+        </header>
+        <div className={formStyles.ticketPickWrap} ref={equipmentPickerRef}>
+          <div
+            ref={equipmentAnchorRef}
+            className={`${formStyles.ticketSearchWrap} ${equipmentMenuOpen ? formStyles.ticketSearchWrapOpen : ""}`.trim()}
+          >
+            <Icon icon="mdi:magnify" className={formStyles.ticketSearchIcon} aria-hidden />
+            <input
+              id="intervention-equipment-search"
+              className={formStyles.ticketSearchInput}
+              type="text"
+              value={equipmentSearch}
+              onChange={e => {
+                setEquipmentSearch(e.target.value);
+                setEquipmentMenuOpen(true);
+              }}
+              onFocus={() => !equipmentsLoading && setEquipmentMenuOpen(true)}
+              onKeyDown={handleEquipmentSearchKeyDown}
+              placeholder={equipmentsLoading ? ctx.equipmentLoading : ctx.equipmentSearchPlaceholder}
+              disabled={equipmentsLoading}
+              autoComplete="off"
+              aria-label={ctx.sectionEquipment}
+              aria-expanded={equipmentMenuOpen}
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+            />
+            {equipmentSearch ? (
+              <button
+                type="button"
+                className={formStyles.ticketSearchClear}
+                onClick={() => {
+                  setEquipmentSearch("");
+                  setEquipmentMenuOpen(false);
+                }}
+                aria-label={ctx.equipmentClear}
+              >
+                <Icon icon="mdi:close" aria-hidden />
+              </button>
+            ) : null}
           </div>
-          <button type="button" className={styles.addMovementBtn} onClick={addTodo}>
-            <Icon icon="mdi:plus" aria-hidden />
-            {todosCopy.add}
-          </button>
+          {equipmentMenuOpen && equipmentMenuStyle && typeof document !== "undefined"
+            ? createPortal(
+                <div
+                  ref={equipmentMenuRef}
+                  className={formStyles.ticketDropdown}
+                  style={equipmentMenuStyle}
+                  role="listbox"
+                  aria-label={ctx.sectionEquipment}
+                >
+                  {filteredEquipments.length === 0 ? (
+                    <div className={formStyles.ticketDropdownEmpty}>
+                      {equipmentsLoading
+                        ? ctx.equipmentLoading
+                        : !clientEquipments.length
+                          ? ctx.equipmentEmpty
+                          : ctx.equipmentNoMatch}
+                    </div>
+                  ) : (
+                    filteredEquipments.map((equipment, idx) => (
+                      <button
+                        key={equipment.id}
+                        type="button"
+                        role="option"
+                        aria-selected={idx === equipmentHighlight}
+                        className={`${formStyles.ticketOption} ${
+                          idx === equipmentHighlight ? formStyles.ticketOptionActive : ""
+                        }`.trim()}
+                        onMouseEnter={() => setEquipmentHighlight(idx)}
+                        onClick={() => addLinkedEquipment(equipment)}
+                      >
+                        <span className={formStyles.ticketOptionLabel}>
+                          {getEquipmentPickerLabel(equipment, { locale })}
+                        </span>
+                        {equipment.serial ? (
+                          <span className={formStyles.ticketOptionMeta}>
+                            {ctx.equipmentSerial}: {equipment.serial}
+                          </span>
+                        ) : null}
+                      </button>
+                    ))
+                  )}
+                </div>,
+                document.body
+              )
+            : null}
+        </div>
+        <div className={`${formStyles.listStack} ${formStyles.equipmentLinkedList}`.trim()}>
+          {(formData.linkedEquipments || []).length === 0 ? (
+            <p className={formStyles.sectionHint}>{ctx.equipmentLinkedEmpty}</p>
+          ) : (
+            (formData.linkedEquipments || []).map(item => (
+              <div key={item.id} className={formStyles.equipmentLinkRow}>
+                <div className={formStyles.equipmentLinkBody}>
+                  <span className={formStyles.equipmentLinkLabel}>
+                    {item.label || [item.type, item.name].filter(Boolean).join(" · ") || item.id}
+                  </span>
+                  {item.serial ? (
+                    <span className={formStyles.equipmentLinkMeta}>
+                      {ctx.equipmentSerial}: {item.serial}
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className={formStyles.iconBtn}
+                  onClick={() => removeLinkedEquipment(item.id)}
+                  aria-label={ctx.equipmentClear}
+                  title={ctx.equipmentClear}
+                >
+                  <Icon icon="mdi:close" aria-hidden />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{ctx.sectionTech}</h3>
+        </header>
+        <div className={formStyles.formGrid}>
+          <Field label={ctx.salle}>
+            <input
+              className={formStyles.fieldInput}
+              name="salle"
+              value={formData.salle || ""}
+              onChange={handleChange}
+            />
+          </Field>
         </div>
 
-        {(formData.todos || []).map((todo, index) => <article key={todo.id || index} className={`${styles.todoCard} ${todo.done ? styles.todoCardDone : ""}`}>
-            <label className={styles.todoCheck}>
-              <input type="checkbox" checked={Boolean(todo.done)} onChange={event => handleTodoChange(index, "done", event.target.checked)} />
-              <span className={styles.todoCheckBox} aria-hidden />
-              <span className={styles.srOnly}>{todo.done ? todosCopy.done : todosCopy.pending}</span>
-            </label>
-
-            <div className={styles.todoFields}>
-              <input className={styles.fieldInput} value={todo.text || ""} onChange={event => handleTodoChange(index, "text", event.target.value)} placeholder={todosCopy.placeholder} />
-              {!todo.done ? <label className={styles.todoPlanned}>
-                  <span className={styles.fieldLabel}>{todosCopy.plannedFor}</span>
-                  <input type="date" className={styles.fieldInput} value={todo.plannedFor || ""} onChange={event => handleTodoChange(index, "plannedFor", event.target.value)} />
-                </label> : null}
+        <div className={formStyles.photoBlock}>
+          <div className={formStyles.photoHead}>
+            <span className={formStyles.fieldLabel}>{ctx.photoLabel}</span>
+            <div className={formStyles.photoActions}>
+              <button
+                type="button"
+                className={formStyles.addBtn}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                <Icon icon="mdi:camera-outline" aria-hidden />
+                {formData.photoInstallation ? ctx.photoChange : ctx.photoAdd}
+              </button>
+              {formData.photoInstallation ? (
+                <button
+                  type="button"
+                  className={formStyles.linkBtn}
+                  onClick={() => updateField({ photoInstallation: "" })}
+                >
+                  {ctx.photoRemove}
+                </button>
+              ) : null}
             </div>
-
-            <button type="button" className={styles.movementRemoveBtn} onClick={() => removeTodo(index)} aria-label={todosCopy.remove}>
-              <Icon icon="mdi:close" aria-hidden />
-            </button>
-          </article>)}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className={formStyles.srOnly}
+            onChange={handlePhotoSelect}
+          />
+          <div className={formStyles.photoPreview}>
+            {formData.photoInstallation ? (
+              <img src={formData.photoInstallation} alt={ctx.photoLabel} />
+            ) : (
+              <span>{ctx.photoMissing}</span>
+            )}
+          </div>
+        </div>
       </section>
-    </div>;
-  const renderSignatureForm = () => <div className={styles.signatureForm}>
-      <div className={styles.signatureToggleRow}>
-        <span className={styles.fieldLabel}>{rep.requireSignature}</span>
-        <ModernToggle checked={Boolean(formData.requireSignature)} onChange={value => updateField({
-        requireSignature: value,
-        ...(value ? {
-          signatureDate: formData.signatureDate || formData.dateIntervention || "",
-          signatureLieu: formData.signatureLieu || formData.adresse || ""
-        } : {})
-      })} labelOn={rep.yes} labelOff={rep.no} />
-      </div>
+    </div>
+  );
 
-      {!formData.requireSignature ? null : <>
-          <div className={styles.formGridSingle}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>{rep.nom} *</span>
-              <input className={styles.fieldInput} name="signatureNom" value={formData.signatureNom || ""} onChange={handleChange} />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>{rep.lieu} *</span>
-              <input className={styles.fieldInput} name="signatureLieu" value={formData.signatureLieu || ""} onChange={handleChange} />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>{rep.date} *</span>
-              <input type="date" className={styles.fieldInput} name="signatureDate" value={formData.signatureDate || ""} onChange={handleChange} />
-            </label>
-          </div>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>{rep.reserve}</span>
-            <textarea className={styles.fieldTextarea} name="signatureReserve" value={formData.signatureReserve || ""} onChange={handleChange} />
-          </label>
-          <label className={styles.checkboxRow}>
-            <input type="checkbox" name="signatureAccord" checked={Boolean(formData.signatureAccord)} onChange={handleChange} />
-            <span>{rep.accord}</span>
-          </label>
+  const renderOperationsStep = () => (
+    <div className={formStyles.formStack}>
+      <p className={formStyles.sectionHint}>{opsCopy.hint}</p>
+      {renderTaskSection({
+        listKey: "tasksDone",
+        title: opsCopy.doneTitle,
+        hint: opsCopy.doneHint,
+        addLabel: opsCopy.addDone,
+        placeholder: opsCopy.placeholderDone,
+        emptyLabel: opsCopy.emptyDone,
+        removeLabel: opsCopy.remove,
+        required: true
+      })}
+      {renderTaskSection({
+        listKey: "tasksTodo",
+        title: opsCopy.todoTitle,
+        hint: opsCopy.todoHint,
+        addLabel: opsCopy.addTodo,
+        placeholder: opsCopy.placeholderTodo,
+        emptyLabel: opsCopy.emptyTodo,
+        removeLabel: opsCopy.remove
+      })}
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{opsCopy.commentLabel}</h3>
+        </header>
+        <textarea
+          className={formStyles.fieldTextarea}
+          name="operationsComment"
+          value={formData.operationsComment || ""}
+          onChange={handleChange}
+          placeholder={opsCopy.commentPlaceholder}
+          rows={5}
+          aria-label={opsCopy.commentLabel}
+        />
+      </section>
+    </div>
+  );
 
-          <div className={styles.signatureGrid}>
-            <div className={styles.signaturePad}>
-              <span className={styles.fieldLabel}>{rep.prestataire}</span>
-              <SignatureCanvas ref={prestataireRef} penColor="#0f1c2e" canvasProps={{
-            className: styles.signatureCanvas
-          }} onEnd={syncSignatureToForm} />
-              <button type="button" className={styles.linkBtn} onClick={() => {
-            prestataireRef.current?.clear();
-            updateField({
-              signaturePrestataire: ""
-            });
-          }}>
-                {rep.clear}
-              </button>
-            </div>
-            <div className={styles.signaturePad}>
-              <span className={styles.fieldLabel}>{rep.clientSign}</span>
-              <SignatureCanvas ref={clientSignRef} penColor="#0f1c2e" canvasProps={{
-            className: styles.signatureCanvas
-          }} onEnd={syncSignatureToForm} />
-              <button type="button" className={styles.linkBtn} onClick={() => {
-            clientSignRef.current?.clear();
-            updateField({
-              signatureClient: ""
-            });
-          }}>
-                {rep.clear}
-              </button>
-            </div>
+  const renderRemarksStep = () => (
+    <div className={formStyles.formStack}>
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{rem.title}</h3>
+        </header>
+        <Field label={rem.reservesClient}>
+          <textarea
+            className={formStyles.fieldTextarea}
+            name="reservesClient"
+            value={formData.reservesClient || ""}
+            onChange={handleChange}
+            placeholder={rem.reservesPlaceholder}
+          />
+        </Field>
+
+        <div className={formStyles.softPanel}>
+          <div className={formStyles.formGrid}>
+            <Field label={rem.signataireNom} required>
+              <input
+                className={formStyles.fieldInput}
+                name="signataireNom"
+                value={formData.signataireNom || ""}
+                onChange={handleChange}
+              />
+            </Field>
+            <Field label={rem.signataireFonction}>
+              <input
+                className={formStyles.fieldInput}
+                name="signataireFonction"
+                value={formData.signataireFonction || ""}
+                onChange={handleChange}
+              />
+            </Field>
           </div>
-        </>}
-    </div>;
+          <p className={formStyles.softPanelHint}>{rem.certifyHint}</p>
+        </div>
+
+        <div className={formStyles.formGrid}>
+          <Field label={rem.place} required>
+            <input
+              className={formStyles.fieldInput}
+              name="signatureLieu"
+              value={formData.signatureLieu || ""}
+              onChange={handleChange}
+            />
+          </Field>
+          <Field label={rem.date} required>
+            <input
+              type="date"
+              className={formStyles.fieldInput}
+              name="signatureDate"
+              value={formData.signatureDate || ""}
+              onChange={handleChange}
+            />
+          </Field>
+        </div>
+
+        <div className={styles.signatureGrid}>
+          <div className={styles.signaturePad}>
+            <span className={formStyles.fieldLabel}>
+              {rem.clientSignTitle}
+              <span className={formStyles.requiredMark} aria-hidden>*</span>
+            </span>
+            <span className={styles.signatureSub}>{rem.nameAndSignature}</span>
+            <SignatureCanvas
+              ref={clientSignRef}
+              penColor="currentColor"
+              canvasProps={{ className: styles.signatureCanvas }}
+              onEnd={syncSignatureToForm}
+            />
+            <button
+              type="button"
+              className={formStyles.linkBtn}
+              onClick={() => {
+                clientSignRef.current?.clear();
+                updateField({ signatureClient: "" });
+              }}
+            >
+              {rem.clear}
+            </button>
+          </div>
+          <div className={styles.signaturePad}>
+            <span className={formStyles.fieldLabel}>
+              {rem.providerSignTitle.replace("{org}", orgLabel)}
+            </span>
+            <span className={styles.signatureSub}>{rem.nameAndSignature}</span>
+            <SignatureCanvas
+              ref={prestataireRef}
+              penColor="currentColor"
+              canvasProps={{ className: styles.signatureCanvas }}
+              onEnd={syncSignatureToForm}
+            />
+            <button
+              type="button"
+              className={formStyles.linkBtn}
+              onClick={() => {
+                prestataireRef.current?.clear();
+                updateField({ signaturePrestataire: "" });
+              }}
+            >
+              {rem.clear}
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+
   const renderValidationStep = () => {
     const previewData = captureSignatures();
-    const visibleTodos = (previewData.todos || []).filter(item => String(item?.text || "").trim());
-    return <div className={styles.validationLayout}>
-        <div className={styles.previewPanel}>
-          <article className={styles.previewDoc}>
-            <h2 className={styles.previewTitle}>{val.title}</h2>
-            <PreviewBlock title={ctx.intervenant}>
-              <div className={styles.previewGrid}>
-                <div className={styles.previewBox}>
-                  <div>
-                    <strong>{ctx.companyName}</strong> : {previewData.companyName || "-"}
-                  </div>
-                  <div>
-                    <strong>{ctx.companyAddress}</strong> : {previewData.companyAddress || "-"}
-                  </div>
-                  <div>
-                    <strong>{ctx.companyTaxId}</strong> : {previewData.companyTaxId || "-"}
-                  </div>
-                </div>
-                <div className={styles.previewBox}>
-                  <div>
-                    <strong>{ctx.client}</strong> : {previewData.client || "-"}
-                  </div>
-                  <div>
-                    <strong>{ctx.adresse}</strong> : {previewData.adresse || "-"}
-                  </div>
-                  <div>
-                    <strong>{ctx.contactSite}</strong> : {previewData.contactSite || "-"}
-                  </div>
-                </div>
-              </div>
-            </PreviewBlock>
+    const visibleDone = (previewData.tasksDone || []).filter(task => String(task?.label || "").trim());
+    const visibleTodo = (previewData.tasksTodo || []).filter(task => String(task?.label || "").trim());
+    return (
+      <ReportValidationLayout
+        previewRef={previewDocRef}
+        clientName={previewData.client || clientLabel}
+        periodLabel={buildInterventionReportPeriod(previewData)}
+        reportType="intervention"
+        reportLabel={val.title}
+        actionsTitle={val.previewTitle}
+        saveNameLabel={val.saveNameLabel}
+        saveName={saveName}
+        onSaveNameChange={value => {
+          saveNameTouchedRef.current = true;
+          setSaveName(value);
+        }}
+        nameConflict={nameConflict}
+        nameConflictMessage={val.nameExists}
+        downloadLabel={val.downloadHtml}
+        saveLabel={val.saveLibrary}
+        modifyLabel={val.modify}
+        saving={saving}
+        onDownload={handleDownloadHtml}
+        onSave={openSaveModal}
+        onModify={() => setStepIndex(0)}
+      >
+        <ReportPreviewBlock title={ctx.sectionClient}>
+          <div className={valStyles.previewBox}>
+            <div>
+              <strong>{ctx.client}</strong> : {previewData.client || "-"}
+            </div>
+            <div>
+              <strong>{ctx.adresse}</strong> : {previewData.adresse || "-"}
+            </div>
+            <div>
+              <strong>{ctx.numeroTicket}</strong> : {previewData.numeroTicket || "-"}
+            </div>
+            <div>
+              <strong>{ctx.typeIntervention}</strong> : {previewData.typeIntervention || "-"}
+            </div>
+          </div>
+        </ReportPreviewBlock>
 
-            <PreviewBlock title={inter.dateIntervention}>
-              <div className={styles.previewBox}>
-                <div>
-                  <strong>{inter.numero}</strong> : {previewData.numeroIntervention || "-"}
+        <ReportPreviewBlock title={ctx.sectionEquipment}>
+          <div className={valStyles.previewBox}>
+            {(previewData.linkedEquipments || []).length ? (
+              (previewData.linkedEquipments || []).map(item => (
+                <div key={item.id}>
+                  {item.label || [item.type, item.name].filter(Boolean).join(" · ") || item.id}
+                  {item.serial ? ` · ${ctx.equipmentSerial}: ${item.serial}` : ""}
                 </div>
-                <div>
-                  <strong>{inter.dateIntervention}</strong> :{" "}
-                  {previewData.dateIntervention || "-"}
-                </div>
-                <div>
-                  <strong>{inter.duree}</strong> : {previewData.dureeIntervention || "-"}{" "}
-                  {val.heures}
-                </div>
-              </div>
-            </PreviewBlock>
+              ))
+            ) : (
+              <div>{ctx.equipmentLinkedEmpty}</div>
+            )}
+          </div>
+        </ReportPreviewBlock>
 
-            <PreviewBlock title={val.demande}>
-              <p className={styles.previewText}>{previewData.descriptionDemande || "-"}</p>
-            </PreviewBlock>
+        <ReportPreviewBlock title={ctx.sectionTech}>
+          <div className={valStyles.previewBox}>
+            <div>
+              <strong>{ctx.salle}</strong> : {previewData.salle || "-"}
+            </div>
+          </div>
+          {previewData.photoInstallation ? (
+            <img src={previewData.photoInstallation} alt={ctx.photoLabel} className={valStyles.previewPhoto} />
+          ) : null}
+        </ReportPreviewBlock>
 
-            {String(previewData.compteRendu || "").trim() ? <PreviewBlock title={val.compteRendu}>
-                <p className={styles.previewText}>{previewData.compteRendu}</p>
-              </PreviewBlock> : null}
-
-            {visibleTodos.length > 0 ? <PreviewBlock title={val.todos}>
-                <ul className={styles.previewTodoList}>
-                  {visibleTodos.map((todo, index) => <li key={todo.id || index} className={todo.done ? styles.previewTodoDone : styles.previewTodoPending}>
-                      <Icon icon={todo.done ? "mdi:checkbox-marked-circle" : "mdi:checkbox-blank-circle-outline"} aria-hidden />
-                      <span>{todo.text}</span>
-                      {!todo.done && todo.plannedFor ? <span className={styles.previewTodoPlanned}>
-                          {todosCopy.plannedFor} : {todo.plannedFor}
-                        </span> : null}
-                    </li>)}
+        <ReportPreviewBlock title={val.operations}>
+          <div className={valStyles.previewBox}>
+            <div>
+              <strong>{opsCopy.doneTitle}</strong>
+              {visibleDone.length ? (
+                <ul className={valStyles.previewTaskList}>
+                  {visibleDone.map((task, index) => (
+                    <li key={task.id || `done-${index}`}>{task.label}</li>
+                  ))}
                 </ul>
-              </PreviewBlock> : null}
+              ) : (
+                <p className={valStyles.previewText}>{opsCopy.emptyDone}</p>
+              )}
+            </div>
+            <div>
+              <strong>{opsCopy.todoTitle}</strong>
+              {visibleTodo.length ? (
+                <ul className={valStyles.previewTaskList}>
+                  {visibleTodo.map((task, index) => (
+                    <li key={task.id || `todo-${index}`}>{task.label}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={valStyles.previewText}>{opsCopy.emptyTodo}</p>
+              )}
+            </div>
+            {previewData.operationsComment ? (
+              <div>
+                <strong>{opsCopy.commentLabel}</strong>
+                <p className={valStyles.previewText}>{previewData.operationsComment}</p>
+              </div>
+            ) : null}
+          </div>
+        </ReportPreviewBlock>
 
-            {(previewData.mouvements || []).length > 0 ? <PreviewBlock title={val.materiel}>
-                <table className={styles.previewTable}>
-                  <thead>
-                    <tr>
-                      <th>{inter.designation}</th>
-                      <th>{inter.quantite}</th>
-                      <th>{inter.mouvement}</th>
-                      <th>{inter.commentaire}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewData.mouvements.map((row, index) => <tr key={index}>
-                        <td>{row.designation}</td>
-                        <td>{row.quantite}</td>
-                        <td>{row.type}</td>
-                        <td>{row.commentaire}</td>
-                      </tr>)}
-                  </tbody>
-                </table>
-              </PreviewBlock> : null}
-
-            <PreviewBlock title={val.signatures}>
-              {previewData.requireSignature ? <>
-                  <div className={styles.previewBox}>
-                    <div>
-                      <strong>{val.recipientName}</strong> : {previewData.signatureNom || "-"}
-                    </div>
-                    <div>
-                      <strong>{val.place}</strong> : {previewData.signatureLieu || "-"}
-                    </div>
-                    <div>
-                      <strong>{val.date}</strong> : {previewData.signatureDate || "-"}
-                    </div>
-                    {previewData.signatureReserve ? <div>
-                        <strong>{val.reserve}</strong> : {previewData.signatureReserve}
-                      </div> : null}
-                  </div>
-                  <div className={styles.previewSignatureGrid}>
-                    <div className={styles.previewSignatureBox}>
-                      <span className={styles.fieldLabel}>{rep.prestataire}</span>
-                      {previewData.signaturePrestataire ? <img src={previewData.signaturePrestataire} alt={rep.prestataire} className={styles.previewSignatureImage} /> : <div className={styles.previewSignatureEmpty}>-</div>}
-                    </div>
-                    <div className={styles.previewSignatureBox}>
-                      <span className={styles.fieldLabel}>{rep.clientSign}</span>
-                      {previewData.signatureClient ? <img src={previewData.signatureClient} alt={rep.clientSign} className={styles.previewSignatureImage} /> : <div className={styles.previewSignatureEmpty}>-</div>}
-                    </div>
-                  </div>
-                </> : <p className={styles.previewText}>{val.noSignatureRequired}</p>}
-            </PreviewBlock>
-          </article>
-        </div>
-
-        <aside className={styles.actionsPanel}>
-          <h3 className={styles.materialTitle}>{val.previewTitle}</h3>
-          {renderSignatureForm()}
-          <label className={styles.saveField}>
-            <span className={styles.fieldLabel}>{val.saveNameLabel}</span>
-            <input className={`${styles.fieldInput} ${nameConflict ? styles.fieldInputConflict : ""}`} value={saveName} onChange={e => {
-            saveNameTouchedRef.current = true;
-            setSaveName(e.target.value);
-          }} />
-            {nameConflict ? <span className={styles.saveNameWarning} role="alert">
-                <Icon icon="mdi:alert-circle-outline" aria-hidden />
-                {val.nameExists}
-              </span> : null}
-          </label>
-          <button type="button" className={shellStyles.primaryBtn} onClick={handleDownloadPdf}>
-            <Icon icon="mdi:file-pdf-box" aria-hidden />
-            {val.downloadPdf}
-          </button>
-          <button type="button" className={shellStyles.primaryBtn} disabled={saving} onClick={openSaveModal}>
-            <Icon icon="mdi:content-save-outline" aria-hidden />
-            {saving ? "…" : val.saveLibrary}
-          </button>
-          <button type="button" className={shellStyles.secondaryBtn} onClick={() => setStepIndex(0)}>
-            <Icon icon="mdi:pencil-outline" aria-hidden />
-            {val.modify}
-          </button>
-        </aside>
-      </div>;
+        <ReportPreviewBlock title={val.remarks}>
+          <div className={valStyles.previewBox}>
+            <div>
+              <strong>{rem.reservesClient}</strong> {previewData.reservesClient || "-"}
+            </div>
+            <div>
+              <strong>{rem.signataireNom}</strong> : {previewData.signataireNom || "-"}
+              {previewData.signataireFonction ? ` · ${previewData.signataireFonction}` : ""}
+            </div>
+            <div>
+              <strong>{rem.place}</strong> : {previewData.signatureLieu || "-"} · <strong>{rem.date}</strong> :{" "}
+              {previewData.signatureDate || "-"}
+            </div>
+          </div>
+          <div className={valStyles.previewSignatureGrid}>
+            <div className={valStyles.previewSignatureBox}>
+              <span className={valStyles.fieldLabel}>{rem.clientSignTitle}</span>
+              {previewData.signatureClient ? (
+                <img
+                  src={previewData.signatureClient}
+                  alt={rem.clientSignTitle}
+                  className={valStyles.previewSignatureImage}
+                />
+              ) : (
+                <div className={valStyles.previewSignatureEmpty}>-</div>
+              )}
+            </div>
+            <div className={valStyles.previewSignatureBox}>
+              <span className={valStyles.fieldLabel}>{rem.providerSignTitle.replace("{org}", orgLabel)}</span>
+              {previewData.signaturePrestataire ? (
+                <img
+                  src={previewData.signaturePrestataire}
+                  alt={orgLabel}
+                  className={valStyles.previewSignatureImage}
+                />
+              ) : (
+                <div className={valStyles.previewSignatureEmpty}>-</div>
+              )}
+            </div>
+          </div>
+        </ReportPreviewBlock>
+      </ReportValidationLayout>
+    );
   };
+
   const renderStepContent = () => {
     if (stepIndex === 0) return renderContextStep();
-    if (stepIndex === 1) return renderInterventionsStep();
-    if (stepIndex === 2) return renderReportStep();
+    if (stepIndex === 1) return renderOperationsStep();
+    if (stepIndex === 2) return renderRemarksStep();
     return renderValidationStep();
   };
-  return <div className={shellStyles.shell}>
-      <header className={shellStyles.header}>
-        <button type="button" className={shellStyles.backBtn} onClick={onBack}>
-          <Icon icon="mdi:arrow-left" aria-hidden />
-          {pageCopy.wizard.backToSelection}
-        </button>
 
-        <div className={shellStyles.headerMain}>
-          <div className={shellStyles.headerIcon}>
-            <Icon icon={reportType?.icon || "mdi:toolbox-outline"} aria-hidden />
-          </div>
-          <div className={shellStyles.headerCopy}>
-            <span className={shellStyles.headerEyebrow}>{clientLabel}</span>
-            <h1 className={shellStyles.headerTitle}>{reportType?.title}</h1>
-            <p className={shellStyles.headerSubtitle}>{reportType?.description}</p>
-          </div>
-        </div>
-      </header>
-
-      <div className={shellStyles.layout}>
-        <aside className={shellStyles.stepNav} aria-label={pageCopy.wizard.stepNavAria}>
-          {steps.map((label, index) => {
-          const isActive = index === stepIndex;
-          const isDone = index < stepIndex;
-          const canJump = index < stepIndex || index > stepIndex && Array.from({
-            length: index
-          }).every((_, i) => validateInterventionStep(i, formData));
-          return <button key={label} type="button" className={`${shellStyles.stepNavItem} ${isActive ? shellStyles.stepNavItemActive : ""} ${isDone ? shellStyles.stepNavItemDone : ""}`} onClick={() => {
-            if (canJump || index <= stepIndex) setStepIndex(index);
-          }} disabled={index > stepIndex && !canJump}>
-                <span className={shellStyles.stepNavIndex}>{index + 1}</span>
-                <span className={shellStyles.stepNavLabel}>{label}</span>
-              </button>;
-        })}
-        </aside>
-
-        <section className={shellStyles.stepPanel}>
-          <div className={shellStyles.stepPanelHead}>
-            <h2 className={shellStyles.stepPanelTitle}>{currentStep}</h2>
-            <span className={shellStyles.stepPanelMeta}>
-              {pageCopy.wizard.formatStepOf(stepIndex + 1, steps.length)}
-            </span>
-          </div>
-
-          <div className={stepIndex === 3 ? styles.formBody : styles.formBody}>
-            {renderStepContent()}
-          </div>
-
-          {stepIndex < 3 ? <div className={shellStyles.stepActions}>
-              <button type="button" className={shellStyles.secondaryBtn} disabled={isFirst} onClick={goBack}>
+  return (
+    <div className={cyberStyles.mspLayout}>
+      <div className={`${cyberStyles.mspMain} ${styles.builderMain}`}>
+        <div className={shellStyles.shell}>
+          <div className={shellStyles.builderToolbar} data-guide="report-intervention-hero">
+            <div className={shellStyles.builderToolbarMeta}>
+              <h1 className={shellStyles.builderToolbarTitle}>{reportType?.title || val.title}</h1>
+              <p className={shellStyles.builderToolbarSubtitle}>
+                {[clientLabel, reportType?.description].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <div className={shellStyles.heroActions}>
+              <button type="button" className={shellStyles.heroBtn} onClick={onBack}>
                 <Icon icon="mdi:arrow-left" aria-hidden />
-                {pageCopy.wizard.back}
+                {pageCopy.wizard.backToSelection}
               </button>
-              <button type="button" className={shellStyles.primaryBtn} onClick={goNext}>
-                {isLast ? val.finish : pageCopy.wizard.continue}
-                <Icon icon="mdi:arrow-right" aria-hidden />
-              </button>
-            </div> : <div className={shellStyles.stepActions}>
-              <button type="button" className={shellStyles.secondaryBtn} onClick={onBack}>
-                {val.finish}
-              </button>
-            </div>}
-        </section>
+            </div>
+          </div>
+
+          <div className={shellStyles.layout}>
+            <aside className={shellStyles.stepNav} aria-label={pageCopy.wizard.stepNavAria}>
+              {steps.map((label, index) => {
+                const isActive = index === stepIndex;
+                const isDone = index < stepIndex;
+                const canJump =
+                  index < stepIndex ||
+                  (index > stepIndex &&
+                    Array.from({ length: index }).every((_, i) =>
+                      validateInterventionStep(i, formData)
+                    ));
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    className={`${shellStyles.stepNavItem} ${isActive ? shellStyles.stepNavItemActive : ""} ${isDone ? shellStyles.stepNavItemDone : ""}`}
+                    onClick={() => {
+                      if (canJump || index <= stepIndex) setStepIndex(index);
+                    }}
+                    disabled={index > stepIndex && !canJump}
+                  >
+                    <span className={shellStyles.stepNavIndex}>{index + 1}</span>
+                    <span className={shellStyles.stepNavLabel}>{label}</span>
+                  </button>
+                );
+              })}
+            </aside>
+
+            <section className={shellStyles.stepPanel}>
+              <div className={shellStyles.stepPanelHead}>
+                <h2 className={shellStyles.stepPanelTitle}>{currentStep}</h2>
+                <span className={shellStyles.stepPanelMeta}>
+                  {pageCopy.wizard.formatStepOf(stepIndex + 1, steps.length)}
+                </span>
+              </div>
+
+              <div className={styles.formBody}>{renderStepContent()}</div>
+
+              {stepIndex < 3 ? (
+                <div className={shellStyles.stepActions}>
+                  <button
+                    type="button"
+                    className={shellStyles.secondaryBtn}
+                    disabled={isFirst}
+                    onClick={goBack}
+                  >
+                    <Icon icon="mdi:arrow-left" aria-hidden />
+                    {pageCopy.wizard.back}
+                  </button>
+                  <button type="button" className={shellStyles.primaryBtn} onClick={goNext}>
+                    {isLast ? val.finish : pageCopy.wizard.continue}
+                    <Icon icon="mdi:arrow-right" aria-hidden />
+                  </button>
+                </div>
+              ) : (
+                <div className={shellStyles.stepActions}>
+                  <button type="button" className={shellStyles.secondaryBtn} onClick={onBack}>
+                    {val.finish}
+                  </button>
+                </div>
+              )}
+            </section>
+          </div>
+
+          <ConfirmModal
+            open={showOverwriteConfirm}
+            title={interventionCopy.alerts.overwriteTitle}
+            message={interventionCopy.alerts.overwriteMessage}
+            confirmLabel={interventionCopy.alerts.overwriteConfirm}
+            cancelLabel={interventionCopy.alerts.overwriteCancel}
+            variant="danger"
+            loading={saving}
+            onConfirm={() => {
+              setShowOverwriteConfirm(false);
+              handleSave(true);
+            }}
+            onClose={() => {
+              if (!saving) setShowOverwriteConfirm(false);
+            }}
+          />
+
+          <InterventionSaveModal
+            open={showSaveModal}
+            copy={interventionCopy.saveModal}
+            clientLabel={clientLabel}
+            documentName={saveName}
+            visibleToClient={saveVisibleToClient}
+            onVisibleToClientChange={setSaveVisibleToClient}
+            linkedTicket={linkedTicket}
+            postTicketFollowUp={formData.postTicketFollowUp !== false}
+            onPostTicketFollowUpChange={value => updateField({ postTicketFollowUp: Boolean(value) })}
+            saving={saving}
+            onClose={() => !saving && setShowSaveModal(false)}
+            onConfirm={confirmSave}
+          />
+        </div>
       </div>
-
-      <ConfirmModal open={showOverwriteConfirm} title={interventionCopy.alerts.overwriteTitle} message={interventionCopy.alerts.overwriteMessage} confirmLabel={interventionCopy.alerts.overwriteConfirm} cancelLabel={interventionCopy.alerts.overwriteCancel} variant="danger" loading={saving} onConfirm={() => {
-      setShowOverwriteConfirm(false);
-      handleSave(true);
-    }} onClose={() => {
-      if (!saving) setShowOverwriteConfirm(false);
-    }} />
-
-      <InterventionSaveModal open={showSaveModal} copy={interventionCopy.saveModal} clientLabel={clientLabel} documentName={saveName} visibleToClient={saveVisibleToClient} onVisibleToClientChange={setSaveVisibleToClient} saving={saving} onClose={() => !saving && setShowSaveModal(false)} onConfirm={confirmSave} />
-    </div>;
+    </div>
+  );
 }

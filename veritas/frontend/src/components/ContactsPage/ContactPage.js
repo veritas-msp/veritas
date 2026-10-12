@@ -29,13 +29,14 @@ import {
   TICKET_TABLE_COLUMN_SORT_KEYS,
   normalizeTicketTableColumns
 } from "../../utils/ticketTableColumns";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import CrmListTableSkeleton from "../Misc/Skeleton/CrmListTableSkeleton";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { collectTagSearchValues, matchesSearchQuery } from "../../utils/tableSearch";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
 const CONTACTS_PAGE_SCOPE = "contacts";
 const CONTACTS_FAVORITES_SETTING = "contacts_favorites";
@@ -558,7 +559,6 @@ export default function ContactPage({
     if (!ok) return;
     setBulkModalOpen(true);
   };
-  const portfolioTotal = contacts.length;
   const toggleStatusFilter = statusKey => {
     setStatusFilters(prev => {
       const next = new Set(prev);
@@ -567,24 +567,30 @@ export default function ContactPage({
     });
   };
   const toggleSort = column => {
-    if (sortBy === column) {
-      setSortOrder(prev => prev === "asc" ? "desc" : "asc");
-    } else {
-      setSortBy(column);
-      setSortOrder("asc");
-    }
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection: sortOrder,
+      defaultSortBy: "nom",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortOrder(next.sortDirection);
   };
-  const sortIndicator = column => sortBy === column ? sortOrder === "asc" ? " ▲" : " ▼" : "";
   const ThSort = ({
     label,
     col
-  }) => <button type="button" className={layout.thBtn} onClick={e => {
-    e.stopPropagation();
-    toggleSort(col);
-  }} aria-pressed={sortBy === col}>
-      {label}
-      {sortIndicator(col)}
-    </button>;
+  }) => (
+    <SortableHeader
+      as="button"
+      column={col}
+      label={label}
+      sortBy={sortBy}
+      sortDirection={sortOrder}
+      onSort={toggleSort}
+      buttonClassName={layout.thBtn}
+    />
+  );
   const openContact = (contact, background = false) => {
     if (!onNavigate) return;
     onNavigate("ContactDetail", contact, background ? {
@@ -679,112 +685,99 @@ export default function ContactPage({
   };
   const renderContactStatus = contact => {
     const status = pageCopy.getContactStatus(contact.statut);
-    return <SmartTooltip content={status.label}>
-        <StatusDot active={status.key === "active"} label={status.label} />
-      </SmartTooltip>;
+    const isActive = status.key === "active";
+    return <span className={`${layout.statusPill} ${isActive ? layout.statusPillActive : layout.statusPillInactive}`}>
+        <StatusDot active={isActive} label="" aria-hidden />
+        <span>{status.label}</span>
+      </span>;
   };
+  const tableToolbar = <>
+      <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+        <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+        <input type="text" inputMode="search" enterKeyHint="search" placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={pageCopy.searchAria} />
+        {searchQuery ? <SmartTooltip content={pageCopy.clearSearch}>
+            <button type="button" onClick={() => setSearchQuery("")} className={layout.clearButton} aria-label={pageCopy.clearSearch}>
+              <FaTimes />
+            </button>
+          </SmartTooltip> : null}
+      </div>
+      <div className={layout.statusChips} role="group">
+        {pageCopy.statusFilters.map(item => {
+          const count = statusCounts[item.key] || 0;
+          const active = statusFilters.has(item.key);
+          return <button key={item.key} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
+              <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                <Icon icon={item.icon} />
+              </span>
+              <span className={layout.statusChipLabel}>{item.label}</span>
+              <span className={layout.statusChipCount}>{count}</span>
+            </button>;
+        })}
+        <button
+          type="button"
+          className={`${layout.statusChip} ${portalFilter ? layout.statusChipActive : ""} ${portalCount === 0 ? layout.statusChipDisabled : ""}`}
+          onClick={() => setPortalFilter(prev => !prev)}
+          disabled={loading || error || portalCount === 0}
+          title={pageCopy.portal.label}
+        >
+          <span className={`${layout.statusChipIcon} ${layout.kpiIcon_violet}`}>
+            <Icon icon="mdi:shield-account-outline" />
+          </span>
+          <span className={layout.statusChipLabel}>{pageCopy.portalFilter}</span>
+          <span className={layout.statusChipCount}>{portalCount}</span>
+        </button>
+      </div>
+      <div className={layout.toolbarActions}>
+        <SmartTooltip content={pageCopy.columnsSettings}>
+          <button type="button" className={layout.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={pageCopy.columnsSettingsAria}>
+            <Icon icon="mdi:table-cog" />
+          </button>
+        </SmartTooltip>
+        {canExportContacts ? <SmartTooltip content={pageCopy.exportCsv}>
+            <button type="button" className={layout.iconBtn} onClick={handleExportCsv} aria-label={pageCopy.exportCsvAria}>
+              <Icon icon="mdi:download-outline" />
+            </button>
+          </SmartTooltip> : null}
+        {canCreateContact ? <SmartTooltip content={pageCopy.newContact}>
+            <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={handleOpenAddContact} aria-label={pageCopy.newContact}>
+              <FaPlus />
+            </button>
+          </SmartTooltip> : null}
+      </div>
+    </>;
+  const showSkeleton = Boolean(loading);
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={isPhone ? null : loading ? pageCopy.loadingPortfolio : pageCopy.formatSubtitle(filteredAndSortedContacts.length, portfolioTotal)} icon="mdi:account-group-outline" stackOnMobile actions={<>
-                <SmartTooltip content={pageCopy.columnsSettings}>
-                  <button type="button" className={layout.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={pageCopy.columnsSettingsAria}>
-                    <Icon icon="mdi:table-cog" />
-                  </button>
-                </SmartTooltip>
-                {canExportContacts ? <SmartTooltip content={pageCopy.exportCsv}>
-                  <button type="button" className={layout.iconBtn} onClick={handleExportCsv} aria-label={pageCopy.exportCsvAria}>
-                    <Icon icon="mdi:download-outline" />
-                  </button>
-                </SmartTooltip> : null}
-                {canCreateContact ? <SmartTooltip content={pageCopy.newContact}>
-                  <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={handleOpenAddContact} aria-label={pageCopy.newContact}>
-                    <FaPlus />
-                  </button>
-                </SmartTooltip> : null}
-              </>} />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-        <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
-          <div className={layout.searchWrap}>
-            <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-            <input type="text" inputMode="search" enterKeyHint="search" placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={pageCopy.searchAria} />
-            {searchQuery && <SmartTooltip content={pageCopy.clearSearch}>
-                <button type="button" onClick={() => setSearchQuery("")} className={layout.clearButton} aria-label={pageCopy.clearSearch}>
-                  <FaTimes />
-                </button>
-              </SmartTooltip>}
-          </div>
-          <div className={layout.statusChips} role="group">
-              {pageCopy.statusFilters.map(item => {
-                const count = statusCounts[item.key] || 0;
-                const active = statusFilters.has(item.key);
-                return <button key={item.key} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
-                    <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                      <Icon icon={item.icon} />
-                    </span>
-                    <span className={layout.statusChipLabel}>{item.label}</span>
-                    <span className={layout.statusChipCount}>{count}</span>
-                  </button>;
-              })}
-              <button
-                type="button"
-                className={`${layout.statusChip} ${portalFilter ? layout.statusChipActive : ""} ${portalCount === 0 ? layout.statusChipDisabled : ""}`}
-                onClick={() => setPortalFilter(prev => !prev)}
-                disabled={loading || error || portalCount === 0}
-                title={pageCopy.portal.label}
-              >
-                <span className={`${layout.statusChipIcon} ${layout.kpiIcon_violet}`}>
-                  <Icon icon="mdi:shield-account-outline" />
-                </span>
-                <span className={layout.statusChipLabel}>{pageCopy.portalFilter}</span>
-                <span className={layout.statusChipCount}>{portalCount}</span>
-              </button>
-            </div>
-        </div>
-
-        {loading ? (
-          <PageSkeleton variant="list" rows={8} label={pageCopy.loading} />
-        ) : error ? <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
+        {error && !showSkeleton ? <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />
             <span>{error}</span>
-          </div> : paginatedContacts.length === 0 ? <div className={layout.emptyState}>
-            <Icon icon="mdi:account-outline" className={layout.emptyStateIcon} />
-            <p className={layout.emptyStateTitle}>{pageCopy.emptyTitle}</p>
-            <p className={layout.emptyStateHint}>{pageCopy.emptyHint}</p>
-            {canCreateContact ? <button type="button" className={layout.primaryBtn} onClick={handleOpenAddContact}>
-              <Icon icon="mdi:plus" />
-              {pageCopy.newContact}
-            </button> : null}
           </div> : <div className={layout.listBody}>
-            {selectedCount > 0 && showBulkSelection ? <div className={layout.bulkBar}>
-                <div className={layout.bulkInfo}>
-                  <strong>{selectedCount}</strong>
-                  <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
-                </div>
-                <div className={layout.bulkActions}>
-                  {canBulkEdit ? <button type="button" className={layout.bulkBtn} onClick={openBulkEditModal}>
-                      <Icon icon="mdi:pencil-outline" />
-                      {pageCopy.bulk.edit}
-                    </button> : null}
-                  {canBulkDelete ? <button type="button" className={layout.bulkBtn} onClick={() => setBulkDeleteModalOpen(true)}>
-                      <Icon icon="mdi:delete-outline" />
-                      {pageCopy.bulk.delete}
-                    </button> : null}
-                  <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
-                    {pageCopy.bulk.clearSelection}
-                  </button>
-                </div>
-              </div> : null}
             <div className={layout.listArea}>
-              <div className={layout.dataTableWrap}>
+              <div className={layout.panelCard}>
+                <div className={layout.tableSearchBar}>
+                  {tableToolbar}
+                </div>
+
+                {!showSkeleton && paginatedContacts.length === 0 ? <div className={layout.emptyStateInCard}>
+                    <Icon icon="mdi:account-outline" className={layout.emptyStateIcon} />
+                    <p className={layout.emptyStateTitle}>{pageCopy.emptyTitle}</p>
+                    <p className={layout.emptyStateHint}>{pageCopy.emptyHint}</p>
+                    {canCreateContact ? <button type="button" className={layout.primaryBtn} onClick={handleOpenAddContact}>
+                        <Icon icon="mdi:plus" />
+                        {pageCopy.newContact}
+                      </button> : null}
+                  </div> : <>
+                <div className={layout.dataTableWrap}>
                 <div className={layout.dataTableScroll}>
-                <table className={layout.dataTable}>
+                <table className={layout.dataTable} aria-busy={showSkeleton || undefined} aria-label={showSkeleton ? pageCopy.loading : undefined}>
                   <thead>
                     <tr>
                       {showBulkSelection ? <th className={`${layout.checkboxCell} ${styles.colContactCheckbox}`.trim()}>
-                          <input type="checkbox" className={layout.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={pageCopy.bulk.selectAll} />
+                          <input type="checkbox" className={layout.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={pageCopy.bulk.selectAll} disabled={showSkeleton} />
                         </th> : null}
                       {tableColumns.map(columnId => {
                         const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
@@ -802,10 +795,27 @@ export default function ContactPage({
                       })}
                       <th className={styles.colContactActions}>{pageCopy.table.actions}</th>
                       <th className={`${layout.favoriteCell} ${styles.colContactFavorite}`.trim()}>{pageCopy.favorites.columnLabel}</th>
+                      <th className={layout.chevronCell} aria-hidden />
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedContacts.map(contact => {
+                    {showSkeleton ? (
+                      <CrmListTableSkeleton
+                        layout={layout}
+                        pageStyles={styles}
+                        columns={tableColumns}
+                        rows={pageSize || 50}
+                        showCheckbox={showBulkSelection}
+                        checkboxClassName={styles.colContactCheckbox}
+                        preset="contacts"
+                        showActions
+                        actionsClassName={styles.colContactActions}
+                        showFavorite
+                        favoriteClassName={styles.colContactFavorite}
+                        showChevron
+                      />
+                    ) : null}
+                    {!showSkeleton && paginatedContacts.map(contact => {
                       const rawClientLabel = getContactCompaniesLabel(contact, pageCopy.getClientLabel);
                       const clientDisplay = formatClientDisplay(rawClientLabel) || "-";
                       const contactSexe = normalizeContactSexe(contact.sexe);
@@ -843,14 +853,16 @@ export default function ContactPage({
                                         {getContactDisplayName(contact)}
                                       </SmartTooltip>
                                       {tags.length > 0 ? <div className={`${layout.tableTags} ${styles.contactTags}`.trim()} aria-label={pageCopy.tagsAria}>
-                                          {visibleTags.map(tag => <span key={tag.id} className={layout.clientTagChip} style={{
-                                            backgroundColor: `${tag.color || "#2b5fab"}18`,
-                                            borderColor: `${tag.color || "#2b5fab"}55`,
-                                            color: tag.color || "#2b5fab"
-                                          }}>
-                                              {tag.label}
-                                            </span>)}
-                                          {hiddenTagCount > 0 ? <span className={layout.tagMore}>+{hiddenTagCount}</span> : null}
+                                          {visibleTags.map(tag => {
+                                            const tagColor = tag.color || "#2b5fab";
+                                            return <span key={tag.id} className={layout.clientTagChip} style={{
+                                              borderColor: `${tagColor}55`,
+                                              color: tagColor
+                                            }}>
+                                                {tag.label}
+                                              </span>;
+                                          })}
+                                          {hiddenTagCount > 0 ? <span className={`${layout.clientTagChip} ${layout.tagMore}`}>+{hiddenTagCount}</span> : null}
                                         </div> : null}
                                     </div>
                                   </div>
@@ -961,47 +973,73 @@ export default function ContactPage({
                               </button>
                             </SmartTooltip>
                           </td>
+                          <td className={layout.chevronCell} aria-hidden>
+                            <Icon icon="mdi:chevron-right" className={layout.rowChevron} />
+                          </td>
                         </tr>;
                     })}
                   </tbody>
                 </table>
                 </div>
+                </div>
 
-                {filteredAndSortedContacts.length > 0 ? <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                 <div className={layout.paginationLeft}>
                   <span className={layout.paginationLabel}>{common.perPage}</span>
-                  <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                  <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} disabled={showSkeleton}>
                     <option value={10}>10</option>
                     <option value={25}>25</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
                   </select>
                   <span className={layout.paginationInfo}>
-                    {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
-                      start: String((currentPage - 1) * pageSize + 1),
-                      end: String(Math.min(currentPage * pageSize, filteredAndSortedContacts.length)),
-                      total: String(filteredAndSortedContacts.length)
-                    })}
+                    {showSkeleton
+                      ? "—"
+                      : interpolate(common.rangeInfo || "{start}–{end} / {total}", {
+                          start: String((currentPage - 1) * pageSize + 1),
+                          end: String(Math.min(currentPage * pageSize, filteredAndSortedContacts.length)),
+                          total: String(filteredAndSortedContacts.length)
+                        })}
                   </span>
                 </div>
                 <div className={layout.paginationRight}>
                   <SmartTooltip content={common.prevPage}>
-                    <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label={common.prevPage}>
+                    <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={showSkeleton || currentPage <= 1} aria-label={common.prevPage}>
                       <FaChevronLeft />
                     </button>
                   </SmartTooltip>
                   <span className={layout.paginationInfo}>
-                    {formatPageInfo(locale, currentPage, totalPages)}
+                    {showSkeleton ? "—" : formatPageInfo(locale, currentPage, totalPages)}
                   </span>
                   <SmartTooltip content={common.nextPage}>
-                    <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label={common.nextPage}>
+                    <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={showSkeleton || currentPage >= totalPages} aria-label={common.nextPage}>
                       <FaChevronRight />
                     </button>
                   </SmartTooltip>
                 </div>
-              </div> : null}
+              </div>
+                  </>}
               </div>
             </div>
+            {selectedCount > 0 && showBulkSelection && !showSkeleton ? <div className={layout.bulkBar}>
+                <div className={layout.bulkInfo}>
+                  <strong>{selectedCount}</strong>
+                  <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
+                </div>
+                <div className={layout.bulkActions}>
+                  {canBulkEdit ? <button type="button" className={layout.bulkBtn} onClick={openBulkEditModal}>
+                      <Icon icon="mdi:pencil-outline" />
+                      {pageCopy.bulk.edit}
+                    </button> : null}
+                  {canBulkDelete ? <button type="button" className={layout.bulkBtn} onClick={() => setBulkDeleteModalOpen(true)}>
+                      <Icon icon="mdi:delete-outline" />
+                      {pageCopy.bulk.delete}
+                    </button> : null}
+                  <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
+                    {pageCopy.bulk.clearSelection}
+                  </button>
+                </div>
+              </div> : null}
           </div>}
             </div>
           </main>

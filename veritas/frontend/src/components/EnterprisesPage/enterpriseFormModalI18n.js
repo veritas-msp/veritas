@@ -1,13 +1,12 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const SECTION_IDS = ["identity", "status", "location", "contact", "contract", "modules", "support"];
+const SECTION_IDS = ["identity", "location", "contact", "contract", "modules", "status"];
 const SECTION_ICONS = {
   identity: "mdi:domain",
-  status: "mdi:toggle-switch-outline",
   location: "mdi:map-marker-radius-outline",
   contact: "mdi:account-tie-outline",
   contract: "mdi:file-document-outline",
   modules: "mdi:view-grid-outline",
-  support: "mdi:headset"
+  status: "mdi:toggle-switch-outline"
 };
 const COPY = {
   fr: {
@@ -33,6 +32,17 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Nom de l'entreprise",
       namePlaceholder: "Société Dupont",
+      icon: "Icône",
+      iconHint: "Affichée devant le nom dans la liste des entreprises (n'affecte pas la recherche).",
+      iconSearchPlaceholder: "Rechercher une icône…",
+      iconSearchAria: "Rechercher une icône",
+      iconClearSearch: "Effacer la recherche d'icône",
+      iconChangeLabel: "Changer l'icône",
+      iconPickerAria: "Choisir une icône d'entreprise",
+      iconClear: "Retirer l'icône",
+      iconColor: "Couleur",
+      iconColorAria: "Couleur de l'icône",
+      iconColorCustom: "Couleur personnalisée",
       legalIdentifierPlaceholder: "Numéro d'immatriculation",
       sector: "Secteur d'activité",
       address: "Adresse",
@@ -42,8 +52,8 @@ const COPY = {
       city: "Ville",
       cityPlaceholder: "Bordeaux",
       sitesLabel: "Sites & implantations",
-      manageSites: "Gérer les lieux ({count})",
-      noSites: "Aucun lieu enregistré · ouvrez la gestion pour ajouter adresses et cartes.",
+      manageSites: "Gérer les sites ({count})",
+      noSites: "Aucun site enregistré · ouvrez la gestion pour ajouter adresses et cartes.",
       sitePrimary: "Principal",
       primaryContact: "Contact principal",
       contactSearchPlaceholder: "Rechercher un contact (nom, e-mail, téléphone…)",
@@ -66,12 +76,8 @@ const COPY = {
         label: "Identité",
         description: "Nom légal, identifiant légal et secteur d'activité"
       },
-      status: {
-        label: "Statut",
-        description: "Disponibilité de l'entreprise dans le portefeuille"
-      },
       location: {
-        label: "Lieux",
+        label: "Sites",
         description: "Sites et implantations de l'entreprise"
       },
       contact: {
@@ -79,16 +85,16 @@ const COPY = {
         description: "Interlocuteur principal de l'entreprise"
       },
       contract: {
-        label: "Contrat",
-        description: "Période et référent commercial"
+        label: "Contrat & SLA",
+        description: "Période, commercial et engagements SLA"
       },
       modules: {
         label: "Services",
         description: "Options et périmètre du contrat MSP"
       },
-      support: {
-        label: "Support",
-        description: "Engagements SLA de réponse et résolution"
+      status: {
+        label: "Statut",
+        description: "Disponibilité de l'entreprise dans le portefeuille"
       }
     },
     statutActive: "Actif",
@@ -101,7 +107,9 @@ const COPY = {
       proAria: "Création de services personnalisés · disponible avec Veritas Pro"
     },
     sla: {
-      enable: "Activer les SLA support pour cette entreprise",
+      subsectionTitle: "SLA",
+      subsectionDesc: "Engagements de réponse et résolution",
+      enable: "Activer les SLA pour cette entreprise",
       priority: "Priorité",
       firstResponse: "1ère réponse (h)",
       resolution: "Résolution (h)",
@@ -170,6 +178,17 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Company name",
       namePlaceholder: "Dupont Ltd",
+      icon: "Icon",
+      iconHint: "Shown before the name in the companies list (does not affect search).",
+      iconSearchPlaceholder: "Search for an icon…",
+      iconSearchAria: "Search for an icon",
+      iconClearSearch: "Clear icon search",
+      iconChangeLabel: "Change icon",
+      iconPickerAria: "Choose a company icon",
+      iconClear: "Remove icon",
+      iconColor: "Color",
+      iconColorAria: "Icon color",
+      iconColorCustom: "Custom color",
       legalIdentifierPlaceholder: "Registration number",
       sector: "Industry sector",
       address: "Address",
@@ -203,10 +222,6 @@ const COPY = {
         label: "Identity",
         description: "Legal name, legal ID and industry sector"
       },
-      status: {
-        label: "Status",
-        description: "Company availability in the portfolio"
-      },
       location: {
         label: "Locations",
         description: "Company sites and premises"
@@ -216,16 +231,16 @@ const COPY = {
         description: "Main company contact"
       },
       contract: {
-        label: "Contract",
-        description: "Period and account manager"
+        label: "Contract & SLA",
+        description: "Period, account manager and SLA commitments"
       },
       modules: {
         label: "Services",
         description: "MSP contract options and scope"
       },
-      support: {
-        label: "Support",
-        description: "SLA response and resolution commitments"
+      status: {
+        label: "Status",
+        description: "Company availability in the portfolio"
       }
     },
     statutActive: "Active",
@@ -238,7 +253,9 @@ const COPY = {
       proAria: "Custom service creation · available with Veritas Pro"
     },
     sla: {
-      enable: "Enable support SLAs for this company",
+      subsectionTitle: "SLA",
+      subsectionDesc: "Response and resolution commitments",
+      enable: "Enable SLAs for this company",
       priority: "Priority",
       firstResponse: "First response (h)",
       resolution: "Resolution (h)",
@@ -307,6 +324,17 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Unternehmensname",
       namePlaceholder: "Dupont GmbH",
+      icon: "Symbol",
+      iconHint: "Wird vor dem Namen in der Unternehmensliste angezeigt (beeinflusst die Suche nicht).",
+      iconSearchPlaceholder: "Symbol suchen…",
+      iconSearchAria: "Symbol suchen",
+      iconClearSearch: "Symbolsuche löschen",
+      iconChangeLabel: "Symbol ändern",
+      iconPickerAria: "Unternehmenssymbol wählen",
+      iconClear: "Symbol entfernen",
+      iconColor: "Farbe",
+      iconColorAria: "Symbolfarbe",
+      iconColorCustom: "Benutzerdefinierte Farbe",
       legalIdentifierPlaceholder: "Handelsregisternummer",
       sector: "Branche",
       address: "Adresse",
@@ -340,10 +368,6 @@ const COPY = {
         label: "Identität",
         description: "Rechtlicher Name, Kennung und Branche"
       },
-      status: {
-        label: "Status",
-        description: "Verfügbarkeit des Unternehmens im Portfolio"
-      },
       location: {
         label: "Standorte",
         description: "Standorte und Niederlassungen des Unternehmens"
@@ -353,16 +377,16 @@ const COPY = {
         description: "Hauptansprechpartner des Unternehmens"
       },
       contract: {
-        label: "Vertrag",
-        description: "Zeitraum und Vertriebsreferent"
+        label: "Vertrag & SLA",
+        description: "Zeitraum, Vertriebsreferent und SLA-Verpflichtungen"
       },
       modules: {
         label: "Services",
         description: "MSP-Vertragsoptionen und Umfang"
       },
-      support: {
-        label: "Support",
-        description: "SLA-Reaktions- und Lösungszeiten"
+      status: {
+        label: "Status",
+        description: "Verfügbarkeit des Unternehmens im Portfolio"
       }
     },
     statutActive: "Aktiv",
@@ -375,7 +399,9 @@ const COPY = {
       proAria: "Individuelle Services · verfügbar mit Veritas Pro"
     },
     sla: {
-      enable: "Support-SLAs für dieses Unternehmen aktivieren",
+      subsectionTitle: "SLA",
+      subsectionDesc: "Reaktions- und Lösungsverpflichtungen",
+      enable: "SLAs für dieses Unternehmen aktivieren",
       priority: "Priorität",
       firstResponse: "Erste Antwort (h)",
       resolution: "Lösung (h)",
@@ -444,6 +470,17 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Nome azienda",
       namePlaceholder: "Dupont Srl",
+      icon: "Icona",
+      iconHint: "Mostrata davanti al nome nell'elenco aziende (non influisce sulla ricerca).",
+      iconSearchPlaceholder: "Cerca un'icona…",
+      iconSearchAria: "Cerca un'icona",
+      iconClearSearch: "Cancella ricerca icona",
+      iconChangeLabel: "Cambia icona",
+      iconPickerAria: "Scegli un'icona azienda",
+      iconClear: "Rimuovi icona",
+      iconColor: "Colore",
+      iconColorAria: "Colore icona",
+      iconColorCustom: "Colore personalizzato",
       legalIdentifierPlaceholder: "Numero di registrazione",
       sector: "Settore di attività",
       address: "Indirizzo",
@@ -477,10 +514,6 @@ const COPY = {
         label: "Identità",
         description: "Ragione sociale, ID legale e settore"
       },
-      status: {
-        label: "Stato",
-        description: "Disponibilità dell'azienda nel portafoglio"
-      },
       location: {
         label: "Sedi",
         description: "Siti e sedi dell'azienda"
@@ -490,16 +523,16 @@ const COPY = {
         description: "Referente principale dell'azienda"
       },
       contract: {
-        label: "Contratto",
-        description: "Periodo e referente commerciale"
+        label: "Contratto & SLA",
+        description: "Periodo, referente commerciale e impegni SLA"
       },
       modules: {
         label: "Servizi",
         description: "Opzioni e perimetro contratto MSP"
       },
-      support: {
-        label: "Support",
-        description: "Impegni SLA di risposta e risoluzione"
+      status: {
+        label: "Stato",
+        description: "Disponibilità dell'azienda nel portafoglio"
       }
     },
     statutActive: "Attiva",
@@ -512,7 +545,9 @@ const COPY = {
       proAria: "Creazione servizi personalizzati · disponibile con Veritas Pro"
     },
     sla: {
-      enable: "Attiva SLA support per questa azienda",
+      subsectionTitle: "SLA",
+      subsectionDesc: "Impegni di risposta e risoluzione",
+      enable: "Attiva gli SLA per questa azienda",
       priority: "Priorità",
       firstResponse: "Prima risposta (h)",
       resolution: "Risoluzione (h)",
@@ -581,6 +616,17 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Nombre de la empresa",
       namePlaceholder: "Dupont S.L.",
+      icon: "Icono",
+      iconHint: "Se muestra delante del nombre en la lista de empresas (no afecta a la búsqueda).",
+      iconSearchPlaceholder: "Buscar un icono…",
+      iconSearchAria: "Buscar un icono",
+      iconClearSearch: "Borrar búsqueda de icono",
+      iconChangeLabel: "Cambiar icono",
+      iconPickerAria: "Elegir un icono de empresa",
+      iconClear: "Quitar icono",
+      iconColor: "Color",
+      iconColorAria: "Color del icono",
+      iconColorCustom: "Color personalizado",
       legalIdentifierPlaceholder: "Número de registro",
       sector: "Sector de actividad",
       address: "Dirección",
@@ -614,10 +660,6 @@ const COPY = {
         label: "Identidad",
         description: "Nombre legal, ID legal y sector"
       },
-      status: {
-        label: "Estado",
-        description: "Disponibilidad de la empresa en la cartera"
-      },
       location: {
         label: "Ubicaciones",
         description: "Sedes e implantaciones de la empresa"
@@ -627,16 +669,16 @@ const COPY = {
         description: "Interlocutor principal de la empresa"
       },
       contract: {
-        label: "Contrato",
-        description: "Periodo y referente comercial"
+        label: "Contrato y SLA",
+        description: "Periodo, referente comercial y compromisos SLA"
       },
       modules: {
         label: "Servicios",
         description: "Opciones y alcance del contrato MSP"
       },
-      support: {
-        label: "Soporte",
-        description: "Compromisos SLA de respuesta y resolución"
+      status: {
+        label: "Estado",
+        description: "Disponibilidad de la empresa en la cartera"
       }
     },
     statutActive: "Activa",
@@ -649,7 +691,9 @@ const COPY = {
       proAria: "Creación de servicios personalizados · disponible con Veritas Pro"
     },
     sla: {
-      enable: "Activar SLA de soporte para esta empresa",
+      subsectionTitle: "SLA",
+      subsectionDesc: "Compromisos de respuesta y resolución",
+      enable: "Activar los SLA para esta empresa",
       priority: "Prioridad",
       firstResponse: "Primera respuesta (h)",
       resolution: "Resolución (h)",

@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
-import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
+import SmartTooltip from "../SmartTooltip";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import { buildMicrosoftTenantFleetStats, formatMicrosoftGlobalScore, isMicrosoftTenantIssue, microsoftScoreTone } from "./microsoftTenantMspUtils";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
 function KpiCard({
   icon,
@@ -24,21 +27,6 @@ function KpiCard({
     </div>;
 }
 
-function SortableHeader({
-  column,
-  label,
-  sortBy,
-  sortDirection,
-  onSort
-}) {
-  const isActive = sortBy === column;
-  return <th aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      <button type="button" className={styles.thBtn} onClick={() => onSort(column)}>
-        {label}
-        {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
-      </button>
-    </th>;
-}
 
 function formatSecureScore(current, max) {
   if (current == null || max == null) return "-";
@@ -75,6 +63,9 @@ function FleetTableRow({
       <td className={styles.cellMuted}>{displayCount(row.totalLicenses)}</td>
       <td className={styles.cellMuted}>{formatSecureScore(row.secureScoreCurrent, row.secureScoreMax)}</td>
       <td className={styles.cellMuted}>{formatDateTime(row.lastSync)}</td>
+      <td className={styles.rowOpenCell} aria-hidden>
+        <Icon icon="mdi:chevron-right" className={styles.rowOpenChevron} />
+      </td>
     </tr>;
 }
 
@@ -166,12 +157,15 @@ export default function MicrosoftTenantMspDashboard({
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, currentPage, pageSize]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "clientName",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const formatDisplayDateTime = value => {
     if (!value) return "-";
@@ -180,81 +174,104 @@ export default function MicrosoftTenantMspDashboard({
   if (!copy) return null;
   const statusLabels = copy.status || {};
   return <div className={styles.dashboard}>
-      <div className={styles.kpiStrip}>
-        <KpiCard icon="mdi:microsoft-azure" label={copy.kpi.tenants} value={stats.total} tone="neutral" />
-        <KpiCard icon="mdi:shield-star-outline" label={copy.kpi.globalScore} value={formatMicrosoftGlobalScore(stats.globalScore)} tone={microsoftScoreTone(stats.globalScore)} />
-        <KpiCard icon="mdi:license" label={copy.kpi.licenses} value={stats.licenseTotal} tone="neutral" />
-        <KpiCard icon="mdi:account-group-outline" label={copy.kpi.users} value={stats.userTotal} tone="neutral" />
-      </div>
-
-      <div className={styles.toolbar}>
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" width={18} aria-hidden />
-          <input type="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
-        </label>
-        {onSync ? <div className={styles.toolbarActions}>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              title={copy.syncTenants}
-              aria-label={copy.syncTenants}
-              onClick={onSync}
-              disabled={syncing || tenants.length === 0}
-            >
-              <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
-            </button>
-          </div> : null}
-      </div>
-
       {loading ? (
-        <PageSkeleton variant="list" rows={8} label={copy.loading} />
-      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:microsoft-azure" title={tenants.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch} text={tenants.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch} /> : <section className={styles.panel}>
-          <div className={styles.tableWrap}>
-            <div className={styles.tableScroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <SortableHeader column="clientName" label={copy.table.client} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="status" label={copy.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="userCount" label={copy.table.users} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="totalLicenses" label={copy.table.licenses} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="secureScore" label={copy.table.secureScore} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="lastSync" label={copy.table.lastSync} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedRows.map((row, index) => <FleetTableRow key={`${row.clientId}-${index}`} row={row} onOpen={onOpenTenant} statusLabel={statusLabels[row.status] || row.status || "-"} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
-              e.preventDefault();
-              onOpenTenant?.(item, {
-                background: true
-              });
-            }} />)}
-              </tbody>
-            </table>
+        <MspDashboardSkeleton rows={8} chipCount={0} columnCount={6} showKpis kpiCount={4} label={copy.loading} />
+      ) : (
+        <div className={layout.listBody}>
+          <div className={layout.listArea}>
+            <div className={layout.panelCard}>
+              <div className={styles.kpiStrip}>
+                <KpiCard icon="mdi:microsoft-azure" label={copy.kpi.tenants} value={stats.total} tone="neutral" />
+                <KpiCard icon="mdi:shield-star-outline" label={copy.kpi.globalScore} value={formatMicrosoftGlobalScore(stats.globalScore)} tone={microsoftScoreTone(stats.globalScore)} />
+                <KpiCard icon="mdi:license" label={copy.kpi.licenses} value={stats.licenseTotal} tone="neutral" />
+                <KpiCard icon="mdi:account-group-outline" label={copy.kpi.users} value={stats.userTotal} tone="neutral" />
+              </div>
+
+              <div className={layout.tableSearchBar}>
+                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={copy.searchPlaceholder} />
+                  {search ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
+                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
+                        <FaTimes />
+                      </button>
+                    </SmartTooltip> : null}
+                </div>
+                {onSync ? <div className={layout.toolbarActions} data-guide="service-sync">
+                    <SmartTooltip content={copy.syncTenants}>
+                      <button
+                        type="button"
+                        className={layout.iconBtn}
+                        aria-label={copy.syncTenants}
+                        onClick={onSync}
+                        disabled={syncing || tenants.length === 0}
+                      >
+                        <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
+                      </button>
+                    </SmartTooltip>
+                  </div> : null}
+              </div>
+
+              {filteredRows.length === 0 ? (
+                <div className={layout.emptyStateInCard}>
+                  <Icon icon="mdi:microsoft-azure" className={layout.emptyStateIcon} aria-hidden />
+                  <p className={layout.emptyStateTitle}>{tenants.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch}</p>
+                  <p className={layout.emptyStateHint}>{tenants.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch}</p>
+                </div>
+              ) : (
+                <>
+                  <div className={layout.dataTableWrap}>
+                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <SortableHeader buttonClassName={styles.thBtn} column="clientName" label={copy.table.client} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="status" label={copy.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="userCount" label={copy.table.users} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="totalLicenses" label={copy.table.licenses} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="secureScore" label={copy.table.secureScore} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="lastSync" label={copy.table.lastSync} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <th className={styles.rowOpenCell} aria-label={copy.openDetail || "Détail"} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedRows.map((row, index) => <FleetTableRow key={`${row.clientId}-${index}`} row={row} onOpen={onOpenTenant} statusLabel={statusLabels[row.status] || row.status || "-"} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
+                        e.preventDefault();
+                        onOpenTenant?.(item, {
+                          background: true
+                        });
+                      }} />)}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                    <div className={layout.paginationLeft}>
+                      <span className={layout.paginationLabel}>{copy.rowsPerPage}</span>
+                      <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    <div className={layout.paginationRight}>
+                      <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={copy.prevPage}>
+                        <FaChevronLeft />
+                      </button>
+                      <span className={layout.paginationInfo}>
+                        {copy.formatPageOf(currentPage, totalPages)}
+                      </span>
+                      <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={copy.nextPage}>
+                        <FaChevronRight />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
-              <div className={styles.paginationLeft}>
-                <span className={styles.paginationLabel}>{copy.rowsPerPage}</span>
-                <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              <div className={styles.paginationRight}>
-                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={copy.prevPage}>
-                  <FaChevronLeft />
-                </button>
-                <span className={styles.paginationInfo}>
-                  {copy.formatPageOf(currentPage, totalPages)}
-                </span>
-                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={copy.nextPage}>
-                  <FaChevronRight />
-                </button>
-              </div>
-            </div> : null}
           </div>
-        </section>}
+        </div>
+      )}
     </div>;
 }

@@ -21,6 +21,11 @@ import { isCheckmkIntegrationEnabled } from "../../utils/checkmkIntegrationStatu
 import { getCheckmkMonitoringSettings } from "../../utils/checkmkMonitoringSettings.js";
 import { reconcileContractSupervisionAlerts } from "../../utils/contractSupervisionReconcile.js";
 import { reconcileEquipmentLifecycleSupervisionAlerts } from "../../utils/equipmentLifecycleSupervisionReconcile.js";
+import {
+  clearMonitoringExclusion,
+  listActiveMonitoringExclusions,
+  upsertMonitoringExclusion
+} from "../../utils/equipmentMonitoringExclusions.js";
 
 const router = express.Router();
 
@@ -28,6 +33,13 @@ function payloadFromBody(body = {}) {
   const clientName = String(body.clientName || body.client_name || body.meta?.clientName || "").trim();
   const meta = body.meta && typeof body.meta === "object" ? { ...body.meta } : {};
   if (clientName) meta.clientName = clientName;
+  const ignoreReason = body.ignoreReason ?? body.ignore_reason ?? meta.ignoreReason ?? null;
+  const closureDetail = body.closureDetail ?? body.closure_detail ?? meta.closureDetail ?? null;
+  if (ignoreReason) meta.ignoreReason = String(ignoreReason).trim();
+  if (closureDetail) meta.closureDetail = String(closureDetail).trim();
+  const noteParts = [body.note, ignoreReason ? `ignore:${ignoreReason}` : null, closureDetail]
+    .map(part => (part == null ? "" : String(part).trim()))
+    .filter(Boolean);
   return {
     queueItemId: body.queueItemId || body.queue_item_id,
     domain: body.domain,
@@ -39,7 +51,7 @@ function payloadFromBody(body = {}) {
     subtitle: body.subtitle,
     label: body.label,
     meta,
-    note: body.note || null,
+    note: noteParts.length ? noteParts.join(" · ") : null,
     linkedTicketId: body.linkedTicketId ?? body.linked_ticket_id ?? null,
     linkedTicketKind: body.linkedTicketKind ?? body.linked_ticket_kind ?? null,
     linkedEventId: body.linkedEventId ?? body.linked_event_id ?? null,
@@ -147,6 +159,56 @@ router.get(
     }
   }
 );
+
+router.get("/exclusions", verifyJWT, requireAnyPermission("supervision.view", "supervision.manage"), async (req, res) => {
+  try {
+    const exclusions = await listActiveMonitoringExclusions({
+      clientId: req.query.clientId || req.query.client_id || null,
+      equipmentId: req.query.equipmentId || req.query.equipment_id || null,
+      family: req.query.family || null,
+      limit: req.query.limit || 200
+    });
+    res.json({ exclusions });
+  } catch (err) {
+    console.error("[supervision-alerts] GET /exclusions:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/exclusions", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const exclusion = await upsertMonitoringExclusion({
+      clientId: body.clientId ?? body.client_id,
+      equipmentId: body.equipmentId ?? body.equipment_id,
+      equipmentFamily: body.equipmentFamily || body.family || body.equipment_family,
+      equipmentName: body.equipmentName || body.equipment_name || null,
+      scope: body.scope || "service",
+      kind: body.kind || "maintenance",
+      serviceKey: body.serviceKey || body.service_key || null,
+      serviceName: body.serviceName || body.service_name || null,
+      reason: body.reason || null,
+      excludedUntil: body.excludedUntil || body.excluded_until || null,
+      excludedBy: req.user?.id || null
+    });
+    res.json({ exclusion });
+  } catch (err) {
+    console.error("[supervision-alerts] POST /exclusions:", err.message);
+    const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 400;
+    res.status(status).json({ error: err.message || "Server error" });
+  }
+});
+
+router.delete("/exclusions/:id", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const exclusion = await clearMonitoringExclusion(req.params.id);
+    if (!exclusion) return res.status(404).json({ error: "Exclusion not found" });
+    res.json({ exclusion });
+  } catch (err) {
+    console.error("[supervision-alerts] DELETE /exclusions:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 router.get("/stream", verifyJWT, requireAnyPermission("supervision.view", "supervision.manage"), async (req, res) => {
   try {

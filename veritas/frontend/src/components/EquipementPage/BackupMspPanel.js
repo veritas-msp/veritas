@@ -10,6 +10,8 @@ import AddJobModal from "../CybersecuritePage/AddJobModal";
 import EquipmentMappingModal from "./EquipmentMappingModal";
 import HycuJobMappingModal from "../EnterprisesPage/HycuJobMappingModal";
 import SmartTooltip from "../SmartTooltip";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, getBackupJobRowStyle, compareBackupJobsByStatus, computeBackupJobStats } from "../CybersecuritePage/backupJobStatusUtils";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCyberModalsCopy } from "../CybersecuritePage/cyberModalsI18n";
@@ -559,53 +561,47 @@ export default function BackupMspPanel({
   const toggleBackupJobStatusFilter = filterKey => {
     setBackupJobStatusFilter(prev => prev === filterKey ? null : filterKey);
   };
+  const applyPanelSort = (column, sortBy, sortOrder, setSortBy, setSortOrder, defaultSortBy, defaultSortDirection = "asc") => {
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection: sortOrder,
+      defaultSortBy,
+      defaultSortDirection
+    });
+    setSortBy(next.sortBy);
+    setSortOrder(next.sortDirection);
+  };
   const handleJobsSort = column => {
-    if (jobsSortBy === column) {
-      setJobsSortOrder(jobsSortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setJobsSortBy(column);
-      setJobsSortOrder("asc");
-    }
+    applyPanelSort(column, jobsSortBy, jobsSortOrder, setJobsSortBy, setJobsSortOrder, "last_backup_start", "asc");
   };
-  const JobsSortIcon = ({
-    column
-  }) => jobsSortBy !== column ? null : <span>{jobsSortOrder === "asc" ? " ↑" : " ↓"}</span>;
+  const JobsSortIcon = ({ column }) => (
+    <SortIcon active={jobsSortBy === column} direction={jobsSortOrder} />
+  );
   const handleHycuSort = column => {
-    if (hycuSortBy === column) setHycuSortOrder(hycuSortOrder === "asc" ? "desc" : "asc");else {
-      setHycuSortBy(column);
-      setHycuSortOrder("asc");
-    }
+    applyPanelSort(column, hycuSortBy, hycuSortOrder, setHycuSortBy, setHycuSortOrder, "clientName");
   };
-  const HycuSortIcon = ({
-    column
-  }) => hycuSortBy !== column ? null : <span>{hycuSortOrder === "asc" ? " ↑" : " ↓"}</span>;
+  const HycuSortIcon = ({ column }) => (
+    <SortIcon active={hycuSortBy === column} direction={hycuSortOrder} />
+  );
   const handleVeeamSort = column => {
-    if (veeamSortBy === column) setVeeamSortOrder(veeamSortOrder === "asc" ? "desc" : "asc");else {
-      setVeeamSortBy(column);
-      setVeeamSortOrder("asc");
-    }
+    applyPanelSort(column, veeamSortBy, veeamSortOrder, setVeeamSortBy, setVeeamSortOrder, "clientName");
   };
-  const VeeamSortIcon = ({
-    column
-  }) => veeamSortBy !== column ? null : <span>{veeamSortOrder === "asc" ? " ↑" : " ↓"}</span>;
+  const VeeamSortIcon = ({ column }) => (
+    <SortIcon active={veeamSortBy === column} direction={veeamSortOrder} />
+  );
   const handleActiveBackupSort = column => {
-    if (activeBackupSortBy === column) setActiveBackupSortOrder(activeBackupSortOrder === "asc" ? "desc" : "asc");else {
-      setActiveBackupSortBy(column);
-      setActiveBackupSortOrder("asc");
-    }
+    applyPanelSort(column, activeBackupSortBy, activeBackupSortOrder, setActiveBackupSortBy, setActiveBackupSortOrder, "clientName");
   };
-  const ActiveBackupSortIcon = ({
-    column
-  }) => activeBackupSortBy !== column ? null : <span>{activeBackupSortOrder === "asc" ? " ↑" : " ↓"}</span>;
+  const ActiveBackupSortIcon = ({ column }) => (
+    <SortIcon active={activeBackupSortBy === column} direction={activeBackupSortOrder} />
+  );
   const handleHyperBackupSort = column => {
-    if (hyperBackupSortBy === column) setHyperBackupSortOrder(hyperBackupSortOrder === "asc" ? "desc" : "asc");else {
-      setHyperBackupSortBy(column);
-      setHyperBackupSortOrder("asc");
-    }
+    applyPanelSort(column, hyperBackupSortBy, hyperBackupSortOrder, setHyperBackupSortBy, setHyperBackupSortOrder, "clientName");
   };
-  const HyperBackupSortIcon = ({
-    column
-  }) => hyperBackupSortBy !== column ? null : <span>{hyperBackupSortOrder === "asc" ? " ↑" : " ↓"}</span>;
+  const HyperBackupSortIcon = ({ column }) => (
+    <SortIcon active={hyperBackupSortBy === column} direction={hyperBackupSortOrder} />
+  );
   const openMappingModal = item => {
     const isHycu = /hycu/i.test(String(item?.instanceLogiciel || ""));
     if (isHycu) {

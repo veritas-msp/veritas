@@ -5,112 +5,21 @@ import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSetting
 import { useProfileAccess } from "../../hooks/useProfileAccess";
 import { fetchHomeDashboard } from "../../api/stats";
 import HomeTechNewsColumn from "./HomeTechNewsColumn";
+import HomeSupervisionSection from "./HomeSupervisionSection";
 import { getHomePageCopy } from "./homePageI18n";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getHomePageGuideSteps } from "../PageGuide/homePageGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { getHomeEventTypeMeta } from "./homeEventTypes";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import HomePageSkeleton from "./HomePageSkeleton";
 import styles from "./HomePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-import { formatPageInfo, getCommonCopy } from "../../i18n/commonI18n";
+import { getLocaleTag } from "../../i18n/locales";
 import { interpolate } from "../../i18n/translate";
 
-const HOME_LIST_LIMIT = 5;
-const HOME_LIST_MIN_ROWS = 3;
-const HOME_LIST_MAX_ROWS = 24;
-const HOME_LIST_ROW_HEIGHT = 41;
-const HOME_LIST_PAGER_HEIGHT = 42;
-
-function compareHomeTableValues(left, right, direction) {
-  const dir = direction === "desc" ? -1 : 1;
-  if (left == null && right == null) return 0;
-  if (left == null) return 1;
-  if (right == null) return -1;
-  if (typeof left === "number" && typeof right === "number") {
-    return (left - right) * dir;
-  }
-  return String(left).localeCompare(String(right), undefined, {
-    numeric: true,
-    sensitivity: "base"
-  }) * dir;
-}
-
-function useHomeTableSort(items, resolveValue) {
-  const [sort, setSort] = useState({
-    key: null,
-    direction: "asc"
-  });
-  const toggleSort = useCallback(columnKey => {
-    setSort(prev => prev.key === columnKey ? {
-      key: columnKey,
-      direction: prev.direction === "asc" ? "desc" : "asc"
-    } : {
-      key: columnKey,
-      direction: "asc"
-    });
-  }, []);
-  const sortedItems = useMemo(() => {
-    if (!sort.key) return items;
-    return [...items].sort((a, b) => compareHomeTableValues(resolveValue(a, sort.key), resolveValue(b, sort.key), sort.direction));
-  }, [items, resolveValue, sort.direction, sort.key]);
-  return {
-    sortedItems,
-    sort,
-    toggleSort
-  };
-}
-
-function useHomeListPagination(items, pageSize = HOME_LIST_LIMIT, resetKey = "") {
-  const [page, setPage] = useState(1);
-  const list = Array.isArray(items) ? items : [];
-  const size = Math.max(1, Number(pageSize) || HOME_LIST_LIMIT);
-  useEffect(() => {
-    setPage(1);
-  }, [list.length, resetKey, size]);
-  const totalPages = Math.max(1, Math.ceil(list.length / size));
-  const currentPage = Math.min(page, totalPages);
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-  const paginatedItems = useMemo(() => list.slice((currentPage - 1) * size, currentPage * size), [list, currentPage, size]);
-  return {
-    page: currentPage,
-    setPage,
-    totalPages,
-    paginatedItems,
-    showPager: list.length > size
-  };
-}
-
-function useHomeFitPageSize(wrapRef, itemCount = 0) {
-  const [pageSize, setPageSize] = useState(HOME_LIST_LIMIT);
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return undefined;
-    const measure = () => {
-      const wrapH = el.clientHeight;
-      if (wrapH < 48) return;
-      const head = el.querySelector("thead");
-      const headH = head?.getBoundingClientRect().height || 34;
-      const availableWithoutPager = Math.max(0, wrapH - headH);
-      let rows = Math.floor(availableWithoutPager / HOME_LIST_ROW_HEIGHT);
-      if (itemCount > Math.max(rows, HOME_LIST_MIN_ROWS)) {
-        rows = Math.floor(Math.max(0, wrapH - headH - HOME_LIST_PAGER_HEIGHT) / HOME_LIST_ROW_HEIGHT);
-      }
-      const next = Math.min(HOME_LIST_MAX_ROWS, Math.max(HOME_LIST_MIN_ROWS, rows || HOME_LIST_MIN_ROWS));
-      setPageSize(prev => prev === next ? prev : next);
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    measure();
-    return () => observer.disconnect();
-  }, [itemCount, wrapRef]);
-  return pageSize;
-}
+const HOME_EVENTS_STRIP_DAYS = 7;
 
 function formatDisplayNameFromEmailLocal(local) {
   if (!local) return "";
@@ -122,11 +31,47 @@ function formatNumber(value) {
   if (value == null || Number.isNaN(Number(value))) return "-";
   return String(Math.round(Number(value)));
 }
-function truncateText(value, max = 72) {
-  const text = String(value || "").trim();
-  if (!text) return "";
-  if (text.length <= max) return text;
-  return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+
+function startOfLocalDay(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function eventOverlapsLocalDay(event, dayStart) {
+  if (!event?.start) return false;
+  const start = new Date(event.start);
+  if (Number.isNaN(start.getTime())) return false;
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  let end = event.end ? new Date(event.end) : start;
+  if (Number.isNaN(end.getTime())) end = start;
+  // all-day / exclusive end: if end === start, treat as same-day
+  if (end.getTime() === start.getTime()) {
+    return start >= dayStart && start < dayEnd;
+  }
+  return start < dayEnd && end > dayStart;
+}
+
+function buildEventsWeekStrip(events, locale, days = HOME_EVENTS_STRIP_DAYS) {
+  const localeTag = getLocaleTag(locale);
+  const list = Array.isArray(events) ? events : [];
+  const today = startOfLocalDay();
+  const daysOut = [];
+  for (let i = 0; i < days; i += 1) {
+    const day = new Date(today);
+    day.setDate(today.getDate() + i);
+    const count = list.reduce((acc, event) => (eventOverlapsLocalDay(event, day) ? acc + 1 : acc), 0);
+    daysOut.push({
+      key: `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`,
+      date: day,
+      isToday: i === 0,
+      count,
+      weekday: day.toLocaleDateString(localeTag || undefined, { weekday: "short" }),
+      dayNum: day.toLocaleDateString(localeTag || undefined, { day: "2-digit" })
+    });
+  }
+  return daysOut;
 }
 function getAssignedTicketKpis(stats) {
   const source = stats || {};
@@ -261,9 +206,11 @@ export default function HomePage({
   const canAccessSupport = access.Ticket !== false;
   const canAccessSales = access.TicketSales !== false;
   const canAccessPlanning = access.Planning !== false;
+  const canAccessSupervision = access.Hardware !== false;
   const showSupportTickets = canAccessSupport;
   const showSalesTickets = !isCommunity && canAccessSales;
   const showEvents = !isCommunity && canAccessPlanning;
+  const showSupervision = !isCommunity && canAccessSupervision;
   const mobileTabs = useMemo(() => {
     const tabs = [];
     if (showSupportTickets) {
@@ -277,7 +224,7 @@ export default function HomePage({
       tabs.push({
         id: "sales",
         label: copy.mobileTabs.services,
-        icon: "mdi:briefcase-edit-outline"
+        icon: "mdi:briefcase-outline"
       });
     }
     if (showEvents) {
@@ -287,14 +234,69 @@ export default function HomePage({
         icon: "mdi:calendar-month-outline"
       });
     }
+    if (showSupervision) {
+      tabs.push({
+        id: "supervision",
+        label: copy.mobileTabs.supervision,
+        icon: "mdi:monitor-dashboard"
+      });
+    }
     return tabs;
-  }, [copy.mobileTabs, showEvents, showSalesTickets, showSupportTickets]);
+  }, [copy.mobileTabs, showEvents, showSalesTickets, showSupervision, showSupportTickets]);
   const [mobileSection, setMobileSection] = useState("support");
   useEffect(() => {
     if (!mobileTabs.some(tab => tab.id === mobileSection)) {
       setMobileSection(mobileTabs[0]?.id || "support");
     }
   }, [mobileSection, mobileTabs]);
+  if (showSupervision) {
+    const showDashboardSkeleton = loading && !dashboard;
+    return (
+      <div className={styles.pageWrapper}>
+        {showDashboardSkeleton ? (
+          <HomePageSkeleton label={copy.loading} showNews />
+        ) : (
+          <div className={styles.pageLayout}>
+            <div className={styles.dashboardMain}>
+              {loadError ? (
+                <div className={styles.errorBanner} role="alert">
+                  <p className={styles.errorBannerText}>{loadError}</p>
+                  <button type="button" className={styles.errorRetry} onClick={() => loadDashboard()}>
+                    {copy.retry}
+                  </button>
+                </div>
+              ) : null}
+              <HomeSupervisionSection
+                copy={copy}
+                locale={locale}
+                userName={userName}
+                assignedTicketStats={dashboard?.assignedTicketStats || null}
+                ticketSlaStats={dashboard?.ticketSlaStats || null}
+                recentTickets={dashboard?.recentTickets || []}
+                upcomingEvents={visibleEvents}
+                showSupportTickets={showSupportTickets}
+                showSalesTickets={showSalesTickets}
+                showEvents={showEvents}
+                onOpenCenter={() => navigate("Hardware")}
+                onNavigate={navigate}
+              />
+            </div>
+            <div className={styles.newsAside} data-guide="home-news">
+              <HomeTechNewsColumn locale={locale} />
+            </div>
+          </div>
+        )}
+        <PageGuideTour
+          open={pageGuideOpen}
+          steps={homeGuideSteps}
+          title={copy.guide.tourTitle}
+          locale={locale}
+          onClose={() => setPageGuideOpen(false)}
+        />
+      </div>
+    );
+  }
+
   return <div className={styles.pageWrapper}>
       <div className={styles.pageLayout}>
         <div className={styles.dashboardMain}>
@@ -366,17 +368,15 @@ export default function HomePage({
                     </section> : null}
                 </div> : null}
 
-                {showEvents ? <section className={`${styles.panel} ${styles.panelFull}`} data-guide="home-events" data-home-section="events">
+                {showEvents ? <section className={`${styles.panel} ${styles.panelFull} ${styles.eventsPanel}`} data-guide="home-events" data-home-section="events">
                     <PanelHeader title={copy.panels.events.title} titleMeta={<span className={styles.panelTitleMeta}>{copy.panels.events.weekHint}</span>} eyebrow />
-                    <div className={`${styles.panelBody} ${styles.panelBodyFlush}`}>
-                      {visibleEvents.length > 0 ? <HomeEventsList events={visibleEvents} locale={locale} copy={copy} formatEventRange={formatters.formatEventRange} onOpen={() => navigate("Planning")} /> : <div className={styles.emptyWrap}>
-                          <MspEmptyState
-                            className={styles.emptyStateFill}
-                            icon="mdi:sleep"
-                            title={copy.empty.eventsTitle}
-                            text={copy.empty.eventsText}
-                          />
-                        </div>}
+                    <div className={`${styles.panelBody} ${styles.eventsPanelBody}`}>
+                      <HomeEventsWeekStrip
+                        events={visibleEvents}
+                        locale={locale}
+                        copy={copy}
+                        onOpen={() => navigate("Planning")}
+                      />
                     </div>
                   </section> : null}
               </div>
@@ -392,129 +392,58 @@ export default function HomePage({
     </div>;
 }
 
-function HomeListPager({
-  page,
-  totalPages,
-  onPageChange,
-  locale,
-  ariaLabel
-}) {
-  if (totalPages <= 1) return null;
-  const common = getCommonCopy(locale);
-  return <div className={styles.homeListPager} role="navigation" aria-label={ariaLabel}>
-      <button type="button" className={styles.homeListPagerBtn} onClick={() => onPageChange(page - 1)} disabled={page <= 1} aria-label={common.prevPage}>
-        <Icon icon="mdi:chevron-left" aria-hidden />
-      </button>
-      <span className={styles.homeListPagerInfo}>{formatPageInfo(locale, page, totalPages)}</span>
-      <button type="button" className={styles.homeListPagerBtn} onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} aria-label={common.nextPage}>
-        <Icon icon="mdi:chevron-right" aria-hidden />
-      </button>
-    </div>;
-}
-
-function HomeSortableTh({
-  columnKey,
-  label,
-  sort,
-  onSort,
-  sortByTemplate
-}) {
-  const isSorted = sort.key === columnKey;
-  const handleActivate = () => onSort(columnKey);
-  const handleKeyDown = event => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleActivate();
-    }
-  };
-  return <th scope="col" className={styles.homeSortableTh} onClick={handleActivate} onKeyDown={handleKeyDown} tabIndex={0} aria-sort={isSorted ? sort.direction === "asc" ? "ascending" : "descending" : "none"} title={interpolate(sortByTemplate, {
-    column: label
-  })}>
-      <span className={styles.homeThContent}>
-        {label}
-        <Icon icon={isSorted ? sort.direction === "asc" ? "mdi:arrow-up" : "mdi:arrow-down" : "mdi:unfold-more-horizontal"} className={styles.homeSortIcon} aria-hidden />
-      </span>
-    </th>;
-}
-
-function HomeEventsList({
+function HomeEventsWeekStrip({
   events,
   locale,
   copy,
-  formatEventRange,
   onOpen
 }) {
-  const wrapRef = useRef(null);
-  const resolveEventSortValue = useCallback((event, key) => {
-    switch (key) {
-      case "when":
-        return event.start ? new Date(event.start).getTime() : null;
-      case "type":
-        return getHomeEventTypeMeta(event.type, event.typeLabel, locale).label;
-      case "title":
-        return String(event.title || "").trim() || copy.noTitle;
-      case "company":
-        return event.clientName || copy.noClient;
-      default:
-        return null;
-    }
-  }, [copy.noClient, copy.noTitle, locale]);
-  const {
-    sortedItems,
-    sort,
-    toggleSort
-  } = useHomeTableSort(events, resolveEventSortValue);
-  const pageSize = useHomeFitPageSize(wrapRef, sortedItems.length);
-  const {
-    page,
-    setPage,
-    totalPages,
-    paginatedItems,
-    showPager
-  } = useHomeListPagination(sortedItems, pageSize, `${sort.key}:${sort.direction}`);
-  const cols = copy.eventsTable;
-  return <div className={styles.homeTableWrap} ref={wrapRef}>
-      <div className={styles.homeTableScroll}>
-        <table className={styles.homeTable}>
-          <thead>
-            <tr>
-              <HomeSortableTh columnKey="when" label={cols.when} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-              <HomeSortableTh columnKey="type" label={cols.type} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-              <HomeSortableTh columnKey="title" label={cols.title} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-              <HomeSortableTh columnKey="company" label={cols.company} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedItems.map(event => {
-            const typeMeta = getHomeEventTypeMeta(event.type, event.typeLabel, locale);
-            const title = truncateText(String(event.title || "").trim() || copy.noTitle, 72);
-            const fullTitle = String(event.title || "").trim() || copy.noTitle;
-            const clientLabel = event.clientName || copy.noClient;
-            const whenLabel = formatEventRange(event.start, event.end, {
-              allDay: event.allDay
-            });
-            return <tr key={event.id} className={styles.homeTableRow} title={`${fullTitle} · ${clientLabel}`} onClick={onOpen} onKeyDown={e => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpen();
-              }
-            }} tabIndex={0} role="link">
-                  <td className={styles.colDate}>{whenLabel}</td>
-                  <td>
-                    <span className={styles.typeBadge}>
-                      <Icon icon={typeMeta.icon} aria-hidden />
-                      {typeMeta.label}
-                    </span>
-                  </td>
-                  <td className={styles.colMain}>{title}</td>
-                  <td className={styles.colMuted}>{clientLabel}</td>
-                </tr>;
-          })}
-          </tbody>
-        </table>
+  const labels = copy?.panels?.events || {};
+  const days = useMemo(
+    () => buildEventsWeekStrip(events, locale, HOME_EVENTS_STRIP_DAYS),
+    [events, locale]
+  );
+  return (
+    <div className={styles.eventsStrip}>
+      <div
+        className={styles.eventsStripTrack}
+        role="list"
+        aria-label={labels.stripAria || labels.title}
+      >
+        <span className={styles.eventsStripLine} aria-hidden />
+        {days.map(day => {
+          const weekday = day.isToday ? labels.today || day.weekday : day.weekday;
+          const dayLabel = `${weekday} ${day.dayNum}`;
+          const countLabel = interpolate(labels.dayCount || "{count}", { count: day.count });
+          const aria = interpolate(labels.dayAria || "{day}: {count}", {
+            day: dayLabel,
+            count: day.count
+          });
+          return (
+            <button
+              key={day.key}
+              type="button"
+              role="listitem"
+              className={`${styles.eventsDayCell} ${day.isToday ? styles.eventsDayToday : ""} ${
+                day.count > 0 ? styles.eventsDayHasEvents : ""
+              }`}
+              onClick={onOpen}
+              aria-label={aria}
+              title={aria}
+            >
+              <span className={styles.eventsDayDate}>
+                <span className={styles.eventsDayWeekday}>{weekday}</span>
+                <span className={styles.eventsDayNum}>{day.dayNum}</span>
+              </span>
+              <span className={styles.eventsDayCircle}>
+                <span className={styles.eventsDayCount}>{countLabel}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
-      {showPager ? <HomeListPager page={page} totalPages={totalPages} onPageChange={setPage} locale={locale} ariaLabel={copy.panels.events.pagerAria} /> : null}
-    </div>;
+    </div>
+  );
 }
 
 function PanelHeader({

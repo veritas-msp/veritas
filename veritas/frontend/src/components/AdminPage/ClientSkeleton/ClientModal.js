@@ -42,6 +42,8 @@ const splitAddress = address => {
 const defaultClient = {
   clientNumber: "",
   name: "",
+  icon: "",
+  iconColor: "",
   commercial: "",
   siret: "",
   address: "",
@@ -120,6 +122,8 @@ export default function ClientModal({
     id: initialClient.id,
     clientNumber: getClientNumber(initialClient) || "",
     name: initialClient.name,
+    icon: initialClient.icon || "",
+    iconColor: initialClient.icon_color || initialClient.iconColor || "",
     siret: normalizeLegalIdentifier(initialClient.siret || initialClient.siren || ""),
     address: initialClient.address || "",
     ...splitAddress(initialClient.address),
@@ -217,6 +221,8 @@ export default function ClientModal({
     const payload = {
       clientNumber: form.clientNumber?.trim() || null,
       name: form.name?.trim() || '',
+      icon: form.icon?.trim() || null,
+      iconColor: form.iconColor?.trim() || null,
       contrat: contratPayload,
       options: form.modules,
       sites: form.sites || [],

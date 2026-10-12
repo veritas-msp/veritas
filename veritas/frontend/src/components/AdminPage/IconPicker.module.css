@@ -193,6 +193,11 @@
   cursor: pointer;
 }
 
+.triggerBare {
+  background: transparent;
+  border-color: var(--msp-border, #dde3ed);
+}
+
 .triggerLabeled {
   width: auto;
   min-width: 9.5rem;

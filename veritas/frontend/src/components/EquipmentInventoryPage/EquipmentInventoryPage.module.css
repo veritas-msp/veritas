@@ -5,13 +5,12 @@
   height: 100%;
   max-height: none;
   overflow: hidden;
-  padding: 0;
   gap: 0;
 }
 
 .viewsLayout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 272px minmax(0, 1fr);
   gap: 0.75rem;
   flex: 1;
   min-height: 0;
@@ -20,75 +19,216 @@
 
 .filtersPane {
   border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
+  border-radius: 16px;
   background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
-  padding: 0.65rem 0.75rem;
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
+  padding: 0.85rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filtersTop {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  align-self: stretch;
-  height: 100%;
-  max-height: none;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  flex-shrink: 0;
 }
 
-.filtersPaneSection {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-height: 0;
-}
-
-.filtersPaneSectionGrow {
-  flex: 1 1 0;
-  min-height: 120px;
-}
-
-.filtersPaneSection + .filtersPaneSection {
-  padding-top: 0.45rem;
-  border-top: 1px solid var(--msp-border-light, #eef2f7);
-}
-
-.filtersPaneHeader {
+.filtersTopRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.35rem;
-  padding-bottom: 0.2rem;
+  gap: 0.5rem;
 }
 
-.filtersPaneTitle {
+.filtersTitleBlock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.filtersTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.filtersCountBadge {
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(43, 95, 171, 0.12);
+  color: var(--msp-accent, #2b5fab);
   font-size: 0.68rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--msp-muted-light, #8b9bb5);
 }
 
-.filtersPaneAction {
+.filtersResetBtn {
   border: none;
   background: transparent;
   color: var(--msp-accent, #2b5fab);
   font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 0.1rem 0.2rem;
+  padding: 0.15rem 0.2rem;
+  flex-shrink: 0;
 }
 
-.filtersPaneAction:hover {
+.filtersResetBtn:hover {
   text-decoration: underline;
 }
 
-.filterSearchWrap {
+.statusSegment {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f4f7fb);
+}
+
+.statusSegmentBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.35rem 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.statusSegmentBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.statusSegmentBtnActive {
+  background: var(--msp-surface, #fff);
+  border-color: rgba(43, 95, 171, 0.22);
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06);
+}
+
+.statusSegmentLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.statusSegmentCount {
+  font-size: 0.62rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.facetNav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.facetNavBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 0.42rem 0.3rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.facetNavBtn:hover {
+  border-color: rgba(43, 95, 171, 0.28);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.facetNavBtnActive {
+  background: rgba(43, 95, 171, 0.08);
+  border-color: rgba(43, 95, 171, 0.35);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.facetNavLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.facetNavBadge {
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(43, 95, 171, 0.14);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.facetBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow: hidden;
+}
+
+.facetBodyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.facetBodyTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--msp-muted-light, #6e8098);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.facetSearchWrap {
   position: relative;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
-.filterSearchIcon {
+.facetSearchIcon {
   position: absolute;
   left: 0.55rem;
   color: var(--msp-muted-light, #8b9bb5);
@@ -96,7 +236,7 @@
   pointer-events: none;
 }
 
-.filterSearchInput {
+.facetSearchInput {
   width: 100%;
   border: 1px solid var(--msp-border, #e2e8f0);
   border-radius: 10px;
@@ -106,13 +246,13 @@
   font-size: 0.78rem;
 }
 
-.filterSearchInput:focus {
+.facetSearchInput:focus {
   outline: none;
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
 }
 
-.filterSearchClear {
+.facetSearchClear {
   position: absolute;
   right: 0.35rem;
   border: none;
@@ -123,98 +263,108 @@
   padding: 0.25rem;
 }
 
-.filtersList {
+.facetList {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.22rem;
+  gap: 0.15rem;
   padding-right: 2px;
 }
 
-.filterItem {
+.facetEmpty {
+  margin: 0.6rem 0.15rem;
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
+.facetOption {
   width: 100%;
-  border: 1px solid transparent;
-  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.38rem 0.4rem;
+  border: none;
+  border-radius: 8px;
   background: transparent;
   color: var(--msp-text, #0f1c2e);
-  padding: 0.42rem 0.48rem;
   cursor: pointer;
   text-align: left;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: background 0.12s ease;
 }
 
-.filterItem:hover:not(:disabled) {
-  background: rgba(43, 95, 171, 0.05);
-  border-color: var(--msp-border-light, #eef2f7);
+.facetOption:hover:not(:disabled) {
+  background: rgba(43, 95, 171, 0.06);
 }
 
-.filterItemActive {
+.facetOptionActive {
   background: rgba(43, 95, 171, 0.1);
-  border-color: rgba(43, 95, 171, 0.28);
 }
 
-.filterItemDisabled {
-  opacity: 0.45;
+.facetOptionDisabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.filterItemMain {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.filterItemCount {
-  flex-shrink: 0;
-  min-width: 1.4rem;
-  height: 1.25rem;
+.facetCheck {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 4px;
+  border: 1.5px solid var(--msp-border, #c5d0de);
+  background: var(--msp-surface, #fff);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.facetCheckOn {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+}
+
+.facetOptionIcon {
+  display: inline-flex;
+  width: 0.95rem;
+  height: 0.95rem;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.facetTagDot {
+  width: 0.65rem;
+  height: 0.65rem;
   border-radius: 999px;
-  background: rgba(100, 116, 139, 0.12);
-  color: var(--msp-muted, #5c6b82);
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0 0.3rem;
-}
-
-.filterItemActive .filterItemCount {
-  background: rgba(43, 95, 171, 0.16);
-  color: var(--msp-accent, #2b5fab);
-}
-
-.filterItemIcon {
   flex-shrink: 0;
-  font-size: 0.95rem;
-  color: var(--msp-muted-light, #8b9bb5);
+  border: 1px solid currentColor;
 }
 
-.filterTypeIcon {
-  display: inline-flex;
-  width: 1rem;
-  height: 1rem;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.filterItemLabel {
+.facetOptionLabel {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.78rem;
   font-weight: 600;
+  line-height: 1.2;
 }
 
-.filterHint {
-  margin: 0.35rem 0.2rem;
-  font-size: 0.72rem;
-  color: var(--msp-muted, #5c6b82);
+.facetOptionCount {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.facetOptionActive .facetOptionCount {
+  color: var(--msp-accent, #2b5fab);
 }
 
 .mainColumn {
@@ -222,38 +372,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
   align-self: stretch;
-}
-
-.toolbarGrow {
-  flex-wrap: nowrap;
-}
-
-.searchWrapFull {
-  flex: 1 1 auto;
-  max-width: none;
-}
-
-.mainColumn :global(.toolbar) {
-  padding: 0.5rem 0.65rem;
-}
-
-.mainColumn > :global(.emptyState),
-.mainColumn > :global(.stateBox) {
-  flex: 1;
-  min-height: 0;
-}
-
-.tablePanel {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04), 0 8px 24px rgba(15, 28, 46, 0.06));
   overflow: hidden;
 }
 
@@ -409,6 +529,40 @@
   white-space: nowrap;
 }
 
+.companyCell {
+  max-width: 11rem;
+  width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.maintenanceIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: #c2410c;
+  font-size: 1rem;
+}
+
+.nameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .brandCol {
   width: 2.25rem;
   min-width: 2.25rem;
@@ -525,24 +679,34 @@
   .filtersPane {
     height: auto;
     max-height: none;
+    overflow: visible;
   }
 
-  .filtersPaneSectionGrow {
-    min-height: 0;
-    flex: 0 0 auto;
+  .facetBody {
+    min-height: 220px;
   }
 
-  .filtersList {
-    max-height: 180px;
+  .facetList {
+    max-height: 220px;
   }
 }
 
-.filterTagSwatch {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 999px;
-  flex-shrink: 0;
-  border: 1px solid currentColor;
+:global(html.dark) .statusSegment {
+  background: var(--msp-surface-2, #152035);
+}
+
+:global(html.dark) .statusSegmentBtn:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+:global(html.dark) .statusSegmentBtnActive {
+  background: var(--msp-surface, #1f2d4a);
+  border-color: rgba(90, 143, 212, 0.35);
+}
+
+:global(html.dark) .facetCheck {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #3d5478);
 }
 
 .tagsCell {

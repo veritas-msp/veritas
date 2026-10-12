@@ -3,7 +3,7 @@ import { decryptSetting } from "./settingsHelper.js";
 
 export const TICKET_TABLE_COLUMNS_SECTION = "tickets";
 export const DIRECTORY_TABLE_COLUMNS_SECTION = "clients";
-export const TICKET_TABLE_COLUMNS_PAGE_SCOPES = Object.freeze(["ticket", "ticket_sales", "enterprises", "contacts"]);
+export const TICKET_TABLE_COLUMNS_PAGE_SCOPES = Object.freeze(["ticket", "ticket_sales", "enterprises", "contacts", "prestataires"]);
 
 export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   ticket: Object.freeze([
@@ -58,6 +58,15 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "portal",
     "support_tickets_total",
     "support_tickets_in_progress"
+  ]),
+  prestataires: Object.freeze([
+    "name",
+    "type",
+    "status",
+    "contact",
+    "email",
+    "phone",
+    "enterprises"
   ])
 });
 
@@ -74,35 +83,40 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
     "email",
     "phone",
     "portal"
-  ])
+  ]),
+  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires])
 });
 
 export const TICKET_TABLE_COLUMNS_PUBLIC_KEYS = Object.freeze({
   ticket: "ticket_table_columns_public",
   ticket_sales: "ticket_sales_table_columns_public",
   enterprises: "enterprises_table_columns_public",
-  contacts: "contacts_table_columns_public"
+  contacts: "contacts_table_columns_public",
+  prestataires: "prestataires_table_columns_public"
 });
 
 export const TICKET_TABLE_COLUMNS_PRIVATE_KEYS = Object.freeze({
   ticket: "ticket_table_columns_private",
   ticket_sales: "ticket_sales_table_columns_private",
   enterprises: "enterprises_table_columns_private",
-  contacts: "contacts_table_columns_private"
+  contacts: "contacts_table_columns_private",
+  prestataires: "prestataires_table_columns_private"
 });
 
 const TABLE_COLUMNS_SECTION_BY_SCOPE = Object.freeze({
   ticket: TICKET_TABLE_COLUMNS_SECTION,
   ticket_sales: TICKET_TABLE_COLUMNS_SECTION,
   enterprises: DIRECTORY_TABLE_COLUMNS_SECTION,
-  contacts: DIRECTORY_TABLE_COLUMNS_SECTION
+  contacts: DIRECTORY_TABLE_COLUMNS_SECTION,
+  prestataires: DIRECTORY_TABLE_COLUMNS_SECTION
 });
 
 const TABLE_COLUMNS_PUBLIC_LABEL_BY_SCOPE = Object.freeze({
   ticket: "Ticket table public columns",
   ticket_sales: "Sales ticket table public columns",
   enterprises: "Enterprises table public columns",
-  contacts: "Contacts table public columns"
+  contacts: "Contacts table public columns",
+  prestataires: "Providers table public columns"
 });
 
 /** @deprecated Prefer scope-aware helpers. */
@@ -119,6 +133,7 @@ export function normalizeTicketTableColumnsPageScope(raw) {
   if (value === "ticket_sales") return "ticket_sales";
   if (value === "enterprises" || value === "companies" || value === "clients") return "enterprises";
   if (value === "contacts" || value === "contact") return "contacts";
+  if (value === "prestataires" || value === "prestataire" || value === "providers" || value === "provider") return "prestataires";
   return "ticket";
 }
 

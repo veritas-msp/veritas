@@ -1,29 +1,69 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { fetchPrestatairesList } from "../../api/prestataires";
 import { fetchClientsList } from "../../api/clients";
+import { fetchTicketTableColumns } from "../../api/tickets";
 import { toast } from "react-toastify";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./PrestatairePage.module.css";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import CrmListTableSkeleton from "../Misc/Skeleton/CrmListTableSkeleton";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
 import { Icon } from "@iconify/react";
 import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import PrestataireModal from "./PrestataireModal";
 import PrestataireBulkDeleteModal from "./PrestataireBulkDeleteModal";
+import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { getPrestatairePageCopy, normalizePrestataireStatusKey } from "./prestatairePageI18n";
 import { interpolate } from "../../i18n/translate";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { matchesSearchQuery } from "../../utils/tableSearch";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
+import {
+  DEFAULT_PRESTATAIRES_TABLE_COLUMNS,
+  PRESTATAIRES_COLUMN_LABEL_KEYS,
+  normalizeTicketTableColumns
+} from "../../utils/ticketTableColumns";
+
+const PRESTATAIRES_PAGE_SCOPE = "prestataires";
+
+const PRESTATAIRES_COLUMN_SORT_KEYS = Object.freeze({
+  name: "nom",
+  type: "type",
+  status: "statut",
+  contact: "contact",
+  email: "email",
+  phone: "telephone",
+  enterprises: "entreprises"
+});
+
+function prestatairesColumnClass(columnId) {
+  const map = {
+    name: styles.colName,
+    type: styles.colType,
+    status: styles.colStatus,
+    contact: styles.colContact,
+    email: styles.colEmail,
+    phone: styles.colPhone,
+    enterprises: styles.colEnterprises
+  };
+  return map[columnId] || "";
+}
+
+function sanitizePrestatairesTableColumns(columns) {
+  return normalizeTicketTableColumns(columns, {
+    fallback: DEFAULT_PRESTATAIRES_TABLE_COLUMNS,
+    pageScope: PRESTATAIRES_PAGE_SCOPE
+  });
+}
 
 function getContactLabel(prestataire) {
   const first = Array.isArray(prestataire?.contacts) ? prestataire.contacts[0] : null;
@@ -72,16 +112,25 @@ export default function PrestatairePage({
   const locale = useAppLocale();
   const { can } = usePermissions();
   const canCreate = can("prestataires.create");
+  const canExportPrestataires = can("prestataires.export");
+  const canPublicViews = can("prestataires.public_views");
   const canBulkDelete = can("prestataires_detail.delete");
   const { isPhone } = useBreakpoint();
   const showBulkSelection = canBulkDelete && !isPhone;
   const pageCopy = useMemo(() => getPrestatairePageCopy(locale), [locale]);
+  const pageCopyRef = useRef(pageCopy);
+  pageCopyRef.current = pageCopy;
   const { isFavorite, toggleFavorite } = useEntityFavorites("prestataires_favorites");
   const [statusFilters, setStatusFilters] = useState(new Set());
   const [showModal, setShowModal] = useState(false);
   const [modalInitial, setModalInitial] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [columnsModalOpen, setColumnsModalOpen] = useState(false);
+  const [publicTableColumns, setPublicTableColumns] = useState(() => sanitizePrestatairesTableColumns(DEFAULT_PRESTATAIRES_TABLE_COLUMNS));
+  const [privateTableColumns, setPrivateTableColumns] = useState(null);
+  const [visibleTableColumns, setVisibleTableColumns] = useState(() => sanitizePrestatairesTableColumns(DEFAULT_PRESTATAIRES_TABLE_COLUMNS));
+  const tableColumns = visibleTableColumns;
   const loadControllerRef = useRef(null);
   const clientsControllerRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -182,6 +231,30 @@ export default function PrestatairePage({
       clientsControllerRef.current?.abort();
       window.removeEventListener("refreshPrestataires", handleRefresh);
     };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchTicketTableColumns(PRESTATAIRES_PAGE_SCOPE);
+        if (cancelled) return;
+        setPublicTableColumns(sanitizePrestatairesTableColumns(Array.isArray(data?.public) ? data.public : DEFAULT_PRESTATAIRES_TABLE_COLUMNS));
+        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? sanitizePrestatairesTableColumns(data.private) : null);
+        setVisibleTableColumns(sanitizePrestatairesTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : DEFAULT_PRESTATAIRES_TABLE_COLUMNS));
+      } catch {
+        if (!cancelled) toast.error(pageCopyRef.current.toasts?.loadColumns || "Error loading columns");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleColumnsSaved = useCallback(result => {
+    if (Array.isArray(result?.public)) setPublicTableColumns(sanitizePrestatairesTableColumns(result.public));
+    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? sanitizePrestatairesTableColumns(result.private) : null);
+    setVisibleTableColumns(sanitizePrestatairesTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : DEFAULT_PRESTATAIRES_TABLE_COLUMNS));
   }, []);
 
   const ensureClientsLoaded = async () => {
@@ -429,7 +502,6 @@ export default function PrestatairePage({
     refreshPrestatairesSilent();
   };
 
-  const portfolioTotal = prestataires.length;
   const toggleStatusFilter = statusKey => {
     setStatusFilters(prev => {
       const next = new Set(prev);
@@ -439,27 +511,26 @@ export default function PrestatairePage({
     });
   };
   const toggleSort = column => {
-    if (sortBy === column) {
-      setSortOrder(prev => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(column);
-      setSortOrder("asc");
-    }
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection: sortOrder,
+      defaultSortBy: "nom",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortOrder(next.sortDirection);
   };
-  const sortIndicator = column => (sortBy === column ? (sortOrder === "asc" ? " ▲" : " ▼") : "");
   const ThSort = ({ label, col }) => (
-    <button
-      type="button"
-      className={layout.thBtn}
-      onClick={e => {
-        e.stopPropagation();
-        toggleSort(col);
-      }}
-      aria-pressed={sortBy === col}
-    >
-      {label}
-      {sortIndicator(col)}
-    </button>
+    <SortableHeader
+      as="button"
+      column={col}
+      label={label}
+      sortBy={sortBy}
+      sortDirection={sortOrder}
+      onSort={toggleSort}
+      buttonClassName={layout.thBtn}
+    />
   );
 
   const openPrestataire = (row, background = false) => {
@@ -469,131 +540,166 @@ export default function PrestatairePage({
 
   const renderStatus = row => {
     const status = pageCopy.getPrestataireStatus(row.statut);
+    const isActive = status.key === "active";
     return (
-      <SmartTooltip content={status.label}>
-        <StatusDot active={status.key === "active"} label={status.label} />
-      </SmartTooltip>
+      <span className={`${layout.statusPill} ${isActive ? layout.statusPillActive : layout.statusPillInactive}`}>
+        <StatusDot active={isActive} label="" aria-hidden />
+        <span>{status.label}</span>
+      </span>
     );
   };
 
+  const handleExportCsv = () => {
+    const headers = tableColumns.map(columnId => {
+      const labelKey = PRESTATAIRES_COLUMN_LABEL_KEYS[columnId];
+      return pageCopy.table[labelKey] || pageCopy.table[columnId] || columnId;
+    });
+    const rows = [headers];
+    filteredAndSorted.forEach(row => {
+      const contactLabel = getContactLabel(row);
+      const companies = getCompaniesLabel(row, pageCopy.getClientLabel);
+      const { email, telephone } = getPrimaryCoords(row);
+      const status = pageCopy.getPrestataireStatus(row.statut);
+      const values = tableColumns.map(columnId => {
+        if (columnId === "name") return row.nom || "";
+        if (columnId === "type") return row.type || "";
+        if (columnId === "status") return status.label || "";
+        if (columnId === "contact") return contactLabel || "";
+        if (columnId === "email") return email || "";
+        if (columnId === "phone") return telephone || "";
+        if (columnId === "enterprises") return companies || "";
+        return "";
+      });
+      rows.push(values);
+    });
+    const csvContent = rows.map(row => row.map(value => {
+      const stringValue = value == null ? "" : String(value);
+      if (/[",;\n]/.test(stringValue)) return `"${stringValue.replace(/"/g, '""')}"`;
+      return stringValue;
+    }).join(";")).join("\n");
+    const blob = new Blob([`\uFEFF${csvContent}`], {
+      type: "text/csv;charset=utf-8;"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", pageCopy.export.filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const tableToolbar = (
+    <>
+      <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+        <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+        <input
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
+          placeholder={pageCopy.searchPlaceholder}
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className={layout.searchInput}
+          aria-label={pageCopy.searchAria}
+        />
+        {searchQuery ? (
+          <SmartTooltip content={pageCopy.clearSearch}>
+            <button type="button" onClick={() => setSearchQuery("")} className={layout.clearButton} aria-label={pageCopy.clearSearch}>
+              <FaTimes />
+            </button>
+          </SmartTooltip>
+        ) : null}
+      </div>
+      <div className={layout.statusChips} role="group">
+        {pageCopy.statusFilters.map(item => {
+          const count = statusCounts[item.key] || 0;
+          const active = statusFilters.has(item.key);
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`}
+              onClick={() => toggleStatusFilter(item.key)}
+              disabled={loading || error || count === 0}
+            >
+              <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                <Icon icon={item.icon} />
+              </span>
+              <span className={layout.statusChipLabel}>{item.label}</span>
+              <span className={layout.statusChipCount}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className={layout.toolbarActions}>
+        <SmartTooltip content={pageCopy.columnsSettings}>
+          <button type="button" className={layout.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={pageCopy.columnsSettingsAria}>
+            <Icon icon="mdi:table-cog" />
+          </button>
+        </SmartTooltip>
+        {canExportPrestataires ? (
+          <SmartTooltip content={pageCopy.exportCsv}>
+            <button type="button" className={layout.iconBtn} onClick={handleExportCsv} aria-label={pageCopy.exportCsvAria}>
+              <Icon icon="mdi:download-outline" />
+            </button>
+          </SmartTooltip>
+        ) : null}
+        {canCreate ? (
+          <SmartTooltip content={pageCopy.newPrestataire}>
+            <button
+              type="button"
+              className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`}
+              onClick={handleOpenAdd}
+              aria-label={pageCopy.newPrestataire}
+            >
+              <FaPlus />
+            </button>
+          </SmartTooltip>
+        ) : null}
+      </div>
+    </>
+  );
+
+  const showSkeleton = Boolean(loading);
   return (
     <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero
-            eyebrow={pageCopy.eyebrow}
-            title={pageCopy.pageTitle}
-            subtitle={isPhone ? null : loading ? pageCopy.loadingPortfolio : pageCopy.formatSubtitle(filteredAndSorted.length, portfolioTotal)}
-            icon="mdi:handshake-outline"
-            stackOnMobile
-            actions={
-              <>
-                {canCreate ? (
-                  <SmartTooltip content={pageCopy.newPrestataire}>
-                    <button
-                      type="button"
-                      className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`}
-                      onClick={handleOpenAdd}
-                      aria-label={pageCopy.newPrestataire}
-                    >
-                      <FaPlus />
-                    </button>
-                  </SmartTooltip>
-                ) : null}
-              </>
-            }
-          />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-              <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
-                <div className={layout.searchWrap}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input
-                    type="text"
-                    inputMode="search"
-                    enterKeyHint="search"
-                    placeholder={pageCopy.searchPlaceholder}
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className={layout.searchInput}
-                    aria-label={pageCopy.searchAria}
-                  />
-                  {searchQuery && (
-                    <SmartTooltip content={pageCopy.clearSearch}>
-                      <button type="button" onClick={() => setSearchQuery("")} className={layout.clearButton} aria-label={pageCopy.clearSearch}>
-                        <FaTimes />
-                      </button>
-                    </SmartTooltip>
-                  )}
-                </div>
-                <div className={layout.statusChips} role="group">
-                  {pageCopy.statusFilters.map(item => {
-                    const count = statusCounts[item.key] || 0;
-                    const active = statusFilters.has(item.key);
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`}
-                        onClick={() => toggleStatusFilter(item.key)}
-                        disabled={loading || error || count === 0}
-                      >
-                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                          <Icon icon={item.icon} />
-                        </span>
-                        <span className={layout.statusChipLabel}>{item.label}</span>
-                        <span className={layout.statusChipCount}>{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {loading ? (
-                <PageSkeleton variant="list" rows={8} label={pageCopy.loading} />
-              ) : error ? (
+              {error && !showSkeleton ? (
                 <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
                   <Icon icon="mdi:alert-circle-outline" />
                   <span>{error}</span>
                 </div>
-              ) : paginated.length === 0 ? (
-                <div className={layout.emptyState}>
-                  <Icon icon="mdi:handshake-outline" className={layout.emptyStateIcon} />
-                  <p className={layout.emptyStateTitle}>{pageCopy.emptyTitle}</p>
-                  <p className={layout.emptyStateHint}>{pageCopy.emptyHint}</p>
-                  {canCreate ? (
-                    <button type="button" className={layout.primaryBtn} onClick={handleOpenAdd}>
-                      <Icon icon="mdi:plus" />
-                      {pageCopy.newPrestataire}
-                    </button>
-                  ) : null}
-                </div>
               ) : (
                 <div className={layout.listBody}>
-                  {selectedCount > 0 && showBulkSelection ? (
-                    <div className={layout.bulkBar}>
-                      <div className={layout.bulkInfo}>
-                        <strong>{selectedCount}</strong>
-                        <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
-                      </div>
-                      <div className={layout.bulkActions}>
-                        {canBulkDelete ? (
-                          <button type="button" className={layout.bulkBtn} onClick={() => setBulkDeleteModalOpen(true)}>
-                            <Icon icon="mdi:delete-outline" />
-                            {pageCopy.bulk.delete}
-                          </button>
-                        ) : null}
-                        <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
-                          {pageCopy.bulk.clearSelection}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
                   <div className={layout.listArea}>
+                    <div className={layout.panelCard}>
+                      <div className={layout.tableSearchBar}>
+                        {tableToolbar}
+                      </div>
+
+                      {!showSkeleton && paginated.length === 0 ? (
+                        <div className={layout.emptyStateInCard}>
+                          <Icon icon="mdi:handshake-outline" className={layout.emptyStateIcon} />
+                          <p className={layout.emptyStateTitle}>{pageCopy.emptyTitle}</p>
+                          <p className={layout.emptyStateHint}>{pageCopy.emptyHint}</p>
+                          {canCreate ? (
+                            <button type="button" className={layout.primaryBtn} onClick={handleOpenAdd}>
+                              <Icon icon="mdi:plus" />
+                              {pageCopy.newPrestataire}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <>
                     <div className={layout.dataTableWrap}>
                       <div className={layout.dataTableScroll}>
-                      <table className={layout.dataTable}>
+                      <table className={layout.dataTable} aria-busy={showSkeleton || undefined} aria-label={showSkeleton ? pageCopy.loading : undefined}>
                         <thead>
                           <tr>
                             {showBulkSelection ? (
@@ -605,36 +711,47 @@ export default function PrestatairePage({
                                   onChange={toggleSelectAllOnPage}
                                   onClick={e => e.stopPropagation()}
                                   aria-label={pageCopy.bulk.selectAll}
+                                  disabled={showSkeleton}
                                 />
                               </th>
                             ) : null}
-                            <th className={styles.colName} aria-sort={sortBy === "nom" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.name} col="nom" />
-                            </th>
-                            <th className={styles.colType} aria-sort={sortBy === "type" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.type} col="type" />
-                            </th>
-                            <th className={styles.colStatus} aria-sort={sortBy === "statut" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.status} col="statut" />
-                            </th>
-                            <th className={styles.colContact} aria-sort={sortBy === "contact" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.contact} col="contact" />
-                            </th>
-                            <th className={styles.colEmail} aria-sort={sortBy === "email" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.email} col="email" />
-                            </th>
-                            <th className={styles.colPhone} aria-sort={sortBy === "telephone" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.phone} col="telephone" />
-                            </th>
-                            <th className={styles.colEnterprises} aria-sort={sortBy === "entreprises" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
-                              <ThSort label={pageCopy.table.enterprises} col="entreprises" />
-                            </th>
+                            {tableColumns.map(columnId => {
+                              const sortKey = PRESTATAIRES_COLUMN_SORT_KEYS[columnId];
+                              const labelKey = PRESTATAIRES_COLUMN_LABEL_KEYS[columnId];
+                              const columnClass = prestatairesColumnClass(columnId);
+                              const label = pageCopy.table[labelKey] || pageCopy.table[columnId] || columnId;
+                              if (!sortKey) {
+                                return <th key={columnId} className={columnClass}>{label}</th>;
+                              }
+                              return (
+                                <th key={columnId} className={columnClass} aria-sort={sortBy === sortKey ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
+                                  <ThSort label={label} col={sortKey} />
+                                </th>
+                              );
+                            })}
                             <th className={styles.colActions}>{pageCopy.table.actions}</th>
                             <th className={`${layout.favoriteCell} ${styles.colFavorite}`.trim()}>{pageCopy.favorites.columnLabel}</th>
+                            <th className={layout.chevronCell} aria-hidden />
                           </tr>
                         </thead>
                         <tbody>
-                          {paginated.map(row => {
+                          {showSkeleton ? (
+                            <CrmListTableSkeleton
+                              layout={layout}
+                              pageStyles={styles}
+                              columns={tableColumns}
+                              rows={pageSize || 50}
+                              showCheckbox={showBulkSelection}
+                              checkboxClassName={styles.colCheckbox}
+                              preset="prestataires"
+                              showActions
+                              actionsClassName={styles.colActions}
+                              showFavorite
+                              favoriteClassName={styles.colFavorite}
+                              showChevron
+                            />
+                          ) : null}
+                          {!showSkeleton && paginated.map(row => {
                             const contactLabel = getContactLabel(row);
                             const companies = getCompaniesLabel(row, pageCopy.getClientLabel) || "-";
                             const { email, telephone } = getPrimaryCoords(row);
@@ -675,67 +792,96 @@ export default function PrestatairePage({
                                     />
                                   </td>
                                 ) : null}
-                                <td className={`${layout.colCompany} ${styles.colName}`.trim()}>
-                                  <SmartTooltip content={rowName} as="span" className={layout.clientNameText}>
-                                    {rowName}
-                                  </SmartTooltip>
-                                </td>
-                                <td className={`${layout.colMuted} ${styles.colType}`.trim()}>
-                                  {row.type ? (
-                                    <SmartTooltip content={row.type} as="span" className={styles.cellEllipsis}>{row.type}</SmartTooltip>
-                                  ) : (
-                                    <span className={layout.colEmpty}>-</span>
-                                  )}
-                                </td>
-                                <td className={styles.colStatus}>{renderStatus(row)}</td>
-                                <td className={`${layout.colMuted} ${styles.colContact}`.trim()}>
-                                  {contactLabel || <span className={layout.colEmpty}>-</span>}
-                                </td>
-                                <td className={styles.colEmail} onClick={e => e.stopPropagation()}>
-                                  {email ? (
-                                    <div className={styles.cellWithActionAlign}>
-                                      <SmartTooltip content={email} as="span" className={styles.detailLinkWrap}>
-                                        <a href={mailHref} className={styles.detailLink}>{email}</a>
-                                      </SmartTooltip>
-                                      <SmartTooltip content={pageCopy.actions.copyEmail}>
-                                        <button
-                                          type="button"
-                                          className={styles.inlineCopyBtn}
-                                          aria-label={pageCopy.actions.copyEmail}
-                                          onClick={() => copyToClipboard(email, pageCopy.clipboardLabels.email)}
-                                        >
-                                          <Icon icon="mdi:content-copy" />
-                                        </button>
-                                      </SmartTooltip>
-                                    </div>
-                                  ) : (
-                                    <span className={layout.colEmpty}>-</span>
-                                  )}
-                                </td>
-                                <td className={styles.colPhone} onClick={e => e.stopPropagation()}>
-                                  {telephone ? (
-                                    <div className={styles.cellWithAction}>
-                                      <SmartTooltip content={telephone} as="span" className={styles.detailLinkWrap}>
-                                        <a href={telHref} className={styles.detailLink}>{telephone}</a>
-                                      </SmartTooltip>
-                                      <SmartTooltip content={pageCopy.actions.copyPhone}>
-                                        <button
-                                          type="button"
-                                          className={styles.inlineCopyBtn}
-                                          aria-label={pageCopy.actions.copyPhone}
-                                          onClick={() => copyToClipboard(telephone, pageCopy.clipboardLabels.phone)}
-                                        >
-                                          <Icon icon="mdi:content-copy" />
-                                        </button>
-                                      </SmartTooltip>
-                                    </div>
-                                  ) : (
-                                    <span className={layout.colEmpty}>-</span>
-                                  )}
-                                </td>
-                                <td className={`${layout.colMuted} ${styles.colEnterprises}`.trim()}>
-                                  <SmartTooltip content={companies} as="span" className={styles.cellEllipsis}>{companies}</SmartTooltip>
-                                </td>
+                                {tableColumns.map(columnId => {
+                                  if (columnId === "name") {
+                                    return (
+                                      <td key={columnId} className={`${layout.colCompany} ${styles.colName}`.trim()}>
+                                        <SmartTooltip content={rowName} as="span" className={layout.clientNameText}>
+                                          {rowName}
+                                        </SmartTooltip>
+                                      </td>
+                                    );
+                                  }
+                                  if (columnId === "type") {
+                                    return (
+                                      <td key={columnId} className={`${layout.colMuted} ${styles.colType}`.trim()}>
+                                        {row.type ? (
+                                          <SmartTooltip content={row.type} as="span" className={styles.cellEllipsis}>{row.type}</SmartTooltip>
+                                        ) : (
+                                          <span className={layout.colEmpty}>-</span>
+                                        )}
+                                      </td>
+                                    );
+                                  }
+                                  if (columnId === "status") {
+                                    return <td key={columnId} className={styles.colStatus}>{renderStatus(row)}</td>;
+                                  }
+                                  if (columnId === "contact") {
+                                    return (
+                                      <td key={columnId} className={`${layout.colMuted} ${styles.colContact}`.trim()}>
+                                        {contactLabel || <span className={layout.colEmpty}>-</span>}
+                                      </td>
+                                    );
+                                  }
+                                  if (columnId === "email") {
+                                    return (
+                                      <td key={columnId} className={styles.colEmail} onClick={e => e.stopPropagation()}>
+                                        {email ? (
+                                          <div className={styles.cellWithActionAlign}>
+                                            <SmartTooltip content={email} as="span" className={styles.detailLinkWrap}>
+                                              <a href={mailHref} className={styles.detailLink}>{email}</a>
+                                            </SmartTooltip>
+                                            <SmartTooltip content={pageCopy.actions.copyEmail}>
+                                              <button
+                                                type="button"
+                                                className={styles.inlineCopyBtn}
+                                                aria-label={pageCopy.actions.copyEmail}
+                                                onClick={() => copyToClipboard(email, pageCopy.clipboardLabels.email)}
+                                              >
+                                                <Icon icon="mdi:content-copy" />
+                                              </button>
+                                            </SmartTooltip>
+                                          </div>
+                                        ) : (
+                                          <span className={layout.colEmpty}>-</span>
+                                        )}
+                                      </td>
+                                    );
+                                  }
+                                  if (columnId === "phone") {
+                                    return (
+                                      <td key={columnId} className={styles.colPhone} onClick={e => e.stopPropagation()}>
+                                        {telephone ? (
+                                          <div className={styles.cellWithAction}>
+                                            <SmartTooltip content={telephone} as="span" className={styles.detailLinkWrap}>
+                                              <a href={telHref} className={styles.detailLink}>{telephone}</a>
+                                            </SmartTooltip>
+                                            <SmartTooltip content={pageCopy.actions.copyPhone}>
+                                              <button
+                                                type="button"
+                                                className={styles.inlineCopyBtn}
+                                                aria-label={pageCopy.actions.copyPhone}
+                                                onClick={() => copyToClipboard(telephone, pageCopy.clipboardLabels.phone)}
+                                              >
+                                                <Icon icon="mdi:content-copy" />
+                                              </button>
+                                            </SmartTooltip>
+                                          </div>
+                                        ) : (
+                                          <span className={layout.colEmpty}>-</span>
+                                        )}
+                                      </td>
+                                    );
+                                  }
+                                  if (columnId === "enterprises") {
+                                    return (
+                                      <td key={columnId} className={`${layout.colMuted} ${styles.colEnterprises}`.trim()}>
+                                        <SmartTooltip content={companies} as="span" className={styles.cellEllipsis}>{companies}</SmartTooltip>
+                                      </td>
+                                    );
+                                  }
+                                  return <td key={columnId}><span className={layout.colEmpty}>-</span></td>;
+                                })}
                                 <td className={`${styles.actionsCell} ${styles.colActions}`.trim()} onClick={e => e.stopPropagation()}>
                                   <div className={styles.cardActions}>
                                     {telHref ? (
@@ -796,29 +942,34 @@ export default function PrestatairePage({
                                     </button>
                                   </SmartTooltip>
                                 </td>
+                                <td className={layout.chevronCell} aria-hidden>
+                                  <Icon icon="mdi:chevron-right" className={layout.rowChevron} />
+                                </td>
                               </tr>
                             );
                           })}
                         </tbody>
                       </table>
                     </div>
+                    </div>
 
-                  {filteredAndSorted.length > 0 ? (
                     <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                       <div className={layout.paginationLeft}>
                         <span className={layout.paginationLabel}>{common.perPage}</span>
-                        <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                        <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} disabled={showSkeleton}>
                           <option value={10}>10</option>
                           <option value={25}>25</option>
                           <option value={50}>50</option>
                           <option value={100}>100</option>
                         </select>
                         <span className={layout.paginationInfo}>
-                          {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
-                            start: String((currentPage - 1) * pageSize + 1),
-                            end: String(Math.min(currentPage * pageSize, filteredAndSorted.length)),
-                            total: String(filteredAndSorted.length)
-                          })}
+                          {showSkeleton
+                            ? "—"
+                            : interpolate(common.rangeInfo || "{start}–{end} / {total}", {
+                                start: String((currentPage - 1) * pageSize + 1),
+                                end: String(Math.min(currentPage * pageSize, filteredAndSorted.length)),
+                                total: String(filteredAndSorted.length)
+                              })}
                         </span>
                       </div>
                       <div className={layout.paginationRight}>
@@ -827,21 +978,21 @@ export default function PrestatairePage({
                             type="button"
                             className={layout.pageBtn}
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            disabled={currentPage <= 1}
+                            disabled={showSkeleton || currentPage <= 1}
                             aria-label={common.prevPage}
                           >
                             <FaChevronLeft />
                           </button>
                         </SmartTooltip>
                         <span className={layout.paginationInfo}>
-                          {formatPageInfo(locale, currentPage, totalPages)}
+                          {showSkeleton ? "—" : formatPageInfo(locale, currentPage, totalPages)}
                         </span>
                         <SmartTooltip content={common.nextPage}>
                           <button
                             type="button"
                             className={layout.pageBtn}
                             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            disabled={currentPage >= totalPages}
+                            disabled={showSkeleton || currentPage >= totalPages}
                             aria-label={common.nextPage}
                           >
                             <FaChevronRight />
@@ -849,9 +1000,29 @@ export default function PrestatairePage({
                         </SmartTooltip>
                       </div>
                     </div>
-                  ) : null}
+                        </>
+                      )}
                     </div>
                   </div>
+                  {selectedCount > 0 && showBulkSelection && !showSkeleton ? (
+                    <div className={layout.bulkBar}>
+                      <div className={layout.bulkInfo}>
+                        <strong>{selectedCount}</strong>
+                        <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
+                      </div>
+                      <div className={layout.bulkActions}>
+                        {canBulkDelete ? (
+                          <button type="button" className={layout.bulkBtn} onClick={() => setBulkDeleteModalOpen(true)}>
+                            <Icon icon="mdi:delete-outline" />
+                            {pageCopy.bulk.delete}
+                          </button>
+                        ) : null}
+                        <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
+                          {pageCopy.bulk.clearSelection}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -873,6 +1044,17 @@ export default function PrestatairePage({
         onClose={() => setBulkDeleteModalOpen(false)}
         prestataireIds={[...selectedIds]}
         onSuccess={handleBulkDeleteSuccess}
+      />
+      <TicketColumnsModal
+        open={columnsModalOpen}
+        onClose={() => setColumnsModalOpen(false)}
+        onSaved={handleColumnsSaved}
+        isAdmin={canPublicViews}
+        pageScope={PRESTATAIRES_PAGE_SCOPE}
+        initialPublic={publicTableColumns}
+        initialPrivate={privateTableColumns}
+        columnLabelKeys={PRESTATAIRES_COLUMN_LABEL_KEYS}
+        copy={pageCopy}
       />
     </div>
   );

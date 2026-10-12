@@ -12,6 +12,7 @@ import { interpolate } from "../../i18n/translate";
 import { toRichPreviewHtml } from "../../utils/sanitizeHtml";
 import IncomingEmailMessage from "./IncomingEmailMessage";
 import { isIncomingEmailContent } from "../../utils/incomingEmailContent";
+import { isChatOutboundComment } from "../../utils/ticketChatLayout";
 import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
 import { getTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
@@ -157,11 +158,22 @@ export default function TicketChatPanel({
   const commentEditorRef = useRef(null);
   const commentEditEditorRef = useRef(null);
   const timelineRef = useRef(null);
+  const justSentTimersRef = useRef(new Map());
   const [commentDraft, setCommentDraft] = useState("");
   const [commentInternal, setCommentInternal] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState([]);
   const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [overlayComments, setOverlayComments] = useState([]);
+  const [justSentCommentIds, setJustSentCommentIds] = useState([]);
+  const [metaOpenCommentKey, setMetaOpenCommentKey] = useState(null);
+  const toggleCommentMeta = useCallback(event => {
+    const key = event?.currentTarget?.dataset?.metaKey;
+    if (!key) return;
+    const target = event?.target;
+    if (target?.closest?.("button, a, input, textarea, select, label, [contenteditable='true']")) return;
+    setMetaOpenCommentKey(prev => (prev === key ? null : key));
+  }, []);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkModalText, setLinkModalText] = useState("");
   const linkSelectionRef = useRef({ range: null, text: "" });
@@ -191,14 +203,53 @@ export default function TicketChatPanel({
     return Array.isArray(cfg?.commentTemplates) ? cfg.commentTemplates.filter(t => t?.id && t?.name) : [];
   }, []);
 
-  const visibleComments = useMemo(
-    () =>
-      (Array.isArray(comments) ? comments : []).map(comment => ({
+  const currentUserDisplayName = useMemo(() => {
+    const helpdesk = String(user?.ticket_helpdesk_display_name || "").trim();
+    if (helpdesk) return helpdesk;
+    const fullName = `${user?.prenom || ""} ${user?.nom || ""}`.trim();
+    return fullName || user?.name || user?.username || user?.email || copy.agentFallback || "—";
+  }, [user, copy.agentFallback]);
+
+  const markCommentJustSent = useCallback(commentId => {
+    const key = String(commentId || "");
+    if (!key) return;
+    setJustSentCommentIds(prev => (prev.includes(key) ? prev : [...prev, key]));
+    const existingTimer = justSentTimersRef.current.get(key);
+    if (existingTimer) window.clearTimeout(existingTimer);
+    const timerId = window.setTimeout(() => {
+      setJustSentCommentIds(prev => prev.filter(id => id !== key));
+      justSentTimersRef.current.delete(key);
+    }, 420);
+    justSentTimersRef.current.set(key, timerId);
+  }, []);
+
+  useEffect(
+    () => () => {
+      justSentTimersRef.current.forEach(timerId => window.clearTimeout(timerId));
+      justSentTimersRef.current.clear();
+    },
+    []
+  );
+
+  useEffect(() => {
+    setOverlayComments(prev => {
+      if (!prev.length) return prev;
+      const propIds = new Set((Array.isArray(comments) ? comments : []).map(comment => String(comment.id)));
+      return prev.filter(comment => comment?._pending || !propIds.has(String(comment.id)));
+    });
+  }, [comments]);
+
+  const visibleComments = useMemo(() => {
+    const normalizeList = list =>
+      (Array.isArray(list) ? list : []).map(comment => ({
         ...comment,
         attachments: (Array.isArray(comment.attachments) ? comment.attachments : []).map(normalizeAttachment).filter(Boolean)
-      })),
-    [comments]
-  );
+      }));
+    const base = normalizeList(comments);
+    const baseIds = new Set(base.map(comment => String(comment.id)));
+    const extras = normalizeList(overlayComments).filter(comment => !baseIds.has(String(comment.id)));
+    return [...base, ...extras];
+  }, [comments, overlayComments]);
 
   const hasReplyDraft = useMemo(
     () => htmlToPlainText(commentDraft).length > 0 || attachmentFiles.length > 0 || htmlContainsInlineImage(commentDraft),
@@ -357,14 +408,31 @@ export default function TicketChatPanel({
     const { removeAttachmentIds, removeAttachmentPaths } = splitRemovedAttachmentKeys(editingCommentRemovedAttachmentKeys);
     setSavingCommentEdit(true);
     try {
-      await updateTicketComment(ticketId, editingCommentId, draftRaw, {
+      const updated = await updateTicketComment(ticketId, editingCommentId, draftRaw, {
         removeAttachmentIds,
         removeAttachmentPaths,
         isInternal: editingCommentInternal
       });
+      const nextComment = {
+        ...(editingComment || {}),
+        ...(updated && typeof updated === "object" ? updated : {}),
+        id: updated?.id || editingCommentId,
+        _clientKey: editingComment?._clientKey,
+        content: updated?.content ?? draftRaw,
+        is_internal: typeof updated?.is_internal === "boolean" ? updated.is_internal : editingCommentInternal,
+        updated_at: updated?.updated_at || new Date().toISOString(),
+        attachments: Array.isArray(updated?.attachments)
+          ? updated.attachments.map(normalizeAttachment).filter(Boolean)
+          : remainingAttachments
+      };
+      setOverlayComments(prev => {
+        const exists = prev.some(comment => String(comment.id) === String(editingCommentId));
+        if (!exists) return prev;
+        return prev.map(comment => (String(comment.id) === String(editingCommentId) ? nextComment : comment));
+      });
       cancelEditComment(true);
       toast.success(copy.toasts.messageEdited);
-      await onCommentAdded?.();
+      await onCommentAdded?.(nextComment);
     } catch (error) {
       toast.error(error.message || copy.toasts.messageEditError);
     } finally {
@@ -379,8 +447,9 @@ export default function TicketChatPanel({
     try {
       await deleteTicketComment(ticketId, commentId);
       if (String(editingCommentId) === String(commentId)) cancelEditComment(true);
+      setOverlayComments(prev => prev.filter(comment => String(comment.id) !== String(commentId)));
       toast.success(copy.toasts.messageDeleted);
-      await onCommentAdded?.();
+      await onCommentAdded?.({ id: commentId, _deleted: true });
     } catch (error) {
       toast.error(error.message || copy.toasts.messageDeleteError);
     } finally {
@@ -551,26 +620,73 @@ export default function TicketChatPanel({
     const draftFiles = mergeAttachmentFiles(attachmentFiles, extracted.files);
     const draftContentText = htmlToPlainText(extracted.html);
     if (!ticketId || (!draftContentText && draftFiles.length === 0) || disabled) return;
-    setSubmitting(true);
-    const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
     try {
       copy.validateAttachmentFiles(draftFiles);
+    } catch (error) {
+      toast.error(error.message || copy.toasts.commentAddError);
+      return;
+    }
+    setSubmitting(true);
+    const draftInternal = commentInternal;
+    const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
+    const optimisticId = `pending-${Date.now()}`;
+    const optimisticComment = {
+      id: optimisticId,
+      _clientKey: optimisticId,
+      author_name: currentUserDisplayName,
+      author_user_id: currentUserId || null,
+      content: extracted.html,
+      is_internal: draftInternal,
+      created_at: new Date().toISOString(),
+      attachments: draftFiles.map((file, idx) => ({
+        id: `${optimisticId}-${idx}`,
+        name: file.name,
+        filename: file.name,
+        url: "",
+        path: ""
+      })),
+      _pending: true
+    };
+    setOverlayComments(prev => [...prev, optimisticComment]);
+    markCommentJustSent(optimisticId);
+    clearComposer();
+    try {
+      let createdComment = null;
       if (draftFiles.length > 0) {
-        await addTicketCommentWithAttachments(ticketId, {
+        createdComment = await addTicketCommentWithAttachments(ticketId, {
           content: extracted.html,
-          isInternal: commentInternal,
+          isInternal: draftInternal,
           files: draftFiles
         });
       } else {
-        await addTicketComment(ticketId, extracted.html, commentInternal);
+        createdComment = await addTicketComment(ticketId, extracted.html, draftInternal);
       }
-      clearComposer();
+      const nextComment = {
+        id: createdComment?.id || optimisticId,
+        _clientKey: optimisticId,
+        author_name: createdComment?.author_name || currentUserDisplayName,
+        author_user_id: createdComment?.author_user_id || currentUserId || null,
+        content: createdComment?.content || extracted.html,
+        is_internal: typeof createdComment?.is_internal === "boolean" ? createdComment.is_internal : draftInternal,
+        created_at: createdComment?.created_at || optimisticComment.created_at,
+        attachments:
+          Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0
+            ? createdComment.attachments.map(normalizeAttachment).filter(Boolean)
+            : optimisticComment.attachments
+      };
+      setOverlayComments(prev => prev.map(comment => (String(comment.id) === optimisticId || comment._clientKey === optimisticId ? nextComment : comment)));
       toast.success(copy.toasts.replySent);
+      emitNotificationsUpdated();
       if (vaultEntries.length > 0) {
         await maybeArchiveAttachmentsToVault(vaultEntries);
       }
-      await onCommentAdded?.();
+      await onCommentAdded?.(nextComment);
     } catch (error) {
+      setOverlayComments(prev => prev.filter(comment => String(comment.id) !== optimisticId && comment._clientKey !== optimisticId));
+      setCommentDraft(draftContentRaw);
+      if (commentEditorRef.current) commentEditorRef.current.innerHTML = draftContentRaw;
+      setCommentInternal(draftInternal);
+      setAttachmentFiles(draftFiles);
       toast.error(error.message || copy.toasts.commentAddError);
     } finally {
       setSubmitting(false);
@@ -584,10 +700,15 @@ export default function TicketChatPanel({
     }
   }, [replyBoxExpanded, commentDraft]);
 
-  useEffect(() => {
+  const prevVisibleCommentsLenRef = useRef(0);
+  useLayoutEffect(() => {
     const el = timelineRef.current;
     if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    const len = visibleComments.length;
+    if (len > prevVisibleCommentsLenRef.current) {
+      el.scrollTop = el.scrollHeight;
+    }
+    prevVisibleCommentsLenRef.current = len;
   }, [visibleComments.length]);
 
   const submitLabel = commentInternal ? copy.reply.modePrivate : copy.reply.modePublic;
@@ -669,28 +790,40 @@ export default function TicketChatPanel({
             const showEditAction = canEditComment(comment);
             const showDeleteAction = canDeleteComment(comment);
             const isDeletingComment = String(deletingCommentId) === String(comment.id);
+            const commentRenderKey = comment._clientKey || comment.id || `${comment.created_at}-${author}`;
+            const isJustSent = justSentCommentIds.includes(String(commentRenderKey)) || justSentCommentIds.includes(String(comment.id));
+            const isOutbound = isChatOutboundComment(comment, {
+              users,
+              currentUserId
+            });
+            const isMetaOpen = metaOpenCommentKey === String(commentRenderKey) || isEditingComment;
             return (
-              <article key={comment.id || `${comment.created_at}-${author}`} className={`${styles.commentItem} ${internal ? styles.commentItemInternal : ""}`.trim()}>
+              <article
+                key={commentRenderKey}
+                className={`${styles.commentItem} ${isOutbound ? styles.commentItemOutbound : styles.commentItemInbound} ${internal ? styles.commentItemInternal : ""} ${isJustSent ? styles.commentItemJustSent : ""} ${isMetaOpen ? styles.commentItemMetaOpen : ""}`.trim()}
+                data-meta-key={String(commentRenderKey)}
+                onClick={toggleCommentMeta}
+              >
                 <UserAvatar
                   className={styles.commentAvatarSide}
                   name={author}
                   size={40}
-                  variant={internal ? "neutral" : "agent"}
+                  variant={internal ? "neutral" : isOutbound ? "agent" : "client"}
                 />
                 <div className={styles.commentBubble}>
+                  {internal ? (
+                    <span className={styles.commentInternalDot} title={copy.comment?.privateTitle || copy.reply.modePrivate} aria-label={copy.comment?.privateTitle || copy.reply.modePrivate}>
+                      <Icon icon="mdi:lock-outline" />
+                    </span>
+                  ) : null}
                   <div className={styles.commentHeader}>
                     <div className={styles.commentHeaderMain}>
-                      <div className={styles.commentMetaStrip}>
-                        <span className={styles.commentMetaLabel}>{copy.comment.createdLabel}</span>
-                        <span className={styles.commentMetaValue}>
-                          <Icon icon="mdi:clock-outline" aria-hidden />
+                      <div className={styles.commentMetaLine}>
+                        <span className={styles.commentMetaAuthor}>{author}</span>
+                        <span className={styles.commentMetaSep} aria-hidden>·</span>
+                        <span className={styles.commentMetaTime}>
                           {formatDateTime?.(comment.created_at || comment.createdAt)}
                           {isCommentEdited(comment) ? <span className={styles.commentEditedMark}>{copy.comment.editedMark}</span> : null}
-                        </span>
-                        <span className={styles.commentMetaLabel}>{copy.comment.byLabel}</span>
-                        <span className={styles.commentMetaAuthor}>
-                          <Icon icon="mdi:account-outline" aria-hidden />
-                          {author}
                         </span>
                         {internal ? (
                           <span className={styles.commentInternal} title={copy.comment?.privateTitle || copy.reply.modePrivate}>

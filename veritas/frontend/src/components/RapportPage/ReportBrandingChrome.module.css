@@ -1,0 +1,240 @@
+.chrome {
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  font-family: var(--vex-font-sans);
+  color: #0f172a;
+}
+
+.header {
+  position: relative;
+  background: var(--vex-header-bg);
+  color: var(--vex-header-text);
+}
+
+.header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: var(--vex-header-bar);
+}
+
+.headerInner {
+  padding: 1.35rem 1.35rem 1.25rem;
+}
+
+.brandRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.brandIdentity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.logo {
+  display: block;
+  max-width: 96px;
+  max-height: 52px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.footerLogo {
+  display: block;
+  max-width: 110px;
+  max-height: 44px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 0.7rem;
+}
+
+.brand {
+  margin: 0;
+  font-size: var(--vex-brand-size);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--vex-header-brand);
+}
+
+.company {
+  margin: 0.3rem 0 0;
+  font-family: var(--vex-font-serif);
+  font-size: var(--vex-company-size);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--vex-header-text);
+}
+
+.generated {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--vex-header-text);
+  opacity: 0.72;
+}
+
+.client {
+  margin: 0;
+  font-family: var(--vex-font-serif);
+  font-size: clamp(1.35rem, 2.4vw, var(--vex-client-size));
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--vex-header-text);
+}
+
+.period {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  color: var(--vex-header-text);
+  opacity: 0.85;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  padding: 0.32rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--vex-header-text);
+  font-size: 0.76rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+}
+
+.pill::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--vex-header-brand);
+}
+
+.body {
+  padding: 1.15rem 1.25rem 1.35rem;
+  background: #fff;
+}
+
+.footer {
+  background: var(--vex-footer-bg);
+  color: var(--vex-footer-text);
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.footerInner {
+  padding: 1.1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.footerBrand {
+  font-size: var(--vex-footer-brand-size);
+  font-weight: 750;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--vex-footer-text);
+}
+
+.footerBrandAlt {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  color: var(--vex-footer-text);
+}
+
+.footerContacts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+  margin-top: 0.65rem;
+  font-size: 0.82rem;
+}
+
+.footerContacts a,
+.footerContacts span {
+  color: var(--vex-footer-link);
+  text-decoration: none;
+}
+
+.footerContacts a:hover {
+  text-decoration: underline;
+}
+
+.footerSocial {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+}
+
+.footerSocialItem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  color: var(--vex-footer-link);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.footerSocialIcons .footerSocialItem {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: #ecfdf5;
+}
+
+.footerSocialLinks .footerSocialItem:hover,
+.footerSocialBoth .footerSocialItem:hover {
+  text-decoration: underline;
+}
+
+.footerSocialBoth .footerSocialItem {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: #ecfdf5;
+}
+
+.footerNote {
+  margin: 0.75rem 0 0;
+  font-size: var(--vex-footer-note-size);
+  color: var(--vex-footer-muted);
+  line-height: 1.4;
+  text-align: center;
+}
+
+:global(html.dark) .chrome {
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .body {
+  background: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #e8edf5);
+}

@@ -29,13 +29,13 @@ export default function InfraBrick({
   const isClear = hasData && !isComingSoon && !isAttention;
   const statusTooltip = isEmptyVisual || isClear ? null : copy.getStatusLabel(brick.status);
   const tooltipLines = [brick.label, isComingSoon ? copy.brick.comingSoonTooltip : null, isProLocked ? copy.brick.proTooltip : null, !isComingSoon ? brick.subtitle || statusTooltip : null, !isComingSoon && brick.countLabel ? brick.countLabel : !isComingSoon && brick.count > 0 ? copy.formatElementCount(brick.count) : null, !isComingSoon && isAlwaysClickable && brick.count === 0 ? copy.brick.clickToConfigure : null].filter(Boolean);
-  const handleClick = () => {
+  const handleClick = event => {
     const featureKey = INFRA_BRICK_PRO_FEATURE_KEYS[brick.type];
     if (isComingSoon || isProLocked) {
       notifyProFeature(copy.getProFeatureLabel(brick.type, brick.label), featureKey);
       return;
     }
-    onClick?.(brick);
+    onClick?.(brick, event);
   };
   const content = <>
       <Icon icon={icon} className={styles.brickIcon} aria-hidden />

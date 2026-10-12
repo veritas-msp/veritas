@@ -5,9 +5,6 @@ const STEP_CONFIG = [{
   key: "hero",
   target: '[data-guide="docs-hero"]'
 }, {
-  key: "kpis",
-  target: '[data-guide="docs-kpis"]'
-}, {
   key: "toolbar",
   target: '[data-guide="docs-toolbar"]'
 }, {
@@ -22,10 +19,6 @@ const COPY = {
       hero: {
         title: "Hub documentaire",
         content: "Tous les fichiers clients sont centralisés ici : factures matériel, photos de baie, plans, contrats et procédures."
-      },
-      kpis: {
-        title: "Volume",
-        content: "Nombre de documents, entreprises concernées et poids total du dépôt."
       },
       toolbar: {
         title: "Recherche et filtres",
@@ -44,10 +37,6 @@ const COPY = {
         title: "Document hub",
         content: "All client files live here: hardware invoices, rack photos, plans, contracts and procedures."
       },
-      kpis: {
-        title: "Volume",
-        content: "Document count, companies involved and total storage size."
-      },
       toolbar: {
         title: "Search and filters",
         content: "Search a file name or company, then filter by client and document type."
@@ -64,10 +53,6 @@ const COPY = {
       hero: {
         title: "Dokumenten-Hub",
         content: "Alle Kundendateien an einem Ort: Hardware-Rechnungen, Rack-Fotos, Pläne, Verträge und Verfahren."
-      },
-      kpis: {
-        title: "Volumen",
-        content: "Anzahl der Dokumente, betroffene Unternehmen und Gesamtgröße."
       },
       toolbar: {
         title: "Suche und Filter",
@@ -86,10 +71,6 @@ const COPY = {
         title: "Hub documentale",
         content: "Tutti i file clienti sono qui: fatture hardware, foto rack, planimetrie, contratti e procedure."
       },
-      kpis: {
-        title: "Volume",
-        content: "Numero di documenti, aziende coinvolte e dimensione totale."
-      },
       toolbar: {
         title: "Ricerca e filtri",
         content: "Cercate un nome file o un’azienda, poi filtrate per cliente e tipo di documento."
@@ -106,10 +87,6 @@ const COPY = {
       hero: {
         title: "Centro documental",
         content: "Todos los archivos de clientes están aquí: facturas de hardware, fotos de rack, planos, contratos y procedimientos."
-      },
-      kpis: {
-        title: "Volumen",
-        content: "Número de documentos, empresas implicadas y tamaño total."
       },
       toolbar: {
         title: "Búsqueda y filtros",

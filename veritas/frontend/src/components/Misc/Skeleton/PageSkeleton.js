@@ -5,9 +5,94 @@ export function SkeletonBone({ className = "", style, ...props }) {
   return <div className={`${styles.bone} ${className}`.trim()} style={style} {...props} />;
 }
 
+function CrmListSkeleton({ rows, label, className }) {
+  const count = Math.max(1, Number(rows) || 12);
+  return (
+    <div
+      className={`${styles.root} ${styles.crmCard} ${className}`.trim()}
+      role="status"
+      aria-busy="true"
+      aria-label={label || undefined}
+    >
+      <div className={styles.crmToolbar} aria-hidden>
+        <SkeletonBone className={styles.crmSearch} />
+        <div className={styles.crmChips}>
+          <SkeletonBone className={styles.crmChip} />
+          <SkeletonBone className={`${styles.crmChip} ${styles.crmChipSm}`} />
+          <span className={styles.crmChipSep} />
+          <SkeletonBone className={styles.crmChip} />
+          <SkeletonBone className={`${styles.crmChip} ${styles.crmChipWide}`} />
+          <SkeletonBone className={styles.crmChip} />
+        </div>
+        <div className={styles.crmActions}>
+          <SkeletonBone className={styles.crmIconBtn} />
+          <SkeletonBone className={styles.crmIconBtn} />
+          <SkeletonBone className={`${styles.crmIconBtn} ${styles.crmIconBtnPrimary}`} />
+        </div>
+      </div>
+
+      <div className={styles.crmTableWrap} aria-hidden>
+        <div className={styles.crmTableInner}>
+          <div className={styles.crmThead}>
+            <SkeletonBone className={styles.crmCheck} />
+            <SkeletonBone className={styles.crmThNum} />
+            <SkeletonBone className={styles.crmThCompany} />
+            <SkeletonBone className={styles.crmThStatus} />
+            <SkeletonBone className={styles.crmThText} />
+            <SkeletonBone className={styles.crmThText} />
+            <SkeletonBone className={styles.crmThModules} />
+            <SkeletonBone className={styles.crmThDate} />
+            <SkeletonBone className={styles.crmThTags} />
+            <SkeletonBone className={styles.crmThFav} />
+            <span className={styles.crmThChevron} />
+          </div>
+          <div className={styles.crmRows}>
+            {Array.from({ length: count }, (_, index) => (
+              <div key={`crm-row-${index}`} className={styles.crmRow}>
+                <SkeletonBone className={styles.crmCheck} />
+                <SkeletonBone className={styles.crmCellNum} />
+                <div className={styles.crmCompany}>
+                  <SkeletonBone className={styles.crmCompanyIcon} />
+                  <SkeletonBone className={styles.crmCompanyName} />
+                </div>
+                <SkeletonBone className={styles.crmStatusPill} />
+                <SkeletonBone className={styles.crmCellText} />
+                <SkeletonBone className={styles.crmCellText} />
+                <div className={styles.crmPills}>
+                  <SkeletonBone className={styles.crmPill} />
+                  <SkeletonBone className={`${styles.crmPill} ${styles.crmPillSm}`} />
+                </div>
+                <SkeletonBone className={styles.crmCellDate} />
+                <div className={styles.crmPills}>
+                  <SkeletonBone className={`${styles.crmPill} ${styles.crmPillTag}`} />
+                </div>
+                <SkeletonBone className={styles.crmFav} />
+                <SkeletonBone className={styles.crmChevron} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.crmPagination} aria-hidden>
+        <div className={styles.crmPagLeft}>
+          <SkeletonBone className={styles.crmPagLabel} />
+          <SkeletonBone className={styles.crmPagSelect} />
+          <SkeletonBone className={styles.crmPagInfo} />
+        </div>
+        <div className={styles.crmPagRight}>
+          <SkeletonBone className={styles.crmPagBtn} />
+          <SkeletonBone className={styles.crmPagPage} />
+          <SkeletonBone className={styles.crmPagBtn} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
- * Skeleton de page unifié — volontairement minimal.
- * - variant="list" : en-tête + lignes (entreprises / contacts)
+ * Skeleton de page unifié.
+ * - variant="list" / "crmList" : carte CRM (toolbar + tableau + pagination)
  * - variant="panels" : panneaux empilés (accueil)
  */
 export default function PageSkeleton({
@@ -17,7 +102,6 @@ export default function PageSkeleton({
   label,
   className = ""
 }) {
-  const count = Math.max(1, Number(rows) || 8);
   const panelCount = Math.max(1, Number(panels) || 2);
 
   if (variant === "panels") {
@@ -38,24 +122,5 @@ export default function PageSkeleton({
     );
   }
 
-  return (
-    <div
-      className={`${styles.root} ${styles.list} ${className}`.trim()}
-      role="status"
-      aria-busy="true"
-      aria-label={label || undefined}
-    >
-      <SkeletonBone className={styles.listHead} />
-      <div className={styles.listRows}>
-        {Array.from({ length: count }, (_, index) => (
-          <div key={`row-${index}`} className={styles.listRow}>
-            <SkeletonBone className={styles.listCellWide} />
-            <SkeletonBone className={styles.listCell} />
-            <SkeletonBone className={styles.listCell} />
-            <SkeletonBone className={styles.listCellNarrow} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <CrmListSkeleton rows={rows} label={label} className={className} />;
 }

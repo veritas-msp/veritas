@@ -24,8 +24,8 @@ import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import API_BASE_URL from "../../config";
 import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
-import SubscribeBellButton from "../shared/SubscribeBellButton/SubscribeBellButton";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
+import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import SitesModal from "./SitesModal";
 import DomainsModal from "./DomainsModal";
 import DomainsConfigModal from "./DomainsConfigModal";
@@ -59,8 +59,8 @@ import { normalizeContactCommunications, getCommunicationTypeDef, buildContactAp
 import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
-import EnterpriseDetailSkeleton from "./EnterpriseDetailSkeleton";
-import EnterpriseMapTabSkeleton from "./EnterpriseMapTabSkeleton";
+import CrmDetailPageSkeleton from "./CrmDetailPageSkeleton";
+import EnterpriseOverviewTab from "./EnterpriseOverviewTab";
 import UpcomingEventBookmarks from "./UpcomingEventBookmarks";
 import styles from "./EnterpriseDetailPage.module.css";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
@@ -74,6 +74,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getEnterpriseDetailCopy, getContractTypeLabel, getPrestationCategoryLabel, getTicketStatusLabel, getEventTypeLabels, getCampaignTypeLabel, getCampaignStatusLabel, interpolate } from "./enterpriseDetailI18n";
+import { resolveEnterpriseIcon, resolveEnterpriseIconColor } from "./enterpriseIconChoices";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeatureLock from "../Misc/ProFeature/ProFeatureLock";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
@@ -90,10 +91,12 @@ import MicrosoftTenantSolutionPickerModal from "./MicrosoftTenantSolutionPickerM
 import CampaignFormModal from "../CybersecuritePage/CampaignFormModal";
 import CampaignPickerModal from "./CampaignPickerModal";
 import { getCybersecuritePageCopy } from "../CybersecuritePage/cybersecuritePageI18n";
+import ContextMenu from "../Misc/ContextMenu/ContextMenu";
 import { listConfiguredAntivirusSolutions, listOverviewAntivirusSolutions, mergeAntivirusSources, normalizeAntivirusItem, removeAntivirusSolution, reorderAntivirusSolutions, buildAntivirusDetailNavigationPayload } from "./antivirusSolutionUtils";
 import { listConfiguredAntispamSolutions, listOverviewAntispamSolutions, mergeAntispamSources, normalizeAntispamItem, removeAntispamSolution, reorderAntispamSolutions, buildAntispamDetailNavigationPayload } from "./antispamSolutionUtils";
 import { buildMicrosoftTenantDetailNavigationPayload, listConfiguredMicrosoftTenants, removeMicrosoftTenant } from "./microsoftTenantSolutionUtils";
 import { extractDomainsFromModules, listConfiguredDomains, removeMonitoredDomain, reorderMonitoredDomains } from "./domainSolutionUtils";
+import { buildBackupInstanceDetailPayload } from "../EquipementPage/backupMspUtils";
 import { buildBitdefenderQueryParams } from "../../api/clientBitdefender";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getEnterpriseDetailGuideSteps } from "../PageGuide/enterpriseDetailGuideSteps";
@@ -101,6 +104,24 @@ import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { FaArrowLeft, FaCamera, FaPencilAlt, FaTimes, FaPlus, FaFileExport, FaEthernet } from "react-icons/fa";
 import { IoServerSharp } from "react-icons/io5";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import {
+  DETAIL_CACHE_NS,
+  getDetailCache,
+  invalidateDetailCache,
+  setDetailCache
+} from "../../utils/detailPageCache";
+const SERVICE_BRICK_MENU_TYPES = new Set([
+  "Antivirus",
+  "Antispam",
+  "TenantMicrosoft",
+  "GoogleWorkspace",
+  "Backup",
+  "NDD",
+  "CertificatsSSL",
+  "LicensesAbonnements",
+  "Campagne"
+]);
+
 const DEMO_PRESTATION_TICKETS = [{
   id: "demo-prestation-1",
   ticket_number: "1284",
@@ -147,6 +168,7 @@ function getContactInitials(contact) {
 }
 function SidebarSectionHeader({
   title,
+  icon = null,
   count = null,
   badge = null,
   expanded = false,
@@ -162,7 +184,8 @@ function SidebarSectionHeader({
   return <div className={`${panelStyles.sidebarCollapseHeader} ${locked ? panelStyles.sidebarCollapseHeaderLocked : ""}`.trim()}>
       <button type="button" className={panelStyles.sidebarCollapseMain} onClick={handleToggle} aria-expanded={locked ? false : expanded} aria-controls={controlsId || undefined}>
         <span className={panelStyles.sidebarInfoTitle}>
-          {title}
+          {icon ? <Icon icon={icon} className={panelStyles.sidebarSectionTitleIcon} aria-hidden /> : null}
+          <span className={panelStyles.sidebarSectionTitleText}>{title}</span>
           {count != null ? <span className={panelStyles.sidebarSectionCount}>{count}</span> : null}
           {badge}
         </span>
@@ -355,6 +378,7 @@ export default function ClientDetailPage({
   const canManageDevices = can("clients_detail.devices");
   const canManageCampaigns = can("clients_detail.campaigns");
   const canManageVault = can("clients_detail.vault");
+  const canCreateTicket = can("tickets.create");
   const resolvedClientId = urlClientId || clientData?.client?.id || clientData?.clientId || null;
   const initialPeripheralsUi = useMemo(
     () => readEnterprisePeripheralsUi(resolvedClientId),
@@ -372,8 +396,18 @@ export default function ClientDetailPage({
   const [deletionBlockersModalOpen, setDeletionBlockersModalOpen] = useState(false);
   const [deletionCheckClient, setDeletionCheckClient] = useState(null);
   const [loadingDeletionCheck, setLoadingDeletionCheck] = useState(false);
-  const [clientActionsMenuOpen, setClientActionsMenuOpen] = useState(false);
-  const clientActionsMenuRef = useRef(null);
+  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
+  const {
+    subscribed: enterpriseSubscribed,
+    loading: enterpriseSubscribeLoading,
+    saving: enterpriseSubscribeSaving,
+    toggleSubscribe: toggleEnterpriseSubscribe
+  } = useEntitySubscription("enterprise", client?.id, {
+    labels: {
+      subscribed: copy.subscribe?.subscribedToast || "Abonnement activé",
+      unsubscribed: copy.subscribe?.unsubscribedToast || "Abonnement retiré"
+    }
+  });
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -403,6 +437,7 @@ export default function ClientDetailPage({
   const equipmentSectionRef = useRef(null);
   const pageRootRef = useRef(null);
   const peripheralsUiClientRef = useRef(resolvedClientId);
+  const skipPeripheralsUiPersistRef = useRef(false);
   const equipmentExportMenuRef = useRef(null);
   const vaultPanelRef = useRef(null);
   const [contacts, setContacts] = useState([]);
@@ -419,6 +454,12 @@ export default function ClientDetailPage({
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
   const [prestatairesSectionExpanded, setPrestatairesSectionExpanded] = useState(false);
   const [sitesSectionExpanded, setSitesSectionExpanded] = useState(false);
+  const [heroSupervisionStats, setHeroSupervisionStats] = useState({
+    critical: 0,
+    warning: 0,
+    ok: 0,
+    loading: true
+  });
   const [notesSectionExpanded, setNotesSectionExpanded] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [supportCreditModalOpen, setSupportCreditModalOpen] = useState(false);
@@ -471,9 +512,6 @@ export default function ClientDetailPage({
   const [recentEvents, setRecentEvents] = useState([]);
   const [loadingClientActivity, setLoadingClientActivity] = useState(false);
   const [overviewTab, setOverviewTab] = useState(() => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab));
-  const [mapInfraLoading, setMapInfraLoading] = useState(true);
-  const [mapEquipmentLoading, setMapEquipmentLoading] = useState(true);
-  const mapTabReadyRef = useRef(false);
   const [antivirusData, setAntivirusData] = useState([]);
   const [antispamData, setAntispamData] = useState([]);
   const [mailinblackTenants, setMailinblackTenants] = useState([]);
@@ -514,6 +552,7 @@ export default function ClientDetailPage({
   const [microsoftTenantConfigEditingTenant, setMicrosoftTenantConfigEditingTenant] = useState(null);
   const [microsoftTenantPickerOpen, setMicrosoftTenantPickerOpen] = useState(false);
   const [microsoftTenantPickerTenants, setMicrosoftTenantPickerTenants] = useState([]);
+  const [serviceBrickMenu, setServiceBrickMenu] = useState(null);
   const openAntivirusConfigModal = useCallback((section = "overview", editingSolution = null) => {
     setAntivirusConfigInitialSection(section);
     setAntivirusConfigEditingSolution(editingSolution);
@@ -585,6 +624,8 @@ export default function ClientDetailPage({
   const [formData, setFormData] = useState({
     clientNumber: "",
     name: "",
+    icon: "",
+    iconColor: "",
     email: "",
     phone: "",
     address: "",
@@ -738,6 +779,8 @@ export default function ClientDetailPage({
           expiration: ""
         },
         modules: {},
+        icon: "",
+        iconColor: "",
         statut: "actif"
       };
     }
@@ -746,6 +789,8 @@ export default function ClientDetailPage({
     return {
       clientNumber: getClientNumber(sourceClient) || "",
       name: sourceClient.name || "",
+      icon: sourceClient.icon || "",
+      iconColor: sourceClient.icon_color || sourceClient.iconColor || "",
       email: sourceClient.email || "",
       phone: sourceClient.phone || "",
       address: sourceClient.address || "",
@@ -778,7 +823,7 @@ export default function ClientDetailPage({
   });
   const detectInfoChanges = (currentData, initialData) => {
     if (!initialData) return false;
-    const infoFields = ["clientNumber", "name", "commercialId", "secteur", "statut"];
+    const infoFields = ["clientNumber", "name", "icon", "iconColor", "commercialId", "secteur", "statut"];
     for (const field of infoFields) {
       if (String(currentData[field] || "").trim() !== String(initialData[field] || "").trim()) {
         return true;
@@ -864,6 +909,8 @@ export default function ClientDetailPage({
       setPrestatairesSearch("");
       setSitesPage(1);
       const saved = readEnterprisePeripheralsUi(id);
+      // Avoid persisting the previous enterprise's tab onto this one before state catches up.
+      skipPeripheralsUiPersistRef.current = true;
       setOverviewTab(normalizeEnterpriseOverviewTab(saved?.overviewTab));
       setActiveSiteFilter(saved?.siteFilter || null);
       setEquipmentSearchQuery(saved?.searchQuery || "");
@@ -872,6 +919,10 @@ export default function ClientDetailPage({
   }, [client?.id]);
   useEffect(() => {
     if (!client?.id) return;
+    if (skipPeripheralsUiPersistRef.current) {
+      skipPeripheralsUiPersistRef.current = false;
+      return;
+    }
     writeEnterprisePeripheralsUi(client.id, {
       overviewTab,
       searchQuery: equipmentSearchQuery || "",
@@ -923,29 +974,6 @@ export default function ClientDetailPage({
     };
   }, [loading, client?.id, overviewTab]);
   useEffect(() => {
-    mapTabReadyRef.current = false;
-    setMapInfraLoading(true);
-    setMapEquipmentLoading(true);
-  }, [client?.id]);
-  useEffect(() => {
-    if (overviewTab !== "map") return;
-    mapTabReadyRef.current = false;
-    setMapInfraLoading(true);
-    setMapEquipmentLoading(true);
-  }, [overviewTab]);
-  const mapTabContentReady = !mapInfraLoading && !mapEquipmentLoading;
-  useEffect(() => {
-    if (mapTabContentReady) mapTabReadyRef.current = true;
-  }, [mapTabContentReady]);
-  const handleMapInfraLoadingChange = useCallback(isLoading => {
-    if (isLoading && mapTabReadyRef.current) return;
-    setMapInfraLoading(Boolean(isLoading));
-  }, []);
-  const handleMapEquipmentLoadingChange = useCallback(isLoading => {
-    if (isLoading && mapTabReadyRef.current) return;
-    setMapEquipmentLoading(Boolean(isLoading));
-  }, []);
-  useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
   }, []);
@@ -964,7 +992,9 @@ export default function ClientDetailPage({
   const filteredCustomFamilyMap = useMemo(() => filterCustomFamilyMap(customFamilyMap, activeSiteFilter), [customFamilyMap, activeSiteFilter]);
   const heroEquipmentTotalCount = useMemo(() => {
     const customCount = (Array.isArray(customFamilyMap) ? customFamilyMap : []).reduce((sum, family) => sum + (Array.isArray(family?.items) ? family.items.length : 0), 0);
-    return hardwareEquipmentTotalCount + customCount;
+    // hardwareEquipmentTotalCount is filled by loadTotalEquipment on page load, then refined
+    // by EquipmentPage when the cartography tab mounts.
+    return (Number(hardwareEquipmentTotalCount) || 0) + customCount;
   }, [hardwareEquipmentTotalCount, customFamilyMap]);
   const refreshClientEquipment = useCallback(async () => {
     if (!client?.id) return null;
@@ -1009,19 +1039,8 @@ export default function ClientDetailPage({
     setEquipmentResultCount(0);
     setHardwareEquipmentTotalCount(0);
     setEquipmentExportMenuOpen(false);
-    setClientActionsMenuOpen(false);
     setDeleteClientModalOpen(false);
   }, [client?.id]);
-  useEffect(() => {
-    if (!clientActionsMenuOpen) return;
-    const handleClickOutside = e => {
-      if (clientActionsMenuRef.current && !clientActionsMenuRef.current.contains(e.target)) {
-        setClientActionsMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [clientActionsMenuOpen]);
   useEffect(() => {
     if (!equipmentExportMenuOpen) return;
     const handleClickOutside = e => {
@@ -1200,40 +1219,6 @@ export default function ClientDetailPage({
     await removeAntivirusSolution(client.id, solution);
     await refreshAntivirusState();
   }, [client?.id, refreshAntivirusState]);
-  const handleAntivirusBrickClick = useCallback(() => {
-    if (!client?.id) return;
-    const cached = configuredAntivirusSolutions;
-    if (cached.length === 0) {
-      openAntivirusConfigModal("solution");
-    } else {
-      setAntivirusPickerSolutions(cached);
-      setAntivirusPickerOpen(true);
-    }
-    // Soft-refresh in background — do not block the modal open.
-    refreshAntivirusState()
-      .then(modulesData => {
-        if (!modulesData) return;
-        const fresh = listConfiguredAntivirusSolutions(client, [], modulesData);
-        if (fresh.length > 0) setAntivirusPickerSolutions(fresh);
-      })
-      .catch(error => console.error(error));
-  }, [client, configuredAntivirusSolutions, openAntivirusConfigModal, refreshAntivirusState]);
-  const handleAntispamBrickClick = useCallback(() => {
-    if (!client?.id) return;
-    const cached = configuredAntispamSolutions;
-    if (cached.length === 0) {
-      openAntispamConfigModal("solution");
-    } else {
-      setAntispamPickerSolutions(cached);
-      setAntispamPickerOpen(true);
-    }
-    refreshAntispamState()
-      .then(({ modulesData, tenants } = {}) => {
-        const fresh = listConfiguredAntispamSolutions(client, [], modulesData, tenants || []);
-        if (fresh.length > 0) setAntispamPickerSolutions(fresh);
-      })
-      .catch(error => console.error(error));
-  }, [client, configuredAntispamSolutions, openAntispamConfigModal, refreshAntispamState]);
   const refreshMicrosoftTenantState = useCallback(async () => {
     if (!client?.id) return [];
     try {
@@ -1254,37 +1239,6 @@ export default function ClientDetailPage({
       return [];
     }
   }, [client?.id]);
-  const handleMicrosoftTenantBrickClick = useCallback(async () => {
-    if (!client?.id) return;
-    try {
-      const tenants = await refreshMicrosoftTenantState();
-      if (tenants.length === 0) {
-        openMicrosoftTenantConfigModal("configuration", null);
-        return;
-      }
-      setMicrosoftTenantPickerTenants(tenants);
-      setMicrosoftTenantPickerOpen(true);
-    } catch (error) {
-      console.error(error);
-      openMicrosoftTenantConfigModal("configuration", null);
-    }
-  }, [client?.id, openMicrosoftTenantConfigModal, refreshMicrosoftTenantState]);
-  const handleNddBrickClick = useCallback(() => {
-    if (!client?.id) return;
-    const cached = configuredDomains;
-    if (cached.length === 0) {
-      openDomainsConfigModal("provider");
-    } else {
-      setDomainPickerDomains(cached);
-      setDomainPickerOpen(true);
-    }
-    refreshDomainsState()
-      .then(({ modulesData } = {}) => {
-        const fresh = listConfiguredDomains(client, domainsData, modulesData);
-        if (fresh.length > 0) setDomainPickerDomains(fresh);
-      })
-      .catch(error => console.error(error));
-  }, [client, configuredDomains, domainsData, openDomainsConfigModal, refreshDomainsState]);
   const handleSslBrickClick = useCallback(() => {
     if (!client?.id) return;
     setSslModalOpen(true);
@@ -1336,7 +1290,15 @@ export default function ClientDetailPage({
     const requestId = ++loadRequestIdRef.current;
     const isCurrentRequest = () => loadRequestIdRef.current === requestId && loadControllerRef.current?.signal === signal;
     const prefetchClientId = urlClientId || clientData?.client?.id || clientData?.clientId || null;
-    const optimisticClient = clientData?.client && prefetchClientId && String(clientData.client.id) === String(prefetchClientId) ? clientData.client : null;
+    const cachedSnapshot = prefetchClientId
+      ? getDetailCache(DETAIL_CACHE_NS.enterprise, prefetchClientId)
+      : null;
+    const optimisticClient =
+      clientData?.client && prefetchClientId && String(clientData.client.id) === String(prefetchClientId)
+        ? clientData.client
+        : cachedSnapshot?.client && prefetchClientId && String(cachedSnapshot.client.id) === String(prefetchClientId)
+          ? cachedSnapshot.client
+          : null;
     setError(null);
     setLoading(!optimisticClient);
     modulesRequestRef.current = {
@@ -1393,9 +1355,14 @@ export default function ClientDetailPage({
     setLoadingLogs(false);
     if (optimisticClient && isMountedRef.current) {
       applyClientSnapshot(optimisticClient);
-      hydrateServicesFromModules(optimisticClient.equipements ? {
-        equipements: optimisticClient.equipements
-      } : null);
+      hydrateServicesFromModules(
+        cachedSnapshot?.modulesData ||
+          (optimisticClient.equipements
+            ? {
+                equipements: optimisticClient.equipements
+              }
+            : null)
+      );
       setLoading(false);
     } else {
       setClient(null);
@@ -1423,23 +1390,28 @@ export default function ClientDetailPage({
       const [clientInfo, modulesData] = await Promise.all([clientFetchPromise, modulesPromise]);
       if (!clientInfo) {
         if (isCurrentRequest() && isMountedRef.current) {
-          setError(copy.loadError);
+          if (!optimisticClient) setError(copy.loadError);
           setLoading(false);
         }
         return;
       }
       if (signal?.aborted || !isCurrentRequest()) return;
-      applyClientSnapshot({
+      const mergedClient = {
         ...clientInfo,
         equipements: modulesData?.equipements ?? clientInfo.equipements ?? {},
         modules_monitoring: modulesData?.modules_monitoring ?? clientInfo.modules_monitoring ?? {}
-      });
+      };
+      applyClientSnapshot(mergedClient);
       hydrateServicesFromModules(modulesData);
       if (!modulesData?.equipements && clientInfo.equipements) {
         hydrateServicesFromModules({
           equipements: clientInfo.equipements
         });
       }
+      setDetailCache(DETAIL_CACHE_NS.enterprise, mergedClient.id, {
+        client: mergedClient,
+        modulesData: modulesData || null
+      });
       setLoading(false);
       enrichAzureCredentials(clientInfo, signal, isCurrentRequest).then(enriched => {
         if (!signal?.aborted && isCurrentRequest() && isMountedRef.current && enriched !== clientInfo) {
@@ -1817,18 +1789,235 @@ export default function ClientDetailPage({
     setCampaignFormData(buildDefaultCampaignForm());
     setShowCampaignModal(true);
   };
-  const handleCampaignBrickClick = () => {
-    if (isCommunity) {
-      notifyProFeature(copy.proFeatures.campaigns, "cyberCampaigns");
-      return;
+  const closeServiceBrickMenu = useCallback(() => setServiceBrickMenu(null), []);
+  const openServiceBrickMenu = useCallback((brick, event) => {
+    if (!brick?.type || !SERVICE_BRICK_MENU_TYPES.has(brick.type)) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const rect = event?.currentTarget?.getBoundingClientRect?.();
+    const x = event?.clientX ?? (rect ? rect.left + rect.width / 2 : 0);
+    const y = event?.clientY ?? (rect ? rect.bottom + 4 : 0);
+    setServiceBrickMenu({
+      type: brick.type,
+      label: brick.label || brick.type,
+      x,
+      y
+    });
+  }, []);
+  const handleServiceBrickOpenPage = useCallback(brickType => {
+    if (!client?.id || !onNavigate) return;
+    switch (brickType) {
+      case "Antivirus": {
+        const navigable = configuredAntivirusSolutions.filter(item => item?.companyId);
+        if (navigable.length === 1) {
+          navigateToAntivirusDetail(navigable[0]);
+          return;
+        }
+        if (navigable.length > 1 || configuredAntivirusSolutions.length > 1) {
+          setAntivirusPickerSolutions(configuredAntivirusSolutions);
+          setAntivirusPickerOpen(true);
+          return;
+        }
+        onNavigate("Cybersecurite", {
+          tab: "antivirus",
+          clientId: client.id
+        });
+        return;
+      }
+      case "Antispam": {
+        const navigable = configuredAntispamSolutions.filter(item => item?.customerId || item?.mailinblackTenantId);
+        if (navigable.length === 1) {
+          navigateToAntispamDetail(navigable[0]);
+          return;
+        }
+        if (navigable.length > 1 || configuredAntispamSolutions.length > 1) {
+          setAntispamPickerSolutions(configuredAntispamSolutions);
+          setAntispamPickerOpen(true);
+          return;
+        }
+        onNavigate("Cybersecurite", {
+          tab: "antispam",
+          clientId: client.id
+        });
+        return;
+      }
+      case "TenantMicrosoft": {
+        if (configuredMicrosoftTenants.length === 1) {
+          navigateToMicrosoftTenantDetail(configuredMicrosoftTenants[0]);
+          return;
+        }
+        if (configuredMicrosoftTenants.length > 1) {
+          setMicrosoftTenantPickerTenants(configuredMicrosoftTenants);
+          setMicrosoftTenantPickerOpen(true);
+          return;
+        }
+        onNavigate("Service", {
+          activeTab: "microsoft",
+          clientId: client.id
+        });
+        return;
+      }
+      case "GoogleWorkspace":
+        onNavigate("Service", {
+          activeTab: "microsoft",
+          clientId: client.id
+        });
+        return;
+      case "Backup": {
+        if (backupInstances.length === 1) {
+          const instance = backupInstances[0];
+          const payload = buildBackupInstanceDetailPayload({
+            ...instance,
+            id: instance.id || instance.instanceId,
+            instanceId: instance.id || instance.instanceId,
+            clientId: client.id,
+            clientName: client.name,
+            instanceName: instance.nom || instance.name || instance.logiciel || "",
+            logiciel: instance.logiciel || ""
+          });
+          if (payload?.instanceId || payload?.clientId) {
+            onNavigate("InstanceDetail", payload);
+            return;
+          }
+        }
+        onNavigate("Cybersecurite", {
+          tab: "backup",
+          clientId: client.id
+        });
+        return;
+      }
+      case "NDD": {
+        if (configuredDomains.length === 1) {
+          setDomainOverviewItem(configuredDomains[0]);
+          setDomainOverviewOpen(true);
+          return;
+        }
+        if (configuredDomains.length > 1) {
+          setDomainPickerDomains(configuredDomains);
+          setDomainPickerOpen(true);
+          return;
+        }
+        onNavigate("Service", {
+          activeTab: "domain",
+          clientId: client.id
+        });
+        return;
+      }
+      case "CertificatsSSL":
+        onNavigate("Service", {
+          activeTab: "ssl",
+          clientId: client.id
+        });
+        return;
+      case "LicensesAbonnements":
+        handleLicensesBrickClick();
+        return;
+      case "Campagne": {
+        if (isCommunity) {
+          notifyProFeature(copy.proFeatures.campaigns, "cyberCampaigns");
+          return;
+        }
+        if (campaigns.length === 1) {
+          handleOpenCampaign(campaigns[0]);
+          return;
+        }
+        if (campaigns.length > 1) {
+          setCampaignPickerOpen(true);
+          return;
+        }
+        onNavigate("Campaigns", {
+          clientId: client.id
+        });
+        return;
+      }
+      default:
+        return;
     }
+  }, [
+    backupInstances,
+    campaigns,
+    client,
+    configuredAntivirusSolutions,
+    configuredAntispamSolutions,
+    configuredDomains,
+    configuredMicrosoftTenants,
+    copy.proFeatures.campaigns,
+    handleLicensesBrickClick,
+    isCommunity,
+    navigateToAntivirusDetail,
+    navigateToAntispamDetail,
+    navigateToMicrosoftTenantDetail,
+    onNavigate
+  ]);
+  const handleServiceBrickEdit = useCallback(brickType => {
     if (!client?.id) return;
-    if (campaigns.length === 0) {
-      if (canManageCampaigns) handleOpenCreateCampaign();
-      return;
+    switch (brickType) {
+      case "Antivirus":
+        openAntivirusConfigModal(configuredAntivirusSolutions.length ? "overview" : "solution");
+        return;
+      case "Antispam":
+        openAntispamConfigModal(configuredAntispamSolutions.length ? "overview" : "solution");
+        return;
+      case "TenantMicrosoft":
+        openMicrosoftTenantConfigModal(configuredMicrosoftTenants.length ? "overview" : "configuration", null);
+        return;
+      case "GoogleWorkspace":
+        notifyProFeature(copy.toast?.googleWorkspaceSoon || "Google Workspace", "googleWorkspace");
+        return;
+      case "Backup":
+        setBackupConfigModalOpen(true);
+        return;
+      case "NDD":
+        openDomainsConfigModal(configuredDomains.length ? "overview" : "provider", globalOvhConfigured ? "ovh" : null);
+        return;
+      case "CertificatsSSL":
+        handleSslBrickClick();
+        return;
+      case "LicensesAbonnements":
+        handleLicensesBrickClick();
+        return;
+      case "Campagne":
+        if (isCommunity) {
+          notifyProFeature(copy.proFeatures.campaigns, "cyberCampaigns");
+          return;
+        }
+        if (canManageCampaigns) handleOpenCreateCampaign();
+        return;
+      default:
+        return;
     }
-    setCampaignPickerOpen(true);
-  };
+  }, [
+    canManageCampaigns,
+    client?.id,
+    configuredAntivirusSolutions.length,
+    configuredAntispamSolutions.length,
+    configuredDomains.length,
+    configuredMicrosoftTenants.length,
+    copy.proFeatures,
+    globalOvhConfigured,
+    handleLicensesBrickClick,
+    handleSslBrickClick,
+    isCommunity,
+    openAntivirusConfigModal,
+    openAntispamConfigModal,
+    openDomainsConfigModal,
+    openMicrosoftTenantConfigModal
+  ]);
+  const serviceBrickMenuItems = useMemo(() => {
+    if (!serviceBrickMenu?.type) return [];
+    const menuCopy = copy.serviceBrickMenu || {};
+    return [{
+      key: "open",
+      label: menuCopy.openPage || "Ouvrir la page",
+      icon: "mdi:open-in-new",
+      onSelect: () => handleServiceBrickOpenPage(serviceBrickMenu.type)
+    }, {
+      key: "edit",
+      label: menuCopy.edit || "Éditer",
+      icon: "mdi:pencil-outline",
+      onSelect: () => handleServiceBrickEdit(serviceBrickMenu.type)
+    }];
+  }, [copy.serviceBrickMenu, handleServiceBrickEdit, handleServiceBrickOpenPage, serviceBrickMenu]);
   const handleSubmitCampaign = async e => {
     e?.preventDefault?.();
     if (!client?.id) return;
@@ -1875,7 +2064,6 @@ export default function ClientDetailPage({
     const source = isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets;
     return source.filter(isOpenTicket).length;
   }, [isCommunity, prestationTickets]);
-
   const campaignBookmarkEvents = useMemo(
     () => (isCommunity ? [] : mapCampaignsToBookmarkEvents(campaigns, client?.id)),
     [campaigns, client?.id, isCommunity]
@@ -1890,6 +2078,14 @@ export default function ClientDetailPage({
     () => filterRecentEvents([...(Array.isArray(recentEvents) ? recentEvents : []), ...campaignBookmarkEvents]),
     [recentEvents, campaignBookmarkEvents]
   );
+  const handleHeroStatsChange = useCallback(stats => {
+    setHeroSupervisionStats({
+      critical: Number(stats?.critical) || 0,
+      warning: Number(stats?.warning) || 0,
+      ok: Number(stats?.ok) || 0,
+      loading: Boolean(stats?.loading)
+    });
+  }, []);
   const handleReloadClientActivity = () => {
     if (client?.id) loadClientActivity(client.id);
   };
@@ -2024,10 +2220,13 @@ export default function ClientDetailPage({
         signal
       });
       if (signal?.aborted) return;
-      setEquipmentTotals(totalsData || {
+      const nextTotals = totalsData || {
         byType: {},
         total: 0
-      });
+      };
+      setEquipmentTotals(nextTotals);
+      // Keep hero KPI in sync without waiting for the cartography tab / EquipmentPage mount.
+      setHardwareEquipmentTotalCount(Number(nextTotals.total) || 0);
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error lors du loading des totaux d'equipments:", error);
@@ -2035,6 +2234,7 @@ export default function ClientDetailPage({
         byType: {},
         total: 0
       });
+      setHardwareEquipmentTotalCount(0);
     } finally {
       setLoadingTotalEquipment(false);
     }
@@ -2065,6 +2265,49 @@ export default function ClientDetailPage({
   const toMailtoHref = value => {
     const email = (value || "").toString().trim();
     return email ? `mailto:${encodeURIComponent(email)}` : "";
+  };
+  const quickActionsCopy = copy.quickActions || {};
+  const quickMailHref = useMemo(() => {
+    const primaryEmail = formData.primaryContact?.email;
+    if (primaryEmail) return toMailtoHref(primaryEmail);
+    for (const contact of Array.isArray(contacts) ? contacts : []) {
+      const email = contact?.email || normalizeContactCommunications(contact).find(entry => entry.type === "email")?.value;
+      if (email) return toMailtoHref(email);
+    }
+    return "";
+  }, [formData.primaryContact?.email, contacts]);
+  const handleQuickCreateTicket = () => {
+    if (!canCreateTicket || !client?.id || !onNavigate) return;
+    onNavigate("TicketCreate", {
+      clientId: client.id,
+      ...(formData.primaryContact?.id ? { contactId: formData.primaryContact.id } : {})
+    });
+  };
+  const handleQuickScheduleIntervention = () => {
+    if (!canScheduleEvent) return;
+    if (isCommunity) {
+      notifyProFeature(copy.proFeatures.planning, "planning");
+      return;
+    }
+    setEditingEvent(null);
+    setEventModalOpen(true);
+  };
+  const handleQuickAddEquipment = () => {
+    if (!canManageDevices) return;
+    setOverviewTab("map");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        equipmentPageRef.current?.openAddEquipmentModal?.();
+        equipmentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  };
+  const handleQuickSendEmail = () => {
+    if (quickMailHref) {
+      window.location.href = quickMailHref;
+      return;
+    }
+    toast.info(quickActionsCopy.noEmail || "Aucun e-mail de contact disponible");
   };
   const formatContactCommunicationLines = contact => normalizeContactCommunications(contact).map(entry => {
     const typeDef = getCommunicationTypeDef(entry.type);
@@ -2288,6 +2531,8 @@ export default function ClientDetailPage({
       const fieldsToUpdate = {
         clientNumber: formData.clientNumber?.trim() || null,
         name: formData.name?.trim() || "",
+        icon: formData.icon?.trim() || null,
+        iconColor: formData.iconColor?.trim() || null,
         sites: formData.sites || [],
         commercialId: formData.commercialId || null,
         contrat: contratPayload,
@@ -2372,6 +2617,9 @@ export default function ClientDetailPage({
         client_number: fieldsToUpdate.clientNumber,
         clientNumber: fieldsToUpdate.clientNumber,
         name: fieldsToUpdate.name,
+        icon: fieldsToUpdate.icon,
+        icon_color: fieldsToUpdate.iconColor,
+        iconColor: fieldsToUpdate.iconColor,
         sites: fieldsToUpdate.sites,
         commercialId: fieldsToUpdate.commercialId,
         commercial_id: fieldsToUpdate.commercialId,
@@ -2545,7 +2793,9 @@ export default function ClientDetailPage({
     }
     setDeletingClient(true);
     try {
-      await deleteClient(client.id);
+      const deletedId = client.id;
+      await deleteClient(deletedId);
+      invalidateDetailCache(DETAIL_CACHE_NS.enterprise, deletedId);
       toast.success(copy.toast.enterpriseDeleted);
       setDeleteClientModalOpen(false);
       setEnterpriseEditModalOpen(false);
@@ -3060,9 +3310,9 @@ export default function ClientDetailPage({
   }, [sitesTotalPages]);
   const enterpriseGuideSteps = useMemo(() => {
     const steps = getEnterpriseDetailGuideSteps({
-      expandInfo: () => {},
       expandContacts: () => setContactsSectionExpanded(true),
       expandNotes: () => setNotesSectionExpanded(true),
+      showOverview: () => setOverviewTab("overview"),
       showInfraMap: () => setOverviewTab("map"),
       showActivity: () => setOverviewTab("activity"),
       showVault: () => setOverviewTab("vault"),
@@ -3168,10 +3418,28 @@ export default function ClientDetailPage({
           </div>}
       </div>;
   };
-  if (loading && !client) {
-    return <EnterpriseDetailSkeleton />;
-  }
-  if (!loading && (error || !client)) {
+  if (!client) {
+    if (loading) {
+      const titleHint =
+        clientData?.client?.name ||
+        clientData?.name ||
+        (clientData?.client_number != null
+          ? String(clientData.client_number)
+          : "") ||
+        "";
+      return (
+        <CrmDetailPageSkeleton
+          loadingAria="Chargement…"
+          titleHint={titleHint}
+          showTitleIcon
+          showMidSlot
+          tabCount={4}
+          body="overview"
+          showAside
+          asideSections={7}
+        />
+      );
+    }
     return <div className={`${styles.contratDetailPage} msp-page-grid`}>
         <div className={styles.error}>
           <Icon icon="mdi:alert-circle-outline" />
@@ -3182,182 +3450,299 @@ export default function ClientDetailPage({
         </div>
       </div>;
   }
-  if (!client) {
-    return <EnterpriseDetailSkeleton />;
-  }
   const companyStatusKey = normalizeCompanyStatusKey(formData.statut);
   const companyStatusLabel = companyStatusKey === "inactive" ? copy.companyStatusInactive : copy.companyStatusActive;
   const clientCode = getClientNumber(client);
   const clientNameWithoutCode = getClientNameWithoutCode(client) || "-";
+  const companyIcon = resolveEnterpriseIcon(formData.icon || client?.icon);
+  const companyIconColor = resolveEnterpriseIconColor(formData.iconColor || client?.icon_color || client?.iconColor);
   const commercialUser = users.find(u => String(u.id) === String(formData.commercialId));
   const commercialLabel = client?.commercial || commercialUser?.username || commercialUser?.email || null;
+  const primaryHeroSite = clientSites.find(site => site.isPrimary) || clientSites[0] || null;
+  const heroLocationLabel = primaryHeroSite
+    ? [primaryHeroSite.addressCity, primaryHeroSite.addressCountry].filter(Boolean).join(", ") || getSiteDisplayName(primaryHeroSite)
+    : null;
+  const heroKpiCopy = copy.heroKpis || {};
+  const heroFactCopy = copy.heroFacts || {};
+  const activeContractModules = enabledModules.filter(mod => !!formData.modules?.[mod.moduleKey]);
+  const heroPrimaryAddress = primaryHeroSite ? buildSiteAddress(primaryHeroSite) : "";
+  const heroLegalId = formData.siret ? normalizeLegalIdentifier(formData.siret) : "";
+  const heroSector = formData.secteur?.trim() || "";
+  const heroContractStart = formData.contrat?.debut ? formatTableDate(formData.contrat.debut) : "";
+  const heroContractEnd = formData.contrat?.expiration ? formatTableDate(formData.contrat.expiration) : "";
+  const heroContractValue = heroContractStart && heroContractEnd
+    ? `${heroContractStart} → ${heroContractEnd}`
+    : heroContractStart || heroContractEnd || "";
+  const heroCreditsValue = !isCommunity && supportCreditBalance != null
+    ? String(supportCreditBalance)
+    : "—";
+  const heroOptionsValue = interpolate(heroFactCopy.optionsCount || "{count} options", {
+    count: String(activeContractModules.length)
+  });
+  const heroFacts = [
+    {
+      key: "sites",
+      icon: "mdi:office-building-marker-outline",
+      label: copy.sitesTitle,
+      value: String(clientSites.length)
+    },
+    {
+      key: "contacts",
+      icon: "mdi:account-group-outline",
+      label: copy.contactsTitle,
+      value: String(activeContactCount)
+    },
+    {
+      key: "providers",
+      icon: "mdi:handshake-outline",
+      label: copy.providersTitle,
+      value: String(Array.isArray(prestataires) ? prestataires.length : 0)
+    },
+    {
+      key: "address",
+      icon: "mdi:home-map-marker",
+      label: heroFactCopy.address || "Adresse",
+      value: heroPrimaryAddress || "—"
+    },
+    {
+      key: "legal",
+      icon: "mdi:identifier",
+      label: legalIdCopy.label,
+      value: heroLegalId || "—"
+    },
+    {
+      key: "sector",
+      icon: "mdi:briefcase-outline",
+      label: copy.sectorLabel,
+      value: heroSector || "—"
+    },
+    {
+      key: "contract",
+      icon: "mdi:calendar-range",
+      label: heroFactCopy.contract || "Contrat",
+      value: heroContractValue || "—"
+    },
+    {
+      key: "options",
+      icon: "mdi:puzzle-outline",
+      label: copy.contractOptionsShort || copy.contractOptionsLabel,
+      value: heroOptionsValue
+    },
+    {
+      key: "credits",
+      icon: "mdi:ticket-percent-outline",
+      label: copy.creditsTitle,
+      value: heroCreditsValue
+    }
+  ];
   return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} msp-page-grid`}>
-      <header className={`${styles.pageHero} ${isCommunity ? styles.pageHeroProTeaser : ""}`} ref={headerRef} data-guide="enterprise-hero">
-        <div className={styles.heroRow}>
-          <div className={styles.heroMain}>
-            <div className={styles.heroText}>
-              <h1 className={styles.heroTitle}>
-                <StatusDot active={companyStatusKey === "active"} label={companyStatusLabel} className={styles.heroTitleStatus} />
-                {clientCode ? <span className={styles.heroTitleCode}>{clientCode}</span> : null}
-                {clientCode ? <span className={styles.heroTitleSep} aria-hidden>·</span> : null}
-                <span className={styles.heroTitleName}>{clientNameWithoutCode}</span>
-              </h1>
-              <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                {commercialLabel ? <span className={styles.heroMetaItem}>
-                    <Icon icon="mdi:account-tie-outline" aria-hidden />
-                    {commercialLabel}
-                  </span> : null}
-                <span className={styles.heroMetaItem}>
-                  <Icon icon="mdi:server-outline" aria-hidden />
-                  {interpolate(heroEquipmentTotalCount > 1 ? copy.equipmentCountPlural : copy.equipmentCount, {
-                  count: heroEquipmentTotalCount
-                })}
+      <header className={styles.pageHero} ref={headerRef} data-guide="enterprise-hero">
+        <div className={styles.heroTop}>
+          <div className={styles.heroIdentityBlock}>
+            <div className={styles.heroCover} aria-hidden />
+            <div className={styles.heroIdentityRow}>
+              <div className={styles.heroMain}>
+                <span className={styles.heroBrandIcon} style={{ background: companyIconColor || undefined }} aria-hidden>
+                  <Icon icon={companyIcon} width={30} height={30} />
                 </span>
-                {activeContactCount > 0 ? <span className={styles.heroMetaItem}>
-                    <Icon icon="mdi:account-group-outline" aria-hidden />
-                    {interpolate(activeContactCount > 1 ? copy.contactCountPlural : copy.contactCount, {
-                  count: activeContactCount
-                })}
-                  </span> : null}
-                <EnterpriseRmmEnrollmentHero clientId={client?.id} isAdmin={userRole === "admin"} compact itemClassName={`${styles.heroMetaItem} ${styles.heroMetaItemRmm}`} tokenWrapClassName={styles.heroRmmToken} />
-                {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                    {clientTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
-                  backgroundColor: `${tag.color || "#2b5fab"}18`,
-                  borderColor: `${tag.color || "#2b5fab"}55`,
-                  color: tag.color || "#2b5fab"
-                }}>
-                        {tag.label}
-                        {canManageTags ? <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveClientTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
-                    label: tag.label
-                  })}>
-                          <FaTimes />
-                        </button> : null}
-                      </span>)}
-                    {canManageTags ? <div className={styles.heroTagAddWrap}>
-                      <SmartTooltip content={copy.addTag}>
-                        <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
-                          <FaPlus />
-                        </button>
-                      </SmartTooltip>
-                    </div> : null}
-                  </>}
+                <div className={styles.heroText}>
+                  <h1 className={styles.heroTitle}>
+                    {clientCode ? <span className={styles.heroTitleCode}>{clientCode}</span> : null}
+                    <span className={styles.heroTitleName}>{clientNameWithoutCode}</span>
+                    <span className={`${styles.heroStatusBadge} ${companyStatusKey === "active" ? "" : styles.heroStatusBadgeInactive}`.trim()}>
+                      <StatusDot active={companyStatusKey === "active"} label="" className={styles.heroTitleStatus} />
+                      {companyStatusLabel}
+                    </span>
+                  </h1>
+                  <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                    {heroLocationLabel ? <span className={styles.heroLocation}>
+                        <Icon icon="mdi:map-marker" aria-hidden />
+                        {heroLocationLabel}
+                      </span> : null}
+                    {commercialLabel ? <span className={styles.heroMetaItem}>
+                        <Icon icon="mdi:account-tie-outline" aria-hidden />
+                        {commercialLabel}
+                      </span> : null}
+                    <EnterpriseRmmEnrollmentHero clientId={client?.id} isAdmin={userRole === "admin"} compact itemClassName={`${styles.heroMetaItem} ${styles.heroMetaItemRmm}`} tokenWrapClassName={styles.heroRmmToken} />
+                    {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
+                        {clientTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
+                      backgroundColor: `${tag.color || "#2b5fab"}18`,
+                      borderColor: `${tag.color || "#2b5fab"}55`,
+                      color: tag.color || "#2b5fab"
+                    }}>
+                            {tag.label}
+                            {canManageTags ? <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveClientTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
+                        label: tag.label
+                      })}>
+                              <FaTimes />
+                            </button> : null}
+                          </span>)}
+                        {canManageTags ? <div className={styles.heroTagAddWrap}>
+                          <SmartTooltip content={copy.addTag}>
+                            <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
+                              <FaPlus />
+                            </button>
+                          </SmartTooltip>
+                        </div> : null}
+                      </>}
+                  </div>
+                </div>
+              </div>
+              <div className={styles.heroPlanningFrise} data-guide="enterprise-planning-frise">
+                <UpcomingEventBookmarks
+                  upcomingEvents={upcomingEventsForBookmarks}
+                  recentEvents={recentEventsForBookmarks}
+                  loading={loadingClientActivity}
+                  typeLabels={eventTypeLabels}
+                  labels={copy.eventBookmarks}
+                  menuLabels={copy.eventActionMenu}
+                  locale={locale}
+                  users={users}
+                  proFeatureLabel={copy.proFeatures.planning}
+                  proFeatureKey="planning"
+                  proLocked={isCommunity}
+                  heroFrise
+                  onEditEvent={canScheduleEvent ? event => {
+                    if (event?._isCampaign && event._campaignData) {
+                      handleOpenCampaign(event._campaignData);
+                      return;
+                    }
+                    setEditingEvent(event);
+                    setEventModalOpen(true);
+                  } : event => {
+                    if (event?._isCampaign && event._campaignData) {
+                      handleOpenCampaign(event._campaignData);
+                    }
+                  }}
+                  onGoToPlanning={event => {
+                    const start = event?.event_start ?? event?.start ?? event?.["start"];
+                    onNavigate?.("Planning", {
+                      focusEventId: event?._isCampaign ? undefined : event?.id,
+                      focusDate: start,
+                      clientId: event?.client_id ?? client?.id ?? null
+                    });
+                  }}
+                />
+              </div>
+              <div className={styles.heroRightCluster}>
+                {clientOnboarding ? <div className={`${styles.onboardingBanner} ${styles.heroOnboardingCard}`} role="status">
+                    <Icon icon="mdi:account-clock-outline" aria-hidden />
+                    <div className={styles.onboardingBannerText}>
+                      <strong>{copy.onboardingBannerTitle}</strong>
+                      <span>
+                        {clientOnboarding.ageDays < 1
+                      ? interpolate(copy.onboardingBannerHintToday, {
+                        remaining: clientOnboarding.remainingDays
+                      })
+                      : interpolate(copy.onboardingBannerHint, {
+                        days: clientOnboarding.ageDays,
+                        remaining: clientOnboarding.remainingDays
+                      })}
+                      </span>
+                    </div>
+                  </div> : null}
+                <div className={styles.heroKpiStrip} aria-label={copy.heroMetaAria}>
+                  <div className={styles.heroKpiCard}>
+                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconSites}`} aria-hidden>
+                      <Icon icon="mdi:office-building-marker-outline" />
+                    </span>
+                    <span className={styles.heroKpiValue}>{clientSites.length}</span>
+                    <span className={styles.heroKpiLabel}>{heroKpiCopy.sites || copy.sitesTitle}</span>
+                  </div>
+                  <div className={styles.heroKpiCard}>
+                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconDevices}`} aria-hidden>
+                      <Icon icon="mdi:devices" />
+                    </span>
+                    <span className={styles.heroKpiValue}>{heroEquipmentTotalCount}</span>
+                    <span className={styles.heroKpiLabel}>{heroKpiCopy.devices || "Périphériques"}</span>
+                  </div>
+                  <div className={styles.heroKpiCard}>
+                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconTickets}`} aria-hidden>
+                      <Icon icon="mdi:ticket-outline" />
+                    </span>
+                    <span className={styles.heroKpiValue}>{openSupportCount}</span>
+                    <span className={styles.heroKpiLabel}>{heroKpiCopy.openTickets || copy.kpiSupportOpen}</span>
+                  </div>
+                  <div className={styles.heroKpiCard}>
+                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconCritical}`} aria-hidden>
+                      <Icon icon="mdi:alert-octagon-outline" />
+                    </span>
+                    <span className={styles.heroKpiValue}>{heroSupervisionStats.critical}</span>
+                    <span className={styles.heroKpiLabel}>{heroKpiCopy.criticalAlerts || "Alerte critique"}</span>
+                  </div>
+                  <div className={styles.heroKpiCard}>
+                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconWarnings}`} aria-hidden>
+                      <Icon icon="mdi:alert-outline" />
+                    </span>
+                    <span className={styles.heroKpiValue}>{heroSupervisionStats.warning}</span>
+                    <span className={styles.heroKpiLabel}>{heroKpiCopy.warnings || "Warnings"}</span>
+                  </div>
+                </div>
               </div>
             </div>
+            {heroFacts.length ? (
+              <div className={styles.heroFactStrip} aria-label={heroFactCopy.aria || copy.sidebarInfo}>
+                {heroFacts.map(fact => (
+                  <div key={fact.key} className={styles.heroFactItem}>
+                    <span className={styles.heroFactIcon} aria-hidden>
+                      <Icon icon={fact.icon} />
+                    </span>
+                    <div className={styles.heroFactText}>
+                      <span className={styles.heroFactLabel}>{fact.label}</span>
+                      <span className={styles.heroFactValue} title={String(fact.value)}>{fact.value}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
-          <div className={styles.heroActions} ref={clientActionsMenuRef} data-guide="enterprise-hero-actions">
-            {clientOnboarding ? <div className={`${styles.onboardingBanner} ${styles.heroOnboardingCard}`} role="status">
-                <Icon icon="mdi:account-clock-outline" aria-hidden />
-                <div className={styles.onboardingBannerText}>
-                  <strong>{copy.onboardingBannerTitle}</strong>
-                  <span>
-                    {clientOnboarding.ageDays < 1
-                  ? interpolate(copy.onboardingBannerHintToday, {
-                    remaining: clientOnboarding.remainingDays
-                  })
-                  : interpolate(copy.onboardingBannerHint, {
-                    days: clientOnboarding.ageDays,
-                    remaining: clientOnboarding.remainingDays
-                  })}
-                  </span>
-                </div>
-              </div> : null}
-            <SubscribeBellButton
-              entityType="enterprise"
-              entityId={client?.id}
-              subscribeLabel={copy.subscribe?.subscribe || "S’abonner aux notifications"}
-              unsubscribeLabel={copy.subscribe?.unsubscribe || "Se désabonner"}
-              subscribedToast={copy.subscribe?.subscribedToast || "Abonnement activé"}
-              unsubscribedToast={copy.subscribe?.unsubscribedToast || "Abonnement retiré"}
-            />
-            {canEditClient || canReversibility ? <>
-                <SmartTooltip content={copy.actionsMenuTooltip}>
-                  <button type="button" className={styles.heroMenuBtn} onClick={() => setClientActionsMenuOpen(open => !open)} aria-expanded={clientActionsMenuOpen} aria-haspopup="menu" aria-label={copy.actionsMenu} disabled={deletingClient}>
-                    <Icon icon="mdi:dots-horizontal" aria-hidden />
-                  </button>
-                </SmartTooltip>
-                {clientActionsMenuOpen && <div className={styles.heroClientMenu} role="menu">
-                    {canEditClient ? <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-                setClientActionsMenuOpen(false);
-                openEnterpriseEditModal();
-              }}>
-                        <Icon icon="mdi:pencil-outline" aria-hidden />
-                        <span>{copy.editEnterprise}</span>
-                      </button> : null}
-                    {canReversibility ? <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-                setClientActionsMenuOpen(false);
-                if (isCommunity) {
-                  notifyProFeature(copy.proFeatures.reversibility);
-                  return;
-                }
-                handleExportReversibility();
-              }} disabled={!isCommunity && generatingReversibility}>
-                        {generatingReversibility && !isCommunity ? <Icon icon="mdi:loading" className={styles.spinning} aria-hidden /> : <Icon icon="mdi:folder-download-outline" aria-hidden />}
-                        <span className={styles.heroMenuItemLabel}>
-                          {generatingReversibility && !isCommunity ? copy.generatingDossier || copy.generatingFolder : copy.reversibilityDossier || copy.reversibilityFolder}
-                          {isCommunity ? <ProFeatureBadge variant="inline" /> : null}
-                        </span>
-                      </button> : null}
-                  </div>}
-              </> : null}
-          </div>
-        </div>
-        <div className={styles.pageHeroBookmarks}>
-        <UpcomingEventBookmarks upcomingEvents={upcomingEventsForBookmarks} recentEvents={recentEventsForBookmarks} loading={loadingClientActivity} typeLabels={eventTypeLabels} labels={copy.eventBookmarks} menuLabels={copy.eventActionMenu} locale={locale} users={users} proFeatureLabel={copy.proFeatures.planning} proFeatureKey="planning" proLocked={isCommunity} inPageHero defaultCollapsed onEditEvent={canScheduleEvent ? event => {
-          if (event?._isCampaign && event._campaignData) {
-            handleOpenCampaign(event._campaignData);
-            return;
-          }
-          setEditingEvent(event);
-          setEventModalOpen(true);
-        } : event => {
-          if (event?._isCampaign && event._campaignData) {
-            handleOpenCampaign(event._campaignData);
-          }
-        }} onGoToPlanning={event => {
-          const start = event?.event_start ?? event?.start ?? event?.["start"];
-          onNavigate?.("Planning", {
-            focusEventId: event?._isCampaign ? undefined : event?.id,
-            focusDate: start,
-            clientId: event?.client_id ?? client?.id ?? null
-          });
-        }} />
         </div>
       </header>
 
       <div className={`${styles.pageBody} ${overviewTab === "vault" ? styles.pageBodyFill : ""}`.trim()}>
         <div className={styles.pageGrid}>
           <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""}`.trim()}>
-            <div className={styles.overviewTabsWrap}>
-              <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
-                <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.overviewTab} ${overviewTab === "map" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
-                  <span className={styles.overviewTabLabelRow}>
-                    <Icon icon="mdi:sitemap-outline" className={styles.overviewTabIcon} aria-hidden />
-                    <span>{copy.overviewTabMap}</span>
-                  </span>
-                </button>
-                <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
-                  <span className={styles.overviewTabLabelRow}>
-                    <Icon icon="mdi:clipboard-text-clock-outline" className={styles.overviewTabIcon} aria-hidden />
-                    <span>{copy.overviewTabActivity}</span>
-                  </span>
-                </button>
-                <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.overviewTab} ${overviewTab === "vault" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
-                  <span className={styles.overviewTabLabelRow}>
-                    <Icon icon="mdi:safe-square-outline" className={styles.overviewTabIcon} aria-hidden />
-                    <span>{copy.overviewTabVault}</span>
-                    {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                  </span>
-                </button>
-              </nav>
-            </div>
-
+            <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
+              <button type="button" role="tab" aria-selected={overviewTab === "overview"} className={`${styles.heroTab} ${overviewTab === "overview" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("overview")} data-guide="enterprise-overview-tab">
+                <Icon icon="mdi:view-dashboard-outline" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabOverview}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.heroTab} ${overviewTab === "map" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
+                <Icon icon="mdi:sitemap-outline" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabMap}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
+                <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.heroTab} ${overviewTab === "vault" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
+                <Icon icon="mdi:safe-square-outline" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabVault}</span>
+                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+              </button>
+            </nav>
             <div className={styles.mainCommunityPanels}>
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "overview"}
+              style={overviewTab === "overview" ? undefined : { display: "none" }}
+            >
+              <EnterpriseOverviewTab
+                client={client}
+                clientId={client?.id}
+                locale={locale}
+                copy={copy.overviewCharts || {}}
+                equipmentRevision={equipmentRevision}
+                contrat={formData?.contrat || client?.contrat || null}
+                onNavigate={onNavigate}
+                onStatsChange={handleHeroStatsChange}
+              />
+            </div>
             {overviewTab === "map" ? <>
-            {!mapTabContentReady ? <EnterpriseMapTabSkeleton infraTitle={copy.infraMapTitle} peripheralsTitle={copy.peripheralsTitle} loadingAria={copy.mapTabLoadingAria} /> : null}
-            <div className={`${styles.mapTabStack} ${mapTabContentReady ? "" : styles.mapTabContentHidden}`.trim()} aria-hidden={!mapTabContentReady}>
+            <div className={styles.mapTabStack}>
             <div className={styles.mapModulesBlock} data-guide="enterprise-infra-map">
               {siteFilterBadge ? <div className={styles.mapModulesToolbar}>{siteFilterBadge}</div> : null}
-              <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} hideSkeleton onLoadingChange={handleMapInfraLoadingChange} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
+              <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} hideSkeleton backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
                   configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
                   items: configuredMicrosoftTenants,
                   tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
@@ -3373,7 +3758,7 @@ export default function ClientDetailPage({
                   status: client?.googleWorkspace?.status || "actif",
                   clientId: client.id,
                   clientName: client.name
-                }} onNodeClick={handleInfraNodeClick} onBrickClick={canManageSolutions || canManageCampaigns || canManageDevices ? brick => {
+                }} onNodeClick={handleInfraNodeClick} onBrickClick={canManageSolutions || canManageCampaigns || canManageDevices ? (brick, event) => {
                   if (!canManageSolutions && !["Campagne"].includes(brick.type) && !parseCustomFamilyType(brick.type)) return;
                   const familyKey = brick.familyKey || parseCustomFamilyType(brick.type);
                   if (familyKey) {
@@ -3399,43 +3784,17 @@ export default function ClientDetailPage({
                     }
                   }
                   if (!canManageSolutions && brick.type !== "Campagne") return;
-                  if (brick.type === "Backup") {
-                    setBackupConfigModalOpen(true);
-                    return;
-                  }
-                  if (brick.type === "Antivirus") {
-                    handleAntivirusBrickClick();
-                    return;
-                  }
-                  if (brick.type === "Campagne") {
-                    handleCampaignBrickClick();
-                    return;
-                  }
-                  if (!onNavigate || !client?.id) return;
-                  if (brick.type === "Antispam") {
-                    handleAntispamBrickClick();
-                    return;
-                  }
-                  if (brick.type === "NDD") {
-                    handleNddBrickClick();
-                    return;
-                  }
-                  if (brick.type === "CertificatsSSL") {
-                    handleSslBrickClick();
-                    return;
-                  }
-                  if (brick.type === "LicensesAbonnements") {
-                    handleLicensesBrickClick();
-                    return;
-                  }
-                  if (brick.type === "TenantMicrosoft") {
-                    handleMicrosoftTenantBrickClick();
+                  if (SERVICE_BRICK_MENU_TYPES.has(brick.type)) {
+                    if (brick.type !== "Campagne" && !client?.id) return;
+                    openServiceBrickMenu(brick, event);
                     return;
                   }
                 } : undefined} />
             </div>
+            </div>
+            </> : null}
 
-            <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
+            {overviewTab === "map" ? <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
                   <h2 className={styles.panelTitle}>
@@ -3522,7 +3881,7 @@ export default function ClientDetailPage({
                     sites: formData.sites ?? client.sites ?? [],
                     ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
                     ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
-                  } : null} equipmentRevision={equipmentRevision} hideEmbeddedSkeleton onLoadingChange={handleMapEquipmentLoadingChange} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
+                  } : null} equipmentRevision={equipmentRevision} hideEmbeddedSkeleton initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
                     setClient(prev => prev ? {
                       ...prev,
                       ssid: ssids,
@@ -3536,9 +3895,7 @@ export default function ClientDetailPage({
                   }} onEmbeddedActiveTypeChange={setActiveEquipmentTableType} />
                 </div>
               </div>
-            </section>
-            </div>
-            </> : null}
+            </section> : null}
 
             {overviewTab === "activity" ? <div className={styles.activityLayout} data-guide="enterprise-activity-panel">
                     <div className={styles.activityKpiRow}>
@@ -3760,56 +4117,173 @@ export default function ClientDetailPage({
 
           </main>
 
+          <div className={styles.asideStack}>
+            <div className={styles.sidebarContractOptionsTop} data-guide="enterprise-sidebar-contracts">
+              <span className={styles.sidebarContractOptionsTopLabel}>
+                {copy.contractOptionsShort || copy.contractOptionsLabel}
+              </span>
+              {activeContractModules.length === 0 ? (
+                <span className={styles.sidebarContractOptionsTopEmpty}>{copy.noContractOptions}</span>
+              ) : (
+                <ul className={styles.sidebarContractIconRow}>
+                  {activeContractModules.map(mod => (
+                    <li key={mod.moduleKey}>
+                      <SmartTooltip content={mod.label}>
+                        <span className={styles.sidebarContractIconChip} aria-label={mod.label}>
+                          <Icon icon={mod.icon || "mdi:puzzle-outline"} aria-hidden />
+                        </span>
+                      </SmartTooltip>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <section className={styles.quickActionsCard} data-guide="enterprise-quick-actions" aria-label={quickActionsCopy.title || "Actions rapides"}>
+              <h3 className={styles.quickActionsTitle}>{quickActionsCopy.title || "Actions rapides"}</h3>
+              <ul className={styles.quickActionsList}>
+                {canCreateTicket ? (
+                  <li>
+                    <button type="button" className={styles.quickActionItem} onClick={handleQuickCreateTicket}>
+                      <span className={styles.quickActionIcon} aria-hidden>
+                        <Icon icon="mdi:ticket-outline" />
+                      </span>
+                      <span className={styles.quickActionLabel}>{quickActionsCopy.createTicket}</span>
+                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                    </button>
+                  </li>
+                ) : null}
+                {canScheduleEvent ? (
+                  <li>
+                    <button type="button" className={styles.quickActionItem} onClick={handleQuickScheduleIntervention}>
+                      <span className={styles.quickActionIcon} aria-hidden>
+                        <Icon icon="mdi:calendar-month-outline" />
+                      </span>
+                      <span className={styles.quickActionLabel}>{quickActionsCopy.scheduleIntervention}</span>
+                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                    </button>
+                  </li>
+                ) : null}
+                {canManageDevices ? (
+                  <li>
+                    <button type="button" className={styles.quickActionItem} onClick={handleQuickAddEquipment}>
+                      <span className={styles.quickActionIcon} aria-hidden>
+                        <Icon icon="mdi:desktop-classic" />
+                      </span>
+                      <span className={styles.quickActionLabel}>{quickActionsCopy.addEquipment}</span>
+                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                    </button>
+                  </li>
+                ) : null}
+                <li>
+                  <button type="button" className={styles.quickActionItem} onClick={handleQuickSendEmail}>
+                    <span className={styles.quickActionIcon} aria-hidden>
+                      <Icon icon="mdi:email-outline" />
+                    </span>
+                    <span className={styles.quickActionLabel}>{quickActionsCopy.sendEmail}</span>
+                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className={styles.quickActionItem}
+                    onClick={toggleEnterpriseSubscribe}
+                    disabled={!client?.id || enterpriseSubscribeLoading || enterpriseSubscribeSaving}
+                    aria-pressed={enterpriseSubscribed}
+                  >
+                    <span className={styles.quickActionIcon} aria-hidden>
+                      <Icon icon={enterpriseSubscribed ? "mdi:bell-ring" : "mdi:bell-outline"} />
+                    </span>
+                    <span className={styles.quickActionLabel}>
+                      {enterpriseSubscribed
+                        ? copy.subscribe?.unsubscribe || "Se désabonner"
+                        : copy.subscribe?.subscribe || "S’abonner aux notifications"}
+                    </span>
+                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                  </button>
+                </li>
+                {canEditClient ? (
+                  <li>
+                    <button type="button" className={styles.quickActionItem} onClick={openEnterpriseEditModal}>
+                      <span className={styles.quickActionIcon} aria-hidden>
+                        <Icon icon="mdi:pencil-outline" />
+                      </span>
+                      <span className={styles.quickActionLabel}>{quickActionsCopy.editEnterprise || copy.editEnterprise}</span>
+                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                    </button>
+                  </li>
+                ) : null}
+                {quickActionsExpanded ? (
+                  <>
+                    {canAddContact ? (
+                      <li>
+                        <button type="button" className={styles.quickActionItem} onClick={handleAddContact}>
+                          <span className={styles.quickActionIcon} aria-hidden>
+                            <Icon icon="mdi:account-plus-outline" />
+                          </span>
+                          <span className={styles.quickActionLabel}>{quickActionsCopy.addContact}</span>
+                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ) : null}
+                    {canManageSites ? (
+                      <li>
+                        <button type="button" className={styles.quickActionItem} onClick={() => setSitesModalOpen(true)}>
+                          <span className={styles.quickActionIcon} aria-hidden>
+                            <Icon icon="mdi:map-marker-outline" />
+                          </span>
+                          <span className={styles.quickActionLabel}>{quickActionsCopy.manageSites}</span>
+                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ) : null}
+                    {canReversibility ? (
+                      <li>
+                        <button
+                          type="button"
+                          className={styles.quickActionItem}
+                          onClick={() => {
+                            if (isCommunity) {
+                              notifyProFeature(copy.proFeatures.reversibility);
+                              return;
+                            }
+                            handleExportReversibility();
+                          }}
+                          disabled={!isCommunity && generatingReversibility}
+                        >
+                          <span className={styles.quickActionIcon} aria-hidden>
+                            {generatingReversibility && !isCommunity
+                              ? <Icon icon="mdi:loading" className={styles.spinning} />
+                              : <Icon icon="mdi:folder-download-outline" />}
+                          </span>
+                          <span className={styles.quickActionLabel}>
+                            {generatingReversibility && !isCommunity
+                              ? copy.generatingDossier || copy.generatingFolder
+                              : copy.reversibilityDossier || copy.reversibilityFolder}
+                            {isCommunity ? <ProFeatureBadge variant="inline" /> : null}
+                          </span>
+                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ) : null}
+                  </>
+                ) : null}
+              </ul>
+              <button
+                type="button"
+                className={styles.quickActionsSeeAll}
+                onClick={() => setQuickActionsExpanded(prev => !prev)}
+              >
+                {quickActionsCopy.seeAll}
+                <Icon icon={quickActionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
+              </button>
+            </section>
           <aside className={styles.asidePanel}>
             <div className={styles.rightSidebarContent}>
-            <section className={styles.sidebarSection} data-guide="enterprise-sidebar-info">
-              <div className={styles.sidebarInfoHeader}>
-                <span className={styles.sidebarInfoTitle}>{copy.sidebarInfo}</span>
-              </div>
-              <div className={styles.sidebarSummaryList}>
-                <div className={styles.sidebarFieldsRow}>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.startDateLabel}</span>
-                    <span className={styles.sidebarSummaryValue}>
-                      {formatTableDate(formData.contrat?.debut)}
-                    </span>
-                  </div>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.endDateLabel}</span>
-                    <span className={styles.sidebarSummaryValue}>
-                      {formatTableDate(formData.contrat?.expiration)}
-                    </span>
-                  </div>
-                </div>
-                <div className={styles.sidebarSummaryItem}>
-                  <span className={styles.sidebarSummaryLabel}>{copy.contractOptionsLabel}</span>
-                  <div className={styles.sidebarOptionsIconsContract}>
-                    {enabledModules.map(mod => {
-                      const active = !!formData.modules?.[mod.moduleKey];
-                      return <SmartTooltip key={mod.moduleKey} content={mod.label}>
-                          <span className={`${styles.sidebarOptionIcon} ${active ? styles.sidebarOptionIconActive : styles.sidebarOptionIconInactive}`}>
-                            <Icon icon={mod.icon || "mdi:puzzle-outline"} className={styles.sidebarOptionIconInner} />
-                          </span>
-                        </SmartTooltip>;
-                    })}
-                  </div>
-                </div>
-                <div className={styles.sidebarSummaryItem}>
-                  <span className={styles.sidebarSummaryLabel}>{legalIdCopy.label}</span>
-                  {formData.siret ? <span className={styles.sidebarSummaryValue}>
-                      {normalizeLegalIdentifier(formData.siret)}
-                    </span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
-                </div>
-                <div className={styles.sidebarSummaryItem}>
-                  <span className={styles.sidebarSummaryLabel}>{copy.sectorLabel}</span>
-                  {formData.secteur?.trim() ? <span className={styles.sidebarSummaryValue}>{formData.secteur.trim()}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
-                </div>
-              </div>
-            </section>
-
             <section className={styles.sidebarSection}>
               <SidebarSectionHeader
                 title={copy.sitesTitle}
+                icon="mdi:map-marker-outline"
                 count={(formData.sites || []).length > 0 ? clientSites.length : null}
                 expanded={sitesSectionExpanded}
                 onToggle={() => setSitesSectionExpanded(prev => !prev)}
@@ -3888,6 +4362,7 @@ export default function ClientDetailPage({
             <section className={styles.sidebarSection} data-guide="enterprise-sidebar-contacts">
               <SidebarSectionHeader
                 title={copy.contactsTitle}
+                icon="mdi:account-multiple-outline"
                 count={!loadingContacts && contacts.length > 0 ? activeContactCount : null}
                 expanded={contactsSectionExpanded}
                 onToggle={() => setContactsSectionExpanded(prev => !prev)}
@@ -4017,6 +4492,7 @@ export default function ClientDetailPage({
             <section className={styles.sidebarSection} data-guide="enterprise-sidebar-prestataires">
               <SidebarSectionHeader
                 title={copy.providersTitle}
+                icon="mdi:handshake-outline"
                 count={!loadingPrestataires && prestataires.length > 0 ? prestataires.length : null}
                 expanded={prestatairesSectionExpanded}
                 onToggle={() => setPrestatairesSectionExpanded(prev => !prev)}
@@ -4103,6 +4579,7 @@ export default function ClientDetailPage({
             <section className={`${styles.sidebarSection} ${styles.sidebarSlaSection}`}>
               <SidebarSectionHeader
                 title={copy.slaTitle}
+                icon="mdi:timer-sand"
                 badge={isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
                 expanded={slaExpanded}
                 locked={isCommunity}
@@ -4144,6 +4621,7 @@ export default function ClientDetailPage({
             {(isCommunity || supportCreditBalance !== null) && <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection}`}>
                 <SidebarSectionHeader
                   title={copy.creditsTitle}
+                  icon="mdi:ticket-confirmation-outline"
                   badge={<>
                       {!isCommunity && supportCreditBalance != null ? <span className={styles.sidebarCreditsBadge} title={copy.creditsTitle}>
                           {Number(supportCreditBalance) || 0}
@@ -4213,6 +4691,7 @@ export default function ClientDetailPage({
             <section className={styles.sidebarSection} data-guide="enterprise-sidebar-notes">
               <SidebarSectionHeader
                 title={copy.notesTitle}
+                icon="mdi:note-text-outline"
                 count={!loadingNotes && notes.length > 0 ? notes.length : null}
                 expanded={notesSectionExpanded}
                 onToggle={() => setNotesSectionExpanded(prev => !prev)}
@@ -4265,6 +4744,7 @@ export default function ClientDetailPage({
             </section>
           </div>
         </aside>
+          </div>
         </div>
       </div>
 
@@ -4964,6 +5444,15 @@ export default function ClientDetailPage({
       setCampaignPickerOpen(false);
       handleOpenCreateCampaign();
     } : undefined} />
+
+      {serviceBrickMenu ? <ContextMenu
+        x={serviceBrickMenu.x}
+        y={serviceBrickMenu.y}
+        title={serviceBrickMenu.label}
+        items={serviceBrickMenuItems}
+        onClose={closeServiceBrickMenu}
+        ariaLabel={copy.serviceBrickMenu?.aria || "Actions du service"}
+      /> : null}
 
       <CampaignFormModal open={showCampaignModal} onClose={() => {
       if (savingCampaign) return;

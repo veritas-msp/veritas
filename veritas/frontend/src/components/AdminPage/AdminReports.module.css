@@ -2,9 +2,12 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.95fr);
   gap: 1rem;
-  align-items: start;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .editor {
@@ -12,17 +15,18 @@
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .previewColumn {
   min-width: 0;
-  position: sticky;
-  top: 0.75rem;
-  align-self: start;
-  height: calc(100dvh - 1.5rem);
-  max-height: calc(100dvh - 1.5rem);
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .previewSticky {
@@ -32,6 +36,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .previewShell {
@@ -52,6 +57,66 @@
   padding: 1.25rem 1.35rem 1.1rem;
 }
 
+.previewLogo {
+  display: block;
+  max-width: 88px;
+  max-height: 48px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.previewFooterLogo {
+  display: block;
+  max-width: 96px;
+  max-height: 40px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 0.65rem;
+}
+
+.logoBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.logoPreview,
+.logoPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  padding: 0.65rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.logoPreview img {
+  max-width: 100%;
+  max-height: 64px;
+  object-fit: contain;
+}
+
+.logoPlaceholder {
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.85rem;
+}
+
+.logoActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.hiddenFile {
+  display: none;
+}
+
 .previewAccentBar {
   position: absolute;
   left: 0;
@@ -67,7 +132,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #fff;
 }
 
@@ -96,42 +162,210 @@
   padding: 1.1rem 1.2rem 1.2rem;
   text-align: center;
   border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  max-height: 40%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-.resolvedList {
-  display: grid;
-  gap: 0.35rem;
-  font-size: 0.88rem;
-  color: var(--msp-muted, #5c6b82);
+.previewFooterBrandAlt {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.75;
 }
 
-.footerBar {
+.previewFooterContacts {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+  margin-top: 0.65rem;
+  font-size: 0.78rem;
+}
+
+.previewFooterSocial {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 0.7rem;
+}
+
+.previewFooterSocialItem {
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 14px;
-  margin-top: 4px;
-  border: 1px solid var(--msp-border, #dde3ed);
+  justify-content: center;
+  gap: 0.35rem;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.previewFooterSocialIcons .previewFooterSocialItem {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.previewFooterSocialLinks .previewFooterSocialItem {
+  padding: 0.15rem 0.1rem;
+}
+
+.previewFooterSocialLinks .previewFooterSocialItem:hover,
+.previewFooterSocialBoth .previewFooterSocialItem:hover {
+  text-decoration: underline;
+}
+
+.previewFooterSocialBoth .previewFooterSocialItem {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.previewFooterNote {
+  margin: 0.75rem 0 0;
+  line-height: 1.4;
+}
+
+.fontPicker {
+  position: relative;
+  width: 100%;
+}
+
+.fontPickerTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 38px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--msp-border, #c5d0df);
   border-radius: 10px;
   background: var(--msp-surface, #fff);
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fontPickerTrigger:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+}
+
+.fontPickerTrigger:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.fontPickerCaret {
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.75rem;
   flex-shrink: 0;
+}
+
+.fontPickerDropdown {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 16rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 10px 28px rgba(11, 33, 56, 0.14);
+  overflow: hidden;
+}
+
+.fontPickerSearch {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.fontPickerSearch:focus {
+  outline: none;
+}
+
+.fontPickerList {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  overflow: auto;
+}
+
+.fontPickerOption {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fontPickerOption:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.fontPickerOptionActive {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
+  font-weight: 650;
+}
+
+.fontPickerEmpty {
+  padding: 0.7rem 0.65rem;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.82rem;
+}
+
+:global(html.dark) .fontPickerTrigger,
+:global(html.dark) .fontPickerDropdown {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .fontPickerSearch {
+  background: var(--msp-surface-2, #152038);
+  border-bottom-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
 }
 
 @media (max-width: 1100px) {
   .workspace {
     grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .editor {
+    overflow: visible;
   }
 
   .previewColumn {
-    position: static;
     order: -1;
     height: auto;
     max-height: none;
+    overflow: visible;
   }
 
   .previewShell {

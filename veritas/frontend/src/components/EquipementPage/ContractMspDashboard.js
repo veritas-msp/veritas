@@ -3,6 +3,8 @@ import { Icon } from "@iconify/react";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import { buildContractFleetRows, buildContractFleetStats, filterContractFleetRows, groupContractFleetByCategory, sortContractFleetRows } from "./contractMspUtils";
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 function formatDate(value, bcp47 = "en-US") {
   if (!value) return "-";
   const d = new Date(value);
@@ -58,19 +60,6 @@ function StatusChip({
 }) {
   const meta = copy.getStatusMeta(status);
   return <span className={`${styles.chip} ${styles[`chip_${meta.tone}`]}`}>{meta.label}</span>;
-}
-function SortableHeader({
-  column,
-  label,
-  sortBy,
-  sortDirection,
-  onSort
-}) {
-  const isActive = sortBy === column;
-  return <th className={styles.sortableTh} onClick={() => onSort(column)} aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      {label}
-      {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
-    </th>;
 }
 function FleetTableRow({
   row,
@@ -163,12 +152,15 @@ export default function ContractMspDashboard({
     return ta - tb;
   }).slice(0, 8), [fleetRows]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "expiration",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const toggleCategory = categoryId => {
     setCollapsedCategories(prev => ({

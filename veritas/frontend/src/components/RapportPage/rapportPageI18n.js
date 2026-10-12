@@ -2,43 +2,43 @@ import { interpolate, normalizeLocale, pickLocaleMessages } from "../../i18n/tra
 import { REPORT_TYPE_DEFS } from "./reportTypeConstants";
 const WIZARD_STEPS = {
   supervisionEtat: ["Solutions", "Récapitulatif", "Synthèse"],
-  intervention: ["Contexte", "Interventions", "Compte-rendu", "Validation"],
+  intervention: ["Contexte", "Opérations", "Remarques", "Validation"],
   cahierRecette: ["Périmètre projet", "Solutions & matériel", "Fonctionnement", "Recette"],
   activiteMensuelle: ["Période", "Tickets", "SLA", "Synthèse"],
   inventaireParc: ["Sites", "Équipements", "Licences", "Export"],
-  auditSecurite: ["Périmètre", "Protections", "Vulnérabilités", "Recommandations"]
+  audit: ["Couverture", "Client & mission", "Constats", "Synthèse", "Plan d'action"]
 };
 const WIZARD_STEPS_EN = {
   supervisionEtat: ["Solutions", "Recap", "Summary"],
-  intervention: ["Context", "Interventions", "Report", "Sign-off"],
+  intervention: ["Context", "Operations", "Remarks", "Sign-off"],
   cahierRecette: ["Project scope", "Solutions & hardware", "Operation", "Acceptance"],
   activiteMensuelle: ["Period", "Tickets", "SLA", "Summary"],
   inventaireParc: ["Sites", "Assets", "Licences", "Export"],
-  auditSecurite: ["Scope", "Protections", "Vulnerabilities", "Recommendations"]
+  audit: ["Cover", "Client & mission", "Findings", "Summary", "Action plan"]
 };
 const WIZARD_STEPS_DE = {
   supervisionEtat: ["Lösungen", "Zusammenfassung", "Synthese"],
-  intervention: ["Kontext", "Einsätze", "Bericht", "Freigabe"],
+  intervention: ["Kontext", "Vorgänge", "Bemerkungen", "Freigabe"],
   cahierRecette: ["Projektumfang", "Lösungen & Hardware", "Betrieb", "Abnahme"],
   activiteMensuelle: ["Zeitraum", "Tickets", "SLA", "Zusammenfassung"],
   inventaireParc: ["Standorte", "Geräte", "Lizenzen", "Export"],
-  auditSecurite: ["Umfang", "Schutz", "Schwachstellen", "Empfehlungen"]
+  audit: ["Deckblatt", "Kunde & Mission", "Feststellungen", "Synthese", "Maßnahmenplan"]
 };
 const WIZARD_STEPS_IT = {
   supervisionEtat: ["Soluzioni", "Riepilogo", "Sintesi"],
-  intervention: ["Contesto", "Interventi", "Resoconto", "Validazione"],
+  intervention: ["Contesto", "Operazioni", "Osservazioni", "Validazione"],
   cahierRecette: ["Perimetro progetto", "Soluzioni & hardware", "Funzionamento", "Collaudo"],
   activiteMensuelle: ["Periodo", "Ticket", "SLA", "Sintesi"],
   inventaireParc: ["Sedi", "Dispositivi", "Licenze", "Export"],
-  auditSecurite: ["Perimetro", "Protezioni", "Vulnerabilità", "Raccomandazioni"]
+  audit: ["Copertina", "Cliente & missione", "Constatazioni", "Sintesi", "Piano d'azione"]
 };
 const WIZARD_STEPS_ES = {
   supervisionEtat: ["Soluciones", "Resumen", "Síntesis"],
-  intervention: ["Contexto", "Intervenciones", "Informe", "Validación"],
+  intervention: ["Contexto", "Operaciones", "Observaciones", "Validación"],
   cahierRecette: ["Alcance del proyecto", "Soluciones y hardware", "Funcionamiento", "Recette"],
   activiteMensuelle: ["Periodo", "Tickets", "SLA", "Síntesis"],
   inventaireParc: ["Sitios", "Equipos", "Licencias", "Exportar"],
-  auditSecurite: ["Alcance", "Protecciones", "Vulnerabilidades", "Recomendaciones"]
+  audit: ["Portada", "Cliente y misión", "Hallazgos", "Síntesis", "Plan de acción"]
 };
 function buildWizard(localeCopy) {
   return {
@@ -72,6 +72,7 @@ function buildWizard(localeCopy) {
     loadingClients: localeCopy.wizardLoadingClients,
     clientGridAria: localeCopy.wizardClientGridAria,
     changeClient: localeCopy.wizardChangeClient,
+    changeType: localeCopy.wizardChangeType || localeCopy.wizardChangeClient,
     formatResultsCount: (filtered, total) => {
       if (filtered === total) {
         return interpolate(localeCopy.wizardResultsAll, {
@@ -109,7 +110,7 @@ const RAPPORT_PAGE = {
     bcp47: "fr-FR",
     eyebrow: "Documents",
     pageTitle: "Rapports",
-    subtitle: "Choisissez une entreprise, consultez son parc, puis lancez un rapport.",
+    subtitle: "Choisissez le type de rapport, puis l'entreprise.",
     create: {
       enterpriseLabel: "Entreprise",
       enterpriseSearch: "Rechercher une entreprise…",
@@ -124,7 +125,7 @@ const RAPPORT_PAGE = {
       },
       intervention: {
         title: "Rapport d'intervention",
-        description: "Compte-rendu d'une intervention technique : contexte, actions réalisées et résultat."
+        description: "Fiche d'intervention terrain : contexte, opérations OK/PB, photo et signatures."
       },
       cahierRecette: {
         title: "Cahier de recette",
@@ -138,9 +139,9 @@ const RAPPORT_PAGE = {
         title: "Inventaire du parc",
         description: "Photographie complète des équipements, sites et licences rattachés à l'entreprise."
       },
-      auditSecurite: {
-        title: "Audit de sécurité",
-        description: "État antivirus, MFA, correctifs et recommandations de durcissement."
+      audit: {
+        title: "Audit",
+        description: "Rapport d'audit client : infrastructure, cybersécurité, solutions antivirus / antispam, sauvegarde ou audit global, avec constats et plan d'action."
       }
     },
     wizardProgressAria: "Progression de création",
@@ -150,7 +151,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Étapes du rapport",
     wizardStepNavAria: "Étapes du rapport",
     wizardClientTitle: "Quelle entreprise ?",
-    wizardClientHint: "Recherchez puis cliquez sur un client pour continuer.",
+    wizardClientHint: "Recherchez puis cliquez sur un client pour lancer le rapport.",
     wizardRecapTitle: "Récapitulatif entreprise",
     wizardRecapHint: "Vérifiez le contrat, les options et le parc avant de continuer.",
     wizardRecapEmpty: "Cliquez sur une carte entreprise pour afficher son récapitulatif.",
@@ -159,6 +160,7 @@ const RAPPORT_PAGE = {
     wizardLoadingClients: "Chargement…",
     wizardClientGridAria: "Liste des entreprises",
     wizardChangeClient: "Changer",
+    wizardChangeType: "Changer",
     wizardResultsAll: "{total} entreprises",
     wizardResultsFiltered: "{filtered} sur {total}",
     wizardDevicesNone: "Aucun périph.",
@@ -169,7 +171,7 @@ const RAPPORT_PAGE = {
     wizardServicesMany: "{count} services",
     wizardContinueWith: "Continuer avec {name}",
     wizardTypeTitle: "Quel type de rapport ?",
-    wizardTypeHint: "Choisissez le type de rapport.",
+    wizardTypeHint: "Sélectionnez d'abord le type, puis l'entreprise.",
     wizardContinue: "Continuer",
     wizardBack: "Retour",
     wizardStartReport: "Commencer le rapport",
@@ -312,7 +314,7 @@ const RAPPORT_PAGE = {
     bcp47: "en-GB",
     eyebrow: "Documents",
     pageTitle: "Reports",
-    subtitle: "Pick a company, review its estate, then start a report.",
+    subtitle: "Choose the report type, then the company.",
     create: {
       enterpriseLabel: "Company",
       enterpriseSearch: "Search for a company…",
@@ -327,7 +329,7 @@ const RAPPORT_PAGE = {
       },
       intervention: {
         title: "Intervention report",
-        description: "Technical intervention report: context, actions performed and outcome."
+        description: "On-site intervention sheet: context, OK/PB operations, photo and signatures."
       },
       cahierRecette: {
         title: "Acceptance workbook",
@@ -341,9 +343,9 @@ const RAPPORT_PAGE = {
         title: "Fleet inventory",
         description: "Complete snapshot of equipment, sites and licences attached to the company."
       },
-      auditSecurite: {
-        title: "Security audit",
-        description: "Antivirus, MFA, patch status and hardening recommendations."
+      audit: {
+        title: "Audit",
+        description: "Client audit report: infrastructure, cybersecurity, antivirus / antispam, backup or global scope, with findings and action plan."
       }
     },
     wizardProgressAria: "Creation progress",
@@ -353,7 +355,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Report steps",
     wizardStepNavAria: "Report steps",
     wizardClientTitle: "Which company?",
-    wizardClientHint: "Search then click a client to continue.",
+    wizardClientHint: "Search then click a client to start the report.",
     wizardRecapTitle: "Company summary",
     wizardRecapHint: "Review contract, options and assets before continuing.",
     wizardRecapEmpty: "Click a company card to display its summary.",
@@ -362,6 +364,7 @@ const RAPPORT_PAGE = {
     wizardLoadingClients: "Loading…",
     wizardClientGridAria: "Company list",
     wizardChangeClient: "Change",
+    wizardChangeType: "Change",
     wizardResultsAll: "{total} companies",
     wizardResultsFiltered: "{filtered} of {total}",
     wizardDevicesNone: "No devices",
@@ -372,7 +375,7 @@ const RAPPORT_PAGE = {
     wizardServicesMany: "{count} services",
     wizardContinueWith: "Continue with {name}",
     wizardTypeTitle: "Which report type?",
-    wizardTypeHint: "Choose the report type.",
+    wizardTypeHint: "Pick the report type first, then the company.",
     wizardContinue: "Continue",
     wizardBack: "Back",
     wizardStartReport: "Start report",
@@ -515,7 +518,7 @@ const RAPPORT_PAGE = {
     bcp47: "de-DE",
     eyebrow: "Dokumente",
     pageTitle: "Berichte",
-    subtitle: "Wählen Sie ein Unternehmen, prüfen Sie den Bestand, dann starten Sie den Bericht.",
+    subtitle: "Wählen Sie zuerst den Berichtstyp, dann das Unternehmen.",
     create: {
       enterpriseLabel: "Unternehmen",
       enterpriseSearch: "Unternehmen suchen…",
@@ -544,9 +547,9 @@ const RAPPORT_PAGE = {
         title: "Bestandsinventar",
         description: "Vollständige Aufnahme der Geräte, Standorte und Lizenzen des Unternehmens."
       },
-      auditSecurite: {
-        title: "Sicherheitsaudit",
-        description: "Antivirus, MFA, Patch-Stand und Härtungsempfehlungen."
+      audit: {
+        title: "Audit",
+        description: "Kunden-Auditbericht: Infrastruktur, Cybersicherheit, Antivirus / Antispam, Backup oder globaler Umfang, mit Feststellungen und Maßnahmenplan."
       }
     },
     wizardProgressAria: "Erstellungsfortschritt",
@@ -556,18 +559,19 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Berichtsschritte",
     wizardStepNavAria: "Berichtsschritte",
     wizardClientTitle: "Welches Unternehmen?",
-    wizardClientHint: "Suchen und klicken Sie auf einen Kunden, um fortzufahren.",
+    wizardClientHint: "Suchen und klicken Sie auf einen Kunden, um den Bericht zu starten.",
     wizardRecapTitle: "Unternehmensübersicht",
     wizardRecapHint: "Vertrag, Optionen und Assets prüfen, bevor Sie den Berichtstyp wählen.",
     wizardRecapEmpty: "Klicken Sie auf eine Unternehmenskarte, um die Übersicht anzuzeigen.",
     wizardTypeTitle: "Welcher Berichtstyp?",
-    wizardTypeHint: "Wählen Sie den Berichtstyp.",
+    wizardTypeHint: "Wählen Sie zuerst den Berichtstyp, dann das Unternehmen.",
     wizardContinue: "Weiter",
     wizardClearSearch: "Suche löschen",
     wizardClearSearchAria: "Suche löschen",
     wizardLoadingClients: "Laden…",
     wizardClientGridAria: "Unternehmensliste",
     wizardChangeClient: "Ändern",
+    wizardChangeType: "Ändern",
     wizardResultsAll: "{total} Unternehmen",
     wizardResultsFiltered: "{filtered} von {total}",
     wizardDevicesNone: "Keine Geräte",
@@ -718,7 +722,7 @@ const RAPPORT_PAGE = {
     bcp47: "it-IT",
     eyebrow: "Documenti",
     pageTitle: "Report",
-    subtitle: "Scegli un'azienda, consulta il parco, poi avvia un report.",
+    subtitle: "Scegli prima il tipo di report, poi l'azienda.",
     create: {
       enterpriseLabel: "Azienda",
       enterpriseSearch: "Cerca un'azienda…",
@@ -747,9 +751,9 @@ const RAPPORT_PAGE = {
         title: "Inventario del parco",
         description: "Fotografia completa di dispositivi, sedi e licenze dell'azienda."
       },
-      auditSecurite: {
-        title: "Audit di sicurezza",
-        description: "Antivirus, MFA, patch e raccomandazioni di hardening."
+      audit: {
+        title: "Audit",
+        description: "Report di audit cliente: infrastruttura, cybersecurity, antivirus / antispam, backup o perimetro globale, con constatazioni e piano d'azione."
       }
     },
     wizardProgressAria: "Avanzamento creazione",
@@ -759,18 +763,19 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Fasi del report",
     wizardStepNavAria: "Fasi del report",
     wizardClientTitle: "Quale azienda?",
-    wizardClientHint: "Cerca e fai clic su un cliente per continuare.",
+    wizardClientHint: "Cerca e fai clic su un cliente per avviare il report.",
     wizardRecapEmpty: "Clicca su una scheda azienda per visualizzare il riepilogo.",
     wizardRecapTitle: "Riepilogo azienda",
     wizardRecapHint: "Verifica contratto, opzioni e parco prima di scegliere il report.",
     wizardTypeTitle: "Quale tipo di report?",
-    wizardTypeHint: "Scegli il tipo di report.",
+    wizardTypeHint: "Scegli prima il tipo di report, poi l'azienda.",
     wizardContinue: "Continua",
     wizardClearSearch: "Cancella ricerca",
     wizardClearSearchAria: "Cancella ricerca",
     wizardLoadingClients: "Caricamento…",
     wizardClientGridAria: "Elenco aziende",
     wizardChangeClient: "Cambia",
+    wizardChangeType: "Cambia",
     wizardResultsAll: "{total} aziende",
     wizardResultsFiltered: "{filtered} su {total}",
     wizardDevicesNone: "Nessun dispositivo",
@@ -921,7 +926,7 @@ const RAPPORT_PAGE = {
     bcp47: "es-ES",
     eyebrow: "Documentos",
     pageTitle: "Informes",
-    subtitle: "Elija una empresa, revise su parque, luego inicie un informe.",
+    subtitle: "Elija primero el tipo de informe, luego la empresa.",
     create: {
       enterpriseLabel: "Empresa",
       enterpriseSearch: "Buscar una empresa…",
@@ -950,9 +955,9 @@ const RAPPORT_PAGE = {
         title: "Inventario del parque",
         description: "Instantánea completa de equipos, sitios y licencias de la empresa."
       },
-      auditSecurite: {
-        title: "Auditoría de seguridad",
-        description: "Antivirus, MFA, parches y recomendaciones de endurecimiento."
+      audit: {
+        title: "Audit",
+        description: "Informe de auditoría cliente: infraestructura, ciberseguridad, antivirus / antispam, backup o alcance global, con hallazgos y plan de acción."
       }
     },
     wizardProgressAria: "Progreso de creación",
@@ -962,18 +967,19 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Fases del informe",
     wizardStepNavAria: "Fases del informe",
     wizardClientTitle: "¿Qué empresa?",
-    wizardClientHint: "Busque y haga clic en un cliente para continuar.",
+    wizardClientHint: "Busque y haga clic en un cliente para iniciar el informe.",
     wizardRecapEmpty: "Haga clic en una tarjeta de empresa para ver su resumen.",
     wizardRecapTitle: "Resumen de la empresa",
     wizardRecapHint: "Revise contrato, opciones y parque antes de elegir el informe.",
     wizardTypeTitle: "¿Qué tipo de informe?",
-    wizardTypeHint: "Elija el tipo de informe.",
+    wizardTypeHint: "Elija primero el tipo de informe, luego la empresa.",
     wizardContinue: "Continuar",
     wizardClearSearch: "Borrar búsqueda",
     wizardClearSearchAria: "Borrar búsqueda",
     wizardLoadingClients: "Cargando…",
     wizardClientGridAria: "Lista de empresas",
     wizardChangeClient: "Cambiar",
+    wizardChangeType: "Cambiar",
     wizardResultsAll: "{total} empresas",
     wizardResultsFiltered: "{filtered} de {total}",
     wizardDevicesNone: "Sin dispositivos",
@@ -1162,7 +1168,7 @@ export function getReportTypeLabel(pageCopy, rawType) {
   if (normalized.includes("inventaire") || normalized.includes("inventory") || normalized.includes("fleet")) {
     return pageCopy.reportTypes.inventaireParc?.title || rawType;
   }
-  if (normalized.includes("audit")) return pageCopy.reportTypes.auditSecurite?.title || rawType;
+  if (normalized.includes("audit")) return pageCopy.reportTypes.audit?.title || rawType;
   if (normalized.includes("activite") || normalized.includes("activity")) {
     return pageCopy.reportTypes.activiteMensuelle?.title || rawType;
   }

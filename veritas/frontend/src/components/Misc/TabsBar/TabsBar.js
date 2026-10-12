@@ -27,7 +27,7 @@ function getTabIcon(type, tabData) {
     case "TicketSales":
     case "TicketSalesCreate":
     case "TicketSalesDetail":
-      return "mdi:briefcase-edit-outline";
+      return "mdi:briefcase-outline";
     case "Hardware":
       return "mdi:monitor-dashboard";
     case "Mon":
@@ -96,6 +96,9 @@ function getTabIcon(type, tabData) {
       return "mdi:shield-search";
     case "AntispamDetail":
       return "mdi:email-secure";
+    case "InstanceDetail":
+    case "JobDetail":
+      return "mdi:backup-restore";
     case "TenantDetail":
       return "mdi:microsoft-azure";
     case "ComputerFleetStats":

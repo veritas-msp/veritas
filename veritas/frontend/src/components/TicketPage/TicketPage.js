@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./TicketPage.module.css";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
 import SmartTooltip from "../SmartTooltip";
 import { searchTickets, fetchAllMatchingTickets, restoreTicket, permanentlyDeleteTicket, fetchTicketViews, fetchTicketViewCounts, fetchTicketSatisfactionCounts, bulkUpdateTickets, updateTicketView, fetchTicketTableColumns } from "../../api/tickets";
 import { fetchUsers } from "../../api/users";
@@ -39,11 +40,11 @@ import ClientOnboardingBadge from "../Misc/ClientOnboardingBadge/ClientOnboardin
 import { TICKET_SATISFACTION_VIEWS, TICKET_SATISFACTION_VIEW_IDS, isTicketSatisfactionViewId, resolveTicketSatisfactionScope, localizeTicketSatisfactionViews } from "../../utils/ticketSatisfactionViewConstants";
 import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
 import { getTicketPageCopy } from "./ticketPageI18n";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import ContextMenu from "../Misc/ContextMenu/ContextMenu";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { buildAgentPath } from "../../navigation/agentRoutes";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
 const PAGE_SCOPE = "ticket";
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_views_collapsed";
@@ -764,16 +765,16 @@ export default function TicketPage({
   const resolveChannelMeta = channel => pageCopy.getChannelMeta(channel);
   const getPriorityVisual = (priority, ticket) => pageCopy.getPriorityVisual(priority, isMajorIncidentTicket(ticket));
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
-  };
-  const getSortIndicator = column => {
-    if (sortBy !== column) return "";
-    return sortDirection === "asc" ? " ▲" : " ▼";
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "updated_at",
+      defaultSortDirection: "desc",
+      firstDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const handleColumnsSaved = useCallback(result => {
     if (!result) return;
@@ -1206,26 +1207,12 @@ export default function TicketPage({
     setPlayMode(false);
     toast.info(pageCopy.playModeDisabled);
   };
-  const pageSubtitle = pageCopy.formatSubtitle(
-    loading,
-    viewMode,
-    activeView?.name || "",
-    isSatisfactionView ? getViewTicketCount(activeView) : totalCount,
-    { satisfaction: isSatisfactionView }
-  );
-  return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
-      <div className={mspStyles.mspLayout}>
-        <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={pageSubtitle} icon="mdi:message-processing-outline" actions={<>
-                {canTrash ? <label className={`${styles.trashSwitch} ${viewMode === "trash" ? styles.trashSwitchOn : ""}`} title={pageCopy.trashSwitchTitle}>
-                  <Icon icon="mdi:trash-can-outline" className={styles.trashSwitchIcon} aria-hidden />
-                  <span className={styles.trashSwitchLabel}>{pageCopy.trashSwitchLabel}</span>
-                  <input type="checkbox" className={styles.trashSwitchInput} checked={viewMode === "trash"} onChange={e => {
-              const showTrash = e.target.checked;
-              setViewMode(showTrash ? "trash" : "active");
-            }} aria-label={pageCopy.trashSwitchAria} />
-                  <span className={styles.trashSwitchSlider} aria-hidden />
-                </label> : null}
+  const toolbarActions = <>
+                {canTrash ? <SmartTooltip content={viewMode === "trash" ? pageCopy.trashSwitchHideTooltip : pageCopy.trashSwitchTitle}>
+                  <button type="button" className={`${styles.trashBtn} ${viewMode === "trash" ? styles.trashBtnActive : ""}`} onClick={() => setViewMode(prev => prev === "trash" ? "active" : "trash")} aria-label={viewMode === "trash" ? pageCopy.trashSwitchHideAria : pageCopy.trashSwitchAria} aria-pressed={viewMode === "trash"}>
+                    <Icon icon="mdi:trash-can-outline" aria-hidden />
+                  </button>
+                </SmartTooltip> : null}
                 {playMode && canRandomMode && <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={pageCopy.playModeDisableTooltip} aria-label={pageCopy.playModeDisableAria}>
                     <Icon icon="mdi:dice-5" aria-hidden />
                     {pageCopy.playModeBanner}
@@ -1249,9 +1236,12 @@ export default function TicketPage({
                 {canCreateTicket ? <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={() => onNavigate?.("TicketCreate")} disabled={viewMode === "trash"} aria-label={pageCopy.newTicketAria}>
                   <FaPlus />
                 </button> : null}
-              </>} />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+              </>;
+  return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
+      <div className={mspStyles.mspLayout}>
+        <div className={mspStyles.mspMain}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
         <div className={`${styles.viewsLayout} ${viewMode === "trash" ? styles.viewsLayoutTrash : ""} ${viewsPaneCollapsed ? styles.viewsLayoutCollapsed : ""}`.trim()}>
           {viewMode !== "trash" && !viewsPaneCollapsed && <aside className={styles.viewsPane} aria-label={pageCopy.views.paneAria}>
@@ -1304,69 +1294,44 @@ export default function TicketPage({
                         <FaChevronRight aria-hidden />
                         <span>{pageCopy.views.title}</span>
                       </button>
-                    </SmartTooltip> : null} /> : <>
-            <div className={`${layout.toolbar} ${styles.toolbarGrow}`}>
-              {viewMode !== "trash" && viewsPaneCollapsed ? <SmartTooltip content={pageCopy.views.expandPane}>
-                  <button type="button" className={styles.viewsExpandBtn} onClick={() => setViewsPaneCollapsedState(false)} aria-label={pageCopy.views.expandPane}>
-                    <FaChevronRight aria-hidden />
-                    <span>{pageCopy.views.title}</span>
-                  </button>
-                </SmartTooltip> : null}
-              <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
-                <Icon icon={isSearchPending || refreshing ? "mdi:loading" : "mdi:magnify"} className={`${layout.searchIcon} ${isSearchPending || refreshing ? layout.spinning : ""}`.trim()} aria-hidden />
-                <input type="text" inputMode="search" className={layout.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder={pageCopy.search.placeholder} aria-label={pageCopy.search.aria} />
-                {search && !isSearchPending && !refreshing ? <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={pageCopy.search.clear}>
-                    <FaTimes />
-                  </button> : null}
-              </div>
-            </div>
-
+                    </SmartTooltip> : null} trailingToolbarContent={<div className={layout.toolbarActions}>{toolbarActions}</div>} /> : <>
             {loading ? (
             <PageSkeleton variant="list" rows={8} label={pageCopy.loadingTickets} />
-          ) : totalCount === 0 && !refreshing ? <div className={layout.emptyState}>
-            <Icon icon="mingcute:ticket-fill" className={layout.emptyStateIcon} />
-            <p className={layout.emptyStateTitle}>
-              {viewMode === "trash" ? pageCopy.empty.trashTitle : pageCopy.empty.noTicketsTitle}
-            </p>
-            <p className={layout.emptyStateHint}>
-              {viewMode === "trash" ? pageCopy.empty.trashHint : pageCopy.empty.activeHint}
-            </p>
-            {viewMode !== "trash" && canCreateTicket && <button type="button" className={layout.primaryBtn} onClick={() => onNavigate?.("TicketCreate")}>
-                <Icon icon="mdi:plus" />
-                {pageCopy.newTicket}
-              </button>}
-          </div> : <>
-            {selectedCount > 0 && <div className={styles.bulkBar}>
-                <div className={styles.bulkInfo}>
-                  <strong>{selectedCount}</strong>
-                  <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
+          ) : <div className={layout.listBody}>
+            <div className={layout.listArea}>
+            <div className={`${layout.panelCard} ${refreshing ? styles.tablePanelRefreshing : ""}`.trim()}>
+              <div className={layout.tableSearchBar}>
+                {viewMode !== "trash" && viewsPaneCollapsed ? <SmartTooltip content={pageCopy.views.expandPane}>
+                    <button type="button" className={styles.viewsExpandBtn} onClick={() => setViewsPaneCollapsedState(false)} aria-label={pageCopy.views.expandPane}>
+                      <FaChevronRight aria-hidden />
+                      <span>{pageCopy.views.title}</span>
+                    </button>
+                  </SmartTooltip> : null}
+                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+                  <Icon icon={isSearchPending || refreshing ? "mdi:loading" : "mdi:magnify"} className={`${layout.searchIcon} ${isSearchPending || refreshing ? layout.spinning : ""}`.trim()} aria-hidden />
+                  <input type="text" inputMode="search" className={layout.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder={pageCopy.search.placeholder} aria-label={pageCopy.search.aria} />
+                  {search && !isSearchPending && !refreshing ? <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={pageCopy.search.clear}>
+                      <FaTimes />
+                    </button> : null}
                 </div>
-                <div className={styles.bulkActions}>
-                  {viewMode === "trash" && <>
-                      <button type="button" className={styles.bulkBtn} onClick={handleBulkRestore} disabled={bulkDeleting}>
-                        <Icon icon="mdi:restore" />
-                        {pageCopy.bulk.restore}
-                      </button>
-                      {canHardPurge && <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={handleBulkPurge} disabled={bulkDeleting}>
-                          <Icon icon="mdi:delete-forever-outline" />
-                          {bulkDeleting ? pageCopy.bulk.purgeLoading : pageCopy.bulk.purge}
-                        </button>}
-                    </>}
-                  {viewMode !== "trash" && <button type="button" className={styles.bulkBtn} onClick={() => setBulkModalOpen(true)}>
-                      <Icon icon="mdi:pencil-outline" />
-                      {pageCopy.bulk.edit}
-                    </button>}
-                  {viewMode !== "trash" && canTrash && <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={handleBulkDelete} disabled={bulkDeleting}>
-                      <Icon icon="mdi:delete-outline" />
-                      {bulkDeleting ? pageCopy.bulk.deleteLoading : pageCopy.bulk.delete}
-                    </button>}
-                  <button type="button" className={styles.bulkBtnGhost} onClick={clearSelection}>
-                    {pageCopy.bulk.clearSelection}
-                  </button>
-                </div>
-              </div>}
-            <div className={`${styles.tablePanel} ${refreshing ? styles.tablePanelRefreshing : ""}`.trim()}>
-              <div className={styles.tableScroll}>
+                <div className={layout.toolbarActions}>{toolbarActions}</div>
+              </div>
+
+              {totalCount === 0 && !refreshing ? <div className={layout.emptyStateInCard}>
+                <Icon icon="mingcute:ticket-fill" className={layout.emptyStateIcon} />
+                <p className={layout.emptyStateTitle}>
+                  {viewMode === "trash" ? pageCopy.empty.trashTitle : pageCopy.empty.noTicketsTitle}
+                </p>
+                <p className={layout.emptyStateHint}>
+                  {viewMode === "trash" ? pageCopy.empty.trashHint : pageCopy.empty.activeHint}
+                </p>
+                {viewMode !== "trash" && canCreateTicket && <button type="button" className={layout.primaryBtn} onClick={() => onNavigate?.("TicketCreate")}>
+                    <Icon icon="mdi:plus" />
+                    {pageCopy.newTicket}
+                  </button>}
+              </div> : <>
+              <div className={layout.dataTableWrap}>
+              <div className={`${styles.tableScroll} ${layout.dataTableScroll}`}>
                 <table className={styles.table}>
             <thead>
               <tr>
@@ -1392,8 +1357,10 @@ export default function TicketPage({
                   };
                   return (
                     <th key={columnId} onClick={() => handleSort(sortKey)}>
-                      {labelMap[columnId] || columnId}
-                      {getSortIndicator(sortKey)}
+                      <span className={styles.thSortInner}>
+                        {labelMap[columnId] || columnId}
+                        <SortIcon active={sortBy === sortKey} direction={sortDirection} />
+                      </span>
                     </th>
                   );
                 })}
@@ -1592,6 +1559,7 @@ export default function TicketPage({
             </tbody>
                 </table>
               </div>
+              </div>
 
             {totalCount > 0 ? (
               <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
@@ -1624,8 +1592,39 @@ export default function TicketPage({
                 </div>
               </div>
             ) : null}
+              </>}
             </div>
-          </>}
+            </div>
+            {selectedCount > 0 && <div className={styles.bulkBar}>
+                <div className={styles.bulkInfo}>
+                  <strong>{selectedCount}</strong>
+                  <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
+                </div>
+                <div className={styles.bulkActions}>
+                  {viewMode === "trash" && <>
+                      <button type="button" className={styles.bulkBtn} onClick={handleBulkRestore} disabled={bulkDeleting}>
+                        <Icon icon="mdi:restore" />
+                        {pageCopy.bulk.restore}
+                      </button>
+                      {canHardPurge && <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={handleBulkPurge} disabled={bulkDeleting}>
+                          <Icon icon="mdi:delete-forever-outline" />
+                          {bulkDeleting ? pageCopy.bulk.purgeLoading : pageCopy.bulk.purge}
+                        </button>}
+                    </>}
+                  {viewMode !== "trash" && <button type="button" className={styles.bulkBtn} onClick={() => setBulkModalOpen(true)}>
+                      <Icon icon="mdi:pencil-outline" />
+                      {pageCopy.bulk.edit}
+                    </button>}
+                  {viewMode !== "trash" && canTrash && <button type="button" className={`${styles.bulkBtn} ${styles.bulkBtnDanger}`} onClick={handleBulkDelete} disabled={bulkDeleting}>
+                      <Icon icon="mdi:delete-outline" />
+                      {bulkDeleting ? pageCopy.bulk.deleteLoading : pageCopy.bulk.delete}
+                    </button>}
+                  <button type="button" className={styles.bulkBtnGhost} onClick={clearSelection}>
+                    {pageCopy.bulk.clearSelection}
+                  </button>
+                </div>
+              </div>}
+          </div>}
               </>}
           </div>
         </div>

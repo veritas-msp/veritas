@@ -12,7 +12,7 @@ import {
   isMonitoringModuleAvailable
 } from "./monitoring/MonitoringSteps";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import shellStyles from "./RapportBuilderPlaceholder.module.css";
 import styles from "./SupervisionPeriodGate.module.css";
 
 function inclusiveDayCount(startDate, endDate) {
@@ -171,12 +171,14 @@ export default function SupervisionPeriodGate({
 
   return (
     <div className={styles.page}>
-      <MspPageHero
-        eyebrow={copy.eyebrow}
-        title={periodCopy.initTitle || reportType?.title}
-        subtitle={`${clientLabel} — ${periodCopy.initHint || periodCopy.periodGateSubtitle || reportType?.description || ""}`}
-        icon={reportType?.icon || "mdi:radar"}
-      />
+      <div className={shellStyles.builderToolbar}>
+        <div className={shellStyles.builderToolbarMeta}>
+          <h1 className={shellStyles.builderToolbarTitle}>{periodCopy.initTitle || reportType?.title}</h1>
+          <p className={shellStyles.builderToolbarSubtitle}>
+            {`${clientLabel} — ${periodCopy.initHint || periodCopy.periodGateSubtitle || reportType?.description || ""}`}
+          </p>
+        </div>
+      </div>
 
       <div className={styles.body}>
         <section className={styles.periodCard}>

@@ -151,6 +151,7 @@ export default function EquipmentDetailSpecsPanel({
   onOpenEquipment,
   remoteAccessAction = null,
   compact = false,
+  hideResources = false,
   title
 }) {
   const locale = useAppLocale();
@@ -459,7 +460,7 @@ export default function EquipmentDetailSpecsPanel({
                   </article>;
           })}
             </div> : null}
-          <RmmHardwareOverview equipment={equipment} variant="resources" />
+          {hideResources ? null : <RmmHardwareOverview equipment={equipment} variant="resources" />}
         </div>
       </section>;
   }

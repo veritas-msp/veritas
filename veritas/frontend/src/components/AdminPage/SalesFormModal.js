@@ -494,7 +494,6 @@ export default function SalesFormModal({
     // Flush the open field draft (incl. options) before persisting.
     const fieldsToPersist = selectedFieldId && fieldDraft ? fields.map(field => String(field.id) === String(selectedFieldId) ? applyDraftToField(field, fieldDraft) : field) : fields;
     if (fieldsToPersist !== fields) setFields(fieldsToPersist);
-    const isCreating = !formId;
     setSavingForm(true);
     try {
       const payload = buildFormPayload();
@@ -533,7 +532,7 @@ export default function SalesFormModal({
         }
       }
       onSaved?.(saved);
-      if (isCreating) onClose?.();
+      onClose?.();
     } catch (error) {
       toast.error(error.message || "Error saving form");
     } finally {

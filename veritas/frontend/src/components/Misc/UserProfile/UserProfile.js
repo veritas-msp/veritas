@@ -566,10 +566,9 @@ export default function UserProfile({ onNavigate } = {}) {
               <UserInfoIcons
                 user={user}
                 name={displayName}
-                job={user.profile_label || t.roles[user.role] || user.profile || ""}
                 email={user.email}
-                detail={formatProfileDate(user.last_login_at, locale)}
-                detailIcon="tabler:clock"
+                detail={user.profile || t.roles[user.role] || ""}
+                detailIcon="mdi:badge-account-outline"
               />
             }
           />

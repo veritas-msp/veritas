@@ -3,13 +3,16 @@ const STEP_CONFIG = [{
   key: "hero",
   target: '[data-guide="enterprise-hero"]'
 }, {
-  key: "sidebarInfo",
-  target: '[data-guide="enterprise-sidebar-info"]',
-  handler: "expandInfo"
+  key: "sidebarContracts",
+  target: '[data-guide="enterprise-sidebar-contracts"]'
 }, {
   key: "sidebarContacts",
   target: '[data-guide="enterprise-sidebar-contacts"]',
   handler: "expandContacts"
+}, {
+  key: "overview",
+  target: '[data-guide="enterprise-overview"]',
+  handler: "showOverview"
 }, {
   key: "infraMap",
   target: '[data-guide="enterprise-infra-map"]',
@@ -39,19 +42,19 @@ const STEP_CONFIG = [{
 }];
 export function getEnterpriseDetailGuideSteps(handlers = {}, locale = "fr") {
   const {
-    expandInfo = () => {},
     expandContacts = () => {},
     expandNotes = () => {},
     focusEquipmentStats = () => {},
+    showOverview = () => {},
     showInfraMap = () => {},
     showActivity = () => {},
     showVault = () => {}
   } = handlers;
   const handlerMap = {
-    expandInfo,
     expandContacts,
     expandNotes,
     focusEquipmentStats,
+    showOverview,
     showInfraMap,
     showActivity,
     showVault

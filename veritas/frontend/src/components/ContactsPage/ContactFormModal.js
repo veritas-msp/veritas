@@ -486,7 +486,10 @@ export default function ContactFormModal({
         return;
       }
       if (isEditing) {
-        const updated = await updateContact(form.id, payload);
+        const updated = await updateContact(form.id, {
+          ...payload,
+          ...(primaryEmailChanged ? { sync_portal_email: true } : {})
+        });
         showSuccess(primaryEmailChanged ? copy.portalEmailSuccess : copy.successUpdate);
         onSuccess?.(updated);
         window.dispatchEvent(new Event("refreshContacts"));

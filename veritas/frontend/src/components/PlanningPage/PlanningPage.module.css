@@ -7,47 +7,119 @@
   overflow: hidden;
 }
 
-.kpiRowPlanning {
+.planningPanelCard {
+  gap: 0.55rem;
+}
+
+.planningHeader {
   display: flex;
-  flex-wrap: nowrap;
-  gap: 0.35rem;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.planningHeaderTop {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.planningSearchWrap {
+  flex: 1 1 14rem;
+  width: auto;
+  max-width: 22rem;
+  min-width: 11rem;
+  min-height: 34px;
+}
+
+.planningTypeFilters {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: thin;
+  padding: 1px 0;
 }
 
-.kpiRowPlanning > button {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 0.45rem 0.5rem;
-  gap: 0.35rem;
+.typeFilterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  flex-shrink: 0;
+  height: 34px;
+  padding: 0 0.4rem 0 0.25rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.kpiRowPlanning > button > div:first-child {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  font-size: 1rem;
+.typeFilterChip:hover:not(:disabled) {
+  border-color: #c5d4ea;
+  color: var(--msp-text, #0f1c2e);
+  background: #edf2f9;
+}
+
+.typeFilterChipActive {
+  border-color: rgba(43, 95, 171, 0.35);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.typeFilterChipDisabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+.typeFilterIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 0.85rem;
   flex-shrink: 0;
 }
 
-.kpiRowPlanning > button > div:last-child span:first-child {
-  font-size: 1.1rem;
+.typeFilterCount {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-.kpiRowPlanning > button > div:last-child span:last-child {
-  font-size: 0.68rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.planningCreateBtn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
 }
 
-.toolbarGrow {
-  flex-wrap: nowrap;
-}
+@media (max-width: 900px) {
+  .planningHeaderTop {
+    flex-wrap: wrap;
+  }
 
-.searchWrapFull {
-  flex: 1 1 auto;
-  max-width: none;
+  .planningSearchWrap {
+    flex: 1 1 calc(100% - 3rem);
+    max-width: none;
+  }
+
+  .planningTypeFilters {
+    order: 3;
+    width: 100%;
+  }
+
+  .planningCreateBtn {
+    margin-left: auto;
+  }
 }
 
 .viewsLayout {
@@ -594,69 +666,56 @@
   overflow-y: auto;
 }
 
-.mainColumn > .toolbarGrow {
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: var(--msp-bg, var(--msp-page-bg, #b7c3d4));
-  /* Cover the flex gap so scrolling events don't peek under the search bar */
-  box-shadow: 0 0.65rem 0 0 var(--msp-bg, var(--msp-page-bg, #b7c3d4));
+.mainColumn > :global(.listBody) {
+  flex: 1;
+  min-height: 0;
 }
 
-/* Week / day / agenda / single month: fill the column and scroll inside the view. */
+.mainColumn :global(.listArea),
+.mainColumn :global(.panelCard) {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Week / day / agenda / month: fill the column; scroll inside the calendar body if needed. */
 .mainColumnFill {
   overflow: hidden;
 }
 
-.mainColumnFill .calendarPanel {
+.mainColumnFill > :global(.listBody),
+.mainColumnFill :global(.listArea),
+.mainColumnFill :global(.panelCard),
+.mainColumnFill .planningPanelCard {
   flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
 
-.calendarPanel {
-  flex: 1 0 auto;
-  min-height: min(100%, 28rem);
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04), 0 8px 24px rgba(15, 28, 46, 0.06));
-  overflow: hidden;
-  /* Keep event z-indexes inside this panel so they can't paint over the sticky search bar */
-  position: relative;
-  z-index: 0;
-  isolation: isolate;
+.mainColumnFill .planningPanelCard .calendarBody {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .calendarBody {
   flex: 1;
   min-height: 0;
-  padding: 1rem 1.1rem 0.75rem;
+  padding: 0.15rem 0.15rem 0.35rem;
   overflow: auto;
-}
-
-/* Multi-month: content can grow (wrapped months / dense events); column scrolls. */
-.calendarBodyMonth:not(.calendarBodyMonthSingle) {
-  flex: 0 0 auto;
-  overflow: visible;
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }
 
 .calendarBodyWeek,
 .calendarBodyDay,
-.calendarBodyAgenda {
+.calendarBodyAgenda,
+.calendarBodyMonth {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding-bottom: 0.35rem;
 }
 
-.calendarBodyWeek .planningToolbar,
-.calendarBodyDay .planningToolbar,
-.calendarBodyAgenda .planningToolbar {
-  flex-shrink: 0;
-}
 
 .calendarDayWrapper {
   flex: 1;
@@ -685,49 +744,53 @@
   min-height: 0;
 }
 
-.calendarBodyMonth :global(.rbc-month-row) {
-  min-height: 108px;
-}
-
-.calendarBodyMonthSingle {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding-bottom: 0.35rem;
-}
-
-.calendarBodyMonthSingle .planningToolbar {
-  flex-shrink: 0;
-  margin-bottom: 0.65rem;
-}
-
-.calendarBodyMonthSingle .multiMonthRow {
+.calendarBodyMonth .multiMonthRow {
   flex: 1;
   min-height: 0;
 }
 
 .multiMonthRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
 }
 
 .multiMonthRow[data-months="1"] {
   grid-template-columns: 1fr;
-  align-items: stretch;
-  height: 100%;
 }
 
-.multiMonthRow[data-months="1"] .calendarMonthWrapper {
+.multiMonthRow[data-months="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.multiMonthRow[data-months="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.calendarMonthWrapper {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  min-width: 0;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
-.multiMonthRow[data-months="1"] .calendarMonthWrapper :global(.rbc-calendar) {
+.calendarMonthTitle {
+  flex-shrink: 0;
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.calendarMonthWrapper :global(.rbc-calendar) {
   flex: 1;
   min-height: 0;
   height: 100% !important;
@@ -735,7 +798,7 @@
   flex-direction: column;
 }
 
-.multiMonthRow[data-months="1"] .calendarMonthWrapper :global(.rbc-month-view) {
+.calendarMonthWrapper :global(.rbc-month-view) {
   flex: 1;
   min-height: 0;
   height: 100%;
@@ -743,13 +806,22 @@
   flex-direction: column;
 }
 
-.multiMonthRow[data-months="1"] .calendarMonthWrapper :global(.rbc-month-row) {
+.calendarMonthWrapper :global(.rbc-month-row) {
   flex: 1 1 0;
   min-height: 0;
 }
 
-.calendarBodyMonthSingle :global(.rbc-month-row) {
+.calendarBodyMonth :global(.rbc-month-row) {
   min-height: 0;
+}
+
+.calendarBodyMonth :global(.rbc-date-cell) {
+  padding: 0.15rem 0.25rem;
+}
+
+.calendarBodyMonth :global(.rbc-header) {
+  padding: 0.25rem 0.15rem;
+  font-size: 0.72rem;
 }
 
 .calendarBodyMonth :global(.rbc-event) {
@@ -769,45 +841,78 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin: 0;
 }
 
 .toolbarNav {
   display: grid;
-  grid-template-columns: 2.15rem minmax(0, 1fr) 2.15rem;
+  grid-template-columns: 2rem minmax(0, 1fr) 2rem;
   align-items: center;
-  flex: 0 0 min(28rem, 100%);
-  width: min(28rem, 100%);
-  min-height: 2.15rem;
-}
-
-.toolbarBtnGroup {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  flex: 1;
+  flex: 1 1 16rem;
+  max-width: 22rem;
+  min-height: 2rem;
   min-width: 0;
 }
 
-.toolbarTimezone {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--msp-muted, #5c6b82);
-  padding: 0.35rem 0.55rem;
+.toolbarControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.toolbarSegment {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem;
+  gap: 0.1rem;
   border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--msp-surface-2, #f7f9fc);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.toolbarSegBtn {
+  flex-shrink: 0;
+  padding: 0.38rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
   white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.toolbarSegBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: rgba(15, 28, 46, 0.05);
+}
+
+.toolbarSegBtnActive {
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.toolbarSegBtnActive:hover {
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
 }
 
 .toolbarLabel {
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
   text-align: center;
@@ -829,27 +934,28 @@
 }
 
 .toolbarBtn {
-  padding: 0.42rem 0.78rem;
+  padding: 0.38rem 0.7rem;
   border: 1px solid var(--msp-border, #e2e8f0);
-  background: var(--msp-surface-2, #f7f9fc);
+  background: var(--msp-surface, #fff);
   color: var(--msp-text, #0f1c2e);
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   transition: all 0.12s ease;
+  white-space: nowrap;
 }
 
 .toolbarBtnIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.42rem 0.5rem;
-  min-width: 2.15rem;
+  padding: 0.35rem 0.4rem;
+  min-width: 2rem;
 }
 
 .toolbarBtnIcon svg {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
 }
 
 .toolbarBtn:hover {
@@ -866,36 +972,7 @@
 
 .calendarMonthWrapper {
   --planning-month-off-range-bg: rgba(15, 28, 46, 0.06);
-  --planning-month-date-row-height: 1.75rem;
-  min-width: 0;
-}
-
-.calendarMonthWrapper :global(.rbc-month-view) {
-  min-height: 520px;
-}
-
-.multiMonthRow[data-months="1"] .calendarMonthWrapper :global(.rbc-month-view) {
-  min-height: 0;
-}
-
-.multiMonthRow[data-months="2"] .calendarMonthWrapper :global(.rbc-month-view) {
-  min-height: 560px;
-}
-
-.multiMonthRow[data-months="3"] .calendarMonthWrapper :global(.rbc-month-view) {
-  min-height: 520px;
-}
-
-.calendarMonthWrapper :global(.rbc-month-row) {
-  min-height: 96px;
-}
-
-.multiMonthRow[data-months="1"] .calendarMonthWrapper :global(.rbc-month-row) {
-  min-height: 0;
-}
-
-.multiMonthRow[data-months="3"] .calendarMonthWrapper :global(.rbc-month-row) {
-  min-height: 88px;
+  --planning-month-date-row-height: 1.35rem;
 }
 
 .calendarMonthWrapper :global(.rbc-event) {
@@ -956,13 +1033,6 @@
   pointer-events: auto;
 }
 
-.calendarMonthTitle {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
-  margin-bottom: 0.45rem;
-  text-align: center;
-}
 
 :global(.rbc-calendar) {
   font-family: inherit;
@@ -1347,8 +1417,8 @@
 .legendBar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  padding: 0.7rem 1.1rem;
+  gap: 0.45rem 0.9rem;
+  padding: 0.45rem 0.65rem;
   border-top: 1px solid var(--msp-border-light, #eef2f7);
   background: var(--msp-surface-2, #f7f9fc);
   flex-shrink: 0;
@@ -1367,13 +1437,6 @@
   height: 12px;
   border-radius: 3px;
   flex-shrink: 0;
-}
-
-@media (max-width: 1200px) {
-  .kpiRowPlanning > button {
-    flex: 0 0 auto;
-    min-width: 88px;
-  }
 }
 
 @media (max-width: 980px) {

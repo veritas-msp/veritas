@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import React from "react";
 import { Icon } from "@iconify/react";
-import { FaCheck, FaTimes, FaSearch, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
+import { FaCheck, FaTimes, FaSearch } from "react-icons/fa";
 import { getClientMfaDetails } from "../../api/clientOffice365";
 import styles from "./MfaDetailsTable.module.css";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCampaignDetailCopy, formatCampaignDetail } from "./campaignDetailI18n";
@@ -224,12 +226,16 @@ export default function MfaDetailsTable({
     return patterns.some(p => p.test(combined));
   };
   const handleSort = column => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection(column === 'adminRole' ? 'desc' : 'asc');
-    }
+    const next = cycleSortState({
+      column,
+      sortBy: sortColumn,
+      sortDirection,
+      defaultSortBy: "displayName",
+      defaultSortDirection: "asc",
+      getFirstDirection: col => (col === "adminRole" ? "desc" : "asc")
+    });
+    setSortColumn(next.sortBy);
+    setSortDirection(next.sortDirection);
     setCurrentPage(1);
   };
   const sortUsers = users => {
@@ -307,24 +313,9 @@ export default function MfaDetailsTable({
       return 0;
     });
   };
-  const getSortIcon = columnKey => {
-    if (sortColumn !== columnKey) {
-      return <FaSort style={{
-        fontSize: '0.75rem',
-        opacity: 0.4,
-        marginLeft: '0.25rem'
-      }} />;
-    }
-    return sortDirection === 'asc' ? <FaSortUp style={{
-      fontSize: '0.75rem',
-      marginLeft: '0.25rem',
-      color: '#3b82f6'
-    }} /> : <FaSortDown style={{
-      fontSize: '0.75rem',
-      marginLeft: '0.25rem',
-      color: '#3b82f6'
-    }} />;
-  };
+  const getSortIcon = columnKey => (
+    <SortIcon active={sortColumn === columnKey} direction={sortDirection} />
+  );
   const SortableHeader = ({
     column,
     children

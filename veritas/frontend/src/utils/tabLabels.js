@@ -88,6 +88,17 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
     if (jobName) return jobName;
     return d.backupJob;
   }
+  if (type === "InstanceDetail") {
+    const instanceName = (data?.instanceName || data?.name || data?.logiciel || "").trim();
+    const clientLabel = formatClientShortLabel({
+      name: data?.clientName
+    });
+    if (instanceName && clientLabel) {
+      return `${getClientNameWithoutCode(data.clientName)} · ${truncateLabel(instanceName, 24)}`;
+    }
+    if (instanceName) return truncateLabel(instanceName, 28);
+    return d.backupInstance;
+  }
   if (type === "CampaignDetail") {
     const clientLabel = formatClientShortLabel({
       name: data?.clientName
@@ -154,6 +165,7 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
   if (type === "Contact") return d.contactsList;
   if (type === "Prestataire") return d.prestatairesList;
   if (type === "Hardware") return d.supervisionCenter;
+  if (type === "Campaigns") return d.campaignsList || d.campaigns || "Campagnes";
   if (type === "Mon") return d.monitoringList;
   if (type === "Ticket") return d.support;
   if (type === "Dashboard") return d.dashboardKpi;

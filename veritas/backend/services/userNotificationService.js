@@ -562,6 +562,68 @@ export async function notifyInAppTicketValidationRequested({
     }
   }]);
 }
+/**
+ * Direct in-app ping for ticket side conversations targeting an agent.
+ * Notifies the other participant(s) — no SMTP.
+ */
+export async function notifyInAppSideConversation({
+  ticketId,
+  sideConversationId,
+  recipientUserIds = [],
+  authorUserId = null,
+  subject = "",
+  contentPreview = ""
+} = {}) {
+  const settings = await loadInAppSettings();
+  if (!settings.enabled) return { notified: 0 };
+
+  const authorId = authorUserId ? String(authorUserId) : null;
+  const uniqueTargets = [...new Set((Array.isArray(recipientUserIds) ? recipientUserIds : [])
+    .map(id => String(id || "").trim())
+    .filter(id => id && id !== authorId))];
+  if (uniqueTargets.length === 0) return { notified: 0 };
+
+  // Prefer a dedicated preference when present; otherwise respect master in-app toggle only.
+  const notifiableRecipients = await filterNotifiableUserIds(uniqueTargets, "ticket_side_conversation");
+  if (notifiableRecipients.length === 0) return { notified: 0 };
+
+  const ticket = await resolveTicketContext(ticketId);
+  if (!ticket) return { notified: 0 };
+
+  const authorName = await resolveAuthorName(authorUserId);
+  const preview = String(contentPreview || "").replace(/\s+/g, " ").trim().slice(0, 140);
+  const subjectLabel = String(subject || "").trim().slice(0, 80);
+  const ticketLabel = buildTicketLabel(ticket);
+  const title = subjectLabel
+    ? `Side conversation · ${ticketLabel}`
+    : `Side conversation on ${ticketLabel}`;
+  const body = preview
+    ? `${authorName}: ${preview}`
+    : subjectLabel
+      ? `${authorName} · ${subjectLabel}`
+      : `${authorName} sent a side conversation message`;
+
+  await insertUserNotifications(notifiableRecipients.map(userId => ({
+    userId,
+    type: "ticket_side_conversation",
+    title,
+    body,
+    ticketId,
+    commentId: null,
+    payload: {
+      sideConversationId: sideConversationId || null,
+      authorUserId,
+      authorName,
+      subject: subjectLabel,
+      ticketNumber: ticket.ticket_number ?? null,
+      ticketTitle: ticket.title || "",
+      clientName: ticket.client_name || ""
+    }
+  })));
+
+  return { notified: notifiableRecipients.length };
+}
+
 export async function notifyInAppTicketValidationResponded({
   ticketId,
   validationRequestId,

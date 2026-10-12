@@ -6,6 +6,7 @@ import { fetchSupportForms } from "../../api/tickets";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { invalidateSupervisionAlertRulesCache } from "../../hooks/useSupervisionAlertRules";
 import { listMappableSupportFormFields } from "../../utils/supportFormTicketContent";
+import { interpolate } from "../../i18n/translate";
 import {
   buildDefaultMonitoringAlertRules,
   countEnabledRulesForFamily,
@@ -16,7 +17,26 @@ import {
   SUPERVISION_FAMILIES
 } from "./supervisionAlertRulesConfig";
 import { getSupervisionAlertRulesCopy } from "./supervisionAlertRulesPanelI18n";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionAlertRulesPanel.module.css";
+
+const FAMILY_NAV_SECTIONS = [
+  { id: "endpoints", titleKey: "navSectionEndpoints", keys: ["ordinateurs"] },
+  {
+    id: "infra",
+    titleKey: "navSectionInfra",
+    keys: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"]
+  },
+  { id: "contracts", titleKey: "navSectionContracts", keys: ["contrats"] }
+];
+
+function normalizeNavSearch(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
 
 function Toggle({ checked, onChange, disabled, label, onClick }) {
   return (
@@ -39,13 +59,21 @@ function familyIcon(family) {
   return family?.icon || "mdi:devices";
 }
 
+function familyCriteriaCount(familyKey, criteriaCatalog, centreOnly) {
+  if (criteriaCatalog.length) {
+    return criteriaCatalog.filter(c => Array.isArray(c.families) && c.families.includes(familyKey)).length;
+  }
+  return getCriteriaForFamily(familyKey, { centreOnly }).length;
+}
+
 export default function MonitoringAlertRulesPanel({
   catalog,
   rules: rulesProp,
   isAdmin = false,
   onSaved,
   /** "centre" = critères monitoring du centre only ; "all" = catalogue complet (Admin). */
-  scope = "all"
+  scope = "all",
+  toolbarActions = null
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getSupervisionAlertRulesCopy(locale), [locale]);
@@ -92,6 +120,7 @@ export default function MonitoringAlertRulesPanel({
   const [selectedFamily, setSelectedFamily] = useState(() => families[0]?.key || "ordinateurs");
   const [saving, setSaving] = useState(false);
   const [supportForms, setSupportForms] = useState([]);
+  const [navSearch, setNavSearch] = useState("");
 
   useEffect(() => {
     setDraft(baseline);
@@ -125,7 +154,45 @@ export default function MonitoringAlertRulesPanel({
 
   const isDirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(baseline), [draft, baseline]);
 
-  const activeFamily = families.find(f => f.key === selectedFamily) || families[0];
+  const familiesWithCounts = useMemo(
+    () =>
+      families
+        .map(family => {
+          const total = familyCriteriaCount(family.key, criteriaCatalog, centreOnly);
+          if (!total) return null;
+          const enabled = countEnabledRulesForFamily(family.key, draft, { centreOnly });
+          return { ...family, total, enabled };
+        })
+        .filter(Boolean),
+    [families, criteriaCatalog, centreOnly, draft]
+  );
+
+  const navSearchTokens = useMemo(() => {
+    const query = normalizeNavSearch(navSearch);
+    return query ? query.split(/\s+/).filter(Boolean) : [];
+  }, [navSearch]);
+
+  const filteredNavSections = useMemo(() => {
+    const byKey = new Map(familiesWithCounts.map(family => [family.key, family]));
+    return FAMILY_NAV_SECTIONS.map(section => {
+      const items = section.keys
+        .map(key => byKey.get(key))
+        .filter(Boolean)
+        .filter(family => {
+          if (!navSearchTokens.length) return true;
+          const haystack = normalizeNavSearch([family.label, family.key, copy[section.titleKey]].join(" "));
+          return navSearchTokens.every(token => haystack.includes(token));
+        });
+      if (!items.length) return null;
+      return {
+        id: section.id,
+        title: copy[section.titleKey] || section.id,
+        items
+      };
+    }).filter(Boolean);
+  }, [familiesWithCounts, navSearchTokens, copy]);
+
+  const activeFamily = familiesWithCounts.find(f => f.key === selectedFamily) || familiesWithCounts[0];
   const familyCriteria = useMemo(() => {
     if (!activeFamily) return [];
     if (criteriaCatalog.length) {
@@ -196,16 +263,13 @@ export default function MonitoringAlertRulesPanel({
     });
   }, []);
 
-  const handleResetFamily = useCallback(
-    familyKey => {
-      const defaults = buildDefaultMonitoringAlertRules();
-      setDraft(prev => ({
-        ...prev,
-        [familyKey]: { ...(defaults[familyKey] || {}) }
-      }));
-    },
-    []
-  );
+  const handleResetFamily = useCallback(familyKey => {
+    const defaults = buildDefaultMonitoringAlertRules();
+    setDraft(prev => ({
+      ...prev,
+      [familyKey]: { ...(defaults[familyKey] || {}) }
+    }));
+  }, []);
 
   const handleSave = async () => {
     if (!isAdmin) return;
@@ -223,8 +287,7 @@ export default function MonitoringAlertRulesPanel({
       setDraft(saved);
       toast.success(copy.toasts.saved);
     } catch (err) {
-      console.error("[supervision-alert-rules] save failed:", err);
-      toast.error(err.message || copy.toasts.saveFailed);
+      toast.error(err?.message || copy.toasts.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -236,70 +299,89 @@ export default function MonitoringAlertRulesPanel({
   const enabledOnFamily = countEnabledRulesForFamily(activeFamily.key, draft, { centreOnly });
 
   return (
-    <div className={styles.panel}>
-      <header className={styles.header}>
-        <div>
-          <h2 className={styles.title}>
-            <Icon icon="mdi:bell-cog-outline" className={styles.titleIcon} aria-hidden />
-            {centreOnly ? copy.centreTitle || copy.title : copy.title}
-          </h2>
-          <p className={styles.subtitle}>{centreOnly ? copy.centreSubtitle || copy.subtitle : copy.subtitle}</p>
+    <div className={`${layout.panelCard} ${styles.root}`} data-page-fill>
+      <div className={`${layout.tableSearchBar} ${styles.toolbar}`} data-guide="supervision-filters">
+        <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            className={layout.searchInput}
+            value={navSearch}
+            onChange={event => setNavSearch(event.target.value)}
+            placeholder={copy.searchPlaceholder || "Search…"}
+            aria-label={copy.searchPlaceholder || "Search…"}
+          />
+          {navSearch ? (
+            <button
+              type="button"
+              onClick={() => setNavSearch("")}
+              className={layout.clearButton}
+              aria-label={copy.clearSearch || "Clear"}
+            >
+              <Icon icon="mdi:close" />
+            </button>
+          ) : null}
         </div>
-        {!isAdmin ? <p className={styles.readOnlyNote}>{copy.readOnly}</p> : null}
-      </header>
+        {!isAdmin ? <span className={styles.readOnlyChip}>{copy.readOnly}</span> : null}
+        {toolbarActions}
+      </div>
 
-      <div className={styles.layout}>
-        <nav className={styles.familyNav} aria-label={copy.familyNavAria}>
-          {families.map(family => {
-            const enabled = countEnabledRulesForFamily(family.key, draft, { centreOnly });
-            const total = (criteriaCatalog.length
-              ? criteriaCatalog.filter(c => Array.isArray(c.families) && c.families.includes(family.key))
-              : getCriteriaForFamily(family.key, { centreOnly })
-            ).length;
-            if (!total) return null;
-            const isActive = family.key === activeFamily.key;
-            return (
-              <button
-                key={family.key}
-                type="button"
-                className={`${styles.familyNavItem} ${isActive ? styles.familyNavItemActive : ""}`}
-                onClick={() => setSelectedFamily(family.key)}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Icon icon={familyIcon(family)} className={styles.familyNavIcon} aria-hidden />
-                <span className={styles.familyNavText}>
-                  <span className={styles.familyNavLabel}>{family.label}</span>
-                  <span className={styles.familyNavMeta}>{copy.formatActiveCount(enabled, total)}</span>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+      <div className={styles.body}>
+        <aside className={styles.sidebar} aria-label={copy.familyNavAria}>
+          {filteredNavSections.length === 0 && navSearchTokens.length > 0 ? (
+            <p className={styles.navSearchEmpty}>
+              {interpolate(copy.noResults || "No results for “{query}”", { query: navSearch.trim() })}
+            </p>
+          ) : null}
 
-        <section className={styles.detail} aria-labelledby="alert-rules-family-title">
-          <div className={styles.detailHeader}>
-            <div className={styles.detailTitleRow}>
-              <Icon icon={familyIcon(activeFamily)} className={styles.detailIcon} aria-hidden />
-              <div>
-                <h3 id="alert-rules-family-title" className={styles.detailTitle}>
-                  {activeFamily.label}
-                </h3>
-                <p className={styles.detailSubtitle}>
-                  {copy.formatFamilyHint(enabledOnFamily, familyCriteria.length)}
-                </p>
-              </div>
+          {filteredNavSections.map(section => (
+            <div key={section.id} className={styles.navSection}>
+              <div className={styles.navSectionTitle}>{section.title}</div>
+              <ul className={styles.navList}>
+                {section.items.map(family => {
+                  const isActive = family.key === activeFamily.key;
+                  return (
+                    <li key={family.key}>
+                      <button
+                        type="button"
+                        className={`${styles.navItem} ${isActive ? styles.navItemActive : ""}`}
+                        onClick={() => setSelectedFamily(family.key)}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        <Icon icon={familyIcon(family)} className={styles.navIcon} aria-hidden />
+                        <span className={styles.navItemLabel}>{family.label}</span>
+                        <span className={styles.navItemCount}>{family.enabled}/{family.total}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </aside>
+
+        <section className={styles.main} aria-labelledby="alert-rules-family-title">
+          <header className={styles.mainHeader}>
+            <div className={styles.mainHeaderText}>
+              <h2 id="alert-rules-family-title" className={styles.mainTitle}>
+                <Icon icon={familyIcon(activeFamily)} className={styles.mainTitleIcon} aria-hidden />
+                {activeFamily.label}
+              </h2>
+              <p className={styles.mainHint}>{copy.formatFamilyHint(enabledOnFamily, familyCriteria.length)}</p>
             </div>
             {isAdmin ? (
               <button
                 type="button"
-                className={styles.resetFamilyBtn}
+                className={styles.resetBtn}
                 onClick={() => handleResetFamily(activeFamily.key)}
                 disabled={saving}
               >
                 {copy.formatResetFamily(activeFamily.label)}
               </button>
             ) : null}
-          </div>
+          </header>
 
           <div className={styles.criteriaList}>
             {familyCriteria.map(criterion => {
@@ -316,24 +398,28 @@ export default function MonitoringAlertRulesPanel({
               return (
                 <article
                   key={criterion.key}
-                  className={`${styles.criterionCard} ${enabled ? styles.criterionCardOn : styles.criterionCardOff} ${canToggle ? styles.criterionCardClickable : ""}`}
+                  className={`${styles.ruleRow} ${enabled ? styles.ruleRowOn : styles.ruleRowOff} ${canToggle ? styles.ruleRowClickable : ""}`}
                   role={canToggle ? "button" : undefined}
                   tabIndex={canToggle ? 0 : undefined}
                   aria-pressed={canToggle ? enabled : undefined}
                   onClick={canToggle ? toggleCriterion : undefined}
-                  onKeyDown={canToggle ? event => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      toggleCriterion();
-                    }
-                  } : undefined}
+                  onKeyDown={
+                    canToggle
+                      ? event => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleCriterion();
+                          }
+                        }
+                      : undefined
+                  }
                 >
-                  <div className={styles.criterionTop}>
-                    <div className={styles.criterionText}>
-                      <span className={styles.criterionLabel}>
+                  <div className={styles.ruleTop}>
+                    <div className={styles.ruleText}>
+                      <span className={styles.ruleLabel}>
                         {copy.getCriterionLabel(criterion.key, meta.label)}
                       </span>
-                      <span className={styles.criterionDesc}>
+                      <span className={styles.ruleDesc}>
                         {copy.getCriterionDescription(criterion.key, meta.description)}
                       </span>
                     </div>
@@ -346,7 +432,11 @@ export default function MonitoringAlertRulesPanel({
                     />
                   </div>
                   {enabled && paramFields.length > 0 ? (
-                    <div className={styles.paramGrid} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                    <div
+                      className={styles.paramGrid}
+                      onClick={event => event.stopPropagation()}
+                      onKeyDown={event => event.stopPropagation()}
+                    >
                       {paramFields.map(field => (
                         <label key={field.key} className={styles.paramField}>
                           <span className={styles.paramLabel}>
@@ -369,7 +459,11 @@ export default function MonitoringAlertRulesPanel({
                     </div>
                   ) : null}
                   {enabled ? (
-                    <div className={styles.ticketMapping} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                    <div
+                      className={styles.ticketMapping}
+                      onClick={event => event.stopPropagation()}
+                      onKeyDown={event => event.stopPropagation()}
+                    >
                       <label className={styles.paramField}>
                         <span className={styles.paramLabel}>{copy.supportFormLabel}</span>
                         <select
@@ -392,54 +486,56 @@ export default function MonitoringAlertRulesPanel({
                           ))}
                         </select>
                       </label>
-                      {rule.supportFormId ? (() => {
-                        const form = supportFormsById.get(String(rule.supportFormId));
-                        const mappable = listMappableSupportFormFields(form?.fields || []);
-                        return (
-                          <>
-                            <label className={styles.paramField}>
-                              <span className={styles.paramLabel}>{copy.subjectFieldLabel}</span>
-                              <select
-                                className={styles.paramInput}
-                                value={rule.subjectFieldKey || ""}
-                                disabled={!isAdmin || saving || mappable.length === 0}
-                                onChange={e =>
-                                  handleTicketMappingChange(activeFamily.key, criterion.key, {
-                                    subjectFieldKey: e.target.value || null
-                                  })
-                                }
-                              >
-                                <option value="">{copy.fieldAuto}</option>
-                                {mappable.map(field => (
-                                  <option key={field.fieldKey} value={field.fieldKey}>
-                                    {field.label || field.fieldKey}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className={styles.paramField}>
-                              <span className={styles.paramLabel}>{copy.descriptionFieldLabel}</span>
-                              <select
-                                className={styles.paramInput}
-                                value={rule.descriptionFieldKey || ""}
-                                disabled={!isAdmin || saving || mappable.length === 0}
-                                onChange={e =>
-                                  handleTicketMappingChange(activeFamily.key, criterion.key, {
-                                    descriptionFieldKey: e.target.value || null
-                                  })
-                                }
-                              >
-                                <option value="">{copy.fieldAuto}</option>
-                                {mappable.map(field => (
-                                  <option key={field.fieldKey} value={field.fieldKey}>
-                                    {field.label || field.fieldKey}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          </>
-                        );
-                      })() : null}
+                      {rule.supportFormId
+                        ? (() => {
+                            const form = supportFormsById.get(String(rule.supportFormId));
+                            const mappable = listMappableSupportFormFields(form?.fields || []);
+                            return (
+                              <>
+                                <label className={styles.paramField}>
+                                  <span className={styles.paramLabel}>{copy.subjectFieldLabel}</span>
+                                  <select
+                                    className={styles.paramInput}
+                                    value={rule.subjectFieldKey || ""}
+                                    disabled={!isAdmin || saving || mappable.length === 0}
+                                    onChange={e =>
+                                      handleTicketMappingChange(activeFamily.key, criterion.key, {
+                                        subjectFieldKey: e.target.value || null
+                                      })
+                                    }
+                                  >
+                                    <option value="">{copy.fieldAuto}</option>
+                                    {mappable.map(field => (
+                                      <option key={field.fieldKey} value={field.fieldKey}>
+                                        {field.label || field.fieldKey}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label className={styles.paramField}>
+                                  <span className={styles.paramLabel}>{copy.descriptionFieldLabel}</span>
+                                  <select
+                                    className={styles.paramInput}
+                                    value={rule.descriptionFieldKey || ""}
+                                    disabled={!isAdmin || saving || mappable.length === 0}
+                                    onChange={e =>
+                                      handleTicketMappingChange(activeFamily.key, criterion.key, {
+                                        descriptionFieldKey: e.target.value || null
+                                      })
+                                    }
+                                  >
+                                    <option value="">{copy.fieldAuto}</option>
+                                    {mappable.map(field => (
+                                      <option key={field.fieldKey} value={field.fieldKey}>
+                                        {field.label || field.fieldKey}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              </>
+                            );
+                          })()
+                        : null}
                       <p className={styles.mappingHint}>{copy.ticketMappingHint}</p>
                     </div>
                   ) : null}
@@ -447,17 +543,17 @@ export default function MonitoringAlertRulesPanel({
               );
             })}
           </div>
+
+          {isAdmin && isDirty ? (
+            <footer className={styles.stickyBar}>
+              <span className={styles.stickyHint}>{copy.unsavedChanges}</span>
+              <button type="button" className={styles.btnPrimary} onClick={handleSave} disabled={saving}>
+                {saving ? copy.saving : copy.save}
+              </button>
+            </footer>
+          ) : null}
         </section>
       </div>
-
-      {isAdmin && isDirty ? (
-        <footer className={styles.stickyBar}>
-          <span className={styles.stickyHint}>{copy.unsavedChanges}</span>
-          <button type="button" className={styles.btnPrimary} onClick={handleSave} disabled={saving}>
-            {saving ? copy.saving : copy.save}
-          </button>
-        </footer>
-      ) : null}
     </div>
   );
 }

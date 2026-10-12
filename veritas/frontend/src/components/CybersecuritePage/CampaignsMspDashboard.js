@@ -5,8 +5,7 @@ import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import { deleteCampaign, updateClientCampaign } from "../../api/campaigns";
 import API_BASE_URL from "../../config";
-import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
-import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import SmartTooltip from "../SmartTooltip";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -15,21 +14,8 @@ import CyberBulkBar from "./CyberBulkBar";
 import CyberBulkEditModal from "./CyberBulkEditModal";
 import { useCyberBulkSelection } from "./useCyberBulkSelection";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-function SortableHeader({
-  column,
-  label,
-  sortBy,
-  sortDirection,
-  onSort
-}) {
-  const isActive = sortBy === column;
-  return <th aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      <button type="button" className={styles.thBtn} onClick={() => onSort(column)}>
-        {label}
-        {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
-      </button>
-    </th>;
-}
+import SortableHeader from "../Misc/SortableHeader/SortableHeader";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
 function getClientNameForSort(value) {
   return (value || "").toString().trim().replace(/^\d+\s*[-\s]*\s*/, "").toLowerCase();
@@ -146,12 +132,15 @@ export default function CampaignsMspDashboard({
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
   const handleSort = column => {
-    if (sortBy === column) {
-      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
-      return;
-    }
-    setSortBy(column);
-    setSortDirection("asc");
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: "start_date",
+      defaultSortDirection: "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
   };
   const formatDisplayDate = value => {
     if (!value) return "-";
@@ -250,118 +239,146 @@ export default function CampaignsMspDashboard({
   if (!campaignsCopy || !msp) return null;
   const statusFilterItems = copy.campaignStatusFilters || [];
   return <div className={styles.dashboard}>
-      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
-        <div className={layout.searchWrap}>
-          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-          <input type="search" inputMode="search" enterKeyHint="search" placeholder={campaignsCopy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={campaignsCopy.searchPlaceholder} />
-          {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
-              <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
-                <FaTimes />
-              </button>
-            </SmartTooltip> : null}
-        </div>
-        <div className={layout.statusChips} role="group">
-          {statusFilterItems.map(item => {
-            const count = stats.statusCounts[item.id] || 0;
-            const active = statusFilter === item.id;
-            return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => setStatusFilter(item.id === statusFilter ? "all" : item.id)} disabled={loading || count === 0}>
-                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                  <Icon icon={item.icon} />
-                </span>
-                <span className={layout.statusChipLabel}>{item.label}</span>
-                <span className={layout.statusChipCount}>{count}</span>
-              </button>;
-          })}
-        </div>
-        {onAddCampaign ? <div className={styles.toolbarActions}>
-            <SmartTooltip content={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
-              <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={onAddCampaign} aria-label={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
-                <Icon icon="mdi:plus" aria-hidden />
-              </button>
-            </SmartTooltip>
-          </div> : null}
-      </div>
-
       {loading ? (
-        <PageSkeleton variant="list" rows={8} label={campaignsCopy.loading} />
-      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:bullhorn-outline" title={campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle} text={campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText} actionLabel={campaigns.length === 0 ? campaignsCopy.emptyCta : null} onAction={campaigns.length === 0 ? onAddCampaign : null} /> : <section className={styles.panel}>
-          <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onEdit={() => setEditOpen(true)} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
-          <div className={styles.tableWrap}>
-            <div className={styles.tableScroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.checkboxCell}>
-                    <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label={copy.bulk.selectAll} />
-                  </th>
-                  <SortableHeader column="client_name" label={campaignsCopy.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="name" label={campaignsCopy.table.name} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="type" label={campaignsCopy.table.type} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="status" label={campaignsCopy.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="start_date" label={campaignsCopy.table.startDate} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="end_date" label={campaignsCopy.table.endDate} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="global_progress" label={campaignsCopy.table.progress} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="created_at" label={campaignsCopy.table.createdAt} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedRows.map(campaign => {
-              const statusMeta = copy.getCampaignStatusMeta(campaign.status);
-              const openRow = () => onViewCampaign?.(campaign);
-              const isSelected = selectedIds.has(campaign.id);
-              return <tr key={campaign.id} className={`${styles.tableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={openRow} onMouseDown={e => {
-                if (e.button === 1) {
-                  e.preventDefault();
-                  onViewCampaign?.(campaign, {
-                    background: true
-                  });
-                }
-              }} onKeyDown={e => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  openRow();
-                }
-              }} role="button" tabIndex={0}>
-                      <td className={styles.checkboxCell} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
-                        <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleItem(campaign.id, e.target.checked)} onClick={e => e.stopPropagation()} aria-label={copy.formatBulkSelectRow(campaign.name || campaign.client_name)} />
-                      </td>
-                      <td className={styles.cellName}>{formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`)}</td>
-                      <td>{campaign.name || "-"}</td>
-                      <td className={styles.cellMuted}>{copy.getCampaignTypeLabel(campaign.type) || campaign.type || "-"}</td>
-                      <td>{statusMeta.label}</td>
-                      <td className={styles.cellMuted}>{formatDisplayDate(campaign.start_date)}</td>
-                      <td className={styles.cellMuted}>{formatDisplayDate(campaign.end_date)}</td>
-                      <td className={styles.cellMuted}>{Math.max(0, Math.min(100, Number(campaign.global_progress) || 0))}%</td>
-                      <td className={styles.cellMuted}>{formatDisplayDate(campaign.created_at)}</td>
-                    </tr>;
-            })}
-              </tbody>
-            </table>
+        <MspDashboardSkeleton rows={8} chipCount={0} columnCount={8} label={campaignsCopy.loading} />
+      ) : (
+        <div className={layout.listBody}>
+          <div className={layout.listArea}>
+            <div className={layout.panelCard}>
+              <div className={layout.tableSearchBar}>
+                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
+                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={campaignsCopy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={campaignsCopy.searchPlaceholder} />
+                  {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
+                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
+                        <FaTimes />
+                      </button>
+                    </SmartTooltip> : null}
+                </div>
+                <div className={layout.statusChips} role="group">
+                  {statusFilterItems.map(item => {
+                    const count = stats.statusCounts[item.id] || 0;
+                    const active = statusFilter === item.id;
+                    return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => setStatusFilter(item.id === statusFilter ? "all" : item.id)} disabled={count === 0}>
+                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                          <Icon icon={item.icon} />
+                        </span>
+                        <span className={layout.statusChipLabel}>{item.label}</span>
+                        <span className={layout.statusChipCount}>{count}</span>
+                      </button>;
+                  })}
+                </div>
+                {onAddCampaign ? <div className={layout.toolbarActions}>
+                    <SmartTooltip content={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
+                      <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={onAddCampaign} aria-label={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
+                        <Icon icon="mdi:plus" aria-hidden />
+                      </button>
+                    </SmartTooltip>
+                  </div> : null}
+              </div>
+
+              {filteredRows.length === 0 ? (
+                <div className={layout.emptyStateInCard}>
+                  <Icon icon="mdi:bullhorn-outline" className={layout.emptyStateIcon} aria-hidden />
+                  <p className={layout.emptyStateTitle}>{campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle}</p>
+                  <p className={layout.emptyStateHint}>{campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText}</p>
+                  {campaigns.length === 0 && onAddCampaign ? (
+                    <button type="button" className={layout.primaryBtn} onClick={onAddCampaign}>
+                      <Icon icon="mdi:plus" aria-hidden />
+                      {campaignsCopy.emptyCta}
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <>
+                  <div className={layout.dataTableWrap}>
+                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th className={styles.checkboxCell}>
+                              <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label={copy.bulk.selectAll} />
+                            </th>
+                            <SortableHeader buttonClassName={styles.thBtn} column="client_name" label={campaignsCopy.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="name" label={campaignsCopy.table.name} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="type" label={campaignsCopy.table.type} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="status" label={campaignsCopy.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="start_date" label={campaignsCopy.table.startDate} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="end_date" label={campaignsCopy.table.endDate} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="global_progress" label={campaignsCopy.table.progress} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <SortableHeader buttonClassName={styles.thBtn} column="created_at" label={campaignsCopy.table.createdAt} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                            <th className={styles.rowOpenCell} aria-label={campaignsCopy.openDetail || "Détail"} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedRows.map(campaign => {
+                        const statusMeta = copy.getCampaignStatusMeta(campaign.status);
+                        const openRow = () => onViewCampaign?.(campaign);
+                        const isSelected = selectedIds.has(campaign.id);
+                        return <tr key={campaign.id} className={`${styles.tableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={openRow} onMouseDown={e => {
+                          if (e.button === 1) {
+                            e.preventDefault();
+                            onViewCampaign?.(campaign, {
+                              background: true
+                            });
+                          }
+                        }} onKeyDown={e => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openRow();
+                          }
+                        }} role="button" tabIndex={0}>
+                                <td className={styles.checkboxCell} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
+                                  <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleItem(campaign.id, e.target.checked)} onClick={e => e.stopPropagation()} aria-label={copy.formatBulkSelectRow(campaign.name || campaign.client_name)} />
+                                </td>
+                                <td className={styles.cellName}>{formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`)}</td>
+                                <td>{campaign.name || "-"}</td>
+                                <td className={styles.cellMuted}>{copy.getCampaignTypeLabel(campaign.type) || campaign.type || "-"}</td>
+                                <td>{statusMeta.label}</td>
+                                <td className={styles.cellMuted}>{formatDisplayDate(campaign.start_date)}</td>
+                                <td className={styles.cellMuted}>{formatDisplayDate(campaign.end_date)}</td>
+                                <td className={styles.cellMuted}>{Math.max(0, Math.min(100, Number(campaign.global_progress) || 0))}%</td>
+                                <td className={styles.cellMuted}>{formatDisplayDate(campaign.created_at)}</td>
+                                <td className={styles.rowOpenCell} aria-hidden>
+                                  <Icon icon="mdi:chevron-right" className={styles.rowOpenChevron} />
+                                </td>
+                              </tr>;
+                      })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                    <div className={layout.paginationLeft}>
+                      <span className={layout.paginationLabel}>{campaignsCopy.rowsPerPage}</span>
+                      <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                    <div className={layout.paginationRight}>
+                      <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={campaignsCopy.prevPage}>
+                        <FaChevronLeft />
+                      </button>
+                      <span className={layout.paginationInfo}>
+                        {copy.formatCampaignPageInfo(currentPage, totalPages)}
+                      </span>
+                      <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={campaignsCopy.nextPage}>
+                        <FaChevronRight />
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
-              <div className={styles.paginationLeft}>
-                <span className={styles.paginationLabel}>{campaignsCopy.rowsPerPage}</span>
-                <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              <div className={styles.paginationRight}>
-                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={campaignsCopy.prevPage}>
-                  <FaChevronLeft />
-                </button>
-                <span className={styles.paginationInfo}>
-                  {copy.formatCampaignPageInfo(currentPage, totalPages)}
-                </span>
-                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={campaignsCopy.nextPage}>
-                  <FaChevronRight />
-                </button>
-              </div>
-            </div> : null}
           </div>
-        </section>}
+          {selectedCount > 0 ? (
+            <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onEdit={() => setEditOpen(true)} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
+          ) : null}
+        </div>
+      )}
       <CyberBulkEditModal open={editOpen} kind="campaigns" items={selectedItems} copy={copy} campaignStatuses={copy.campaignStatuses || []} onClose={() => setEditOpen(false)} onSubmit={handleBulkEdit} />
       <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;

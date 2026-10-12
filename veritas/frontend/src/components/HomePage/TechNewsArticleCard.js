@@ -1,5 +1,5 @@
 import { Icon } from "@iconify/react";
-import { Card, Text, UnstyledButton } from "@mantine/core";
+import { Text, UnstyledButton } from "@mantine/core";
 import TechNewsReactions from "./TechNewsReactions";
 import classes from "./TechNewsArticleCard.module.css";
 
@@ -38,8 +38,13 @@ export default function TechNewsArticleCard({
     : "";
 
   return (
-    <Card withBorder radius="md" padding="md" shadow="sm" className={classes.card}>
-      <Card.Section className={classes.cover} data-category={cat} onClick={onOpen}>
+    <article className={classes.card}>
+      <div className={classes.cover} data-category={cat} onClick={onOpen} onKeyDown={event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.();
+        }
+      }} role="button" tabIndex={0}>
         <div className={classes.coverRow}>
           <span className={classes.coverLead}>
             <span className={classes.badge} title={categoryLabel} aria-label={categoryLabel}>
@@ -68,7 +73,7 @@ export default function TechNewsArticleCard({
             ) : null}
           </span>
         </div>
-      </Card.Section>
+      </div>
 
       <UnstyledButton className={classes.body} onClick={onOpen} aria-label={t.openArticle}>
         <Text className={classes.title} fw={600} lineClamp={2}>
@@ -91,6 +96,6 @@ export default function TechNewsArticleCard({
           t={t}
         />
       </div>
-    </Card>
+    </article>
   );
 }

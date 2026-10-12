@@ -23,6 +23,14 @@ const DETAIL_COPY = {
       subscribedToast: "Abonnement activé",
       unsubscribedToast: "Abonnement retiré"
     },
+    quickActions: {
+      title: "Actions rapides",
+      seeAll: "Voir toutes les actions",
+      editContact: "Éditer le contact",
+      copyCard: "Copier la fiche",
+      shareCard: "Partager la fiche",
+      deleteContact: "Supprimer le contact"
+    },
     editContact: "Éditer le contact",
     copyCard: "Copier la fiche",
     shareCard: "Partager la fiche",
@@ -152,9 +160,9 @@ const DETAIL_COPY = {
           title: "Historique de la fiche",
           content: "Dates de création et de dernière modification pour suivre l'ancienneté et les mises à jour du contact."
         },
-        heroActions: {
-          title: "Actions sur le contact",
-          content: "Éditez la fiche, copiez ou partagez les coordonnées, accédez à l'entreprise liée ou supprimez le contact depuis ce menu."
+        quickActions: {
+          title: "Actions rapides",
+          content: "Éditez la fiche, copiez ou partagez les coordonnées, abonnez-vous aux notifications, ouvrez une entreprise liée ou supprimez le contact."
         }
       }
     },
@@ -261,6 +269,9 @@ const DETAIL_COPY = {
       alertNeedEmail: "Renseignez un e-mail et rattachez le contact à une entreprise pour activer le portail.",
       alertInactive: "Contact inactif · l'accès portail est automatiquement désactivé.",
       loginEmailLabel: "E-mail de connexion",
+      loginEmailHint: "Choisissez l’adresse utilisée pour se connecter à l’espace client.",
+      loginEmailAria: "E-mail de connexion à l’espace client",
+      loginEmailPrimary: "Principale",
       lastLoginLabel: "Dernière connexion",
       never: "Jamais",
       accessCardTitle: "Accès",
@@ -270,12 +281,12 @@ const DETAIL_COPY = {
       toggleActive: "Le contact peut se connecter à l'espace client.",
       toggleInactive: "L'accès est suspendu sans supprimer le compte.",
       toggleAria: "Activer ou désactiver l'accès au dashboard",
-      roleTitle: "Rôle tickets",
-      roleUser: "Utilisateur",
-      roleSupervisor: "Superviseur",
-      roleUserHint: "Voit et agit uniquement sur ses propres tickets (demandeur).",
-      roleSupervisorHint: "Voit et agit sur tous les tickets de l'entreprise.",
-      roleAria: "Rôle portail pour les tickets",
+      roleTitle: "Accès aux tickets support",
+      roleUser: "Ses tickets seulement",
+      roleSupervisor: "Toute l'entreprise",
+      roleUserHint: "Le contact ne voit et ne traite que les tickets dont il est le demandeur.",
+      roleSupervisorHint: "Le contact voit et traite tous les tickets support de son entreprise.",
+      roleAria: "Périmètre d'accès aux tickets sur l'espace client",
       resetPassword: "Réinitialiser le MDP",
       sendInvite: "Envoyer un e-mail",
       resendInvite: "Renvoyer l'e-mail",
@@ -299,7 +310,9 @@ const DETAIL_COPY = {
         deleted: "Compte portail supprimé",
         impersonationError: "Impossible de démarrer l'impersonation.",
         roleUpdated: "Rôle portail mis à jour",
-        roleError: "Impossible de mettre à jour le rôle portail."
+        roleError: "Impossible de mettre à jour le rôle portail.",
+        emailUpdated: "E-mail de connexion mis à jour",
+        emailError: "Impossible de mettre à jour l’e-mail de connexion."
       },
       passwordModal: {
         eyebrow: "Portail client MSP",
@@ -381,6 +394,14 @@ const DETAIL_COPY = {
       unsubscribe: "Unsubscribe",
       subscribedToast: "Subscription enabled",
       unsubscribedToast: "Subscription removed"
+    },
+    quickActions: {
+      title: "Quick actions",
+      seeAll: "See all actions",
+      editContact: "Edit contact",
+      copyCard: "Copy record",
+      shareCard: "Share record",
+      deleteContact: "Delete contact"
     },
     editContact: "Edit contact",
     copyCard: "Copy record",
@@ -511,9 +532,9 @@ const DETAIL_COPY = {
           title: "Record history",
           content: "Creation and last update dates to track how long the contact has existed and when it was changed."
         },
-        heroActions: {
-          title: "Contact actions",
-          content: "Edit the record, copy or share details, open the linked company or delete the contact from this menu."
+        quickActions: {
+          title: "Quick actions",
+          content: "Edit the record, copy or share details, subscribe to notifications, open a linked company or delete the contact."
         }
       }
     },
@@ -620,6 +641,9 @@ const DETAIL_COPY = {
       alertNeedEmail: "Enter an email and link the contact to a company to enable the portal.",
       alertInactive: "Inactive contact · portal access is automatically disabled.",
       loginEmailLabel: "Login email",
+      loginEmailHint: "Choose which address is used to sign in to the client space.",
+      loginEmailAria: "Client space login email",
+      loginEmailPrimary: "Primary",
       lastLoginLabel: "Last login",
       never: "Never",
       accessCardTitle: "Access",
@@ -629,12 +653,12 @@ const DETAIL_COPY = {
       toggleActive: "The contact can sign in to the client space.",
       toggleInactive: "Access is suspended without deleting the account.",
       toggleAria: "Enable or disable dashboard access",
-      roleTitle: "Ticket role",
-      roleUser: "User",
-      roleSupervisor: "Supervisor",
-      roleUserHint: "Can only see and act on their own tickets (requester).",
-      roleSupervisorHint: "Can see and act on all company tickets.",
-      roleAria: "Portal ticket role",
+      roleTitle: "Support ticket access",
+      roleUser: "Own tickets only",
+      roleSupervisor: "Whole company",
+      roleUserHint: "The contact can only see and act on tickets where they are the requester.",
+      roleSupervisorHint: "The contact can see and act on all support tickets for their company.",
+      roleAria: "Ticket access scope on the client portal",
       resetPassword: "Reset password",
       sendInvite: "Send email",
       resendInvite: "Resend email",
@@ -658,7 +682,9 @@ const DETAIL_COPY = {
         deleted: "Portal account deleted",
         impersonationError: "Unable to start impersonation.",
         roleUpdated: "Portal role updated",
-        roleError: "Unable to update the portal role."
+        roleError: "Unable to update the portal role.",
+        emailUpdated: "Login email updated",
+        emailError: "Unable to update the login email."
       },
       passwordModal: {
         eyebrow: "MSP client portal",
@@ -740,6 +766,14 @@ const DETAIL_COPY = {
       unsubscribe: "Abo beenden",
       subscribedToast: "Abo aktiviert",
       unsubscribedToast: "Abo entfernt"
+    },
+    quickActions: {
+      title: "Schnellaktionen",
+      seeAll: "Alle Aktionen anzeigen",
+      editContact: "Kontakt bearbeiten",
+      copyCard: "Datensatz kopieren",
+      shareCard: "Datensatz teilen",
+      deleteContact: "Kontakt löschen"
     },
     editContact: "Kontakt bearbeiten",
     copyCard: "Datensatz kopieren",
@@ -868,9 +902,9 @@ const DETAIL_COPY = {
           title: "Datensatz-Verlauf",
           content: "Erstellungs- und Änderungsdatum zur Nachverfolgung."
         },
-        heroActions: {
-          title: "Kontaktaktionen",
-          content: "Datensatz bearbeiten, kopieren/teilen, Unternehmen öffnen oder Kontakt löschen."
+        quickActions: {
+          title: "Schnellaktionen",
+          content: "Datensatz bearbeiten, kopieren/teilen, Benachrichtigungen abonnieren, Unternehmen öffnen oder Kontakt löschen."
         }
       }
     },
@@ -973,6 +1007,9 @@ const DETAIL_COPY = {
       alertNeedEmail: "E-Mail angeben und Kontakt mit Unternehmen verknüpfen.",
       alertInactive: "Inaktiver Kontakt · Portalzugang automatisch deaktiviert.",
       loginEmailLabel: "Anmelde-E-Mail",
+      loginEmailHint: "Wählen Sie die Adresse für die Anmeldung am Kundenbereich.",
+      loginEmailAria: "Anmelde-E-Mail für den Kundenbereich",
+      loginEmailPrimary: "Primär",
       lastLoginLabel: "Letzte Anmeldung",
       never: "Nie",
       accessCardTitle: "Zugang",
@@ -982,12 +1019,12 @@ const DETAIL_COPY = {
       toggleActive: "Kontakt kann sich am Kundenbereich anmelden.",
       toggleInactive: "Zugang ausgesetzt ohne Konto zu löschen.",
       toggleAria: "Dashboard-Zugang umschalten",
-      roleTitle: "Ticket-Rolle",
-      roleUser: "Benutzer",
-      roleSupervisor: "Supervisor",
-      roleUserHint: "Sieht und bearbeitet nur die eigenen Tickets (Antragsteller).",
-      roleSupervisorHint: "Sieht und bearbeitet alle Tickets des Unternehmens.",
-      roleAria: "Portal-Ticketrolle",
+      roleTitle: "Zugriff auf Support-Tickets",
+      roleUser: "Nur eigene Tickets",
+      roleSupervisor: "Ganzes Unternehmen",
+      roleUserHint: "Der Kontakt sieht und bearbeitet nur Tickets, bei denen er Antragsteller ist.",
+      roleSupervisorHint: "Der Kontakt sieht und bearbeitet alle Support-Tickets seines Unternehmens.",
+      roleAria: "Ticket-Zugriff im Kundenportal",
       resetPassword: "Passwort zurücksetzen",
       sendInvite: "E-Mail senden",
       resendInvite: "E-Mail erneut senden",
@@ -1012,7 +1049,9 @@ const DETAIL_COPY = {
         deleted: "Portal-Konto gelöscht",
         impersonationError: "Impersonation konnte nicht gestartet werden.",
         roleUpdated: "Portalrolle aktualisiert",
-        roleError: "Portalrolle konnte nicht aktualisiert werden."
+        roleError: "Portalrolle konnte nicht aktualisiert werden.",
+        emailUpdated: "Anmelde-E-Mail aktualisiert",
+        emailError: "Anmelde-E-Mail konnte nicht aktualisiert werden."
       },
       passwordModal: {
         eyebrow: "MSP-Kundenportal",
@@ -1094,6 +1133,14 @@ const DETAIL_COPY = {
       unsubscribe: "Annulla iscrizione",
       subscribedToast: "Iscrizione attivata",
       unsubscribedToast: "Iscrizione rimossa"
+    },
+    quickActions: {
+      title: "Azioni rapide",
+      seeAll: "Vedi tutte le azioni",
+      editContact: "Modifica contatto",
+      copyCard: "Copia scheda",
+      shareCard: "Condividi scheda",
+      deleteContact: "Elimina contatto"
     },
     editContact: "Modifica contatto",
     copyCard: "Copia scheda",
@@ -1222,9 +1269,9 @@ const DETAIL_COPY = {
           title: "Storico scheda",
           content: "Date di creazione e ultima modifica per tracciare aggiornamenti."
         },
-        heroActions: {
-          title: "Azioni sul contatto",
-          content: "Modifica, copia/condividi, apri azienda o elimina contatto da questo menu."
+        quickActions: {
+          title: "Azioni rapide",
+          content: "Modifica, copia/condividi, iscriviti alle notifiche, apri azienda o elimina contatto."
         }
       }
     },
@@ -1327,6 +1374,9 @@ const DETAIL_COPY = {
       alertNeedEmail: "Inserisci e-mail e collega il contatto a un'azienda.",
       alertInactive: "Contatto inattivo · accesso portale disattivato automaticamente.",
       loginEmailLabel: "E-mail di accesso",
+      loginEmailHint: "Scegli l’indirizzo usato per accedere allo spazio cliente.",
+      loginEmailAria: "E-mail di accesso allo spazio cliente",
+      loginEmailPrimary: "Principale",
       lastLoginLabel: "Ultimo accesso",
       never: "Mai",
       accessCardTitle: "Accesso",
@@ -1336,12 +1386,12 @@ const DETAIL_COPY = {
       toggleActive: "Il contatto può accedere allo spazio cliente.",
       toggleInactive: "Accesso sospeso senza eliminare l'account.",
       toggleAria: "Attiva/disattiva accesso dashboard",
-      roleTitle: "Ruolo ticket",
-      roleUser: "Utente",
-      roleSupervisor: "Supervisore",
-      roleUserHint: "Vede e agisce solo sui propri ticket (richiedente).",
-      roleSupervisorHint: "Vede e agisce su tutti i ticket dell'azienda.",
-      roleAria: "Ruolo ticket portale",
+      roleTitle: "Accesso ai ticket di supporto",
+      roleUser: "Solo i suoi ticket",
+      roleSupervisor: "Tutta l'azienda",
+      roleUserHint: "Il contatto vede e gestisce solo i ticket di cui è richiedente.",
+      roleSupervisorHint: "Il contatto vede e gestisce tutti i ticket di supporto della sua azienda.",
+      roleAria: "Ambito di accesso ai ticket nello spazio cliente",
       resetPassword: "Reimposta password",
       sendInvite: "Invia e-mail",
       resendInvite: "Reinvia e-mail",
@@ -1366,7 +1416,9 @@ const DETAIL_COPY = {
         deleted: "Account portale eliminato",
         impersonationError: "Impossibile avviare impersonation.",
         roleUpdated: "Ruolo portale aggiornato",
-        roleError: "Impossibile aggiornare il ruolo portale."
+        roleError: "Impossibile aggiornare il ruolo portale.",
+        emailUpdated: "E-mail di accesso aggiornata",
+        emailError: "Impossibile aggiornare l’e-mail di accesso."
       },
       passwordModal: {
         eyebrow: "Portale cliente MSP",
@@ -1448,6 +1500,14 @@ const DETAIL_COPY = {
       unsubscribe: "Cancelar suscripción",
       subscribedToast: "Suscripción activada",
       unsubscribedToast: "Suscripción eliminada"
+    },
+    quickActions: {
+      title: "Acciones rápidas",
+      seeAll: "Ver todas las acciones",
+      editContact: "Editar contacto",
+      copyCard: "Copiar ficha",
+      shareCard: "Compartir ficha",
+      deleteContact: "Eliminar contacto"
     },
     editContact: "Editar contacto",
     copyCard: "Copiar ficha",
@@ -1576,9 +1636,9 @@ const DETAIL_COPY = {
           title: "Historial de la ficha",
           content: "Fechas de creación y última modificación para seguir actualizaciones."
         },
-        heroActions: {
-          title: "Acciones del contacto",
-          content: "Edite, copie/comparta, abra la empresa o elimine el contacto desde este menú."
+        quickActions: {
+          title: "Acciones rápidas",
+          content: "Edite, copie/comparta, suscríbase a notificaciones, abra la empresa o elimine el contacto."
         }
       }
     },
@@ -1681,6 +1741,9 @@ const DETAIL_COPY = {
       alertNeedEmail: "Indique e-mail y vincule el contacto a una empresa.",
       alertInactive: "Contacto inactivo · acceso portal desactivado automáticamente.",
       loginEmailLabel: "E-mail de acceso",
+      loginEmailHint: "Elija la dirección usada para iniciar sesión en el espacio cliente.",
+      loginEmailAria: "E-mail de acceso al espacio cliente",
+      loginEmailPrimary: "Principal",
       lastLoginLabel: "Último acceso",
       never: "Nunca",
       accessCardTitle: "Acceso",
@@ -1690,12 +1753,12 @@ const DETAIL_COPY = {
       toggleActive: "El contacto puede acceder al espacio cliente.",
       toggleInactive: "Acceso suspendido sin eliminar la cuenta.",
       toggleAria: "Activar/desactivar acceso al panel",
-      roleTitle: "Rol de tickets",
-      roleUser: "Usuario",
-      roleSupervisor: "Supervisor",
-      roleUserHint: "Solo ve y actúa sobre sus propios tickets (solicitante).",
-      roleSupervisorHint: "Ve y actúa sobre todos los tickets de la empresa.",
-      roleAria: "Rol de tickets del portal",
+      roleTitle: "Acceso a tickets de soporte",
+      roleUser: "Solo sus tickets",
+      roleSupervisor: "Toda la empresa",
+      roleUserHint: "El contacto solo ve y gestiona los tickets de los que es solicitante.",
+      roleSupervisorHint: "El contacto ve y gestiona todos los tickets de soporte de su empresa.",
+      roleAria: "Alcance de acceso a tickets en el espacio cliente",
       resetPassword: "Restablecer contraseña",
       sendInvite: "Enviar e-mail",
       resendInvite: "Reenviar e-mail",
@@ -1720,7 +1783,9 @@ const DETAIL_COPY = {
         deleted: "Cuenta portal eliminada",
         impersonationError: "No se pudo iniciar la impersonación.",
         roleUpdated: "Rol del portal actualizado",
-        roleError: "No se pudo actualizar el rol del portal."
+        roleError: "No se pudo actualizar el rol del portal.",
+        emailUpdated: "E-mail de acceso actualizado",
+        emailError: "No se pudo actualizar el e-mail de acceso."
       },
       passwordModal: {
         eyebrow: "Portal cliente MSP",

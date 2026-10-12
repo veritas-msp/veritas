@@ -2,16 +2,47 @@
 
 import { buildConditionFieldOptions } from "./salesFormFieldTypes.js";
 
+function sanitizeFieldTokenName(label, fieldKey) {
+  const safeLabel = String(label || "")
+    .replace(/\}\}/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return safeLabel || String(fieldKey || "").trim() || "field";
+}
+
+function getFieldTemplateTokenName(field, labelCounts = {}) {
+  const fieldKey = String(field?.fieldKey || "").trim();
+  const baseLabel = String(field?.label || "").trim() || fieldKey;
+  const tokenBase = sanitizeFieldTokenName(baseLabel, fieldKey);
+  if (labelCounts[baseLabel] > 1) {
+    return `${tokenBase} · ${fieldKey}`;
+  }
+  return tokenBase;
+}
+
 export function getSalesFormTemplateVariables(formFields = []) {
   // Same order/labels as condition pickers: "Section · Field" + fieldKey on duplicates.
-  const fieldVars = buildConditionFieldOptions(formFields, {
+  const options = buildConditionFieldOptions(formFields, {
     excludeFiles: false
-  }).map(option => ({
-    key: `{{field.${option.id}}}`,
-    label: option.label,
-    group: "fields",
-    sectionLabel: option.sectionLabel || ""
-  }));
+  });
+  const labelCounts = {};
+  options.forEach(option => {
+    const baseLabel = String(option.field?.label || option.field?.fieldKey || option.id || "").trim();
+    if (!baseLabel) return;
+    labelCounts[baseLabel] = (labelCounts[baseLabel] || 0) + 1;
+  });
+
+  const fieldVars = options.map(option => {
+    const fieldKey = String(option.id || option.field?.fieldKey || "").trim();
+    const tokenName = getFieldTemplateTokenName(option.field || { fieldKey, label: fieldKey }, labelCounts);
+    return {
+      key: `{{field.${tokenName}}}`,
+      fieldKey,
+      label: option.label,
+      group: "fields",
+      sectionLabel: option.sectionLabel || ""
+    };
+  });
 
   const contextVars = [
     { key: "{{form.label}}", label: "Form label", group: "context" },
@@ -24,6 +55,23 @@ export function getSalesFormTemplateVariables(formFields = []) {
   ];
 
   return [...fieldVars, ...contextVars];
+}
+
+/** Rewrite legacy {{field.fieldKey}} tokens to {{field.Label}} for editor display. */
+export function prettifySalesFormTemplate(template, variables = []) {
+  let out = String(template || "");
+  if (!out) return out;
+  const fieldVars = (Array.isArray(variables) ? variables : [])
+    .filter(item => item?.group === "fields" && item.fieldKey && item.key)
+    .slice()
+    .sort((a, b) => String(b.fieldKey).length - String(a.fieldKey).length);
+  for (const item of fieldVars) {
+    const legacy = `{{field.${item.fieldKey}}}`;
+    if (legacy !== item.key && out.includes(legacy)) {
+      out = out.split(legacy).join(item.key);
+    }
+  }
+  return out;
 }
 
 /** Insert a token at the current selection; returns { value, caret }. */

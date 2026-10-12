@@ -4,7 +4,8 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { ANTISPAM_OVERVIEW_SECTIONS } from "./antispamOverviewSections";
 import { fetchMailinblackDashboard } from "../../api/clientMailinblack";
-import { syncAndPersistAntispamSolution } from "./antispamSolutionUtils";
+import { formatAntispamSolutionSummary, resolveAntispamProviderImage, syncAndPersistAntispamSolution } from "./antispamSolutionUtils";
+import { getAntispamProvider } from "./antispamFormConfig";
 import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
@@ -698,6 +699,11 @@ export function AntispamOverviewPanel({
     if (loadError && !dashboard) return <SectionError error={loadError} />;
     return renderSectionContent();
   }
+  const solutionSummary = formatAntispamSolutionSummary(antispamItem);
+  const provider = getAntispamProvider(solutionSummary.providerId || "mailinblack");
+  const providerImage = resolveAntispamProviderImage(solutionSummary.providerId || "mailinblack", provider);
+  const providerIcon = provider?.icon || "mdi:email-secure-outline";
+
   if (asPage || embedded) {
     const clientName = client?.name || "-";
     const subtitle = <>
@@ -706,7 +712,7 @@ export function AntispamOverviewPanel({
           </button> : clientName}
         {` · ${mappingLabel}`}
       </>;
-    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={embedded ? undefined : () => loadDashboard({
+    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon={providerIcon} titleImage={providerImage} subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={embedded ? undefined : () => loadDashboard({
       persist: true
     })} refreshLabel="Refresh and save" footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
@@ -716,8 +722,8 @@ export function AntispamOverviewPanel({
       <div className={styles.accentBarMailinblack} aria-hidden />
       <header className={formStyles.header}>
         <div className={formStyles.headerMain}>
-          <div className={`${formStyles.headerIconWrap} ${styles.headerIconMailinblack}`} aria-hidden>
-            <Icon icon="mdi:email-secure-outline" />
+          <div className={`${formStyles.headerIconWrap} ${providerImage ? styles.headerIconLogo : styles.headerIconMailinblack}`} aria-hidden>
+            {providerImage ? <img src={providerImage} alt="" className={styles.headerLogoImg} /> : <Icon icon={providerIcon} />}
           </div>
           <div className={formStyles.headerText}>
             <p className={formStyles.eyebrow}>Cybersecurity · Mailinblack Protect</p>

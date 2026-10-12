@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import styles from "./CheckMKMonitoringPanel.module.css";
 import {
   CHECKMK_DATE_FILTER_OPTIONS,
@@ -224,9 +226,16 @@ export default function CheckMKMonitoringPanel({
   };
 
   const toggleServiceSort = col => {
-    setServiceSort(prev =>
-      prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }
-    );
+    setServiceSort(prev => {
+      const next = cycleSortState({
+        column: col,
+        sortBy: prev.col,
+        sortDirection: prev.dir,
+        defaultSortBy: "state",
+        defaultSortDirection: "asc"
+      });
+      return { col: next.sortBy, dir: next.sortDirection };
+    });
   };
 
   if (!checkmkMapping?.checkmk_host_name) {
@@ -422,14 +431,23 @@ export default function CheckMKMonitoringPanel({
               <thead>
                 <tr>
                   <th onClick={() => toggleServiceSort("state")}>
-                    Statut {serviceSort.col === "state" ? (serviceSort.dir === "asc" ? "▲" : "▼") : ""}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      Statut
+                      <SortIcon active={serviceSort.col === "state"} direction={serviceSort.dir} />
+                    </span>
                   </th>
                   <th onClick={() => toggleServiceSort("service")}>
-                    Service {serviceSort.col === "service" ? (serviceSort.dir === "asc" ? "▲" : "▼") : ""}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      Service
+                      <SortIcon active={serviceSort.col === "service"} direction={serviceSort.dir} />
+                    </span>
                   </th>
                   <th>Sortie</th>
                   <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel (pas l'âge de la sync)">
-                    Âge {serviceSort.col === "age" ? (serviceSort.dir === "asc" ? "▲" : "▼") : ""}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                      Âge
+                      <SortIcon active={serviceSort.col === "age"} direction={serviceSort.dir} />
+                    </span>
                   </th>
                 </tr>
               </thead>

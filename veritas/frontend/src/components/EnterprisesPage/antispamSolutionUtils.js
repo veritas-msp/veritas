@@ -43,7 +43,7 @@ function resolveAntispamTenantLabel(item, productName) {
   }
   return null;
 }
-function resolveAntispamProviderImage(providerId, provider) {
+export function resolveAntispamProviderImage(providerId, provider) {
   if (providerId === "mailinblack") return "/assets/icons/mailinblack.png";
   if (provider?.image) {
     return provider.image.startsWith("/") ? provider.image : `/assets/icons/${provider.image}`;

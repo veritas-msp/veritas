@@ -17,15 +17,15 @@ const STEP_CONFIG = [{
 
 const COPY = {
   fr: {
-    tourTitle: "Inventaire périphériques",
+    tourTitle: "Matériel",
     steps: {
       hero: {
         title: "Tout le parc, en un coup d’œil",
-        content: "Cette page liste tous les périphériques de vos clients. Exportez la vue filtrée ou actualisez l’inventaire depuis les actions du bandeau."
+        content: "Cette page liste tous les périphériques de vos clients. Exportez la vue filtrée ou actualisez l’inventaire depuis les actions de la barre d’outils."
       },
       filters: {
         title: "Filtres latéraux",
-        content: "Affinez par statut (actifs / inactifs), par entreprise ou par type de matériel. Plusieurs filtres se combinent."
+        content: "Choisissez le statut, puis basculez entre Entreprises, Familles et Tags. Les sélections se combinent ; Réinitialiser efface tout."
       },
       search: {
         title: "Recherche rapide",
@@ -38,15 +38,15 @@ const COPY = {
     }
   },
   en: {
-    tourTitle: "Device inventory",
+    tourTitle: "Hardware",
     steps: {
       hero: {
         title: "The whole fleet at a glance",
-        content: "This page lists every device across your clients. Export the filtered view or refresh the inventory from the header actions."
+        content: "This page lists every device across your clients. Export the filtered view or refresh the inventory from the toolbar actions."
       },
       filters: {
         title: "Side filters",
-        content: "Narrow by status (active / inactive), company, or hardware type. Filters can be combined."
+        content: "Pick a status, then switch between Companies, Families and Tags. Selections combine; Reset clears everything."
       },
       search: {
         title: "Quick search",
@@ -59,7 +59,7 @@ const COPY = {
     }
   },
   de: {
-    tourTitle: "Geräteinventar",
+    tourTitle: "Hardware",
     steps: {
       hero: {
         title: "Der gesamte Park auf einen Blick",
@@ -67,7 +67,7 @@ const COPY = {
       },
       filters: {
         title: "Seitenfilter",
-        content: "Filtern Sie nach Status, Unternehmen oder Gerätetyp. Filter lassen sich kombinieren."
+        content: "Status wählen, dann zwischen Unternehmen, Familien und Tags wechseln. Filter kombinieren sich; Zurücksetzen löscht alles."
       },
       search: {
         title: "Schnellsuche",
@@ -80,7 +80,7 @@ const COPY = {
     }
   },
   it: {
-    tourTitle: "Inventario dispositivi",
+    tourTitle: "Materiale",
     steps: {
       hero: {
         title: "Tutto il parco a colpo d’occhio",
@@ -88,7 +88,7 @@ const COPY = {
       },
       filters: {
         title: "Filtri laterali",
-        content: "Restringete per stato, azienda o tipo di hardware. I filtri si combinano."
+        content: "Scegliete lo stato, poi passate tra Aziende, Famiglie e Tag. Le selezioni si combinano; Reimposta cancella tutto."
       },
       search: {
         title: "Ricerca rapida",
@@ -101,7 +101,7 @@ const COPY = {
     }
   },
   es: {
-    tourTitle: "Inventario de periféricos",
+    tourTitle: "Material",
     steps: {
       hero: {
         title: "Todo el parque de un vistazo",
@@ -109,7 +109,7 @@ const COPY = {
       },
       filters: {
         title: "Filtros laterales",
-        content: "Afine por estado, empresa o tipo de hardware. Los filtros se combinan."
+        content: "Elija el estado y cambie entre Empresas, Familias y Etiquetas. Las selecciones se combinan; Restablecer borra todo."
       },
       search: {
         title: "Búsqueda rápida",

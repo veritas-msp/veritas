@@ -162,7 +162,7 @@ const SIDEBAR_MODULES_PROMO = {
 };
 const SIDEBAR_PRO_PAGE_META = [{
   id: "sales",
-  icon: "mdi:briefcase-edit-outline"
+  icon: "mdi:briefcase-outline"
 }, {
   id: "planning",
   icon: "mingcute:calendar-time-add-fill"

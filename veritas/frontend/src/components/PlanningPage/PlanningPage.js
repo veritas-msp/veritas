@@ -37,14 +37,13 @@ import { getUserSetting, saveUserSetting } from "../../api/userSettings";
 import { fetchTeamsForPlanning } from "../../api/teams";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionsContext";
-import { useAppGeneralSettings, useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getPlanningPageCopy } from "./planningPageI18n";
 import { getPlanningEventFormCopy } from "./planningEventFormI18n";
 import { getPlanningEventHoverCardCopy } from "./planningEventHoverCardI18n";
 import { usePlanningEventTypes } from "./usePlanningEventTypes";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const PLANNING_CLIENTS_CACHE_KEY = "planning_clients_list_cache_v1";
@@ -53,14 +52,6 @@ const PLANNING_CLIENT_MODULES_CACHE_KEY = "planning_client_modules_cache_v1";
 const PLANNING_CLIENT_MODULES_CACHE_TTL_MS = 5 * 60 * 1000;
 const PLANNING_PREFERENCES_SETTING = "planning_pinned_agents";
 const PLANNING_VIEWS = new Set(["month", "week", "day", "agenda"]);
-const MONTH_VIEW_HEIGHTS = {
-  1: 820,
-  2: 760,
-  3: 720
-};
-function getMonthViewHeight(monthsShown) {
-  return MONTH_VIEW_HEIGHTS[monthsShown] || MONTH_VIEW_HEIGHTS[1];
-}
 function normalizePinnedAgentIds(value, fallbackUserId) {
   const raw = Array.isArray(value) ? value : Array.isArray(value?.agentIds) ? value.agentIds : [];
   const ids = raw.map(String).filter(Boolean);
@@ -330,9 +321,6 @@ function capitalizeLabel(text) {
   if (!text) return "";
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
-function formatTimezoneLabel(timezone) {
-  return String(timezone || "Europe/Paris").split("/").pop().replace(/_/g, " ");
-}
 function momentLocaleCode(locale) {
   const code = String(locale || "fr").slice(0, 2).toLowerCase();
   if (code === "en") return "en-gb";
@@ -351,9 +339,6 @@ export default function PlanningPage({
   const canCreateEvent = can("planning.create");
   const canClickCreate = can("planning.click_create");
   const canEditEvent = can("planning.edit");
-  const {
-    settings
-  } = useAppGeneralSettings();
   const locale = useAppLocale();
   const catalogTypes = usePlanningEventTypes();
   const eventFormCopy = useMemo(() => getPlanningEventFormCopy(locale, catalogTypes), [locale, catalogTypes]);
@@ -362,7 +347,6 @@ export default function PlanningPage({
   useEffect(() => {
     moment.locale(momentLocaleCode(locale));
   }, [locale]);
-  const appTimezone = settings?.app_timezone || "Europe/Paris";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState("month");
   const [monthsShown, setMonthsShown] = useState(3);
@@ -1190,19 +1174,13 @@ export default function PlanningPage({
     }
     setSelectedClientsFilter(newSelected);
   };
-  const clearFilters = () => {
-    setSelectedTypes(new Set());
-    setSelectedUsers(new Set());
-    setSelectedClientsFilter(new Set());
-    setSearchQuery("");
-  };
-  const activeFiltersCount = (searchQuery.trim() !== "" ? 1 : 0) + selectedTypes.size + selectedUsers.size + selectedClientsFilter.size;
-  const hasActiveFilters = activeFiltersCount > 0;
-  const handleTotalCardClick = () => {
-    clearFilters();
-  };
-  const handleTypeCardClick = typeValue => {
-    setSelectedTypes(new Set([typeValue]));
+  const toggleTypeFilter = typeValue => {
+    setSelectedTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(typeValue)) next.delete(typeValue);
+      else next.add(typeValue);
+      return next;
+    });
   };
   const eventTypes = useMemo(() => {
     const types = new Set();
@@ -1386,29 +1364,35 @@ export default function PlanningPage({
             <Icon icon="mdi:chevron-right" aria-hidden />
           </button>
         </div>
-        <span className={styles.toolbarBtnGroup}>
-          <SmartTooltip content={planningCopy.formatTimezoneTooltip(appTimezone)}>
-            <span className={styles.toolbarTimezone}>{formatTimezoneLabel(appTimezone)}</span>
-          </SmartTooltip>
+        <div className={styles.toolbarControls}>
           <button type="button" onClick={() => nav("TODAY")} className={styles.toolbarBtn}>
             {planningCopy.toolbar.today}
           </button>
-          {[1, 2, 3].map(n => <button key={n} type="button" className={`${styles.toolbarBtn} ${view === "month" && monthsShown === n ? styles.toolbarBtnActive : ""}`} onClick={() => {
-          markSuppressSlotSelect(500);
-          setDaySlotAction(null);
-          setView("month");
-          setMonthsShown(n);
-        }}>
-              {planningCopy.formatMonthsButton(n)}
-            </button>)}
-          {["week", "day", "agenda"].map(v => <button key={v} type="button" className={`${styles.toolbarBtn} ${view === v ? styles.toolbarBtnActive : ""}`} onClick={() => {
-          markSuppressSlotSelect(500);
-          setDaySlotAction(null);
-          setView(v);
-        }}>
-              {planningCopy.toolbar[v]}
-            </button>)}
-        </span>
+          <div className={styles.toolbarSegment} role="group" aria-label={planningCopy.toolbar.viewsAria || "Vues"}>
+            {["day", "week"].map(v => <button key={v} type="button" className={`${styles.toolbarSegBtn} ${view === v ? styles.toolbarSegBtnActive : ""}`} onClick={() => {
+            markSuppressSlotSelect(500);
+            setDaySlotAction(null);
+            setView(v);
+          }}>
+                {planningCopy.toolbar[v]}
+              </button>)}
+            {[1, 2, 3].map(n => <button key={n} type="button" className={`${styles.toolbarSegBtn} ${view === "month" && monthsShown === n ? styles.toolbarSegBtnActive : ""}`} onClick={() => {
+            markSuppressSlotSelect(500);
+            setDaySlotAction(null);
+            setView("month");
+            setMonthsShown(n);
+          }}>
+                {planningCopy.formatMonthsButton(n)}
+              </button>)}
+            <button type="button" className={`${styles.toolbarSegBtn} ${view === "agenda" ? styles.toolbarSegBtnActive : ""}`} onClick={() => {
+            markSuppressSlotSelect(500);
+            setDaySlotAction(null);
+            setView("agenda");
+          }}>
+              {planningCopy.toolbar.agenda}
+            </button>
+          </div>
+        </div>
       </div>;
   };
   const handleInputChange = (field, value) => {
@@ -1975,7 +1959,6 @@ export default function PlanningPage({
   };
   const eventStyleGetter = planningEventStyleGetter;
   const planningTypes = eventFormCopy.planningTypes;
-  const portfolioTotal = allEvents.length;
   const renderFilterItem = (key, label, count, active, onClick, icon) => <button key={key} type="button" className={`${styles.filterItem} ${active ? styles.filterItemActive : ""} ${count === 0 ? styles.filterItemDisabled : ""}`} onClick={onClick} disabled={count === 0}>
       <span className={styles.filterItemMain}>
         <span className={styles.filterItemCount}>{count}</span>
@@ -2051,37 +2034,9 @@ export default function PlanningPage({
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={planningCopy.eyebrow} title={planningCopy.title} subtitle={loading ? planningCopy.loading : planningCopy.formatEventsSubtitle(displayEvents.length, portfolioTotal)} icon="mdi:calendar-clock-outline" actions={canCreateEvent ? <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={() => openCreateEventModal()} aria-label={planningCopy.newEvent}>
-                <FaPlus />
-              </button> : null} />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{planningCopy.title}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.planningShell}`}>
-        {!loading && <div className={styles.kpiRowPlanning}>
-            <button type="button" className={`${layout.kpiCard} ${!hasActiveFilters ? layout.kpiCardActive : ""}`} onClick={handleTotalCardClick}>
-              <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
-                <Icon icon="mdi:calendar-month" />
-              </div>
-              <div className={layout.kpiBody}>
-                <span className={layout.kpiValue}>{events.length}</span>
-                <span className={layout.kpiLabel}>{planningCopy.kpi.total}</span>
-              </div>
-            </button>
-            {planningTypes.map(type => {
-                const count = typeCounts[type.value] || 0;
-                const active = selectedTypes.has(type.value) && selectedTypes.size === 1;
-                return <button key={type.value} type="button" className={`${layout.kpiCard} ${active ? layout.kpiCardActive : ""} ${count === 0 ? layout.kpiCardDisabled : ""}`} onClick={() => handleTypeCardClick(type.value)} disabled={count === 0}>
-                  <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${type.kpiTone}`] || layout.kpiIcon_blue}`}>
-                    <Icon icon={type.icon} />
-                  </div>
-                  <div className={layout.kpiBody}>
-                    <span className={layout.kpiValue}>{count}</span>
-                    <span className={layout.kpiLabel}>{type.label}</span>
-                  </div>
-                </button>;
-              })}
-          </div>}
-
         <div className={styles.viewsLayout}>
           <aside className={styles.filtersPane} aria-label={planningCopy.filters.aria}>
             <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionAgents}`}>
@@ -2184,49 +2139,58 @@ export default function PlanningPage({
             </div>
           </aside>
 
-          <div className={`${styles.mainColumn} ${view === "week" || view === "day" || view === "agenda" || (view === "month" && monthsShown === 1) ? styles.mainColumnFill : ""}`.trim()}>
-            <div className={`${layout.toolbar} ${styles.toolbarGrow}`}>
-              <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
-                <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                <input type="text" inputMode="search" enterKeyHint="search" placeholder={planningCopy.search.placeholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={planningCopy.search.aria} />
-                {searchQuery && <button type="button" className={layout.clearButton} onClick={() => setSearchQuery("")} aria-label={planningCopy.search.clear}>
-                    <FaTimes />
-                  </button>}
-              </div>
-            </div>
-
+          <div className={`${styles.mainColumn} ${view === "week" || view === "day" || view === "agenda" || view === "month" ? styles.mainColumnFill : ""}`.trim()}>
             {loading ? (
               <PageSkeleton variant="panels" panels={2} label={planningCopy.loading} />
-            ) : <div className={styles.calendarPanel}>
-                <div className={`${styles.calendarBody} ${view === "month" ? styles.calendarBodyMonth : ""} ${view === "month" && monthsShown === 1 ? styles.calendarBodyMonthSingle : ""} ${view === "week" ? styles.calendarBodyWeek : ""} ${view === "day" ? styles.calendarBodyDay : ""} ${view === "agenda" ? styles.calendarBodyAgenda : ""}`}>
-                {view === "month" ? <>
-                    <PlanningToolbar />
-                    <PlanningMultiMonthView currentDate={currentDate} monthsShown={monthsShown} events={displayEvents} localizer={localizer} calendarHeight={getMonthViewHeight(monthsShown)} EventComponent={EventComponent} eventPropGetter={eventStyleGetter} onSelectSlot={canClickCreate ? handleSelectSlot : undefined} onNavigate={handleNavigate} onMonthEventDrop={handleMonthEventDrop} onMonthEventResize={handleCalendarEventResize} calendarMessages={planningCopy.calendarMessages} culture={locale} />
-                  </> : view === "week" ? <>
-                    <PlanningToolbar />
-                    <PlanningWeekResourceView currentDate={currentDate} events={displayEvents} agents={weekAgents} renderEvent={renderWeekEvent} onSelectSlot={canClickCreate ? handlePlanningSelectSlot : undefined} onEventMove={handleWeekEventMove} onEventResize={handleCalendarEventResize} isEventDraggable={isPlanningEventDraggable} getEventColors={(event, agentId) => getPlanningEventColors(event, agentId)} onDragInteractionEnd={() => markSuppressSlotSelect(500)} weekCopy={hoverCardCopy} />
-                  </> : view === "agenda" ? <>
-                    <PlanningToolbar />
-                    <PlanningAgendaView currentDate={currentDate} events={displayEvents} renderEventPreview={renderEventPreviewCard} copy={planningCopy} />
-                  </> : view === "day" ? <>
-                    <PlanningToolbar />
-                    <div className={styles.calendarDayWrapper}>
-                      <DragAndDropCalendar localizer={localizer} events={displayEvents} startAccessor="start" endAccessor="end" view="day" date={currentDate} toolbar={false} selectable={canClickCreate} draggableAccessor={isPlanningEventDraggable} resizableAccessor={isPlanningEventDraggable} resizable onEventDrop={handleCalendarEventDrop} onEventResize={handleCalendarEventResize} onNavigate={handleNavigate} onSelectSlot={canClickCreate ? handleSelectSlot : undefined} tooltipAccessor={() => ""} style={{
-                          height: "100%"
-                        }} eventPropGetter={eventStyleGetter} components={{
-                          event: EventComponent,
-                          toolbar: () => null
-                        }} messages={planningCopy.calendarMessages} culture={locale} />
+            ) : <div className={layout.listBody}>
+              <div className={layout.listArea}>
+                <div className={`${layout.panelCard} ${styles.planningPanelCard}`}>
+                  <header className={styles.planningHeader}>
+                    <div className={styles.planningHeaderTop}>
+                      <div className={`${layout.searchWrap} ${layout.searchWrapInCard} ${styles.planningSearchWrap}`}>
+                        <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+                        <input type="text" inputMode="search" enterKeyHint="search" placeholder={planningCopy.search.placeholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={planningCopy.search.aria} />
+                        {searchQuery && <button type="button" className={layout.clearButton} onClick={() => setSearchQuery("")} aria-label={planningCopy.search.clear}>
+                            <FaTimes />
+                          </button>}
+                      </div>
+                      <div className={styles.planningTypeFilters} role="group" aria-label={planningCopy.filters?.types || "Types"}>
+                        {planningTypes.map(type => {
+                          const count = typeCounts[type.value] || 0;
+                          const active = selectedTypes.has(type.value);
+                          const tip = `${type.label} · ${count}`;
+                          return <SmartTooltip key={type.value} content={tip}>
+                              <button type="button" className={`${styles.typeFilterChip} ${active ? styles.typeFilterChipActive : ""} ${count === 0 ? styles.typeFilterChipDisabled : ""}`} onClick={() => toggleTypeFilter(type.value)} disabled={count === 0} aria-label={tip} aria-pressed={active}>
+                                <span className={`${styles.typeFilterIcon} ${layout[`kpiIcon_${type.kpiTone}`] || layout.kpiIcon_blue}`}>
+                                  <Icon icon={type.icon} aria-hidden />
+                                </span>
+                                <span className={styles.typeFilterCount}>{count}</span>
+                              </button>
+                            </SmartTooltip>;
+                        })}
+                      </div>
+                      {canCreateEvent ? <SmartTooltip content={planningCopy.newEvent}>
+                          <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly} ${styles.planningCreateBtn}`} onClick={() => openCreateEventModal()} aria-label={planningCopy.newEvent}>
+                            <FaPlus />
+                          </button>
+                        </SmartTooltip> : null}
                     </div>
-                  </> : null}
+                    <PlanningToolbar />
+                  </header>
+
+                  <div className={`${styles.calendarBody} ${view === "month" ? styles.calendarBodyMonth : ""} ${view === "month" && monthsShown === 1 ? styles.calendarBodyMonthSingle : ""} ${view === "week" ? styles.calendarBodyWeek : ""} ${view === "day" ? styles.calendarBodyDay : ""} ${view === "agenda" ? styles.calendarBodyAgenda : ""}`}>
+                  {view === "month" ? <PlanningMultiMonthView currentDate={currentDate} monthsShown={monthsShown} events={displayEvents} localizer={localizer} EventComponent={EventComponent} eventPropGetter={eventStyleGetter} onSelectSlot={canClickCreate ? handleSelectSlot : undefined} onNavigate={handleNavigate} onMonthEventDrop={handleMonthEventDrop} onMonthEventResize={handleCalendarEventResize} calendarMessages={planningCopy.calendarMessages} culture={locale} /> : view === "week" ? <PlanningWeekResourceView currentDate={currentDate} events={displayEvents} agents={weekAgents} renderEvent={renderWeekEvent} onSelectSlot={canClickCreate ? handlePlanningSelectSlot : undefined} onEventMove={handleWeekEventMove} onEventResize={handleCalendarEventResize} isEventDraggable={isPlanningEventDraggable} getEventColors={(event, agentId) => getPlanningEventColors(event, agentId)} onDragInteractionEnd={() => markSuppressSlotSelect(500)} weekCopy={hoverCardCopy} /> : view === "agenda" ? <PlanningAgendaView currentDate={currentDate} events={displayEvents} renderEventPreview={renderEventPreviewCard} copy={planningCopy} /> : view === "day" ? <div className={styles.calendarDayWrapper}>
+                        <DragAndDropCalendar localizer={localizer} events={displayEvents} startAccessor="start" endAccessor="end" view="day" date={currentDate} toolbar={false} selectable={canClickCreate} draggableAccessor={isPlanningEventDraggable} resizableAccessor={isPlanningEventDraggable} resizable onEventDrop={handleCalendarEventDrop} onEventResize={handleCalendarEventResize} onNavigate={handleNavigate} onSelectSlot={canClickCreate ? handleSelectSlot : undefined} tooltipAccessor={() => ""} style={{
+                      height: "100%"
+                    }} eventPropGetter={eventStyleGetter} components={{
+                      event: EventComponent,
+                      toolbar: () => null
+                    }} messages={planningCopy.calendarMessages} culture={locale} />
+                      </div> : null}
+                  </div>
                 </div>
-                <div className={styles.legendBar}>
-                  {planningCopy.legendItems.map(item => <div key={item.value} className={styles.legendItem}>
-                      <Icon icon={item.icon} className={styles.legendIcon} aria-hidden />
-                      <span>{item.label}</span>
-                    </div>)}
-                </div>
-              </div>}
+              </div>
+            </div>}
           </div>
         </div>
             </div>

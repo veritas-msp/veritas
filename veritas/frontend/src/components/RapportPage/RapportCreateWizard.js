@@ -16,10 +16,12 @@ export default function ReportCreateWizard({
   onStepChange,
   selectedClientId,
   onSelectClient,
+  selectedReportTypeId,
+  onSelectType,
   onStartReport
 }) {
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
-  const selectedClient = clients.find(client => String(client.id) === String(selectedClientId)) || null;
+  const selectedType = reportTypes.find(type => type.id === selectedReportTypeId) || null;
   const filteredClients = useMemo(() => {
     const query = enterpriseSearch.trim().toLowerCase();
     const sorted = [...clients].sort((left, right) => getClientName(left, copy).localeCompare(getClientName(right, copy), undefined, {
@@ -34,35 +36,72 @@ export default function ReportCreateWizard({
   }, [clients, copy, enterpriseSearch]);
 
   useEffect(() => {
-    if (step === "type" && !selectedClientId) onStepChange("client");
-  }, [onStepChange, selectedClientId, step]);
+    if (step === "client" && !selectedReportTypeId) onStepChange("type");
+  }, [onStepChange, selectedReportTypeId, step]);
 
   const wizard = copy.wizard;
-  const selectedClientName = selectedClient ? getClientName(selectedClient, copy) : "";
+
+  const handlePickType = type => {
+    if (type.comingSoon) return;
+    onSelectType?.(type.id);
+    setEnterpriseSearch("");
+    onStepChange("client");
+  };
 
   const handlePickClient = client => {
-    onSelectClient(String(client.id));
+    const clientId = String(client.id);
+    onSelectClient(clientId);
     setEnterpriseSearch("");
-    onStepChange("type");
+    if (selectedReportTypeId) onStartReport(selectedReportTypeId, clientId);
   };
 
   return <div className={styles.picker} data-guide="report-wizard">
       <nav className={styles.steps} aria-label={wizard.progressAria} data-guide="report-steps">
-        <span className={`${styles.step} ${step === "client" ? styles.stepActive : styles.stepDone}`}>
+        <span className={`${styles.step} ${step === "type" ? styles.stepActive : styles.stepDone}`}>
           <span className={styles.stepIndex}>1</span>
-          {wizard.stepClient}
-        </span>
-        <span className={styles.stepRule} aria-hidden />
-        <span className={`${styles.step} ${step === "type" ? styles.stepActive : ""}`}>
-          <span className={styles.stepIndex}>2</span>
           {wizard.stepType}
         </span>
+        <span className={styles.stepRule} aria-hidden />
+        <span className={`${styles.step} ${step === "client" ? styles.stepActive : ""}`}>
+          <span className={styles.stepIndex}>2</span>
+          {wizard.stepClient}
+        </span>
       </nav>
+
+      {step === "type" ? <section className={styles.stage} data-guide="report-types">
+          <header className={styles.stageHeader}>
+            <h2 className={styles.stageTitle}>{wizard.typeTitle}</h2>
+            <p className={styles.stageHint}>{wizard.typeHint}</p>
+          </header>
+
+          <div className={styles.typeGrid} role="list">
+            {reportTypes.map(type => {
+          const comingSoon = Boolean(type.comingSoon);
+          const selected = type.id === selectedReportTypeId;
+          return <button key={type.id} type="button" role="listitem" className={`${styles.typeCard} ${comingSoon ? styles.typeCardSoon : ""} ${selected ? styles.typeCardSelected : ""}`.trim()} disabled={comingSoon} aria-disabled={comingSoon || undefined} aria-pressed={selected || undefined} onClick={() => handlePickType(type)}>
+                {comingSoon ? <span className={styles.typeSoonBadge}>{copy.create.badgeSoon}</span> : null}
+                <span className={styles.typeIcon} aria-hidden>
+                  <Icon icon={type.icon || "mdi:file-document-outline"} />
+                </span>
+                <span className={styles.typeBody}>
+                  <span className={styles.typeTitle}>{type.title}</span>
+                  {type.description ? <span className={styles.typeDesc}>{type.description}</span> : null}
+                </span>
+                {!comingSoon ? <Icon icon="mdi:chevron-right" className={styles.typeChevron} aria-hidden /> : null}
+              </button>;
+        })}
+          </div>
+        </section> : null}
 
       {step === "client" ? <section className={styles.stage} data-guide="report-client">
           <header className={styles.stageHeader}>
             <h2 className={styles.stageTitle}>{wizard.clientTitle}</h2>
             <p className={styles.stageHint}>{wizard.clientHint}</p>
+            {selectedType ? <button type="button" className={styles.clientChip} onClick={() => onStepChange("type")}>
+                <Icon icon={selectedType.icon || "mdi:file-document-outline"} className={styles.clientChipIcon} aria-hidden />
+                <span className={styles.clientChipName}>{selectedType.title}</span>
+                <span className={styles.clientChipAction}>{wizard.changeType || wizard.changeClient}</span>
+              </button> : null}
           </header>
 
           <label className={styles.search} htmlFor="rapport-enterprise-search">
@@ -92,34 +131,8 @@ export default function ReportCreateWizard({
                   </button>;
           })}
             </div>}
-        </section> : null}
 
-      {step === "type" ? <section className={styles.stage} data-guide="report-types">
-          <header className={styles.stageHeader}>
-            <h2 className={styles.stageTitle}>{wizard.typeTitle}</h2>
-            <p className={styles.stageHint}>{wizard.typeHint}</p>
-            {selectedClient ? <button type="button" className={styles.clientChip} onClick={() => onStepChange("client")}>
-                <span className={styles.clientChipName}>{selectedClientName}</span>
-                <span className={styles.clientChipAction}>{wizard.changeClient}</span>
-              </button> : null}
-          </header>
-
-          <div className={styles.list} role="list">
-            {reportTypes.map(type => {
-          const comingSoon = Boolean(type.comingSoon);
-          return <button key={type.id} type="button" role="listitem" className={`${styles.row} ${comingSoon ? styles.rowSoon : ""}`.trim()} disabled={comingSoon} aria-disabled={comingSoon || undefined} onClick={() => {
-            if (!comingSoon) onStartReport(type.id);
-          }}>
-                <span className={styles.rowMain}>
-                  <span className={styles.rowName}>{type.title}</span>
-                  {type.description ? <span className={styles.rowDesc}>{type.description}</span> : null}
-                </span>
-                {comingSoon ? <span className={styles.rowSoonBadge}>{copy.create.badgeSoon}</span> : <Icon icon="mdi:chevron-right" className={styles.rowChevron} aria-hidden />}
-              </button>;
-        })}
-          </div>
-
-          <button type="button" className={styles.backBtn} onClick={() => onStepChange("client")}>
+          <button type="button" className={styles.backBtn} onClick={() => onStepChange("type")}>
             <Icon icon="mdi:arrow-left" aria-hidden />
             {wizard.back}
           </button>

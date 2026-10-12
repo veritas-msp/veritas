@@ -2,6 +2,7 @@ export const TICKET_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "ticket_table_columns_pr
 export const TICKET_SALES_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "ticket_sales_table_columns_private";
 export const ENTERPRISES_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "enterprises_table_columns_private";
 export const CONTACTS_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "contacts_table_columns_private";
+export const PRESTATAIRES_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "prestataires_table_columns_private";
 
 export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   ticket: Object.freeze([
@@ -56,6 +57,15 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "portal",
     "support_tickets_total",
     "support_tickets_in_progress"
+  ]),
+  prestataires: Object.freeze([
+    "name",
+    "type",
+    "status",
+    "contact",
+    "email",
+    "phone",
+    "enterprises"
   ])
 });
 
@@ -76,19 +86,22 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
     "email",
     "phone",
     "portal"
-  ])
+  ]),
+  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires])
 });
 
 export const DEFAULT_TICKET_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.ticket;
 export const DEFAULT_TICKET_SALES_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.ticket_sales;
 export const DEFAULT_ENTERPRISES_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.enterprises;
 export const DEFAULT_CONTACTS_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.contacts;
+export const DEFAULT_PRESTATAIRES_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.prestataires;
 
 export function normalizeTicketTableColumnsPageScope(raw) {
   const value = String(raw || "ticket").trim().toLowerCase();
   if (value === "ticket_sales") return "ticket_sales";
   if (value === "enterprises" || value === "companies" || value === "clients") return "enterprises";
   if (value === "contacts" || value === "contact") return "contacts";
+  if (value === "prestataires" || value === "prestataire" || value === "providers" || value === "provider") return "prestataires";
   return "ticket";
 }
 
@@ -135,7 +148,9 @@ export const TICKET_TABLE_COLUMN_SORT_KEYS = Object.freeze({
   phone: "telephone",
   portal: null,
   support_tickets_total: "support_tickets_total",
-  support_tickets_in_progress: "support_tickets_in_progress"
+  support_tickets_in_progress: "support_tickets_in_progress",
+  name: "nom",
+  enterprises: "entreprises"
 });
 
 export const ENTERPRISES_COLUMN_LABEL_KEYS = Object.freeze({
@@ -160,6 +175,16 @@ export const CONTACTS_COLUMN_LABEL_KEYS = Object.freeze({
   portal: "portal",
   support_tickets_total: "supportTicketsTotal",
   support_tickets_in_progress: "supportTicketsInProgress"
+});
+
+export const PRESTATAIRES_COLUMN_LABEL_KEYS = Object.freeze({
+  name: "name",
+  type: "type",
+  status: "status",
+  contact: "contact",
+  email: "email",
+  phone: "phone",
+  enterprises: "enterprises"
 });
 
 export function normalizeTicketTableColumns(raw, {
