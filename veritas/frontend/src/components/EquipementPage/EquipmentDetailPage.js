@@ -1989,11 +1989,30 @@ export default function EquipmentDetailPage({
           {rightPanelTab === "dashboard" && <>
               <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? "" : styles.dashboardSplitSolo}`.trim()}>
                 <div className={styles.dashboardMain}>
-                  {showMonitoredOverview ? <EquipmentOverviewDashboard equipment={equipmentWithRmmLive || equipment} checkmkData={checkmkData} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} loadingCheckMK={loadingCheckMK} /> : <>
+                  {showMonitoredOverview ? (
+                    <EquipmentOverviewDashboard
+                      equipment={equipmentWithRmmLive || equipment}
+                      checkmkData={checkmkData}
+                      checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
+                      loadingCheckMK={loadingCheckMK}
+                      maintenanceHistoryKey={maintenanceHistoryKey}
+                    />
+                  ) : (
+                    <>
                       <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
                       <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
                       {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
-                    </>}
+                      {equipmentDbId ? (
+                        <EquipmentMaintenanceHistoryPanel
+                          copy={copy}
+                          locale={locale}
+                          equipmentId={equipmentDbId}
+                          clientId={equipmentClientId}
+                          refreshKey={maintenanceHistoryKey}
+                        />
+                      ) : null}
+                    </>
+                  )}
                 </div>
                 {showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? <div className={styles.dashboardAside}>
                   <ScoreAside health={rmmDeviceHealth} copy={{
@@ -2013,15 +2032,6 @@ export default function EquipmentDetailPage({
               }} />
                 </div> : null}
               </div>
-              {equipmentDbId ? (
-                <EquipmentMaintenanceHistoryPanel
-                  copy={copy}
-                  locale={locale}
-                  equipmentId={equipmentDbId}
-                  clientId={equipmentClientId}
-                  refreshKey={maintenanceHistoryKey}
-                />
-              ) : null}
             </>}
 
           {rightPanelTab === "supervision" && showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>

@@ -13,7 +13,7 @@ import {
   YAxis
 } from "recharts";
 import { fetchEquipmentRecentAlerts } from "../../api/supervisionAlerts";
-import { getEquipmentDbId } from "../../utils/equipmentIdentity";
+import { getEquipmentClientId, getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { formatEquipmentDetailRelative, getEquipmentDetailCopy, interpolate } from "./equipmentDetailPageI18n";
 import {
@@ -32,6 +32,7 @@ import {
   getPerformanceSummary,
   getRmmInventoryFromEquipment
 } from "./rmmMonitoringUtils";
+import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
 import styles from "./EquipmentOverviewDashboard.module.css";
 
 const SERVICE_COLORS = {
@@ -172,7 +173,8 @@ export default function EquipmentOverviewDashboard({
   equipment,
   checkmkData = null,
   checkmkAvailabilityPeriod = "1m",
-  loadingCheckMK = false
+  loadingCheckMK = false,
+  maintenanceHistoryKey = 0
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
@@ -182,6 +184,8 @@ export default function EquipmentOverviewDashboard({
   const [loadingAlerts, setLoadingAlerts] = useState(true);
 
   const equipmentId = getEquipmentDbId(equipment) || equipment?.dbId || equipment?.id;
+  const equipmentDbId = equipmentId;
+  const equipmentClientId = getEquipmentClientId(equipment);
   const inventory = useMemo(() => getRmmInventoryFromEquipment(equipment), [equipment]);
   const metricAgent = useMemo(() => buildRmmAgentRowFromEquipment(equipment), [equipment]);
   const snapshot = useMemo(() => buildMetricSnapshot(metricAgent), [metricAgent]);
@@ -549,6 +553,17 @@ export default function EquipmentOverviewDashboard({
                 <p className={styles.empty}>{ov.interfacesEmpty || "Aucune interface"}</p>
               )}
             </OverviewCard>
+
+            {equipmentDbId ? (
+              <EquipmentMaintenanceHistoryPanel
+                copy={copy}
+                locale={locale}
+                equipmentId={equipmentDbId}
+                clientId={equipmentClientId}
+                refreshKey={maintenanceHistoryKey}
+                embedded
+              />
+            ) : null}
           </div>
         </section>
 

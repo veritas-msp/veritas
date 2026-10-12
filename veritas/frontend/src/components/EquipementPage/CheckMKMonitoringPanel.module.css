@@ -126,17 +126,40 @@
   margin-bottom: 0.55rem;
 }
 
+/* Barre compacte : hôte + KPI sur une ligne, sans cartes imbriquées */
+.infoBar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem 1rem;
+  padding: 0.35rem 0.15rem 0.55rem;
+  border-bottom: 1px solid var(--msp-border-light, var(--msp-border));
+}
+
+.infoBarHost {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
 .titleHost {
   color: var(--msp-text);
   text-transform: none;
   letter-spacing: normal;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .kpiStrip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.45rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
+  min-width: 0;
 }
 
 .kpiChip {
@@ -154,11 +177,26 @@
   font-size: 1.05rem;
 }
 
+.kpiInline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.kpiSep {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--msp-border-light, var(--msp-border));
+  flex-shrink: 0;
+}
+
 .kpiPeriodRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-top: 0.15rem;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.15rem;
+  margin-left: 0.1rem;
 }
 
 .splitLayout {
@@ -321,8 +359,17 @@
 }
 
 @media (max-width: 1100px) {
+  .infoBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .kpiStrip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .kpiSep {
+    display: none;
   }
 
   .splitLayout {
@@ -366,14 +413,18 @@
 }
 
 .kpiValue {
-  font-size: 1.25rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--msp-text);
   line-height: 1.2;
 }
 
+.kpiInline .kpiValue {
+  font-size: 0.92rem;
+}
+
 .kpiSub {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--msp-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -542,14 +593,15 @@
 }
 
 .periodPill {
-  padding: 0.28rem 0.65rem;
-  font-size: 0.72rem;
+  padding: 0.12rem 0.4rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: 999px;
   border: 1px solid var(--msp-border);
   background: var(--msp-surface);
   color: var(--msp-muted);
   cursor: pointer;
+  line-height: 1.2;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
@@ -887,13 +939,15 @@
 }
 
 .skeletonHeader {
-  height: 1.5rem;
-  width: 200px;
-  margin-bottom: 0.5rem;
+  height: 1.1rem;
+  width: 180px;
+  margin: 0;
 }
 
 .skeletonKpi {
-  height: 72px;
+  height: 1.1rem;
+  width: 4.5rem;
+  border-radius: 999px;
 }
 
 .skeletonSection {

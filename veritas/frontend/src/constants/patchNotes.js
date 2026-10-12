@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.84",
+    date: "2026-10-12",
+    highlights: [
+      "Fiche périphérique : historique de maintenance dans la colonne RMM, KPIs CheckMK condensés.",
+      "Matériel : colonne OS au filtre Serveurs / Ordinateurs ; filtres, page et scroll mémorisés à la navigation.",
+      "Correction du saut de colonnes des tableaux (scrollbar) et de l’historique de maintenance."
+    ]
+  },
+  {
     version: "1.0.83",
     date: "2026-10-12",
     highlights: [

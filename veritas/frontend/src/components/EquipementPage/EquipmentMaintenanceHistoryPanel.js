@@ -4,6 +4,7 @@ import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.modu
 import { fetchSupervisionExclusionHistory } from "../../api/supervisionAlerts";
 import { getLocaleDateTimeFormat } from "./equipmentActivityUtils";
 import styles from "./EquipmentDetailPage.module.css";
+import overviewStyles from "./EquipmentOverviewDashboard.module.css";
 import maintStyles from "./EquipmentMaintenanceHistoryPanel.module.css";
 
 function formatDateTime(value, localeCode) {
@@ -55,13 +56,129 @@ function StatusBadge({ status, copy }) {
   );
 }
 
+function HistoryBody({
+  copy,
+  t,
+  localeCode,
+  loading,
+  error,
+  items,
+  compact = false
+}) {
+  if (loading) {
+    return <div className={compact ? overviewStyles.empty : styles.loadingState}>{copy?.loading || "Chargement…"}</div>;
+  }
+  if (error) {
+    return (
+      <div className={compact ? overviewStyles.empty : styles.emptyState}>
+        {!compact ? <Icon icon="mdi:alert-circle-outline" className={styles.emptyIcon} /> : null}
+        {!compact ? <h5>{t.errorTitle || "Erreur"}</h5> : null}
+        <p className={compact ? undefined : styles.emptyHint}>{error}</p>
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <div className={compact ? overviewStyles.empty : styles.emptyState}>
+        {!compact ? <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} /> : null}
+        {!compact ? <h5>{t.emptyTitle || "Aucune période de maintenance"}</h5> : null}
+        <p className={compact ? undefined : styles.emptyHint}>
+          {t.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={compact ? overviewStyles.tableWrap : enterpriseDetailStyles.dataTableWrapper}>
+      <table className={compact ? overviewStyles.table : enterpriseDetailStyles.dataTable}>
+        <thead>
+          <tr>
+            <th>{t.colStatus || "Statut"}</th>
+            <th>{t.colPeriod || "Période"}</th>
+            {!compact ? <th>{t.colDuration || "Durée"}</th> : null}
+            <th>{t.colReason || "Motif"}</th>
+            {!compact ? <th>{t.colBy || "Par"}</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(row => {
+            const endedAt = row.endedAt || (!row.active && row.excludedUntil ? row.excludedUntil : null);
+            const periodStart = formatDateTime(row.createdAt, localeCode);
+            const periodEnd = row.active
+              ? row.excludedUntil
+                ? (t.until || "jusqu’au {date}").replace(
+                    "{date}",
+                    formatDateTime(row.excludedUntil, localeCode)
+                  )
+                : t.inProgress || "en cours"
+              : formatDateTime(endedAt, localeCode);
+            const byStart = row.excludedByName || "—";
+            const byEnd = row.endedByName
+              ? (t.endedBy || "terminée par {name}").replace("{name}", row.endedByName)
+              : null;
+            return (
+              <tr key={row.id} className={row.active ? maintStyles.rowActive : undefined}>
+                <td>
+                  <StatusBadge status={row.status || (row.active ? "active" : "ended")} copy={t} />
+                </td>
+                <td>
+                  <div className={compact ? maintStyles.periodCell : styles.activityTitleCell}>
+                    <span>
+                      {periodStart}
+                      <span className={maintStyles.periodSep}> → </span>
+                      {periodEnd}
+                    </span>
+                    {compact ? (
+                      <span className={maintStyles.periodMeta}>
+                        {formatDuration(row.createdAt, row.active ? null : endedAt, t)}
+                        {byStart && byStart !== "—" ? ` · ${byStart}` : ""}
+                      </span>
+                    ) : row.excludedUntil && row.active ? (
+                      <span className={styles.activitySubtitle}>
+                        {(t.plannedUntil || "Fin prévue : {date}").replace(
+                          "{date}",
+                          formatDateTime(row.excludedUntil, localeCode)
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
+                {!compact ? (
+                  <td className={styles.eventMetaCell}>
+                    {formatDuration(row.createdAt, row.active ? null : endedAt, t)}
+                  </td>
+                ) : null}
+                <td>
+                  <span className={row.reason ? undefined : styles.activityMetaMuted}>
+                    {row.reason || t.noReason || "—"}
+                  </span>
+                </td>
+                {!compact ? (
+                  <td>
+                    <div className={styles.activityTitleCell}>
+                      <span>{byStart}</span>
+                      {byEnd ? <span className={styles.activitySubtitle}>{byEnd}</span> : null}
+                    </div>
+                  </td>
+                ) : null}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function EquipmentMaintenanceHistoryPanel({
   copy,
   locale,
   equipmentId,
   clientId,
   refreshKey = 0,
-  limit = 50
+  limit = 50,
+  embedded = false
 }) {
   const t = copy?.maintenanceHistory || {};
   const localeCode = getLocaleDateTimeFormat(locale);
@@ -110,6 +227,35 @@ export default function EquipmentMaintenanceHistoryPanel({
 
   if (!canLoad) return null;
 
+  const body = (
+    <HistoryBody
+      copy={copy}
+      t={t}
+      localeCode={localeCode}
+      loading={loading}
+      error={error}
+      items={items}
+      compact={embedded}
+    />
+  );
+
+  if (embedded) {
+    return (
+      <article className={`${overviewStyles.card} ${overviewStyles.spanFull}`.trim()}>
+        <header className={overviewStyles.cardHead}>
+          <h3 className={overviewStyles.cardTitle}>
+            <Icon icon="mdi:wrench-clock" className={overviewStyles.cardTitleIcon} aria-hidden />
+            {t.title || "Historique des maintenances"}
+          </h3>
+          {!loading && items.length > 0 ? (
+            <span className={maintStyles.countBadge}>{items.length}</span>
+          ) : null}
+        </header>
+        <div className={overviewStyles.cardBody}>{body}</div>
+      </article>
+    );
+  }
+
   return (
     <section className={enterpriseDetailStyles.panel}>
       <header className={enterpriseDetailStyles.panelHeader}>
@@ -125,95 +271,7 @@ export default function EquipmentMaintenanceHistoryPanel({
         ) : null}
       </header>
 
-      <div className={enterpriseDetailStyles.panelBody}>
-        {loading ? (
-          <div className={styles.loadingState}>{copy?.loading || "Chargement…"}</div>
-        ) : error ? (
-          <div className={styles.emptyState}>
-            <Icon icon="mdi:alert-circle-outline" className={styles.emptyIcon} />
-            <h5>{t.errorTitle || "Erreur"}</h5>
-            <p className={styles.emptyHint}>{error}</p>
-          </div>
-        ) : items.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} />
-            <h5>{t.emptyTitle || "Aucune période de maintenance"}</h5>
-            <p className={styles.emptyHint}>
-              {t.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
-            </p>
-          </div>
-        ) : (
-          <div className={enterpriseDetailStyles.dataTableWrapper}>
-            <table className={enterpriseDetailStyles.dataTable}>
-              <thead>
-                <tr>
-                  <th>{t.colStatus || "Statut"}</th>
-                  <th>{t.colPeriod || "Période"}</th>
-                  <th>{t.colDuration || "Durée"}</th>
-                  <th>{t.colReason || "Motif"}</th>
-                  <th>{t.colBy || "Par"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(row => {
-                  const endedAt = row.endedAt || (!row.active && row.excludedUntil ? row.excludedUntil : null);
-                  const periodStart = formatDateTime(row.createdAt, localeCode);
-                  const periodEnd = row.active
-                    ? row.excludedUntil
-                      ? (t.until || "jusqu’au {date}").replace(
-                          "{date}",
-                          formatDateTime(row.excludedUntil, localeCode)
-                        )
-                      : t.inProgress || "en cours"
-                    : formatDateTime(endedAt, localeCode);
-                  const byStart = row.excludedByName || "—";
-                  const byEnd = row.endedByName
-                    ? (t.endedBy || "terminée par {name}").replace("{name}", row.endedByName)
-                    : null;
-                  return (
-                    <tr key={row.id} className={row.active ? maintStyles.rowActive : undefined}>
-                      <td>
-                        <StatusBadge status={row.status || (row.active ? "active" : "ended")} copy={t} />
-                      </td>
-                      <td>
-                        <div className={styles.activityTitleCell}>
-                          <span>
-                            {periodStart}
-                            <span className={maintStyles.periodSep}> → </span>
-                            {periodEnd}
-                          </span>
-                          {row.excludedUntil && row.active ? (
-                            <span className={styles.activitySubtitle}>
-                              {(t.plannedUntil || "Fin prévue : {date}").replace(
-                                "{date}",
-                                formatDateTime(row.excludedUntil, localeCode)
-                              )}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className={styles.eventMetaCell}>
-                        {formatDuration(row.createdAt, row.active ? null : endedAt, t)}
-                      </td>
-                      <td>
-                        <span className={row.reason ? undefined : styles.activityMetaMuted}>
-                          {row.reason || t.noReason || "—"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={styles.activityTitleCell}>
-                          <span>{byStart}</span>
-                          {byEnd ? <span className={styles.activitySubtitle}>{byEnd}</span> : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <div className={enterpriseDetailStyles.panelBody}>{body}</div>
     </section>
   );
 }

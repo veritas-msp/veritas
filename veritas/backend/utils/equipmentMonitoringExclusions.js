@@ -37,31 +37,44 @@ export async function listActiveMonitoringExclusions({
   limit = 200
 } = {}) {
   await ensureEquipmentMonitoringExclusionsSchema();
-  const clauses = [
-    "ended_at IS NULL",
-    "(excluded_until IS NULL OR excluded_until > NOW())"
-  ];
-  const params = [];
-  if (clientId != null && String(clientId).trim() !== "") {
-    params.push(Number(clientId));
-    clauses.push(`client_id = $${params.length}`);
+  const build = (withEndedAt) => {
+    const clauses = withEndedAt
+      ? ["ended_at IS NULL", "(excluded_until IS NULL OR excluded_until > NOW())"]
+      : ["(excluded_until IS NULL OR excluded_until > NOW())"];
+    const params = [];
+    if (clientId != null && String(clientId).trim() !== "") {
+      const clientNum = Number(clientId);
+      if (Number.isFinite(clientNum)) {
+        params.push(clientNum);
+        clauses.push(`client_id = $${params.length}`);
+      }
+    }
+    if (equipmentId) {
+      params.push(String(equipmentId));
+      clauses.push(`equipment_id = $${params.length}`);
+    }
+    if (family) {
+      params.push(String(family).toLowerCase());
+      clauses.push(`equipment_family = $${params.length}`);
+    }
+    params.push(Math.min(500, Math.max(1, Number(limit) || 200)));
+    return {
+      sql: `SELECT * FROM v_b_equipment_monitoring_exclusions
+            WHERE ${clauses.join(" AND ")}
+            ORDER BY created_at DESC
+            LIMIT $${params.length}`,
+      params
+    };
+  };
+  let result;
+  try {
+    const q = build(true);
+    result = await pool.query(q.sql, q.params);
+  } catch (err) {
+    if (!/ended_at/i.test(String(err?.message || ""))) throw err;
+    const q = build(false);
+    result = await pool.query(q.sql, q.params);
   }
-  if (equipmentId) {
-    params.push(String(equipmentId));
-    clauses.push(`equipment_id = $${params.length}`);
-  }
-  if (family) {
-    params.push(String(family).toLowerCase());
-    clauses.push(`equipment_family = $${params.length}`);
-  }
-  params.push(Math.min(500, Math.max(1, Number(limit) || 200)));
-  const result = await pool.query(
-    `SELECT * FROM v_b_equipment_monitoring_exclusions
-     WHERE ${clauses.join(" AND ")}
-     ORDER BY created_at DESC
-     LIMIT $${params.length}`,
-    params
-  );
   return (result.rows || []).map(mapRow);
 }
 
@@ -85,29 +98,52 @@ export async function listEquipmentMonitoringExclusionHistory({
   await ensureEquipmentMonitoringExclusionsSchema();
   const id = String(equipmentId || "").trim();
   if (!id) return [];
-  const clauses = ["equipment_id = $1"];
+  const clauses = ["e.equipment_id = $1"];
   const params = [id];
   if (clientId != null && String(clientId).trim() !== "") {
-    params.push(Number(clientId));
-    clauses.push(`client_id = $${params.length}`);
+    const clientNum = Number(clientId);
+    if (Number.isFinite(clientNum)) {
+      params.push(clientNum);
+      clauses.push(`e.client_id = $${params.length}`);
+    }
   }
   if (kind) {
     params.push(String(kind));
-    clauses.push(`kind = $${params.length}`);
+    clauses.push(`e.kind = $${params.length}`);
   }
   params.push(Math.min(200, Math.max(1, Number(limit) || 50)));
-  const result = await pool.query(
-    `SELECT e.*,
-            COALESCE(NULLIF(TRIM(u.username), ''), NULLIF(TRIM(u.email), '')) AS excluded_by_name,
-            COALESCE(NULLIF(TRIM(eu.username), ''), NULLIF(TRIM(eu.email), '')) AS ended_by_name
-       FROM v_b_equipment_monitoring_exclusions e
-       LEFT JOIN v_b_users u ON u.id = e.excluded_by
-       LEFT JOIN v_b_users eu ON eu.id = e.ended_by
-      WHERE ${clauses.join(" AND ")}
-      ORDER BY e.created_at DESC
-      LIMIT $${params.length}`,
-    params
-  );
+
+  let result;
+  try {
+    result = await pool.query(
+      `SELECT e.*,
+              COALESCE(NULLIF(TRIM(u.username), ''), NULLIF(TRIM(u.email), '')) AS excluded_by_name,
+              COALESCE(NULLIF(TRIM(eu.username), ''), NULLIF(TRIM(eu.email), '')) AS ended_by_name
+         FROM v_b_equipment_monitoring_exclusions e
+         LEFT JOIN v_b_users u ON u.id = e.excluded_by
+         LEFT JOIN v_b_users eu ON eu.id = e.ended_by
+        WHERE ${clauses.join(" AND ")}
+        ORDER BY e.created_at DESC
+        LIMIT $${params.length}`,
+      params
+    );
+  } catch (err) {
+    // Schéma historique pas encore migré : repli sans ended_by / ended_at.
+    const msg = String(err?.message || "");
+    if (!/ended_by|ended_at/i.test(msg)) throw err;
+    result = await pool.query(
+      `SELECT e.*,
+              COALESCE(NULLIF(TRIM(u.username), ''), NULLIF(TRIM(u.email), '')) AS excluded_by_name,
+              NULL::text AS ended_by_name
+         FROM v_b_equipment_monitoring_exclusions e
+         LEFT JOIN v_b_users u ON u.id = e.excluded_by
+        WHERE ${clauses.join(" AND ")}
+        ORDER BY e.created_at DESC
+        LIMIT $${params.length}`,
+      params
+    );
+  }
+
   return (result.rows || []).map(row => ({
     ...mapRow(row),
     excludedByName: row.excluded_by_name || null,

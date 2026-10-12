@@ -348,12 +348,14 @@ export default function CheckMKMonitoringPanel({
 
   if (loadingCheckMK && !checkmkData) {
     return (
-      <section className={panelClass}>
-        <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
-        <div className={styles.kpiStrip}>
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />
-          ))}
+      <section className={`${panelClass} ${styles.panelCompact}`}>
+        <div className={styles.infoBar}>
+          <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
+          <div className={styles.kpiStrip}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+            ))}
+          </div>
         </div>
         <div className={styles.splitLayout}>
           <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
@@ -379,41 +381,35 @@ export default function CheckMKMonitoringPanel({
 
   return (
     <section className={`${panelClass} ${styles.panelCompact}`}>
-      <div className={styles.infoCard}>
-        <div className={styles.infoCardTop}>
-          <div className={styles.titleBlock}>
-            <h2 className={styles.title}>
-              <Icon icon="simple-icons:checkmk" className={styles.titleIcon} />
-              <span className={styles.titleHost}>{hostName}</span>
-              {checkmkHostDetails?.alias ? <span className={styles.alias}>({checkmkHostDetails.alias})</span> : null}
-            </h2>
-            <div className={styles.metaRow}>
-              {hostState ? (
-                <span
-                  className={styles.hostStateBadge}
-                  style={{
-                    background: `${hostStateColor}22`,
-                    color: hostStateColor,
-                    border: `1px solid ${hostStateColor}55`
-                  }}
-                >
-                  <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} />
-                  {hostState}
-                </span>
-              ) : null}
-              {checkmkHostDetails?.ipAddress ? (
-                <span className={styles.ipText}>{checkmkHostDetails.ipAddress}</span>
-              ) : null}
-              {checkmkMapping.checkmk_site ? (
-                <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
-              ) : null}
-              {lastCheckLabel ? <span className={styles.labelChip}>Check · {lastCheckLabel}</span> : null}
-            </div>
-          </div>
+      <div className={styles.infoBar}>
+        <div className={styles.infoBarHost}>
+          <Icon icon="simple-icons:checkmk" className={styles.titleIcon} aria-hidden />
+          <span className={styles.titleHost}>{hostName}</span>
+          {checkmkHostDetails?.alias ? <span className={styles.alias}>({checkmkHostDetails.alias})</span> : null}
+          {hostState ? (
+            <span
+              className={styles.hostStateBadge}
+              style={{
+                background: `${hostStateColor}22`,
+                color: hostStateColor,
+                border: `1px solid ${hostStateColor}55`
+              }}
+            >
+              <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} />
+              {hostState}
+            </span>
+          ) : null}
+          {checkmkHostDetails?.ipAddress ? (
+            <span className={styles.ipText}>{checkmkHostDetails.ipAddress}</span>
+          ) : null}
+          {checkmkMapping.checkmk_site ? (
+            <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
+          ) : null}
+          {lastCheckLabel ? <span className={styles.labelChip}>Check · {lastCheckLabel}</span> : null}
         </div>
 
-        <div className={styles.kpiStrip}>
-          <div className={styles.kpiChip}>
+        <div className={styles.kpiStrip} role="group" aria-label="Indicateurs CheckMK">
+          <div className={styles.kpiInline}>
             <span className={styles.kpiLabel}>Santé</span>
             <span
               className={`${styles.kpiValue} ${
@@ -430,15 +426,17 @@ export default function CheckMKMonitoringPanel({
               {serviceCounts[0]} OK · {serviceCounts[1]} W · {serviceCounts[2]} C
             </span>
           </div>
-          <div className={styles.kpiChip}>
+          <span className={styles.kpiSep} aria-hidden />
+          <div className={styles.kpiInline}>
             <span className={styles.kpiLabel}>Services</span>
             <span className={styles.kpiValue}>{kpis.totalServices}</span>
             <span className={styles.kpiSub}>
-              {liveProblemCount ? `${liveProblemCount} en alerte` : "tous OK"}
+              {liveProblemCount ? `${liveProblemCount} alerte${liveProblemCount > 1 ? "s" : ""}` : "OK"}
             </span>
           </div>
-          <div className={styles.kpiChip}>
-            <span className={styles.kpiLabel}>Disponibilité</span>
+          <span className={styles.kpiSep} aria-hidden />
+          <div className={styles.kpiInline}>
+            <span className={styles.kpiLabel}>Dispo.</span>
             <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
               {loadingAvailability ? "…" : availUp != null ? `${Math.round(availUp)}%` : "—"}
             </span>
@@ -456,11 +454,12 @@ export default function CheckMKMonitoringPanel({
               ))}
             </div>
           </div>
-          <div className={styles.kpiChip}>
+          <span className={styles.kpiSep} aria-hidden />
+          <div className={styles.kpiInline}>
             <span className={styles.kpiLabel}>Événements</span>
             <span className={styles.kpiValue}>{centreAlerts.length + allEvents.length + allNotifications.length}</span>
             <span className={styles.kpiSub}>
-              {centreAlerts.length} centre · {allEvents.length + allNotifications.length} CheckMK
+              {centreAlerts.length} · {allEvents.length + allNotifications.length} CMK
             </span>
           </div>
         </div>

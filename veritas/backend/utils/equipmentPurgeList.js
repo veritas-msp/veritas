@@ -89,6 +89,12 @@ function buildLeanSelect(table) {
         ''
       ) AS device_type,
       COALESCE(NULLIF(TRIM(e.data->>'fournisseur'), ''), '') AS fournisseur,
+      COALESCE(
+        NULLIF(TRIM(e.data->>'systeme'), ''),
+        NULLIF(TRIM(e.data->'os'->>'name'), ''),
+        NULLIF(TRIM(e.data->>'osName'), ''),
+        ''
+      ) AS systeme,
       COALESCE(NULLIF(TRIM(e.data->>'quickConnect'), ''), '') AS quick_connect,
       COALESCE(
         NULLIF(TRIM(e.data->>'adminUrl'), ''),
@@ -137,6 +143,7 @@ function mapLeanRow(row, familyMeta) {
     deviceType: row.device_type || "",
     typeServer: row.device_type || "",
     fournisseur: row.fournisseur || "",
+    systeme: row.systeme || "",
     quickConnect: row.quick_connect || "",
     adminUrl: row.admin_url || "",
     stormshieldWanUrl: row.stormshield_wan_url || "",
@@ -153,6 +160,7 @@ function mapLeanRow(row, familyMeta) {
       marque: row.manufacturer || "",
       fabricant: row.manufacturer || "",
       manufacturer: row.manufacturer || "",
+      systeme: row.systeme || "",
       quickConnect: row.quick_connect || "",
       adminUrl: row.admin_url || "",
       urlAdministration: row.admin_url || "",

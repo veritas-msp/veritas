@@ -792,6 +792,8 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* Évite le reflow des colonnes (ex. Statut) quand la scrollbar apparaît/disparaît au hover. */
+  scrollbar-gutter: stable;
 }
 
 .emptyStateInCard {

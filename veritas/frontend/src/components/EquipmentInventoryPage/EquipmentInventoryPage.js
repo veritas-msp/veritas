@@ -25,6 +25,11 @@ import InventoryBulkEditModal from "./InventoryBulkEditModal";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import {
+  getEquipmentInventoryUiDefaults,
+  readEquipmentInventoryUi,
+  writeEquipmentInventoryUi
+} from "../../utils/equipmentInventoryUiState";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 
 function InventoryDeviceIcon({ item, className }) {
@@ -36,6 +41,25 @@ function InventoryDeviceIcon({ item, className }) {
 
 function compactSerial(value) {
   return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
+}
+
+function inventoryItemOs(item) {
+  const osObj = item?.os && typeof item.os === "object" ? item.os : null;
+  const dataOs = item?.data?.os && typeof item.data.os === "object" ? item.data.os : null;
+  return (
+    [
+      item?.systeme,
+      osObj?.name,
+      item?.osName,
+      typeof item?.os === "string" ? item.os : "",
+      item?.data?.systeme,
+      dataOs?.name,
+      typeof item?.data?.os === "string" ? item.data.os : "",
+      item?.rawData?.systeme
+    ]
+      .map(value => (value == null ? "" : String(value).trim()))
+      .find(Boolean) || ""
+  );
 }
 
 function searchBlob(item, locale) {
@@ -51,6 +75,7 @@ function searchBlob(item, locale) {
     item?.familyKey,
     item?.familyLabel,
     typeLabel(item, locale),
+    inventoryItemOs(item),
     item?.ip,
     item?.serial,
     item?.mac,
@@ -203,6 +228,8 @@ function compareValues(a, b, locale) {
 }
 
 const NAME_FIELD_KEYS = new Set(["name", "nom"]);
+const OS_INVENTORY_TYPES = new Set(["Servers", "Serveurs", "Ordinateurs"]);
+const OS_EXTENSION_FIELD_KEYS = new Set(["systeme", "os", "osname", "operating_system", "operatingsystem"]);
 const STANDARD_INVENTORY_COLUMNS = [
   "company",
   "name",
@@ -216,6 +243,19 @@ const STANDARD_INVENTORY_COLUMNS = [
   "supervision",
   "alertsMonth"
 ];
+
+function shouldShowInventoryOsColumn(selectedTypes) {
+  if (!selectedTypes || selectedTypes.size === 0) return false;
+  return [...selectedTypes].every(type => OS_INVENTORY_TYPES.has(type));
+}
+
+function withOsInventoryColumn(columns, showOs) {
+  if (!showOs || !Array.isArray(columns) || columns.includes("os")) return columns;
+  const typeIdx = columns.indexOf("type");
+  const nameIdx = columns.indexOf("name");
+  const insertAt = typeIdx >= 0 ? typeIdx + 1 : nameIdx >= 0 ? nameIdx + 1 : 1;
+  return [...columns.slice(0, insertAt), "os", ...columns.slice(insertAt)];
+}
 
 function getCustomFieldRaw(item, fieldKey) {
   if (!fieldKey) return "";
@@ -290,6 +330,8 @@ function getInventoryColumnValue(item, columnId, { locale, copy, customFields })
       return item.name || "";
     case "type":
       return typeLabel(item, locale);
+    case "os":
+      return inventoryItemOs(item);
     case "ip":
       return item.ip || "";
     case "serial":
@@ -320,6 +362,8 @@ function getSortValue(item, key, locale) {
       return item.name || "";
     case "type":
       return typeLabel(item, locale);
+    case "os":
+      return inventoryItemOs(item);
     case "ip":
       return item.ip || "";
     case "serial":
@@ -346,6 +390,11 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const common = useCommonCopy();
   const { fieldsFor } = useSystemFamilyExtensions();
   const copy = useMemo(() => getEquipmentInventoryPageCopy(locale), [locale]);
+  const savedUiRef = useRef(null);
+  if (savedUiRef.current === null) {
+    savedUiRef.current = getEquipmentInventoryUiDefaults(readEquipmentInventoryUi());
+  }
+  const savedUi = savedUiRef.current;
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
@@ -354,18 +403,21 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const canBulkEdit = can("clients_detail.devices") || can("infrastructure.edit") || can("supervision.manage");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [selectedClients, setSelectedClients] = useState(() => new Set());
-  const [selectedTypes, setSelectedTypes] = useState(() => new Set());
-  const [selectedTags, setSelectedTags] = useState(() => new Set());
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [openFilterSection, setOpenFilterSection] = useState("clients");
-  const [facetQuery, setFacetQuery] = useState("");
-  const [sort, setSort] = useState({ key: "company", dir: "asc" });
+  const [search, setSearch] = useState(() => savedUi.search);
+  const [selectedClients, setSelectedClients] = useState(() => new Set(savedUi.selectedClients));
+  const [selectedTypes, setSelectedTypes] = useState(() => new Set(savedUi.selectedTypes));
+  const [selectedTags, setSelectedTags] = useState(() => new Set(savedUi.selectedTags));
+  const [statusFilter, setStatusFilter] = useState(() => savedUi.statusFilter);
+  const [openFilterSection, setOpenFilterSection] = useState(() => savedUi.openFilterSection);
+  const [facetQuery, setFacetQuery] = useState(() => savedUi.facetQuery);
+  const [sort, setSort] = useState(() => ({ key: savedUi.sortKey, dir: savedUi.sortDir }));
   const [openMenuKey, setOpenMenuKey] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const loadAbortRef = useRef(null);
+  const tableScrollRef = useRef(null);
+  const facetListRef = useRef(null);
+  const scrollRestoredRef = useRef(false);
 
   const load = useCallback(async () => {
     loadAbortRef.current?.abort();
@@ -616,47 +668,66 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     };
   }, [selectedTypes, filtered, items, fieldsFor]);
 
+  const showOsColumn = useMemo(() => shouldShowInventoryOsColumn(selectedTypes), [selectedTypes]);
+
   const tableColumns = useMemo(() => {
     const extraKeys = customFamilyView
-      ? customFamilyView.fields.map(field => customColumnKey(field.fieldKey || field.key))
+      ? customFamilyView.fields
+          .map(field => field.fieldKey || field.key)
+          .filter(key => {
+            const normalized = String(key || "").trim().toLowerCase();
+            if (!normalized) return false;
+            if (showOsColumn && OS_EXTENSION_FIELD_KEYS.has(normalized)) return false;
+            return true;
+          })
+          .map(key => customColumnKey(key))
       : [];
     if (customFamilyView && String(customFamilyView.type).startsWith("Custom:")) {
-      return [
-        "company",
-        "name",
-        "tags",
-        ...extraKeys,
-        "status",
-        "alerts",
-        "supervision",
-        "alertsMonth"
-      ];
+      return withOsInventoryColumn(
+        [
+          "company",
+          "name",
+          "tags",
+          ...extraKeys,
+          "status",
+          "alerts",
+          "supervision",
+          "alertsMonth"
+        ],
+        showOsColumn
+      );
     }
     if (extraKeys.length) {
-      return [
-        "company",
-        "name",
-        "type",
-        "ip",
-        "serial",
-        "site",
-        "tags",
-        ...extraKeys,
-        "status",
-        "alerts",
-        "supervision",
-        "alertsMonth"
-      ];
+      return withOsInventoryColumn(
+        [
+          "company",
+          "name",
+          "type",
+          "ip",
+          "serial",
+          "site",
+          "tags",
+          ...extraKeys,
+          "status",
+          "alerts",
+          "supervision",
+          "alertsMonth"
+        ],
+        showOsColumn
+      );
     }
     const source = filtered.length ? filtered : items;
     const allCustom =
       source.length > 0 &&
       source.every(item => item.isCustom || String(item.type || "").startsWith("Custom:"));
     if (allCustom) {
-      return ["company", "name", "type", "site", "tags", "status", "alerts", "supervision", "alertsMonth"];
+      return withOsInventoryColumn(
+        ["company", "name", "type", "site", "tags", "status", "alerts", "supervision", "alertsMonth"],
+        showOsColumn
+      );
     }
-    return STANDARD_INVENTORY_COLUMNS;
-  }, [customFamilyView, filtered, items]);
+    return withOsInventoryColumn(STANDARD_INVENTORY_COLUMNS, showOsColumn);
+  }, [customFamilyView, filtered, items, showOsColumn]);
 
   useEffect(() => {
     if (tableColumns.includes(sort.key)) return;
@@ -674,9 +745,100 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     totalPages,
     paginatedItems
   } = useTablePagination(filtered, {
-    initialPageSize: 25,
+    initialPageSize: savedUi.pageSize,
+    initialPage: savedUi.page,
     resetDeps: [search, selectedClients, selectedTypes, selectedTags, statusFilter, sort.key, sort.dir]
   });
+
+  useEffect(() => {
+    writeEquipmentInventoryUi({
+      search,
+      facetQuery,
+      selectedClients: [...selectedClients],
+      selectedTypes: [...selectedTypes],
+      selectedTags: [...selectedTags],
+      statusFilter,
+      openFilterSection,
+      sortKey: sort.key,
+      sortDir: sort.dir,
+      page,
+      pageSize
+    });
+  }, [
+    search,
+    facetQuery,
+    selectedClients,
+    selectedTypes,
+    selectedTags,
+    statusFilter,
+    openFilterSection,
+    sort.key,
+    sort.dir,
+    page,
+    pageSize
+  ]);
+
+  useEffect(() => {
+    const el = tableScrollRef.current;
+    if (!el) return undefined;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        writeEquipmentInventoryUi({ tableScrollY: el.scrollTop });
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", onScroll);
+      writeEquipmentInventoryUi({ tableScrollY: el.scrollTop });
+    };
+  }, [loading, filtered.length, page, pageSize]);
+
+  useEffect(() => {
+    const el = facetListRef.current;
+    if (!el) return undefined;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        writeEquipmentInventoryUi({ facetScrollY: el.scrollTop });
+      });
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", onScroll);
+      writeEquipmentInventoryUi({ facetScrollY: el.scrollTop });
+    };
+  }, [openFilterSection]);
+
+  useEffect(() => {
+    if (loading || scrollRestoredRef.current) return undefined;
+    const tableY = savedUi.tableScrollY;
+    const facetY = savedUi.facetScrollY;
+    if ((!tableY || tableY <= 0) && (!facetY || facetY <= 0)) {
+      scrollRestoredRef.current = true;
+      return undefined;
+    }
+    const restore = () => {
+      if (tableScrollRef.current && tableY > 0) tableScrollRef.current.scrollTop = tableY;
+      if (facetListRef.current && facetY > 0) facetListRef.current.scrollTop = facetY;
+    };
+    const raf = requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+    const timeout = window.setTimeout(() => {
+      restore();
+      scrollRestoredRef.current = true;
+    }, 120);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, [loading, filtered.length, page, pageSize, savedUi.tableScrollY, savedUi.facetScrollY]);
 
   useEffect(() => {
     setOpenMenuKey(null);
@@ -905,6 +1067,14 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       }
       case "type":
         return <td key={columnId}>{typeLabel(item, locale)}</td>;
+      case "os": {
+        const os = inventoryItemOs(item) || "—";
+        return (
+          <td key={columnId} title={os === "—" ? undefined : os}>
+            {os}
+          </td>
+        );
+      }
       case "ip":
         return <td key={columnId}>{item.ip || "—"}</td>;
       case "serial":
@@ -1138,7 +1308,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                       ) : null}
                     </div>
 
-                    <div className={styles.facetList}>
+                    <div className={styles.facetList} ref={facetListRef}>
                       {openFacet.options.length === 0 ? (
                         <p className={styles.facetEmpty}>{openFacet.emptyLabel}</p>
                       ) : (
@@ -1234,7 +1404,10 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                           ) : (
                             <>
                               <div className={layout.dataTableWrap} data-guide="inventory-table">
-                                <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                                <div
+                                  ref={tableScrollRef}
+                                  className={`${layout.dataTableScroll} ${styles.tableScroll}`}
+                                >
                                   <table className={styles.table}>
                                     <thead>
                                       <tr>

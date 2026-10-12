@@ -191,7 +191,7 @@ router.get("/exclusions/history", verifyJWT, requireAnyPermission("supervision.v
     res.json({ exclusions });
   } catch (err) {
     console.error("[supervision-alerts] GET /exclusions/history:", err.message);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message || "Server error" });
   }
 });
 
