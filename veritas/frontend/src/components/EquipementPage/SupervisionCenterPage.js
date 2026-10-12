@@ -707,9 +707,9 @@ export default function MonitoringCenterPage({
       setAlertActionBusyId(null);
     }
   }, [alertRules, applyAlertResult, onNavigate, pageCopy.ops?.toasts]);
-  const handleOpenQueueItem = useCallback(item => {
+  const handleOpenQueueItem = useCallback((item, options = {}) => {
     if (!item?.equipment) return;
-    onEquipmentOpen?.(item.equipment);
+    onEquipmentOpen?.(item.equipment, options);
   }, [onEquipmentOpen]);
   const visibleTabs = useMemo(() => {
     return (pageCopy.tabs || []).filter(tab => tab.id !== "settings" || canManageAlertRules);

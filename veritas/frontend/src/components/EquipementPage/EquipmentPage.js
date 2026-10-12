@@ -2579,10 +2579,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         {renderEditEquipmentButton(equipment, displayType)}
       </div>;
   };
-  const handleEquipmentOpen = equipment => {
+  const handleEquipmentOpen = (equipment, options = {}) => {
     if (onNavigate) {
-      onNavigate("EquipmentDetail", equipment);
-    } else {
+      onNavigate("EquipmentDetail", equipment, options);
+    } else if (!options.background) {
       setSelectedEquipment(equipment);
     }
   };

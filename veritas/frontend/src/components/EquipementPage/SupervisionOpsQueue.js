@@ -543,7 +543,7 @@ export default function SupervisionOpsQueue({
                     <td>
                       <button
                         type="button"
-                        className={styles.actionBtn}
+                        className={styles.waitingEndBtn}
                         onClick={() => onEndExclusion?.(row)}
                       >
                         {waitingCopy.end || "End"}
@@ -626,7 +626,25 @@ export default function SupervisionOpsQueue({
                 }));
               }
               if (remediation) collabBits.push(remediation);
-              return <tr key={item.id} className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""}`} onClick={() => onOpenItem?.(item)}>
+              return <tr
+                key={item.id}
+                className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""}`}
+                onClick={() => onOpenItem?.(item)}
+                onMouseDown={e => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpenItem?.(item, { background: true });
+                  }
+                }}
+                onAuxClick={e => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpenItem?.(item, { background: true });
+                  }
+                }}
+              >
                     <td className={styles.sevCol}>
                       <span className={`${styles.sevIcon} ${toneClass(item.tone, item.severity)}`} aria-hidden title={severityLabel}>
                         <Icon icon={alertRowIcon(item)} />

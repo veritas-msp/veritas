@@ -855,6 +855,31 @@
   border-color: rgba(59, 130, 246, 0.28);
 }
 
+.waitingEndBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.85rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.waitingEndBtn:hover {
+  border-color: rgba(194, 65, 12, 0.4);
+  background: rgba(194, 65, 12, 0.08);
+  color: #c2410c;
+}
+
 .actionBtn {
   width: 1.85rem;
   height: 1.85rem;

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.80",
+    date: "2026-10-12",
+    highlights: [
+      "Centre de supervision : panneau maintenance affiche aussi les maintenances par service.",
+      "Centre de supervision : clic molette sur une alerte ouvre la fiche périphérique en nouvel onglet.",
+      "Centre de supervision : correction du bouton Terminer (onglet En attente)."
+    ]
+  },
+  {
     version: "1.0.79",
     date: "2026-10-12",
     highlights: [

@@ -4,11 +4,11 @@ import { interpolate } from "../../i18n/translate";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import styles from "./SupervisionMaintenanceSidebar.module.css";
 
-function isDeviceMaintenanceExclusion(row) {
+function isMaintenanceExclusion(row) {
   if (!row || row.active === false) return false;
-  const scope = String(row.scope || "").toLowerCase();
   const kind = String(row.kind || "maintenance").toLowerCase();
-  return scope === "device" && kind === "maintenance";
+  // Device + service : une maintenance service doit aussi apparaître à droite.
+  return kind === "maintenance";
 }
 
 function formatUntil(value, localeTag, indefiniteLabel) {
@@ -36,19 +36,24 @@ export default function SupervisionMaintenanceSidebar({
   onEndExclusion
 }) {
   const items = useMemo(() => {
-    const rows = (Array.isArray(exclusions) ? exclusions : []).filter(isDeviceMaintenanceExclusion);
-    const seen = new Set();
+    const rows = (Array.isArray(exclusions) ? exclusions : []).filter(isMaintenanceExclusion);
     const out = [];
     for (const row of rows) {
-      const id = String(row.equipmentId || row.equipment_id || "").trim();
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
+      const equipmentId = String(row.equipmentId || row.equipment_id || "").trim();
+      if (!equipmentId) continue;
+      const scope = String(row.scope || "device").toLowerCase();
+      const serviceLabel =
+        scope === "service"
+          ? String(row.serviceName || row.service_name || row.serviceKey || row.service_key || "").trim()
+          : "";
       out.push({
-        id: row.id || id,
-        equipmentId: id,
+        id: row.id || `${equipmentId}:${scope}:${serviceLabel || "device"}`,
+        equipmentId,
         clientId: row.clientId ?? row.client_id ?? null,
         equipmentFamily: row.equipmentFamily || row.equipment_family || null,
-        name: row.equipmentName || row.equipment_name || id,
+        name: row.equipmentName || row.equipment_name || equipmentId,
+        scope,
+        serviceLabel,
         reason: String(row.reason || "").trim(),
         excludedUntil: row.excludedUntil || row.excluded_until || null,
         raw: row
@@ -58,7 +63,11 @@ export default function SupervisionMaintenanceSidebar({
       const aUntil = a.excludedUntil ? new Date(a.excludedUntil).getTime() : Number.POSITIVE_INFINITY;
       const bUntil = b.excludedUntil ? new Date(b.excludedUntil).getTime() : Number.POSITIVE_INFINITY;
       if (aUntil !== bUntil) return aUntil - bUntil;
-      return String(a.name).localeCompare(String(b.name), localeTag || undefined, { sensitivity: "base" });
+      const byName = String(a.name).localeCompare(String(b.name), localeTag || undefined, { sensitivity: "base" });
+      if (byName !== 0) return byName;
+      return String(a.serviceLabel || "").localeCompare(String(b.serviceLabel || ""), localeTag || undefined, {
+        sensitivity: "base"
+      });
     });
     return out;
   }, [exclusions, localeTag]);
@@ -103,17 +112,25 @@ export default function SupervisionMaintenanceSidebar({
                 type: row.equipmentFamily || null
               });
             };
+            const scopeText =
+              row.scope === "service"
+                ? interpolate(copy.serviceScope || "Service · {service}", {
+                    service: row.serviceLabel || "—"
+                  })
+                : copy.deviceScope || "Tous les services";
             return (
               <li key={row.id} className={styles.item}>
                 {canOpen ? (
                   <button type="button" className={styles.itemMain} onClick={open} title={copy.openDevice || "Ouvrir"}>
                     <span className={styles.itemName}>{row.name}</span>
+                    <span className={styles.itemScope}>{scopeText}</span>
                     <span className={styles.itemUntil}>{untilText}</span>
                     {row.reason ? <span className={styles.itemReason}>{row.reason}</span> : null}
                   </button>
                 ) : (
                   <div className={styles.itemMainStatic}>
                     <span className={styles.itemName}>{row.name}</span>
+                    <span className={styles.itemScope}>{scopeText}</span>
                     <span className={styles.itemUntil}>{untilText}</span>
                     {row.reason ? <span className={styles.itemReason}>{row.reason}</span> : null}
                   </div>

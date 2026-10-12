@@ -310,7 +310,9 @@ const SUPERVISION_COPY = {
         emptyTitle: "Aucune maintenance",
         emptyText: "Aucun périphérique en maintenance pour le moment.",
         openDevice: "Ouvrir le périphérique",
-        end: "Terminer"
+        end: "Terminer",
+        deviceScope: "Tous les services",
+        serviceScope: "Service · {service}"
       },
       emptyTodoTitle: "Rien à traiter",
       emptyTodoText: "Aucune alerte ouverte. Objectif du matin atteint.",
@@ -962,7 +964,9 @@ const SUPERVISION_COPY = {
         emptyTitle: "No maintenance",
         emptyText: "No devices currently in maintenance.",
         openDevice: "Open device",
-        end: "End"
+        end: "End",
+        deviceScope: "All services",
+        serviceScope: "Service · {service}"
       },
       emptyTodoTitle: "Nothing to handle",
       emptyTodoText: "No open alerts. Morning triage goal reached.",

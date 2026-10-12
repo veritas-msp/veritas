@@ -124,6 +124,13 @@
   word-break: break-word;
 }
 
+.itemScope {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--msp-accent, #2b5fab);
+  line-height: 1.3;
+}
+
 .itemUntil {
   font-size: 0.72rem;
   font-weight: 650;
