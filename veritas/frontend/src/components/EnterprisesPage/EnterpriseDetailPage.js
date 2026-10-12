@@ -4702,7 +4702,7 @@ export default function ClientDetailPage({
                   </div>}
               </section>}
 
-            <section className={styles.sidebarSection} data-guide="enterprise-sidebar-notes">
+            <section className={`${styles.sidebarSection} ${styles.sidebarNotesSection}`} data-guide="enterprise-sidebar-notes">
               <SidebarSectionHeader
                 title={copy.notesTitle}
                 icon="mdi:note-text-outline"

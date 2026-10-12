@@ -4336,6 +4336,10 @@ button.sidebarOptionIcon:hover {
   padding-top: 0.55rem;
 }
 
+.sidebarNotesSection .sidebarBody {
+  padding-top: 0.65rem;
+}
+
 .sidebarCollapseHeader {
   display: flex;
   align-items: center;

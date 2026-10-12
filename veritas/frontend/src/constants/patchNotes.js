@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.86",
+    date: "2026-10-12",
+    highlights: [
+      "Fiche entreprise : espacement sous l’en-tête de la section Notes."
+    ]
+  },
+  {
     version: "1.0.85",
     date: "2026-10-12",
     highlights: [
