@@ -633,6 +633,39 @@
   color: var(--msp-muted, #8fa8c4);
 }
 
+.ticketLink {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--msp-accent, #2b5fab);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+}
+
+.ticketLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.ticketLink svg {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.timelineMeta {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #8fa8c4);
+}
+
 .reopenBtn {
   display: inline-flex;
   align-items: center;

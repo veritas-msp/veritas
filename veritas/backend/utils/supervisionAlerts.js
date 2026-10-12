@@ -146,6 +146,12 @@ function mapAlert(row) {
     closedReason: row.closed_reason,
     linkedTicketId: row.linked_ticket_id,
     linkedTicketKind: row.linked_ticket_kind,
+    linkedTicketNumber:
+      row.linked_ticket_number != null && String(row.linked_ticket_number).trim()
+        ? String(row.linked_ticket_number).trim()
+        : row.meta && typeof row.meta === "object" && row.meta.linkedTicketNumber != null
+          ? String(row.meta.linkedTicketNumber).trim() || null
+          : null,
     linkedEventId: row.linked_event_id,
     note: row.note,
     meta: row.meta || {},
@@ -307,8 +313,11 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
   const clientIds = [
     ...new Set(list.map(a => Number(a.clientId)).filter(id => Number.isFinite(id) && id > 0))
   ];
+  const linkedTicketIds = [
+    ...new Set(list.map(a => String(a.linkedTicketId || "").trim()).filter(isUuid))
+  ];
 
-  const [mkSettings, rules, mkRes, emaRes, clientRes, eqRes] = await Promise.all([
+  const [mkSettings, rules, mkRes, emaRes, clientRes, eqRes, ticketNumberById] = await Promise.all([
     getCheckmkMonitoringSettings().catch(() => null),
     getSupervisionAlertRules().catch(() => null),
     equipmentIds.length
@@ -370,7 +379,8 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
             WHERE id = ANY($1::uuid[])`,
           [equipmentIds]
         )
-      : { rows: [] }
+      : { rows: [] },
+    lookupTicketNumbersByIds(linkedTicketIds)
   ]);
 
   const mkByEq = new Map(
@@ -417,6 +427,12 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
       alert.meta?.equipmentName ||
       eq?.display_name ||
       null;
+    const linkedTicketId = String(alert.linkedTicketId || "").trim() || null;
+    const linkedTicketNumber =
+      (linkedTicketId && ticketNumberById.get(linkedTicketId)) ||
+      alert.linkedTicketNumber ||
+      alert.meta?.linkedTicketNumber ||
+      null;
     return {
       ...alert,
       lastSyncedAt,
@@ -441,10 +457,14 @@ export async function enrichSupervisionAlertsLiveContext(alerts = []) {
       ruleEnabled,
       eqAlertsEnabled: eqSettings == null ? true : eqSettings.alertsEnabled !== false,
       eqSuspended: isAlertSuspensionActive(eqSettings),
+      linkedTicketNumber: linkedTicketNumber ? String(linkedTicketNumber) : null,
       meta: {
         ...(alert.meta && typeof alert.meta === "object" ? alert.meta : {}),
         ...(equipmentName && !alert.meta?.equipmentName ? { equipmentName } : {}),
-        ...(ip && !alert.meta?.ip ? { ip } : {})
+        ...(ip && !alert.meta?.ip ? { ip } : {}),
+        ...(linkedTicketNumber && !alert.meta?.linkedTicketNumber
+          ? { linkedTicketNumber: String(linkedTicketNumber) }
+          : {})
       }
     };
   });
@@ -980,7 +1000,7 @@ export async function listSupervisionAlertHistory({
      LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params
   );
-  return result.rows.map(mapAlert);
+  return attachLinkedTicketNumbers(result.rows.map(mapAlert));
 }
 
 function inferCriterionSeverity(criterionKey) {
@@ -996,6 +1016,47 @@ function inferCriterionSeverity(criterionKey) {
 
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+async function lookupTicketNumbersByIds(ticketIds = []) {
+  const ids = [...new Set((Array.isArray(ticketIds) ? ticketIds : []).map(id => String(id || "").trim()).filter(isUuid))];
+  if (!ids.length) return new Map();
+  const result = await queryOrEmpty(
+    `SELECT id::text AS id, ticket_number
+       FROM v_b_tickets
+      WHERE id = ANY($1::uuid[])`,
+    [ids]
+  );
+  return new Map(
+    (result.rows || []).map(row => [
+      String(row.id),
+      row.ticket_number != null ? String(row.ticket_number) : null
+    ])
+  );
+}
+
+async function attachLinkedTicketNumbers(alerts = []) {
+  const list = Array.isArray(alerts) ? alerts.filter(Boolean) : [];
+  if (!list.length) return list;
+  const ticketIds = list.map(a => String(a.linkedTicketId || "").trim()).filter(isUuid);
+  const byId = await lookupTicketNumbersByIds(ticketIds);
+  return list.map(alert => {
+    const linkedTicketId = String(alert.linkedTicketId || "").trim() || null;
+    const linkedTicketNumber =
+      (linkedTicketId && byId.get(linkedTicketId)) ||
+      alert.linkedTicketNumber ||
+      alert.meta?.linkedTicketNumber ||
+      null;
+    if (!linkedTicketNumber) return alert;
+    return {
+      ...alert,
+      linkedTicketNumber: String(linkedTicketNumber),
+      meta: {
+        ...(alert.meta && typeof alert.meta === "object" ? alert.meta : {}),
+        ...(alert.meta?.linkedTicketNumber ? {} : { linkedTicketNumber: String(linkedTicketNumber) })
+      }
+    };
+  });
 }
 
 async function queryOrEmpty(sql, params) {
@@ -1132,7 +1193,30 @@ export async function getSupervisionAlertEvents(alertId) {
      ORDER BY e.created_at DESC`,
     [alertId]
   );
-  return result.rows.map(mapEvent);
+  const events = result.rows.map(mapEvent).filter(Boolean);
+  const ticketIds = events
+    .map(ev => String(ev.meta?.linkedTicketId || "").trim())
+    .filter(isUuid);
+  const byId = await lookupTicketNumbersByIds(ticketIds);
+  return events.map(ev => {
+    const linkedTicketId = String(ev.meta?.linkedTicketId || "").trim() || null;
+    const linkedTicketNumber =
+      (linkedTicketId && byId.get(linkedTicketId)) ||
+      (ev.meta?.linkedTicketNumber != null ? String(ev.meta.linkedTicketNumber).trim() : null) ||
+      null;
+    if (!linkedTicketId && !linkedTicketNumber) return ev;
+    return {
+      ...ev,
+      linkedTicketId,
+      linkedTicketKind: ev.meta?.linkedTicketKind || null,
+      linkedTicketNumber,
+      linkedEventId: ev.meta?.linkedEventId || null,
+      meta: {
+        ...(ev.meta && typeof ev.meta === "object" ? ev.meta : {}),
+        ...(linkedTicketNumber ? { linkedTicketNumber } : {})
+      }
+    };
+  });
 }
 
 export async function upsertAndActOnSupervisionAlert({
@@ -1316,6 +1400,22 @@ export async function upsertAndActOnSupervisionAlert({
     );
     row = updated.rows[0];
 
+    let resolvedLinkedTicketNumber = null;
+    const eventTicketId = linkedTicketId || (action === "link" ? row.linked_ticket_id : null);
+    if (eventTicketId && isUuid(String(eventTicketId))) {
+      try {
+        const tn = await client.query(
+          `SELECT ticket_number FROM v_b_tickets WHERE id = $1::uuid LIMIT 1`,
+          [String(eventTicketId).trim()]
+        );
+        if (tn.rows[0]?.ticket_number != null && String(tn.rows[0].ticket_number).trim()) {
+          resolvedLinkedTicketNumber = String(tn.rows[0].ticket_number).trim();
+        }
+      } catch {
+        /* ignore lookup failures */
+      }
+    }
+
     const event = await insertEvent(client, {
       alertId: row.id,
       action: eventAction,
@@ -1326,10 +1426,27 @@ export async function upsertAndActOnSupervisionAlert({
       meta: {
         linkedTicketId: linkedTicketId || null,
         linkedTicketKind: linkedTicketKind || null,
+        linkedTicketNumber: resolvedLinkedTicketNumber,
         linkedEventId: linkedEventId || null,
         closedReason: patch.closed_reason || null
       }
     });
+
+    if (action === "link" && resolvedLinkedTicketNumber) {
+      const existingMeta = row.meta && typeof row.meta === "object" ? row.meta : {};
+      await client.query(
+        `UPDATE v_b_supervision_alerts
+            SET meta = $2::jsonb, updated_at = NOW()
+          WHERE id = $1`,
+        [
+          row.id,
+          JSON.stringify({
+            ...existingMeta,
+            linkedTicketNumber: resolvedLinkedTicketNumber
+          })
+        ]
+      );
+    }
 
     const enriched = await client.query(
       `SELECT ${ALERT_SELECT_WITH_ACTORS}
@@ -1341,8 +1458,19 @@ export async function upsertAndActOnSupervisionAlert({
     row = enriched.rows[0] || row;
 
     await client.query("COMMIT");
+    let mappedAlert = mapAlert(row);
+    if (action === "link" && mappedAlert?.linkedTicketId && !mappedAlert.linkedTicketNumber && resolvedLinkedTicketNumber) {
+      mappedAlert = {
+        ...mappedAlert,
+        linkedTicketNumber: resolvedLinkedTicketNumber,
+        meta: {
+          ...(mappedAlert.meta && typeof mappedAlert.meta === "object" ? mappedAlert.meta : {}),
+          linkedTicketNumber: resolvedLinkedTicketNumber
+        }
+      };
+    }
     const result = {
-      alert: mapAlert(row),
+      alert: mappedAlert,
       event
     };
     broadcastSupervisionAlertUpdate({

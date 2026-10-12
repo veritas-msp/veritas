@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.82",
+    date: "2026-10-12",
+    highlights: [
+      "Centre de supervision : lien Ticket #… depuis le statut d’une alerte liée.",
+      "Centre de supervision : clic sur le périphérique (à traiter / en cours / en attente) ouvre la fiche ; le reste de la ligne ne navigue plus.",
+      "Historique : timeline avec lien vers le ticket associé et son numéro."
+    ]
+  },
+  {
     version: "1.0.81",
     date: "2026-10-12",
     highlights: [

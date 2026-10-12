@@ -258,6 +258,8 @@ export default function SupervisionOpsQueue({
   onTriageView,
   onSearchChange,
   onOpenItem,
+  onOpenExclusionDevice,
+  onOpenTicket,
   onTicketSupport,
   onAck,
   onUnack,
@@ -521,9 +523,63 @@ export default function SupervisionOpsQueue({
                 </tr>
               </thead>
               <tbody>
-                {exclusions.map(row => (
+                {exclusions.map(row => {
+                  const equipmentId = row.equipmentId || row.equipment_id;
+                  const deviceLabel = row.equipmentName || row.equipment_name || equipmentId || "—";
+                  const canOpenDevice = Boolean(equipmentId && (onOpenExclusionDevice || onOpenItem));
+                  const openDevice = (options = {}) => {
+                    if (!canOpenDevice) return;
+                    if (onOpenExclusionDevice) {
+                      onOpenExclusionDevice(row, options);
+                      return;
+                    }
+                    onOpenItem?.(
+                      {
+                        equipmentId,
+                        clientId: row.clientId ?? row.client_id ?? null,
+                        equipmentName: row.equipmentName || row.equipment_name || null,
+                        equipment: {
+                          id: equipmentId,
+                          dbId: equipmentId,
+                          clientId: row.clientId ?? row.client_id ?? null,
+                          name: row.equipmentName || row.equipment_name || null,
+                          type: row.equipmentFamily || row.equipment_family || null
+                        }
+                      },
+                      options
+                    );
+                  };
+                  return (
                   <tr key={row.id} className={styles.dataRow}>
-                    <td>{row.equipmentName || row.equipmentId || "—"}</td>
+                    <td
+                      className={`${styles.deviceCell} ${canOpenDevice ? styles.deviceCellInteractive : ""}`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        openDevice();
+                      }}
+                      onMouseDown={e => {
+                        if (e.button === 1 && canOpenDevice) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openDevice({ background: true });
+                        }
+                      }}
+                      onAuxClick={e => {
+                        if (e.button === 1 && canOpenDevice) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openDevice({ background: true });
+                        }
+                      }}
+                    >
+                      {canOpenDevice ? (
+                        <button type="button" className={styles.deviceLink} onClick={e => { e.stopPropagation(); openDevice(); }}>
+                          {deviceLabel}
+                        </button>
+                      ) : (
+                        deviceLabel
+                      )}
+                    </td>
                     <td>
                       {row.scope === "device"
                         ? waitingCopy.allServices || "All"
@@ -540,7 +596,7 @@ export default function SupervisionOpsQueue({
                           })
                         : waitingCopy.indefinite || "Indefinite"}
                     </td>
-                    <td>
+                    <td onClick={e => e.stopPropagation()}>
                       <button
                         type="button"
                         className={styles.waitingEndBtn}
@@ -550,7 +606,8 @@ export default function SupervisionOpsQueue({
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -626,24 +683,39 @@ export default function SupervisionOpsQueue({
                 }));
               }
               if (remediation) collabBits.push(remediation);
+              const linkedTicketId = item.linkedTicketId || item.alertState?.linkedTicketId || null;
+              const linkedTicketNumber =
+                item.linkedTicketNumber ||
+                item.alertState?.linkedTicketNumber ||
+                item.alertState?.meta?.linkedTicketNumber ||
+                null;
+              const linkedTicketKind =
+                item.linkedTicketKind || item.alertState?.linkedTicketKind || null;
+              const canOpenDevice = Boolean(
+                item.equipment || item.equipmentId || item.alertState?.equipmentId
+              );
+              const statusIsTicketLink = Boolean(linkedTicketId && (wf === "linked" || linkedTicketKind));
+              const statusDisplay = statusIsTicketLink
+                ? linkedTicketNumber
+                  ? `Ticket #${linkedTicketNumber}`
+                  : statusLabel
+                : statusLabel;
+              const openDevice = (options = {}) => {
+                if (!canOpenDevice) return;
+                onOpenItem?.(item, options);
+              };
+              const openTicket = (options = {}) => {
+                if (!linkedTicketId) return;
+                onOpenTicket?.(item, {
+                  ticketId: linkedTicketId,
+                  ticketNumber: linkedTicketNumber,
+                  kind: linkedTicketKind,
+                  ...options
+                });
+              };
               return <tr
                 key={item.id}
                 className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""}`}
-                onClick={() => onOpenItem?.(item)}
-                onMouseDown={e => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onOpenItem?.(item, { background: true });
-                  }
-                }}
-                onAuxClick={e => {
-                  if (e.button === 1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onOpenItem?.(item, { background: true });
-                  }
-                }}
               >
                     <td className={styles.sevCol}>
                       <span className={`${styles.sevIcon} ${toneClass(item.tone, item.severity)}`} aria-hidden title={severityLabel}>
@@ -672,12 +744,38 @@ export default function SupervisionOpsQueue({
                           </span> : null}
                       </div>
                     </td>
-                    <td className={styles.deviceCell}>
+                    <td
+                      className={`${styles.deviceCell} ${canOpenDevice ? styles.deviceCellInteractive : ""}`}
+                      onClick={e => {
+                        e.stopPropagation();
+                        openDevice();
+                      }}
+                      onMouseDown={e => {
+                        if (e.button === 1 && canOpenDevice) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openDevice({ background: true });
+                        }
+                      }}
+                      onAuxClick={e => {
+                        if (e.button === 1 && canOpenDevice) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openDevice({ background: true });
+                        }
+                      }}
+                    >
                       <span className={styles.deviceCellInner} title={familyLabel || undefined}>
                         <span className={styles.familyIcon} aria-hidden>
                           <Icon icon={familyMeta?.icon || "mdi:devices"} />
                         </span>
-                        <span className={styles.deviceName}>{deviceName || "—"}</span>
+                        {canOpenDevice ? (
+                          <button type="button" className={styles.deviceLink} onClick={e => { e.stopPropagation(); openDevice(); }}>
+                            {deviceName || "—"}
+                          </button>
+                        ) : (
+                          <span className={styles.deviceName}>{deviceName || "—"}</span>
+                        )}
                       </span>
                     </td>
                     <td className={styles.companyCell}>{item.clientName || "—"}</td>
@@ -690,7 +788,37 @@ export default function SupervisionOpsQueue({
                       </span>
                     </td> : null}
                     <td className={styles.severityCell}>{severityLabel}</td>
-                    <td className={styles.statusCell}>{statusLabel}</td>
+                    <td className={styles.statusCell}>
+                      {statusIsTicketLink ? (
+                        <button
+                          type="button"
+                          className={styles.ticketLink}
+                          onClick={e => {
+                            e.stopPropagation();
+                            openTicket();
+                          }}
+                          onMouseDown={e => {
+                            if (e.button === 1) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openTicket({ background: true });
+                            }
+                          }}
+                          onAuxClick={e => {
+                            if (e.button === 1) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openTicket({ background: true });
+                            }
+                          }}
+                          title={copy.statusLabels?.linked || statusLabel}
+                        >
+                          {statusDisplay}
+                        </button>
+                      ) : (
+                        statusLabel
+                      )}
+                    </td>
                     <td className={styles.whenCell}>
                       <time dateTime={whenRaw || undefined}>{when}</time>
                     </td>

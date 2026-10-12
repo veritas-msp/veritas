@@ -176,6 +176,10 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
         handledByName: alert.ackedByName || null,
         linkedTicketKind: alert.linkedTicketKind || null,
         linkedTicketId: alert.linkedTicketId || null,
+        linkedTicketNumber:
+          alert.linkedTicketNumber ||
+          alert.meta?.linkedTicketNumber ||
+          null,
         linkedEventId: alert.linkedEventId || null,
         lastSyncedAt: alert.lastSyncedAt || null,
         stale: Boolean(alert.stale),
@@ -229,6 +233,7 @@ export function buildSupervisionAlertSearchHaystack(item = {}) {
     item.checkmkSite,
     item.handledByName,
     item.linkedTicketId,
+    item.linkedTicketNumber,
     item.linkedTicketKind,
     item.workflowStatus,
     item.severity,
@@ -522,10 +527,29 @@ export async function createSupervisionSupportTicket(item, rules = null) {
     supportFormData
   });
 
-  const alert = await linkSupervisionAlert(item, {
+  const ticketId = created?.id || created?.ticketId || null;
+  const ticketNumber =
+    created?.ticket_number || created?.ticketNumber || created?.number || null;
+  const linkResult = await linkSupervisionAlert(item, {
     linkedTicketKind: "support",
-    linkedTicketId: created?.id || created?.ticketId || null
+    linkedTicketId: ticketId,
+    meta: {
+      ...(item.alertState?.meta || item.meta || {}),
+      ...(ticketNumber != null ? { linkedTicketNumber: String(ticketNumber) } : {})
+    }
   });
+  const linkedAlert = linkResult?.alert || linkResult || null;
+  const alertWithNumber =
+    linkedAlert && ticketNumber != null && !linkedAlert.linkedTicketNumber
+      ? {
+          ...linkedAlert,
+          linkedTicketNumber: String(ticketNumber),
+          meta: {
+            ...(linkedAlert.meta && typeof linkedAlert.meta === "object" ? linkedAlert.meta : {}),
+            linkedTicketNumber: String(ticketNumber)
+          }
+        }
+      : linkedAlert;
 
-  return { ticket: created, alert, prefill };
+  return { ticket: created, alert: alertWithNumber, prefill };
 }

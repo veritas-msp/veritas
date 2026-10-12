@@ -669,7 +669,7 @@ export default function MonitoringCenterPage({
         onNavigate?.("TicketCreate", result.prefill);
         return;
       }
-      if (result?.alert) applyAlertResult(result.alert);
+      if (result?.alert) applyAlertResult(result);
       const ticket = result?.ticket;
       const ticketId = ticket?.id || ticket?.ticketId;
       const ticketNumber = ticket?.ticketNumber || ticket?.ticket_number || ticket?.number;
@@ -708,9 +708,57 @@ export default function MonitoringCenterPage({
     }
   }, [alertRules, applyAlertResult, onNavigate, pageCopy.ops?.toasts]);
   const handleOpenQueueItem = useCallback((item, options = {}) => {
-    if (!item?.equipment) return;
-    onEquipmentOpen?.(item.equipment, options);
+    const equipment =
+      item?.equipment ||
+      (item?.equipmentId
+        ? {
+            id: item.equipmentId,
+            dbId: item.equipmentId,
+            clientId: item.clientId ?? null,
+            name: item.equipmentName || item.name || item.title || null
+          }
+        : null);
+    if (!equipment) return;
+    onEquipmentOpen?.(equipment, options);
   }, [onEquipmentOpen]);
+  const handleOpenExclusionDevice = useCallback((row, options = {}) => {
+    const equipmentId = row?.equipmentId || row?.equipment_id;
+    if (!equipmentId) return;
+    onEquipmentOpen?.(
+      {
+        id: equipmentId,
+        dbId: equipmentId,
+        clientId: row.clientId ?? row.client_id ?? null,
+        name: row.equipmentName || row.equipment_name || null,
+        type: row.equipmentFamily || row.equipment_family || null
+      },
+      options
+    );
+  }, [onEquipmentOpen]);
+  const handleOpenLinkedTicket = useCallback((item, payload = {}) => {
+    const ticketId = payload.ticketId || item?.linkedTicketId || item?.alertState?.linkedTicketId;
+    if (!ticketId) return;
+    const ticketNumber =
+      payload.ticketNumber ||
+      item?.linkedTicketNumber ||
+      item?.alertState?.linkedTicketNumber ||
+      item?.alertState?.meta?.linkedTicketNumber ||
+      null;
+    const kind = String(payload.kind || item?.linkedTicketKind || item?.alertState?.linkedTicketKind || "support").toLowerCase();
+    const isSales = kind === "prestation" || kind === "presta" || kind === "sales";
+    const navOptions = payload.background ? { background: true } : undefined;
+    onNavigate?.(
+      isSales ? "TicketSalesDetail" : "TicketDetail",
+      {
+        ticketId,
+        ticketNumber,
+        title: item?.title || "",
+        ticketFamily: isSales ? "sales" : "support",
+        fromPage: isSales ? "TicketSales" : "Ticket"
+      },
+      navOptions
+    );
+  }, [onNavigate]);
   const visibleTabs = useMemo(() => {
     return (pageCopy.tabs || []).filter(tab => tab.id !== "settings" || canManageAlertRules);
   }, [pageCopy.tabs, canManageAlertRules]);
@@ -891,6 +939,8 @@ export default function MonitoringCenterPage({
                             onTriageView={setTriageView}
                             onSearchChange={setOpsSearchQuery}
                             onOpenItem={handleOpenQueueItem}
+                            onOpenExclusionDevice={handleOpenExclusionDevice}
+                            onOpenTicket={handleOpenLinkedTicket}
                             onTicketSupport={handleTicketSupport}
                             onAck={handleAckAlert}
                             onUnack={handleUnackAlert}
@@ -928,6 +978,7 @@ export default function MonitoringCenterPage({
                               loadActiveAlerts();
                               refreshHistory();
                             }}
+                            onOpenTicket={handleOpenLinkedTicket}
                             localeTag={localeTag}
                             copy={pageCopy.history}
                             showDomain={false}

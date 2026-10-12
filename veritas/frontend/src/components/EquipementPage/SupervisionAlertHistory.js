@@ -146,6 +146,29 @@ function SortableHeader({
     </th>;
 }
 
+function resolveEventTicket(ev, alert) {
+  const ticketId =
+    ev?.linkedTicketId ||
+    ev?.meta?.linkedTicketId ||
+    (ev?.action === "link" ? alert?.linkedTicketId : null) ||
+    null;
+  const ticketNumber =
+    ev?.linkedTicketNumber ||
+    ev?.meta?.linkedTicketNumber ||
+    (ticketId && ticketId === alert?.linkedTicketId ? alert?.linkedTicketNumber || alert?.meta?.linkedTicketNumber : null) ||
+    null;
+  const kind =
+    ev?.linkedTicketKind ||
+    ev?.meta?.linkedTicketKind ||
+    (ticketId && ticketId === alert?.linkedTicketId ? alert?.linkedTicketKind : null) ||
+    null;
+  return {
+    ticketId: ticketId ? String(ticketId) : null,
+    ticketNumber: ticketNumber != null && String(ticketNumber).trim() ? String(ticketNumber).trim() : null,
+    kind: kind ? String(kind) : null
+  };
+}
+
 export default function SupervisionAlertHistory({
   alerts = [],
   loading = false,
@@ -158,6 +181,7 @@ export default function SupervisionAlertHistory({
   onStatusFilter,
   onTrashModeChange,
   onChanged,
+  onOpenTicket,
   localeTag,
   copy,
   showDomain = true,
@@ -585,10 +609,35 @@ export default function SupervisionAlertHistory({
                           <div className={styles.detail}>
                             <div className={styles.detailHeader}>
                               <span className={styles.timelineTitle}>{copy.timelineTitle || "Timeline"}</span>
+                              {alert.linkedTicketId ? (
+                                <button
+                                  type="button"
+                                  className={styles.ticketLink}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    onOpenTicket?.(alert, {
+                                      ticketId: alert.linkedTicketId,
+                                      ticketNumber: alert.linkedTicketNumber || alert.meta?.linkedTicketNumber || null,
+                                      kind: alert.linkedTicketKind || null
+                                    });
+                                  }}
+                                  title={copy.linkedTicketHint || copy.actions?.link || "Ticket associé"}
+                                >
+                                  {alert.linkedTicketNumber || alert.meta?.linkedTicketNumber
+                                    ? `Ticket #${alert.linkedTicketNumber || alert.meta.linkedTicketNumber}`
+                                    : copy.actions?.link || "Ticket associé"}
+                                </button>
+                              ) : null}
                             </div>
                             <ol className={styles.timeline}>
                               {loadingEvents === alert.id ? <li className={styles.timelineEmpty}>{copy.loadingEvents}</li> : events.length === 0 ? <li className={styles.timelineEmpty}>{copy.noEvents}</li> : events.map(ev => {
                             const who = actorLabel(ev, copy);
+                            const ticket = resolveEventTicket(ev, alert);
+                            const ticketLabel = ticket.ticketNumber
+                              ? `Ticket #${ticket.ticketNumber}`
+                              : ticket.ticketId
+                                ? copy.actions?.link || "Ticket associé"
+                                : null;
                             return <li key={ev.id} className={styles.timelineItem}>
                                       <span className={styles.timelineDot} aria-hidden />
                                       <div className={styles.timelineContent}>
@@ -600,6 +649,28 @@ export default function SupervisionAlertHistory({
                                           <Icon icon="mdi:account-outline" aria-hidden />
                                           {who}
                                         </span>
+                                        {ticket.ticketId && ticketLabel ? (
+                                          <button
+                                            type="button"
+                                            className={styles.ticketLink}
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              onOpenTicket?.(alert, {
+                                                ticketId: ticket.ticketId,
+                                                ticketNumber: ticket.ticketNumber,
+                                                kind: ticket.kind
+                                              });
+                                            }}
+                                          >
+                                            <Icon icon="mdi:ticket-outline" aria-hidden />
+                                            {ticketLabel}
+                                          </button>
+                                        ) : null}
+                                        {ev.meta?.linkedEventId ? (
+                                          <span className={styles.timelineMeta}>
+                                            {copy.linkedEvent || "Événement planning lié"}
+                                          </span>
+                                        ) : null}
                                         {ev.note ? <em className={styles.timelineNote}>{ev.note}</em> : null}
                                       </div>
                                     </li>;
