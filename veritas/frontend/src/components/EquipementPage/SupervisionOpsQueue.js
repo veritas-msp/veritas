@@ -16,6 +16,20 @@ import styles from "./SupervisionOpsQueue.module.css";
 
 const FAMILY_BY_KEY = new Map(SUPERVISION_FAMILIES.map(f => [f.key, f]));
 
+/** Clés `copy.coverage.families` (i18n) pour les familles du centre. */
+const FAMILY_COVERAGE_KEY = {
+  ordinateurs: "Ordinateurs",
+  servers: "Serveurs",
+  stockage: "Stockage",
+  firewall: "Firewalls",
+  switch: "Switch",
+  wifi: "BorneWifi",
+  routeur: "Routeur",
+  internet: "Internet",
+  toip: "TOIP",
+  alimentation: "Alimentation"
+};
+
 function toneClass(tone, severity) {
   if (tone === "bad" || severity === "critical") return styles.sevCritical;
   if (tone === "warn" || severity === "warning") return styles.sevWarning;
