@@ -110,6 +110,7 @@ import {
   invalidateDetailCache,
   setDetailCache
 } from "../../utils/detailPageCache";
+import { invalidateEquipmentInventoryCache } from "../../utils/equipmentInventoryDataCache";
 const SERVICE_BRICK_MENU_TYPES = new Set([
   "Antivirus",
   "Antispam",
@@ -454,12 +455,6 @@ export default function ClientDetailPage({
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
   const [prestatairesSectionExpanded, setPrestatairesSectionExpanded] = useState(false);
   const [sitesSectionExpanded, setSitesSectionExpanded] = useState(false);
-  const [heroSupervisionStats, setHeroSupervisionStats] = useState({
-    critical: 0,
-    warning: 0,
-    ok: 0,
-    loading: true
-  });
   const [notesSectionExpanded, setNotesSectionExpanded] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [supportCreditModalOpen, setSupportCreditModalOpen] = useState(false);
@@ -512,6 +507,14 @@ export default function ClientDetailPage({
   const [recentEvents, setRecentEvents] = useState([]);
   const [loadingClientActivity, setLoadingClientActivity] = useState(false);
   const [overviewTab, setOverviewTab] = useState(() => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab));
+  // Keep-alive des onglets lourds : montés une fois (hidden) pour éviter flash / re-fetch.
+  const [mapTabMounted, setMapTabMounted] = useState(false);
+  const [activityTabMounted, setActivityTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "activity"
+  );
+  const [vaultTabMounted, setVaultTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "vault"
+  );
   const [antivirusData, setAntivirusData] = useState([]);
   const [antispamData, setAntispamData] = useState([]);
   const [mailinblackTenants, setMailinblackTenants] = useState([]);
@@ -613,6 +616,7 @@ export default function ClientDetailPage({
   const isMountedRef = useRef(true);
   const loadRequestIdRef = useRef(0);
   const supportCreditsLoadGenRef = useRef(0);
+  const pendingEnterpriseExtrasRef = useRef(null);
   const modulesRequestRef = useRef({
     clientId: null,
     promise: null,
@@ -657,11 +661,11 @@ export default function ClientDetailPage({
   const configuredAntispamSolutions = useMemo(
     () => listConfiguredAntispamSolutions(
       client,
-      antispamData,
+      [],
       client?.equipements ? { equipements: client.equipements } : null,
       mailinblackTenants
     ),
-    [client, antispamData, mailinblackTenants]
+    [client, mailinblackTenants]
   );
   const configuredMicrosoftTenants = useMemo(() => listConfiguredMicrosoftTenants(client), [client]);
   useEffect(() => {
@@ -911,7 +915,11 @@ export default function ClientDetailPage({
       const saved = readEnterprisePeripheralsUi(id);
       // Avoid persisting the previous enterprise's tab onto this one before state catches up.
       skipPeripheralsUiPersistRef.current = true;
-      setOverviewTab(normalizeEnterpriseOverviewTab(saved?.overviewTab));
+      const nextOverviewTab = normalizeEnterpriseOverviewTab(saved?.overviewTab);
+      setOverviewTab(nextOverviewTab);
+      setMapTabMounted(false);
+      setActivityTabMounted(nextOverviewTab === "activity");
+      setVaultTabMounted(nextOverviewTab === "vault");
       setActiveSiteFilter(saved?.siteFilter || null);
       setEquipmentSearchQuery(saved?.searchQuery || "");
       setActiveEquipmentTableType(saved?.activeType || null);
@@ -930,6 +938,18 @@ export default function ClientDetailPage({
       activeType: activeEquipmentTableType || null
     });
   }, [client?.id, overviewTab, equipmentSearchQuery, activeSiteFilter, activeEquipmentTableType]);
+  useEffect(() => {
+    if (!client?.id) return;
+    // Eager keep-alive dès que la fiche est prête : plus de flash au 1er switch d'onglet.
+    setMapTabMounted(true);
+    setActivityTabMounted(true);
+    setVaultTabMounted(true);
+  }, [client?.id]);
+  useEffect(() => {
+    if (overviewTab === "map") setMapTabMounted(true);
+    if (overviewTab === "activity") setActivityTabMounted(true);
+    if (overviewTab === "vault") setVaultTabMounted(true);
+  }, [overviewTab]);
   useEffect(() => {
     const el = pageRootRef.current;
     if (!el || !client?.id) return undefined;
@@ -972,7 +992,7 @@ export default function ClientDetailPage({
       cancelAnimationFrame(raf);
       window.clearTimeout(timeout);
     };
-  }, [loading, client?.id, overviewTab]);
+  }, [loading, client?.id]);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
@@ -990,14 +1010,9 @@ export default function ClientDetailPage({
     if (!stillExists) setActiveSiteFilter(null);
   }, [formData.sites, activeSiteFilter]);
   const filteredCustomFamilyMap = useMemo(() => filterCustomFamilyMap(customFamilyMap, activeSiteFilter), [customFamilyMap, activeSiteFilter]);
-  const heroEquipmentTotalCount = useMemo(() => {
-    const customCount = (Array.isArray(customFamilyMap) ? customFamilyMap : []).reduce((sum, family) => sum + (Array.isArray(family?.items) ? family.items.length : 0), 0);
-    // hardwareEquipmentTotalCount is filled by loadTotalEquipment on page load, then refined
-    // by EquipmentPage when the cartography tab mounts.
-    return (Number(hardwareEquipmentTotalCount) || 0) + customCount;
-  }, [hardwareEquipmentTotalCount, customFamilyMap]);
   const refreshClientEquipment = useCallback(async () => {
     if (!client?.id) return null;
+    invalidateEquipmentInventoryCache();
     const [modulesData, customFamilies] = await Promise.all([fetchClientModules(client.id), resolveClientCustomFamilyMap(client.id)]);
     const families = Array.isArray(customFamilies) ? customFamilies : [];
     setClient(prev => {
@@ -1025,8 +1040,13 @@ export default function ClientDetailPage({
   }, [client?.id, refreshClientEquipment]);
   useEffect(() => {
     if (client?.id) {
-      loadContacts(client.id);
-      loadPrestataires(client.id);
+      const cached = getDetailCache(DETAIL_CACHE_NS.enterprise, client.id);
+      loadContacts(client.id, undefined, {
+        keepVisible: Array.isArray(cached?.contacts)
+      });
+      loadPrestataires(client.id, undefined, {
+        keepVisible: Array.isArray(cached?.prestataires)
+      });
       return;
     }
     contactsControllerRef.current?.abort();
@@ -1106,6 +1126,97 @@ export default function ClientDetailPage({
       });
     }
   }, [getContractModules]);
+  const writeEnterpriseCache = useCallback((clientId, snapshot = {}) => {
+    if (!clientId || !snapshot?.client) return;
+    const prev = getDetailCache(DETAIL_CACHE_NS.enterprise, clientId, {
+      ttlMs: 0
+    }) || {};
+    const pickArray = (next, fallback) => Array.isArray(next) ? next : Array.isArray(fallback) ? fallback : undefined;
+    setDetailCache(DETAIL_CACHE_NS.enterprise, clientId, {
+      client: snapshot.client,
+      modulesData: snapshot.modulesData !== undefined ? snapshot.modulesData : prev.modulesData ?? null,
+      tags: pickArray(snapshot.tags, prev.tags),
+      notes: pickArray(snapshot.notes, prev.notes),
+      contacts: pickArray(snapshot.contacts, prev.contacts),
+      prestataires: pickArray(snapshot.prestataires, prev.prestataires),
+      upcomingEvents: pickArray(snapshot.upcomingEvents, prev.upcomingEvents),
+      recentEvents: pickArray(snapshot.recentEvents, prev.recentEvents),
+      supportTickets: pickArray(snapshot.supportTickets, prev.supportTickets),
+      prestationTickets: pickArray(snapshot.prestationTickets, prev.prestationTickets),
+      supportCreditBalance: snapshot.supportCreditBalance !== undefined ? snapshot.supportCreditBalance : prev.supportCreditBalance,
+      supportCreditPacks: pickArray(snapshot.supportCreditPacks, prev.supportCreditPacks),
+      users: pickArray(snapshot.users, prev.users)
+    });
+  }, []);
+  const hydrateEnterpriseExtras = useCallback(snapshot => {
+    if (!snapshot) return;
+    if (Array.isArray(snapshot.tags)) {
+      setClientTags(snapshot.tags);
+      setLoadingTags(false);
+    }
+    if (Array.isArray(snapshot.notes)) {
+      setNotes(snapshot.notes);
+      setLoadingNotes(false);
+    }
+    if (Array.isArray(snapshot.contacts)) {
+      setContacts(snapshot.contacts);
+      setLoadingContacts(false);
+    }
+    if (Array.isArray(snapshot.prestataires)) {
+      setPrestataires(snapshot.prestataires);
+      setLoadingPrestataires(false);
+    }
+    const hasActivityCache = Array.isArray(snapshot.upcomingEvents) || Array.isArray(snapshot.recentEvents) || Array.isArray(snapshot.supportTickets) || Array.isArray(snapshot.prestationTickets);
+    if (hasActivityCache) {
+      if (Array.isArray(snapshot.upcomingEvents)) setUpcomingEvents(snapshot.upcomingEvents);
+      if (Array.isArray(snapshot.recentEvents)) setRecentEvents(snapshot.recentEvents);
+      if (Array.isArray(snapshot.supportTickets)) setSupportTickets(snapshot.supportTickets);
+      if (Array.isArray(snapshot.prestationTickets)) setPrestationTickets(snapshot.prestationTickets);
+      setLoadingClientActivity(false);
+    }
+    if (snapshot.supportCreditBalance != null || Array.isArray(snapshot.supportCreditPacks)) {
+      if (snapshot.supportCreditBalance != null) {
+        setSupportCreditBalance(Number(snapshot.supportCreditBalance));
+      }
+      if (Array.isArray(snapshot.supportCreditPacks)) {
+        setSupportCreditPacks(snapshot.supportCreditPacks);
+        if (snapshot.supportCreditPacks.length > 0) setCreditsExpanded(true);
+      }
+    }
+    if (Array.isArray(snapshot.users)) {
+      setUsers(snapshot.users);
+      setLoadingUsers(false);
+    }
+  }, []);
+  const patchEnterpriseExtras = useCallback((clientId, patch) => {
+    if (!clientId || !patch || typeof patch !== "object") return;
+    const current = getDetailCache(DETAIL_CACHE_NS.enterprise, clientId, {
+      ttlMs: 0
+    });
+    if (current?.client) {
+      setDetailCache(DETAIL_CACHE_NS.enterprise, clientId, {
+        ...current,
+        ...patch
+      });
+      return;
+    }
+    // Seed later once client snapshot is written (race on first paint).
+    pendingEnterpriseExtrasRef.current = {
+      clientId: String(clientId),
+      patch: {
+        ...(pendingEnterpriseExtrasRef.current?.clientId === String(clientId)
+          ? pendingEnterpriseExtrasRef.current.patch
+          : {}),
+        ...patch
+      }
+    };
+  }, []);
+  const flushPendingEnterpriseExtras = useCallback(clientId => {
+    const pending = pendingEnterpriseExtrasRef.current;
+    if (!pending || String(pending.clientId) !== String(clientId)) return;
+    pendingEnterpriseExtrasRef.current = null;
+    patchEnterpriseExtras(clientId, pending.patch);
+  }, [patchEnterpriseExtras]);
   const hydrateServicesFromModules = useCallback(modulesData => {
     if (!modulesData) return;
     setAntivirusData(extractAntivirusFromModules(modulesData));
@@ -1293,10 +1404,13 @@ export default function ClientDetailPage({
     const cachedSnapshot = prefetchClientId
       ? getDetailCache(DETAIL_CACHE_NS.enterprise, prefetchClientId)
       : null;
+    const cacheHit = Boolean(
+      cachedSnapshot?.client && prefetchClientId && String(cachedSnapshot.client.id) === String(prefetchClientId)
+    );
     const optimisticClient =
       clientData?.client && prefetchClientId && String(clientData.client.id) === String(prefetchClientId)
         ? clientData.client
-        : cachedSnapshot?.client && prefetchClientId && String(cachedSnapshot.client.id) === String(prefetchClientId)
+        : cacheHit
           ? cachedSnapshot.client
           : null;
     setError(null);
@@ -1330,29 +1444,34 @@ export default function ClientDetailPage({
     setBackupInstances([]);
     setBackupJobs([]);
     setDocuments([]);
-    setContacts([]);
-    setPrestataires([]);
     setLogs([]);
     setLogsTotal(0);
     setLogsPage(1);
     setPhotos([]);
-    setNotes([]);
-    setClientTags([]);
-    setSupportTickets([]);
-    setPrestationTickets([]);
-    setUpcomingEvents([]);
-    setRecentEvents([]);
-    setSupportCreditBalance(null);
-    setSupportCreditPacks([]);
     setTagModalOpen(false);
     setNoteModalOpen(false);
     setNoteModalNoteId(null);
     setNoteModalInitialContent("");
-    setUsers([]);
-    setLoadingUsers(true);
+    setLoadingLogs(false);
+    // Stale-while-revalidate: keep hero/sidebar extras from cache instead of blanking them.
+    if (!Array.isArray(cachedSnapshot?.contacts)) setContacts([]);
+    if (!Array.isArray(cachedSnapshot?.prestataires)) setPrestataires([]);
+    if (!Array.isArray(cachedSnapshot?.notes)) setNotes([]);
+    if (!Array.isArray(cachedSnapshot?.tags)) setClientTags([]);
+    if (!Array.isArray(cachedSnapshot?.supportTickets)) setSupportTickets([]);
+    if (!Array.isArray(cachedSnapshot?.prestationTickets)) setPrestationTickets([]);
+    if (!Array.isArray(cachedSnapshot?.upcomingEvents)) setUpcomingEvents([]);
+    if (!Array.isArray(cachedSnapshot?.recentEvents)) setRecentEvents([]);
+    if (cachedSnapshot?.supportCreditBalance == null && !Array.isArray(cachedSnapshot?.supportCreditPacks)) {
+      setSupportCreditBalance(null);
+      setSupportCreditPacks([]);
+    }
+    if (!Array.isArray(cachedSnapshot?.users)) {
+      setUsers([]);
+      setLoadingUsers(true);
+    }
     setLoadingContacts(false);
     setLoadingPrestataires(false);
-    setLoadingLogs(false);
     if (optimisticClient && isMountedRef.current) {
       applyClientSnapshot(optimisticClient);
       hydrateServicesFromModules(
@@ -1363,6 +1482,7 @@ export default function ClientDetailPage({
               }
             : null)
       );
+      if (cacheHit) hydrateEnterpriseExtras(cachedSnapshot);
       setLoading(false);
     } else {
       setClient(null);
@@ -1408,14 +1528,20 @@ export default function ClientDetailPage({
           equipements: clientInfo.equipements
         });
       }
-      setDetailCache(DETAIL_CACHE_NS.enterprise, mergedClient.id, {
+      writeEnterpriseCache(mergedClient.id, {
         client: mergedClient,
         modulesData: modulesData || null
       });
+      flushPendingEnterpriseExtras(mergedClient.id);
       setLoading(false);
       enrichAzureCredentials(clientInfo, signal, isCurrentRequest).then(enriched => {
         if (!signal?.aborted && isCurrentRequest() && isMountedRef.current && enriched !== clientInfo) {
           setClient(enriched);
+          writeEnterpriseCache(enriched.id, {
+            client: enriched,
+            modulesData: modulesData || null
+          });
+          flushPendingEnterpriseExtras(enriched.id);
         }
       }).catch(e => {
         if (e?.name !== "AbortError") console.error("Error credentials Azure:", e);
@@ -1424,7 +1550,11 @@ export default function ClientDetailPage({
         signal
       }).then(usersData => {
         if (!signal?.aborted && isCurrentRequest() && isMountedRef.current) {
-          setUsers(Array.isArray(usersData) ? usersData : []);
+          const nextUsers = Array.isArray(usersData) ? usersData : [];
+          setUsers(nextUsers);
+          patchEnterpriseExtras(mergedClient.id, {
+            users: nextUsers
+          });
         }
       }).catch(async err => {
         if (err?.name === "AbortError") return;
@@ -1433,7 +1563,11 @@ export default function ClientDetailPage({
             signal
           });
           if (!signal?.aborted && isCurrentRequest() && isMountedRef.current) {
-            setUsers(Array.isArray(activeUsers) ? activeUsers : []);
+            const nextUsers = Array.isArray(activeUsers) ? activeUsers : [];
+            setUsers(nextUsers);
+            patchEnterpriseExtras(mergedClient.id, {
+              users: nextUsers
+            });
           }
         } catch (fallbackErr) {
           if (fallbackErr?.name !== "AbortError") console.error("Error chargement utilisateurs:", fallbackErr);
@@ -1442,7 +1576,13 @@ export default function ClientDetailPage({
         if (isCurrentRequest() && isMountedRef.current) setLoadingUsers(false);
       });
       void loadClientModules(clientInfo.id, modulesData, clientInfo);
-      const parallelLoads = [loadCustomFamilyMap(clientInfo.id, signal), loadClientTagsAndNotes(clientInfo.id, signal), loadClientActivity(clientInfo.id, signal), loadTotalEquipment(clientInfo.id, clientInfo, modulesData, signal), loadBackupData(clientInfo.id, signal, {
+      const keepTags = Array.isArray(cachedSnapshot?.tags);
+      const keepActivity = Array.isArray(cachedSnapshot?.upcomingEvents) || Array.isArray(cachedSnapshot?.recentEvents) || Array.isArray(cachedSnapshot?.supportTickets) || cachedSnapshot?.supportCreditBalance != null;
+      const parallelLoads = [loadCustomFamilyMap(clientInfo.id, signal), loadClientTagsAndNotes(clientInfo.id, signal, {
+        keepVisible: keepTags
+      }), loadClientActivity(clientInfo.id, signal, {
+        keepVisible: keepActivity
+      }), loadTotalEquipment(clientInfo.id, clientInfo, modulesData, signal), loadBackupData(clientInfo.id, signal, {
         silent: true
       })];
       if (!isCommunity) {
@@ -1474,7 +1614,9 @@ export default function ClientDetailPage({
       setLoadingMonitoringModules(false);
     }
   };
-  const loadContacts = async (clientId = null, signal) => {
+  const loadContacts = async (clientId = null, signal, {
+    keepVisible = false
+  } = {}) => {
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
     let requestSignal = signal;
@@ -1484,13 +1626,17 @@ export default function ClientDetailPage({
       contactsControllerRef.current = controller;
       requestSignal = controller.signal;
     }
-    setLoadingContacts(true);
+    if (!keepVisible) setLoadingContacts(true);
     try {
       const contactsData = await fetchContacts(targetClientId, {
         signal: requestSignal
       });
       if (requestSignal?.aborted || !isMountedRef.current) return;
-      setContacts(Array.isArray(contactsData) ? contactsData : []);
+      const nextContacts = Array.isArray(contactsData) ? contactsData : [];
+      setContacts(nextContacts);
+      patchEnterpriseExtras(targetClientId, {
+        contacts: nextContacts
+      });
       if (isMountedRef.current && String(targetClientId) === String(client?.id)) {
         const primary = pickPrimaryContact(contactsData, targetClientId);
         setFormData(prev => ({
@@ -1506,7 +1652,9 @@ export default function ClientDetailPage({
       if (isMountedRef.current) setLoadingContacts(false);
     }
   };
-  const loadPrestataires = async (clientId = null, signal) => {
+  const loadPrestataires = async (clientId = null, signal, {
+    keepVisible = false
+  } = {}) => {
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
     let requestSignal = signal;
@@ -1516,13 +1664,17 @@ export default function ClientDetailPage({
       prestatairesControllerRef.current = controller;
       requestSignal = controller.signal;
     }
-    setLoadingPrestataires(true);
+    if (!keepVisible) setLoadingPrestataires(true);
     try {
       const data = await fetchPrestataires(targetClientId, {
         signal: requestSignal
       });
       if (requestSignal?.aborted || !isMountedRef.current) return;
-      setPrestataires(Array.isArray(data) ? data : []);
+      const nextPrestataires = Array.isArray(data) ? data : [];
+      setPrestataires(nextPrestataires);
+      patchEnterpriseExtras(targetClientId, {
+        prestataires: nextPrestataires
+      });
     } catch (err) {
       if (err?.name !== "AbortError") {
         console.error("Error chargement prestataires:", err);
@@ -1638,11 +1790,15 @@ export default function ClientDetailPage({
       setCampaigns([]);
     }
   };
-  const loadClientTagsAndNotes = async (clientId = null, signal) => {
+  const loadClientTagsAndNotes = async (clientId = null, signal, {
+    keepVisible = false
+  } = {}) => {
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
-    setLoadingTags(true);
-    setLoadingNotes(true);
+    if (!keepVisible) {
+      setLoadingTags(true);
+      setLoadingNotes(true);
+    }
     try {
       const [tags, notesData] = await Promise.all([fetchClientTags(targetClientId, {
         signal
@@ -1650,12 +1806,18 @@ export default function ClientDetailPage({
         signal
       })]);
       if (signal?.aborted || !isMountedRef.current) return;
-      setClientTags(Array.isArray(tags) ? tags : []);
-      setNotes(Array.isArray(notesData) ? notesData : []);
+      const nextTags = Array.isArray(tags) ? tags : [];
+      const nextNotes = Array.isArray(notesData) ? notesData : [];
+      setClientTags(nextTags);
+      setNotes(nextNotes);
+      patchEnterpriseExtras(targetClientId, {
+        tags: nextTags,
+        notes: nextNotes
+      });
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error lors du loading des tags/notes:", error);
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !keepVisible) {
         setClientTags([]);
         setNotes([]);
       }
@@ -1666,10 +1828,12 @@ export default function ClientDetailPage({
       }
     }
   };
-  const loadClientActivity = async (clientId = null, signal) => {
+  const loadClientActivity = async (clientId = null, signal, {
+    keepVisible = false
+  } = {}) => {
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
-    setLoadingClientActivity(true);
+    if (!keepVisible) setLoadingClientActivity(true);
     try {
       const ticketRows = await fetchTickets({
         clientId: targetClientId,
@@ -1711,26 +1875,39 @@ export default function ClientDetailPage({
       }
       const creditsResult = await creditsPromise;
       if (signal?.aborted || !isMountedRef.current) return;
+      let nextBalance;
+      let nextPacks;
       if (creditsResult?.ok && creditsGenAtStart === supportCreditsLoadGenRef.current) {
         const creditSummary = creditsResult.summary;
-        const packs = Array.isArray(creditSummary?.packs) ? creditSummary.packs : [];
-        setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
-        setSupportCreditPacks(packs);
-        if (packs.length > 0) setCreditsExpanded(true);
+        nextPacks = Array.isArray(creditSummary?.packs) ? creditSummary.packs : [];
+        nextBalance = Number(creditSummary?.balance ?? 0);
+        setSupportCreditBalance(nextBalance);
+        setSupportCreditPacks(nextPacks);
+        if (nextPacks.length > 0) setCreditsExpanded(true);
       }
       const tickets = Array.isArray(ticketRows) ? ticketRows : [];
-      const upcomingList = Array.isArray(upcomingRows) ? upcomingRows : [];
-      const recentList = Array.isArray(recentRows) ? recentRows : [];
+      const upcomingList = filterUpcomingEvents(Array.isArray(upcomingRows) ? upcomingRows : []);
+      const recentList = filterRecentEvents(Array.isArray(recentRows) ? recentRows : []);
       const prestations = tickets.filter(isPrestationTicket);
       const support = tickets.filter(ticket => !isPrestationTicket(ticket));
       setPrestationTickets(prestations);
       setSupportTickets(support);
-      setUpcomingEvents(filterUpcomingEvents(upcomingList));
-      setRecentEvents(filterRecentEvents(recentList));
+      setUpcomingEvents(upcomingList);
+      setRecentEvents(recentList);
+      patchEnterpriseExtras(targetClientId, {
+        upcomingEvents: upcomingList,
+        recentEvents: recentList,
+        supportTickets: support,
+        prestationTickets: prestations,
+        ...(nextBalance !== undefined ? {
+          supportCreditBalance: nextBalance,
+          supportCreditPacks: nextPacks
+        } : {})
+      });
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error loading client activity:", error);
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !keepVisible) {
         setSupportTickets([]);
         setPrestationTickets([]);
         setUpcomingEvents([]);
@@ -2078,14 +2255,6 @@ export default function ClientDetailPage({
     () => filterRecentEvents([...(Array.isArray(recentEvents) ? recentEvents : []), ...campaignBookmarkEvents]),
     [recentEvents, campaignBookmarkEvents]
   );
-  const handleHeroStatsChange = useCallback(stats => {
-    setHeroSupervisionStats({
-      critical: Number(stats?.critical) || 0,
-      warning: Number(stats?.warning) || 0,
-      ok: Number(stats?.ok) || 0,
-      loading: Boolean(stats?.loading)
-    });
-  }, []);
   const handleReloadClientActivity = () => {
     if (client?.id) loadClientActivity(client.id);
   };
@@ -2096,9 +2265,14 @@ export default function ClientDetailPage({
       const creditSummary = await fetchClientSupportCredits(client.id);
       if (gen !== supportCreditsLoadGenRef.current || !isMountedRef.current) return;
       const packs = Array.isArray(creditSummary?.packs) ? creditSummary.packs : [];
-      setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
+      const balance = Number(creditSummary?.balance ?? 0);
+      setSupportCreditBalance(balance);
       setSupportCreditPacks(packs);
       if (packs.length > 0) setCreditsExpanded(true);
+      patchEnterpriseExtras(client.id, {
+        supportCreditBalance: balance,
+        supportCreditPacks: packs
+      });
     } catch (error) {
       console.error("Error reloading support credits:", error);
     }
@@ -2612,24 +2786,34 @@ export default function ClientDetailPage({
         const renamed = siteRenames.find(item => item.from === activeSiteFilter);
         if (renamed?.to) setActiveSiteFilter(renamed.to);
       }
-      setClient(prev => ({
-        ...prev,
-        client_number: fieldsToUpdate.clientNumber,
-        clientNumber: fieldsToUpdate.clientNumber,
-        name: fieldsToUpdate.name,
-        icon: fieldsToUpdate.icon,
-        icon_color: fieldsToUpdate.iconColor,
-        iconColor: fieldsToUpdate.iconColor,
-        sites: fieldsToUpdate.sites,
-        commercialId: fieldsToUpdate.commercialId,
-        commercial_id: fieldsToUpdate.commercialId,
-        contrat: contratPayload,
-        options: formData.modules,
-        modules: formData.modules,
-        siret: fieldsToUpdate.siret,
-        address: fieldsToUpdate.address,
-        secteur: fieldsToUpdate.secteur
-      }));
+      setClient(prev => {
+        const nextClient = {
+          ...prev,
+          client_number: fieldsToUpdate.clientNumber,
+          clientNumber: fieldsToUpdate.clientNumber,
+          name: fieldsToUpdate.name,
+          icon: fieldsToUpdate.icon,
+          icon_color: fieldsToUpdate.iconColor,
+          iconColor: fieldsToUpdate.iconColor,
+          sites: fieldsToUpdate.sites,
+          commercialId: fieldsToUpdate.commercialId,
+          commercial_id: fieldsToUpdate.commercialId,
+          commercial: users.find(u => String(u.id) === String(fieldsToUpdate.commercialId))?.username
+            || users.find(u => String(u.id) === String(fieldsToUpdate.commercialId))?.email
+            || prev?.commercial
+            || null,
+          contrat: contratPayload,
+          options: formData.modules,
+          modules: formData.modules,
+          siret: fieldsToUpdate.siret,
+          address: fieldsToUpdate.address,
+          secteur: fieldsToUpdate.secteur
+        };
+        writeEnterpriseCache(client.id, {
+          client: nextClient
+        });
+        return nextClient;
+      });
       if (siteRenames.length || serializeSitesForCompare(initialFormData?.sites) !== serializeSitesForCompare(fieldsToUpdate.sites)) {
         try {
           await refreshClientEquipment();
@@ -3173,8 +3357,11 @@ export default function ClientDetailPage({
         color
       });
       setClientTags(prev => {
-        if (prev.some(t => t.id === tag.id)) return prev;
-        return [...prev, tag].sort((a, b) => a.label.localeCompare(b.label));
+        const next = prev.some(t => t.id === tag.id) ? prev : [...prev, tag].sort((a, b) => a.label.localeCompare(b.label));
+        patchEnterpriseExtras(client.id, {
+          tags: next
+        });
+        return next;
       });
       setTagModalOpen(false);
       toast.success(copy.toast.tagAdded);
@@ -3189,7 +3376,13 @@ export default function ClientDetailPage({
     if (!client?.id) return;
     try {
       await removeClientTag(client.id, tagId);
-      setClientTags(prev => prev.filter(t => t.id !== tagId));
+      setClientTags(prev => {
+        const next = prev.filter(t => t.id !== tagId);
+        patchEnterpriseExtras(client.id, {
+          tags: next
+        });
+        return next;
+      });
       toast.success(copy.toast.tagRemoved);
     } catch (error) {
       console.error("Error removing tag:", error);
@@ -3463,7 +3656,6 @@ export default function ClientDetailPage({
   const heroLocationLabel = primaryHeroSite
     ? [primaryHeroSite.addressCity, primaryHeroSite.addressCountry].filter(Boolean).join(", ") || getSiteDisplayName(primaryHeroSite)
     : null;
-  const heroKpiCopy = copy.heroKpis || {};
   const heroFactCopy = copy.heroFacts || {};
   const activeContractModules = enabledModules.filter(mod => !!formData.modules?.[mod.moduleKey]);
   const heroPrimaryAddress = primaryHeroSite ? buildSiteAddress(primaryHeroSite) : "";
@@ -3474,9 +3666,23 @@ export default function ClientDetailPage({
   const heroContractValue = heroContractStart && heroContractEnd
     ? `${heroContractStart} → ${heroContractEnd}`
     : heroContractStart || heroContractEnd || "";
-  const heroCreditsValue = !isCommunity && supportCreditBalance != null
-    ? String(supportCreditBalance)
-    : "—";
+  const heroCreditsRemaining =
+    !isCommunity && supportCreditBalance != null ? Number(supportCreditBalance) || 0 : null;
+  const heroCreditsTotal = (() => {
+    if (isCommunity) return null;
+    const packs = Array.isArray(supportCreditPacks) ? supportCreditPacks : [];
+    const total = packs.reduce((sum, pack) => sum + (Number(pack?.initial_amount) || 0), 0);
+    if (total > 0) return total;
+    if (heroCreditsRemaining != null) return heroCreditsRemaining;
+    return null;
+  })();
+  const heroCreditsValue =
+    heroCreditsRemaining != null && heroCreditsTotal != null
+      ? interpolate(heroFactCopy.creditsBalance || "{remaining}/{total} crédits", {
+          remaining: String(heroCreditsRemaining),
+          total: String(heroCreditsTotal)
+        })
+      : "—";
   const heroOptionsValue = interpolate(heroFactCopy.optionsCount || "{count} options", {
     count: String(activeContractModules.length)
   });
@@ -3629,62 +3835,25 @@ export default function ClientDetailPage({
                   }}
                 />
               </div>
-              <div className={styles.heroRightCluster}>
-                {clientOnboarding ? <div className={`${styles.onboardingBanner} ${styles.heroOnboardingCard}`} role="status">
-                    <Icon icon="mdi:account-clock-outline" aria-hidden />
-                    <div className={styles.onboardingBannerText}>
-                      <strong>{copy.onboardingBannerTitle}</strong>
-                      <span>
-                        {clientOnboarding.ageDays < 1
+            </div>
+            {clientOnboarding ? (
+              <div className={`${styles.onboardingBanner} ${styles.heroOnboardingCard}`} role="status">
+                <Icon icon="mdi:account-clock-outline" aria-hidden />
+                <div className={styles.onboardingBannerText}>
+                  <strong>{copy.onboardingBannerTitle}</strong>
+                  <span>
+                    {clientOnboarding.ageDays < 1
                       ? interpolate(copy.onboardingBannerHintToday, {
-                        remaining: clientOnboarding.remainingDays
-                      })
+                          remaining: clientOnboarding.remainingDays
+                        })
                       : interpolate(copy.onboardingBannerHint, {
-                        days: clientOnboarding.ageDays,
-                        remaining: clientOnboarding.remainingDays
-                      })}
-                      </span>
-                    </div>
-                  </div> : null}
-                <div className={styles.heroKpiStrip} aria-label={copy.heroMetaAria}>
-                  <div className={styles.heroKpiCard}>
-                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconSites}`} aria-hidden>
-                      <Icon icon="mdi:office-building-marker-outline" />
-                    </span>
-                    <span className={styles.heroKpiValue}>{clientSites.length}</span>
-                    <span className={styles.heroKpiLabel}>{heroKpiCopy.sites || copy.sitesTitle}</span>
-                  </div>
-                  <div className={styles.heroKpiCard}>
-                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconDevices}`} aria-hidden>
-                      <Icon icon="mdi:devices" />
-                    </span>
-                    <span className={styles.heroKpiValue}>{heroEquipmentTotalCount}</span>
-                    <span className={styles.heroKpiLabel}>{heroKpiCopy.devices || "Périphériques"}</span>
-                  </div>
-                  <div className={styles.heroKpiCard}>
-                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconTickets}`} aria-hidden>
-                      <Icon icon="mdi:ticket-outline" />
-                    </span>
-                    <span className={styles.heroKpiValue}>{openSupportCount}</span>
-                    <span className={styles.heroKpiLabel}>{heroKpiCopy.openTickets || copy.kpiSupportOpen}</span>
-                  </div>
-                  <div className={styles.heroKpiCard}>
-                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconCritical}`} aria-hidden>
-                      <Icon icon="mdi:alert-octagon-outline" />
-                    </span>
-                    <span className={styles.heroKpiValue}>{heroSupervisionStats.critical}</span>
-                    <span className={styles.heroKpiLabel}>{heroKpiCopy.criticalAlerts || "Alerte critique"}</span>
-                  </div>
-                  <div className={styles.heroKpiCard}>
-                    <span className={`${styles.heroKpiIcon} ${styles.heroKpiIconWarnings}`} aria-hidden>
-                      <Icon icon="mdi:alert-outline" />
-                    </span>
-                    <span className={styles.heroKpiValue}>{heroSupervisionStats.warning}</span>
-                    <span className={styles.heroKpiLabel}>{heroKpiCopy.warnings || "Warnings"}</span>
-                  </div>
+                          days: clientOnboarding.ageDays,
+                          remaining: clientOnboarding.remainingDays
+                        })}
+                  </span>
                 </div>
               </div>
-            </div>
+            ) : null}
             {isCompanyInactive ? (
               <div className={styles.inactiveBanner} role="status">
                 <Icon icon="mdi:account-off-outline" aria-hidden />
@@ -3713,20 +3882,20 @@ export default function ClientDetailPage({
         </div>
       </header>
 
-      <div className={`${styles.pageBody} ${overviewTab === "vault" ? styles.pageBodyFill : ""}`.trim()}>
+      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "overview" || overviewTab === "activity" ? styles.pageBodyFill : ""}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""}`.trim()}>
+          <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "overview" ? styles.mainColumnOverview : ""} ${overviewTab === "activity" ? styles.mainColumnActivity : ""}`.trim()}>
             <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
               <button type="button" role="tab" aria-selected={overviewTab === "overview"} className={`${styles.heroTab} ${overviewTab === "overview" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("overview")} data-guide="enterprise-overview-tab">
-                <Icon icon="mdi:view-dashboard-outline" className={styles.heroTabIcon} aria-hidden />
+                <Icon icon="mdi:chart-timeline-variant" className={styles.heroTabIcon} aria-hidden />
                 <span className={styles.heroTabLabel}>{copy.overviewTabOverview}</span>
               </button>
               <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.heroTab} ${overviewTab === "map" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
-                <Icon icon="mdi:sitemap-outline" className={styles.heroTabIcon} aria-hidden />
+                <Icon icon="mdi:lan" className={styles.heroTabIcon} aria-hidden />
                 <span className={styles.heroTabLabel}>{copy.overviewTabMap}</span>
               </button>
               <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
-                <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
+                <Icon icon="mdi:ticket-confirmation-outline" className={styles.heroTabIcon} aria-hidden />
                 <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
               </button>
               <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.heroTab} ${overviewTab === "vault" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
@@ -3749,10 +3918,14 @@ export default function ClientDetailPage({
                 equipmentRevision={equipmentRevision}
                 contrat={formData?.contrat || client?.contrat || null}
                 onNavigate={onNavigate}
-                onStatsChange={handleHeroStatsChange}
               />
             </div>
-            {overviewTab === "map" ? <>
+            {mapTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "map"}
+              style={overviewTab === "map" ? undefined : { display: "none" }}
+            >
             <div className={styles.mapTabStack}>
             <div className={styles.mapModulesBlock} data-guide="enterprise-infra-map">
               {siteFilterBadge ? <div className={styles.mapModulesToolbar}>{siteFilterBadge}</div> : null}
@@ -3805,10 +3978,8 @@ export default function ClientDetailPage({
                   }
                 } : undefined} />
             </div>
-            </div>
-            </> : null}
 
-            {overviewTab === "map" ? <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
+            <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
                   <h2 className={styles.panelTitle}>
@@ -3909,9 +4080,18 @@ export default function ClientDetailPage({
                   }} onEmbeddedActiveTypeChange={setActiveEquipmentTableType} />
                 </div>
               </div>
-            </section> : null}
+            </section>
+            </div>
+            </div>
+            ) : null}
 
-            {overviewTab === "activity" ? <div className={styles.activityLayout} data-guide="enterprise-activity-panel">
+            {activityTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "activity"}
+              style={overviewTab === "activity" ? undefined : { display: "none" }}
+            >
+            <div className={styles.activityLayout} data-guide="enterprise-activity-panel">
                     <div className={styles.activityKpiRow}>
                       <div className={styles.activityKpiCard}>
                         <span className={styles.activityKpiValue}>{supportTickets.length}</span>
@@ -3966,7 +4146,7 @@ export default function ClientDetailPage({
                                     <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
                                       {copy.emptySupportTickets}
                                     </td>
-                                  </tr> : supportTickets.slice(0, 8).map(ticket => {
+                                  </tr> : supportTickets.map(ticket => {
                           const status = normalizeTicketStatus(ticket.status);
                           const sla = getTicketSlaDisplay(ticket, {
                             clients: client ? [client] : [],
@@ -4029,7 +4209,7 @@ export default function ClientDetailPage({
                                       <td colSpan={4} className={styles.dataTableEmptyCell}>
                                         {copy.emptyPrestationTickets}
                                       </td>
-                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).slice(0, 8).map(ticket => {
+                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).map(ticket => {
                             const status = normalizeTicketStatus(ticket.status);
                             return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
                               if (e.button === 1) {
@@ -4098,7 +4278,7 @@ export default function ClientDetailPage({
                                     <td colSpan={5} className={styles.dataTableEmptyCell}>
                                       {copy.emptyCampaigns}
                                     </td>
-                                  </tr> : ongoingCampaigns.slice(0, 8).map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
+                                  </tr> : ongoingCampaigns.map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
                                     <td className={styles.activityTitleCell} title={campaign.name || undefined}>{campaign.name || "-"}</td>
                                     <td>{getCampaignTypeLabel(campaign.type, locale)}</td>
                                     <td>
@@ -4118,15 +4298,25 @@ export default function ClientDetailPage({
                       </section>
                     </ProFeatureLock>
                     </div>
-            </div> : null}
+            </div>
+            </div>
+            ) : null}
 
-            {overviewTab === "vault" ? <div className={styles.vaultTabStack} data-guide="enterprise-vault-panel">
+            {vaultTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "vault"}
+              style={overviewTab === "vault" ? undefined : { display: "none" }}
+            >
+            <div className={styles.vaultTabStack} data-guide="enterprise-vault-panel">
               <div className={styles.vaultTabLock}>
                 <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
                   {client?.id ? <EnterpriseVaultPanel ref={vaultPanelRef} copy={vaultCopy} clientId={client.id} clientName={client.name} /> : null}
                 </ProFeatureLock>
               </div>
-            </div> : null}
+            </div>
+            </div>
+            ) : null}
             </div>
 
           </main>
@@ -4197,38 +4387,38 @@ export default function ClientDetailPage({
                     <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
                   </button>
                 </li>
-                <li>
-                  <button
-                    type="button"
-                    className={styles.quickActionItem}
-                    onClick={toggleEnterpriseSubscribe}
-                    disabled={!client?.id || enterpriseSubscribeLoading || enterpriseSubscribeSaving}
-                    aria-pressed={enterpriseSubscribed}
-                  >
-                    <span className={styles.quickActionIcon} aria-hidden>
-                      <Icon icon={enterpriseSubscribed ? "mdi:bell-ring" : "mdi:bell-outline"} />
-                    </span>
-                    <span className={styles.quickActionLabel}>
-                      {enterpriseSubscribed
-                        ? copy.subscribe?.unsubscribe || "Se désabonner"
-                        : copy.subscribe?.subscribe || "S’abonner aux notifications"}
-                    </span>
-                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                  </button>
-                </li>
-                {canEditClient ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={openEnterpriseEditModal}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:pencil-outline" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{quickActionsCopy.editEnterprise || copy.editEnterprise}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                    </button>
-                  </li>
-                ) : null}
                 {quickActionsExpanded ? (
                   <>
+                    <li>
+                      <button
+                        type="button"
+                        className={styles.quickActionItem}
+                        onClick={toggleEnterpriseSubscribe}
+                        disabled={!client?.id || enterpriseSubscribeLoading || enterpriseSubscribeSaving}
+                        aria-pressed={enterpriseSubscribed}
+                      >
+                        <span className={styles.quickActionIcon} aria-hidden>
+                          <Icon icon={enterpriseSubscribed ? "mdi:bell-ring" : "mdi:bell-outline"} />
+                        </span>
+                        <span className={styles.quickActionLabel}>
+                          {enterpriseSubscribed
+                            ? copy.subscribe?.unsubscribe || "Se désabonner"
+                            : copy.subscribe?.subscribe || "S’abonner aux notifications"}
+                        </span>
+                        <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                      </button>
+                    </li>
+                    {canEditClient ? (
+                      <li>
+                        <button type="button" className={styles.quickActionItem} onClick={openEnterpriseEditModal}>
+                          <span className={styles.quickActionIcon} aria-hidden>
+                            <Icon icon="mdi:pencil-outline" />
+                          </span>
+                          <span className={styles.quickActionLabel}>{quickActionsCopy.editEnterprise || copy.editEnterprise}</span>
+                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ) : null}
                     {canAddContact ? (
                       <li>
                         <button type="button" className={styles.quickActionItem} onClick={handleAddContact}>
@@ -4288,7 +4478,9 @@ export default function ClientDetailPage({
                 className={styles.quickActionsSeeAll}
                 onClick={() => setQuickActionsExpanded(prev => !prev)}
               >
-                {quickActionsCopy.seeAll}
+                {quickActionsExpanded
+                  ? quickActionsCopy.seeLess || "Voir moins"
+                  : quickActionsCopy.seeAll}
                 <Icon icon={quickActionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
               </button>
             </section>

@@ -1,22 +1,30 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
   min-width: 0;
-  padding-bottom: 0.25rem;
+  min-height: 0;
+  height: 100%;
+  padding-bottom: 0;
+  overflow: hidden;
 }
 
 .cardsGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.25rem;
+  gap: 1rem;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  align-items: stretch;
 }
 
 .card {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   border: 1px solid var(--msp-border-light, #e2e8f0);
   border-radius: 16px;
   background: var(--msp-surface);
@@ -107,12 +115,17 @@
 }
 
 .cardBody {
-  flex: 1;
+  flex: 1 1 auto;
   padding: 0.85rem 1.1rem 1.1rem;
   min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .cardFooter {
+  flex: 0 0 auto;
   padding: 0 1.1rem 1.1rem;
 }
 
@@ -122,6 +135,9 @@
   gap: 0.55rem;
   padding-top: 0.15rem;
   border-top: 1px solid var(--msp-border-light, #e8eef5);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .maintenanceHead {
@@ -156,8 +172,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 11.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
+  scrollbar-width: thin;
 }
 
 .maintenanceItem,
@@ -214,17 +233,31 @@
   display: grid;
   grid-template-columns: minmax(180px, 1.15fr) minmax(120px, 0.9fr);
   gap: 0.75rem 1rem;
-  align-items: center;
+  align-items: stretch;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .donutWrap {
   position: relative;
   width: 100%;
-  min-height: 220px;
+  min-height: 140px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Chart (and its tooltips) above the absolute center label. */
+.donutWrap > :global(.recharts-responsive-container) {
+  position: relative;
+  z-index: 2;
+}
+
+.donutWrap :global(.recharts-tooltip-wrapper) {
+  z-index: 5;
 }
 
 .parkRing {
@@ -247,6 +280,7 @@
 .donutCenter {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -300,6 +334,7 @@
   gap: 0.75rem 1rem;
   align-items: end;
   min-width: 0;
+  flex: 0 0 auto;
 }
 
 .metricMain {
@@ -308,6 +343,15 @@
   align-items: flex-start;
   gap: 0.2rem;
   min-width: 0;
+}
+
+.metricHero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+  cursor: help;
 }
 
 .metricValue {
@@ -342,21 +386,50 @@
   height: 36px;
 }
 
-.metricRows {
-  list-style: none;
-  margin: 0.85rem 0 0;
-  padding: 0.65rem 0 0;
+.metricKpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  width: 100%;
+  margin: auto 0 0;
+  padding: 0.75rem 0 0;
   border-top: 1px solid var(--msp-border-light, #d7e0ea);
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  flex: 0 0 auto;
 }
 
-.metricRows li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.55rem;
-  align-items: center;
+.metricKpi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--msp-surface, #fff) 88%, var(--msp-border-light, #d7e0ea));
+  cursor: help;
+}
+
+.metricKpiValue {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.metricKpiLabel {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.metricKpiOk .metricKpiValue {
+  color: #16a34a;
+}
+
+.metricKpiDanger .metricKpiValue {
+  color: #dc2626;
 }
 
 .legend {
@@ -367,6 +440,10 @@
   flex-direction: column;
   gap: 0.55rem;
   min-width: 0;
+  min-height: 0;
+  align-self: center;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .legendCompact {
@@ -384,11 +461,99 @@
   font-size: 0.8125rem;
 }
 
-.legend li {
+.legend li,
+.legendItem {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr) auto;
   gap: 0.55rem;
   align-items: center;
+  cursor: help;
+}
+
+.chartTooltip {
+  min-width: 140px;
+  max-width: 240px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border-light, #d7e0ea);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 8px 22px rgba(15, 28, 46, 0.12);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.chartTooltipTitle {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.chartTooltipHead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  min-width: 0;
+}
+
+.chartTooltipHead > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chartTooltipBody {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chartTooltipBody strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.chartTooltipBody span,
+.chartTooltipMuted,
+.chartTooltipFoot {
+  color: var(--msp-muted, #5c6b82);
+  font-weight: 600;
+}
+
+.chartTooltipList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.chartTooltipList li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.chartTooltipList strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.chartTooltipFoot {
+  margin-top: 0.4rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--msp-border-light, #d7e0ea);
+}
+
+.chartTooltipDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .legendDot {
@@ -413,9 +578,132 @@
   font-variant-numeric: tabular-nums;
 }
 
+.topList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+.topListHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.topListHead strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--msp-text, #0f1c2e);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.topListItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.topListItem {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  cursor: help;
+}
+
+.topListRank {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--msp-muted, #5c6b82);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  padding-top: 0.05rem;
+}
+
+.topListMain {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.topListRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.topListName {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.topListMeta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.topListMeta strong {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.topListMeta span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--msp-muted, #5c6b82);
+  min-width: 2.6rem;
+  text-align: right;
+}
+
+.topListBarTrack {
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-border-light, #d7e0ea) 80%, transparent);
+  overflow: hidden;
+}
+
+.topListBarFill {
+  height: 100%;
+  border-radius: inherit;
+  min-width: 0;
+}
+
 .chartWrap {
   width: 100%;
-  min-height: 200px;
+  min-height: 140px;
+  flex: 1 1 auto;
+  height: 100%;
+  min-width: 0;
 }
 
 .inlineLegend {
@@ -468,7 +756,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 220px;
+  flex: 1 1 auto;
+  min-height: 140px;
+  height: 100%;
   padding: 1.5rem;
   border: 1px solid var(--msp-border);
   border-radius: 14px;
@@ -510,9 +800,19 @@
 }
 
 @media (max-width: 1100px) {
+  .root {
+    height: auto;
+    overflow: visible;
+  }
+
   .cardsGrid,
   .skeletonGrid {
     grid-template-columns: 1fr;
+    flex: 0 0 auto;
+  }
+
+  .card {
+    height: auto;
   }
 }
 

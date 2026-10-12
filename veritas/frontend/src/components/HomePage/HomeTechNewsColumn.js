@@ -96,10 +96,9 @@ export default function HomeTechNewsColumn({
   return <aside className={styles.column} aria-label={t.title} aria-busy={busy}>
       <div className={styles.header}>
         <div className={styles.headerText}>
-          <Icon icon="mdi:rss" className={styles.headerIcon} aria-hidden />
-          <div>
+          <div className={styles.titleRow}>
             <h2 className={styles.title}>{t.title}</h2>
-            <p className={styles.subtitle}>{t.subtitle}</p>
+            <span className={styles.subtitle}>{t.subtitle}</span>
           </div>
         </div>
         <button type="button" className={styles.refreshBtn} onClick={() => setRefreshKey(k => k + 1)} disabled={busy} title={t.refresh} aria-label={t.refresh}>

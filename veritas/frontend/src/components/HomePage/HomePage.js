@@ -271,7 +271,6 @@ export default function HomePage({
                 locale={locale}
                 userName={userName}
                 assignedTicketStats={dashboard?.assignedTicketStats || null}
-                ticketSlaStats={dashboard?.ticketSlaStats || null}
                 recentTickets={dashboard?.recentTickets || []}
                 upcomingEvents={visibleEvents}
                 showSupportTickets={showSupportTickets}

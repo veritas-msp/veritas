@@ -17,8 +17,6 @@ import {
   mapClientHardwareEquipment
 } from "../../api/equipment";
 import {
-  fetchParkAvailabilityTrend,
-  fetchSupervisionAlertsActive,
   fetchSupervisionExclusions
 } from "../../api/supervisionAlerts";
 import { fetchTicketCategories, fetchTickets } from "../../api/tickets";
@@ -26,20 +24,11 @@ import { getLocaleTag } from "../../i18n/locales";
 import { interpolate } from "../../i18n/translate";
 import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-import { buildParkConicGradient } from "../../utils/parkRingGradient";
 import { isSalesTicket } from "../../utils/salesTicketUtils";
 import { getTicketSlaDisplay } from "../../utils/ticketSlaUtils";
 import { isCheckMKMappableType } from "../EquipementPage/CheckMKMonitoringStatusBadge";
-import { resolveRmmAgentOnline } from "../EquipementPage/rmmMonitoringUtils";
-import { buildQueueItemsFromSupervisionAlerts } from "../EquipementPage/supervisionQueueUtils";
+import SmartTooltip from "../SmartTooltip";
 import styles from "./EnterpriseOverviewTab.module.css";
-
-const PARK_COLORS = {
-  online: "#22c55e",
-  alert: "#f59e0b",
-  down: "#ef4444",
-  maintenance: "#64748b"
-};
 
 const SEV_COLORS = {
   critical: "#ef4444",
@@ -55,6 +44,9 @@ const TICKET_PRIORITY_COLORS = {
   low: "#94a3b8"
 };
 
+/** Stale-while-revalidate cache so Dashboard cards don't blank on remount / tab return. */
+const overviewDataCache = new Map();
+
 const ITIL_PALETTE = [
   "#2b5fab",
   "#0d9488",
@@ -69,7 +61,6 @@ const ITIL_PALETTE = [
 const ITIL_TOP_N = 5;
 
 const MK_CRITICAL_STATUSES = new Set(["critical", "down", "offline"]);
-const TREND_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const PERIOD_OPTIONS = [
@@ -136,12 +127,6 @@ function formatExclusionUntil(value, localeTag, indefiniteLabel) {
   }
 }
 
-function matchesClient(item, clientId) {
-  if (clientId == null || clientId === "") return false;
-  const cid = String(clientId);
-  return String(item?.clientId ?? item?.equipment?.clientId ?? "") === cid;
-}
-
 function emptyEvolutionSeries(days = 7) {
   const buckets = [];
   for (let i = days - 1; i >= 0; i -= 1) {
@@ -159,19 +144,6 @@ function emptyEvolutionSeries(days = 7) {
   return buckets;
 }
 
-function formatPct(value, localeTag) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return "—";
-  try {
-    return new Intl.NumberFormat(localeTag || undefined, {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1
-    }).format(n);
-  } catch {
-    return n.toFixed(1);
-  }
-}
-
 function formatDeltaPct(value, localeTag) {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
@@ -184,6 +156,151 @@ function formatDeltaPct(value, localeTag) {
   } catch {
     return abs.toFixed(2);
   }
+}
+
+function formatSharePct(value, localeTag) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0";
+  try {
+    return new Intl.NumberFormat(localeTag || undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1
+    }).format(n);
+  } catch {
+    return String(Math.round(n * 10) / 10);
+  }
+}
+
+function formatSliceTooltip(name, value, total, copy, localeTag) {
+  const count = Number(value) || 0;
+  const pct = total > 0 ? (count / total) * 100 : 0;
+  return interpolate(copy?.tooltip?.slice || "{name} : {count} ({pct}%)", {
+    name: name || "—",
+    count: String(count),
+    pct: formatSharePct(pct, localeTag)
+  });
+}
+
+function DonutTooltip({ active, payload, total = 0, copy = {}, localeTag }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload || {};
+  const name = row?.name;
+  const value = Number(row?.value) || 0;
+  if (!total || name === "—") {
+    return (
+      <div className={styles.chartTooltip}>
+        <span className={styles.chartTooltipMuted}>
+          {copy?.tooltip?.empty || "Aucune donnée"}
+        </span>
+      </div>
+    );
+  }
+  const pct = formatSharePct((value / total) * 100, localeTag);
+  return (
+    <div className={styles.chartTooltip}>
+      <div className={styles.chartTooltipHead}>
+        <span className={styles.chartTooltipDot} style={{ background: row.color }} />
+        <span>{name}</span>
+      </div>
+      <div className={styles.chartTooltipBody}>
+        <strong>{value}</strong>
+        <span>{interpolate(copy?.tooltip?.share || "{pct}% du total", { pct })}</span>
+      </div>
+    </div>
+  );
+}
+
+function EvolutionTooltip({ active, payload, label, copy = {} }) {
+  if (!active || !payload?.length) return null;
+  const total = payload.reduce((acc, entry) => acc + (Number(entry?.value) || 0), 0);
+  return (
+    <div className={styles.chartTooltip}>
+      {label ? <div className={styles.chartTooltipTitle}>{label}</div> : null}
+      <ul className={styles.chartTooltipList}>
+        {payload.map(entry => (
+          <li key={entry.dataKey || entry.name}>
+            <span
+              className={styles.chartTooltipDot}
+              style={{ background: entry.color || entry.stroke || entry.fill }}
+            />
+            <span>{entry.name}</span>
+            <strong>{Number(entry.value) || 0}</strong>
+          </li>
+        ))}
+      </ul>
+      <div className={styles.chartTooltipFoot}>
+        {interpolate(copy?.tooltip?.total || "Total : {total}", { total: String(total) })}
+      </div>
+    </div>
+  );
+}
+
+function LegendList({ rows = [], total = 0, copy = {}, localeTag, compact = false }) {
+  return (
+    <ul className={`${styles.legend} ${compact ? styles.legendCompact : ""}`.trim()}>
+      {rows.map(row => {
+        const tip = formatSliceTooltip(row.name, row.value, total, copy, localeTag);
+        return (
+          <SmartTooltip key={row.key} as="li" className={styles.legendItem} content={tip}>
+            <span className={styles.legendDot} style={{ background: row.color }} />
+            <span className={styles.legendLabel}>{row.name}</span>
+            <strong className={styles.legendValue}>{row.value}</strong>
+          </SmartTooltip>
+        );
+      })}
+    </ul>
+  );
+}
+
+function TopRankList({ rows = [], total = 0, copy = {}, localeTag, emptyLabel }) {
+  const list = Array.isArray(rows) ? rows.filter(row => (Number(row?.value) || 0) > 0) : [];
+  if (!list.length || !total) {
+    return (
+      <div className={styles.emptyState}>
+        <Icon icon="mdi:shape-outline" aria-hidden />
+        <p>{emptyLabel || copy?.tooltip?.empty || "Aucune donnée"}</p>
+      </div>
+    );
+  }
+  return (
+    <div className={styles.topList}>
+      <div className={styles.topListHead}>
+        <span>{copy?.ticketItil?.totalLabel || "sur la période"}</span>
+        <strong>{total}</strong>
+      </div>
+      <ol className={styles.topListItems}>
+        {list.map((row, idx) => {
+          const value = Number(row.value) || 0;
+          const pct = total > 0 ? (value / total) * 100 : 0;
+          const pctLabel = formatSharePct(pct, localeTag);
+          const tip = formatSliceTooltip(row.name, value, total, copy, localeTag);
+          return (
+            <SmartTooltip key={row.key} as="li" className={styles.topListItem} content={tip}>
+              <span className={styles.topListRank}>{idx + 1}</span>
+              <div className={styles.topListMain}>
+                <div className={styles.topListRow}>
+                  <span className={styles.topListName}>{row.name}</span>
+                  <span className={styles.topListMeta}>
+                    <strong>{value}</strong>
+                    <span>{pctLabel}%</span>
+                  </span>
+                </div>
+                <div className={styles.topListBarTrack} aria-hidden>
+                  <div
+                    className={styles.topListBarFill}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, pct))}%`,
+                      background: row.color || ITIL_PALETTE[idx % ITIL_PALETTE.length]
+                    }}
+                  />
+                </div>
+              </div>
+            </SmartTooltip>
+          );
+        })}
+      </ol>
+    </div>
+  );
 }
 
 function parseDateMs(value) {
@@ -370,14 +487,16 @@ function TrendDelta({
         value: formatted ?? "0.00"
       });
   return (
-    <div className={`${styles.deltaBadge} ${toneClass}`} title={hint || copy?.trendHintMom || ""}>
-      <Icon icon={icon} width={14} height={14} aria-hidden />
-      <span>{label}</span>
-    </div>
+    <SmartTooltip content={hint || copy?.trendHintMom || ""}>
+      <div className={`${styles.deltaBadge} ${toneClass}`}>
+        <Icon icon={icon} width={14} height={14} aria-hidden />
+        <span>{label}</span>
+      </div>
+    </SmartTooltip>
   );
 }
 
-function Sparkline({ values = [], tone = "neutral", invertTone = false }) {
+function Sparkline({ values = [], tone = "neutral", invertTone = false, tip }) {
   const nums = values.map(v => Number(v)).filter(n => Number.isFinite(n));
   if (nums.length < 2) {
     return <div className={styles.sparkEmpty} aria-hidden />;
@@ -402,7 +521,7 @@ function Sparkline({ values = [], tone = "neutral", invertTone = false }) {
   if (falling) stroke = invertTone ? "#16a34a" : "#dc2626";
   if (tone === "good") stroke = "#16a34a";
   if (tone === "bad") stroke = "#dc2626";
-  return (
+  const spark = (
     <svg
       className={styles.sparkline}
       viewBox={`0 0 ${w} ${h}`}
@@ -421,6 +540,8 @@ function Sparkline({ values = [], tone = "neutral", invertTone = false }) {
       />
     </svg>
   );
+  if (!tip) return spark;
+  return <SmartTooltip content={tip}>{spark}</SmartTooltip>;
 }
 
 function MetricCard({
@@ -434,14 +555,21 @@ function MetricCard({
   rows,
   copy,
   localeTag,
-  hint
+  hint,
+  actions,
+  mainTip,
+  sparkTip
 }) {
   return (
-    <ChartPanel icon={icon} title={title}>
+    <ChartPanel icon={icon} title={title} actions={actions}>
       <div className={styles.metricLayout}>
         <div className={styles.metricMain}>
-          <div className={styles.metricValue}>{strong}</div>
-          <div className={styles.metricSoft}>{soft}</div>
+          <SmartTooltip content={mainTip || hint || ""}>
+            <div className={styles.metricHero}>
+              <div className={styles.metricValue}>{strong}</div>
+              <div className={styles.metricSoft}>{soft}</div>
+            </div>
+          </SmartTooltip>
           <TrendDelta
             delta={delta}
             localeTag={localeTag}
@@ -451,18 +579,28 @@ function MetricCard({
           />
         </div>
         <div className={styles.metricSpark}>
-          <Sparkline values={sparkValues} invertTone={invertTone} />
+          <Sparkline values={sparkValues} invertTone={invertTone} tip={sparkTip} />
         </div>
       </div>
       {Array.isArray(rows) && rows.length ? (
-        <ul className={styles.metricRows}>
-          {rows.map(row => (
-            <li key={row.key}>
-              <span className={styles.legendLabel}>{row.label}</span>
-              <strong className={styles.legendValue}>{row.value}</strong>
-            </li>
-          ))}
-        </ul>
+        <div className={styles.metricKpis}>
+          {rows.map(row => {
+            const toneClass =
+              row.tone === "ok"
+                ? styles.metricKpiOk
+                : row.tone === "danger"
+                  ? styles.metricKpiDanger
+                  : "";
+            return (
+              <SmartTooltip key={row.key} content={row.tip || ""}>
+                <div className={`${styles.metricKpi} ${toneClass}`.trim()}>
+                  <strong className={styles.metricKpiValue}>{row.value}</strong>
+                  <span className={styles.metricKpiLabel}>{row.label}</span>
+                </div>
+              </SmartTooltip>
+            );
+          })}
+        </div>
       ) : null}
     </ChartPanel>
   );
@@ -481,45 +619,61 @@ export default function EnterpriseOverviewTab({
   const localeTag = getLocaleTag(locale);
   const resolvedClientId = clientId ?? client?.id ?? null;
   const resolvedContrat = contrat || client?.contrat || null;
-  const [loading, setLoading] = useState(true);
+  const cachedOverview = resolvedClientId
+    ? overviewDataCache.get(String(resolvedClientId))
+    : null;
+  const [loading, setLoading] = useState(() => !cachedOverview);
   const [error, setError] = useState(null);
-  const [queueItems, setQueueItems] = useState([]);
   const [evolutionDays, setEvolutionDays] = useState(7);
   const [ticketPriorityDays, setTicketPriorityDays] = useState(30);
   const [ticketItilDays, setTicketItilDays] = useState(30);
+  const [supportDays, setSupportDays] = useState(30);
   const [evolutionSeries, setEvolutionSeries] = useState(() => emptyEvolutionSeries(7));
   const [evolutionLoading, setEvolutionLoading] = useState(false);
-  const [exclusions, setExclusions] = useState([]);
-  const [monitoringSummaries, setMonitoringSummaries] = useState({});
-  const [parkTrendDelta, setParkTrendDelta] = useState(0);
-  const [tickets, setTickets] = useState([]);
-  const [itilCategories, setItilCategories] = useState([]);
+  const [exclusions, setExclusions] = useState(() => cachedOverview?.exclusions || []);
+  const [monitoringSummaries, setMonitoringSummaries] = useState(
+    () => cachedOverview?.monitoringSummaries || {}
+  );
+  const [tickets, setTickets] = useState(() => cachedOverview?.tickets || []);
+  const [itilCategories, setItilCategories] = useState(() => cachedOverview?.itilCategories || []);
 
   const equipment = useMemo(() => mapClientHardwareEquipment(client), [client, equipmentRevision]);
   const periodLabels = copy?.periods || {};
+  const hasOverviewContent =
+    Boolean(cachedOverview) ||
+    tickets.length > 0 ||
+    Object.keys(monitoringSummaries || {}).length > 0 ||
+    exclusions.length > 0;
 
   useEffect(() => {
     if (!resolvedClientId) {
       setLoading(false);
-      setQueueItems([]);
       setEvolutionSeries(emptyEvolutionSeries(evolutionDays));
       setExclusions([]);
       setMonitoringSummaries({});
-      setParkTrendDelta(0);
       setTickets([]);
       setItilCategories([]);
       return undefined;
     }
+    const cacheKey = String(resolvedClientId);
+    const cached = overviewDataCache.get(cacheKey);
+    if (cached) {
+      setExclusions(cached.exclusions || []);
+      setMonitoringSummaries(cached.monitoringSummaries || {});
+      setTickets(cached.tickets || []);
+      setItilCategories(cached.itilCategories || []);
+      setLoading(false);
+    }
     const controller = createTrackedAbortController("enterprise-overview");
     let cancelled = false;
-    setLoading(true);
+    // Stale-while-revalidate: blank only when nothing is available yet.
+    if (!cached) setLoading(true);
     setError(null);
 
     (async () => {
       try {
-        const [active, excl, summariesRes, trendRes, ticketsRes, categoriesRes] =
+        const [excl, summariesRes, ticketsRes, categoriesRes] =
           await Promise.all([
-            fetchSupervisionAlertsActive({ signal: controller.signal }).catch(() => []),
             fetchSupervisionExclusions({
               clientId: resolvedClientId,
               signal: controller.signal
@@ -528,10 +682,6 @@ export default function EnterpriseOverviewTab({
               { clientId: resolvedClientId },
               { signal: controller.signal }
             ).catch(() => ({ summaries: {} })),
-            fetchParkAvailabilityTrend({
-              clientId: resolvedClientId,
-              signal: controller.signal
-            }).catch(() => null),
             fetchTickets(
               { clientId: resolvedClientId, includeClosed: true, limit: 1000 },
               { signal: controller.signal }
@@ -539,18 +689,11 @@ export default function EnterpriseOverviewTab({
             fetchTicketCategories({ signal: controller.signal }).catch(() => [])
           ]);
         if (cancelled || controller.signal.aborted) return;
-        const queue = buildQueueItemsFromSupervisionAlerts(active, {
-          noName: copy?.noName || "—"
-        }).filter(item => matchesClient(item, resolvedClientId) && !item?.muted);
-        setQueueItems(queue);
-        setExclusions(
-          (Array.isArray(excl) ? excl : []).filter(row => {
-            if (row?.clientId != null) return String(row.clientId) === String(resolvedClientId);
-            return true;
-          })
-        );
-        setMonitoringSummaries(summariesRes?.summaries || {});
-        setParkTrendDelta(Number(trendRes?.delta) || 0);
+        const nextExclusions = (Array.isArray(excl) ? excl : []).filter(row => {
+          if (row?.clientId != null) return String(row.clientId) === String(resolvedClientId);
+          return true;
+        });
+        const nextSummaries = summariesRes?.summaries || {};
         const ticketList = Array.isArray(ticketsRes)
           ? ticketsRes
           : Array.isArray(ticketsRes?.tickets)
@@ -558,23 +701,31 @@ export default function EnterpriseOverviewTab({
             : Array.isArray(ticketsRes?.data)
               ? ticketsRes.data
               : [];
-        setTickets(
-          ticketList.filter(
-            t =>
-              String(t?.client_id ?? t?.clientId ?? "") === String(resolvedClientId) &&
-              !isSalesTicket(t)
-          )
+        const nextTickets = ticketList.filter(
+          t =>
+            String(t?.client_id ?? t?.clientId ?? "") === String(resolvedClientId) &&
+            !isSalesTicket(t)
         );
-        setItilCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
+        const nextCategories = Array.isArray(categoriesRes) ? categoriesRes : [];
+        setExclusions(nextExclusions);
+        setMonitoringSummaries(nextSummaries);
+        setTickets(nextTickets);
+        setItilCategories(nextCategories);
+        overviewDataCache.set(cacheKey, {
+          exclusions: nextExclusions,
+          monitoringSummaries: nextSummaries,
+          tickets: nextTickets,
+          itilCategories: nextCategories
+        });
       } catch (err) {
         if (cancelled || err?.name === "AbortError") return;
         setError(err?.message || copy?.loadError || "Error");
-        setQueueItems([]);
-        setExclusions([]);
-        setMonitoringSummaries({});
-        setParkTrendDelta(0);
-        setTickets([]);
-        setItilCategories([]);
+        if (!overviewDataCache.has(cacheKey)) {
+          setExclusions([]);
+          setMonitoringSummaries({});
+          setTickets([]);
+          setItilCategories([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -668,57 +819,6 @@ export default function EnterpriseOverviewTab({
     return out;
   }, [equipment, exclusions, localeTag]);
 
-  const park = useMemo(() => {
-    const list = Array.isArray(equipment) ? equipment : [];
-    const total = list.length;
-    const maintenanceIds = new Set(
-      (Array.isArray(exclusions) ? exclusions : [])
-        .filter(isDeviceMaintenanceExclusion)
-        .map(row => String(row.equipmentId || row.equipment_id || "").trim())
-        .filter(Boolean)
-    );
-    const criticalIds = new Set();
-    const alertIds = new Set();
-    for (const item of queueItems) {
-      const id = String(item.equipmentId || item.equipment?.id || "").trim();
-      if (!id) continue;
-      if (String(item.severity || "").toLowerCase() === "critical") criticalIds.add(id);
-      else alertIds.add(id);
-    }
-
-    let online = 0;
-    let inAlert = 0;
-    let down = 0;
-    let maintenance = 0;
-
-    for (const eq of list) {
-      const id = equipmentKey(eq);
-      if (id && maintenanceIds.has(id)) {
-        maintenance += 1;
-        continue;
-      }
-      if (id && criticalIds.has(id)) {
-        down += 1;
-        continue;
-      }
-      if (eq?.type === "Ordinateurs") {
-        const onlineRmm = resolveRmmAgentOnline(eq);
-        if (onlineRmm === false) {
-          down += 1;
-          continue;
-        }
-      }
-      if (id && alertIds.has(id)) {
-        inAlert += 1;
-        continue;
-      }
-      online += 1;
-    }
-
-    const availability = total > 0 ? Math.round((online / total) * 1000) / 10 : 100;
-    return { total, online, inAlert, down, maintenance, availability };
-  }, [equipment, exclusions, queueItems]);
-
   const evolution = evolutionSeries;
 
   const chartData = useMemo(() => {
@@ -739,42 +839,6 @@ export default function EnterpriseOverviewTab({
   }, [evolution, evolutionDays, localeTag]);
 
   const evolutionTickInterval = evolutionDays >= 365 ? 30 : evolutionDays >= 90 ? 13 : evolutionDays >= 30 ? 4 : 0;
-
-  const availabilityDelta = parkTrendDelta;
-
-  const parkLegend = useMemo(
-    () => [
-      {
-        key: "online",
-        name: copy?.park?.online || "En ligne",
-        value: park.online,
-        color: PARK_COLORS.online
-      },
-      {
-        key: "alert",
-        name: copy?.park?.alert || "En alerte",
-        value: park.inAlert,
-        color: PARK_COLORS.alert
-      },
-      {
-        key: "down",
-        name: copy?.park?.down || "Hors service",
-        value: park.down,
-        color: PARK_COLORS.down
-      },
-      {
-        key: "maintenance",
-        name: copy?.park?.maintenance || "En maintenance",
-        value: park.maintenance,
-        color: PARK_COLORS.maintenance
-      }
-    ],
-    [park, copy]
-  );
-  const parkRingGradient = useMemo(
-    () => buildParkConicGradient(parkLegend),
-    [parkLegend]
-  );
 
   const supervisionCounts = useMemo(() => {
     let critical = 0;
@@ -816,8 +880,6 @@ export default function EnterpriseOverviewTab({
   );
 
   const priorityTotal = supervisionCounts.total || 0;
-  const deltaUp = availabilityDelta > 0;
-  const deltaDown = availabilityDelta < 0;
 
   useEffect(() => {
     if (typeof onStatsChange !== "function") return undefined;
@@ -829,58 +891,31 @@ export default function EnterpriseOverviewTab({
     });
     return undefined;
   }, [onStatsChange, supervisionCounts.critical, supervisionCounts.warning, supervisionCounts.ok, loading]);
-  const deltaLabel = interpolate(copy?.park?.delta || "{sign}{value}%", {
-    sign: deltaUp ? "+" : deltaDown ? "−" : "",
-    value: formatPct(Math.abs(availabilityDelta), localeTag)
-  });
-  const deltaIcon = deltaUp ? "mdi:arrow-up" : deltaDown ? "mdi:arrow-down" : "mdi:arrow-right";
-  const deltaToneClass = deltaUp ? styles.deltaUp : deltaDown ? styles.deltaDown : styles.deltaFlat;
-
   const supportMetrics = useMemo(() => {
-    const openSeries = buildDailySeries(TREND_DAYS, atMs =>
+    const days = Math.min(Math.max(Number(supportDays) || 30, 1), 365);
+    const openSeries = buildDailySeries(days, atMs =>
       tickets.reduce((acc, t) => acc + (wasTicketOpenAt(t, atMs) ? 1 : 0), 0)
     );
     const openMom = computeMomFromSeries(openSeries);
     const openNow = tickets.filter(isOpenTicket);
-    let slaOk = 0;
-    let slaTracked = 0;
+    let slaOkCount = 0;
+    let slaBreachedCount = 0;
     for (const ticket of openNow) {
       const display = getTicketSlaDisplay(ticket, { clientContrat: resolvedContrat });
       const ok = isSlaOkTone(display);
       if (ok == null) continue;
-      slaTracked += 1;
-      if (ok) slaOk += 1;
+      if (ok) slaOkCount += 1;
+      else slaBreachedCount += 1;
     }
-    const slaPct = slaTracked > 0 ? Math.round((slaOk / slaTracked) * 1000) / 10 : null;
-
-    const slaSeries = buildDailySeries(TREND_DAYS, atMs => {
-      const openThen = tickets.filter(t => wasTicketOpenAt(t, atMs));
-      let ok = 0;
-      let tracked = 0;
-      for (const ticket of openThen) {
-        const display = getTicketSlaDisplay(ticket, {
-          clientContrat: resolvedContrat,
-          now: atMs
-        });
-        const verdict = isSlaOkTone(display);
-        if (verdict == null) continue;
-        tracked += 1;
-        if (verdict) ok += 1;
-      }
-      return tracked > 0 ? Math.round((ok / tracked) * 1000) / 10 : 100;
-    });
-    const slaMom = computeMomFromSeries(slaSeries);
 
     return {
       openCount: openNow.length,
       openDelta: openMom.delta,
       openSpark: seriesSparkPoints(openSeries),
-      slaPct,
-      slaDelta: slaMom.delta,
-      slaSpark: seriesSparkPoints(slaSeries),
-      totalTickets: tickets.length
+      slaOkCount,
+      slaBreachedCount
     };
-  }, [tickets, resolvedContrat]);
+  }, [tickets, resolvedContrat, supportDays]);
 
   const periodTicketPriority = useMemo(
     () => tickets.filter(t => ticketInPeriod(t, ticketPriorityDays)),
@@ -993,7 +1028,7 @@ export default function EnterpriseOverviewTab({
 
   const ticketItilTotal = periodTicketItil.length;
 
-  if (loading) {
+  if (loading && !hasOverviewContent) {
     return (
       <div className={styles.root} data-guide="enterprise-overview" aria-busy="true">
         <span className={styles.srOnly}>{copy?.loading || "Chargement…"}</span>
@@ -1001,7 +1036,7 @@ export default function EnterpriseOverviewTab({
     );
   }
 
-  if (error) {
+  if (error && !hasOverviewContent) {
     return (
       <div className={styles.root} data-guide="enterprise-overview">
         <div className={styles.emptyState}>
@@ -1021,114 +1056,193 @@ export default function EnterpriseOverviewTab({
   return (
     <div className={styles.root} data-guide="enterprise-overview">
       <div className={styles.cardsGrid}>
+        <MetricCard
+          icon="mdi:lifebuoy"
+          title={copy?.support?.title || "Support et SLA"}
+          strong={String(supportMetrics.openCount)}
+          soft={copy?.support?.openLabel || "Tickets ouverts"}
+          delta={supportMetrics.openDelta}
+          invertTone
+          sparkValues={supportMetrics.openSpark}
+          copy={trendCopy}
+          localeTag={localeTag}
+          hint={copy?.support?.trendHint || trendCopy.trendHintMom}
+          mainTip={interpolate(copy?.tooltip?.openTickets || "{count} tickets actuellement ouverts", {
+            count: String(supportMetrics.openCount)
+          })}
+          sparkTip={interpolate(
+            copy?.tooltip?.spark || "Début de période : {start} → aujourd’hui : {end}",
+            {
+              start: String(supportMetrics.openSpark[0] ?? 0),
+              end: String(supportMetrics.openSpark[supportMetrics.openSpark.length - 1] ?? 0)
+            }
+          )}
+          actions={
+            <PeriodSeg
+              value={supportDays}
+              onChange={setSupportDays}
+              labels={periodLabels}
+              ariaLabel={copy?.periodAria || "Période"}
+            />
+          }
+          rows={[
+            {
+              key: "sla-ok",
+              label: copy?.support?.slaOk || "SLA OK",
+              value: String(supportMetrics.slaOkCount),
+              tip: interpolate(
+                copy?.tooltip?.slaOk || "{count} tickets ouverts dans les délais SLA",
+                { count: String(supportMetrics.slaOkCount) }
+              )
+            },
+            {
+              key: "sla-breached",
+              label: copy?.support?.slaBreached || "SLA dépassé",
+              value: String(supportMetrics.slaBreachedCount),
+              tip: interpolate(
+                copy?.tooltip?.slaBreached || "{count} tickets ouverts hors délais SLA",
+                { count: String(supportMetrics.slaBreachedCount) }
+              )
+            }
+          ]}
+        />
+
         <ChartPanel
-          icon="mdi:clipboard-pulse-outline"
-          title={copy?.park?.title || "État global du parc"}
-          footer={
-            deviceMaintenances.length > 0 ? (
-              <div className={styles.maintenanceBlock}>
-                <div className={styles.maintenanceHead}>
-                  <Icon icon="mdi:wrench-clock" className={styles.maintenanceHeadIcon} aria-hidden />
-                  <span>
-                    {copy?.park?.devicesInMaintenance || "Périphériques en maintenance"}
-                    <strong className={styles.maintenanceCount}>{deviceMaintenances.length}</strong>
-                  </span>
-                </div>
-                <ul className={styles.maintenanceList}>
-                  {deviceMaintenances.map(row => {
-                    const untilLabel = formatExclusionUntil(
-                      row.excludedUntil,
-                      localeTag,
-                      copy?.park?.indefinite || "Indéterminée"
-                    );
-                    const untilText = row.excludedUntil
-                      ? interpolate(copy?.park?.until || "Jusqu’au {date}", { date: untilLabel })
-                      : untilLabel;
-                    const canOpen = typeof onNavigate === "function";
-                    const openDevice = () => {
-                      if (!canOpen) return;
-                      const payload =
-                        row.equipment ||
-                        {
-                          id: row.equipmentId,
-                          dbId: row.equipmentId,
-                          clientId: resolvedClientId,
-                          name: row.name,
-                          type: row.equipmentFamily || null
-                        };
-                      onNavigate("EquipmentDetail", payload);
-                    };
-                    return (
-                      <li key={row.id}>
-                        {canOpen ? (
-                          <button
-                            type="button"
-                            className={styles.maintenanceItem}
-                            onClick={openDevice}
-                            title={copy?.park?.openDevice || "Ouvrir le périphérique"}
-                          >
-                            <span className={styles.maintenanceName}>{row.name}</span>
-                            <span className={styles.maintenanceMeta}>
-                              <span>{untilText}</span>
-                              {row.reason ? (
-                                <span className={styles.maintenanceReason}>{row.reason}</span>
-                              ) : null}
-                            </span>
-                          </button>
-                        ) : (
-                          <div className={styles.maintenanceItemStatic}>
-                            <span className={styles.maintenanceName}>{row.name}</span>
-                            <span className={styles.maintenanceMeta}>
-                              <span>{untilText}</span>
-                              {row.reason ? (
-                                <span className={styles.maintenanceReason}>{row.reason}</span>
-                              ) : null}
-                            </span>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null
+          icon="mdi:format-list-numbered"
+          title={copy?.ticketItil?.title || "Top catégories ITIL"}
+          actions={
+            <PeriodSeg
+              value={ticketItilDays}
+              onChange={setTicketItilDays}
+              labels={periodLabels}
+              ariaLabel={copy?.periodAria || "Période"}
+            />
+          }
+        >
+          <TopRankList
+            rows={ticketItilSlices}
+            total={ticketItilTotal}
+            copy={copy}
+            localeTag={localeTag}
+            emptyLabel={copy?.ticketItil?.empty || "Aucune catégorie sur la période"}
+          />
+        </ChartPanel>
+
+        <ChartPanel
+          icon="mdi:priority-high"
+          title={copy?.ticketPriority?.title || "Tickets par priorité"}
+          actions={
+            <PeriodSeg
+              value={ticketPriorityDays}
+              onChange={setTicketPriorityDays}
+              labels={periodLabels}
+              ariaLabel={copy?.periodAria || "Période"}
+            />
           }
         >
           <div className={styles.donutLayout}>
             <div className={styles.donutWrap}>
-              <div
-                className={styles.parkRing}
-                style={{ background: parkRingGradient }}
-                aria-hidden
-              />
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={
+                      ticketPriorityTotal > 0
+                        ? ticketPrioritySlices.filter(s => s.value > 0)
+                        : [{ name: "—", value: 1, color: "#e2e8f0" }]
+                    }
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="58%"
+                    outerRadius="82%"
+                    paddingAngle={ticketPriorityTotal > 0 ? 2 : 0}
+                    stroke="transparent"
+                    isAnimationActive={false}
+                  >
+                    {(ticketPriorityTotal > 0
+                      ? ticketPrioritySlices.filter(s => s.value > 0)
+                      : [{ color: "#e2e8f0" }]
+                    ).map((entry, idx) => (
+                      <Cell key={entry.key || idx} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    content={
+                      <DonutTooltip
+                        total={ticketPriorityTotal}
+                        copy={copy}
+                        localeTag={localeTag}
+                      />
+                    }
+                  />
+                </PieChart>
+              </ResponsiveContainer>
               <DonutCenter
-                strong={`${formatPct(park.availability, localeTag)}%`}
-                soft={copy?.park?.availability || "Disponibilité"}
-              >
-                <div
-                  className={`${styles.deltaBadge} ${deltaToneClass}`}
-                  title={copy?.park?.trendHint || "Tendance vs semaine précédente"}
-                >
-                  <Icon icon={deltaIcon} width={12} height={12} aria-hidden />
-                  <span>{deltaLabel}</span>
-                </div>
-              </DonutCenter>
+                strong={String(ticketPriorityTotal)}
+                soft={copy?.ticketPriority?.totalLabel || "sur la période"}
+              />
             </div>
-            <ul className={styles.legend}>
-              {parkLegend.map(row => (
-                <li key={row.key}>
-                  <span className={styles.legendDot} style={{ background: row.color }} />
-                  <span className={styles.legendLabel}>{row.name}</span>
-                  <strong className={styles.legendValue}>{row.value}</strong>
-                </li>
-              ))}
-            </ul>
+            <LegendList
+              compact
+              rows={ticketPrioritySlices}
+              total={ticketPriorityTotal}
+              copy={copy}
+              localeTag={localeTag}
+            />
+          </div>
+        </ChartPanel>
+      </div>
+
+      <div className={styles.cardsGrid}>
+        <ChartPanel icon="mdi:alert-decagram-outline" title={copy?.priority?.title || "Alertes par priorité"}>
+          <div className={styles.donutLayout}>
+            <div className={styles.donutWrap}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={
+                      priorityTotal > 0
+                        ? prioritySlices.filter(s => s.value > 0)
+                        : [{ name: "—", value: 1, color: "#e2e8f0" }]
+                    }
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="58%"
+                    outerRadius="82%"
+                    paddingAngle={priorityTotal > 0 ? 2 : 0}
+                    stroke="transparent"
+                    isAnimationActive={false}
+                  >
+                    {(priorityTotal > 0
+                      ? prioritySlices.filter(s => s.value > 0)
+                      : [{ color: "#e2e8f0" }]
+                    ).map((entry, idx) => (
+                      <Cell key={entry.key || idx} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    content={
+                      <DonutTooltip total={priorityTotal} copy={copy} localeTag={localeTag} />
+                    }
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <DonutCenter
+                strong={String(priorityTotal)}
+                soft={copy?.priority?.totalLabel || "au total"}
+              />
+            </div>
+            <LegendList
+              rows={prioritySlices}
+              total={priorityTotal}
+              copy={copy}
+              localeTag={localeTag}
+            />
           </div>
         </ChartPanel>
 
         <ChartPanel
           icon="mdi:chart-timeline-variant"
-          title={copy?.evolution?.title || "Évolution des équipements"}
+          title={copy?.evolution?.title || "Évolution des alertes"}
           actions={
             <PeriodSeg
               value={evolutionDays}
@@ -1155,7 +1269,7 @@ export default function EnterpriseOverviewTab({
           }
         >
           <div className={`${styles.chartWrap} ${evolutionLoading ? styles.chartWrapBusy : ""}`}>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="entCrit" x1="0" y1="0" x2="0" y2="1">
@@ -1181,15 +1295,7 @@ export default function EnterpriseOverviewTab({
                   tickLine={false}
                   width={36}
                 />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--msp-surface, #fff)",
-                    border: "1px solid var(--msp-border, #e2e8f0)",
-                    borderRadius: 10,
-                    fontSize: 12,
-                    color: "var(--msp-text, #0f172a)"
-                  }}
-                />
+                <Tooltip content={<EvolutionTooltip copy={copy} />} />
                 <Area
                   type="monotone"
                   dataKey="critical"
@@ -1213,200 +1319,82 @@ export default function EnterpriseOverviewTab({
           </div>
         </ChartPanel>
 
-        <ChartPanel icon="mdi:alert-decagram-outline" title={copy?.priority?.title || "Alertes par priorité"}>
-          <div className={styles.donutLayout}>
-            <div className={styles.donutWrap}>
-              <ResponsiveContainer width="100%" height={168}>
-                <PieChart>
-                  <Pie
-                    data={
-                      priorityTotal > 0
-                        ? prioritySlices.filter(s => s.value > 0)
-                        : [{ name: "—", value: 1, color: "#e2e8f0" }]
-                    }
-                    dataKey="value"
-                    innerRadius={52}
-                    outerRadius={74}
-                    paddingAngle={priorityTotal > 0 ? 2 : 0}
-                    stroke="transparent"
-                    isAnimationActive={false}
-                  >
-                    {(priorityTotal > 0
-                      ? prioritySlices.filter(s => s.value > 0)
-                      : [{ color: "#e2e8f0" }]
-                    ).map((entry, idx) => (
-                      <Cell key={entry.key || idx} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <DonutCenter
-                strong={String(priorityTotal)}
-                soft={copy?.priority?.totalLabel || "au total"}
-              />
-            </div>
-            <ul className={styles.legend}>
-              {prioritySlices.map(row => (
-                <li key={row.key}>
-                  <span className={styles.legendDot} style={{ background: row.color }} />
-                  <span className={styles.legendLabel}>{row.name}</span>
-                  <strong className={styles.legendValue}>{row.value}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </ChartPanel>
-      </div>
-
-      <div className={styles.cardsGrid}>
-        <MetricCard
-          icon="mdi:lifebuoy"
-          title={copy?.support?.title || "Support (tickets + SLA)"}
-          strong={String(supportMetrics.openCount)}
-          soft={copy?.support?.openLabel || "Tickets ouverts"}
-          delta={supportMetrics.openDelta}
-          invertTone
-          sparkValues={supportMetrics.openSpark}
-          copy={trendCopy}
-          localeTag={localeTag}
-          hint={copy?.support?.trendHint || trendCopy.trendHintMom}
-          rows={[
-            {
-              key: "sla",
-              label: copy?.support?.slaOk || "SLA OK",
-              value:
-                supportMetrics.slaPct == null
-                  ? copy?.support?.slaNone || "—"
-                  : `${formatPct(supportMetrics.slaPct, localeTag)}%`
-            },
-            {
-              key: "total",
-              label: copy?.support?.totalLabel || "Tickets (échantillon)",
-              value: String(supportMetrics.totalTickets)
-            }
-          ]}
-        />
-
         <ChartPanel
-          icon="mdi:priority-high"
-          title={copy?.ticketPriority?.title || "Tickets par priorité"}
-          actions={
-            <PeriodSeg
-              value={ticketPriorityDays}
-              onChange={setTicketPriorityDays}
-              labels={periodLabels}
-              ariaLabel={copy?.periodAria || "Période"}
-            />
-          }
+          icon="mdi:wrench-clock"
+          title={copy?.park?.devicesInMaintenance || "Équipements en maintenance"}
         >
-          <div className={styles.donutLayout}>
-            <div className={styles.donutWrap}>
-              <ResponsiveContainer width="100%" height={168}>
-                <PieChart>
-                  <Pie
-                    data={
-                      ticketPriorityTotal > 0
-                        ? ticketPrioritySlices.filter(s => s.value > 0)
-                        : [{ name: "—", value: 1, color: "#e2e8f0" }]
-                    }
-                    dataKey="value"
-                    innerRadius={52}
-                    outerRadius={74}
-                    paddingAngle={ticketPriorityTotal > 0 ? 2 : 0}
-                    stroke="transparent"
-                    isAnimationActive={false}
-                  >
-                    {(ticketPriorityTotal > 0
-                      ? ticketPrioritySlices.filter(s => s.value > 0)
-                      : [{ color: "#e2e8f0" }]
-                    ).map((entry, idx) => (
-                      <Cell key={entry.key || idx} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <DonutCenter
-                strong={String(ticketPriorityTotal)}
-                soft={copy?.ticketPriority?.totalLabel || "sur la période"}
-              />
+          {deviceMaintenances.length > 0 ? (
+            <div className={styles.maintenanceBlock}>
+              <div className={styles.maintenanceHead}>
+                <Icon icon="mdi:wrench-clock" className={styles.maintenanceHeadIcon} aria-hidden />
+                <span>
+                  {copy?.park?.devicesInMaintenance || "Équipements en maintenance"}
+                  <strong className={styles.maintenanceCount}>{deviceMaintenances.length}</strong>
+                </span>
+              </div>
+              <ul className={styles.maintenanceList}>
+                {deviceMaintenances.map(row => {
+                  const untilLabel = formatExclusionUntil(
+                    row.excludedUntil,
+                    localeTag,
+                    copy?.park?.indefinite || "Indéterminée"
+                  );
+                  const untilText = row.excludedUntil
+                    ? interpolate(copy?.park?.until || "Jusqu’au {date}", { date: untilLabel })
+                    : untilLabel;
+                  const canOpen = typeof onNavigate === "function";
+                  const openDevice = () => {
+                    if (!canOpen) return;
+                    const payload =
+                      row.equipment ||
+                      {
+                        id: row.equipmentId,
+                        dbId: row.equipmentId,
+                        clientId: resolvedClientId,
+                        name: row.name,
+                        type: row.equipmentFamily || null
+                      };
+                    onNavigate("EquipmentDetail", payload);
+                  };
+                  return (
+                    <li key={row.id}>
+                      {canOpen ? (
+                        <button
+                          type="button"
+                          className={styles.maintenanceItem}
+                          onClick={openDevice}
+                          title={copy?.park?.openDevice || "Ouvrir le périphérique"}
+                        >
+                          <span className={styles.maintenanceName}>{row.name}</span>
+                          <span className={styles.maintenanceMeta}>
+                            <span>{untilText}</span>
+                            {row.reason ? (
+                              <span className={styles.maintenanceReason}>{row.reason}</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      ) : (
+                        <div className={styles.maintenanceItemStatic}>
+                          <span className={styles.maintenanceName}>{row.name}</span>
+                          <span className={styles.maintenanceMeta}>
+                            <span>{untilText}</span>
+                            {row.reason ? (
+                              <span className={styles.maintenanceReason}>{row.reason}</span>
+                            ) : null}
+                          </span>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-            <ul className={`${styles.legend} ${styles.legendCompact}`}>
-              {ticketPrioritySlices.map(row => (
-                <li key={row.key}>
-                  <span className={styles.legendDot} style={{ background: row.color }} />
-                  <span className={styles.legendLabel}>{row.name}</span>
-                  <strong className={styles.legendValue}>{row.value}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </ChartPanel>
-
-        <ChartPanel
-          icon="mdi:shape-outline"
-          title={copy?.ticketItil?.title || "Tickets par catégorie ITIL"}
-          actions={
-            <PeriodSeg
-              value={ticketItilDays}
-              onChange={setTicketItilDays}
-              labels={periodLabels}
-              ariaLabel={copy?.periodAria || "Période"}
-            />
-          }
-        >
-          <div className={styles.donutLayout}>
-            <div className={styles.donutWrap}>
-              <ResponsiveContainer width="100%" height={168}>
-                <PieChart>
-                  <Pie
-                    data={
-                      ticketItilTotal > 0
-                        ? ticketItilSlices.filter(s => s.value > 0)
-                        : [{ name: "—", value: 1, color: "#e2e8f0" }]
-                    }
-                    dataKey="value"
-                    innerRadius={52}
-                    outerRadius={74}
-                    paddingAngle={ticketItilTotal > 0 ? 2 : 0}
-                    stroke="transparent"
-                    isAnimationActive={false}
-                  >
-                    {(ticketItilTotal > 0
-                      ? ticketItilSlices.filter(s => s.value > 0)
-                      : [{ color: "#e2e8f0" }]
-                    ).map((entry, idx) => (
-                      <Cell key={entry.key || idx} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <DonutCenter
-                strong={String(ticketItilTotal)}
-                soft={copy?.ticketItil?.totalLabel || "sur la période"}
-              />
+          ) : (
+            <div className={styles.emptyState}>
+              <Icon icon="mdi:wrench-check-outline" aria-hidden />
+              <p>{copy?.park?.noMaintenance || "Aucun équipement en maintenance"}</p>
             </div>
-            <ul className={`${styles.legend} ${styles.legendCompact}`}>
-              {(ticketItilTotal > 0
-                ? ticketItilSlices
-                : [
-                    {
-                      key: "__empty__",
-                      name: copy?.ticketItil?.uncategorized || "Non catégorisé",
-                      value: 0,
-                      color: "#e2e8f0"
-                    }
-                  ]
-              ).map(row => (
-                <li key={row.key}>
-                  <span className={styles.legendDot} style={{ background: row.color }} />
-                  <span className={styles.legendLabel} title={row.name}>
-                    {row.name}
-                  </span>
-                  <strong className={styles.legendValue}>{row.value}</strong>
-                </li>
-              ))}
-            </ul>
-          </div>
+          )}
         </ChartPanel>
       </div>
     </div>

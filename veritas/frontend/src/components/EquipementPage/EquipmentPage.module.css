@@ -17,11 +17,11 @@
 }
 
 .hardwarePageEmbedded {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  height: auto;
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
   background: transparent;
   color: inherit;
   position: relative;
@@ -45,15 +45,20 @@
 
 .hardwarePageEmbedded .mainContent {
   width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
   padding: 0;
-  overflow: visible;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: transparent;
   color: inherit;
 }
 
 .hardwarePageEmbedded .tablesContainer {
-  max-height: none;
-  overflow: visible;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -62,6 +67,74 @@
 
 .tablesContainerEmbedded {
   gap: 0.65rem;
+  min-height: 0;
+}
+
+.hardwarePageEmbedded .embeddedFilterBar {
+  flex: 0 0 auto;
+}
+
+.hardwarePageEmbedded .equipmentTableSectionEmbedded {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.hardwarePageEmbedded .paginationEmbedded {
+  flex: 0 0 auto;
+}
+
+/* Enterprise cartographie: force fill + scroll inside table body */
+.hardwarePageEmbeddedFill {
+  flex: 1 1 0;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.hardwarePageEmbeddedFill > .mainContent {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+}
+
+.hardwarePageEmbeddedFill .tablesContainerEmbedded {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hardwarePageEmbeddedFill .equipmentTableSectionEmbedded {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tableWrapperEmbeddedScroll {
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tableWrapperEmbeddedScroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 
@@ -498,7 +571,8 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
+  min-height: 0;
+  overflow: auto;
   border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, var(--msp-radius-sm, 10px));
   background: var(--eq-surface, var(--msp-surface, #ffffff));
@@ -1585,14 +1659,25 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   background: var(--eq-surface, var(--msp-surface, #ffffff));
   border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, var(--msp-radius-sm, 10px));
   box-shadow: var(--eq-shadow, var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04)));
+}
+
+.hardwarePageEmbedded .tableWrapper::-webkit-scrollbar,
+.hardwarePageEmbedded .tableWrapperEmbedded::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded {
@@ -1602,7 +1687,16 @@
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded thead {
-  position: static;
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+}
+
+.hardwarePageEmbedded .equipmentTableEmbedded thead th {
+  position: sticky;
+  top: 0;
+  z-index: 12;
   background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
 }
 
@@ -1627,10 +1721,10 @@
   color: var(--eq-accent, var(--msp-accent, #2b5fab));
 }
 
-.hardwarePageEmbedded .equipmentTableEmbedded .embeddedColActions {
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions {
   position: sticky;
   right: 0;
-  z-index: 2;
+  z-index: 1;
   width: 6.5rem;
   min-width: 6.5rem;
   max-width: 6.5rem;
@@ -1638,6 +1732,19 @@
   padding-right: 0.65rem;
   text-align: right;
   overflow: visible;
+  background: var(--eq-surface, var(--msp-surface, #ffffff));
+}
+
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:nth-child(even) td.embeddedColActions,
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:nth-child(even) td.embeddedColActions {
+  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+}
+
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:hover td.embeddedColActions,
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:nth-child(even):hover td.embeddedColActions,
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:hover td.embeddedColActions,
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:nth-child(even):hover td.embeddedColActions {
+  background: var(--eq-accent-soft, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)));
 }
 
 .embeddedRowActions {
@@ -1697,8 +1804,26 @@
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColActions {
-  z-index: 3;
+  position: sticky;
+  top: 0;
+  right: 0;
+  z-index: 24;
+  width: 6.5rem;
+  min-width: 6.5rem;
+  max-width: 6.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.65rem;
+  text-align: right;
   background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  box-shadow: -6px 0 10px rgba(15, 28, 46, 0.06);
+}
+
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .embeddedRowActions,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .mappingActions,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .embeddedQuickActionButton,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .mappingActionButton {
+  position: relative;
+  z-index: 0;
 }
 
 .osNameCell {
@@ -2743,7 +2868,8 @@
   border-color: var(--msp-border, #2a3a55);
 }
 
-:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded thead {
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded thead,
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded thead th {
   background: var(--msp-surface-2, #152035);
 }
 
@@ -2774,6 +2900,23 @@
 
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColActions {
   background: var(--msp-surface-2, #152035);
+  box-shadow: -6px 0 10px rgba(0, 0, 0, 0.25);
+}
+
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions {
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:nth-child(even) td.embeddedColActions,
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:nth-child(even) td.embeddedColActions {
+  background: var(--msp-surface-2, #152035);
+}
+
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:hover td.embeddedColActions,
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:nth-child(even):hover td.embeddedColActions,
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:hover td.embeddedColActions,
+:global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:nth-child(even):hover td.embeddedColActions {
+  background: var(--msp-accent-soft, rgba(74, 143, 212, 0.15));
 }
 
 :global(html.dark) .hardwarePageEmbedded .embeddedTableTitle {

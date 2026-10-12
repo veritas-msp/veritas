@@ -5,10 +5,6 @@ const STEP_CONFIG = [{
   key: "hero",
   target: '[data-guide="report-hero"]'
 }, {
-  key: "steps",
-  target: '[data-guide="report-steps"]',
-  handler: "showTypes"
-}, {
   key: "types",
   target: '[data-guide="report-types"]',
   handler: "showTypes"
@@ -26,13 +22,9 @@ const COPY = {
         title: "Générer un rapport client",
         content: "Cette page crée un document professionnel : état de supervision, compte-rendu d’intervention ou cahier de recette. Choisissez d’abord le type de rapport, puis l’entreprise."
       },
-      steps: {
-        title: "Deux étapes",
-        content: "1) Choisissez le type de rapport. 2) Choisissez l’entreprise."
-      },
       types: {
-        title: "Type de rapport",
-        content: "État de supervision, rapport d’intervention ou cahier de recette. Un clic passe à la sélection de l’entreprise."
+        title: "Quel rapport générer ?",
+        content: "Choisissez un type (supervision, intervention, audit…). Un clic passe à la sélection de l’entreprise."
       },
       client: {
         title: "Entreprise",

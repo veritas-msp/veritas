@@ -31,7 +31,7 @@ const DETAIL_COPY = {
       address: "Adresse",
       contract: "Contrat",
       optionsCount: "{count} options",
-      creditsBalance: "{count}",
+      creditsBalance: "{remaining}/{total} crédits",
       microsoft: "Microsoft 365",
       google: "Google Workspace"
     },
@@ -45,6 +45,7 @@ const DETAIL_COPY = {
       addEquipment: "Ajouter un équipement",
       sendEmail: "Envoyer un email",
       seeAll: "Voir toutes les actions",
+      seeLess: "Voir moins",
       addContact: "Ajouter un contact",
       manageSites: "Gérer les sites",
       editEnterprise: "Éditer l'entreprise",
@@ -83,9 +84,9 @@ const DETAIL_COPY = {
     generatingDossier: "Génération du dossier…",
     infraMapTitle: "Cartographie infrastructure",
     overviewTabsAria: "Sections entreprise",
-    overviewTabOverview: "Vue d'ensemble",
-    overviewTabMap: "Cartographie",
-    overviewTabActivity: "Activité",
+    overviewTabOverview: "Dashboard",
+    overviewTabMap: "Infrastructure",
+    overviewTabActivity: "Tickets et Campagnes",
     overviewTabVault: "Coffre-fort",
     overviewCharts: {
       loading: "Chargement de la vue d'ensemble…",
@@ -105,7 +106,8 @@ const DETAIL_COPY = {
         alert: "En alerte",
         down: "Hors service",
         maintenance: "En maintenance",
-        devicesInMaintenance: "Périphériques en maintenance",
+        devicesInMaintenance: "Équipements en maintenance",
+        noMaintenance: "Aucun équipement en maintenance",
         until: "Jusqu’au {date}",
         indefinite: "Indéterminée",
         openDevice: "Ouvrir le périphérique",
@@ -114,7 +116,7 @@ const DETAIL_COPY = {
         trendHint: "Tendance vs semaine précédente"
       },
       evolution: {
-        title: "Évolution des équipements (7 derniers jours)",
+        title: "Évolution des alertes",
         hint: "Events et notifications de supervision (Critique / Warning)"
       },
       priority: {
@@ -133,12 +135,12 @@ const DETAIL_COPY = {
         hintMom: "Tendance vs mois précédent"
       },
       support: {
-        title: "Support (tickets + SLA)",
+        title: "Support et SLA",
         openLabel: "Tickets ouverts",
         slaOk: "SLA OK",
+        slaBreached: "SLA dépassé",
         slaNone: "—",
-        totalLabel: "Tickets (échantillon)",
-        trendHint: "Tendance des tickets ouverts vs mois précédent"
+        trendHint: "Tendance des tickets ouverts sur la période"
       },
       ticketPriority: {
         title: "Tickets par priorité",
@@ -150,10 +152,21 @@ const DETAIL_COPY = {
         low: "Basse"
       },
       ticketItil: {
-        title: "Tickets par catégorie ITIL",
-        totalLabel: "sur la période",
+        title: "Top catégories ITIL",
+        totalLabel: "tickets sur la période",
         uncategorized: "Non catégorisé",
-        other: "Autres"
+        other: "Autres",
+        empty: "Aucune catégorie sur la période"
+      },
+      tooltip: {
+        slice: "{name} : {count} ({pct}%)",
+        share: "{pct}% du total",
+        total: "Total : {total}",
+        empty: "Aucune donnée",
+        openTickets: "{count} tickets actuellement ouverts",
+        slaOk: "{count} tickets ouverts dans les délais SLA",
+        slaBreached: "{count} tickets ouverts hors délais SLA",
+        spark: "Début de période : {start} → aujourd’hui : {end}"
       }
     },
     filterBadge: "Filtre : {value}",
@@ -574,7 +587,7 @@ const DETAIL_COPY = {
       address: "Address",
       contract: "Contract",
       optionsCount: "{count} options",
-      creditsBalance: "{count}",
+      creditsBalance: "{remaining}/{total} credits",
       microsoft: "Microsoft 365",
       google: "Google Workspace"
     },
@@ -588,6 +601,7 @@ const DETAIL_COPY = {
       addEquipment: "Add equipment",
       sendEmail: "Send an email",
       seeAll: "See all actions",
+      seeLess: "Show less",
       addContact: "Add a contact",
       manageSites: "Manage sites",
       editEnterprise: "Edit company",
@@ -628,9 +642,9 @@ const DETAIL_COPY = {
     generatingFolder: "Generating dossier…",
     infraMapTitle: "Infrastructure map",
     overviewTabsAria: "Company sections",
-    overviewTabOverview: "Overview",
-    overviewTabMap: "Map",
-    overviewTabActivity: "Activity",
+    overviewTabOverview: "Dashboard",
+    overviewTabMap: "Infrastructure",
+    overviewTabActivity: "Tickets & Campaigns",
     overviewTabVault: "Vault",
     overviewCharts: {
       loading: "Loading overview…",
@@ -651,6 +665,7 @@ const DETAIL_COPY = {
         down: "Out of service",
         maintenance: "In maintenance",
         devicesInMaintenance: "Devices in maintenance",
+        noMaintenance: "No devices in maintenance",
         until: "Until {date}",
         indefinite: "Indefinite",
         openDevice: "Open device",
@@ -659,7 +674,7 @@ const DETAIL_COPY = {
         trendHint: "Trend vs previous week"
       },
       evolution: {
-        title: "Equipment evolution (last 7 days)",
+        title: "Alert evolution",
         hint: "Supervision events and notifications (Critical / Warning)"
       },
       priority: {
@@ -678,12 +693,12 @@ const DETAIL_COPY = {
         hintMom: "Trend vs previous month"
       },
       support: {
-        title: "Support (tickets + SLA)",
+        title: "Support and SLA",
         openLabel: "Open tickets",
         slaOk: "SLA OK",
+        slaBreached: "SLA breached",
         slaNone: "—",
-        totalLabel: "Tickets (sample)",
-        trendHint: "Open tickets trend vs previous month"
+        trendHint: "Open tickets trend over the selected period"
       },
       ticketPriority: {
         title: "Tickets by priority",
@@ -695,10 +710,21 @@ const DETAIL_COPY = {
         low: "Low"
       },
       ticketItil: {
-        title: "Tickets by ITIL category",
-        totalLabel: "in period",
+        title: "Top ITIL categories",
+        totalLabel: "tickets in period",
         uncategorized: "Uncategorized",
-        other: "Other"
+        other: "Other",
+        empty: "No categories in this period"
+      },
+      tooltip: {
+        slice: "{name}: {count} ({pct}%)",
+        share: "{pct}% of total",
+        total: "Total: {total}",
+        empty: "No data",
+        openTickets: "{count} tickets currently open",
+        slaOk: "{count} open tickets within SLA",
+        slaBreached: "{count} open tickets past SLA",
+        spark: "Period start: {start} → today: {end}"
       }
     },
     filterBadge: "Filter: {value}",
@@ -1119,7 +1145,7 @@ const DETAIL_COPY = {
       address: "Adresse",
       contract: "Vertrag",
       optionsCount: "{count} Optionen",
-      creditsBalance: "{count}",
+      creditsBalance: "{remaining}/{total} Guthaben",
       microsoft: "Microsoft 365",
       google: "Google Workspace"
     },
@@ -1133,6 +1159,7 @@ const DETAIL_COPY = {
       addEquipment: "Gerät hinzufügen",
       sendEmail: "E-Mail senden",
       seeAll: "Alle Aktionen anzeigen",
+      seeLess: "Weniger anzeigen",
       addContact: "Kontakt hinzufügen",
       manageSites: "Standorte verwalten",
       editEnterprise: "Unternehmen bearbeiten",
@@ -1171,9 +1198,9 @@ const DETAIL_COPY = {
     generatingDossier: "Dossier wird erstellt…",
     infraMapTitle: "Infrastrukturkarte",
     overviewTabsAria: "Unternehmensbereiche",
-    overviewTabOverview: "Übersicht",
-    overviewTabMap: "Kartografie",
-    overviewTabActivity: "Aktivität",
+    overviewTabOverview: "Dashboard",
+    overviewTabMap: "Infrastruktur",
+    overviewTabActivity: "Tickets & Kampagnen",
     overviewTabVault: "Tresor",
     overviewCharts: {
       loading: "Übersicht wird geladen…",
@@ -1194,6 +1221,7 @@ const DETAIL_COPY = {
         down: "Außer Betrieb",
         maintenance: "In Wartung",
         devicesInMaintenance: "Geräte in Wartung",
+        noMaintenance: "Keine Geräte in Wartung",
         until: "Bis {date}",
         indefinite: "Unbefristet",
         openDevice: "Gerät öffnen",
@@ -1202,7 +1230,7 @@ const DETAIL_COPY = {
         trendHint: "Trend zur Vorwoche"
       },
       evolution: {
-        title: "Geräteentwicklung (letzte 7 Tage)"
+        title: "Alarmverlauf"
       },
       priority: {
         title: "Alarme nach Priorität",
@@ -1220,12 +1248,12 @@ const DETAIL_COPY = {
         hintMom: "Trend zum Vormonat"
       },
       support: {
-        title: "Support (Tickets + SLA)",
+        title: "Support und SLA",
         openLabel: "Offene Tickets",
         slaOk: "SLA OK",
+        slaBreached: "SLA überschritten",
         slaNone: "—",
-        totalLabel: "Tickets (Stichprobe)",
-        trendHint: "Trend offener Tickets zum Vormonat"
+        trendHint: "Trend offener Tickets im gewählten Zeitraum"
       },
       ticketPriority: {
         title: "Tickets nach Priorität",
@@ -1237,10 +1265,21 @@ const DETAIL_COPY = {
         low: "Niedrig"
       },
       ticketItil: {
-        title: "Tickets nach ITIL-Kategorie",
-        totalLabel: "im Zeitraum",
+        title: "Top ITIL-Kategorien",
+        totalLabel: "Tickets im Zeitraum",
         uncategorized: "Nicht kategorisiert",
-        other: "Sonstige"
+        other: "Sonstige",
+        empty: "Keine Kategorien in diesem Zeitraum"
+      },
+      tooltip: {
+        slice: "{name}: {count} ({pct}%)",
+        share: "{pct}% der Gesamtzahl",
+        total: "Gesamt: {total}",
+        empty: "Keine Daten",
+        openTickets: "{count} aktuell offene Tickets",
+        slaOk: "{count} offene Tickets innerhalb der SLA",
+        slaBreached: "{count} offene Tickets außerhalb der SLA",
+        spark: "Periodenstart: {start} → heute: {end}"
       }
     },
     filterBadge: "Filter: {value}",
@@ -1658,7 +1697,7 @@ const DETAIL_COPY = {
       address: "Indirizzo",
       contract: "Contratto",
       optionsCount: "{count} opzioni",
-      creditsBalance: "{count}",
+      creditsBalance: "{remaining}/{total} crediti",
       microsoft: "Microsoft 365",
       google: "Google Workspace"
     },
@@ -1672,6 +1711,7 @@ const DETAIL_COPY = {
       addEquipment: "Aggiungi un dispositivo",
       sendEmail: "Invia un'email",
       seeAll: "Vedi tutte le azioni",
+      seeLess: "Mostra meno",
       addContact: "Aggiungi un contatto",
       manageSites: "Gestisci i siti",
       editEnterprise: "Modifica azienda",
@@ -1710,9 +1750,9 @@ const DETAIL_COPY = {
     generatingDossier: "Generazione dossier…",
     infraMapTitle: "Mappa infrastruttura",
     overviewTabsAria: "Sezioni azienda",
-    overviewTabOverview: "Panoramica",
-    overviewTabMap: "Cartografia",
-    overviewTabActivity: "Attività",
+    overviewTabOverview: "Dashboard",
+    overviewTabMap: "Infrastruttura",
+    overviewTabActivity: "Ticket e Campagne",
     overviewTabVault: "Cassaforte",
     overviewCharts: {
       loading: "Caricamento panoramica…",
@@ -1733,6 +1773,7 @@ const DETAIL_COPY = {
         down: "Fuori servizio",
         maintenance: "In manutenzione",
         devicesInMaintenance: "Dispositivi in manutenzione",
+        noMaintenance: "Nessun dispositivo in manutenzione",
         until: "Fino al {date}",
         indefinite: "Indeterminata",
         openDevice: "Apri dispositivo",
@@ -1741,7 +1782,7 @@ const DETAIL_COPY = {
         trendHint: "Tendenza rispetto alla settimana precedente"
       },
       evolution: {
-        title: "Evoluzione delle attrezzature (ultimi 7 giorni)"
+        title: "Evoluzione degli avvisi"
       },
       priority: {
         title: "Avvisi per priorità",
@@ -1759,12 +1800,12 @@ const DETAIL_COPY = {
         hintMom: "Tendenza rispetto al mese precedente"
       },
       support: {
-        title: "Supporto (ticket + SLA)",
+        title: "Supporto e SLA",
         openLabel: "Ticket aperti",
         slaOk: "SLA OK",
+        slaBreached: "SLA superato",
         slaNone: "—",
-        totalLabel: "Ticket (campione)",
-        trendHint: "Tendenza ticket aperti rispetto al mese precedente"
+        trendHint: "Tendenza dei ticket aperti nel periodo selezionato"
       },
       ticketPriority: {
         title: "Ticket per priorità",
@@ -1776,10 +1817,21 @@ const DETAIL_COPY = {
         low: "Bassa"
       },
       ticketItil: {
-        title: "Ticket per categoria ITIL",
-        totalLabel: "nel periodo",
+        title: "Top categorie ITIL",
+        totalLabel: "ticket nel periodo",
         uncategorized: "Senza categoria",
-        other: "Altre"
+        other: "Altre",
+        empty: "Nessuna categoria nel periodo"
+      },
+      tooltip: {
+        slice: "{name}: {count} ({pct}%)",
+        share: "{pct}% del totale",
+        total: "Totale: {total}",
+        empty: "Nessun dato",
+        openTickets: "{count} ticket attualmente aperti",
+        slaOk: "{count} ticket aperti entro lo SLA",
+        slaBreached: "{count} ticket aperti fuori SLA",
+        spark: "Inizio periodo: {start} → oggi: {end}"
       }
     },
     filterBadge: "Filtro: {value}",
@@ -2197,7 +2249,7 @@ const DETAIL_COPY = {
       address: "Dirección",
       contract: "Contrato",
       optionsCount: "{count} opciones",
-      creditsBalance: "{count}",
+      creditsBalance: "{remaining}/{total} créditos",
       microsoft: "Microsoft 365",
       google: "Google Workspace"
     },
@@ -2211,6 +2263,7 @@ const DETAIL_COPY = {
       addEquipment: "Añadir un equipo",
       sendEmail: "Enviar un email",
       seeAll: "Ver todas las acciones",
+      seeLess: "Ver menos",
       addContact: "Añadir un contacto",
       manageSites: "Gestionar sitios",
       editEnterprise: "Editar empresa",
@@ -2249,9 +2302,9 @@ const DETAIL_COPY = {
     generatingDossier: "Generando dossier…",
     infraMapTitle: "Mapa de infraestructura",
     overviewTabsAria: "Secciones de la empresa",
-    overviewTabOverview: "Vista general",
-    overviewTabMap: "Cartografía",
-    overviewTabActivity: "Actividad",
+    overviewTabOverview: "Dashboard",
+    overviewTabMap: "Infraestructura",
+    overviewTabActivity: "Tickets y Campañas",
     overviewTabVault: "Caja fuerte",
     overviewCharts: {
       loading: "Cargando vista general…",
@@ -2272,6 +2325,7 @@ const DETAIL_COPY = {
         down: "Fuera de servicio",
         maintenance: "En mantenimiento",
         devicesInMaintenance: "Dispositivos en mantenimiento",
+        noMaintenance: "Ningún dispositivo en mantenimiento",
         until: "Hasta {date}",
         indefinite: "Indefinida",
         openDevice: "Abrir dispositivo",
@@ -2280,7 +2334,7 @@ const DETAIL_COPY = {
         trendHint: "Tendencia vs semana anterior"
       },
       evolution: {
-        title: "Evolución de equipos (últimos 7 días)"
+        title: "Evolución de alertas"
       },
       priority: {
         title: "Alertas por prioridad",
@@ -2298,12 +2352,12 @@ const DETAIL_COPY = {
         hintMom: "Tendencia vs mes anterior"
       },
       support: {
-        title: "Soporte (tickets + SLA)",
+        title: "Soporte y SLA",
         openLabel: "Tickets abiertos",
         slaOk: "SLA OK",
+        slaBreached: "SLA superado",
         slaNone: "—",
-        totalLabel: "Tickets (muestra)",
-        trendHint: "Tendencia de tickets abiertos vs mes anterior"
+        trendHint: "Tendencia de tickets abiertos en el periodo seleccionado"
       },
       ticketPriority: {
         title: "Tickets por prioridad",
@@ -2315,10 +2369,21 @@ const DETAIL_COPY = {
         low: "Baja"
       },
       ticketItil: {
-        title: "Tickets por categoría ITIL",
-        totalLabel: "en el periodo",
+        title: "Top categorías ITIL",
+        totalLabel: "tickets en el periodo",
         uncategorized: "Sin categoría",
-        other: "Otras"
+        other: "Otras",
+        empty: "Ninguna categoría en el periodo"
+      },
+      tooltip: {
+        slice: "{name}: {count} ({pct}%)",
+        share: "{pct}% del total",
+        total: "Total: {total}",
+        empty: "Sin datos",
+        openTickets: "{count} tickets actualmente abiertos",
+        slaOk: "{count} tickets abiertos dentro del SLA",
+        slaBreached: "{count} tickets abiertos fuera de plazo SLA",
+        spark: "Inicio del periodo: {start} → hoy: {end}"
       }
     },
     filterBadge: "Filtro: {value}",

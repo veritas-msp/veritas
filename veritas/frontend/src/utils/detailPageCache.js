@@ -78,5 +78,6 @@ export function patchDetailCache(namespace, id, patcher) {
 export const DETAIL_CACHE_NS = {
   enterprise: "enterprise",
   contact: "contact",
-  prestataire: "prestataire"
+  prestataire: "prestataire",
+  equipment: "equipment"
 };

@@ -30,6 +30,11 @@ import {
   readEquipmentInventoryUi,
   writeEquipmentInventoryUi
 } from "../../utils/equipmentInventoryUiState";
+import {
+  invalidateEquipmentInventoryCache,
+  readEquipmentInventoryCache,
+  writeEquipmentInventoryCache
+} from "../../utils/equipmentInventoryDataCache";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 
 function InventoryDeviceIcon({ item, className }) {
@@ -419,7 +424,15 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const facetListRef = useRef(null);
   const scrollRestoredRef = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ force = false } = {}) => {
+    if (!force) {
+      const cached = readEquipmentInventoryCache();
+      if (cached) {
+        setItems(cached);
+        setLoading(false);
+        return;
+      }
+    }
     loadAbortRef.current?.abort();
     const ac = createTrackedAbortController();
     loadAbortRef.current = ac;
@@ -450,12 +463,12 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         });
         tagsByEquipment.set(key, list);
       });
-      setItems(
-        (rows || []).map(row => ({
-          ...row,
-          tags: tagsByEquipment.get(`${row.clientId}:${row.dbId}`) || []
-        }))
-      );
+      const merged = (rows || []).map(row => ({
+        ...row,
+        tags: tagsByEquipment.get(`${row.clientId}:${row.dbId}`) || []
+      }));
+      setItems(merged);
+      writeEquipmentInventoryCache(merged);
     } catch (err) {
       if (err?.name !== "AbortError") {
         toast.error(err.message || copy.toastLoadError);
@@ -885,7 +898,8 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     else if (updated > 0 && failed > 0) toast.warn(copy.formatBulkPartial(updated, failed));
     else toast.error(copy.toasts?.bulkError || copy.toastLoadError);
     clearSelection();
-    load();
+    invalidateEquipmentInventoryCache();
+    load({ force: true });
   };
 
   const toggleClient = clientId => {

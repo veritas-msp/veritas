@@ -656,9 +656,9 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(14rem, 1.15fr) minmax(0, 1.6fr) auto;
+  grid-template-columns: minmax(14rem, 0.9fr) minmax(0, 1.8fr);
   align-items: center;
-  column-gap: 1.25rem;
+  column-gap: 1.35rem;
   row-gap: 0.65rem;
   width: 100%;
   min-width: 0;
@@ -783,8 +783,8 @@
 
 .enterpriseDetailPage .heroFactValue {
   font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f172a);
+  font-weight: 500;
+  color: var(--msp-muted, #475569);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -812,6 +812,12 @@
   color: #fff;
   font-size: 0.82rem;
   box-shadow: 0 1px 4px rgba(43, 95, 171, 0.2);
+}
+
+.enterpriseDetailPage .heroIdentityBlock > .heroOnboardingCard,
+.enterpriseDetailPage .heroIdentityBlock > .onboardingBanner {
+  margin: 0.55rem 1.5rem 0;
+  max-width: none;
 }
 
 .enterpriseDetailPage .heroRightCluster {
@@ -862,10 +868,10 @@
   gap: 0.5rem 0.65rem;
   margin: 0;
   font-size: clamp(1.25rem, 2vw, 1.55rem);
-  font-weight: 800;
+  font-weight: 650;
   letter-spacing: -0.02em;
   line-height: 1.15;
-  color: var(--msp-text);
+  color: var(--msp-text, #1e293b);
   min-width: 0;
 }
 
@@ -1182,18 +1188,15 @@
 
 .enterpriseDetailPage .heroTabBar {
   display: flex;
-  align-items: stretch;
-  gap: 0;
+  align-items: center;
+  gap: 0.35rem;
   width: 100%;
   margin: 0;
-  padding: 0;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 -1px 0 var(--msp-border-light, #e2e8f0),
-    0 1px 2px rgba(15, 28, 46, 0.04);
-  background: var(--msp-surface, #fff);
-  overflow: hidden;
+  padding: 0.3rem;
+  border: none;
+  border-radius: 14px;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--msp-surface-2, #eef3f8) 88%, var(--msp-border-light, #d7e0ea));
   overflow-x: auto;
   scrollbar-width: none;
   box-sizing: border-box;
@@ -1210,76 +1213,74 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  flex: 0 0 auto;
-  align-self: stretch;
-  min-height: 2.55rem;
+  gap: 0.4rem;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.35rem;
   margin: 0;
-  padding: 0.55rem 1.1rem;
-  border: none;
-  border-radius: 0;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
   background: transparent;
   color: var(--msp-muted, #64748b);
   font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
   letter-spacing: 0.01em;
   line-height: 1.2;
   cursor: pointer;
-  transition: color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
   box-shadow: none;
 }
 
 .enterpriseDetailPage .heroTab::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 3px;
-  border-radius: 0;
-  background: transparent;
-  transition: background-color 0.12s ease;
-  pointer-events: none;
-  z-index: 1;
+  display: none;
 }
 
 .enterpriseDetailPage .heroTab:hover {
-  color: var(--msp-text);
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 5%, transparent);
+  color: var(--msp-text, #1e293b);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 72%, transparent);
 }
 
 .enterpriseDetailPage .heroTabActive {
-  color: var(--msp-accent, #2b5fab);
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, transparent);
-  font-weight: 700;
-  /* cover the bar's 1px inset line so the blue trait sits flush on the bottom edge */
-  box-shadow: inset 0 -3px 0 var(--msp-accent, #2b5fab);
+  color: var(--msp-text, #1e293b);
+  background: var(--msp-surface, #fff);
+  border-color: color-mix(in srgb, var(--msp-border, #d0dae8) 70%, transparent);
+  font-weight: 550;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 4px 12px rgba(15, 28, 46, 0.04);
 }
 
 .enterpriseDetailPage .heroTabActive:hover {
-  color: var(--msp-accent, #2b5fab);
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 11%, transparent);
-  box-shadow: inset 0 -3px 0 var(--msp-accent, #2b5fab);
+  color: var(--msp-text, #1e293b);
+  background: var(--msp-surface, #fff);
+  border-color: color-mix(in srgb, var(--msp-border, #d0dae8) 70%, transparent);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 4px 12px rgba(15, 28, 46, 0.04);
 }
 
 .enterpriseDetailPage .heroTabActive::after {
-  background: var(--msp-accent, #2b5fab);
+  display: none;
 }
 
 .enterpriseDetailPage .heroTabIcon {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   flex-shrink: 0;
-  opacity: 0.9;
+  opacity: 0.75;
+  color: inherit;
 }
 
 .enterpriseDetailPage .heroTabActive .heroTabIcon {
-  opacity: 1;
+  opacity: 0.95;
   color: var(--msp-accent, #2b5fab);
 }
 
 .enterpriseDetailPage .heroTabLabel {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .enterpriseDetailPage .heroTab .proBadgeInline {
@@ -1761,20 +1762,28 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: visible;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel[data-guide="enterprise-equipment"] {
   min-width: 0;
   overflow: hidden;
   border-radius: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel[data-guide="enterprise-equipment"] .panelBody {
   min-width: 0;
   max-width: 100%;
-  overflow-x: hidden;
-  overflow-y: visible;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding-top: 0.95rem;
 }
 
@@ -2165,6 +2174,115 @@
 
 .mapModulesBlock {
   min-width: 0;
+  flex: 0 0 auto;
+}
+
+/* Vue d'ensemble: grille 2×3 sur toute la hauteur disponible */
+.mainColumnOverview {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--msp-bg);
+}
+
+.mainColumnOverview > .heroTabBar {
+  flex: 0 0 auto;
+}
+
+.mainColumnOverview .mainCommunityPanels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-bg);
+}
+
+.mainColumnOverview .overviewTabPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  gap: 0;
+}
+
+.mainColumnOverview .overviewTabPanel > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Cartographie: fill viewport height; scroll inside equipment table */
+.mainColumnMap {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--msp-bg);
+}
+
+.mainColumnMap > .heroTabBar {
+  flex: 0 0 auto;
+}
+
+.mainColumnMap .mainCommunityPanels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-bg);
+}
+
+.mainColumnMap .overviewTabPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnMap .mapTabStack {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0.85rem;
+}
+
+.mainColumnMap .panel[data-guide="enterprise-equipment"] {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnMap .panel[data-guide="enterprise-equipment"] .panelBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnMap .equipmentSection {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnMap .equipmentSection > * {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .mapModulesToolbar {
@@ -2448,6 +2566,16 @@
   background: var(--msp-bg);
 }
 
+.mainColumnVault .overviewTabPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .mainColumnVault .vaultTabStack {
   flex: 1 1 auto;
   min-height: 0;
@@ -2474,12 +2602,18 @@
   background: transparent;
 }
 
-/* Activity / vault: fill remaining page height under the sticky hero */
-.enterpriseDetailPage:has(.pageBodyFill) {
+/* Activity / vault / contact / prestataire / equipment: fill remaining page height under the sticky hero */
+.enterpriseDetailPage:has(.pageBodyFill),
+.contactDetailPage:has(.pageBodyFill),
+.prestataireDetailPage:has(.pageBodyFill),
+.equipmentDetailPage:has(.pageBodyFill) {
   overflow: hidden;
 }
 
-.enterpriseDetailPage:has(.pageBodyFill) > .pageHero {
+.enterpriseDetailPage:has(.pageBodyFill) > .pageHero,
+.contactDetailPage:has(.pageBodyFill) > .pageHero,
+.prestataireDetailPage:has(.pageBodyFill) > .pageHero,
+.equipmentDetailPage:has(.pageBodyFill) > .pageHero {
   flex: 0 0 auto;
 }
 
@@ -2488,8 +2622,11 @@
   min-height: auto;
 }
 
-/* Vault: fill remaining height under the sticky hero */
-.enterpriseDetailPage .pageBodyFill {
+/* Vault / contact / prestataire / equipment: fill remaining height under the sticky hero */
+.enterpriseDetailPage .pageBodyFill,
+.contactDetailPage .pageBodyFill,
+.prestataireDetailPage .pageBodyFill,
+.equipmentDetailPage .pageBodyFill {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -2538,7 +2675,8 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
-  align-items: start;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .activityLayout {
@@ -2546,12 +2684,261 @@
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
+  min-height: 0;
 }
 
 .activityKpiRow {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1.25rem;
+  flex: 0 0 auto;
+}
+
+/* Activité: occupe toute la hauteur sous les onglets */
+.mainColumnActivity {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--msp-bg);
+}
+
+.mainColumnActivity > .heroTabBar {
+  flex: 0 0 auto;
+}
+
+.mainColumnActivity .mainCommunityPanels {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-bg);
+}
+
+.mainColumnActivity .overviewTabPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnActivity .activityLayout {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  gap: 0.85rem;
+}
+
+.mainColumnActivity .activityGridSplit {
+  flex: 1.35 1 0;
+  min-height: 0;
+}
+
+/* Contact activité: pas de rangée campagnes → la grille prend tout le reste */
+.mainColumnActivity .activityLayout > .activityGridSplit:last-child {
+  flex: 1 1 0;
+}
+
+.mainColumnActivity .activityCampaignsRow {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnActivity .activityGridSplit > .panel,
+.mainColumnActivity .activityGridSplit > .activityBlockProLock,
+.mainColumnActivity .activityCampaignsRow > .activityBlockProLock,
+.mainColumnActivity .activityCampaignsRow > .panel {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnActivity .activityBlockProLock {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnActivity .activityBlockProLock > .panel,
+.mainColumnActivity .activityBlockProLock > * {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnActivity .activityLayout .panel .panelBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnActivity .activityLayout .dataTableWrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.mainColumnActivity .activityLayout .panel .panelBody > ul {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.mainColumnActivity .activityLayout .dataTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--msp-surface-2);
+}
+
+/* Equipment detail: fill remaining height under tabs for all main panels */
+.mainColumnEquipmentFill {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--msp-bg);
+}
+
+.mainColumnEquipmentFill > :global([class*="heroTabBar"]) {
+  flex: 0 0 auto;
+}
+
+.mainColumnEquipmentFill > :global([class*="mainContent"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnEquipmentFill :global([class*="mainContent"]) > .panel,
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="dashboardSplit"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="activityStack"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnEquipmentFill :global([class*="mainContent"]) > .panel > .panelHeader,
+.mainColumnEquipmentFill :global([class*="mainContent"]) > .panel > :global([class*="panelHeader"]) {
+  flex: 0 0 auto;
+}
+
+.mainColumnEquipmentFill :global([class*="mainContent"]) > .panel > .panelBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnEquipmentFill :global([class*="mainContent"]) > .panel > .panelBody > * {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.mainColumnEquipmentFill :global([class*="mainContent"]) > .panel .dataTableWrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.mainColumnEquipmentFill :global([class*="dashboardSplit"]) {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.mainColumnEquipmentFill :global([class*="activityStack"]) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Contact detail: portail client / partage d'accès en hauteur disponible */
+.mainColumnContactTab {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--msp-bg);
+}
+
+.mainColumnContactTab > .heroTabBar {
+  flex: 0 0 auto;
+}
+
+.mainColumnContactTab > .contactFillPanel,
+.mainColumnContactTab > .panel,
+.mainColumnContactTab .overviewTabPanel > .contactFillPanel,
+.mainColumnContactTab .overviewTabPanel > .panel {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnContactTab .overviewTabPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnContactTab .contactFillPanel .panelHeader,
+.mainColumnContactTab > .panel > .panelHeader {
+  flex: 0 0 auto;
+}
+
+.mainColumnContactTab .contactFillPanel .panelBody,
+.mainColumnContactTab > .panel > .panelBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnContactTab .overviewTabPanel,
+.mainColumnContactTab .portalTabContent {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  gap: 0.85rem;
 }
 
 .activityKpiCard {
@@ -2602,6 +2989,7 @@
 .activityCampaignsRow {
   width: 100%;
   min-width: 0;
+  min-height: 0;
 }
 
 .activityLayout .dataTable {
@@ -2657,8 +3045,9 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  min-height: 0;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   border: 1px solid var(--msp-border-light);
@@ -2703,12 +3092,17 @@
     grid-template-columns: 1fr;
   }
 
-  .mainColumnVault {
+  .mainColumnVault,
+  .mainColumnMap,
+  .mainColumnOverview,
+  .mainColumnActivity,
+  .mainColumnContactTab {
     min-height: 0;
     height: auto;
   }
 
-  .enterpriseDetailPage .pageBodyFill {
+  .enterpriseDetailPage .pageBodyFill,
+  .contactDetailPage .pageBodyFill {
     height: auto;
     max-height: none;
     overflow: visible;
@@ -2721,8 +3115,29 @@
     overflow: visible;
   }
 
-  .mainColumnVault .mainCommunityPanels {
+  .mainColumnVault .mainCommunityPanels,
+  .mainColumnMap .mainCommunityPanels,
+  .mainColumnOverview .mainCommunityPanels,
+  .mainColumnActivity .mainCommunityPanels {
     display: contents;
+  }
+
+  .mainColumnMap .overviewTabPanel,
+  .mainColumnMap .mapTabStack,
+  .mainColumnMap .panel[data-guide="enterprise-equipment"],
+  .mainColumnMap .panel[data-guide="enterprise-equipment"] .panelBody,
+  .mainColumnMap .equipmentSection,
+  .mainColumnOverview .overviewTabPanel,
+  .mainColumnOverview .overviewTabPanel > *,
+  .mainColumnActivity .activityLayout,
+  .mainColumnActivity .activityGridSplit,
+  .mainColumnActivity .activityCampaignsRow,
+  .mainColumnActivity .activityLayout .dataTableWrapper,
+  .mainColumnContactTab > .contactFillPanel,
+  .mainColumnContactTab > .panel,
+  .mainColumnContactTab .overviewTabPanel {
+    overflow: visible;
+    max-height: none;
   }
 }
 
@@ -3264,7 +3679,7 @@
   min-width: 0;
   flex: 1;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted-light);
@@ -5217,9 +5632,9 @@ button.sidebarOptionIcon:hover {
   }
 
   .enterpriseDetailPage .heroTabBar {
-    padding: 0;
-    gap: 0;
-    border-radius: 10px;
+    padding: 0.25rem;
+    gap: 0.25rem;
+    border-radius: 12px;
   }
 
   .enterpriseDetailPage .heroIdentityBlock {
@@ -5261,9 +5676,9 @@ button.sidebarOptionIcon:hover {
   }
 
   .enterpriseDetailPage .heroTab {
-    min-height: 2.4rem;
-    padding: 0.45rem 0.9rem;
-    font-size: 0.82rem;
+    min-height: 2.2rem;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.75rem;
   }
 
   .heroRow {
@@ -5489,11 +5904,9 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabBar {
-  background: var(--msp-surface, #1a2540);
-  border-color: var(--msp-border, #2a3a55);
-  box-shadow:
-    inset 0 -1px 0 var(--msp-border, #2a3a55),
-    0 1px 2px rgba(0, 0, 0, 0.2);
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 90%, #000);
+  border: none;
+  box-shadow: none;
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTab {
@@ -5502,23 +5915,25 @@ button.sidebarOptionIcon:hover {
 
 :global(html.dark) .enterpriseDetailPage .heroTab:hover {
   color: var(--msp-text, #e8edf5);
-  background: color-mix(in srgb, var(--msp-accent, #6ea8ff) 8%, transparent);
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 80%, transparent);
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive {
-  color: var(--msp-accent, #6ea8ff);
-  background: color-mix(in srgb, var(--msp-accent, #6ea8ff) 14%, transparent);
-  box-shadow: inset 0 -3px 0 var(--msp-accent, #6ea8ff);
+  color: var(--msp-text, #e8edf5);
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive:hover {
-  color: var(--msp-accent, #6ea8ff);
-  background: color-mix(in srgb, var(--msp-accent, #6ea8ff) 18%, transparent);
-  box-shadow: inset 0 -3px 0 var(--msp-accent, #6ea8ff);
+  color: var(--msp-text, #e8edf5);
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive::after {
-  background: var(--msp-accent, #6ea8ff);
+  display: none;
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive .heroTabIcon {
@@ -5572,7 +5987,8 @@ button.sidebarOptionIcon:hover {
   background: var(--msp-surface-2);
 }
 
-:global(html.dark) .activityLayout .dataTable thead {
+:global(html.dark) .activityLayout .dataTable thead,
+:global(html.dark) .mainColumnActivity .activityLayout .dataTable thead th {
   background: var(--msp-surface-2);
 }
 

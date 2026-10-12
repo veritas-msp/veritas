@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.87",
+    date: "2026-10-12",
+    highlights: [
+      "Fiche périphérique : onglets en pleine hauteur, colonne droite type CRM, notes dans la sidebar.",
+      "Vue d’ensemble périphérique : sous-onglets Fiche / RMM / Supervision selon le suivi.",
+      "Activité périphérique : Interventions, Maintenance et Métriques séparés pour mieux tenir en hauteur.",
+      "Fiches entreprise / contact : cache et onglets plus stables à la navigation.",
+      "Documents périphérique : état vide aligné sur celui des tickets de l’accueil."
+    ]
+  },
+  {
     version: "1.0.86",
     date: "2026-10-12",
     highlights: [

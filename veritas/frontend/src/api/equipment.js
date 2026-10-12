@@ -425,6 +425,10 @@ function clientHasHardwareEquipements(client) {
   return HARDWARE_EQUIPMENT_TYPES.some(type => Array.isArray(client.equipements[type]) && client.equipements[type].length > 0);
 }
 export const getClientHardwareEquipment = async (clientId, options = {}) => {
+  // Snapshot parent déjà chargé (même parc vide) → pas de re-GET /clients/:id
+  if (options.client?.equipements && typeof options.client.equipements === "object") {
+    return mapClientHardwareEquipment(options.client);
+  }
   if (options.client && clientHasHardwareEquipements(options.client)) {
     return mapClientHardwareEquipment(options.client);
   }

@@ -26,9 +26,53 @@ function formatNoteDate(value, locale) {
   });
 }
 
+function SidebarSectionHeader({
+  title,
+  icon = null,
+  count = null,
+  expanded = false,
+  onToggle,
+  controlsId,
+  actions = null,
+  panelStyles
+}) {
+  return (
+    <div className={panelStyles.sidebarCollapseHeader}>
+      <button
+        type="button"
+        className={panelStyles.sidebarCollapseMain}
+        onClick={() => onToggle?.()}
+        aria-expanded={expanded}
+        aria-controls={controlsId || undefined}
+      >
+        <span className={panelStyles.sidebarInfoTitle}>
+          {icon ? <Icon icon={icon} className={panelStyles.sidebarSectionTitleIcon} aria-hidden /> : null}
+          <span className={panelStyles.sidebarSectionTitleText}>{title}</span>
+          {count != null ? <span className={panelStyles.sidebarSectionCount}>{count}</span> : null}
+        </span>
+      </button>
+      {actions ? <div className={panelStyles.sidebarHeaderActions}>{actions}</div> : null}
+      <button
+        type="button"
+        className={panelStyles.sidebarCollapseChevronBtn}
+        onClick={() => onToggle?.()}
+        tabIndex={-1}
+        aria-hidden="true"
+      >
+        <Icon
+          icon={expanded ? "mdi:chevron-up" : "mdi:chevron-down"}
+          className={panelStyles.sidebarCollapseChevron}
+        />
+      </button>
+    </div>
+  );
+}
+
 export default function EquipmentNotesPanel({
   equipment,
-  embedded = false
+  embedded = false,
+  variant = "panel",
+  defaultExpanded = false
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
@@ -43,6 +87,7 @@ export default function EquipmentNotesPanel({
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("create");
   const [modalNoteId, setModalNoteId] = useState(null);
@@ -143,59 +188,138 @@ export default function EquipmentNotesPanel({
       toast.error(error.message || notesCopy.toasts.deleteError);
     }
   };
-  if (!equipmentId) {
-    return <div className={embedded ? styles.embeddedRoot : styles.panel}>
-        <p className={styles.hint}>{notesCopy.saveFirst}</p>
-      </div>;
+
+  const notesList = !equipmentId ? (
+    <p className={styles.hint}>{notesCopy.saveFirst}</p>
+  ) : loading ? (
+    <div className={enterpriseStyles.loadingState}>{notesCopy.loading}</div>
+  ) : notes.length === 0 ? (
+    <div className={enterpriseStyles.emptyState}>
+      <Icon icon="mdi:note-text-outline" className={enterpriseStyles.emptyIcon} aria-hidden />
+      <h5>{notesCopy.empty || "Aucune note"}</h5>
+    </div>
+  ) : (
+    <ul className={enterpriseStyles.clientNotesList}>
+      {notes.map(note => {
+        const visibilityLabel = note.visibility === "public" ? notesCopy.visibilityPublic : notesCopy.visibilityPrivate;
+        return (
+          <li key={note.id} className={enterpriseStyles.clientNoteItem}>
+            <div className={enterpriseStyles.clientNoteHeader}>
+              <div className={enterpriseStyles.clientNoteMeta}>
+                <span className={enterpriseStyles.clientNoteAuthor}>
+                  {note.username || note.email || notesCopy.authorFallback}
+                </span>
+                <span className={`${styles.visibilityBadge} ${note.visibility === "public" ? styles.visibilityPublic : styles.visibilityPrivate}`}>
+                  {visibilityLabel}
+                </span>
+                <span className={enterpriseStyles.clientNoteDate}>
+                  {formatNoteDate(note.created_at, locale)}
+                  {note.updated_at && note.updated_at !== note.created_at
+                    ? interpolate(notesCopy.edited, {
+                        date: formatEquipmentDetailRelative(note.updated_at, locale)
+                      })
+                    : ""}
+                </span>
+              </div>
+              {canEditNote(note) ? (
+                <div className={enterpriseStyles.clientNoteActions}>
+                  <SmartTooltip content={notesCopy.editNote}>
+                    <button
+                      type="button"
+                      className={`${enterpriseStyles.editInfoButton} ${enterpriseStyles.clientNoteActionBtn}`}
+                      onClick={() => openEditModal(note)}
+                      aria-label={notesCopy.editNoteAria}
+                    >
+                      <FaPencilAlt />
+                    </button>
+                  </SmartTooltip>
+                  <SmartTooltip content={notesCopy.deleteNote}>
+                    <button
+                      type="button"
+                      className={`${enterpriseStyles.cancelInfoButton} ${enterpriseStyles.clientNoteActionBtn}`}
+                      onClick={() => handleDeleteNote(note.id)}
+                      aria-label={notesCopy.deleteNoteAria}
+                    >
+                      <Icon icon="mdi:trash-can-outline" aria-hidden />
+                    </button>
+                  </SmartTooltip>
+                </div>
+              ) : null}
+            </div>
+            <p className={enterpriseStyles.clientNoteContent}>{note.content}</p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  const modal = (
+    <EquipmentNoteModal
+      open={modalOpen}
+      mode={modalMode}
+      initialContent={modalInitialContent}
+      initialVisibility={modalInitialVisibility}
+      equipmentName={equipmentName}
+      copy={notesCopy}
+      saving={saving}
+      onClose={closeModal}
+      onSubmit={handleModalSubmit}
+    />
+  );
+
+  if (variant === "sidebar") {
+    const s = enterpriseStyles;
+    return (
+      <>
+        <section className={`${s.sidebarSection} ${s.sidebarNotesSection}`.trim()} data-guide="equipment-sidebar-notes">
+          <SidebarSectionHeader
+            title={notesCopy.sidebarTitle || copy.tabs?.notes || "Notes"}
+            icon="mdi:note-text-outline"
+            count={!loading && notes.length > 0 ? notes.length : null}
+            expanded={expanded}
+            onToggle={() => setExpanded(prev => !prev)}
+            controlsId="equipment-sidebar-notes"
+            panelStyles={s}
+            actions={
+              equipmentId ? (
+                <SmartTooltip content={notesCopy.addNote}>
+                  <button
+                    type="button"
+                    className={s.editInfoButton}
+                    onClick={e => {
+                      e.stopPropagation();
+                      openCreateModal();
+                    }}
+                    aria-label={notesCopy.addNote}
+                  >
+                    <FaPlus />
+                  </button>
+                </SmartTooltip>
+              ) : null
+            }
+          />
+          {expanded ? (
+            <div className={s.sidebarBody} id="equipment-sidebar-notes">
+              {notesList}
+            </div>
+          ) : null}
+        </section>
+        {modal}
+      </>
+    );
   }
-  return <div className={embedded ? styles.embeddedRoot : styles.panel}>
+
+  return (
+    <div className={embedded ? styles.embeddedRoot : styles.panel}>
       <div className={styles.toolbar}>
         <p className={styles.toolbarHint}>{notesCopy.hint}</p>
-        <button type="button" className={styles.addBtn} onClick={openCreateModal}>
+        <button type="button" className={styles.addBtn} onClick={openCreateModal} disabled={!equipmentId}>
           <FaPlus aria-hidden />
           {notesCopy.addNote}
         </button>
       </div>
-
-      {loading ? <div className={styles.loading}>{notesCopy.loading}</div> : notes.length === 0 ? <div className={enterpriseStyles.clientNotesEmpty}>
-          <p className={styles.hint}>{notesCopy.empty || "Aucune note"}</p>
-        </div> : <ul className={enterpriseStyles.clientNotesList}>
-          {notes.map(note => {
-        const visibilityLabel = note.visibility === "public" ? notesCopy.visibilityPublic : notesCopy.visibilityPrivate;
-        return <li key={note.id} className={enterpriseStyles.clientNoteItem}>
-                <div className={enterpriseStyles.clientNoteHeader}>
-                  <div className={enterpriseStyles.clientNoteMeta}>
-                    <span className={enterpriseStyles.clientNoteAuthor}>
-                      {note.username || note.email || notesCopy.authorFallback}
-                    </span>
-                    <span className={`${styles.visibilityBadge} ${note.visibility === "public" ? styles.visibilityPublic : styles.visibilityPrivate}`}>
-                      {visibilityLabel}
-                    </span>
-                    <span className={enterpriseStyles.clientNoteDate}>
-                      {formatNoteDate(note.created_at, locale)}
-                      {note.updated_at && note.updated_at !== note.created_at ? interpolate(notesCopy.edited, {
-                date: formatEquipmentDetailRelative(note.updated_at, locale)
-              }) : ""}
-                    </span>
-                  </div>
-                  {canEditNote(note) ? <div className={enterpriseStyles.clientNoteActions}>
-                      <SmartTooltip content={notesCopy.editNote}>
-                        <button type="button" className={`${enterpriseStyles.editInfoButton} ${enterpriseStyles.clientNoteActionBtn}`} onClick={() => openEditModal(note)} aria-label={notesCopy.editNoteAria}>
-                          <FaPencilAlt />
-                        </button>
-                      </SmartTooltip>
-                      <SmartTooltip content={notesCopy.deleteNote}>
-                        <button type="button" className={`${enterpriseStyles.cancelInfoButton} ${enterpriseStyles.clientNoteActionBtn}`} onClick={() => handleDeleteNote(note.id)} aria-label={notesCopy.deleteNoteAria}>
-                          <Icon icon="mdi:trash-can-outline" aria-hidden />
-                        </button>
-                      </SmartTooltip>
-                    </div> : null}
-                </div>
-                <p className={enterpriseStyles.clientNoteContent}>{note.content}</p>
-              </li>;
-      })}
-        </ul>}
-
-      <EquipmentNoteModal open={modalOpen} mode={modalMode} initialContent={modalInitialContent} initialVisibility={modalInitialVisibility} equipmentName={equipmentName} copy={notesCopy} saving={saving} onClose={closeModal} onSubmit={handleModalSubmit} />
-    </div>;
+      {notesList}
+      {modal}
+    </div>
+  );
 }

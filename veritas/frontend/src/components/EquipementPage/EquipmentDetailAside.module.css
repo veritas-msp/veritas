@@ -1,106 +1,19 @@
-.asideStack {
-  top: 1rem;
-  max-height: calc(100vh - 2rem);
-  overflow: auto;
-  padding-bottom: 0.25rem;
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 1rem 1rem 0.9rem;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 14px;
-  background: var(--msp-surface, #fff);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04), 0 8px 20px rgba(15, 28, 46, 0.04);
-}
-
-.cardHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.cardTitle {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f172a);
-  letter-spacing: 0.01em;
-}
-
-.editBtn {
+.summaryLink {
   appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  border: 0;
+  background: transparent;
   padding: 0;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 9px;
-  background: var(--msp-surface-2, #f4f7fb);
-  color: var(--msp-muted, #64748b);
-  cursor: pointer;
-}
-
-.editBtn:hover {
+  margin: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--msp-accent, #2b5fab);
-  border-color: var(--msp-accent, #2b5fab);
-}
-
-.kvList {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-}
-
-.kvRow {
-  display: grid;
-  grid-template-columns: minmax(5.5rem, 0.9fr) minmax(0, 1.4fr);
-  gap: 0.5rem;
-  align-items: baseline;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px dashed var(--msp-border-light, #e2e8f0);
-}
-
-.kvRow:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.kvRow dt {
-  margin: 0;
-  font-size: 0.72rem;
-  font-weight: 650;
-  color: var(--msp-muted, #64748b);
-}
-
-.kvRow dd {
-  margin: 0;
-  font-size: 0.84rem;
-  font-weight: 650;
-  color: var(--msp-text, #0f172a);
-  text-align: right;
+  text-align: left;
+  cursor: pointer;
   word-break: break-word;
 }
 
-.kvLink {
-  appearance: none;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  font-weight: 650;
-  color: var(--msp-accent, #2b5fab);
-  cursor: pointer;
-  text-align: right;
-}
-
-.kvLink:hover {
+.summaryLink:hover {
   text-decoration: underline;
 }
 
@@ -110,78 +23,12 @@
   font-size: 0.8rem;
 }
 
-.quickCard {
-  flex: 0 0 auto;
+.assocStatic {
+  cursor: default;
 }
 
-.assocList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.assocItem,
-.assocItemStatic {
-  display: grid;
-  grid-template-columns: 2.2rem minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  align-items: center;
-  width: 100%;
-  padding: 0.55rem 0.6rem;
-  border-radius: 10px;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface-2, #f4f7fb);
-  text-align: left;
-}
-
-.assocItem {
-  appearance: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
-}
-
-.assocItem:hover {
-  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, var(--msp-border-light));
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, var(--msp-surface-2));
-}
-
-.assocIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 9px;
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1.2rem;
-}
-
-.assocText {
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  min-width: 0;
-}
-
-.assocTitle {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f172a);
-}
-
-.assocSub {
-  font-size: 0.72rem;
-  font-weight: 550;
-  color: var(--msp-muted, #64748b);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.assocStatic:hover {
+  background: inherit;
 }
 
 .assocStatus {
@@ -193,6 +40,7 @@
   font-weight: 700;
   background: rgba(34, 197, 94, 0.14);
   color: #15803d;
+  flex-shrink: 0;
 }
 
 .assocStatus_warn {
@@ -203,12 +51,4 @@
 .assocStatus_down {
   background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
-}
-
-@media (max-width: 1100px) {
-  .asideStack {
-    position: static;
-    max-height: none;
-    overflow: visible;
-  }
 }

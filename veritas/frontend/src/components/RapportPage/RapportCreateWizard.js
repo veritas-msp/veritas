@@ -56,22 +56,10 @@ export default function ReportCreateWizard({
   };
 
   return <div className={styles.picker} data-guide="report-wizard">
-      <nav className={styles.steps} aria-label={wizard.progressAria} data-guide="report-steps">
-        <span className={`${styles.step} ${step === "type" ? styles.stepActive : styles.stepDone}`}>
-          <span className={styles.stepIndex}>1</span>
-          {wizard.stepType}
-        </span>
-        <span className={styles.stepRule} aria-hidden />
-        <span className={`${styles.step} ${step === "client" ? styles.stepActive : ""}`}>
-          <span className={styles.stepIndex}>2</span>
-          {wizard.stepClient}
-        </span>
-      </nav>
-
-      {step === "type" ? <section className={styles.stage} data-guide="report-types">
-          <header className={styles.stageHeader}>
-            <h2 className={styles.stageTitle}>{wizard.typeTitle}</h2>
-            <p className={styles.stageHint}>{wizard.typeHint}</p>
+      {step === "type" ? <section className={`${styles.stage} ${styles.typeStage}`} data-guide="report-types">
+          <header className={styles.typeHero}>
+            <h2 className={styles.typeHeroTitle}>{wizard.typeTitle}</h2>
+            {wizard.typeHint ? <p className={styles.typeHeroHint}>{wizard.typeHint}</p> : null}
           </header>
 
           <div className={styles.typeGrid} role="list">
@@ -87,7 +75,6 @@ export default function ReportCreateWizard({
                   <span className={styles.typeTitle}>{type.title}</span>
                   {type.description ? <span className={styles.typeDesc}>{type.description}</span> : null}
                 </span>
-                {!comingSoon ? <Icon icon="mdi:chevron-right" className={styles.typeChevron} aria-hidden /> : null}
               </button>;
         })}
           </div>

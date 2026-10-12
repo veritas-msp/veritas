@@ -30,8 +30,14 @@ import {
 import {
   buildRmmAgentRowFromEquipment,
   getPerformanceSummary,
-  getRmmInventoryFromEquipment
+  getRmmInventoryFromEquipment,
+  isRmmManagedEquipment
 } from "./rmmMonitoringUtils";
+import {
+  normalizeEquipmentOverviewPane,
+  readEquipmentDetailUi,
+  writeEquipmentDetailUi
+} from "../../utils/equipmentDetailUiState";
 import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
 import styles from "./EquipmentOverviewDashboard.module.css";
 
@@ -174,7 +180,10 @@ export default function EquipmentOverviewDashboard({
   checkmkData = null,
   checkmkAvailabilityPeriod = "1m",
   loadingCheckMK = false,
-  maintenanceHistoryKey = 0
+  maintenanceHistoryKey = 0,
+  sheetContent = null,
+  showRmmTab = null,
+  showSupervisionTab = null
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
@@ -186,6 +195,48 @@ export default function EquipmentOverviewDashboard({
   const equipmentId = getEquipmentDbId(equipment) || equipment?.dbId || equipment?.id;
   const equipmentDbId = equipmentId;
   const equipmentClientId = getEquipmentClientId(equipment);
+  const rmmManaged = isRmmManagedEquipment(equipment);
+  const allowRmm = showRmmTab == null ? rmmManaged : Boolean(showRmmTab);
+  const allowSupervision =
+    showSupervisionTab == null
+      ? Boolean(equipment?.checkmkMapping?.checkmk_host_name || checkmkData)
+      : Boolean(showSupervisionTab);
+  const showFicheTab = Boolean(sheetContent);
+  const showPaneSwitch = showFicheTab || allowRmm || allowSupervision;
+
+  const [overviewPane, setOverviewPane] = useState(() =>
+    normalizeEquipmentOverviewPane(readEquipmentDetailUi(equipmentId)?.overviewPane, {
+      allowRmm,
+      allowSupervision
+    })
+  );
+
+  useEffect(() => {
+    const saved = readEquipmentDetailUi(equipmentId)?.overviewPane;
+    setOverviewPane(
+      normalizeEquipmentOverviewPane(saved, {
+        allowRmm,
+        allowSupervision
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restore pane when switching equipment
+  }, [equipmentId]);
+
+  useEffect(() => {
+    setOverviewPane(prev =>
+      normalizeEquipmentOverviewPane(prev, { allowRmm, allowSupervision })
+    );
+  }, [allowRmm, allowSupervision]);
+
+  useEffect(() => {
+    if (!equipmentId) return;
+    writeEquipmentDetailUi(equipmentId, {
+      overviewPane: normalizeEquipmentOverviewPane(overviewPane, {
+        allowRmm,
+        allowSupervision
+      })
+    });
+  }, [equipmentId, overviewPane, allowRmm, allowSupervision]);
   const inventory = useMemo(() => getRmmInventoryFromEquipment(equipment), [equipment]);
   const metricAgent = useMemo(() => buildRmmAgentRowFromEquipment(equipment), [equipment]);
   const snapshot = useMemo(() => buildMetricSnapshot(metricAgent), [metricAgent]);
@@ -348,16 +399,66 @@ export default function EquipmentOverviewDashboard({
 
   const hasCheckmk = Boolean(checkmkData) || loadingCheckMK;
   const hasRmmMetrics = snapshot.cpuPct != null || snapshot.ramPct != null || storagePct != null;
+  const activePane = normalizeEquipmentOverviewPane(overviewPane, {
+    allowRmm,
+    allowSupervision
+  });
+  const showFichePane = activePane === "fiche" && showFicheTab;
+  const showRmmPane = activePane === "rmm" && allowRmm;
+  const showSupervisionPane = activePane === "supervision" && allowSupervision;
 
   return (
     <div className={styles.root} data-guide="equipment-overview-dashboard">
-      <div className={styles.split}>
+      {showPaneSwitch ? (
+        <div className={styles.paneSwitch} role="tablist" aria-label={ov.paneAria || "Vue d'ensemble"}>
+          {showFicheTab ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showFichePane}
+              className={`${styles.paneSwitchBtn} ${showFichePane ? styles.paneSwitchBtnActive : ""}`.trim()}
+              onClick={() => setOverviewPane("fiche")}
+            >
+              <Icon icon="mdi:clipboard-text-outline" aria-hidden />
+              {ov.tabFiche || "Fiche"}
+            </button>
+          ) : null}
+          {allowRmm ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showRmmPane}
+              className={`${styles.paneSwitchBtn} ${showRmmPane ? styles.paneSwitchBtnActive : ""}`.trim()}
+              onClick={() => setOverviewPane("rmm")}
+            >
+              <Icon icon="mdi:desktop-classic" aria-hidden />
+              {ov.tabRmm || "RMM"}
+            </button>
+          ) : null}
+          {allowSupervision ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showSupervisionPane}
+              className={`${styles.paneSwitchBtn} ${showSupervisionPane ? styles.paneSwitchBtnActive : ""}`.trim()}
+              onClick={() => setOverviewPane("supervision")}
+            >
+              <Icon icon="mdi:radar" aria-hidden />
+              {ov.tabSupervision || "Supervision"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showFichePane ? (
+        <div className={styles.fichePane} aria-label={ov.tabFiche || "Fiche"}>
+          {sheetContent}
+        </div>
+      ) : null}
+
+      {showRmmPane ? (
         <section className={styles.column} aria-label={ov.rmmSectionTitle || "Agent RMM"}>
-          <h2 className={styles.columnHead}>
-            <Icon icon="mdi:desktop-classic" className={styles.columnHeadIcon} aria-hidden />
-            {ov.rmmSectionTitle || "Agent RMM"}
-          </h2>
-          <div className={styles.columnGrid}>
+          <div className={`${styles.columnGrid} ${styles.paneGrid}`.trim()}>
             <OverviewCard
               title={ov.cpuRamTitle || "Processeur & Mémoire"}
               icon="mdi:chip"
@@ -566,15 +667,12 @@ export default function EquipmentOverviewDashboard({
             ) : null}
           </div>
         </section>
+      ) : null}
 
+      {showSupervisionPane ? (
         <section className={styles.column} aria-label={ov.checkmkSectionTitle || "Supervision CheckMK"}>
-          <h2 className={styles.columnHead}>
-            <Icon icon="mdi:radar" className={styles.columnHeadIcon} aria-hidden />
-            {ov.checkmkSectionTitle || "Supervision CheckMK"}
-          </h2>
-          <div className={styles.columnGrid}>
+          <div className={`${styles.columnGrid} ${styles.paneGrid} ${styles.supervisionGrid}`.trim()}>
             <OverviewCard
-              className={styles.spanFull}
               title={ov.availabilityTitle || "Disponibilité"}
               icon="mdi:chart-timeline-variant"
             >
@@ -621,7 +719,6 @@ export default function EquipmentOverviewDashboard({
             </OverviewCard>
 
             <OverviewCard
-              className={styles.spanFull}
               title={ov.servicesTitle || "État des services"}
               icon="mdi:list-status"
             >
@@ -717,7 +814,7 @@ export default function EquipmentOverviewDashboard({
             </OverviewCard>
           </div>
         </section>
-      </div>
+      ) : null}
     </div>
   );
 }

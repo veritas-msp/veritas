@@ -38,7 +38,6 @@ import EquipmentDetailAside from "./EquipmentDetailAside";
 import specsStyles from "./EquipmentDetailSpecsPanel.module.css";
 import { resolveEquipmentRemoteAccessAction } from "./equipmentDetailRemoteAccess";
 import EquipmentDocumentsPanel from "./EquipmentDocumentsPanel";
-import EquipmentNotesPanel from "./EquipmentNotesPanel";
 import EquipmentEventsPanel from "./EquipmentEventsPanel";
 import EquipmentStatsPanel from "./EquipmentStatsPanel";
 import { fetchEquipmentActivity } from "../../api/equipmentActivity";
@@ -93,11 +92,21 @@ import {
   getRmmChassisInfo,
   resolveRmmAgentOnline
 } from "./rmmMonitoringUtils";
-import { getCheckMKAvailabilityUp } from "./checkmkMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
 import { fetchEquipmentFamilies, mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import {
+  DETAIL_CACHE_NS,
+  getDetailCache,
+  setDetailCache
+} from "../../utils/detailPageCache";
+import {
+  normalizeEquipmentActivityPane,
+  normalizeEquipmentDetailTab,
+  readEquipmentDetailUi,
+  writeEquipmentDetailUi
+} from "../../utils/equipmentDetailUiState";
 const CheckMKMappingModal = EquipmentMappingModal;
 
 export default function EquipmentDetailPage({
@@ -122,6 +131,15 @@ export default function EquipmentDetailPage({
     syncIntervalMs: checkmkSyncIntervalMs,
     syncSuspended: checkmkSyncSuspended
   } = useCheckMKIntegrationEnabled();
+  const resolvedEquipmentId = resolveEquipmentDbId(equipment);
+  const initialEquipmentUi = useMemo(
+    () => readEquipmentDetailUi(resolvedEquipmentId),
+    [resolvedEquipmentId]
+  );
+  const initialEquipmentCache = useMemo(() => {
+    if (!resolvedEquipmentId) return null;
+    return getDetailCache(DETAIL_CACHE_NS.equipment, resolvedEquipmentId);
+  }, [resolvedEquipmentId]);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -130,11 +148,13 @@ export default function EquipmentDetailPage({
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [checkmkMappingModal, setCheckmkMappingModal] = useState(false);
   const [checkmkDebugModal, setCheckmkDebugModal] = useState(false);
-  const [checkmkData, setCheckmkData] = useState(null);
+  const [checkmkData, setCheckmkData] = useState(() => initialEquipmentCache?.checkmkData ?? null);
   const [checkmkHostDetails, setCheckmkHostDetails] = useState(null);
   const [loadingCheckMK, setLoadingCheckMK] = useState(false);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
-  const [checkmkMapping, setCheckmkMapping] = useState(equipment?.checkmkMapping || null);
+  const [checkmkMapping, setCheckmkMapping] = useState(
+    () => initialEquipmentCache?.checkmkMapping || equipment?.checkmkMapping || null
+  );
   const [checkmkLastSyncedAt, setCheckmkLastSyncedAt] = useState(null);
   const [checkmkPeriod, setCheckmkPeriod] = useState(null);
   const [checkmkAvailabilityPeriod, setCheckmkAvailabilityPeriod] = useState('1m');
@@ -142,8 +162,12 @@ export default function EquipmentDetailPage({
   const [editingEvent, setEditingEvent] = useState(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
-  const [equipmentTags, setEquipmentTags] = useState([]);
-  const [loadingEquipmentTags, setLoadingEquipmentTags] = useState(false);
+  const [equipmentTags, setEquipmentTags] = useState(() =>
+    Array.isArray(initialEquipmentCache?.tags) ? initialEquipmentCache.tags : []
+  );
+  const [loadingEquipmentTags, setLoadingEquipmentTags] = useState(
+    () => !Array.isArray(initialEquipmentCache?.tags)
+  );
   const [equipmentTagModalOpen, setEquipmentTagModalOpen] = useState(false);
   const [addingEquipmentTag, setAddingEquipmentTag] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -170,22 +194,26 @@ export default function EquipmentDetailPage({
   const [lunsModalOpen, setLunsModalOpen] = useState(false);
   const [licencesModalOpen, setLicensesModalOpen] = useState(false);
   const [availableSites, setAvailableSites] = useState([]);
-  const [logs, setLogs] = useState([]);
-  const [loadingLogs, setLoadingLogs] = useState(true);
-  const [logsPage, setLogsPage] = useState(1);
-  const [activity, setActivity] = useState(null);
-  const [loadingActivity, setLoadingActivity] = useState(false);
-  const [activityDatePreset, setActivityDatePreset] = useState("30d");
+  const [logs, setLogs] = useState(() =>
+    Array.isArray(initialEquipmentCache?.logs) ? initialEquipmentCache.logs : []
+  );
+  const [loadingLogs, setLoadingLogs] = useState(() => !Array.isArray(initialEquipmentCache?.logs));
+  const [logsPage, setLogsPage] = useState(() => Number(initialEquipmentCache?.logsPage) || 1);
+  const [activity, setActivity] = useState(() => initialEquipmentCache?.activity ?? null);
+  const [loadingActivity, setLoadingActivity] = useState(() => !initialEquipmentCache?.activity);
+  const [activityDatePreset, setActivityDatePreset] = useState(
+    () => initialEquipmentUi?.activityDatePreset || "30d"
+  );
   const [activityCustomStart, setActivityCustomStart] = useState("");
   const [activityCustomEnd, setActivityCustomEnd] = useState(toDateInputValue(new Date()));
   const activityControllerRef = useRef(null);
   const lastActivityFetchKeyRef = useRef(null);
   const [globalSSIDs, setGlobalSSIDs] = useState([]);
   const [loadingSSIDs, setLoadingSSIDs] = useState(false);
-  const [logsTotal, setLogsTotal] = useState(0);
+  const [logsTotal, setLogsTotal] = useState(() => Number(initialEquipmentCache?.logsTotal) || 0);
   const [logsSearchDraft, setLogsSearchDraft] = useState("");
   const [logsSearch, setLogsSearch] = useState("");
-  const [logsCategory, setLogsCategory] = useState("all");
+  const [logsCategory, setLogsCategory] = useState(() => initialEquipmentUi?.logsCategory || "all");
   const [purgeLogsConfirmOpen, setPurgeLogsConfirmOpen] = useState(false);
   const [purgingLogs, setPurgingLogs] = useState(false);
   const logsLimit = 10;
@@ -205,14 +233,31 @@ export default function EquipmentDetailPage({
     value: "remote",
     label: copy.logs.filters.remote
   }], [copy]);
-  const [rightPanelTab, setRightPanelTab] = useState('dashboard');
-  const [activityPane, setActivityPane] = useState("metrics");
+  const [rightPanelTab, setRightPanelTab] = useState(() =>
+    normalizeEquipmentDetailTab(
+      equipment?.detailTab === "metrics"
+        ? "activity"
+        : initialEquipmentUi?.rightPanelTab
+    )
+  );
+  const [activityPane, setActivityPane] = useState(() =>
+    normalizeEquipmentActivityPane(
+      equipment?.detailTab === "metrics"
+        ? "metrics"
+        : initialEquipmentUi?.activityPane,
+      { allowMetrics: true }
+    )
+  );
   const logsControllerRef = useRef(null);
   const checkmkControllerRef = useRef(null);
   const availabilityControllerRef = useRef(null);
   const syncRequestOverrideRef = useRef(undefined);
   const syncConfirmedOnAgentRef = useRef(false);
   const lastRmmRefreshSnapshotRef = useRef(null);
+  const pageRootRef = useRef(null);
+  const mainContentRef = useRef(null);
+  const equipmentUiIdRef = useRef(resolvedEquipmentId);
+  const skipEquipmentUiPersistRef = useRef(false);
   const getEquipmentDbIdLocal = () => resolveEquipmentDbId(equipment);
   const getEditModuleKey = eq => {
     const family = eq?.type || eq?.familyKey || "";
@@ -448,11 +493,22 @@ export default function EquipmentDetailPage({
     const availabilityByPeriod = payload.availabilityByPeriod || payload.checkmkData?.availabilityByPeriod || {};
     const availability = availabilityByPeriod[checkmkAvailabilityPeriod] ?? payload.checkmkData?.availability ?? null;
     if (payload.checkmkData) {
-      setCheckmkData({
+      const nextCheckmkData = {
         ...payload.checkmkData,
         availability,
         availabilityByPeriod
-      });
+      };
+      setCheckmkData(nextCheckmkData);
+      const cacheId = resolveEquipmentDbId(equipment);
+      if (cacheId) {
+        const current = getDetailCache(DETAIL_CACHE_NS.equipment, cacheId, {
+          ttlMs: 0
+        }) || {};
+        setDetailCache(DETAIL_CACHE_NS.equipment, cacheId, {
+          ...current,
+          checkmkData: nextCheckmkData
+        });
+      }
     }
     if (payload.hostDetails) {
       setCheckmkHostDetails(payload.hostDetails);
@@ -471,6 +527,20 @@ export default function EquipmentDetailPage({
   const [formData, setFormData] = useState(() => buildDetailFormData(equipment, { extensionFields: systemExtensionFields }));
   const remoteAccessAction = useMemo(() => resolveEquipmentRemoteAccessAction(equipment, formData, locale), [equipment, formData, locale]);
   const equipmentDbId = useMemo(() => resolveEquipmentDbId(equipment), [equipment]);
+  const patchEquipmentCache = useCallback((equipmentId, patch) => {
+    if (!equipmentId || !patch || typeof patch !== "object") return;
+    const current = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentId, {
+      ttlMs: 0
+    });
+    if (current) {
+      setDetailCache(DETAIL_CACHE_NS.equipment, equipmentId, {
+        ...current,
+        ...patch
+      });
+      return;
+    }
+    setDetailCache(DETAIL_CACHE_NS.equipment, equipmentId, patch);
+  }, []);
   const {
     subscribed: equipmentSubscribed,
     loading: equipmentSubscribeLoading,
@@ -655,19 +725,116 @@ export default function EquipmentDetailPage({
       return undefined;
     }
     let cancelled = false;
-    setLoadingEquipmentTags(true);
+    const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
+    const keepVisible = Array.isArray(cached?.tags);
+    if (keepVisible) {
+      setEquipmentTags(cached.tags);
+      setLoadingEquipmentTags(false);
+    } else {
+      setLoadingEquipmentTags(true);
+    }
     fetchEquipmentTags(equipmentDbId, equipmentClientId).then(tags => {
-      if (!cancelled) setEquipmentTags(Array.isArray(tags) ? tags : []);
+      if (cancelled) return;
+      const nextTags = Array.isArray(tags) ? tags : [];
+      setEquipmentTags(nextTags);
+      patchEquipmentCache(equipmentDbId, {
+        tags: nextTags
+      });
     }).catch(error => {
       console.error("Error loading tags device:", error);
-      if (!cancelled) setEquipmentTags([]);
+      if (!cancelled && !keepVisible) setEquipmentTags([]);
     }).finally(() => {
       if (!cancelled) setLoadingEquipmentTags(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [canManageEquipmentTags, equipmentDbId, equipmentClientId]);
+  }, [canManageEquipmentTags, equipmentDbId, equipmentClientId, patchEquipmentCache]);
+  useEffect(() => {
+    if (!equipmentDbId) return;
+    const prev = equipmentUiIdRef.current;
+    if (prev != null && String(prev) !== String(equipmentDbId)) {
+      skipEquipmentUiPersistRef.current = true;
+      const saved = readEquipmentDetailUi(equipmentDbId);
+      setRightPanelTab(normalizeEquipmentDetailTab(saved?.rightPanelTab));
+      setActivityPane(normalizeEquipmentActivityPane(saved?.activityPane));
+      setActivityDatePreset(saved?.activityDatePreset || "30d");
+      setLogsCategory(saved?.logsCategory || "all");
+      const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
+      if (Array.isArray(cached?.tags)) {
+        setEquipmentTags(cached.tags);
+        setLoadingEquipmentTags(false);
+      }
+      if (cached?.activity) {
+        setActivity(cached.activity);
+        setLoadingActivity(false);
+      }
+      if (Array.isArray(cached?.logs)) {
+        setLogs(cached.logs);
+        setLogsTotal(Number(cached.logsTotal) || 0);
+        setLogsPage(Number(cached.logsPage) || 1);
+        setLoadingLogs(false);
+      }
+      if (cached?.checkmkMapping) setCheckmkMapping(cached.checkmkMapping);
+      if (cached?.checkmkData) setCheckmkData(cached.checkmkData);
+    }
+    equipmentUiIdRef.current = equipmentDbId;
+  }, [equipmentDbId]);
+  useEffect(() => {
+    if (!equipmentDbId) return;
+    if (skipEquipmentUiPersistRef.current) {
+      skipEquipmentUiPersistRef.current = false;
+      return;
+    }
+    writeEquipmentDetailUi(equipmentDbId, {
+      rightPanelTab,
+      activityPane,
+      activityDatePreset,
+      logsCategory
+    });
+  }, [equipmentDbId, rightPanelTab, activityPane, activityDatePreset, logsCategory]);
+  useEffect(() => {
+    const el = mainContentRef.current;
+    if (!el || !equipmentDbId) return undefined;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        writeEquipmentDetailUi(equipmentDbId, {
+          scrollY: el.scrollTop
+        });
+      });
+    };
+    el.addEventListener("scroll", onScroll, {
+      passive: true
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", onScroll);
+      writeEquipmentDetailUi(equipmentDbId, {
+        scrollY: el.scrollTop
+      });
+    };
+  }, [equipmentDbId]);
+  useEffect(() => {
+    if (!equipmentDbId) return;
+    const savedY = readEquipmentDetailUi(equipmentDbId)?.scrollY;
+    if (typeof savedY !== "number" || savedY <= 0) return;
+    const el = mainContentRef.current;
+    if (!el) return;
+    const restore = () => {
+      el.scrollTop = savedY;
+    };
+    const raf = requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+    const timeout = window.setTimeout(restore, 120);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, [equipmentDbId, rightPanelTab]);
   useEffect(() => {
     if (!equipment) return;
     abortAllPendingFetches();
@@ -681,12 +848,17 @@ export default function EquipmentDetailPage({
       Object.prototype.hasOwnProperty.call(equipment, "checkmkMapping") ? equipment.checkmkMapping : checkmkMapping
     );
     setCheckmkMapping(mapping);
+    if (equipmentDbId && mapping) {
+      patchEquipmentCache(equipmentDbId, {
+        checkmkMapping: mapping
+      });
+    }
     if (checkmkIntegrationEnabled && mapping?.checkmk_host_name) {
       loadCheckMKData();
     } else if (!needsHydration) {
       setCheckmkData(null);
     }
-  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids, equipment?.checkmkMapping, equipment?.checkmk_host_name]);
+  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids, equipment?.checkmkMapping, equipment?.checkmk_host_name, equipmentDbId, patchEquipmentCache]);
   // Si le mapping n'est pas dans le payload (ex. stub URL / inventaire partiel), le récupérer via l'API client.
   useEffect(() => {
     if (!checkmkIntegrationEnabled || checkmkMapping?.checkmk_host_name) return undefined;
@@ -970,10 +1142,10 @@ export default function EquipmentDetailPage({
     };
   }, [rmmManaged, rmmAgentId, rmmUpdateRequestedAt, refreshRmmEquipment]);
   useEffect(() => {
-    if (!showRmmMetricsTab && activityPane === "metrics") {
-      setActivityPane("veritas");
-    }
-  }, [showRmmMetricsTab, activityPane]);
+    setActivityPane(prev =>
+      normalizeEquipmentActivityPane(prev, { allowMetrics: showRmmMetricsTab })
+    );
+  }, [showRmmMetricsTab]);
   useEffect(() => {
     if (rightPanelTab === "peripherals" && !showRmmPeripheralsTab) {
       setRightPanelTab("dashboard");
@@ -1198,13 +1370,16 @@ export default function EquipmentDetailPage({
     logsControllerRef.current?.abort();
     const controller = createTrackedAbortController();
     logsControllerRef.current = controller;
-    setLoadingLogs(true);
+    const cacheId = getEquipmentDbIdLocal() || equipmentDbId;
+    const cached = cacheId ? getDetailCache(DETAIL_CACHE_NS.equipment, cacheId) : null;
+    const keepVisible = Array.isArray(cached?.logs) && page === 1 && !logsSearch && logsCategory === "all";
+    if (!keepVisible) setLoadingLogs(true);
     try {
       const data = await getEquipmentLogs(equipment.id, page, logsLimit, {
         clientId: equipment.clientId,
         type: equipment.type,
         name: equipment.name,
-        dbId: getEquipmentDbIdLocal() || equipment.dbId || null,
+        dbId: cacheId || equipment.dbId || null,
         familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
         family: equipment.family || null,
         search: logsSearch,
@@ -1212,14 +1387,25 @@ export default function EquipmentDetailPage({
         signal: controller.signal
       });
       if (controller.signal.aborted) return;
-      setLogs(data.logs || []);
-      setLogsTotal(data.total || 0);
+      const nextLogs = data.logs || [];
+      const nextTotal = data.total || 0;
+      setLogs(nextLogs);
+      setLogsTotal(nextTotal);
       setLogsPage(page);
+      if (cacheId && !logsSearch && logsCategory === "all") {
+        patchEquipmentCache(cacheId, {
+          logs: nextLogs,
+          logsTotal: nextTotal,
+          logsPage: page
+        });
+      }
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error while loading des logs:", error);
-      setLogs([]);
-      setLogsTotal(0);
+      if (!keepVisible) {
+        setLogs([]);
+        setLogsTotal(0);
+      }
     } finally {
       if (!controller.signal.aborted) setLoadingLogs(false);
     }
@@ -1275,7 +1461,9 @@ export default function EquipmentDetailPage({
       customStart: activityCustomStart,
       customEnd: activityCustomEnd
     });
-    setLoadingActivity(true);
+    const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
+    const keepVisible = Boolean(cached?.activity) && activityDatePreset === "30d";
+    if (!keepVisible) setLoadingActivity(true);
     try {
       const payload = await fetchEquipmentActivity({
         equipmentId: equipmentDbId,
@@ -1286,17 +1474,22 @@ export default function EquipmentDetailPage({
       });
       if (controller.signal.aborted) return;
       setActivity(payload);
+      if (activityDatePreset === "30d") {
+        patchEquipmentCache(equipmentDbId, {
+          activity: payload
+        });
+      }
     } catch (error) {
       if (controller.signal.aborted) return;
       console.error("Error loading device activity:", error);
-      setActivity(null);
+      if (!keepVisible) setActivity(null);
     } finally {
       if (!controller.signal.aborted) {
         setLoadingActivity(false);
         lastActivityFetchKeyRef.current = [equipmentDbId || "", equipmentClientId || "", activityDatePreset, activityCustomStart, activityCustomEnd].join("|");
       }
     }
-  }, [equipmentDbId, equipmentClientId, activityDatePreset, activityCustomStart, activityCustomEnd]);
+  }, [equipmentDbId, equipmentClientId, activityDatePreset, activityCustomStart, activityCustomEnd, patchEquipmentCache]);
   const activityFetchKey = useMemo(() => [equipmentDbId || "", equipmentClientId || "", activityDatePreset, activityCustomStart, activityCustomEnd].join("|"), [equipmentDbId, equipmentClientId, activityDatePreset, activityCustomStart, activityCustomEnd]);
   useEffect(() => {
     const onActivityTab = rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats";
@@ -1340,7 +1533,9 @@ export default function EquipmentDetailPage({
     }
   };
   const openActivityTab = pane => {
-    if (pane === "metrics" && showRmmMetricsTab) setActivityPane("metrics");else if (pane === "veritas" || !showRmmMetricsTab) setActivityPane("veritas");
+    if (pane === "metrics" && showRmmMetricsTab) setActivityPane("metrics");
+    else if (pane === "maintenance") setActivityPane("maintenance");
+    else setActivityPane("veritas");
     setRightPanelTab("activity");
   };
   const loadPhotos = async () => {
@@ -1633,8 +1828,13 @@ export default function EquipmentDetailPage({
         color
       });
       setEquipmentTags(prev => {
-        if (prev.some(t => t.id === tag.id)) return prev;
-        return [...prev, tag].sort((a, b) => a.label.localeCompare(b.label));
+        const next = prev.some(t => t.id === tag.id)
+          ? prev
+          : [...prev, tag].sort((a, b) => a.label.localeCompare(b.label));
+        patchEquipmentCache(equipmentDbId, {
+          tags: next
+        });
+        return next;
       });
       setEquipmentTagModalOpen(false);
       toast.success(copy.toasts.tagAdded);
@@ -1649,7 +1849,13 @@ export default function EquipmentDetailPage({
     if (!canManageEquipmentTags) return;
     try {
       await removeEquipmentTag(equipmentDbId, equipmentClientId, tagId);
-      setEquipmentTags(prev => prev.filter(t => t.id !== tagId));
+      setEquipmentTags(prev => {
+        const next = prev.filter(t => t.id !== tagId);
+        patchEquipmentCache(equipmentDbId, {
+          tags: next
+        });
+        return next;
+      });
       toast.success(copy.toasts.tagRemoved);
     } catch (error) {
       console.error("Error suppression tag device:", error);
@@ -1746,23 +1952,6 @@ export default function EquipmentDetailPage({
   const heroIp = equipment?.ip || formData.ip || rmmInventory?.network?.ip || rmmInventory?.ip || null;
   const heroSite = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
   const heroSiteLabel = getSiteDisplayName(heroSite) || formData.location || equipment?.location || null;
-  const checkmkServices = checkmkData?.services?.services || [];
-  const heroServiceCounts = {
-    critical: checkmkServices.filter(s => (s.state ?? 3) === 2).length,
-    warning: checkmkServices.filter(s => (s.state ?? 3) === 1).length,
-    ok: checkmkServices.filter(s => (s.state ?? 3) === 0).length
-  };
-  const heroAvailPct = getCheckMKAvailabilityUp(
-    checkmkData?.availability ?? checkmkData?.availabilityByPeriod?.[checkmkAvailabilityPeriod]
-  );
-  const heroAvailTrend = (() => {
-    const byPeriod = checkmkData?.availabilityByPeriod || {};
-    const a1 = getCheckMKAvailabilityUp(byPeriod["1m"]);
-    const a3 = getCheckMKAvailabilityUp(byPeriod["3m"]);
-    if (a1 == null || a3 == null) return null;
-    return Math.round((a1 - a3) * 10) / 10;
-  })();
-  const showHeroAvailWidget = true;
   const showMonitoredOverview = Boolean(rmmManaged || checkmkMapping?.checkmk_host_name);
   const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
   const heroFacts = [
@@ -1784,7 +1973,7 @@ export default function EquipmentDetailPage({
       </div>;
   }
 
-  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage} ${inMaintenance ? styles.heroInMaintenance : ""} msp-page-grid`.trim()}>
+  return <div ref={pageRootRef} className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${enterpriseDetailStyles.equipmentDetailPage} ${styles.equipmentDetailPage} ${inMaintenance ? styles.heroInMaintenance : ""} msp-page-grid`.trim()}>
       <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
         <div className={enterpriseDetailStyles.heroTop}>
           <div className={enterpriseDetailStyles.heroIdentityBlock}>
@@ -1894,58 +2083,19 @@ export default function EquipmentDetailPage({
                     {showRmmHeroStatus ? <RmmCollectionStatusLine equipment={equipmentWithRmmLive} heartbeatIntervalMinutes={rmmHeartbeatMinutes} locale={locale} copy={copy} compact className={enterpriseDetailStyles.heroMetaItemRmm} /> : null}
                   </div>
                 </div>
-
-                {showHeroAvailWidget ? <div className={enterpriseDetailStyles.heroRightCluster}>
-                  <div className={enterpriseDetailStyles.heroKpiStrip} aria-label={copy.hero.availabilityLabel}>
-                    <div className={enterpriseDetailStyles.heroKpiCard}>
-                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconSites}`} aria-hidden>
-                        <Icon icon="mdi:chart-donut" />
-                      </span>
-                      <span className={enterpriseDetailStyles.heroKpiValue}>
-                        {heroAvailPct != null ? `${Number(heroAvailPct).toFixed(0)}%` : "—"}
-                        {heroAvailTrend != null ? <em className={heroAvailTrend >= 0 ? styles.heroAvailTrendUp : styles.heroAvailTrendDown}>
-                            {heroAvailTrend >= 0 ? "+" : ""}
-                            {heroAvailTrend}
-                          </em> : null}
-                      </span>
-                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.hero.availabilityLabel}</span>
-                    </div>
-                    <div className={enterpriseDetailStyles.heroKpiCard}>
-                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconCritical}`} aria-hidden>
-                        <Icon icon="mdi:alert-octagon-outline" />
-                      </span>
-                      <span className={enterpriseDetailStyles.heroKpiValue}>{heroServiceCounts.critical}</span>
-                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.overview?.servicesCritical || copy.hero.servicesCritical}</span>
-                    </div>
-                    <div className={enterpriseDetailStyles.heroKpiCard}>
-                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconWarnings}`} aria-hidden>
-                        <Icon icon="mdi:alert-outline" />
-                      </span>
-                      <span className={enterpriseDetailStyles.heroKpiValue}>{heroServiceCounts.warning}</span>
-                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.overview?.servicesWarning || copy.hero.servicesWarning}</span>
-                    </div>
-                    <div className={enterpriseDetailStyles.heroKpiCard}>
-                      <span className={`${enterpriseDetailStyles.heroKpiIcon} ${enterpriseDetailStyles.heroKpiIconDevices}`} aria-hidden>
-                        <Icon icon="mdi:check-circle-outline" />
-                      </span>
-                      <span className={enterpriseDetailStyles.heroKpiValue}>{heroServiceCounts.ok}</span>
-                      <span className={enterpriseDetailStyles.heroKpiLabel}>{copy.overview?.servicesOk || copy.hero.servicesOk}</span>
-                    </div>
-                  </div>
-                </div> : null}
               </div>
 
             {heroFacts.length ? <div
-              className={styles.heroFactStrip}
+              className={enterpriseDetailStyles.heroFactStrip}
               aria-label={copy.hero.factsAria}
             >
-                {heroFacts.map(fact => <div key={fact.key} className={styles.heroFactItem}>
-                    <span className={styles.heroFactIcon} aria-hidden>
+                {heroFacts.map(fact => <div key={fact.key} className={enterpriseDetailStyles.heroFactItem}>
+                    <span className={enterpriseDetailStyles.heroFactIcon} aria-hidden>
                       <Icon icon={fact.icon} />
                     </span>
-                    <div className={styles.heroFactText}>
-                      <span className={styles.heroFactLabel}>{fact.label}</span>
-                      <span className={styles.heroFactValue} title={String(fact.value)}>{fact.value}</span>
+                    <div className={enterpriseDetailStyles.heroFactText}>
+                      <span className={enterpriseDetailStyles.heroFactLabel}>{fact.label}</span>
+                      <span className={enterpriseDetailStyles.heroFactValue} title={String(fact.value)}>{fact.value}</span>
                     </div>
                   </div>)}
               </div> : null}
@@ -1953,9 +2103,9 @@ export default function EquipmentDetailPage({
         </div>
       </header>
 
-      <div className={`${enterpriseDetailStyles.pageBody} ${styles.shell}`}>
-        <div className={styles.pageGridEquip}>
-        <div className={styles.mainColumnEquip}>
+      <div className={`${enterpriseDetailStyles.pageBody} ${enterpriseDetailStyles.pageBodyFill} ${styles.shell}`.trim()}>
+        <div className={`${enterpriseDetailStyles.pageGrid} ${styles.pageGridEquip}`.trim()}>
+        <div className={`${enterpriseDetailStyles.mainColumn} ${enterpriseDetailStyles.mainColumnEquipmentFill} ${styles.mainColumnEquip}`.trim()}>
         <nav className={enterpriseDetailStyles.heroTabBar} role="tablist" aria-label={copy.tabs.aria}>
           <button type="button" role="tab" aria-selected={rightPanelTab === "dashboard"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "dashboard" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("dashboard")}>
             <Icon icon="mdi:view-dashboard-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
@@ -1981,10 +2131,6 @@ export default function EquipmentDetailPage({
             <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.documents}</span>
           </button>
-          <button type="button" role="tab" aria-selected={rightPanelTab === "notes"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "notes" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("notes")}>
-            <Icon icon="mdi:note-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.notes}</span>
-          </button>
           <button type="button" role="tab" aria-selected={rightPanelTab === "logs"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "logs" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("logs")}>
             <Icon icon="mdi:history" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.logs}</span>
@@ -1992,7 +2138,7 @@ export default function EquipmentDetailPage({
         </nav>
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
-        <div className={styles.mainContent}>
+        <div ref={mainContentRef} className={styles.mainContent}>
           {rightPanelTab === "dashboard" && <>
               <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? "" : styles.dashboardSplitSolo}`.trim()}>
                 <div className={styles.dashboardMain}>
@@ -2003,6 +2149,14 @@ export default function EquipmentDetailPage({
                       checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
                       loadingCheckMK={loadingCheckMK}
                       maintenanceHistoryKey={maintenanceHistoryKey}
+                      showRmmTab={rmmManaged}
+                      showSupervisionTab={Boolean(checkmkMapping?.checkmk_host_name)}
+                      sheetContent={
+                        <>
+                          <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                          <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+                        </>
+                      }
                     />
                   ) : (
                     <>
@@ -2063,16 +2217,20 @@ export default function EquipmentDetailPage({
             </section> : null}
 
           {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>
-              {showRmmMetricsTab ? <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
-                  <button type="button" role="tab" aria-selected={activityPane === "metrics"} className={`${styles.activitySwitchBtn} ${activityPane === "metrics" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("metrics")}>
+              <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
+                  {showRmmMetricsTab ? <button type="button" role="tab" aria-selected={activityPane === "metrics"} className={`${styles.activitySwitchBtn} ${activityPane === "metrics" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("metrics")}>
                     <Icon icon="mdi:chart-areaspline" aria-hidden />
                     {copy.activityPane?.metrics || copy.tabs.metrics}
-                  </button>
+                  </button> : null}
                   <button type="button" role="tab" aria-selected={activityPane === "veritas"} className={`${styles.activitySwitchBtn} ${activityPane === "veritas" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("veritas")}>
                     <Icon icon="mdi:ticket-confirmation-outline" aria-hidden />
-                    {copy.activityPane?.veritas || "Veritas"}
+                    {copy.activityPane?.veritas || "Interventions"}
                   </button>
-                </div> : null}
+                  <button type="button" role="tab" aria-selected={activityPane === "maintenance"} className={`${styles.activitySwitchBtn} ${activityPane === "maintenance" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("maintenance")}>
+                    <Icon icon="mdi:wrench-clock" aria-hidden />
+                    {copy.activityPane?.maintenance || copy.maintenanceHistory?.title || "Maintenance"}
+                  </button>
+                </div>
 
               {showRmmMetricsTab && activityPane === "metrics" ? rmmMetricsAgent ? <RmmMetricHistoryPanel agent={rmmMetricsAgent} active={rightPanelTab === "activity" || rightPanelTab === "metrics"} embedded /> : <div className={styles.emptyState}>
                   <Icon icon="mdi:chart-timeline-variant" className={styles.emptyIcon} />
@@ -2080,19 +2238,29 @@ export default function EquipmentDetailPage({
                   <p className={styles.emptyHint}>
                     {copy.metrics.unavailableHint}
                   </p>
-                </div> : <>
-                  <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
-                  <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onCreateEvent={openCreateEventModal} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} isCommunity={isCommunity} proBadge={<ProFeatureBadge variant="inline" className={styles.proBadgeInline} />} hideDateFilter />
-                  {equipmentDbId ? (
-                    <EquipmentMaintenanceHistoryPanel
-                      copy={copy}
-                      locale={locale}
-                      equipmentId={equipmentDbId}
-                      clientId={equipmentClientId}
-                      refreshKey={maintenanceHistoryKey}
-                    />
-                  ) : null}
-                </>}
+                </div> : activityPane === "maintenance" ? (
+                  equipmentDbId ? (
+                    <div className={styles.activityPaneFill}>
+                      <EquipmentMaintenanceHistoryPanel
+                        copy={copy}
+                        locale={locale}
+                        equipmentId={equipmentDbId}
+                        clientId={equipmentClientId}
+                        refreshKey={maintenanceHistoryKey}
+                      />
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} />
+                      <h5>{copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}</h5>
+                    </div>
+                  )
+                ) : (
+                  <div className={styles.activityVeritasLayout}>
+                    <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onCreateEvent={openCreateEventModal} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} isCommunity={isCommunity} proBadge={<ProFeatureBadge variant="inline" className={styles.proBadgeInline} />} hideDateFilter />
+                    <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
+                  </div>
+                )}
             </div>}
 
           {}
@@ -2108,21 +2276,6 @@ export default function EquipmentDetailPage({
               </header>
               <div className={enterpriseDetailStyles.panelBody}>
                 <EquipmentDocumentsPanel equipment={equipment} embedded />
-              </div>
-            </section>}
-
-          {rightPanelTab === "notes" && <section className={enterpriseDetailStyles.panel}>
-              <header className={specsStyles.panelHeader}>
-                <div>
-                  <h2 className={specsStyles.panelTitle}>
-                    <Icon icon="mdi:note-text-outline" className={specsStyles.panelTitleIcon} aria-hidden />
-                    {copy.tabs.notes}
-                  </h2>
-                  <p className={specsStyles.panelSubtitle}>{copy.notes.subtitle}</p>
-                </div>
-              </header>
-              <div className={enterpriseDetailStyles.panelBody}>
-                <EquipmentNotesPanel equipment={equipment} embedded />
               </div>
             </section>}
 

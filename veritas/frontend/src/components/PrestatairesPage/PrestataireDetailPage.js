@@ -381,7 +381,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
 
   return (
     <div
-      className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${localStyles.prestataireDetailPage} msp-page-grid`}
+      className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${styles.prestataireDetailPage} ${localStyles.prestataireDetailPage} msp-page-grid`}
     >
       <header className={styles.pageHero}>
         <div className={styles.heroTop}>
@@ -473,9 +473,11 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
         </div>
       </header>
 
-      <div className={styles.pageBody}>
+      <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={styles.mainColumn}>
+          <main
+            className={`${styles.mainColumn} ${overviewTab === "activity" ? styles.mainColumnActivity : ""}`.trim()}
+          >
             <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria}>
               <button
                 type="button"
@@ -489,7 +491,8 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
               </button>
             </nav>
             {overviewTab === "activity" ? (
-              <div className={`${styles.activityLayout} ${styles.overviewTabPanel}`}>
+              <div className={styles.overviewTabPanel}>
+              <div className={styles.activityLayout}>
                 <div className={styles.activityKpiRow}>
                   <div className={styles.activityKpiCard}>
                     <span className={styles.activityKpiValue}>{mentionedTickets.length}</span>
@@ -652,6 +655,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                     </div>
                   </section>
                 </div>
+              </div>
               </div>
             ) : null}
           </main>

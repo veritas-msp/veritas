@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
-import { getAllHardwareEquipment, getClientHardwareEquipment, getEquipmentMonitoringSummaries, syncEquipmentCheckMKMonitoring, equipmentTypeToFamily, fetchEquipmentTagsBatch } from "../../api/equipment";
+import { getAllHardwareEquipment, getClientHardwareEquipment, getEquipmentMonitoringSummaries, mapClientHardwareEquipment, syncEquipmentCheckMKMonitoring, equipmentTypeToFamily, fetchEquipmentTagsBatch } from "../../api/equipment";
 import CheckMKMonitoringStatusBadge, { isCheckMKMappableType } from "./CheckMKMonitoringStatusBadge";
 import styles from "./EquipmentPage.module.css";
 import { FaTimes, FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCube, FaFileExport, FaColumns, FaChevronUp, FaChevronLeft, FaChevronRight, FaTh, FaList, FaCamera, FaPlus, FaSync, FaDesktop } from "react-icons/fa";
@@ -59,6 +59,7 @@ import { CSV_EXPORT_EXCLUDED_KEYS, getCsvExportFieldLabel, getDefaultCsvExportKe
 import { writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { invalidateEquipmentInventoryCache } from "../../utils/equipmentInventoryDataCache";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { formatExtensionFieldValue, readExtensionFieldValue } from "../../utils/systemFamilyExtensions";
 function formatComputerTypeDisplay(value, locale) {
@@ -619,6 +620,7 @@ const persistEquipmentCache = data => {
       data
     }));
   } catch {}
+  invalidateEquipmentInventoryCache();
 };
 function buildEquipmentBaseColumns(locale, pageCopy, type) {
   const label = key => getEquipmentColumnLabel(locale, type, key);
@@ -890,7 +892,7 @@ const EMBEDDED_TYPE_COLUMNS = {
 };
 function getEmbeddedCellClassName(colKey, styles) {
   if (colKey === "brandIcon") return styles.embeddedColBrand;
-  if (colKey === "checkmkMapping") return styles.embeddedColActions;
+  if (colKey === "checkmkMapping" || colKey === "mapping") return styles.embeddedColActions;
   if (colKey === "ha") return styles.embeddedColHa;
   return undefined;
 }
@@ -1139,8 +1141,22 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       // ignore
     }
     const controller = createTrackedAbortController();
+    const hasLocalEquipements =
+      Boolean(embeddedClient?.equipements) && typeof embeddedClient.equipements === "object";
+    // Paint tables immediately from the enterprise snapshot (avoids blank flash with hideEmbeddedSkeleton).
+    if (hasLocalEquipements) {
+      try {
+        setAllEquipment(mapClientHardwareEquipment(embeddedClient));
+        hasLoadedOnceRef.current = true;
+        setLoading(false);
+        onLoadingChangeRef.current?.(false);
+      } catch {
+        // Fall through to async load.
+      }
+    }
     loadEquipment(controller.signal, {
-      fresh: true
+      // Snapshot fiche déjà peuplé → mapping local ; sinon GET /clients/:id
+      fresh: !hasLocalEquipements
     });
     return () => {
       isMountedRef.current = false;
@@ -1149,7 +1165,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, [embedded, fixedClientId, embeddedClient?.id, equipmentRevision]);
   useEffect(() => {
     if (!embedded) return;
-    hasLoadedOnceRef.current = false;
+    // Keep last painted table when remounting / revisiting the same client (no blank flash).
+    if (hasLoadedOnceRef.current) return;
     setLoading(true);
     onLoadingChangeRef.current?.(true);
   }, [embedded, fixedClientId, embeddedClient?.id]);
@@ -1363,14 +1380,18 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   useEffect(() => () => mkBulkSyncAbortRef.current?.abort(), []);
   useEffect(() => {
+    if (embedded) {
+      setShowBackToTop(false);
+      return undefined;
+    }
     const el = scrollContainerRef.current;
-    if (!el) return;
+    if (!el) return undefined;
     const onScroll = () => setShowBackToTop(el.scrollTop > 120);
     el.addEventListener("scroll", onScroll, {
       passive: true
     });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [loading, error]);
+  }, [embedded, loading, error]);
   useEffect(() => {
     if (!exportMenuOpen) return;
     const handleClickOutside = e => {
@@ -3419,10 +3440,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     </div>;
   const showEmbeddedInitialSkeleton = loading && !hasLoadedOnceRef.current;
   return <>
-    {embedded ? <div className={styles.hardwarePageEmbedded}>
+    {embedded ? <div className={`${styles.hardwarePageEmbedded} ${styles.hardwarePageEmbeddedFill}`}>
       <div className={styles.mainContent}>
         <>
-        {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ''} ${embedded ? styles.tablesContainerEmbedded : ''}`}>
+        {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={embedded ? undefined : scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ''} ${embedded ? styles.tablesContainerEmbedded : ''}`}>
             {embedded ? <div className={styles.embeddedFilterBar}>
                 <div className={styles.embeddedTypeIconBar} role="tablist" aria-label={embeddedCopy.typeBarAria}>
                   {visibleEmbeddedTypes.map(type => {
@@ -3620,7 +3641,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                         </SmartTooltip>
                       </div> : null}
                     </div>}
-                  {(viewMode[type] || 'table') === 'table' ? <div className={`${styles.tableWrapper} ${embedded ? styles.tableWrapperEmbedded : ''}`}>
+                  {(viewMode[type] || 'table') === 'table' ? <div ref={embedded ? scrollContainerRef : undefined} className={`${styles.tableWrapper} ${embedded ? `${styles.tableWrapperEmbedded} ${styles.tableWrapperEmbeddedScroll}` : ''}`}>
                       <table className={embedded ? styles.equipmentTableEmbedded : styles.equipmentTable}>
                       <thead>
                         <tr>
@@ -4139,7 +4160,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   </th>;
               };
               return <div key={sectionKey} className={`${styles.equipmentTableSection} ${styles.equipmentTableSectionEmbedded}`}>
-                  <div className={`${styles.tableWrapper} ${styles.tableWrapperEmbedded}`}>
+                  <div ref={scrollContainerRef} className={`${styles.tableWrapper} ${styles.tableWrapperEmbedded} ${styles.tableWrapperEmbeddedScroll}`}>
                     <table className={styles.equipmentTableEmbedded}>
                       <thead>
                         <tr>
@@ -4378,13 +4399,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       if (!rmmRevoking) setRmmRevokeTarget(null);
     }} />
 
-      {}
-      {showBackToTop && <button type="button" className={styles.backToTopButton} onClick={() => scrollContainerRef.current?.scrollTo({
+      {!embedded && showBackToTop ? <button type="button" className={styles.backToTopButton} onClick={() => scrollContainerRef.current?.scrollTo({
       top: 0,
       behavior: "smooth"
     })} title="Remonter en haut" aria-label="Remonter en haut de la page">
           <FaChevronUp />
-        </button>}
+        </button> : null}
     </>;
 });
 export default EquipmentPage;

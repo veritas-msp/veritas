@@ -73,6 +73,14 @@ function collectDescendantIds(folderId, childrenMap) {
   walk(String(folderId));
   return ids;
 }
+
+/** Keep last vault listing per client to avoid empty flash on remount. */
+const vaultListingCache = new Map();
+
+function vaultCacheKey(clientId, folderId) {
+  return `${clientId || ""}::${folderId || "root"}`;
+}
+
 export default forwardRef(function EnterpriseVaultPanel({
   clientId,
   clientName,
@@ -86,11 +94,14 @@ export default forwardRef(function EnterpriseVaultPanel({
   const internalCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const copy = copyProp ?? internalCopy;
   const common = useCommonCopy();
-  const [files, setFiles] = useState([]);
-  const [folders, setFolders] = useState([]);
-  const [allFolders, setAllFolders] = useState([]);
+  const initialVaultCache = clientId
+    ? vaultListingCache.get(vaultCacheKey(clientId, "root"))
+    : null;
+  const [files, setFiles] = useState(() => initialVaultCache?.files || []);
+  const [folders, setFolders] = useState(() => initialVaultCache?.folders || []);
+  const [allFolders, setAllFolders] = useState(() => initialVaultCache?.allFolders || []);
   const [folderPath, setFolderPath] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !initialVaultCache);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [previewFile, setPreviewFile] = useState(null);
@@ -114,6 +125,7 @@ export default forwardRef(function EnterpriseVaultPanel({
     }
   }));
 
+  const hasVaultContentRef = useRef(Boolean(initialVaultCache));
   const load = useCallback(async () => {
     if (!editionLoaded) {
       setLoading(true);
@@ -123,15 +135,26 @@ export default forwardRef(function EnterpriseVaultPanel({
       setFiles([]);
       setFolders([]);
       setAllFolders([]);
+      hasVaultContentRef.current = false;
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const folderKey = currentFolderId || "root";
+    const cached = vaultListingCache.get(vaultCacheKey(clientId, folderKey));
+    if (cached) {
+      setFiles(cached.files || []);
+      setFolders(cached.folders || []);
+      setAllFolders(cached.allFolders || []);
+      hasVaultContentRef.current = true;
+      setLoading(false);
+    }
+    const keepVisible = hasVaultContentRef.current || Boolean(cached);
+    if (!keepVisible) setLoading(true);
     try {
       const [rows, folderRows, treeRows] = await Promise.all([
         fetchClientFiles({
           clientId,
-          folderId: currentFolderId || "root"
+          folderId: folderKey
         }),
         fetchClientFileFolders({
           clientId,
@@ -142,13 +165,25 @@ export default forwardRef(function EnterpriseVaultPanel({
           tree: true
         }).catch(() => [])
       ]);
-      setFiles(Array.isArray(rows) ? rows : []);
-      setFolders(Array.isArray(folderRows) ? folderRows : []);
-      setAllFolders(Array.isArray(treeRows) ? treeRows : []);
+      const nextFiles = Array.isArray(rows) ? rows : [];
+      const nextFolders = Array.isArray(folderRows) ? folderRows : [];
+      const nextAllFolders = Array.isArray(treeRows) ? treeRows : [];
+      setFiles(nextFiles);
+      setFolders(nextFolders);
+      setAllFolders(nextAllFolders);
+      hasVaultContentRef.current = true;
+      vaultListingCache.set(vaultCacheKey(clientId, folderKey), {
+        files: nextFiles,
+        folders: nextFolders,
+        allFolders: nextAllFolders
+      });
     } catch (err) {
-      setFiles([]);
-      setFolders([]);
-      setAllFolders([]);
+      if (!keepVisible) {
+        setFiles([]);
+        setFolders([]);
+        setAllFolders([]);
+        hasVaultContentRef.current = false;
+      }
       if (err?.code !== "PRO_FEATURE_REQUIRED") {
         toast.error(copy.toast.loadError);
       }
@@ -160,6 +195,16 @@ export default forwardRef(function EnterpriseVaultPanel({
     load();
   }, [load]);
   useEffect(() => {
+    const cached = clientId ? vaultListingCache.get(vaultCacheKey(clientId, "root")) : null;
+    hasVaultContentRef.current = Boolean(cached);
+    if (cached) {
+      setFiles(cached.files || []);
+      setFolders(cached.folders || []);
+      setAllFolders(cached.allFolders || []);
+      setLoading(false);
+    } else {
+      hasVaultContentRef.current = false;
+    }
     setFolderPath([]);
     setSearch("");
     setCategoryFilter("all");

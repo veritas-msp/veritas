@@ -282,7 +282,7 @@ const HOME_COPY = {
         },
         supervision: {
           title: "Centre de supervision",
-          content: "Vue synthétique des alertes à traiter, du parc et de l'évolution sur 7 jours. Cliquez sur un indicateur pour ouvrir le centre de supervision."
+          content: "Retrouvez vos tickets, vos événements et les alertes récentes. Ouvrez le centre de supervision depuis « Voir tout » sur les alertes."
         },
         todo: {
           title: "À traiter",
@@ -577,7 +577,7 @@ const HOME_COPY = {
         },
         supervision: {
           title: "Supervision center",
-          content: "Summary of alerts to process, fleet status and the 7-day trend. Click an indicator to open the supervision center."
+          content: "Find your tickets, events and recent alerts. Open the supervision center from “See all” on the alerts."
         },
         todo: {
           title: "To do",
@@ -832,7 +832,7 @@ const HOME_COPY = {
         },
         supervision: {
           title: "Supervisionszentrum",
-          content: "Kurzüberblick über zu bearbeitende Alarme, Flottenstatus und den 7-Tage-Verlauf. Klick auf einen Indikator öffnet das Supervisionszentrum."
+          content: "Tickets, Termine und aktuelle Alarme auf einen Blick. Über « Alle anzeigen » bei den Alarmen öffnen Sie das Supervisionszentrum."
         },
         todo: {
           title: "Zu erledigen",
@@ -1087,7 +1087,7 @@ const HOME_COPY = {
         },
         supervision: {
           title: "Centro di supervisione",
-          content: "Sintesi delle alert da trattare, stato del parco e andamento su 7 giorni. Clicca su un indicatore per aprire il centro di supervisione."
+          content: "Ticket, eventi e alert recenti in un’unica vista. Apri il centro di supervisione da « Vedi tutto » sulle alert."
         },
         todo: {
           title: "Da trattare",
@@ -1342,7 +1342,7 @@ const HOME_COPY = {
         },
         supervision: {
           title: "Centro de supervisión",
-          content: "Resumen de alertas por tratar, estado del parque y evolución a 7 días. Pulse un indicador para abrir el centro de supervisión."
+          content: "Tickets, eventos y alertas recientes en una sola vista. Abra el centro de supervisión desde « Ver todo » en las alertas."
         },
         todo: {
           title: "Por tratar",

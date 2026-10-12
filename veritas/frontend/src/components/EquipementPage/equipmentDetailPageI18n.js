@@ -77,6 +77,10 @@ const FR = {
     servicesOk: "Services OK"
   },
   overview: {
+    paneAria: "Vue d'ensemble fiche, RMM ou supervision",
+    tabFiche: "Fiche",
+    tabRmm: "RMM",
+    tabSupervision: "Supervision",
     rmmSectionTitle: "Agent RMM",
     checkmkSectionTitle: "Supervision CheckMK",
     availabilityTitle: "Disponibilité",
@@ -310,6 +314,7 @@ const FR = {
     }
   },
   notes: {
+    sidebarTitle: "Notes",
     subtitle: "Notes internes ou visibles sur le portail client pour ce matériel.",
     hint: "Les notes publiques sont visibles par le client sur le portail. Les notes privées restent réservées aux agents.",
     saveFirst: "Enregistrez ce matériel avant d'y ajouter des notes.",
@@ -400,9 +405,10 @@ const FR = {
     unavailableHint: "L'agent RMM doit être enrôlé pour afficher l'historique."
   },
   activityPane: {
-    aria: "Type de statistiques",
+    aria: "Type d'activité",
     metrics: "Métriques",
-    veritas: "Veritas"
+    veritas: "Interventions",
+    maintenance: "Maintenance"
   },
   logs: {
     title: "Journal d'activité",
@@ -942,6 +948,10 @@ const EN = {
     servicesOk: "OK services"
   },
   overview: {
+    paneAria: "Overview sheet, RMM or supervision",
+    tabFiche: "Sheet",
+    tabRmm: "RMM",
+    tabSupervision: "Supervision",
     rmmSectionTitle: "RMM agent",
     checkmkSectionTitle: "CheckMK supervision",
     availabilityTitle: "Availability",
@@ -1175,6 +1185,7 @@ const EN = {
     }
   },
   notes: {
+    sidebarTitle: "Notes",
     subtitle: "Internal notes or notes visible on the client portal for this device.",
     hint: "Public notes are visible to the client on the portal. Private notes are for agents only.",
     saveFirst: "Save this device before adding notes.",
@@ -1265,9 +1276,10 @@ const EN = {
     unavailableHint: "The RMM agent must be enrolled to show history."
   },
   activityPane: {
-    aria: "Statistics type",
+    aria: "Activity type",
     metrics: "Metrics",
-    veritas: "Veritas"
+    veritas: "Interventions",
+    maintenance: "Maintenance"
   },
   logs: {
     title: "Activity log",
@@ -1833,9 +1845,10 @@ const DE = {
     unavailableHint: "Der RMM-Agent muss registriert sein, um den Verlauf anzuzeigen."
   },
   activityPane: {
-    aria: "Statistiktyp",
+    aria: "Aktivitätstyp",
     metrics: "Metriken",
-    veritas: "Veritas"
+    veritas: "Einsätze",
+    maintenance: "Wartung"
   },
   agent: {
     ...EN.agent,
@@ -2208,9 +2221,10 @@ const IT = {
     unavailableHint: "L'agente RMM deve essere registrato per mostrare lo storico."
   },
   activityPane: {
-    aria: "Tipo di statistiche",
+    aria: "Tipo di attività",
     metrics: "Metriche",
-    veritas: "Veritas"
+    veritas: "Interventi",
+    maintenance: "Manutenzione"
   },
   agent: {
     ...EN.agent,
@@ -2582,9 +2596,10 @@ const ES = {
     unavailableHint: "El agente RMM debe estar registrado para mostrar el historial."
   },
   activityPane: {
-    aria: "Tipo de estadísticas",
+    aria: "Tipo de actividad",
     metrics: "Métricas",
-    veritas: "Veritas"
+    veritas: "Intervenciones",
+    maintenance: "Mantenimiento"
   },
   agent: {
     ...EN.agent,

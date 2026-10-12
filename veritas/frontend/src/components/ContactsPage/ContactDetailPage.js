@@ -74,6 +74,11 @@ import {
   invalidateDetailCache,
   setDetailCache
 } from "../../utils/detailPageCache";
+import {
+  normalizeContactOverviewTab,
+  readContactDetailUi,
+  writeContactDetailUi
+} from "../../utils/contactDetailUiState";
 import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
 import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
 const normalizePhone = value => {
@@ -143,10 +148,20 @@ export default function ContactDetailPage({
   const canManagePortal = can("contacts_detail.portal");
   const canAccessSharing = can("contacts_detail.access_sharing");
   const resolveContactId = () => contactData?.contactId || contactData?.id || urlContactId || null;
-  const [contact, setContact] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const resolvedContactId = contactData?.contactId || contactData?.id || urlContactId || null;
+  const initialContactUi = useMemo(
+    () => readContactDetailUi(resolvedContactId),
+    [resolvedContactId]
+  );
+  const initialCachedContact = useMemo(() => {
+    if (!resolvedContactId) return null;
+    const cached = getDetailCache(DETAIL_CACHE_NS.contact, resolvedContactId);
+    return cached?.contact && String(cached.contact.id) === String(resolvedContactId) ? cached : null;
+  }, [resolvedContactId]);
+  const [contact, setContact] = useState(() => initialCachedContact?.contact || null);
+  const [loading, setLoading] = useState(() => !initialCachedContact?.contact);
   const [error, setError] = useState(null);
-  const [client, setClient] = useState(null);
+  const [client, setClient] = useState(() => initialCachedContact?.client ?? null);
   const [allClients, setAllClients] = useState([]);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactModalOptions, setContactModalOptions] = useState({
@@ -165,6 +180,10 @@ export default function ContactDetailPage({
   useRegisterPageGuide(openPageGuide);
   const loadControllerRef = useRef(null);
   const clientsListControllerRef = useRef(null);
+  const pageRootRef = useRef(null);
+  const contactUiIdRef = useRef(resolvedContactId);
+  const skipContactUiPersistRef = useRef(false);
+  const pendingContactExtrasRef = useRef(null);
   const {
     subscribed: contactSubscribed,
     loading: contactSubscribeLoading,
@@ -178,7 +197,7 @@ export default function ContactDetailPage({
   });
   const isMountedRef = useRef(true);
   const loadRequestIdRef = useRef(0);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => initialCachedContact?.formData || {
     nom: "",
     prenom: "",
     sexe: "",
@@ -188,19 +207,36 @@ export default function ContactDetailPage({
     statut: "actif",
     client_id: null
   });
-  const [contactTags, setContactTags] = useState([]);
-  const [loadingTags, setLoadingTags] = useState(false);
+  const [contactTags, setContactTags] = useState(() =>
+    Array.isArray(initialCachedContact?.tags) ? initialCachedContact.tags : []
+  );
+  const [loadingTags, setLoadingTags] = useState(() => !Array.isArray(initialCachedContact?.tags));
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [shareAccessCreateOpen, setShareAccessCreateOpen] = useState(false);
-  const [overviewTab, setOverviewTab] = useState("activity");
-  const [vaultClientId, setVaultClientId] = useState(null);
+  const [overviewTab, setOverviewTab] = useState(() =>
+    normalizeContactOverviewTab(initialContactUi?.overviewTab)
+  );
+  const [activityTabMounted, setActivityTabMounted] = useState(true);
+  const [portalTabMounted, setPortalTabMounted] = useState(
+    () => normalizeContactOverviewTab(initialContactUi?.overviewTab) === "portal"
+  );
+  const [shareTabMounted, setShareTabMounted] = useState(
+    () => normalizeContactOverviewTab(initialContactUi?.overviewTab) === "share"
+  );
+  const [vaultClientId, setVaultClientId] = useState(() => initialContactUi?.vaultClientId || null);
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [membershipBusy, setMembershipBusy] = useState(false);
   const [clientsLoading, setClientsLoading] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
-  const [supportTickets, setSupportTickets] = useState([]);
-  const [prestationTickets, setPrestationTickets] = useState([]);
-  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [supportTickets, setSupportTickets] = useState(() =>
+    Array.isArray(initialCachedContact?.supportTickets) ? initialCachedContact.supportTickets : []
+  );
+  const [prestationTickets, setPrestationTickets] = useState(() =>
+    Array.isArray(initialCachedContact?.prestationTickets) ? initialCachedContact.prestationTickets : []
+  );
+  const [loadingActivity, setLoadingActivity] = useState(
+    () => !Array.isArray(initialCachedContact?.supportTickets)
+  );
   const activityControllerRef = useRef(null);
   const displayCommunications = useMemo(() => sortCommunicationsByType(normalizeContactCommunications(contact || {})), [contact]);
   const emailCommunications = useMemo(() => displayCommunications.filter(entry => entry.type === "email"), [displayCommunications]);
@@ -367,18 +403,85 @@ export default function ContactDetailPage({
     return () => setProFeaturePromoHandler(null);
   }, []);
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      const contactIdToUse = contactData?.contactId || contactData?.id || urlContactId;
-      if (document.visibilityState === "visible" && contactIdToUse) {
-        const controller = createTrackedAbortController();
-        loadControllerRef.current?.abort();
-        loadControllerRef.current = controller;
-        loadContactData(controller.signal);
-      }
+    if (!contact?.id) return;
+    const prev = contactUiIdRef.current;
+    const id = contact.id;
+    if (prev != null && String(prev) !== String(id)) {
+      skipContactUiPersistRef.current = true;
+      const saved = readContactDetailUi(id);
+      const nextTab = normalizeContactOverviewTab(saved?.overviewTab);
+      setOverviewTab(nextTab);
+      setPortalTabMounted(nextTab === "portal");
+      setShareTabMounted(nextTab === "share");
+      setActivityTabMounted(true);
+      setVaultClientId(saved?.vaultClientId || null);
+    }
+    contactUiIdRef.current = id;
+  }, [contact?.id]);
+  useEffect(() => {
+    if (!contact?.id) return;
+    if (skipContactUiPersistRef.current) {
+      skipContactUiPersistRef.current = false;
+      return;
+    }
+    writeContactDetailUi(contact.id, {
+      overviewTab,
+      vaultClientId: vaultClientId || null
+    });
+  }, [contact?.id, overviewTab, vaultClientId]);
+  useEffect(() => {
+    if (!contact?.id) return;
+    setActivityTabMounted(true);
+    setPortalTabMounted(true);
+    setShareTabMounted(true);
+  }, [contact?.id]);
+  useEffect(() => {
+    if (overviewTab === "activity") setActivityTabMounted(true);
+    if (overviewTab === "portal") setPortalTabMounted(true);
+    if (overviewTab === "share") setShareTabMounted(true);
+  }, [overviewTab]);
+  useEffect(() => {
+    const el = pageRootRef.current;
+    if (!el || !contact?.id) return undefined;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        writeContactDetailUi(contact.id, {
+          scrollY: el.scrollTop
+        });
+      });
     };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [urlContactId, contactData?.contactId, contactData?.id]);
+    el.addEventListener("scroll", onScroll, {
+      passive: true
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", onScroll);
+      writeContactDetailUi(contact.id, {
+        scrollY: el.scrollTop
+      });
+    };
+  }, [contact?.id]);
+  useEffect(() => {
+    if (loading || !contact?.id) return;
+    const savedY = readContactDetailUi(contact.id)?.scrollY;
+    if (typeof savedY !== "number" || savedY <= 0) return;
+    const el = pageRootRef.current;
+    if (!el) return;
+    const restore = () => {
+      el.scrollTop = savedY;
+    };
+    const raf = requestAnimationFrame(() => {
+      restore();
+      requestAnimationFrame(restore);
+    });
+    const timeout = window.setTimeout(restore, 120);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, [loading, contact?.id]);
   useEffect(() => {
     if (!contact?.client_id || allClients.length === 0) return;
     const fullClient = allClients.find(item => item.id === contact.client_id);
@@ -401,8 +504,13 @@ export default function ContactDetailPage({
         color
       });
       setContactTags(prev => {
-        if (prev.some(t => t.id === tag.id)) return prev;
-        return [...prev, tag].sort((a, b) => a.label.localeCompare(b.label));
+        const next = prev.some(t => t.id === tag.id)
+          ? prev
+          : [...prev, tag].sort((a, b) => a.label.localeCompare(b.label));
+        patchContactExtras(contact.id, {
+          tags: next
+        });
+        return next;
       });
       setTagModalOpen(false);
       window.dispatchEvent(new Event("refreshContacts"));
@@ -418,7 +526,13 @@ export default function ContactDetailPage({
     if (!contact?.id) return;
     try {
       await removeContactTag(contact.id, tagId);
-      setContactTags(prev => prev.filter(t => t.id !== tagId));
+      setContactTags(prev => {
+        const next = prev.filter(t => t.id !== tagId);
+        patchContactExtras(contact.id, {
+          tags: next
+        });
+        return next;
+      });
       window.dispatchEvent(new Event("refreshContacts"));
       toast.success(copy.toast.tagRemoved);
     } catch (error) {
@@ -499,17 +613,50 @@ export default function ContactDetailPage({
     }
   }, []);
 
-  const writeContactCache = useCallback((contactId, snapshot) => {
+  const writeContactCache = useCallback((contactId, snapshot = {}) => {
     if (!contactId || !snapshot?.contact) return;
+    const prev = getDetailCache(DETAIL_CACHE_NS.contact, contactId, {
+      ttlMs: 0
+    }) || {};
+    const pickArray = (next, fallback) =>
+      Array.isArray(next) ? next : Array.isArray(fallback) ? fallback : undefined;
     setDetailCache(DETAIL_CACHE_NS.contact, contactId, {
       contact: snapshot.contact,
-      client: snapshot.client ?? null,
-      formData: snapshot.formData || null,
-      tags: Array.isArray(snapshot.tags) ? snapshot.tags : [],
-      supportTickets: Array.isArray(snapshot.supportTickets) ? snapshot.supportTickets : [],
-      prestationTickets: Array.isArray(snapshot.prestationTickets) ? snapshot.prestationTickets : []
+      client: snapshot.client !== undefined ? snapshot.client : prev.client ?? null,
+      formData: snapshot.formData !== undefined ? snapshot.formData : prev.formData || null,
+      tags: pickArray(snapshot.tags, prev.tags) || [],
+      supportTickets: pickArray(snapshot.supportTickets, prev.supportTickets) || [],
+      prestationTickets: pickArray(snapshot.prestationTickets, prev.prestationTickets) || []
     });
   }, []);
+  const patchContactExtras = useCallback((contactId, patch) => {
+    if (!contactId || !patch || typeof patch !== "object") return;
+    const current = getDetailCache(DETAIL_CACHE_NS.contact, contactId, {
+      ttlMs: 0
+    });
+    if (current?.contact) {
+      setDetailCache(DETAIL_CACHE_NS.contact, contactId, {
+        ...current,
+        ...patch
+      });
+      return;
+    }
+    pendingContactExtrasRef.current = {
+      contactId: String(contactId),
+      patch: {
+        ...(pendingContactExtrasRef.current?.contactId === String(contactId)
+          ? pendingContactExtrasRef.current.patch
+          : {}),
+        ...patch
+      }
+    };
+  }, []);
+  const flushPendingContactExtras = useCallback(contactId => {
+    const pending = pendingContactExtrasRef.current;
+    if (!pending || String(pending.contactId) !== String(contactId)) return;
+    pendingContactExtrasRef.current = null;
+    patchContactExtras(contactId, pending.patch);
+  }, [patchContactExtras]);
 
   const loadContactData = async signal => {
     const requestId = ++loadRequestIdRef.current;
@@ -522,15 +669,21 @@ export default function ContactDetailPage({
     }
 
     const cached = getDetailCache(DETAIL_CACHE_NS.contact, contactIdToUse);
-    if (cached?.contact && String(cached.contact.id) === String(contactIdToUse)) {
+    const cacheHit = Boolean(cached?.contact && String(cached.contact.id) === String(contactIdToUse));
+    if (cacheHit) {
       applyContactSnapshot(cached.contact, cached);
       setLoading(false);
       setLoadingTags(false);
-      if (!Array.isArray(cached.supportTickets)) setLoadingActivity(true);
+      if (Array.isArray(cached.supportTickets)) {
+        setLoadingActivity(false);
+      } else {
+        setLoadingActivity(true);
+      }
     } else {
       setContact(null);
       setSupportTickets([]);
       setPrestationTickets([]);
+      setContactTags([]);
       setLoading(true);
       setLoadingTags(true);
     }
@@ -564,23 +717,25 @@ export default function ContactDetailPage({
       applyContactSnapshot(fetchedContact, {
         formData: newFormData,
         client: associatedClient,
-        tags
+        tags,
+        supportTickets: Array.isArray(cached?.supportTickets) ? cached.supportTickets : undefined,
+        prestationTickets: Array.isArray(cached?.prestationTickets) ? cached.prestationTickets : undefined
       });
-      const previousCache = getDetailCache(DETAIL_CACHE_NS.contact, contactIdToUse) || {};
       writeContactCache(contactIdToUse, {
         contact: fetchedContact,
         client: associatedClient,
         formData: newFormData,
         tags,
-        supportTickets: Array.isArray(previousCache.supportTickets) ? previousCache.supportTickets : [],
-        prestationTickets: Array.isArray(previousCache.prestationTickets)
-          ? previousCache.prestationTickets
-          : []
+        supportTickets: Array.isArray(cached?.supportTickets) ? cached.supportTickets : [],
+        prestationTickets: Array.isArray(cached?.prestationTickets) ? cached.prestationTickets : []
       });
+      flushPendingContactExtras(contactIdToUse);
       activityControllerRef.current?.abort();
       const activityController = createTrackedAbortController();
       activityControllerRef.current = activityController;
-      loadContactActivity(fetchedContact.id, fetchedContact.client_id, activityController.signal);
+      loadContactActivity(fetchedContact.id, fetchedContact.client_id, activityController.signal, {
+        keepVisible: Array.isArray(cached?.supportTickets)
+      });
     } catch (err) {
       if (err?.name === "AbortError") return;
       if (!getDetailCache(DETAIL_CACHE_NS.contact, contactIdToUse)?.contact) {
@@ -594,8 +749,10 @@ export default function ContactDetailPage({
       }
     }
   };
-  const loadContactActivity = async (contactId, clientId, signal) => {
-    setLoadingActivity(true);
+  const loadContactActivity = async (contactId, clientId, signal, {
+    keepVisible = false
+  } = {}) => {
+    if (!keepVisible) setLoadingActivity(true);
     try {
       const contactTicketRows = await fetchTickets({
         requesterContactId: contactId,
@@ -609,18 +766,14 @@ export default function ContactDetailPage({
       const prestationsOnly = isCommunity ? [] : tickets.filter(isPrestationTicket);
       setPrestationTickets(prestationsOnly);
       setSupportTickets(supportOnly);
-      const cached = getDetailCache(DETAIL_CACHE_NS.contact, contactId);
-      if (cached?.contact) {
-        writeContactCache(contactId, {
-          ...cached,
-          supportTickets: supportOnly,
-          prestationTickets: prestationsOnly
-        });
-      }
+      patchContactExtras(contactId, {
+        supportTickets: supportOnly,
+        prestationTickets: prestationsOnly
+      });
     } catch (err) {
       if (err?.name === "AbortError") return;
       console.error("Error loading contact activity:", err);
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !keepVisible) {
         setSupportTickets([]);
         setPrestationTickets([]);
       }
@@ -843,7 +996,7 @@ export default function ContactDetailPage({
     prenom: formData.prenom,
     nom: formData.nom
   }, copy.defaultName);
-  return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
+  return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
       <header className={styles.pageHero} data-guide="contact-hero">
         <div className={styles.heroTop}>
           <div className={styles.heroIdentityBlock}>
@@ -910,9 +1063,9 @@ export default function ContactDetailPage({
         </div>
       </header>
 
-      <div className={styles.pageBody}>
+      <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={styles.mainColumn}>
+          <main className={`${styles.mainColumn} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "portal" || overviewTab === "share" ? styles.mainColumnContactTab : ""}`.trim()}>
             <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
               <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
                 <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
@@ -928,7 +1081,13 @@ export default function ContactDetailPage({
                 {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
               </button>
             </nav>
-            {overviewTab === "activity" ? <div className={`${styles.activityLayout} ${styles.overviewTabPanel}`} data-guide="contact-activity-panel">
+            {activityTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "activity"}
+              style={overviewTab === "activity" ? undefined : { display: "none" }}
+            >
+            <div className={styles.activityLayout} data-guide="contact-activity-panel">
                     <div className={styles.activityKpiRow}>
                       <div className={styles.activityKpiCard}>
                         <span className={styles.activityKpiValue}>{supportTickets.length}</span>
@@ -983,7 +1142,7 @@ export default function ContactDetailPage({
                                     <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
                                       {copy.emptySupportTickets}
                                     </td>
-                                  </tr> : supportTickets.slice(0, 8).map(ticket => {
+                                  </tr> : supportTickets.map(ticket => {
                           const status = normalizeTicketStatus(ticket.status);
                           const sla = getTicketSlaDisplay(ticket, {
                             clients: allClients.length ? allClients : client ? [client] : [],
@@ -1046,7 +1205,7 @@ export default function ContactDetailPage({
                                       <td colSpan={4} className={styles.dataTableEmptyCell}>
                                         {copy.emptyPrestationTickets}
                                       </td>
-                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).slice(0, 8).map(ticket => {
+                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).map(ticket => {
                             const status = normalizeTicketStatus(ticket.status);
                             return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
                               if (e.button === 1) {
@@ -1073,9 +1232,17 @@ export default function ContactDetailPage({
                         </section>
                       </ProFeatureLock>
                     </div>
-            </div> : null}
+            </div>
+            </div>
+            ) : null}
 
-            {overviewTab === "portal" ? <section className={styles.panel} data-guide="contact-portal-panel">
+            {portalTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "portal"}
+              style={overviewTab === "portal" ? undefined : { display: "none" }}
+            >
+            <section className={`${styles.panel} ${styles.contactFillPanel}`} data-guide="contact-portal-panel">
               <div className={styles.panelBody}>
                 <div className={`${styles.overviewTabPanel} ${contactStyles.portalTabContent}`}>
                   <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
@@ -1086,9 +1253,17 @@ export default function ContactDetailPage({
               }} />
                 </div>
               </div>
-            </section> : null}
+            </section>
+            </div>
+            ) : null}
 
-            {overviewTab === "share" ? <section className={styles.panel} data-guide="contact-share-panel">
+            {shareTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "share"}
+              style={overviewTab === "share" ? undefined : { display: "none" }}
+            >
+            <section className={`${styles.panel} ${styles.contactFillPanel}`} data-guide="contact-share-panel">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
                   <h2 className={styles.panelTitle}>{copy.sharedAccessTitle}</h2>
@@ -1116,7 +1291,9 @@ export default function ContactDetailPage({
                   </ProFeatureLock> : <p className={contactStyles.coordEmpty}>{copy.shareNeedsCompany || copy.coordEmpty}</p>}
                 </div>
               </div>
-            </section> : null}
+            </section>
+            </div>
+            ) : null}
           </main>
 
           <div className={styles.asideStack}>

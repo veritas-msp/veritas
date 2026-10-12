@@ -412,19 +412,59 @@ export function extractAntispamSolutionsFromModules(modulesData) {
   }
   return [];
 }
-function buildConfiguredDedupeKey(item) {
-  // Prefer customerId so module rows and Mailinblack tenants of the same link collapse to one.
-  if (item.customerId) {
-    return `api:${item.customerId}|${item.mappingMode || "reseller"}`;
-  }
-  if (item.mailinblackTenantId != null && item.mailinblackTenantId !== "") {
-    return `tenant:${item.mailinblackTenantId}`;
-  }
-  if (item.id != null) return `id:${item.id}`;
-  if (item.item_key) return `key:${item.item_key}`;
-  const label = (item.logiciel || item.solution || item.nom || item.name || "").trim().toLowerCase();
-  return `manual:${item.id ?? label}|${item.mappingMode || "manual"}`;
+function isMailinblackLinkedSolution(item) {
+  return Boolean(item?.customerId || item?.mailinblackTenantId);
 }
+
+function isOrphanGenericMailinblackSolution(item) {
+  if (!item || isMailinblackLinkedSolution(item)) return false;
+  if (canonicalizeAntispamMappingMode(item) === "manual" || item.providerId === "manual") return false;
+  const label = item.logiciel || item.solution || item.nom || item.name || "";
+  return isGenericMailinblackLabel(label) || resolveAntispamProviderId(item) === "mailinblack";
+}
+
+function scoreConfiguredAntispamSolution(item) {
+  let score = 0;
+  if (item?.customerId) score += 4;
+  if (item?.mailinblackTenantId) score += 4;
+  if (item?.syncData) score += 2;
+  if (item?.utilisateursProteges != null && String(item.utilisateursProteges).trim()) score += 1;
+  if (item?.domainesSurveilles != null && String(item.domainesSurveilles).trim()) score += 1;
+  if (item?.expiration) score += 1;
+  return score;
+}
+
+function mergeConfiguredAntispamSolution(primary, secondary) {
+  return {
+    ...secondary,
+    ...primary,
+    customerId: primary?.customerId || secondary?.customerId || null,
+    mailinblackTenantId: primary?.mailinblackTenantId || secondary?.mailinblackTenantId || null,
+    syncData: primary?.syncData || secondary?.syncData || null,
+    utilisateursProteges: primary?.utilisateursProteges ?? secondary?.utilisateursProteges ?? null,
+    domainesSurveilles: primary?.domainesSurveilles ?? secondary?.domainesSurveilles ?? null,
+    expiration: primary?.expiration || secondary?.expiration || null,
+    mappingMode: canonicalizeAntispamMappingMode(primary?.mailinblackTenantId || secondary?.mailinblackTenantId
+      ? { ...secondary, ...primary, mailinblackTenantId: primary?.mailinblackTenantId || secondary?.mailinblackTenantId }
+      : { ...secondary, ...primary })
+  };
+}
+
+/** Tenant row without customerId + module/API row with customerId but no tenant id. */
+function softMailinblackLinkMatch(a, b) {
+  const aTenant = a?.mailinblackTenantId != null && a.mailinblackTenantId !== "";
+  const bTenant = b?.mailinblackTenantId != null && b.mailinblackTenantId !== "";
+  const aCustomer = Boolean(a?.customerId);
+  const bCustomer = Boolean(b?.customerId);
+  if (aTenant && !aCustomer && bCustomer && !bTenant) return true;
+  if (bTenant && !bCustomer && aCustomer && !aTenant) return true;
+  return false;
+}
+
+function antispamConfiguredMatch(a, b) {
+  return solutionMatches(a, b) || softMailinblackLinkMatch(a, b);
+}
+
 export function listConfiguredAntispamSolutions(client, antispamItems = [], modulesData = null, mailinblackTenants = []) {
   const moduleSolutions = extractAntispamSolutionsFromModules(modulesData || {
     equipements: client?.equipements
@@ -432,16 +472,27 @@ export function listConfiguredAntispamSolutions(client, antispamItems = [], modu
   const tenantSolutions = buildSolutionsFromMailinblackTenants(mailinblackTenants);
   // Prefer tenants (richest link metadata), then modules, then extra API items.
   const sources = [...tenantSolutions, ...moduleSolutions, ...(antispamItems || []).map(item => normalizeAntispamItem(item)).filter(Boolean)];
-  const seen = new Set();
   const configured = [];
   for (const item of sources) {
     if (!isAntispamConfigured(item)) continue;
-    const dedupeKey = buildConfiguredDedupeKey(item);
-    if (seen.has(dedupeKey)) continue;
-    seen.add(dedupeKey);
+    const matchIndex = configured.findIndex(existing => antispamConfiguredMatch(existing, item));
+    if (matchIndex >= 0) {
+      const existing = configured[matchIndex];
+      configured[matchIndex] =
+        scoreConfiguredAntispamSolution(item) >= scoreConfiguredAntispamSolution(existing)
+          ? mergeConfiguredAntispamSolution(item, existing)
+          : mergeConfiguredAntispamSolution(existing, item);
+      continue;
+    }
+    if (isOrphanGenericMailinblackSolution(item) && configured.some(isMailinblackLinkedSolution)) {
+      continue;
+    }
     configured.push(item);
   }
-  return configured;
+  return configured.filter((item, index, list) => {
+    if (!isOrphanGenericMailinblackSolution(item)) return true;
+    return !list.some((other, otherIndex) => otherIndex !== index && isMailinblackLinkedSolution(other));
+  });
 }
 export function isClientAntispamConfigured(client, antispamItems = [], modulesData = null) {
   return listConfiguredAntispamSolutions(client, antispamItems, modulesData).length > 0;
@@ -472,14 +523,15 @@ function solutionMatches(a, b) {
   if (tenantA != null && tenantB != null && String(tenantA) === String(tenantB)) {
     return true;
   }
-  if (a.customerId && b.customerId) {
-    return String(a.customerId) === String(b.customerId) && (a.mappingMode || "reseller") === (b.mappingMode || "reseller") && String(tenantA ?? "") === String(tenantB ?? "");
+  if (a.customerId && b.customerId && String(a.customerId) === String(b.customerId)) {
+    // Same Mailinblack customer = same association (mappingMode can differ across sources).
+    return true;
   }
   if (a.id != null && b.id != null && String(a.id) === String(b.id)) return true;
   if (a.item_key && b.item_key && String(a.item_key) === String(b.item_key)) return true;
   const nameA = (a.logiciel || a.solution || a.nom || a.name || "").trim().toLowerCase();
   const nameB = (b.logiciel || b.solution || b.nom || b.name || "").trim().toLowerCase();
-  return Boolean(nameA) && nameA === nameB && !a.customerId && !b.customerId;
+  return Boolean(nameA) && nameA === nameB && !a.customerId && !b.customerId && !a.mailinblackTenantId && !b.mailinblackTenantId;
 }
 export async function removeAntispamSolution(clientId, solution) {
   const normalized = normalizeAntispamItem(solution);

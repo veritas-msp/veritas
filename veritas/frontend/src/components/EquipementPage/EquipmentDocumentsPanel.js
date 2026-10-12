@@ -296,12 +296,12 @@ export default function EquipmentDocumentsPanel({
         </button>
       </div>
 
-      {loading ? <p className={styles.hint}>{docCopy.loading}</p> : documents.length === 0 ? <div className={styles.empty}>
-          <Icon icon="mdi:file-document-outline" className={styles.emptyIcon} aria-hidden />
-          <p>{docCopy.empty}</p>
-        </div> : filteredDocuments.length === 0 ? <div className={styles.empty}>
-          <Icon icon="mdi:file-search-outline" className={styles.emptyIcon} aria-hidden />
-          <p>{interpolate(docCopy.noMatch, {
+      {loading ? <p className={styles.hint}>{docCopy.loading}</p> : documents.length === 0 ? <div className={styles.emptyState}>
+          <Icon icon="mdi:file-document-outline" className={styles.emptyStateIcon} aria-hidden />
+          <p className={styles.emptyStateText}>{docCopy.empty}</p>
+        </div> : filteredDocuments.length === 0 ? <div className={styles.emptyState}>
+          <Icon icon="mdi:file-search-outline" className={styles.emptyStateIcon} aria-hidden />
+          <p className={styles.emptyStateText}>{interpolate(docCopy.noMatch, {
           query: searchQuery.trim()
         })}</p>
         </div> : <div className={styles.grid}>

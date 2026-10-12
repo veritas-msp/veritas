@@ -1673,11 +1673,12 @@
 
 @media (min-width: 1024px) {
   .dashboardMain {
-    overflow: visible;
+    overflow: hidden;
   }
 
   .opsStack {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .opsStack > [data-home-section="events"] {
@@ -1686,11 +1687,12 @@
   }
 
   .opsStack > [data-home-section="supervision"] {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .pageSkeleton {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
     min-height: 0;
   }
 }
