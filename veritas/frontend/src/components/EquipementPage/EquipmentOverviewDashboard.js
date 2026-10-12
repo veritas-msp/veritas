@@ -118,10 +118,36 @@ function RingGauge({ pct, label, sub, color = "#2b5fab" }) {
 
 function severityTone(severity) {
   const key = String(severity || "").toLowerCase();
-  if (key.includes("crit") || key === "2") return { cls: styles.statusDown, color: SERVICE_COLORS.critical };
-  if (key.includes("warn") || key === "1") return { cls: styles.statusWarn, color: SERVICE_COLORS.warning };
-  if (key.includes("info") || key === "0") return { cls: styles.statusInfo, color: "#3b82f6" };
-  return { cls: styles.statusInfo, color: "#64748b" };
+  if (key.includes("crit") || key === "2") return { cls: styles.statusDown, color: SERVICE_COLORS.critical, key: "critical" };
+  if (key.includes("warn") || key === "1") return { cls: styles.statusWarn, color: SERVICE_COLORS.warning, key: "warning" };
+  if (key.includes("info") || key === "0") return { cls: styles.statusInfo, color: "#3b82f6", key: "info" };
+  return { cls: styles.statusInfo, color: "#64748b", key: key || "info" };
+}
+
+function capitalizeLabel(value) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function severityLabel(severity, glance) {
+  const tone = severityTone(severity);
+  const localized = glance?.severity?.[tone.key];
+  if (localized) return localized;
+  return capitalizeLabel(tone.key);
+}
+
+function resolveEventWhen(raw, locale) {
+  const value =
+    raw?.at ||
+    raw?.triggeredAt ||
+    raw?.createdAt ||
+    raw?.created_at ||
+    raw?.timestamp ||
+    raw?.time ||
+    null;
+  if (!value) return "—";
+  return formatEquipmentDetailRelative(value, locale) || "—";
 }
 
 function buildAvailabilitySeries(availPct) {
@@ -271,23 +297,31 @@ export default function EquipmentOverviewDashboard({
 
   const recentEvents = useMemo(() => {
     if (alerts.length) {
-      return alerts.slice(0, 6).map(alert => ({
-        id: alert.id,
-        when: formatEquipmentDetailRelative(alert.triggeredAt || alert.createdAt || alert.timestamp, locale) || "—",
-        type: alert.severity || alert.level || "info",
-        message: alert.title || alert.criterionKey || alert.typeKey || "—",
-        status: alert.severity || alert.status || "—"
-      }));
+      return alerts.slice(0, 6).map(alert => {
+        const severity = alert.severity || alert.level || "info";
+        return {
+          id: alert.id,
+          when: resolveEventWhen(alert, locale),
+          whenRaw: alert.at || alert.triggeredAt || alert.createdAt || alert.created_at || null,
+          type: severity,
+          typeLabel: severityLabel(severity, glance),
+          message: alert.title || alert.criterionKey || alert.typeKey || "—"
+        };
+      });
     }
     const checkmkEvents = checkmkData?.events?.events || [];
-    return checkmkEvents.slice(0, 6).map((event, index) => ({
-      id: event.id || `ck-${index}`,
-      when: formatEquipmentDetailRelative(event.time || event.timestamp, locale) || "—",
-      type: event.state === 2 ? "critical" : event.state === 1 ? "warning" : "info",
-      message: event.message || event.plugin_output || event.event_text || getServiceLabel(event) || "—",
-      status: event.state === 2 ? "Critical" : event.state === 1 ? "Warning" : "Info"
-    }));
-  }, [alerts, checkmkData, locale]);
+    return checkmkEvents.slice(0, 6).map((event, index) => {
+      const severity = event.state === 2 ? "critical" : event.state === 1 ? "warning" : "info";
+      return {
+        id: event.id || `ck-${index}`,
+        when: resolveEventWhen(event, locale),
+        whenRaw: event.time || event.timestamp || event.at || null,
+        type: severity,
+        typeLabel: severityLabel(severity, glance),
+        message: event.message || event.plugin_output || event.event_text || getServiceLabel(event) || "—"
+      };
+    });
+  }, [alerts, checkmkData, glance, locale]);
 
   const processRows = useMemo(() => {
     const apps = Array.isArray(inventory.software?.topCpu) ? inventory.software.topCpu : [];
@@ -565,7 +599,6 @@ export default function EquipmentOverviewDashboard({
                     <th>{ov.colWhen || "Date"}</th>
                     <th>{ov.colType || "Type"}</th>
                     <th>{ov.colMessage || "Message"}</th>
-                    <th>{ov.colStatus || "Statut"}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -573,15 +606,16 @@ export default function EquipmentOverviewDashboard({
                     const tone = severityTone(row.type);
                     return (
                       <tr key={row.id}>
-                        <td>{row.when}</td>
+                        <td>
+                          <time dateTime={row.whenRaw || undefined} title={row.whenRaw ? new Date(row.whenRaw).toLocaleString() : undefined}>
+                            {row.when}
+                          </time>
+                        </td>
                         <td>
                           <span className={styles.typeDot} style={{ background: tone.color }} aria-hidden />
-                          {row.type}
+                          {row.typeLabel}
                         </td>
                         <td title={row.message}>{row.message}</td>
-                        <td>
-                          <span className={`${styles.statusPill} ${tone.cls}`}>{row.status}</span>
-                        </td>
                       </tr>
                     );
                   })}

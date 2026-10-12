@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { computeLoadZoneDistribution, computeTemperatureZoneDistribution, computeUpdatesDayDistribution, formatMetricPeriodLabel, resolvePrimaryDiskHistory, summarizeHistoryPoints } from "./rmmMetricDashboardUtils";
+import { computeLoadZoneDistribution, formatMetricPeriodLabel, resolvePrimaryDiskHistory, summarizeHistoryPoints } from "./rmmMetricDashboardUtils";
 import styles from "./RmmMetricHistoryPanel.module.css";
 function DonutTooltip({
   active,
@@ -79,8 +79,6 @@ export default function RmmMetricDashboard({
 }) {
   const cpuZones = useMemo(() => computeLoadZoneDistribution(dashboardHistory?.cpu?.points), [dashboardHistory?.cpu]);
   const ramZones = useMemo(() => computeLoadZoneDistribution(dashboardHistory?.ram?.points), [dashboardHistory?.ram]);
-  const tempZones = useMemo(() => computeTemperatureZoneDistribution(dashboardHistory?.temp?.points), [dashboardHistory?.temp]);
-  const updatesZones = useMemo(() => computeUpdatesDayDistribution(dashboardHistory?.updates?.points), [dashboardHistory?.updates]);
   const cpuSummary = useMemo(() => summarizeHistoryPoints(dashboardHistory?.cpu?.points), [dashboardHistory?.cpu]);
   const ramSummary = useMemo(() => summarizeHistoryPoints(dashboardHistory?.ram?.points), [dashboardHistory?.ram]);
   const {
@@ -111,8 +109,6 @@ export default function RmmMetricDashboard({
           <ZonePieCard title="CPU · niveaux de charge" icon="mdi:chart-donut" segments={cpuZones} summary={cpuSummary} periodLabel={periodLabel} />
           <ZonePieCard title="RAM · niveaux d'utilisation" icon="mdi:chart-pie" segments={ramZones} summary={ramSummary} periodLabel={periodLabel} />
           <ZonePieCard title={primaryDrive ? `Disk ${primaryDrive} · usage` : "Disk · usage"} icon="mdi:harddisk" segments={diskZones} summary={diskSummary} periodLabel={periodLabel} emptyHint="Disk history unavailable" />
-          {tempZones.length > 0 ? <ZonePieCard title="Temperature" icon="mdi:thermometer-lines" segments={tempZones} periodLabel={periodLabel} emptyHint="Capteur thermique non available" /> : null}
-          {updatesZones.length > 0 ? <ZonePieCard title="Windows Update" icon="mdi:microsoft-windows" segments={updatesZones} periodLabel={periodLabel} emptyHint="Update history unavailable" /> : null}
         </div>
       </section>
     </div>;

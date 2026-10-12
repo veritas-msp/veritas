@@ -35,6 +35,7 @@ const FR = {
     maintenanceTooltip: "Mettre en maintenance (cône de travaux)",
     maintenanceTooltipActive: "En maintenance{until} — cliquer pour terminer",
     maintenanceUntil: " jusqu’au {date}",
+    maintenanceBadge: "En maintenance",
     maintenanceAria: "Maintenance périphérique",
     maintenanceEndConfirmTitle: "Terminer la maintenance ?",
     maintenanceEndConfirmMessage: "Les alertes de ce périphérique pourront à nouveau remonter dans le centre de supervision.",
@@ -872,6 +873,7 @@ const EN = {
     maintenanceTooltip: "Put in maintenance (works cone)",
     maintenanceTooltipActive: "In maintenance{until} — click to end",
     maintenanceUntil: " until {date}",
+    maintenanceBadge: "In maintenance",
     maintenanceAria: "Device maintenance",
     maintenanceEndConfirmTitle: "End maintenance?",
     maintenanceEndConfirmMessage: "Alerts for this device can appear again in the supervision center.",
@@ -1689,7 +1691,8 @@ const DE = {
     alertsMenu: "Überwachungsalarme",
     createdInVeritas: "Erstellt am {date}",
     active: "Aktiv",
-    inactive: "Inaktiv"
+    inactive: "Inaktiv",
+    maintenanceBadge: "In Wartung"
   },
   tabs: {
     ...EN.tabs,
@@ -2063,7 +2066,8 @@ const IT = {
     alertsMenu: "Avvisi di supervisione",
     createdInVeritas: "Creato il {date}",
     active: "Attivo",
-    inactive: "Inattivo"
+    inactive: "Inattivo",
+    maintenanceBadge: "In manutenzione"
   },
   tabs: {
     ...EN.tabs,
@@ -2436,7 +2440,8 @@ const ES = {
     alertsMenu: "Alertas de supervisión",
     createdInVeritas: "Creado el {date}",
     active: "Activo",
-    inactive: "Inactivo"
+    inactive: "Inactivo",
+    maintenanceBadge: "En mantenimiento"
   },
   tabs: {
     ...EN.tabs,

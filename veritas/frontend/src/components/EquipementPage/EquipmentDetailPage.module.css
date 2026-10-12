@@ -163,6 +163,68 @@
   width: 100%;
 }
 
+/* Bandeau + plot maintenance (fiche équipement) */
+.equipmentDetailPage.heroInMaintenance :global([class*="heroCover"]),
+.heroCoverMaintenance {
+  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%23c2410c' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  --hero-cover-cross-opacity: 0.22;
+  background: linear-gradient(
+    180deg,
+    rgba(194, 65, 12, 0.16) 0%,
+    rgba(194, 65, 12, 0.07) 55%,
+    transparent 100%
+  );
+}
+
+.equipmentDetailPage.heroInMaintenance :global([class*="heroBrandIcon"]),
+.heroBrandIconMaintenance {
+  color: #fff;
+  background: #c2410c;
+}
+
+.heroMaintenanceBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 5px;
+  border: 1px solid rgba(194, 65, 12, 0.45);
+  background: rgba(194, 65, 12, 0.12);
+  color: #c2410c;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.heroMaintenanceBadge svg {
+  flex-shrink: 0;
+}
+
+:global(html.dark) .equipmentDetailPage.heroInMaintenance :global([class*="heroCover"]),
+:global(html.dark) .heroCoverMaintenance {
+  background: linear-gradient(
+    180deg,
+    rgba(251, 146, 60, 0.18) 0%,
+    rgba(251, 146, 60, 0.06) 55%,
+    transparent 100%
+  );
+}
+
+:global(html.dark) .equipmentDetailPage.heroInMaintenance :global([class*="heroBrandIcon"]),
+:global(html.dark) .heroBrandIconMaintenance {
+  color: #fff;
+  background: #ea580c;
+}
+
+:global(html.dark) .heroMaintenanceBadge {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(251, 146, 60, 0.14);
+  color: #fb923c;
+}
+
 .heroFactStrip {
   --hero-fact-strip-h: 2.75rem;
   position: relative;
@@ -192,6 +254,41 @@
 .equipmentDetailPage :global([class*="pageHero"]) {
   padding: 0;
   padding-bottom: 0;
+}
+
+/* Identity row : assez haute pour titre + meta + heartbeat RMM (évite le crop) */
+.equipmentDetailPage :global([class*="heroIdentityBlock"]) {
+  --hero-identity-row-h: 7.5rem;
+}
+
+.equipmentDetailPage :global([class*="heroIdentityRow"]) {
+  height: auto;
+  min-height: var(--hero-identity-row-h);
+  max-height: none;
+  align-items: center;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+.equipmentDetailPage :global([class*="heroCover"]) {
+  height: auto;
+  bottom: 0;
+}
+
+.equipmentDetailPage :global([class*="heroMain"]),
+.equipmentDetailPage :global([class*="heroText"]) {
+  max-height: none;
+  overflow: visible;
+}
+
+.equipmentDetailPage :global([class*="heroTitle"]) {
+  overflow: visible;
+}
+
+.equipmentDetailPage :global([class*="heroMetaItemRmm"]) {
+  margin-top: 0.2rem;
+  max-width: 100%;
+  overflow: visible;
 }
 
 .heroFactItem {

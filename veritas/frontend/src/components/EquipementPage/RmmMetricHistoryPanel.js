@@ -61,7 +61,7 @@ export default function RmmMetricHistoryPanel({
     const options = list.length ? list : [normalizeDriveLabel(agent?.disk_drive) || "C:"];
     return options.slice(0, 3).join("|");
   }, [agent?.id, agent?.disk_drive]);
-  const [metric, setMetric] = useState("disk_used_pct");
+  const [metric, setMetric] = useState("cpu_usage_pct");
   const [drive, setDrive] = useState(defaultDrive);
   const [days, setDays] = useState(90);
   const [loading, setLoading] = useState(false);
@@ -77,7 +77,7 @@ export default function RmmMetricHistoryPanel({
   const hasHistoryDataRef = useRef(false);
   useEffect(() => {
     if (!active) return;
-    setMetric("disk_used_pct");
+    setMetric("cpu_usage_pct");
     setDays(90);
     setError(null);
     setDashboardError(null);
@@ -105,29 +105,13 @@ export default function RmmMetricHistoryPanel({
     setDashboardError(null);
     try {
       const diskTargets = driveTargetsKey.split("|").filter(Boolean).slice(0, 3);
-      const [cpu, ram, temp, updates, ...diskResults] = await Promise.all([fetchRmmMetricHistory(agentId, {
-        metric: "cpu_usage_pct",
-        days
-      }), fetchRmmMetricHistory(agentId, {
-        metric: "ram_usage_pct",
-        days
-      }), fetchRmmMetricHistory(agentId, {
-        metric: "cpu_temp_c",
-        days
-      }).catch(() => ({
-        points: []
-      })), fetchRmmMetricHistory(agentId, {
-        metric: "updates_pending",
-        days
-      }).catch(() => ({
-        points: []
-      })), ...diskTargets.map(dim => fetchRmmMetricHistory(agentId, {
-        metric: "disk_used_pct",
-        dim,
-        days
-      }).catch(() => ({
-        points: []
-      })))]);
+      const [cpu, ram, ...diskResults] = await Promise.all([
+        fetchRmmMetricHistory(agentId, { metric: "cpu_usage_pct", days }),
+        fetchRmmMetricHistory(agentId, { metric: "ram_usage_pct", days }),
+        ...diskTargets.map(dim =>
+          fetchRmmMetricHistory(agentId, { metric: "disk_used_pct", dim, days }).catch(() => ({ points: [] }))
+        )
+      ]);
       if (dashboardRequestRef.current !== requestId) return;
       const disks = {};
       diskTargets.forEach((dim, index) => {
@@ -138,8 +122,6 @@ export default function RmmMetricHistoryPanel({
       setDashboardHistory({
         cpu,
         ram,
-        temp,
-        updates,
         disks
       });
       hasDashboardDataRef.current = true;
@@ -205,14 +187,7 @@ export default function RmmMetricHistoryPanel({
       max: point.max
     }));
   }, [history]);
-  const yDomain = useMemo(() => {
-    if (metric === "updates_pending") return [0, "auto"];
-    if (metric === "cpu_temp_c") return [0, 110];
-    if (metric === "cpu_usage_pct" || metric === "ram_usage_pct" || metric === "disk_used_pct") {
-      return [0, 100];
-    }
-    return [0, "auto"];
-  }, [metric]);
+  const yDomain = useMemo(() => [0, 100], []);
   if (!agent) return null;
   return <div className={embedded ? styles.embedded : styles.standalone}>
       <div className={styles.toolbar}>
@@ -250,11 +225,9 @@ export default function RmmMetricHistoryPanel({
             <div className={styles.controlGroup}>
               <span className={styles.controlLabel}>Metric</span>
               <select className={styles.select} value={metric} onChange={e => setMetric(e.target.value)}>
-                <option value="disk_used_pct">Disk (% used)</option>
                 <option value="cpu_usage_pct">CPU usage (%)</option>
                 <option value="ram_usage_pct">RAM usage (%)</option>
-                <option value="cpu_temp_c">Max temperature (°C)</option>
-                <option value="updates_pending">Pending Windows updates</option>
+                <option value="disk_used_pct">Disk (% used)</option>
               </select>
             </div>
 
@@ -289,24 +262,20 @@ export default function RmmMetricHistoryPanel({
                   <YAxis domain={yDomain} tick={{
                 fontSize: 11,
                 fill: "#64748b"
-              }} width={36} unit={metric === "cpu_temp_c" ? "°C" : metric === "disk_used_pct" || metric === "cpu_usage_pct" || metric === "ram_usage_pct" ? "%" : ""} />
+              }} width={36} unit="%" />
                   <Tooltip labelFormatter={formatTooltipDay} formatter={(value, name) => {
                 if (name === "last") {
-                  if (metric === "cpu_temp_c") return [`${value} °C`, "Temperature"];
-                  if (metric === "disk_used_pct" || metric === "cpu_usage_pct" || metric === "ram_usage_pct") {
-                    return [`${value} %`, metric === "disk_used_pct" ? "Utilisation" : metric === "cpu_usage_pct" ? "CPU" : "RAM"];
-                  }
-                  return [String(value), "Pending"];
+                  return [`${value} %`, metric === "disk_used_pct" ? "Utilisation" : metric === "cpu_usage_pct" ? "CPU" : "RAM"];
                 }
                 if (name === "min" || name === "max") {
-                  return [metric === "disk_used_pct" || metric === "cpu_usage_pct" || metric === "ram_usage_pct" ? `${value} %` : value, name === "min" ? "Min" : "Max"];
+                  return [`${value} %`, name === "min" ? "Min" : "Max"];
                 }
                 return [value, name];
               }} />
-                  {metric === "disk_used_pct" || metric === "cpu_usage_pct" || metric === "ram_usage_pct" ? <>
+                  <>
                       <Line type="monotone" dataKey="min" name="min" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
                       <Line type="monotone" dataKey="max" name="max" stroke="#94a3b8" strokeWidth={1} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
-                    </> : null}
+                    </>
                   <Line type="monotone" dataKey="last" name="last" stroke="#2b5fab" strokeWidth={2} dot={chartData.length <= 45} activeDot={{
                 r: 4
               }} />

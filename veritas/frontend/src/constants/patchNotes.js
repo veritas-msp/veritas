@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.78",
+    date: "2026-10-12",
+    highlights: [
+      "Fiche équipement : indicateur maintenance visible (bandeau + badge), header sans crop.",
+      "Supervision : vue allégée, events Centre vs CheckMK, boutons mapping/refresh retirés du bandeau.",
+      "Vue d’ensemble : dates des derniers événements et type capitalisé (sans colonne statut redondante).",
+      "Activité RMM : KPI CPU / RAM / Disque en 3 colonnes ; température et Windows Update retirés."
+    ]
+  },
+  {
     version: "1.0.77",
     date: "2026-10-12",
     highlights: [

@@ -1,7 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
+import { fetchEquipmentRecentAlerts } from "../../api/supervisionAlerts";
+import { getEquipmentDbId } from "../../utils/equipmentIdentity";
+import { formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./CheckMKMonitoringPanel.module.css";
 import {
   CHECKMK_DATE_FILTER_OPTIONS,
@@ -17,11 +21,10 @@ import {
   formatServiceAge,
   getServiceLabel,
   filterAlertEventsOnly,
-  getEventsFilterShortLabel,
   formatRelativeFrench
 } from "./checkmkMonitoringUtils";
 
-const ROWS_PER_PAGE = 8;
+const ROWS_PER_PAGE = 10;
 const HOST_STATE_COLORS = {
   UP: "#13BA8E",
   DOWN: "#ef4444",
@@ -49,6 +52,14 @@ function formatHostTimestamp(raw) {
   return formatRelativeFrench(raw);
 }
 
+function severityToState(severity) {
+  const key = String(severity || "").toLowerCase();
+  if (key.includes("crit")) return 2;
+  if (key.includes("warn")) return 1;
+  if (key.includes("info") || key.includes("ok")) return 0;
+  return 3;
+}
+
 function sortAlertRows(list, sort) {
   return [...list].sort((a, b) => {
     let cmp = 0;
@@ -62,7 +73,7 @@ function sortAlertRows(list, sort) {
   });
 }
 
-function CompactAlertList({ rows, emptyLabel, onOpenRow }) {
+function CompactAlertList({ rows, emptyLabel, onOpenRow, locale }) {
   if (!rows.length) {
     return <div className={styles.compactEmpty}>{emptyLabel}</div>;
   }
@@ -73,20 +84,46 @@ function CompactAlertList({ rows, emptyLabel, onOpenRow }) {
         const meta = EVENT_STATE_META[Math.min(stateNum, 3)] || EVENT_STATE_META[3];
         const svc = event.service ?? event.log_service_description ?? "—";
         const msg = event.message ?? event.plugin_output ?? event.event_text ?? "—";
+        const origin = event._origin;
+        const when =
+          event._whenLabel ||
+          formatEventTimestamp(event) ||
+          (event.at ? formatEquipmentDetailRelative(event.at, locale) : "—");
         return (
-          <li key={event.id ?? `${svc}-${idx}`} className={styles.compactRow} onClick={() => onOpenRow?.(event)}>
+          <li
+            key={event.id ?? `${origin || "ev"}-${svc}-${idx}`}
+            className={styles.compactRow}
+            onClick={() => onOpenRow?.(event)}
+          >
             <span className={styles.statusBadge} style={{ backgroundColor: meta.color }}>
               {meta.label}
             </span>
             <div className={styles.compactRowMain}>
-              <span className={styles.compactRowTitle} title={svc}>
-                {svc}
+              <span className={styles.compactRowTitleRow}>
+                {origin ? (
+                  <span
+                    className={`${styles.originChip} ${
+                      origin === "centre"
+                        ? styles.originChipCentre
+                        : origin === "notif"
+                          ? styles.originChipNotif
+                          : styles.originChipCheckmk
+                    }`}
+                  >
+                    {origin === "centre" ? "Centre" : origin === "notif" ? "Notif." : "CheckMK"}
+                  </span>
+                ) : null}
+                <span className={styles.compactRowTitle} title={svc}>
+                  {svc}
+                </span>
               </span>
-              <span className={styles.compactRowMsg} title={msg}>
-                {msg}
-              </span>
+              {msg && msg !== "—" ? (
+                <span className={styles.compactRowMsg} title={msg}>
+                  {msg}
+                </span>
+              ) : null}
             </div>
-            <span className={styles.compactRowTime}>{formatEventTimestamp(event)}</span>
+            <span className={styles.compactRowTime}>{when}</span>
           </li>
         );
       })}
@@ -108,16 +145,21 @@ export default function CheckMKMonitoringPanel({
   onOpenEvent,
   onOpenMapping
 }) {
+  const locale = useAppLocale();
   const [serviceStateFilter, setServiceStateFilter] = useState(null);
   const [serviceSearch, setServiceSearch] = useState("");
   const [serviceSort, setServiceSort] = useState({ col: "state", dir: "asc" });
-  const [rightTab, setRightTab] = useState("events");
+  const [eventsSource, setEventsSource] = useState("centre");
   const [historyFilter, setHistoryFilter] = useState("1m");
   const [historySearch, setHistorySearch] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
+  const [centreAlerts, setCentreAlerts] = useState([]);
+  const [loadingCentre, setLoadingCentre] = useState(false);
 
+  const equipmentId = useMemo(() => getEquipmentDbId(equipment), [equipment]);
   const panelClass = layout === "tab" ? `${styles.panel} ${styles.panelTab}` : styles.panel;
   const services = checkmkData?.services?.services || [];
+
   const allEvents = useMemo(() => {
     const primary = checkmkData?.events?.events || [];
     const detailed = checkmkData?.hostEventsDetailed?.events || [];
@@ -129,6 +171,7 @@ export default function CheckMKMonitoringPanel({
     }
     return [...map.values()];
   }, [checkmkData]);
+
   const allNotifications =
     checkmkData?.notifications?.notifications || checkmkData?.notifications?.events || [];
   const availabilityByPeriod = checkmkData?.availabilityByPeriod || {};
@@ -146,23 +189,42 @@ export default function CheckMKMonitoringPanel({
     checkmkData?.availability ?? availabilityByPeriod[checkmkAvailabilityPeriod]
   );
 
-  // Live problems from current service states (independent of event history).
-  const liveProblems = useMemo(() => {
-    return services
-      .filter(s => {
-        const state = s.state ?? 3;
-        return state === 1 || state === 2;
-      })
-      .map(s => ({
-        id: `live-${s.id || getServiceLabel(s)}`,
-        service: getServiceLabel(s),
-        state: s.state ?? 3,
-        message: getServiceOutput(s) || "Problème actuel",
-        time: s.lastStateChange ?? s.last_state_change ?? s.lastCheck ?? s.last_check ?? null,
-        _live: true
-      }))
-      .sort((a, b) => (b.state ?? 0) - (a.state ?? 0));
-  }, [services]);
+  useEffect(() => {
+    if (!equipmentId) {
+      setCentreAlerts([]);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingCentre(true);
+      try {
+        const rows = await fetchEquipmentRecentAlerts(equipmentId, { days: 365, limit: 200 });
+        if (!cancelled) {
+          setCentreAlerts(
+            (Array.isArray(rows) ? rows : []).filter(row => {
+              const src = String(row.source || "").toLowerCase();
+              return src === "supervision" || src === "monitoring";
+            })
+          );
+        }
+      } catch {
+        if (!cancelled) setCentreAlerts([]);
+      } finally {
+        if (!cancelled) setLoadingCentre(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [equipmentId]);
+
+  const liveProblemCount = useMemo(
+    () => services.filter(s => {
+      const state = s.state ?? 3;
+      return state === 1 || state === 2;
+    }).length,
+    [services]
+  );
 
   const filteredServices = useMemo(() => {
     let list = services;
@@ -189,30 +251,61 @@ export default function CheckMKMonitoringPanel({
     });
   }, [services, serviceStateFilter, serviceSearch, serviceSort]);
 
-  const historySource = rightTab === "notifications" ? allNotifications : allEvents;
-  const historyInRange = useMemo(() => {
-    const ranged = getCheckMKEventsInDateRange(historySource, historyFilter);
-    // Prefer alert rows; if history exists but none parse as alert, still show all.
-    const alerts = filterAlertEventsOnly(ranged);
-    return alerts.length > 0 || ranged.length === 0 ? alerts : ranged;
-  }, [historySource, historyFilter]);
+  const centreEventRows = useMemo(() => {
+    return centreAlerts.map(alert => ({
+      id: alert.id,
+      service: alert.title || alert.typeKey || "Alerte",
+      message: alert.subtitle || alert.criterionKey || "",
+      state: severityToState(alert.severity),
+      time: alert.at,
+      at: alert.at,
+      _origin: "centre",
+      _whenLabel: formatEquipmentDetailRelative(alert.at, locale),
+      _raw: alert
+    }));
+  }, [centreAlerts, locale]);
 
-  const filteredHistory = useMemo(() => {
-    let list = historyInRange;
-    if (historySearch.trim()) {
-      const q = historySearch.toLowerCase();
-      list = list.filter(e => {
-        const msg = e.message ?? e.plugin_output ?? e.event_text ?? "";
-        const svc = e.service ?? e.log_service_description ?? "";
-        const type = e.type ?? "";
-        return `${msg} ${svc} ${type}`.toLowerCase().includes(q);
-      });
-    }
-    return sortAlertRows(list, { col: "timestamp", dir: "desc" });
-  }, [historyInRange, historySearch]);
+  const checkmkEventRows = useMemo(() => {
+    const events = (allEvents || []).map(event => ({
+      ...event,
+      service: event.service ?? event.log_service_description ?? "—",
+      message: event.message ?? event.plugin_output ?? event.event_text ?? "—",
+      _origin: "checkmk"
+    }));
+    const notifs = (allNotifications || []).map(event => ({
+      ...event,
+      service: event.service ?? event.log_service_description ?? event.contact ?? "Notification",
+      message: event.message ?? event.plugin_output ?? event.event_text ?? "—",
+      _origin: "notif"
+    }));
+    const rangedEvents = filterAlertEventsOnly(getCheckMKEventsInDateRange(events, historyFilter));
+    const rangedNotifs = getCheckMKEventsInDateRange(notifs, historyFilter);
+    const eventList = rangedEvents.length || !events.length ? rangedEvents : getCheckMKEventsInDateRange(events, historyFilter);
+    return [...eventList, ...rangedNotifs];
+  }, [allEvents, allNotifications, historyFilter]);
 
-  const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / ROWS_PER_PAGE));
-  const paginatedHistory = filteredHistory.slice(
+  const centreFiltered = useMemo(() => {
+    const ranged = getCheckMKEventsInDateRange(centreEventRows, historyFilter);
+    if (!historySearch.trim()) return sortAlertRows(ranged, { col: "timestamp", dir: "desc" });
+    const q = historySearch.toLowerCase();
+    return sortAlertRows(
+      ranged.filter(e => `${e.service} ${e.message}`.toLowerCase().includes(q)),
+      { col: "timestamp", dir: "desc" }
+    );
+  }, [centreEventRows, historyFilter, historySearch]);
+
+  const checkmkFiltered = useMemo(() => {
+    if (!historySearch.trim()) return sortAlertRows(checkmkEventRows, { col: "timestamp", dir: "desc" });
+    const q = historySearch.toLowerCase();
+    return sortAlertRows(
+      checkmkEventRows.filter(e => `${e.service} ${e.message} ${e._origin}`.toLowerCase().includes(q)),
+      { col: "timestamp", dir: "desc" }
+    );
+  }, [checkmkEventRows, historySearch]);
+
+  const activeHistory = eventsSource === "centre" ? centreFiltered : checkmkFiltered;
+  const totalHistoryPages = Math.max(1, Math.ceil(activeHistory.length / ROWS_PER_PAGE));
+  const paginatedHistory = activeHistory.slice(
     (historyPage - 1) * ROWS_PER_PAGE,
     historyPage * ROWS_PER_PAGE
   );
@@ -283,9 +376,6 @@ export default function CheckMKMonitoringPanel({
   const hostName =
     checkmkHostDetails?.hostName || checkmkHostDetails?.title || checkmkMapping.checkmk_host_name;
   const lastCheckLabel = formatHostTimestamp(checkmkHostDetails?.lastCheck);
-  const eventsFilterLabel = getEventsFilterShortLabel(historyFilter);
-  const rawEventsCount = allEvents.length;
-  const rawNotifsCount = allNotifications.length;
 
   return (
     <section className={`${panelClass} ${styles.panelCompact}`}>
@@ -311,18 +401,13 @@ export default function CheckMKMonitoringPanel({
                   {hostState}
                 </span>
               ) : null}
-              {checkmkMapping.checkmk_site ? (
-                <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
-              ) : null}
               {checkmkHostDetails?.ipAddress ? (
                 <span className={styles.ipText}>{checkmkHostDetails.ipAddress}</span>
               ) : null}
-              {checkmkHostDetails?.os || checkmkHostDetails?.osFamily ? (
-                <span className={styles.labelChip}>{checkmkHostDetails.os || checkmkHostDetails.osFamily}</span>
+              {checkmkMapping.checkmk_site ? (
+                <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
               ) : null}
-              {equipment?.name ? <span className={styles.labelChip}>Veritas · {equipment.name}</span> : null}
               {lastCheckLabel ? <span className={styles.labelChip}>Check · {lastCheckLabel}</span> : null}
-              {checkmkHostDetails?.inDowntime ? <span className={styles.labelChip}>Downtime</span> : null}
             </div>
           </div>
         </div>
@@ -348,7 +433,9 @@ export default function CheckMKMonitoringPanel({
           <div className={styles.kpiChip}>
             <span className={styles.kpiLabel}>Services</span>
             <span className={styles.kpiValue}>{kpis.totalServices}</span>
-            <span className={styles.kpiSub}>monitorés</span>
+            <span className={styles.kpiSub}>
+              {liveProblemCount ? `${liveProblemCount} en alerte` : "tous OK"}
+            </span>
           </div>
           <div className={styles.kpiChip}>
             <span className={styles.kpiLabel}>Disponibilité</span>
@@ -370,17 +457,10 @@ export default function CheckMKMonitoringPanel({
             </div>
           </div>
           <div className={styles.kpiChip}>
-            <span className={styles.kpiLabel}>Problèmes live</span>
-            <span className={`${styles.kpiValue} ${liveProblems.length ? styles.kpiValueBad : styles.kpiValueGood}`}>
-              {liveProblems.length}
-            </span>
-            <span className={styles.kpiSub}>warn / crit actuels</span>
-          </div>
-          <div className={styles.kpiChip}>
-            <span className={styles.kpiLabel}>Historique ({eventsFilterLabel})</span>
-            <span className={styles.kpiValue}>{kpis.eventsInPeriod}</span>
+            <span className={styles.kpiLabel}>Événements</span>
+            <span className={styles.kpiValue}>{centreAlerts.length + allEvents.length + allNotifications.length}</span>
             <span className={styles.kpiSub}>
-              {rawEventsCount} events · {rawNotifsCount} notif.
+              {centreAlerts.length} centre · {allEvents.length + allNotifications.length} CheckMK
             </span>
           </div>
         </div>
@@ -443,7 +523,7 @@ export default function CheckMKMonitoringPanel({
                     </span>
                   </th>
                   <th>Sortie</th>
-                  <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel (pas l'âge de la sync)">
+                  <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel">
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
                       Âge
                       <SortIcon active={serviceSort.col === "age"} direction={serviceSort.dir} />
@@ -495,43 +575,26 @@ export default function CheckMKMonitoringPanel({
             <div className={styles.rightTabs}>
               <button
                 type="button"
-                className={`${styles.rightTab} ${rightTab === "events" ? styles.rightTabActive : ""}`}
+                className={`${styles.rightTab} ${eventsSource === "centre" ? styles.rightTabActive : ""}`}
                 onClick={() => {
-                  setRightTab("events");
+                  setEventsSource("centre");
                   setHistoryPage(1);
                 }}
               >
-                Events ({rawEventsCount})
+                Centre ({centreAlerts.length})
               </button>
               <button
                 type="button"
-                className={`${styles.rightTab} ${rightTab === "notifications" ? styles.rightTabActive : ""}`}
+                className={`${styles.rightTab} ${eventsSource === "checkmk" ? styles.rightTabActive : ""}`}
                 onClick={() => {
-                  setRightTab("notifications");
+                  setEventsSource("checkmk");
                   setHistoryPage(1);
                 }}
               >
-                Notif. ({rawNotifsCount})
+                CheckMK ({allEvents.length + allNotifications.length})
               </button>
             </div>
           </div>
-
-          {liveProblems.length > 0 ? (
-            <div className={styles.liveProblemsBlock}>
-              <div className={styles.liveProblemsTitle}>
-                <Icon icon="mdi:alert-circle" />
-                Problèmes actuels ({liveProblems.length})
-              </div>
-              <CompactAlertList
-                rows={liveProblems.slice(0, 5)}
-                emptyLabel=""
-                onOpenRow={row => {
-                  const svc = services.find(s => getServiceLabel(s) === row.service);
-                  if (svc) onOpenService?.(svc);
-                }}
-              />
-            </div>
-          ) : null}
 
           <div className={styles.periodBar}>
             {CHECKMK_DATE_FILTER_OPTIONS.map(({ value, shortLabel, label }) => (
@@ -562,19 +625,25 @@ export default function CheckMKMonitoringPanel({
             />
           </div>
 
-          <CompactAlertList
-            rows={paginatedHistory}
-            emptyLabel={
-              rightTab === "notifications"
-                ? rawNotifsCount === 0
-                  ? "Aucune notification synchronisée. Forcez une sync pour remonter l’historique CheckMK."
-                  : "Aucune notification sur cette période."
-                : rawEventsCount === 0
-                  ? "Aucun event historique synchronisé. Les problèmes live ci-dessus viennent de l’état actuel des services."
-                  : "Aucun event sur cette période."
-            }
-            onOpenRow={onOpenEvent}
-          />
+          {loadingCentre && eventsSource === "centre" && !paginatedHistory.length ? (
+            <div className={styles.compactEmpty}>Chargement…</div>
+          ) : (
+            <CompactAlertList
+              rows={paginatedHistory}
+              locale={locale}
+              emptyLabel={
+                eventsSource === "centre"
+                  ? "Aucun événement du centre de supervision sur cette période."
+                  : allEvents.length + allNotifications.length === 0
+                    ? "Aucun event / notification CheckMK synchronisé."
+                    : "Aucun événement CheckMK sur cette période."
+              }
+              onOpenRow={row => {
+                if (row?._origin === "centre") return;
+                onOpenEvent?.(row._raw || row);
+              }}
+            />
+          )}
 
           {totalHistoryPages > 1 ? (
             <div className={styles.pagination}>
@@ -587,7 +656,7 @@ export default function CheckMKMonitoringPanel({
                 <Icon icon="mdi:chevron-left" />
               </button>
               <span className={styles.pageInfo}>
-                {historyPage}/{totalHistoryPages} ({filteredHistory.length})
+                {historyPage}/{totalHistoryPages} ({activeHistory.length})
               </span>
               <button
                 type="button"

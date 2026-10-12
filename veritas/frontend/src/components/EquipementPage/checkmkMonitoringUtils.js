@@ -68,7 +68,7 @@ export const EVENT_STATE_META = [{
   color: '#6b7280'
 }];
 export function getCheckMKEventTimeMs(event) {
-  const raw = event?.time ?? event?.log_time ?? event?.timestamp ?? event?.event_time ?? event?.created ?? event?.date ?? event?.created_at ?? null;
+  const raw = event?.time ?? event?.at ?? event?.log_time ?? event?.timestamp ?? event?.event_time ?? event?.created ?? event?.date ?? event?.created_at ?? null;
   if (raw == null) return null;
   const num = Number(raw);
   if (!Number.isNaN(num)) return num < 1e12 ? num * 1000 : num;

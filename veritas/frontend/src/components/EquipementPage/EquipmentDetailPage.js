@@ -1699,6 +1699,32 @@ export default function EquipmentDetailPage({
         ? copy.hero.active
         : copy.hero.inactive;
   const equipmentStatusActive = equipmentStatusOnline || (!equipmentStatusOffline && equipmentIsActive);
+  const maintenanceUntilRaw =
+    activeMaintenance?.excludedUntil || activeMaintenance?.excluded_until || null;
+  let maintenanceUntilLabel = "";
+  if (maintenanceUntilRaw) {
+    const ms = new Date(maintenanceUntilRaw).getTime();
+    if (Number.isFinite(ms)) {
+      try {
+        maintenanceUntilLabel = new Date(ms).toLocaleString(locale || undefined, {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } catch {
+        maintenanceUntilLabel = new Date(ms).toLocaleString();
+      }
+    }
+  }
+  const maintenanceUntilSuffix = maintenanceUntilLabel
+    ? interpolate(copy.hero.maintenanceUntil || " jusqu’au {date}", { date: maintenanceUntilLabel })
+    : "";
+  const maintenanceBadgeTitle = interpolate(copy.hero.maintenanceTooltipActive || "En maintenance{until}", {
+    until: maintenanceUntilSuffix
+  });
+  const maintenanceReason = String(activeMaintenance?.reason || "").trim();
   const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
   const showCheckmkHeroMenu = Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet");
   const showRmmHeroMenu = Boolean(rmmManaged && rmmAgentId);
@@ -1737,11 +1763,9 @@ export default function EquipmentDetailPage({
   const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
   const heroFacts = [
     heroSiteLabel ? { key: "site", icon: "mdi:map-marker-outline", label: copy.hero.factSite || "Site", value: heroSiteLabel } : null,
-    typeDisplayLabel ? { key: "type", icon: "mdi:devices", label: copy.hero.factType || "Type", value: typeDisplayLabel } : null,
     heroManufacturer ? { key: "mfr", icon: "mdi:domain", label: copy.hero.factManufacturer, value: heroManufacturer } : null,
     heroModel ? { key: "model", icon: "mdi:tag-outline", label: copy.hero.factModel, value: heroModel } : null,
     heroSerial ? { key: "serial", icon: "mdi:barcode", label: copy.hero.factSerial || "N° de série", value: heroSerial } : null,
-    heroOsLabel ? { key: "os", icon: "mdi:microsoft-windows", label: copy.hero.factOs, value: heroOsLabel } : null,
     heroIp ? { key: "ip", icon: "mdi:ip-network-outline", label: copy.hero.factIp, value: heroIp } : null
   ].filter(Boolean);
   if (!equipment) {
@@ -1750,15 +1774,18 @@ export default function EquipmentDetailPage({
       </div>;
   }
 
-  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage} msp-page-grid`}>
+  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage} ${inMaintenance ? styles.heroInMaintenance : ""} msp-page-grid`.trim()}>
       <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
         <div className={enterpriseDetailStyles.heroTop}>
           <div className={enterpriseDetailStyles.heroIdentityBlock}>
-              <div className={enterpriseDetailStyles.heroCover} aria-hidden />
+              <div
+                className={`${enterpriseDetailStyles.heroCover} ${inMaintenance ? styles.heroCoverMaintenance : ""}`.trim()}
+                aria-hidden
+              />
               <div className={enterpriseDetailStyles.heroIdentityRow}>
                 <div className={enterpriseDetailStyles.heroMain}>
-                  <span className={enterpriseDetailStyles.heroBrandIcon} aria-hidden>
-                    <Icon icon={heroIcon} width={30} height={30} />
+                  <span className={`${enterpriseDetailStyles.heroBrandIcon} ${inMaintenance ? styles.heroBrandIconMaintenance : ""}`.trim()} aria-hidden>
+                    <Icon icon={inMaintenance ? "mdi:traffic-cone" : heroIcon} width={30} height={30} />
                   </span>
                   <div className={enterpriseDetailStyles.heroText}>
                     <h1 className={enterpriseDetailStyles.heroTitle}>
@@ -1767,6 +1794,16 @@ export default function EquipmentDetailPage({
                         <StatusDot active={equipmentStatusActive} label="" className={enterpriseDetailStyles.heroTitleStatus} />
                         {equipmentStatusLabel}
                       </span>
+                      {inMaintenance ? (
+                        <span
+                          className={styles.heroMaintenanceBadge}
+                          title={[maintenanceBadgeTitle, maintenanceReason].filter(Boolean).join(" — ")}
+                          aria-label={copy.hero.maintenanceBadge || "En maintenance"}
+                        >
+                          <Icon icon="mdi:traffic-cone" width={12} height={12} aria-hidden />
+                          {copy.hero.maintenanceBadge || "En maintenance"}
+                        </span>
+                      ) : null}
                     </h1>
                     {heroSubtitleParts.length ? <p className={enterpriseDetailStyles.heroDescription}>
                         {heroSubtitleParts.join(" · ")}
@@ -1981,18 +2018,6 @@ export default function EquipmentDetailPage({
                     {checkmkMapping?.checkmk_host_name || "CheckMK"}
                     {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
                   </p>
-                </div>
-                <div className={styles.supervisionToolbarActions}>
-                  <button type="button" className={styles.supervisionActionBtn} disabled={loadingCheckMK} onClick={() => loadCheckMKData({
-              force: true
-            })}>
-                    <Icon icon="mdi:refresh" aria-hidden />
-                    {copy.hero?.refreshCheckmk || "Refresh"}
-                  </button>
-                  <button type="button" className={styles.supervisionActionBtn} onClick={() => setCheckmkMappingModal(true)}>
-                    <Icon icon="simple-icons:checkmk" aria-hidden />
-                    {copy.hero?.mappingCheckmk || "Mapping"}
-                  </button>
                 </div>
               </header>
               <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
