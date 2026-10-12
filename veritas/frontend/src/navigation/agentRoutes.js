@@ -78,6 +78,28 @@ function readQuery(search) {
 function encodeSeg(value) {
   return encodeURIComponent(String(value ?? ""));
 }
+/** Préfère le numéro lisible (#1042) pour les URLs tickets ; UUID en repli. */
+function ticketPathSegment(data = {}) {
+  const numberRaw = data.ticketNumber ?? data.ticket_number;
+  if (numberRaw != null && String(numberRaw).trim() !== "") {
+    return String(numberRaw).trim().replace(/^#/, "");
+  }
+  const id = data.ticketId || data.id;
+  return id != null && String(id).trim() !== "" ? String(id).trim() : null;
+}
+function parseTicketPathSegment(raw) {
+  const decoded = decodeURIComponent(String(raw || ""));
+  const bare = decoded.replace(/^#/, "").trim();
+  if (/^\d{1,18}$/.test(bare)) {
+    return {
+      ticketId: bare,
+      ticketNumber: bare
+    };
+  }
+  return {
+    ticketId: decoded
+  };
+}
 export function buildAgentPath(docType, data = null, options = {}) {
   const d = data || {};
   switch (docType) {
@@ -143,8 +165,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return appendQuery("/tickets/new", d, docType);
     case "TicketDetail":
       {
-        const ticketId = d.ticketId || d.id;
-        return ticketId ? `/tickets/${encodeSeg(ticketId)}` : "/tickets";
+        const seg = ticketPathSegment(d);
+        return seg ? `/tickets/${encodeSeg(seg)}` : "/tickets";
       }
     case "TicketSales":
       return "/sales";
@@ -152,8 +174,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return appendQuery("/sales/new", d, docType);
     case "TicketSalesDetail":
       {
-        const ticketId = d.ticketId || d.id;
-        return ticketId ? `/sales/${encodeSeg(ticketId)}` : "/sales";
+        const seg = ticketPathSegment(d);
+        return seg ? `/sales/${encodeSeg(seg)}` : "/sales";
       }
     case "Contrat":
       return appendQuery("/enterprises", d, docType);
@@ -438,11 +460,9 @@ export function parseAgentPath(pathname, search = "") {
     })
   }, {
     re: /^\/tickets\/([^/]+)$/,
-    run: ([, ticketId]) => ({
+    run: ([, ticketRef]) => ({
       docType: "TicketDetail",
-      data: {
-        ticketId: decodeURIComponent(ticketId)
-      },
+      data: parseTicketPathSegment(ticketRef),
       adminTab: null
     })
   }, {
@@ -461,10 +481,10 @@ export function parseAgentPath(pathname, search = "") {
     })
   }, {
     re: /^\/sales\/([^/]+)$/,
-    run: ([, ticketId]) => ({
+    run: ([, ticketRef]) => ({
       docType: "TicketSalesDetail",
       data: {
-        ticketId: decodeURIComponent(ticketId),
+        ...parseTicketPathSegment(ticketRef),
         ticketFamily: "sales",
         fromPage: "TicketSales"
       },

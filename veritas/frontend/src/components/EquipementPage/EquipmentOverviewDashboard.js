@@ -347,349 +347,361 @@ export default function EquipmentOverviewDashboard({
 
   return (
     <div className={styles.root} data-guide="equipment-overview-dashboard">
-      <div className={styles.grid}>
-        <OverviewCard
-          className={styles.span8}
-          title={ov.availabilityTitle || "Disponibilité"}
-          icon="mdi:chart-timeline-variant"
-        >
-          {availPct != null ? (
-            <>
-              <div className={styles.availHero}>
-                <span className={styles.availValue}>{Number(availPct).toFixed(1)}%</span>
-                {availTrend != null ? (
-                  <span className={availTrend >= 0 ? styles.deltaUp : styles.deltaDown}>
-                    {availTrend >= 0 ? "+" : ""}
-                    {availTrend}%
-                  </span>
-                ) : (
-                  <span className={styles.availHint}>{ov.availabilityHint || "Sur la période sélectionnée"}</span>
-                )}
-              </div>
-              <div className={`${styles.chartWrap} ${styles.chartWrapSm}`}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={availabilitySeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="equipAvailFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#22c55e" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-                    <YAxis domain={availabilityYDomain} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={36} />
-                    <Tooltip content={<ChartTooltip unit="%" />} />
-                    <Area type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2.5} fill="url(#equipAvailFill)" dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          ) : (
-            <p className={styles.empty}>
-              {loadingCheckMK
-                ? copy.loading
-                : hasCheckmk
-                  ? ov.availabilityEmpty || "Aucune donnée de disponibilité"
-                  : ov.availabilityNoCheckmk || "Mappez CheckMK pour afficher la disponibilité"}
-            </p>
-          )}
-        </OverviewCard>
-
-        <OverviewCard
-          className={styles.span4}
-          title={ov.servicesTitle || "État des services"}
-          icon="mdi:list-status"
-        >
-          {serviceCounts.total > 0 ? (
-            <div className={styles.donutLayout}>
-              <div className={styles.donutWrap}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={serviceDonut}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius="62%"
-                      outerRadius="84%"
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {serviceDonut.map(entry => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className={styles.donutCenter}>
-                  <strong>{serviceCounts.total}</strong>
-                  <span>{ov.servicesCenter || "Services"}</span>
+      <div className={styles.split}>
+        <section className={styles.column} aria-label={ov.rmmSectionTitle || "Agent RMM"}>
+          <h2 className={styles.columnHead}>
+            <Icon icon="mdi:desktop-classic" className={styles.columnHeadIcon} aria-hidden />
+            {ov.rmmSectionTitle || "Agent RMM"}
+          </h2>
+          <div className={styles.columnGrid}>
+            <OverviewCard
+              title={ov.cpuRamTitle || "Processeur & Mémoire"}
+              icon="mdi:chip"
+            >
+              {hasRmmMetrics ? (
+                <div className={styles.ringsRow}>
+                  <RingGauge
+                    pct={snapshot.cpuPct}
+                    label={ov.cpu || "CPU"}
+                    sub={cpuSub}
+                    color={snapshot.cpuPct >= 90 ? "#ef4444" : snapshot.cpuPct >= 70 ? "#f59e0b" : "#2b5fab"}
+                  />
+                  <RingGauge
+                    pct={snapshot.ramPct}
+                    label={ov.memory || "Mémoire"}
+                    sub={ramSub}
+                    color={snapshot.ramPct >= 90 ? "#ef4444" : snapshot.ramPct >= 70 ? "#f59e0b" : "#2b5fab"}
+                  />
                 </div>
-              </div>
-              <ul className={styles.legend}>
-                {[
-                  { key: "ok", label: ov.servicesOk || "OK", value: serviceCounts.ok, color: SERVICE_COLORS.ok },
-                  { key: "warning", label: ov.servicesWarning || "Warning", value: serviceCounts.warning, color: SERVICE_COLORS.warning },
-                  { key: "critical", label: ov.servicesCritical || "Critical", value: serviceCounts.critical, color: SERVICE_COLORS.critical },
-                  { key: "unknown", label: ov.servicesUnknown || "Indisponible", value: serviceCounts.unknown, color: SERVICE_COLORS.unknown }
-                ].map(row => (
-                  <li key={row.key}>
-                    <span className={styles.legendDot} style={{ background: row.color }} aria-hidden />
-                    <span className={styles.legendLabel}>{row.label}</span>
-                    <span className={styles.legendValue}>{row.value}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className={styles.empty}>
-              {loadingCheckMK ? copy.loading : ov.servicesEmpty || "Aucun service CheckMK"}
-            </p>
-          )}
-        </OverviewCard>
+              ) : (
+                <p className={styles.empty}>{ov.rmmMetricsEmpty || "Métriques RMM indisponibles"}</p>
+              )}
+            </OverviewCard>
 
-        <OverviewCard
-          className={styles.span4}
-          title={ov.cpuRamTitle || "Processeur & Mémoire"}
-          icon="mdi:chip"
-        >
-          {hasRmmMetrics ? (
-            <div className={styles.ringsRow}>
-              <RingGauge
-                pct={snapshot.cpuPct}
-                label={ov.cpu || "CPU"}
-                sub={cpuSub}
-                color={snapshot.cpuPct >= 90 ? "#ef4444" : snapshot.cpuPct >= 70 ? "#f59e0b" : "#2b5fab"}
-              />
-              <RingGauge
-                pct={snapshot.ramPct}
-                label={ov.memory || "Mémoire"}
-                sub={ramSub}
-                color={snapshot.ramPct >= 90 ? "#ef4444" : snapshot.ramPct >= 70 ? "#f59e0b" : "#2b5fab"}
-              />
-            </div>
-          ) : (
-            <p className={styles.empty}>{ov.rmmMetricsEmpty || "Métriques RMM indisponibles"}</p>
-          )}
-        </OverviewCard>
-
-        <OverviewCard
-          className={styles.span4}
-          title={ov.storageTitle || "Stockage"}
-          icon="mdi:harddisk"
-        >
-          {storageDonut.length ? (
-            <div className={styles.donutLayout}>
-              <div className={styles.donutWrap}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={storageDonut}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius="62%"
-                      outerRadius="84%"
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {storageDonut.map(entry => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<ChartTooltip unit={storageUsedGB > 0 ? " Go" : "%"} />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className={styles.donutCenter}>
-                  <strong>{storagePct != null ? formatPct(storagePct) : "—"}</strong>
-                  <span>{ov.used || "Utilisation"}</span>
-                </div>
-              </div>
-              <ul className={styles.driveLegend}>
-                {(drives.length ? drives : storageDonut).slice(0, 5).map((row, i) => {
-                  const color = DISK_COLORS[i % DISK_COLORS.length];
-                  const pct = row.pct != null
-                    ? Number(row.pct)
-                    : row.usedGB != null && row.sizeGB
-                      ? Math.round((Number(row.usedGB) / Number(row.sizeGB)) * 100)
-                      : row.value != null && storageUsedGB <= 0
-                        ? Number(row.value)
-                        : null;
-                  return (
-                    <li key={row.label || row.name || i}>
-                      <div className={styles.driveLegendTop}>
-                        <span className={styles.legendDot} style={{ background: color }} aria-hidden />
-                        <span className={styles.legendLabel}>{row.label || row.name}</span>
-                        <span className={styles.legendValue}>
-                          {row.usedGB != null && row.sizeGB != null
-                            ? `${formatStorageGB(row.usedGB)} / ${formatStorageGB(row.sizeGB)} Go`
-                            : row.usedGB != null
-                              ? `${formatStorageGB(row.usedGB)} Go`
-                              : pct != null
-                                ? formatPct(pct)
-                                : "—"}
-                        </span>
-                      </div>
-                      {pct != null ? (
-                        <div className={styles.driveBar} aria-hidden>
-                          <div
-                            className={styles.driveBarFill}
-                            style={{
-                              width: `${Math.max(2, Math.min(100, pct))}%`,
-                              background: color
-                            }}
-                          />
-                        </div>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ) : (
-            <p className={styles.empty}>{ov.storageEmpty || "Aucun volume détecté"}</p>
-          )}
-          {storageSub ? <p className={styles.ringSub}>{storageSub}</p> : null}
-        </OverviewCard>
-
-        <OverviewCard
-          className={styles.span4}
-          title={ov.networkTitle || "Réseau"}
-          icon="mdi:lan"
-        >
-          {adapters.length ? (
-            <>
-              <div className={styles.netStats}>
-                <div className={styles.netStat}>
-                  <span className={styles.netStatLabel}>{ov.adaptersUp || "Interfaces up"}</span>
-                  <span className={styles.netStatValue}>
-                    {adapters.filter(a => a.status !== "Down" && a.status !== "down" && a.status !== false).length}
-                    <span style={{ fontWeight: 550, color: "#64748b", fontSize: "0.8rem" }}>
-                      {" "}/ {adapters.length}
-                    </span>
-                  </span>
-                </div>
-                <div className={styles.netStat}>
-                  <span className={styles.netStatLabel}>{ov.primaryIp || "IP principale"}</span>
-                  <span className={styles.netStatValue} style={{ fontSize: "0.85rem" }}>
-                    {equipment?.ip || network.ip || "—"}
-                  </span>
-                </div>
-              </div>
-              <p className={styles.empty} style={{ padding: "0.35rem 0 0" }}>
-                {ov.networkThroughputHint || "Débit temps réel bientôt disponible"}
-              </p>
-            </>
-          ) : (
-            <p className={styles.empty}>{ov.networkEmpty || "Aucune interface réseau"}</p>
-          )}
-        </OverviewCard>
-
-        <OverviewCard
-          className={styles.span6}
-          title={ov.eventsTitle || "Derniers événements"}
-          icon="mdi:history"
-        >
-          {loadingAlerts && !recentEvents.length ? (
-            <p className={styles.empty}>{copy.loading}</p>
-          ) : recentEvents.length ? (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>{ov.colWhen || "Date"}</th>
-                    <th>{ov.colType || "Type"}</th>
-                    <th>{ov.colMessage || "Message"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentEvents.map(row => {
-                    const tone = severityTone(row.type);
-                    return (
-                      <tr key={row.id}>
-                        <td>
-                          <time dateTime={row.whenRaw || undefined} title={row.whenRaw ? new Date(row.whenRaw).toLocaleString() : undefined}>
-                            {row.when}
-                          </time>
-                        </td>
-                        <td>
-                          <span className={styles.typeDot} style={{ background: tone.color }} aria-hidden />
-                          {row.typeLabel}
-                        </td>
-                        <td title={row.message}>{row.message}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className={styles.empty}>{glance.empty || ov.eventsEmpty || "Aucun événement récent"}</p>
-          )}
-        </OverviewCard>
-
-        <OverviewCard
-          className={styles.span3}
-          title={ov.processesTitle || "Top processus (CPU)"}
-          icon="mdi:application-brackets-outline"
-        >
-          {processRows.length ? (
-            <ul className={styles.processList}>
-              {processRows.map(row => (
-                <li key={row.name} className={styles.processItem}>
-                  <span className={styles.processName} title={row.name}>{row.name}</span>
-                  <span className={styles.processPct}>{formatPct(row.pct)}</span>
-                  <div className={styles.processBar} aria-hidden>
-                    <div className={styles.processBarFill} style={{ width: `${Math.max(2, Math.min(100, row.pct))}%` }} />
+            <OverviewCard
+              title={ov.storageTitle || "Stockage"}
+              icon="mdi:harddisk"
+            >
+              {storageDonut.length ? (
+                <div className={styles.donutLayout}>
+                  <div className={styles.donutWrap}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={storageDonut}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius="62%"
+                          outerRadius="84%"
+                          paddingAngle={2}
+                          stroke="none"
+                        >
+                          {storageDonut.map(entry => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltip unit={storageUsedGB > 0 ? " Go" : "%"} />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className={styles.donutCenter}>
+                      <strong>{storagePct != null ? formatPct(storagePct) : "—"}</strong>
+                      <span>{ov.used || "Utilisation"}</span>
+                    </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className={styles.empty}>{ov.processesEmpty || "Aucun processus remonté"}</p>
-          )}
-        </OverviewCard>
+                  <ul className={styles.driveLegend}>
+                    {(drives.length ? drives : storageDonut).slice(0, 5).map((row, i) => {
+                      const color = DISK_COLORS[i % DISK_COLORS.length];
+                      const pct = row.pct != null
+                        ? Number(row.pct)
+                        : row.usedGB != null && row.sizeGB
+                          ? Math.round((Number(row.usedGB) / Number(row.sizeGB)) * 100)
+                          : row.value != null && storageUsedGB <= 0
+                            ? Number(row.value)
+                            : null;
+                      return (
+                        <li key={row.label || row.name || i}>
+                          <div className={styles.driveLegendTop}>
+                            <span className={styles.legendDot} style={{ background: color }} aria-hidden />
+                            <span className={styles.legendLabel}>{row.label || row.name}</span>
+                            <span className={styles.legendValue}>
+                              {row.usedGB != null && row.sizeGB != null
+                                ? `${formatStorageGB(row.usedGB)} / ${formatStorageGB(row.sizeGB)} Go`
+                                : row.usedGB != null
+                                  ? `${formatStorageGB(row.usedGB)} Go`
+                                  : pct != null
+                                    ? formatPct(pct)
+                                    : "—"}
+                            </span>
+                          </div>
+                          {pct != null ? (
+                            <div className={styles.driveBar} aria-hidden>
+                              <div
+                                className={styles.driveBarFill}
+                                style={{
+                                  width: `${Math.max(2, Math.min(100, pct))}%`,
+                                  background: color
+                                }}
+                              />
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : (
+                <p className={styles.empty}>{ov.storageEmpty || "Aucun volume détecté"}</p>
+              )}
+              {storageSub ? <p className={styles.ringSub}>{storageSub}</p> : null}
+            </OverviewCard>
 
-        <OverviewCard
-          className={styles.span3}
-          title={ov.interfacesTitle || "Interfaces réseau"}
-          icon="mdi:ethernet"
-        >
-          {adapters.length ? (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>{ov.colInterface || "Interface"}</th>
-                    <th>{ov.colStatus || "Statut"}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adapters.slice(0, 8).map((adapter, index) => {
-                    const up =
-                      adapter.status !== "Down" &&
-                      adapter.status !== "down" &&
-                      adapter.status !== false &&
-                      adapter.status !== 0;
-                    return (
-                      <tr key={`${adapter.description || adapter.name || "if"}-${index}`}>
-                        <td title={adapter.description || adapter.name}>
-                          {adapter.description || adapter.name || `IF-${index + 1}`}
-                        </td>
-                        <td>
-                          <span className={`${styles.statusPill} ${up ? styles.statusUp : styles.statusDown}`}>
-                            {up ? "Up" : "Down"}
-                          </span>
-                        </td>
+            <OverviewCard
+              title={ov.processesTitle || "Top processus (CPU)"}
+              icon="mdi:application-brackets-outline"
+            >
+              {processRows.length ? (
+                <ul className={styles.processList}>
+                  {processRows.map(row => (
+                    <li key={row.name} className={styles.processItem}>
+                      <span className={styles.processName} title={row.name}>{row.name}</span>
+                      <span className={styles.processPct}>{formatPct(row.pct)}</span>
+                      <div className={styles.processBar} aria-hidden>
+                        <div className={styles.processBarFill} style={{ width: `${Math.max(2, Math.min(100, row.pct))}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.empty}>{ov.processesEmpty || "Aucun processus remonté"}</p>
+              )}
+            </OverviewCard>
+
+            <OverviewCard
+              title={ov.networkTitle || "Réseau"}
+              icon="mdi:lan"
+            >
+              {adapters.length ? (
+                <>
+                  <div className={styles.netStats}>
+                    <div className={styles.netStat}>
+                      <span className={styles.netStatLabel}>{ov.adaptersUp || "Interfaces up"}</span>
+                      <span className={styles.netStatValue}>
+                        {adapters.filter(a => a.status !== "Down" && a.status !== "down" && a.status !== false).length}
+                        <span style={{ fontWeight: 550, color: "#64748b", fontSize: "0.8rem" }}>
+                          {" "}/ {adapters.length}
+                        </span>
+                      </span>
+                    </div>
+                    <div className={styles.netStat}>
+                      <span className={styles.netStatLabel}>{ov.primaryIp || "IP principale"}</span>
+                      <span className={styles.netStatValue} style={{ fontSize: "0.85rem" }}>
+                        {equipment?.ip || network.ip || "—"}
+                      </span>
+                    </div>
+                  </div>
+                  <p className={styles.empty} style={{ padding: "0.35rem 0 0" }}>
+                    {ov.networkThroughputHint || "Débit temps réel bientôt disponible"}
+                  </p>
+                </>
+              ) : (
+                <p className={styles.empty}>{ov.networkEmpty || "Aucune interface réseau"}</p>
+              )}
+            </OverviewCard>
+
+            <OverviewCard
+              className={styles.spanFull}
+              title={ov.interfacesTitle || "Interfaces réseau"}
+              icon="mdi:ethernet"
+            >
+              {adapters.length ? (
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>{ov.colInterface || "Interface"}</th>
+                        <th>{ov.colStatus || "Statut"}</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className={styles.empty}>{ov.interfacesEmpty || "Aucune interface"}</p>
-          )}
-        </OverviewCard>
+                    </thead>
+                    <tbody>
+                      {adapters.slice(0, 8).map((adapter, index) => {
+                        const up =
+                          adapter.status !== "Down" &&
+                          adapter.status !== "down" &&
+                          adapter.status !== false &&
+                          adapter.status !== 0;
+                        return (
+                          <tr key={`${adapter.description || adapter.name || "if"}-${index}`}>
+                            <td title={adapter.description || adapter.name}>
+                              {adapter.description || adapter.name || `IF-${index + 1}`}
+                            </td>
+                            <td>
+                              <span className={`${styles.statusPill} ${up ? styles.statusUp : styles.statusDown}`}>
+                                {up ? "Up" : "Down"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className={styles.empty}>{ov.interfacesEmpty || "Aucune interface"}</p>
+              )}
+            </OverviewCard>
+          </div>
+        </section>
+
+        <section className={styles.column} aria-label={ov.checkmkSectionTitle || "Supervision CheckMK"}>
+          <h2 className={styles.columnHead}>
+            <Icon icon="mdi:radar" className={styles.columnHeadIcon} aria-hidden />
+            {ov.checkmkSectionTitle || "Supervision CheckMK"}
+          </h2>
+          <div className={styles.columnGrid}>
+            <OverviewCard
+              className={styles.spanFull}
+              title={ov.availabilityTitle || "Disponibilité"}
+              icon="mdi:chart-timeline-variant"
+            >
+              {availPct != null ? (
+                <>
+                  <div className={styles.availHero}>
+                    <span className={styles.availValue}>{Number(availPct).toFixed(1)}%</span>
+                    {availTrend != null ? (
+                      <span className={availTrend >= 0 ? styles.deltaUp : styles.deltaDown}>
+                        {availTrend >= 0 ? "+" : ""}
+                        {availTrend}%
+                      </span>
+                    ) : (
+                      <span className={styles.availHint}>{ov.availabilityHint || "Sur la période sélectionnée"}</span>
+                    )}
+                  </div>
+                  <div className={`${styles.chartWrap} ${styles.chartWrapSm}`}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={availabilitySeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="equipAvailFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.35} />
+                            <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                        <YAxis domain={availabilityYDomain} tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={36} />
+                        <Tooltip content={<ChartTooltip unit="%" />} />
+                        <Area type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2.5} fill="url(#equipAvailFill)" dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              ) : (
+                <p className={styles.empty}>
+                  {loadingCheckMK
+                    ? copy.loading
+                    : hasCheckmk
+                      ? ov.availabilityEmpty || "Aucune donnée de disponibilité"
+                      : ov.availabilityNoCheckmk || "Mappez CheckMK pour afficher la disponibilité"}
+                </p>
+              )}
+            </OverviewCard>
+
+            <OverviewCard
+              className={styles.spanFull}
+              title={ov.servicesTitle || "État des services"}
+              icon="mdi:list-status"
+            >
+              {serviceCounts.total > 0 ? (
+                <div className={styles.donutLayout}>
+                  <div className={styles.donutWrap}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={serviceDonut}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius="62%"
+                          outerRadius="84%"
+                          paddingAngle={2}
+                          stroke="none"
+                        >
+                          {serviceDonut.map(entry => (
+                            <Cell key={entry.name} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<ChartTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className={styles.donutCenter}>
+                      <strong>{serviceCounts.total}</strong>
+                      <span>{ov.servicesCenter || "Services"}</span>
+                    </div>
+                  </div>
+                  <ul className={styles.legend}>
+                    {[
+                      { key: "ok", label: ov.servicesOk || "OK", value: serviceCounts.ok, color: SERVICE_COLORS.ok },
+                      { key: "warning", label: ov.servicesWarning || "Warning", value: serviceCounts.warning, color: SERVICE_COLORS.warning },
+                      { key: "critical", label: ov.servicesCritical || "Critical", value: serviceCounts.critical, color: SERVICE_COLORS.critical },
+                      { key: "unknown", label: ov.servicesUnknown || "Indisponible", value: serviceCounts.unknown, color: SERVICE_COLORS.unknown }
+                    ].map(row => (
+                      <li key={row.key}>
+                        <span className={styles.legendDot} style={{ background: row.color }} aria-hidden />
+                        <span className={styles.legendLabel}>{row.label}</span>
+                        <span className={styles.legendValue}>{row.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className={styles.empty}>
+                  {loadingCheckMK ? copy.loading : ov.servicesEmpty || "Aucun service CheckMK"}
+                </p>
+              )}
+            </OverviewCard>
+
+            <OverviewCard
+              className={styles.spanFull}
+              title={ov.eventsTitle || "Derniers événements"}
+              icon="mdi:history"
+            >
+              {loadingAlerts && !recentEvents.length ? (
+                <p className={styles.empty}>{copy.loading}</p>
+              ) : recentEvents.length ? (
+                <div className={styles.tableWrap}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>{ov.colWhen || "Date"}</th>
+                        <th>{ov.colType || "Type"}</th>
+                        <th>{ov.colMessage || "Message"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentEvents.map(row => {
+                        const tone = severityTone(row.type);
+                        return (
+                          <tr key={row.id}>
+                            <td>
+                              <time dateTime={row.whenRaw || undefined} title={row.whenRaw ? new Date(row.whenRaw).toLocaleString() : undefined}>
+                                {row.when}
+                              </time>
+                            </td>
+                            <td>
+                              <span className={styles.typeDot} style={{ background: tone.color }} aria-hidden />
+                              {row.typeLabel}
+                            </td>
+                            <td title={row.message}>{row.message}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className={styles.empty}>{glance.empty || ov.eventsEmpty || "Aucun événement récent"}</p>
+              )}
+            </OverviewCard>
+          </div>
+        </section>
       </div>
     </div>
   );

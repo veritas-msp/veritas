@@ -41,8 +41,12 @@ const ENTITY_ICONS = {
   contacts: "mdi:account-multiple-outline",
   documents: "mdi:file-document-multiple-outline",
   equipment: "mdi:server-network",
+  tickets_support: "mdi:headset",
+  tickets_sales: "mdi:briefcase-outline",
   tickets: "mdi:ticket-outline"
 };
+
+const COMMUNITY_LOCKED_ENTITIES = new Set(["documents", "tickets_sales"]);
 
 const MATCH_KEYS_STORAGE = "veritas.admin.injection.equipmentMatchKeys";
 
@@ -220,8 +224,8 @@ export default function AdminInjection({
       toast.warn(copy.navBlocked);
       return;
     }
-    if (isCommunity && key === "documents") {
-      toast.info(copy.documentsProOnly);
+    if (isCommunity && COMMUNITY_LOCKED_ENTITIES.has(key)) {
+      toast.info(key === "tickets_sales" ? copy.ticketsSalesProOnly || copy.documentsProOnly : copy.documentsProOnly);
       return;
     }
     setActiveView(key);
@@ -461,7 +465,7 @@ export default function AdminInjection({
             </div>
             <div className={styles.hubGrid}>
               {INJECTION_ENTITIES.map(key => {
-                const locked = isCommunity && key === "documents";
+                const locked = isCommunity && COMMUNITY_LOCKED_ENTITIES.has(key);
                 return (
                   <button
                     key={key}
@@ -543,7 +547,12 @@ export default function AdminInjection({
                             </div>
                           </td>
                           <td>
-                            <span className={styles.fieldsGuideType}>{row.type}</span>
+                            <span
+                              className={`${styles.fieldsGuideType} ${row.values ? styles.fieldsGuideTypeValues : ""}`}
+                              title={row.values || row.type}
+                            >
+                              {row.values || row.type}
+                            </span>
                           </td>
                         </tr>
                       ))}

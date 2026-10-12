@@ -24,6 +24,7 @@ import { reconcileEquipmentLifecycleSupervisionAlerts } from "../../utils/equipm
 import {
   clearMonitoringExclusion,
   listActiveMonitoringExclusions,
+  listEquipmentMonitoringExclusionHistory,
   upsertMonitoringExclusion
 } from "../../utils/equipmentMonitoringExclusions.js";
 
@@ -175,6 +176,25 @@ router.get("/exclusions", verifyJWT, requireAnyPermission("supervision.view", "s
   }
 });
 
+router.get("/exclusions/history", verifyJWT, requireAnyPermission("supervision.view", "supervision.manage"), async (req, res) => {
+  try {
+    const equipmentId = req.query.equipmentId || req.query.equipment_id || null;
+    if (!equipmentId) {
+      return res.status(400).json({ error: "equipmentId required" });
+    }
+    const exclusions = await listEquipmentMonitoringExclusionHistory({
+      equipmentId,
+      clientId: req.query.clientId || req.query.client_id || null,
+      kind: req.query.kind || "maintenance",
+      limit: req.query.limit || 50
+    });
+    res.json({ exclusions });
+  } catch (err) {
+    console.error("[supervision-alerts] GET /exclusions/history:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.post("/exclusions", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
   try {
     const body = req.body || {};
@@ -201,7 +221,7 @@ router.post("/exclusions", verifyJWT, requireAnyPermission("supervision.manage",
 
 router.delete("/exclusions/:id", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
   try {
-    const exclusion = await clearMonitoringExclusion(req.params.id);
+    const exclusion = await clearMonitoringExclusion(req.params.id, req.user?.id || null);
     if (!exclusion) return res.status(404).json({ error: "Exclusion not found" });
     res.json({ exclusion });
   } catch (err) {

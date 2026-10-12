@@ -17,6 +17,7 @@ import {
 } from "../../api/clients";
 import { deleteClientFile, uploadClientFile } from "../../api/clientFiles";
 import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
+import { fetchUsers } from "../../api/users";
 import { interpolate } from "../../i18n/translate";
 import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig";
 import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
@@ -28,6 +29,14 @@ const DEFAULT_INJECTION_ERRORS = {
   missingName: "Missing name",
   missingNom: "Missing last name (nom)",
   missingTitle: "Missing title",
+  invalidTicketStatus: "Invalid status « {value} ». Allowed: {allowed}",
+  invalidTicketPriority: "Invalid priority « {value} ». Allowed: {allowed}",
+  invalidTicketChannel: "Invalid channel « {value} ». Allowed: {allowed}",
+  invalidTicketSupportType: "Invalid support type « {value} ». Allowed: {allowed}",
+  invalidTicketSalesType: "Invalid service type « {value} ». Allowed: {allowed}",
+  invalidTicketDate: "Invalid date « {value} » for {field}",
+  incompleteTicketResolution: "Resolution import requires resolution_reason, intervention_type and action_type together",
+  assigneeNotFound: "Assignee not found: {value}",
   missingFamilyOrName: "Missing family or name",
   unknownFamily: "Unknown family: {family}. Valid keys: {keys}.",
   missingRequiredField: "Missing required field “{field}” for family {family}",
@@ -101,7 +110,134 @@ function isInjectionCancelledError(err) {
   return err?.code === "INJECTION_CANCELLED" || err?.message === "INJECTION_CANCELLED";
 }
 
-export const INJECTION_ENTITIES = ["companies", "contacts", "documents", "equipment", "tickets"];
+export const INJECTION_ENTITIES = [
+  "companies",
+  "contacts",
+  "documents",
+  "equipment",
+  "tickets_support",
+  "tickets_sales"
+];
+
+const TICKET_STATUS_VALUES = new Set(["new", "open", "in_progress", "pending", "resolved", "closed"]);
+const TICKET_PRIORITY_VALUES = new Set(["low", "normal", "high", "urgent"]);
+const TICKET_CHANNEL_VALUES = new Set(["web", "phone", "email", "chat", "api", "whatsapp"]);
+const TICKET_SUPPORT_TYPE_VALUES = new Set(["incident", "demande", "probleme", "changement"]);
+const TICKET_SALES_TYPE_VALUES = new Set(["prestation", "installation"]);
+
+const TICKET_TYPE_ALIASES = {
+  request: "demande",
+  problem: "probleme",
+  change: "changement",
+  service: "prestation",
+  services: "prestation"
+};
+
+function normalizeTicketEnum(raw, allowed, aliases = {}) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value) return "";
+  const mapped = aliases[value] || value;
+  return allowed.has(mapped) ? mapped : null;
+}
+
+function isUuidLike(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+function parseInjectionDate(raw) {
+  if (raw == null || raw === "") return { ok: true, value: null };
+  const text = String(raw).trim();
+  if (!text) return { ok: true, value: null };
+  const iso = new Date(text);
+  if (!Number.isNaN(iso.getTime())) return { ok: true, value: iso.toISOString() };
+  const match = text.match(
+    /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+  if (!match) return { ok: false, value: null };
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const hours = Number(match[4] || 0);
+  const minutes = Number(match[5] || 0);
+  const seconds = Number(match[6] || 0);
+  const parsed = new Date(year, month - 1, day, hours, minutes, seconds);
+  if (Number.isNaN(parsed.getTime())) return { ok: false, value: null };
+  return { ok: true, value: parsed.toISOString() };
+}
+
+function splitCsvList(raw) {
+  return String(raw || "")
+    .split(/[,;|]/)
+    .map(part => part.trim())
+    .filter(Boolean);
+}
+
+async function buildUserIndex() {
+  const list = await fetchUsers().catch(() => []);
+  const byId = new Map();
+  const byKey = new Map();
+  for (const user of Array.isArray(list) ? list : []) {
+    const id = String(user?.id || "").trim();
+    if (!id) continue;
+    byId.set(id.toLowerCase(), user);
+    const keys = [user?.email, user?.username, user?.name]
+      .map(value => String(value || "").trim().toLowerCase())
+      .filter(Boolean);
+    for (const key of keys) byKey.set(key, user);
+  }
+  return {
+    resolve(raw) {
+      const token = String(raw || "").trim();
+      if (!token) return null;
+      if (isUuidLike(token)) return byId.get(token.toLowerCase()) || null;
+      return byKey.get(token.toLowerCase()) || null;
+    }
+  };
+}
+
+function resolveTicketAssignees(row, userIndex, messages) {
+  const ids = [];
+  const seen = new Set();
+  const pushId = id => {
+    const value = String(id || "").trim();
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    ids.push(value);
+  };
+  const resolveToken = token => {
+    const trimmed = String(token || "").trim();
+    if (!trimmed) return { ok: true };
+    if (isUuidLike(trimmed)) {
+      pushId(trimmed);
+      return { ok: true };
+    }
+    const user = userIndex?.resolve?.(trimmed);
+    if (!user?.id) {
+      return {
+        ok: false,
+        error: injectionError(messages, "assigneeNotFound", { value: trimmed })
+      };
+    }
+    pushId(user.id);
+    return { ok: true };
+  };
+
+  const uuidPrimary = cell(row, "assigned_user_id", "assignedUserId");
+  if (uuidPrimary) {
+    const result = resolveToken(uuidPrimary);
+    if (!result.ok) return result;
+  }
+  const named = cell(row, "assigned_user", "assigned_user_email", "assignee");
+  if (named) {
+    const result = resolveToken(named);
+    if (!result.ok) return result;
+  }
+  for (const token of splitCsvList(cell(row, "assignee_user_ids", "assigneeUserIds", "assignees"))) {
+    const result = resolveToken(token);
+    if (!result.ok) return result;
+  }
+  return { ok: true, ids };
+}
 
 export const CSV_TEMPLATES = {
   companies: [
@@ -203,7 +339,13 @@ export const CSV_TEMPLATES = {
     ["Acme SAS", "workstations", "PC-ACCOUNTING-01", "pc-accounting-01", "10.0.1.45", "Windows 11 Pro", "", "true", "Accounting", "Lenovo", "ThinkPad T14", "SN-PC-001", "laptop", "Windows 11 Pro", "i7", "16 GB", "40", "", "aa:bb:cc:dd:ee:45", "", "", "", ""].join(","),
     ["Acme SAS", "ordinateurs", "PC-ACCUEIL-01", "pc-accueil-01", "10.0.1.46", "Windows 11 Pro", "", "true", "Accueil", "HP", "EliteDesk 800", "SN-PC-002", "portable", "Windows 11 Pro", "i5", "8 GB", "40", "", "aa:bb:cc:dd:ee:46", "", "", "", ""].join(",")
   ].join("\n") + "\n",
-  tickets: "client_name,title,description,priority,status,type,category,channel,is_major_incident,assigned_user_id,requester_contact_id\nAcme SAS,Backup failed,Veeam job failed,high,new,incident,Infrastructure,web,false,,\n"
+  tickets_support:
+    "client_name,title,description,priority,status,type,category,channel,is_major_incident,created_at,assigned_user_id,assigned_user,assignee_user_ids,requester_contact_id,resolved_at,closed_at,resolution_reason,intervention_type,action_type\nAcme SAS,Backup failed,Veeam job failed,high,closed,incident,Infrastructure,web,false,01/09/2026 09:15,,,agent@acme.example,,01/09/2026 11:00,01/09/2026 11:05,Job relancé avec succès,À distance,Configuration\n",
+  tickets_sales:
+    "client_name,title,description,priority,status,type,category,channel,created_at,assigned_user_id,assigned_user,assignee_user_ids,requester_contact_id,resolved_at,closed_at,resolution_reason,intervention_type,action_type\nAcme SAS,Migration Exchange,Project kickoff,normal,closed,prestation,prestation-cloud,web,05/09/2026 10:00,,,agent@acme.example,,10/09/2026 16:00,10/09/2026 16:00,Migration terminée,Sur site,Configuration\n",
+  /** @deprecated */
+  tickets:
+    "client_name,title,description,priority,status,type,category,channel,is_major_incident,created_at,assigned_user_id,assigned_user,assignee_user_ids,requester_contact_id,resolved_at,closed_at,resolution_reason,intervention_type,action_type\nAcme SAS,Backup failed,Veeam job failed,high,closed,incident,Infrastructure,web,false,01/09/2026 09:15,,,agent@acme.example,,01/09/2026 11:00,01/09/2026 11:05,Job relancé avec succès,À distance,Configuration\n"
 };
 
 const OPTION_KEY_ALIASES = {
@@ -1492,7 +1634,11 @@ export async function runInjection({
     });
   }
 
-  if (entity === "tickets") {
+  if (entity === "tickets" || entity === "tickets_support" || entity === "tickets_sales") {
+    const isSales = entity === "tickets_sales";
+    const defaultType = isSales ? "prestation" : "incident";
+    const allowedTypes = isSales ? TICKET_SALES_TYPE_VALUES : TICKET_SUPPORT_TYPE_VALUES;
+    const userIndex = await buildUserIndex();
     return runAtomicBatch({
       rows,
       onProgress,
@@ -1511,24 +1657,125 @@ export async function runInjection({
             })
           };
         }
-        const assignedUserId = cell(row, "assigned_user_id", "assignedUserId", "assignee");
+
+        const rawPriority = cell(row, "priority", "priorite");
+        const priority = rawPriority
+          ? normalizeTicketEnum(rawPriority, TICKET_PRIORITY_VALUES)
+          : "normal";
+        if (priority == null) {
+          return {
+            error: injectionError(msg, "invalidTicketPriority", {
+              value: rawPriority,
+              allowed: [...TICKET_PRIORITY_VALUES].join(", ")
+            })
+          };
+        }
+
+        const rawStatus = cell(row, "status", "statut");
+        const status = rawStatus
+          ? normalizeTicketEnum(rawStatus, TICKET_STATUS_VALUES)
+          : "new";
+        if (status == null) {
+          return {
+            error: injectionError(msg, "invalidTicketStatus", {
+              value: rawStatus,
+              allowed: [...TICKET_STATUS_VALUES].join(", ")
+            })
+          };
+        }
+
+        const rawType = cell(row, "type");
+        const type = rawType
+          ? normalizeTicketEnum(rawType, allowedTypes, TICKET_TYPE_ALIASES)
+          : defaultType;
+        if (type == null) {
+          return {
+            error: injectionError(msg, isSales ? "invalidTicketSalesType" : "invalidTicketSupportType", {
+              value: rawType,
+              allowed: [...allowedTypes].join(", ")
+            })
+          };
+        }
+
+        const rawChannel = cell(row, "channel", "canal");
+        const channel = rawChannel
+          ? normalizeTicketEnum(rawChannel, TICKET_CHANNEL_VALUES)
+          : "web";
+        if (channel == null) {
+          return {
+            error: injectionError(msg, "invalidTicketChannel", {
+              value: rawChannel,
+              allowed: [...TICKET_CHANNEL_VALUES].join(", ")
+            })
+          };
+        }
+
+        const createdAtRaw = cell(row, "created_at", "createdAt", "date_creation");
+        const resolvedAtRaw = cell(row, "resolved_at", "resolvedAt", "date_resolution");
+        const closedAtRaw = cell(row, "closed_at", "closedAt", "date_cloture");
+        const createdAtParsed = parseInjectionDate(createdAtRaw);
+        if (!createdAtParsed.ok) {
+          return { error: injectionError(msg, "invalidTicketDate", { value: createdAtRaw, field: "created_at" }) };
+        }
+        const resolvedAtParsed = parseInjectionDate(resolvedAtRaw);
+        if (!resolvedAtParsed.ok) {
+          return { error: injectionError(msg, "invalidTicketDate", { value: resolvedAtRaw, field: "resolved_at" }) };
+        }
+        const closedAtParsed = parseInjectionDate(closedAtRaw);
+        if (!closedAtParsed.ok) {
+          return { error: injectionError(msg, "invalidTicketDate", { value: closedAtRaw, field: "closed_at" }) };
+        }
+
+        const resolutionReason = cell(row, "resolution_reason", "solution", "resolution");
+        const interventionType = cell(row, "intervention_type", "interventionType", "intervention");
+        const actionType = cell(row, "action_type", "actionType", "action");
+        const hasAnyResolution = Boolean(resolutionReason || interventionType || actionType);
+        const hasFullResolution = Boolean(resolutionReason && interventionType && actionType);
+        if (hasAnyResolution && !hasFullResolution) {
+          return { error: injectionError(msg, "incompleteTicketResolution") };
+        }
+
+        const assignees = resolveTicketAssignees(row, userIndex, msg);
+        if (!assignees.ok) return { error: assignees.error };
+
         const requesterContactId = cell(row, "requester_contact_id", "requesterContactId", "contact_id");
+        const assigneeUserIds = assignees.ids || [];
         return {
           prepared: {
             payload: {
               title,
               description: cell(row, "description", "desc") || "",
-              priority: cell(row, "priority", "priorite") || "normal",
-              status: cell(row, "status", "statut") || "new",
-              type: cell(row, "type") || "incident",
+              priority,
+              status: hasFullResolution && status === "new" ? "closed" : status,
+              type,
               category: cell(row, "category", "categorie") || "",
-              channel: cell(row, "channel", "canal") || "web",
+              channel,
               clientId: client?.id || null,
-              isMajorIncident: parseBool(cell(row, "is_major_incident", "isMajorIncident", "major"), false),
-              ...(assignedUserId ? { assignedUserId } : {}),
-              ...(requesterContactId ? {
-                requesterContactId: Number(requesterContactId) || requesterContactId
-              } : {})
+              ...(isSales
+                ? {}
+                : {
+                    isMajorIncident: parseBool(
+                      cell(row, "is_major_incident", "isMajorIncident", "major"),
+                      false
+                    )
+                  }),
+              ...(assigneeUserIds[0] ? { assignedUserId: assigneeUserIds[0] } : {}),
+              ...(assigneeUserIds.length ? { assigneeUserIds } : {}),
+              ...(requesterContactId
+                ? {
+                    requesterContactId: Number(requesterContactId) || requesterContactId
+                  }
+                : {}),
+              ...(createdAtParsed.value ? { createdAt: createdAtParsed.value } : {}),
+              ...(resolvedAtParsed.value ? { resolvedAt: resolvedAtParsed.value } : {}),
+              ...(closedAtParsed.value ? { closedAt: closedAtParsed.value } : {}),
+              ...(hasFullResolution
+                ? {
+                    resolutionReason,
+                    interventionType,
+                    actionType
+                  }
+                : {})
             },
             label: title
           }
@@ -1537,7 +1784,7 @@ export async function runInjection({
       executePrepared: async prepared => {
         const created = await createTicket(prepared.payload);
         return {
-          id: created?.id,
+          id: created?.id || created?.tickets?.[0]?.id,
           label: prepared.label
         };
       },

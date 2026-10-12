@@ -190,14 +190,16 @@ const COPY = {
       contacts: "Rattacher des contacts à des entreprises existantes.",
       documents: "Déposer des fichiers et les rattacher aux entreprises.",
       equipment: "Importer des périphériques (familles système et personnalisées).",
-      tickets: "Créer des tickets en masse pour des entreprises."
+      tickets_support: "Créer des tickets Support (incident, demande, problème, changement).",
+      tickets_sales: "Créer des tickets Prestation / Installation."
     },
     tabs: {
       companies: "Entreprises",
       contacts: "Contacts",
       documents: "Documents",
       equipment: "Équipements",
-      tickets: "Tickets"
+      tickets_support: "Tickets Support",
+      tickets_sales: "Tickets Prestation"
     },
     columnsTitle: "Colonnes attendues",
     fieldsGuideToggle: "Afficher / masquer le détail des champs",
@@ -211,7 +213,8 @@ const COPY = {
       contacts: "contact_name (required), client_name or client_id, contact_firstname, contact_mail, contact_number, contact_job, gender, status.",
       documents: "Glisser-déposer / dossier — voir l’aide ci-dessus.",
       equipment: "Base columns: client_name or client_id, family (required), name (required), item_key, ip, os, notes, is_active. Business fields: data_* columns. System families: servers, internet, switch, firewall, wifi, stockage, alimentation, routeur, toip, ordinateurs. Custom families: use the family_key from Administration → Equipment families.",
-      tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
+      tickets_support: "title (required), client_name or client_id, description, priority (low/normal/high/urgent), status (new/open/in_progress/pending/resolved/closed), type (incident/demande/probleme/changement), category, channel (web/phone/email/chat/api/whatsapp), is_major_incident, assigned_user_id, requester_contact_id.",
+      tickets_sales: "title (required), client_name or client_id, description, priority, status, type (prestation/installation, required), category, channel, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Champs métier par famille",
     equipmentGuidePickFamily: "Choisir un type d’équipement",
@@ -231,6 +234,14 @@ const COPY = {
       missingName: "Nom manquant",
       missingNom: "Nom de famille manquant",
       missingTitle: "Titre manquant",
+      invalidTicketStatus: "Statut invalide « {value} ». Valeurs : {allowed}",
+      invalidTicketPriority: "Priorité invalide « {value} ». Valeurs : {allowed}",
+      invalidTicketChannel: "Canal invalide « {value} ». Valeurs : {allowed}",
+      invalidTicketSupportType: "Type support invalide « {value} ». Valeurs : {allowed}",
+      invalidTicketSalesType: "Type prestation invalide « {value} ». Valeurs : {allowed}",
+      invalidTicketDate: "Date invalide « {value} » pour {field}",
+      incompleteTicketResolution: "Pour importer une résolution, renseignez resolution_reason, intervention_type et action_type ensemble",
+      assigneeNotFound: "Assigné introuvable : {value}",
       missingFamilyOrName: "Famille ou nom manquant",
       unknownFamily: "Famille inconnue : {family}. Clés valides : {keys}.",
       missingRequiredField: "Champ obligatoire manquant « {field} » pour la famille {family}",
@@ -282,6 +293,7 @@ const COPY = {
     navBlocked: "Injection en cours : navigation bloquée. Mettez-la en pause ou annulez-la pour quitter.",
     needCsv: "Choisissez d'abord un CSV.",
     documentsProOnly: "L'upload de documents client nécessite l'édition Pro.",
+    ticketsSalesProOnly: "L'injection de tickets Prestation / Installation nécessite l'édition Pro.",
     noRows: "Le CSV ne contient aucune ligne de données.",
     ...DOCS_COMMON.fr
   },
@@ -301,14 +313,16 @@ const COPY = {
       contacts: "Attach contacts to existing companies.",
       documents: "Drop files and link them to companies.",
       equipment: "Import devices (system and custom hardware families).",
-      tickets: "Bulk-create tickets for companies."
+      tickets_support: "Bulk-create Support tickets (incident, request, problem, change).",
+      tickets_sales: "Bulk-create Service / Installation tickets."
     },
     tabs: {
       companies: "Companies",
       contacts: "Contacts",
       documents: "Documents",
       equipment: "Equipment",
-      tickets: "Tickets"
+      tickets_support: "Support tickets",
+      tickets_sales: "Service tickets"
     },
     columnsTitle: "Expected columns",
     fieldsGuideToggle: "Show / hide field details",
@@ -322,7 +336,8 @@ const COPY = {
       contacts: "contact_name (required), client_name or client_id, contact_firstname, contact_mail, contact_number, contact_job, gender, status.",
       documents: "Drag and drop / folder — see help above.",
       equipment: "Base columns: client_name or client_id, family (required), name (required), item_key, ip, os, notes, is_active. Business fields: data_* columns. System families: servers, internet, switch, firewall, wifi, stockage, alimentation, routeur, toip, ordinateurs. Custom families: use the family_key from Administration → Equipment families.",
-      tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
+      tickets_support: "title (required), client_name or client_id, description, priority (low/normal/high/urgent), status (new/open/in_progress/pending/resolved/closed), type (incident/demande/probleme/changement), category, channel (web/phone/email/chat/api/whatsapp), is_major_incident, assigned_user_id, requester_contact_id.",
+      tickets_sales: "title (required), client_name or client_id, description, priority, status, type (prestation/installation, required), category, channel, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Business fields by family",
     equipmentGuidePickFamily: "Choose an equipment type",
@@ -342,6 +357,14 @@ const COPY = {
       missingName: "Missing name",
       missingNom: "Missing last name (nom)",
       missingTitle: "Missing title",
+      invalidTicketStatus: "Invalid status « {value} ». Allowed: {allowed}",
+      invalidTicketPriority: "Invalid priority « {value} ». Allowed: {allowed}",
+      invalidTicketChannel: "Invalid channel « {value} ». Allowed: {allowed}",
+      invalidTicketSupportType: "Invalid support type « {value} ». Allowed: {allowed}",
+      invalidTicketSalesType: "Invalid service type « {value} ». Allowed: {allowed}",
+      invalidTicketDate: "Invalid date « {value} » for {field}",
+      incompleteTicketResolution: "Resolution import requires resolution_reason, intervention_type and action_type together",
+      assigneeNotFound: "Assignee not found: {value}",
       missingFamilyOrName: "Missing family or name",
       unknownFamily: "Unknown family: {family}. Valid keys: {keys}.",
       missingRequiredField: "Missing required field “{field}” for family {family}",
@@ -393,6 +416,7 @@ const COPY = {
     navBlocked: "Injection in progress: navigation is locked. Pause or cancel it to leave.",
     needCsv: "Choose a CSV first.",
     documentsProOnly: "Client document upload requires the Pro edition.",
+    ticketsSalesProOnly: "Service / Installation ticket injection requires the Pro edition.",
     noRows: "The CSV has no data rows.",
     ...DOCS_COMMON.en
   },
@@ -412,14 +436,16 @@ const COPY = {
       contacts: "Kontakte bestehenden Unternehmen zuordnen.",
       documents: "Dateien ablegen und Unternehmen zuordnen.",
       equipment: "Geräte importieren (System- und benutzerdefinierte Familien).",
-      tickets: "Tickets massenhaft für Unternehmen erstellen."
+      tickets_support: "Support-Tickets massenhaft anlegen (incident, demande, probleme, changement).",
+      tickets_sales: "Leistungs- / Installations-Tickets massenhaft anlegen."
     },
     tabs: {
       companies: "Unternehmen",
       contacts: "Kontakte",
       documents: "Dokumente",
       equipment: "Geräte",
-      tickets: "Tickets"
+      tickets_support: "Support-Tickets",
+      tickets_sales: "Leistungs-Tickets"
     },
     columnsTitle: "Erwartete Spalten",
     fieldsGuideToggle: "Felddetails ein-/ausblenden",
@@ -433,7 +459,8 @@ const COPY = {
       contacts: "contact_name (required), client_name or client_id, contact_firstname, contact_mail, contact_number, contact_job, gender, status.",
       documents: "Drag & Drop / Ordner — siehe Hilfe oben.",
       equipment: "Base columns: client_name or client_id, family (required), name (required), item_key, ip, os, notes, is_active. Business fields: data_* columns. System families: servers, internet, switch, firewall, wifi, stockage, alimentation, routeur, toip, ordinateurs. Custom families: family_key from Administration → Equipment families.",
-      tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
+      tickets_support: "title (required), client_name or client_id, description, priority, status, type (incident/demande/probleme/changement), category, channel, is_major_incident, assigned_user_id, requester_contact_id.",
+      tickets_sales: "title (required), client_name or client_id, description, priority, status, type (prestation/installation), category, channel, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Fachfelder nach Familie",
     equipmentGuidePickFamily: "Gerätetyp wählen",
@@ -453,6 +480,14 @@ const COPY = {
       missingName: "Name fehlt",
       missingNom: "Nachname (nom) fehlt",
       missingTitle: "Titel fehlt",
+      invalidTicketStatus: "Ungültiger Status « {value} ». Erlaubt: {allowed}",
+      invalidTicketPriority: "Ungültige Priorität « {value} ». Erlaubt: {allowed}",
+      invalidTicketChannel: "Ungültiger Kanal « {value} ». Erlaubt: {allowed}",
+      invalidTicketSupportType: "Ungültiger Support-Typ « {value} ». Erlaubt: {allowed}",
+      invalidTicketSalesType: "Ungültiger Leistungs-Typ « {value} ». Erlaubt: {allowed}",
+      invalidTicketDate: "Ungültiges Datum « {value} » für {field}",
+      incompleteTicketResolution: "Für den Import einer Lösung sind resolution_reason, intervention_type und action_type erforderlich",
+      assigneeNotFound: "Zugewiesener Benutzer nicht gefunden: {value}",
       missingFamilyOrName: "Familie oder Name fehlt",
       unknownFamily: "Unbekannte Familie: {family}. Gültige Schlüssel: {keys}.",
       missingRequiredField: "Pflichtfeld „{field}“ fehlt für Familie {family}",
@@ -504,6 +539,7 @@ const COPY = {
     navBlocked: "Import läuft: Navigation gesperrt. Pausieren oder abbrechen zum Verlassen.",
     needCsv: "Bitte zuerst eine CSV wählen.",
     documentsProOnly: "Das Hochladen von Client-Dokumenten erfordert die Pro-Edition.",
+    ticketsSalesProOnly: "Die Injektion von Leistungs- / Installations-Tickets erfordert die Pro-Edition.",
     noRows: "Die CSV enthält keine Datenzeilen.",
     ...DOCS_COMMON.de
   },
@@ -523,14 +559,16 @@ const COPY = {
       contacts: "Collega contatti ad aziende esistenti.",
       documents: "Carica file e collegali alle aziende.",
       equipment: "Importa dispositivi (famiglie di sistema e personalizzate).",
-      tickets: "Crea ticket in massa per le aziende."
+      tickets_support: "Crea ticket Support in massa (incident, demande, probleme, changement).",
+      tickets_sales: "Crea ticket Prestazione / Installazione in massa."
     },
     tabs: {
       companies: "Aziende",
       contacts: "Contatti",
       documents: "Documenti",
       equipment: "Dispositivi",
-      tickets: "Ticket"
+      tickets_support: "Ticket Support",
+      tickets_sales: "Ticket Prestazione"
     },
     columnsTitle: "Colonne attese",
     fieldsGuideToggle: "Mostra / nascondi dettaglio campi",
@@ -544,7 +582,8 @@ const COPY = {
       contacts: "contact_name (required), client_name or client_id, contact_firstname, contact_mail, contact_number, contact_job, gender, status.",
       documents: "Trascina / cartella — vedi aiuto sopra.",
       equipment: "Base columns: client_name or client_id, family (required), name (required), item_key, ip, os, notes, is_active. Business fields: data_* columns. System families: servers, internet, switch, firewall, wifi, stockage, alimentation, routeur, toip, ordinateurs. Custom families: family_key from Administration → Equipment families.",
-      tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
+      tickets_support: "title (required), client_name or client_id, description, priority, status, type (incident/demande/probleme/changement), category, channel, is_major_incident, assigned_user_id, requester_contact_id.",
+      tickets_sales: "title (required), client_name or client_id, description, priority, status, type (prestation/installation), category, channel, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Campi business per famiglia",
     equipmentGuidePickFamily: "Scegli un tipo di dispositivo",
@@ -564,6 +603,14 @@ const COPY = {
       missingName: "Nome mancante",
       missingNom: "Cognome (nom) mancante",
       missingTitle: "Titolo mancante",
+      invalidTicketStatus: "Stato non valido « {value} ». Valori: {allowed}",
+      invalidTicketPriority: "Priorità non valida « {value} ». Valori: {allowed}",
+      invalidTicketChannel: "Canale non valido « {value} ». Valori: {allowed}",
+      invalidTicketSupportType: "Tipo support non valido « {value} ». Valori: {allowed}",
+      invalidTicketSalesType: "Tipo prestazione non valido « {value} ». Valori: {allowed}",
+      invalidTicketDate: "Data non valida « {value} » per {field}",
+      incompleteTicketResolution: "Per importare una risoluzione servono resolution_reason, intervention_type e action_type insieme",
+      assigneeNotFound: "Assegnatario non trovato: {value}",
       missingFamilyOrName: "Famiglia o nome mancante",
       unknownFamily: "Famiglia sconosciuta: {family}. Chiavi valide: {keys}.",
       missingRequiredField: "Campo obbligatorio « {field} » mancante per la famiglia {family}",
@@ -615,6 +662,7 @@ const COPY = {
     navBlocked: "Iniezione in corso: navigazione bloccata. Mettila in pausa o annullala per uscire.",
     needCsv: "Scegli prima un CSV.",
     documentsProOnly: "Il caricamento documenti client richiede l'edizione Pro.",
+    ticketsSalesProOnly: "L'iniezione di ticket Prestazione / Installazione richiede l'edizione Pro.",
     noRows: "Il CSV non contiene righe di dati.",
     ...DOCS_COMMON.it
   },
@@ -634,14 +682,16 @@ const COPY = {
       contacts: "Vincular contactos a empresas existentes.",
       documents: "Soltar archivos y vincularlos a empresas.",
       equipment: "Importar dispositivos (familias de sistema y personalizadas).",
-      tickets: "Crear tickets en masa para empresas."
+      tickets_support: "Crear tickets Support en masa (incident, demande, probleme, changement).",
+      tickets_sales: "Crear tickets Prestación / Instalación en masa."
     },
     tabs: {
       companies: "Empresas",
       contacts: "Contactos",
       documents: "Documentos",
       equipment: "Equipos",
-      tickets: "Tickets"
+      tickets_support: "Tickets Support",
+      tickets_sales: "Tickets Prestación"
     },
     columnsTitle: "Columnas esperadas",
     fieldsGuideToggle: "Mostrar / ocultar detalle de campos",
@@ -655,7 +705,8 @@ const COPY = {
       contacts: "contact_name (required), client_name or client_id, contact_firstname, contact_mail, contact_number, contact_job, gender, status.",
       documents: "Arrastrar / carpeta — ver ayuda arriba.",
       equipment: "Base columns: client_name or client_id, family (required), name (required), item_key, ip, os, notes, is_active. Business fields: data_* columns. System families: servers, internet, switch, firewall, wifi, stockage, alimentation, routeur, toip, ordinateurs. Custom families: family_key from Administration → Equipment families.",
-      tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
+      tickets_support: "title (required), client_name or client_id, description, priority, status, type (incident/demande/probleme/changement), category, channel, is_major_incident, assigned_user_id, requester_contact_id.",
+      tickets_sales: "title (required), client_name or client_id, description, priority, status, type (prestation/installation), category, channel, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Campos de negocio por familia",
     equipmentGuidePickFamily: "Elegir un tipo de equipo",
@@ -675,6 +726,14 @@ const COPY = {
       missingName: "Nombre faltante",
       missingNom: "Apellido (nom) faltante",
       missingTitle: "Título faltante",
+      invalidTicketStatus: "Estado inválido « {value} ». Valores: {allowed}",
+      invalidTicketPriority: "Prioridad inválida « {value} ». Valores: {allowed}",
+      invalidTicketChannel: "Canal inválido « {value} ». Valores: {allowed}",
+      invalidTicketSupportType: "Tipo support inválido « {value} ». Valores: {allowed}",
+      invalidTicketSalesType: "Tipo prestación inválido « {value} ». Valores: {allowed}",
+      invalidTicketDate: "Fecha inválida « {value} » para {field}",
+      incompleteTicketResolution: "Para importar una resolución, indique resolution_reason, intervention_type y action_type juntos",
+      assigneeNotFound: "Asignado no encontrado: {value}",
       missingFamilyOrName: "Familia o nombre faltante",
       unknownFamily: "Familia desconocida: {family}. Claves válidas: {keys}.",
       missingRequiredField: "Campo obligatorio « {field} » faltante para la familia {family}",
@@ -726,6 +785,7 @@ const COPY = {
     navBlocked: "Inyección en curso: navegación bloqueada. Páusala o cancélala para salir.",
     needCsv: "Elija primero un CSV.",
     documentsProOnly: "La subida de documentos de cliente requiere la edición Pro.",
+    ticketsSalesProOnly: "La inyección de tickets Prestación / Instalación requiere la edición Pro.",
     noRows: "El CSV no contiene filas de datos.",
     ...DOCS_COMMON.es
   }

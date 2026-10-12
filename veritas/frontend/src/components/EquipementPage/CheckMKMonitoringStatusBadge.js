@@ -95,10 +95,15 @@ export function getEquipmentDbId(equipment) {
 export function normalizeCheckMKEquipmentType(type) {
   const value = String(type || "").trim();
   if (!value) return value;
-  if (value === "Serveurs" || value === "Server") return "Servers";
-  if (value === "Stockage") return "Storage";
-  if (value === "Firewall") return "Firewalls";
-  if (value === "Sauvegarde" || value === "Backup") return "Backup";
+  if (value === "Serveurs" || value === "Server" || value === "servers") return "Servers";
+  if (value === "Stockage" || value === "stockage") return "Storage";
+  if (value === "Firewall" || value === "firewall") return "Firewalls";
+  if (value === "Sauvegarde" || value === "Backup" || value === "save") return "Backup";
+  if (value === "switch") return "Switch";
+  if (value === "wifi") return "BorneWifi";
+  if (value === "alimentation") return "Alimentation";
+  if (value === "routeur") return "Routeur";
+  if (value === "toip") return "TOIP";
   return value;
 }
 

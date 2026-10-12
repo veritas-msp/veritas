@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.83",
+    date: "2026-10-12",
+    highlights: [
+      "Fiche périphérique : historique des périodes de maintenance.",
+      "Tickets support / prestations : URLs avec le numéro (#1042) au lieu de l’UUID.",
+      "Vue d’ensemble : cartes RMM d’un côté, supervision CheckMK de l’autre.",
+      "Correction du mapping CheckMK pour les serveurs (enregistrement et suppression)."
+    ]
+  },
+  {
     version: "1.0.82",
     date: "2026-10-12",
     highlights: [

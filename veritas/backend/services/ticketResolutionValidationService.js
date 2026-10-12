@@ -216,12 +216,101 @@ async function insertStatusHistory(ticketId, oldStatus, newStatus, userId, note)
   await pool.query(`INSERT INTO v_b_ticket_status_history (ticket_id, old_status, new_status, changed_by, note, created_at)
      VALUES ($1, $2, $3, $4, $5, NOW())`, [ticketId, oldStatus || null, newStatus, userId || null, note]);
 }
-async function addPublicComment(ticketId, userId, content) {
+async function addPublicComment(ticketId, userId, content, at = null) {
+  const createdAt = at instanceof Date && !Number.isNaN(at.getTime()) ? at : new Date();
   const result = await pool.query(`INSERT INTO v_b_ticket_comments (ticket_id, author_user_id, content, is_internal, created_at)
-     VALUES ($1, $2, $3, false, NOW())
-     RETURNING id, ticket_id, author_user_id, content, is_internal, created_at`, [ticketId, userId || null, content]);
+     VALUES ($1, $2, $3, false, $4)
+     RETURNING id, ticket_id, author_user_id, content, is_internal, created_at`, [ticketId, userId || null, content, createdAt]);
   await pool.query("UPDATE v_b_tickets SET updated_at = NOW() WHERE id = $1", [ticketId]);
   return result.rows[0];
+}
+
+/**
+ * Import / injection: attach a completed resolution (solution) to an existing ticket
+ * without going through the live client-validation flow.
+ */
+export async function applyImportedTicketResolution({
+  ticketId,
+  userId = null,
+  reason,
+  interventionType = "",
+  actionType = "",
+  resolvedAt = null,
+  closedAt = null,
+  finalStatus = "closed"
+}) {
+  const trimmedReason = String(reason || "").trim();
+  const trimmedIntervention = String(interventionType || "").trim();
+  const trimmedAction = String(actionType || "").trim();
+  if (!trimmedReason || !trimmedIntervention || !trimmedAction) {
+    const err = new Error("RESOLUTION_FIELDS_REQUIRED");
+    throw err;
+  }
+  if (!(await hasResolutionValidationTable())) {
+    const err = new Error("VALIDATION_UNAVAILABLE");
+    throw err;
+  }
+  await ensureResolutionValidationSchema().catch(() => {});
+
+  const ticketResult = await pool.query(
+    `SELECT id, status, client_id FROM v_b_tickets WHERE id = $1 LIMIT 1`,
+    [ticketId]
+  );
+  const ticket = ticketResult.rows[0];
+  if (!ticket) return null;
+
+  const when =
+    resolvedAt instanceof Date && !Number.isNaN(resolvedAt.getTime())
+      ? resolvedAt
+      : closedAt instanceof Date && !Number.isNaN(closedAt.getTime())
+        ? closedAt
+        : new Date();
+  const closedWhen =
+    closedAt instanceof Date && !Number.isNaN(closedAt.getTime()) ? closedAt : when;
+  const status = String(finalStatus || "closed").toLowerCase() === "resolved" ? "resolved" : "closed";
+
+  const commentContent = `${RESOLUTION_COMMENT_PREFIX} [${trimmedIntervention}] [${trimmedAction}] ${trimmedReason}`;
+  const comment = await addPublicComment(ticketId, userId, commentContent, when);
+
+  await upsertResolutionValidation({
+    ticketId,
+    reason: trimmedReason,
+    interventionType: trimmedIntervention,
+    actionType: trimmedAction,
+    resolutionCommentId: comment?.id || null,
+    autoCloseAt: null,
+    resolvedByUserId: userId || null
+  });
+
+  await pool.query(
+    `UPDATE v_b_ticket_resolution_validations
+        SET outcome = 'accepted',
+            responded_at = $2,
+            auto_close_at = NULL,
+            updated_at = NOW()
+      WHERE ticket_id = $1`,
+    [ticketId, when]
+  );
+
+  const oldStatus = String(ticket.status || "").toLowerCase();
+  await pool.query(
+    `UPDATE v_b_tickets
+        SET status = $2::varchar,
+            resolved_at = COALESCE($3::timestamptz, resolved_at, NOW()),
+            closed_at = CASE
+              WHEN $2::varchar = 'closed' THEN COALESCE($4::timestamptz, closed_at, $3::timestamptz, NOW())
+              ELSE closed_at
+            END,
+            updated_at = NOW()
+      WHERE id = $1`,
+    [ticketId, status, when, status === "closed" ? closedWhen : null]
+  );
+  if (oldStatus !== status) {
+    await insertStatusHistory(ticketId, oldStatus, status, userId, "Imported resolution");
+  }
+
+  const refreshed = await pool.query(`SELECT * FROM v_b_tickets WHERE id = $1`, [ticketId]);
+  return refreshed.rows[0] || null;
 }
 async function changeTicketStatus(ticketId, newStatus, userId, note) {
   const existing = await pool.query(`SELECT id, status, client_id, ticket_number, title

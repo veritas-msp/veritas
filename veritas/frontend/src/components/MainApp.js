@@ -325,10 +325,18 @@ export default function MainApp() {
       return `computer-fleet-${data.clientId}-${equipmentType}-${siteKey}`;
     }
     if (type === "TicketDetail" && data) {
+      const ticketNumber = data.ticketNumber ?? data.ticket_number;
+      if (ticketNumber != null && String(ticketNumber).trim() !== "") {
+        return `ticket-n-${String(ticketNumber).trim().replace(/^#/, "")}`;
+      }
       if (data.ticketId) return `ticket-${data.ticketId}`;
       if (data.id) return `ticket-${data.id}`;
     }
     if (type === "TicketSalesDetail" && data) {
+      const ticketNumber = data.ticketNumber ?? data.ticket_number;
+      if (ticketNumber != null && String(ticketNumber).trim() !== "") {
+        return `ticket-sales-n-${String(ticketNumber).trim().replace(/^#/, "")}`;
+      }
       if (data.ticketId) return `ticket-sales-${data.ticketId}`;
       if (data.id) return `ticket-sales-${data.id}`;
     }

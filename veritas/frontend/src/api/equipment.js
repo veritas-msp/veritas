@@ -689,9 +689,9 @@ const MODULE_KEY_TO_TYPE = {
 };
 function normalizeEquipmentApiType(type) {
   if (!type) return type;
-  if (type === 'Servers' || type === 'Server') return 'Serveurs';
-  if (type === 'Storage' || type === 'Stockage') return 'NAS';
-  if (type === 'Firewall') return 'Firewalls';
+  if (type === "Servers" || type === "Server" || type === "servers") return "Serveurs";
+  if (type === "Storage" || type === "Stockage" || type === "stockage") return "NAS";
+  if (type === "Firewall" || type === "firewall") return "Firewalls";
   return type;
 }
 function resolveFormSiteValue(formData, existingData = {}) {
@@ -1525,24 +1525,49 @@ export const getCheckMKNotifications = async (hostName, startTime = null, endTim
   }
 };
 const EQUIPMENT_TYPE_TO_FAMILY = {
-  'Serveurs': 'servers',
-  'Servers': 'servers',
-  'Stockage': 'stockage',
-  'Storage': 'stockage',
-  'NAS': 'stockage',
-  'Firewalls': 'firewall',
-  'Switch': 'switch',
-  'BorneWifi': 'wifi',
-  'Alimentation': 'alimentation',
-  'Routeur': 'routeur',
-  'TOIP': 'toip',
-  'Sauvegarde': 'save',
-  'Backup': 'save',
-  'Internet': 'internet'
+  Serveurs: "servers",
+  Servers: "servers",
+  Server: "servers",
+  servers: "servers",
+  Stockage: "stockage",
+  Storage: "stockage",
+  stockage: "stockage",
+  NAS: "stockage",
+  Firewalls: "firewall",
+  Firewall: "firewall",
+  firewall: "firewall",
+  Switch: "switch",
+  switch: "switch",
+  BorneWifi: "wifi",
+  wifi: "wifi",
+  Alimentation: "alimentation",
+  alimentation: "alimentation",
+  Routeur: "routeur",
+  routeur: "routeur",
+  TOIP: "toip",
+  toip: "toip",
+  Sauvegarde: "save",
+  Backup: "save",
+  save: "save",
+  Internet: "internet",
+  internet: "internet"
 };
+const CHECKMK_MAPPING_FAMILIES = new Set(Object.values(EQUIPMENT_TYPE_TO_FAMILY));
+
+function resolveCheckMKMappingFamily(equipmentType) {
+  const raw = String(equipmentType || "").trim();
+  if (!raw) return null;
+  const normalizedType = normalizeEquipmentApiType(raw);
+  return (
+    EQUIPMENT_TYPE_TO_FAMILY[raw] ||
+    EQUIPMENT_TYPE_TO_FAMILY[normalizedType] ||
+    EQUIPMENT_TYPE_TO_FAMILY[raw === "NAS" ? "Stockage" : raw] ||
+    (CHECKMK_MAPPING_FAMILIES.has(raw.toLowerCase()) ? raw.toLowerCase() : null)
+  );
+}
+
 export const updateEquipmentCheckMKMapping = async (clientId, equipmentType, equipmentName, mapping) => {
-  const normalizedType = normalizeEquipmentApiType(equipmentType);
-  const family = EQUIPMENT_TYPE_TO_FAMILY[equipmentType] || EQUIPMENT_TYPE_TO_FAMILY[normalizedType] || EQUIPMENT_TYPE_TO_FAMILY[equipmentType === 'NAS' ? 'Stockage' : equipmentType];
+  const family = resolveCheckMKMappingFamily(equipmentType);
   if (!family) {
     throw new Error(`Unsupported equipment type for mapping: ${equipmentType}`);
   }
@@ -1655,18 +1680,29 @@ export const getCheckMKHosts = async () => {
 };
 export const equipmentTypeToFamily = type => {
   const map = {
-    Ordinateurs: 'ordinateurs',
-    Serveurs: 'servers',
-    Servers: 'servers',
-    NAS: 'stockage',
-    Storage: 'stockage',
-    Stockage: 'stockage',
-    Firewalls: 'firewall',
-    Switch: 'switch',
-    BorneWifi: 'wifi',
-    Alimentation: 'alimentation',
-    Routeur: 'routeur',
-    TOIP: 'toip'
+    Ordinateurs: "ordinateurs",
+    ordinateurs: "ordinateurs",
+    Serveurs: "servers",
+    Servers: "servers",
+    Server: "servers",
+    servers: "servers",
+    NAS: "stockage",
+    Storage: "stockage",
+    Stockage: "stockage",
+    stockage: "stockage",
+    Firewalls: "firewall",
+    Firewall: "firewall",
+    firewall: "firewall",
+    Switch: "switch",
+    switch: "switch",
+    BorneWifi: "wifi",
+    wifi: "wifi",
+    Alimentation: "alimentation",
+    alimentation: "alimentation",
+    Routeur: "routeur",
+    routeur: "routeur",
+    TOIP: "toip",
+    toip: "toip"
   };
   return map[type] || null;
 };

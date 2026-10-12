@@ -76,6 +76,8 @@ const FR = {
     servicesOk: "Services OK"
   },
   overview: {
+    rmmSectionTitle: "Agent RMM",
+    checkmkSectionTitle: "Supervision CheckMK",
     availabilityTitle: "Disponibilité",
     availabilityHint: "Sur la période sélectionnée",
     availabilityEmpty: "Aucune donnée de disponibilité",
@@ -177,6 +179,30 @@ const FR = {
     colTitle: "Titre",
     colDate: "Date",
     fallbackTitle: "Événement"
+  },
+  maintenanceHistory: {
+    title: "Historique des maintenances",
+    subtitle: "Périodes de mise hors supervision de ce périphérique.",
+    emptyTitle: "Aucune période de maintenance",
+    emptyHint: "Les mises en maintenance de ce périphérique apparaîtront ici.",
+    errorTitle: "Erreur",
+    error: "Impossible de charger l’historique",
+    colStatus: "Statut",
+    colPeriod: "Période",
+    colDuration: "Durée",
+    colReason: "Motif",
+    colBy: "Par",
+    statusActive: "En cours",
+    statusEnded: "Terminée",
+    statusExpired: "Expirée",
+    inProgress: "en cours",
+    until: "jusqu’au {date}",
+    plannedUntil: "Fin prévue : {date}",
+    endedBy: "terminée par {name}",
+    noReason: "—",
+    durationMinutes: "{n} min",
+    durationHours: "{n} h",
+    durationDays: "{n} j"
   },
   dateRange: {
     aria: "Filtrer par période",
@@ -914,6 +940,8 @@ const EN = {
     servicesOk: "OK services"
   },
   overview: {
+    rmmSectionTitle: "RMM agent",
+    checkmkSectionTitle: "CheckMK supervision",
     availabilityTitle: "Availability",
     availabilityHint: "For the selected period",
     availabilityEmpty: "No availability data",
@@ -1015,6 +1043,30 @@ const EN = {
     colTitle: "Title",
     colDate: "Date",
     fallbackTitle: "Event"
+  },
+  maintenanceHistory: {
+    title: "Maintenance history",
+    subtitle: "Periods when this device was taken out of supervision.",
+    emptyTitle: "No maintenance periods",
+    emptyHint: "Device maintenance windows will appear here.",
+    errorTitle: "Error",
+    error: "Unable to load history",
+    colStatus: "Status",
+    colPeriod: "Period",
+    colDuration: "Duration",
+    colReason: "Reason",
+    colBy: "By",
+    statusActive: "Active",
+    statusEnded: "Ended",
+    statusExpired: "Expired",
+    inProgress: "in progress",
+    until: "until {date}",
+    plannedUntil: "Planned end: {date}",
+    endedBy: "ended by {name}",
+    noReason: "—",
+    durationMinutes: "{n} min",
+    durationHours: "{n} h",
+    durationDays: "{n} d"
   },
   dateRange: {
     aria: "Filter by period",

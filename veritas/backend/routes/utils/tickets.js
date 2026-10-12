@@ -11,7 +11,7 @@ import { dispatchNotificationEvent } from "../../services/notificationDispatcher
 import { notifyTicketAssignedUsers, notifyTicketChangeEmails, notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "../../services/systemNotificationService.js";
 import { notifyInAppTicketAssigned, notifyInAppTicketCommented, notifyInAppTicketCreated, notifyInAppTicketStatusChanged, normalizeInAppSettings } from "../../services/userNotificationService.js";
 import { getTicketSatisfaction, listTicketSatisfactions, countTicketSatisfactions, enrichTicketRowsWithSatisfaction } from "../../services/ticketSatisfactionService.js";
-import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, markResolutionValidationReopened, resolveTicketWithClientValidation } from "../../services/ticketResolutionValidationService.js";
+import { applyImportedTicketResolution, ensureTicketStatusMatchesValidation, getTicketResolutionValidation, markResolutionValidationReopened, resolveTicketWithClientValidation } from "../../services/ticketResolutionValidationService.js";
 import { createTicketValidationRequest, listTicketValidationRequests, respondTicketValidationRequest, updateTicketValidationRequest } from "../../services/ticketValidationRequestService.js";
 import { listSolutionCatalog, createSolutionCatalogEntry, updateSolutionCatalogEntry, deleteSolutionCatalogEntry } from "../../services/ticketSolutionCatalogService.js";
 import { loadExclusionRulesRaw, loadMailCollectorsRaw, loadNotificationSettingsRaw, loadTicketAutomationRawConfig, saveMailCollectorsRaw, saveNotificationLogsRaw, saveTicketAutomationRawConfig } from "../../services/ticketAutomationConfigStore.js";
@@ -78,6 +78,40 @@ const attachmentUpload = multer({
 });
 const STATUS_VALUES = ["open", "new", "pending", "in_progress", "resolved", "closed"];
 const PRIORITY_VALUES = ["low", "normal", "high", "urgent"];
+const TICKET_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Accepte un UUID ou un numéro de ticket (#1042 / 1042). */
+async function resolveTicketUuid(ref) {
+  const raw = String(ref || "").trim().replace(/^#/, "");
+  if (!raw) return null;
+  if (TICKET_UUID_RE.test(raw)) return raw;
+  if (!/^\d{1,18}$/.test(raw)) return null;
+  const result = await pool.query(
+    `SELECT id FROM v_b_tickets WHERE ticket_number = $1 LIMIT 1`,
+    [raw]
+  );
+  return result.rows[0]?.id || null;
+}
+
+/** Normalise :id (UUID ou numéro) vers l’UUID ticket pour toutes les routes. */
+router.param("id", async (req, res, next, id) => {
+  try {
+    const resolved = await resolveTicketUuid(id);
+    if (!resolved) {
+      const raw = String(id || "").trim().replace(/^#/, "");
+      if (TICKET_UUID_RE.test(raw) || /^\d{1,18}$/.test(raw)) {
+        return res.status(404).json({ error: "Ticket not found" });
+      }
+      return res.status(400).json({ error: "Invalid ticket id or number" });
+    }
+    req.params.id = resolved;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 function normalizeTicketStatusValue(status) {
   return String(status || "").toLowerCase();
 }
@@ -139,6 +173,27 @@ function isAdminUser(req) {
 }
 function parseBodyBoolean(value) {
   return value === true || value === "true" || value === "1" || value === 1;
+}
+function parseOptionalDateInput(value) {
+  if (value == null || value === "") return null;
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const iso = new Date(raw);
+  if (!Number.isNaN(iso.getTime())) return iso;
+  const match = raw.match(
+    /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+  );
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const hours = Number(match[4] || 0);
+  const minutes = Number(match[5] || 0);
+  const seconds = Number(match[6] || 0);
+  if (!day || !month || !year) return null;
+  const parsed = new Date(year, month - 1, day, hours, minutes, seconds);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 async function requireTicketCommentPermission(req, res, next) {
   try {
@@ -479,8 +534,9 @@ async function enrichSingleTicketWithSla(ticket, {
   });
 }
 async function getTicketById(ticketId) {
-  await ensureTicketStatusMatchesValidation(ticketId).catch(err => {
-    console.error(`[tickets] ensureTicketStatusMatchesValidation ${ticketId}:`, err.message);
+  const resolvedId = (await resolveTicketUuid(ticketId)) || ticketId;
+  await ensureTicketStatusMatchesValidation(resolvedId).catch(err => {
+    console.error(`[tickets] ensureTicketStatusMatchesValidation ${resolvedId}:`, err.message);
   });
   const ticketResult = await pool.query(`SELECT
       t.*,
@@ -501,36 +557,36 @@ async function getTicketById(ticketId) {
      LEFT JOIN v_b_users req_u ON req_u.id = t.requester_user_id
      LEFT JOIN v_b_users ass_u ON ass_u.id = t.assigned_user_id
      LEFT JOIN v_b_users cre_u ON cre_u.id = t.created_by
-     WHERE t.id = $1`, [ticketId]);
+     WHERE t.id = $1`, [resolvedId]);
   if (ticketResult.rows.length === 0) return null;
   const hasTicketAssignees = await hasTicketAssigneesTable();
   const hasCommentUpdatedAt = await hasCommentColumn("updated_at");
   const assigneesPromise = hasTicketAssignees ? pool.query(`SELECT ticket_id, user_id, created_at
          FROM v_b_ticket_assignees
          WHERE ticket_id = $1
-         ORDER BY created_at ASC`, [ticketId]) : Promise.resolve({
+         ORDER BY created_at ASC`, [resolvedId]) : Promise.resolve({
     rows: []
   });
-  const assigneeTeamsPromise = loadTicketAssigneeTeams(ticketId);
+  const assigneeTeamsPromise = loadTicketAssigneeTeams(resolvedId);
   const [commentsResult, historyResult, tagsResult, watchersResult, attachmentsResult, assigneesResult, assigneeTeams, activityHistory] = await Promise.all([pool.query(`SELECT id, ticket_id, author_user_id, content, is_internal, created_at, ${commentUpdatedAtSelectSql(hasCommentUpdatedAt)}
        FROM v_b_ticket_comments
        WHERE ticket_id = $1
-       ORDER BY created_at ASC`, [ticketId]), pool.query(`SELECT id, ticket_id, old_status, new_status, changed_by, note, created_at
+       ORDER BY created_at ASC`, [resolvedId]), pool.query(`SELECT id, ticket_id, old_status, new_status, changed_by, note, created_at
        FROM v_b_ticket_status_history
        WHERE ticket_id = $1
-       ORDER BY created_at DESC`, [ticketId]), pool.query(`SELECT l.ticket_id, t.id, t.label, t.color
+       ORDER BY created_at DESC`, [resolvedId]), pool.query(`SELECT l.ticket_id, t.id, t.label, t.color
        FROM v_b_ticket_tag_links l
        JOIN v_b_ticket_tags t ON t.id = l.tag_id
        WHERE l.ticket_id = $1
-       ORDER BY t.label ASC`, [ticketId]), pool.query(`SELECT ticket_id, user_id, created_at
+       ORDER BY t.label ASC`, [resolvedId]), pool.query(`SELECT ticket_id, user_id, created_at
        FROM v_b_ticket_watchers
        WHERE ticket_id = $1
-       ORDER BY created_at ASC`, [ticketId]), pool.query(`SELECT id, ticket_id, comment_id, task_id, uploaded_by, file_name, file_path, mime_type, file_size, created_at
+       ORDER BY created_at ASC`, [resolvedId]), pool.query(`SELECT id, ticket_id, comment_id, task_id, uploaded_by, file_name, file_path, mime_type, file_size, created_at
        FROM v_b_ticket_attachments
        WHERE ticket_id = $1
-       ORDER BY created_at DESC`, [ticketId]), assigneesPromise, assigneeTeamsPromise, listTicketActivity(ticketId)]);
-  const satisfaction = await getTicketSatisfaction(ticketId).catch(() => null);
-  const resolutionValidation = await getTicketResolutionValidation(ticketId).catch(() => null);
+       ORDER BY created_at DESC`, [resolvedId]), assigneesPromise, assigneeTeamsPromise, listTicketActivity(resolvedId)]);
+  const satisfaction = await getTicketSatisfaction(resolvedId).catch(() => null);
+  const resolutionValidation = await getTicketResolutionValidation(resolvedId).catch(() => null);
   const [watchers, assignees] = await Promise.all([
     enrichTicketPeopleRows(watchersResult.rows),
     enrichTicketPeopleRows(assigneesResult.rows)
@@ -1627,7 +1683,22 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
 }).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject(), body("supportFormData").optional().isObject(), body("siteId").optional({
   nullable: true,
   checkFalsy: true
-}).isString(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID()], async (req, res) => {
+}).isString(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID(), body("createdAt").optional({
+  nullable: true,
+  checkFalsy: true
+}).isString(), body("resolvedAt").optional({
+  nullable: true,
+  checkFalsy: true
+}).isString(), body("closedAt").optional({
+  nullable: true,
+  checkFalsy: true
+}).isString(), body("resolutionReason").optional({
+  nullable: true
+}).isString(), body("interventionType").optional({
+  nullable: true
+}).isString(), body("actionType").optional({
+  nullable: true
+}).isString()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   if (rejectCommunitySalesTicketCreate(req, res)) return;
@@ -1662,8 +1733,36 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       siteId = null,
       assigneeUserIds = [],
       assigneeTeamIds = [],
-      watcherUserIds = []
+      watcherUserIds = [],
+      createdAt = null,
+      resolvedAt = null,
+      closedAt = null,
+      resolutionReason = null,
+      interventionType = null,
+      actionType = null
     } = req.body;
+    const createdAtDate = parseOptionalDateInput(createdAt);
+    const resolvedAtDate = parseOptionalDateInput(resolvedAt);
+    const closedAtDate = parseOptionalDateInput(closedAt);
+    if (createdAt && !createdAtDate) {
+      return res.status(400).json({ error: "Invalid createdAt date" });
+    }
+    if (resolvedAt && !resolvedAtDate) {
+      return res.status(400).json({ error: "Invalid resolvedAt date" });
+    }
+    if (closedAt && !closedAtDate) {
+      return res.status(400).json({ error: "Invalid closedAt date" });
+    }
+    const resolutionReasonText = String(resolutionReason || "").trim();
+    const interventionTypeText = String(interventionType || "").trim();
+    const actionTypeText = String(actionType || "").trim();
+    const hasAnyResolutionField = Boolean(resolutionReasonText || interventionTypeText || actionTypeText);
+    const hasFullResolution = Boolean(resolutionReasonText && interventionTypeText && actionTypeText);
+    if (hasAnyResolutionField && !hasFullResolution) {
+      return res.status(400).json({
+        error: "resolutionReason, interventionType and actionType are all required to import a resolution"
+      });
+    }
     const resolvedSiteId = siteId != null && String(siteId).trim() ? String(siteId).trim() : null;
     const explicitAssigneeUserIds = Array.isArray(assigneeUserIds) ? assigneeUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const explicitAssigneeTeamIds = Array.isArray(assigneeTeamIds) ? assigneeTeamIds.map(id => String(id || "").trim()).filter(Boolean) : [];
@@ -1722,10 +1821,11 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       });
       const normalizedStatus = normalizeIncomingStatus(mergedCreate.status);
       const resolvedPriority = majorIncidentValue ? "urgent" : mergedCreate.priority;
+      const ticketCreatedAt = createdAtDate || new Date();
       const slaInfo = hasSlaInfo && !isCommunity() ? await buildSlaInfoForTicket({
         clientContrat,
         priority: resolvedPriority,
-        createdAt: new Date()
+        createdAt: ticketCreatedAt
       }) : {
         enabled: false
       };
@@ -1804,16 +1904,25 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         columns.push("site_id");
         values.push(resolvedSiteId);
       }
+      const createStatus = String(normalizedStatus || "").toLowerCase();
+      if (createStatus === "resolved" || createStatus === "closed") {
+        columns.push("resolved_at");
+        values.push(resolvedAtDate || ticketCreatedAt);
+      }
+      if (createStatus === "closed") {
+        columns.push("closed_at");
+        values.push(closedAtDate || resolvedAtDate || ticketCreatedAt);
+      }
       columns.push("created_at", "updated_at");
+      values.push(ticketCreatedAt, ticketCreatedAt);
       const placeholders = values.map((_, idx) => `$${idx + 1}`);
-      placeholders.push("NOW()", "NOW()");
       const result = await executor.query(`INSERT INTO v_b_tickets (${columns.join(", ")})
            VALUES (${placeholders.join(", ")})
            RETURNING *`, values);
       const createdTicket = result.rows[0];
       const historyNote = ticketRules.length > 1 && rule?.label ? String(rule.label).trim() || null : null;
       await executor.query(`INSERT INTO v_b_ticket_status_history (ticket_id, old_status, new_status, changed_by, note, created_at)
-           VALUES ($1, NULL, $2, $3, $4, NOW())`, [createdTicket.id, normalizedStatus, createdBy, historyNote]);
+           VALUES ($1, NULL, $2, $3, $4, $5)`, [createdTicket.id, normalizedStatus, createdBy, historyNote, ticketCreatedAt]);
       if (formId) {
         const appliedTargets = await applyFormTicketTargets(createdTicket.id, ruleTargets, formTargetContext);
         if (Array.isArray(appliedTargets?.assigneeTeamIds) && appliedTargets.assigneeTeamIds.length > 0) {
@@ -1911,6 +2020,21 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
             agent: req.user
           }
         }).catch(() => {});
+      }
+      if (hasFullResolution) {
+        const imported = await applyImportedTicketResolution({
+          ticketId: created.id,
+          userId: createdBy,
+          reason: resolutionReasonText,
+          interventionType: interventionTypeText,
+          actionType: actionTypeText,
+          resolvedAt: resolvedAtDate || createdAtDate || null,
+          closedAt: closedAtDate || resolvedAtDate || createdAtDate || null,
+          finalStatus: String(status || "").toLowerCase() === "resolved" ? "resolved" : "closed"
+        });
+        if (imported) {
+          createdTickets[createdTickets.length - 1] = imported;
+        }
       }
     }
     const primaryTicket = createdTickets[0];

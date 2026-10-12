@@ -1,8 +1,13 @@
 import { pool } from "../database/db.js";
 import { isEquipmentMonitoredInDb } from "./equipmentInventoryScan.js";
+import { ensureEquipmentMonitoringExclusionsSchema } from "../services/ensureEquipmentMonitoringExclusionsSchema.js";
 
 function mapRow(row) {
   if (!row) return null;
+  const endedAt = row.ended_at || null;
+  const until = row.excluded_until || null;
+  const untilActive = until == null || (until && new Date(until).getTime() > Date.now());
+  const active = !endedAt && untilActive;
   return {
     id: row.id,
     clientId: row.client_id,
@@ -14,13 +19,14 @@ function mapRow(row) {
     serviceKey: row.service_key || null,
     serviceName: row.service_name || null,
     reason: row.reason || null,
-    excludedUntil: row.excluded_until || null,
+    excludedUntil: until,
     excludedBy: row.excluded_by || null,
+    endedAt,
+    endedBy: row.ended_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    active:
-      row.excluded_until == null ||
-      (row.excluded_until && new Date(row.excluded_until).getTime() > Date.now())
+    active,
+    status: active ? "active" : endedAt ? "ended" : "expired"
   };
 }
 
@@ -30,7 +36,11 @@ export async function listActiveMonitoringExclusions({
   family = null,
   limit = 200
 } = {}) {
-  const clauses = ["(excluded_until IS NULL OR excluded_until > NOW())"];
+  await ensureEquipmentMonitoringExclusionsSchema();
+  const clauses = [
+    "ended_at IS NULL",
+    "(excluded_until IS NULL OR excluded_until > NOW())"
+  ];
   const params = [];
   if (clientId != null && String(clientId).trim() !== "") {
     params.push(Number(clientId));
@@ -65,6 +75,46 @@ export async function listActiveExclusionsForEquipment(clientId, equipmentId, fa
   });
 }
 
+/** Historique des maintenances / exclusions d’un périphérique (actives + terminées). */
+export async function listEquipmentMonitoringExclusionHistory({
+  equipmentId,
+  clientId = null,
+  kind = null,
+  limit = 50
+} = {}) {
+  await ensureEquipmentMonitoringExclusionsSchema();
+  const id = String(equipmentId || "").trim();
+  if (!id) return [];
+  const clauses = ["equipment_id = $1"];
+  const params = [id];
+  if (clientId != null && String(clientId).trim() !== "") {
+    params.push(Number(clientId));
+    clauses.push(`client_id = $${params.length}`);
+  }
+  if (kind) {
+    params.push(String(kind));
+    clauses.push(`kind = $${params.length}`);
+  }
+  params.push(Math.min(200, Math.max(1, Number(limit) || 50)));
+  const result = await pool.query(
+    `SELECT e.*,
+            COALESCE(NULLIF(TRIM(u.username), ''), NULLIF(TRIM(u.email), '')) AS excluded_by_name,
+            COALESCE(NULLIF(TRIM(eu.username), ''), NULLIF(TRIM(eu.email), '')) AS ended_by_name
+       FROM v_b_equipment_monitoring_exclusions e
+       LEFT JOIN v_b_users u ON u.id = e.excluded_by
+       LEFT JOIN v_b_users eu ON eu.id = e.ended_by
+      WHERE ${clauses.join(" AND ")}
+      ORDER BY e.created_at DESC
+      LIMIT $${params.length}`,
+    params
+  );
+  return (result.rows || []).map(row => ({
+    ...mapRow(row),
+    excludedByName: row.excluded_by_name || null,
+    endedByName: row.ended_by_name || null
+  }));
+}
+
 export function isDeviceExcluded(exclusions = []) {
   return (Array.isArray(exclusions) ? exclusions : []).some(
     row => row?.scope === "device" && row.active !== false
@@ -84,6 +134,19 @@ export function isServiceExcluded(exclusions = [], serviceKey) {
   );
 }
 
+async function softEndExclusion(id, endedBy = null) {
+  const result = await pool.query(
+    `UPDATE v_b_equipment_monitoring_exclusions
+        SET ended_at = COALESCE(ended_at, NOW()),
+            ended_by = COALESCE(ended_by, $2),
+            updated_at = NOW()
+      WHERE id = $1
+      RETURNING *`,
+    [String(id), endedBy || null]
+  );
+  return mapRow(result.rows[0]);
+}
+
 export async function upsertMonitoringExclusion({
   clientId,
   equipmentId,
@@ -97,6 +160,7 @@ export async function upsertMonitoringExclusion({
   excludedUntil = null,
   excludedBy = null
 }) {
+  await ensureEquipmentMonitoringExclusionsSchema();
   const family = String(equipmentFamily || "").toLowerCase().trim();
   const normalizedScope = scope === "device" ? "device" : "service";
   const normalizedKind = kind === "ignore" ? "ignore" : "maintenance";
@@ -122,7 +186,6 @@ export async function upsertMonitoringExclusion({
       monitored = false;
     }
     if (!monitored) {
-      // Fallback : mapping CheckMK sur l’équipement (alias famille / familles custom).
       const mk = await pool.query(
         `SELECT 1 FROM v_b_equipment_checkmk_monitoring
          WHERE client_id = $1 AND equipment_id = $2::uuid
@@ -144,7 +207,8 @@ export async function upsertMonitoringExclusion({
   if (normalizedScope === "device") {
     existing = await pool.query(
       `SELECT id FROM v_b_equipment_monitoring_exclusions
-       WHERE client_id = $1 AND equipment_id = $2 AND equipment_family = $3 AND scope = 'device'
+       WHERE client_id = $1 AND equipment_id = $2 AND equipment_family = $3
+         AND scope = 'device' AND ended_at IS NULL
        LIMIT 1`,
       [clientId, String(equipmentId), family]
     );
@@ -152,35 +216,15 @@ export async function upsertMonitoringExclusion({
     existing = await pool.query(
       `SELECT id FROM v_b_equipment_monitoring_exclusions
        WHERE client_id = $1 AND equipment_id = $2 AND equipment_family = $3
-         AND scope = 'service' AND service_key = $4
+         AND scope = 'service' AND service_key = $4 AND ended_at IS NULL
        LIMIT 1`,
       [clientId, String(equipmentId), family, safeServiceKey]
     );
   }
 
+  // Clôturer la période active pour conserver l’historique, puis créer une nouvelle entrée.
   if (existing.rows?.[0]?.id) {
-    const result = await pool.query(
-      `UPDATE v_b_equipment_monitoring_exclusions
-       SET equipment_name = COALESCE($2, equipment_name),
-           kind = $3,
-           service_name = COALESCE($4, service_name),
-           reason = $5,
-           excluded_until = $6,
-           excluded_by = $7,
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [
-        existing.rows[0].id,
-        equipmentName || null,
-        normalizedKind,
-        serviceName || null,
-        reason || null,
-        excludedUntil || null,
-        excludedBy || null
-      ]
-    );
-    return mapRow(result.rows[0]);
+    await softEndExclusion(existing.rows[0].id, excludedBy || null);
   }
 
   const result = await pool.query(
@@ -206,17 +250,19 @@ export async function upsertMonitoringExclusion({
   return mapRow(result.rows[0]);
 }
 
-export async function clearMonitoringExclusion(id) {
-  const result = await pool.query(
-    `DELETE FROM v_b_equipment_monitoring_exclusions WHERE id = $1 RETURNING *`,
-    [String(id)]
-  );
-  return mapRow(result.rows[0]);
+export async function clearMonitoringExclusion(id, endedBy = null) {
+  await ensureEquipmentMonitoringExclusionsSchema();
+  return softEndExclusion(id, endedBy);
 }
 
 export async function clearExpiredMonitoringExclusions() {
+  await ensureEquipmentMonitoringExclusionsSchema();
   await pool.query(
-    `DELETE FROM v_b_equipment_monitoring_exclusions
-     WHERE excluded_until IS NOT NULL AND excluded_until <= NOW()`
+    `UPDATE v_b_equipment_monitoring_exclusions
+        SET ended_at = COALESCE(ended_at, NOW()),
+            updated_at = NOW()
+      WHERE ended_at IS NULL
+        AND excluded_until IS NOT NULL
+        AND excluded_until <= NOW()`
   );
 }

@@ -181,6 +181,17 @@ export async function fetchSupervisionExclusions(params = {}) {
   return data?.exclusions || [];
 }
 
+/** Historique des périodes de maintenance / exclusions d’un périphérique. */
+export async function fetchSupervisionExclusionHistory(params = {}) {
+  const { signal, ...query } = params || {};
+  const response = await authFetch(
+    withApiQuery(`${API_BASE_URL}/supervision/alerts/exclusions/history`, query),
+    { signal }
+  );
+  const data = await handleResponse(response);
+  return data?.exclusions || [];
+}
+
 /** Tendance disponibilité parc (snapshot semaine courante vs semaine précédente). */
 export async function fetchParkAvailabilityTrend({
   clientId,

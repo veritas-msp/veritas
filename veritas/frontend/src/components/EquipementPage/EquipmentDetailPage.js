@@ -20,6 +20,7 @@ import RmmAgentUpdateStatus from "./RmmAgentUpdateStatus";
 import RmmMetricHistoryPanel from "./RmmMetricHistoryPanel";
 import EquipmentAlertSuspensionModal from "./EquipmentAlertSuspensionModal";
 import SupervisionMaintenanceModal from "./SupervisionMaintenanceModal";
+import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
 import { useEquipmentAlertSettings } from "./useEquipmentAlertSettings";
 import { resolveEquipmentFamilyForAlerts, updateEquipmentAlertSuspension } from "../../api/equipmentMonitoringAlerts";
 import {
@@ -153,6 +154,7 @@ export default function EquipmentDetailPage({
   const [maintenanceBusy, setMaintenanceBusy] = useState(false);
   const [endMaintenanceOpen, setEndMaintenanceOpen] = useState(false);
   const [activeMaintenance, setActiveMaintenance] = useState(null);
+  const [maintenanceHistoryKey, setMaintenanceHistoryKey] = useState(0);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [modalClient, setModalClient] = useState(null);
   const [clientSites, setClientSites] = useState([]);
@@ -590,6 +592,7 @@ export default function EquipmentDetailPage({
         toast.success(copy.hero.maintenanceOk || "Maintenance enregistrée");
         setMaintenanceModalOpen(false);
         await loadActiveMaintenance();
+        setMaintenanceHistoryKey(k => k + 1);
         await alertSettings.reload?.();
       } catch (err) {
         toast.error(err?.message || copy.hero.maintenanceError || "Erreur");
@@ -626,6 +629,7 @@ export default function EquipmentDetailPage({
       toast.success(copy.hero.maintenanceEnded || "Maintenance terminée");
       setEndMaintenanceOpen(false);
       setActiveMaintenance(null);
+      setMaintenanceHistoryKey(k => k + 1);
       await alertSettings.reload?.();
     } catch (err) {
       toast.error(err?.message || copy.hero.maintenanceError || "Erreur");
@@ -1741,7 +1745,6 @@ export default function EquipmentDetailPage({
   const heroIp = equipment?.ip || formData.ip || rmmInventory?.network?.ip || rmmInventory?.ip || null;
   const heroSite = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
   const heroSiteLabel = getSiteDisplayName(heroSite) || formData.location || equipment?.location || null;
-  const heroSubtitleParts = [typeDisplayLabel, heroOsLabel, heroSiteLabel].filter(Boolean);
   const checkmkServices = checkmkData?.services?.services || [];
   const heroServiceCounts = {
     critical: checkmkServices.filter(s => (s.state ?? 3) === 2).length,
@@ -1762,6 +1765,12 @@ export default function EquipmentDetailPage({
   const showMonitoredOverview = Boolean(rmmManaged || checkmkMapping?.checkmk_host_name);
   const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
   const heroFacts = [
+    typeDisplayLabel
+      ? { key: "family", icon: heroIcon || "mdi:devices", label: copy.hero.factType || copy.hero.factFamily || "Type", value: typeDisplayLabel }
+      : null,
+    heroOsLabel
+      ? { key: "os", icon: "mdi:monitor-screenshot", label: copy.hero.factOs || "OS", value: heroOsLabel }
+      : null,
     heroSiteLabel ? { key: "site", icon: "mdi:map-marker-outline", label: copy.hero.factSite || "Site", value: heroSiteLabel } : null,
     heroManufacturer ? { key: "mfr", icon: "mdi:domain", label: copy.hero.factManufacturer, value: heroManufacturer } : null,
     heroModel ? { key: "model", icon: "mdi:tag-outline", label: copy.hero.factModel, value: heroModel } : null,
@@ -1805,9 +1814,6 @@ export default function EquipmentDetailPage({
                         </span>
                       ) : null}
                     </h1>
-                    {heroSubtitleParts.length ? <p className={enterpriseDetailStyles.heroDescription}>
-                        {heroSubtitleParts.join(" · ")}
-                      </p> : null}
                     <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
                       {(() => {
                   const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
@@ -1980,32 +1986,43 @@ export default function EquipmentDetailPage({
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
         <div className={styles.mainContent}>
-          {rightPanelTab === "dashboard" && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? "" : styles.dashboardSplitSolo}`.trim()}>
-              <div className={styles.dashboardMain}>
-                {showMonitoredOverview ? <EquipmentOverviewDashboard equipment={equipmentWithRmmLive || equipment} checkmkData={checkmkData} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} loadingCheckMK={loadingCheckMK} /> : <>
-                    <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
-                    <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
-                    {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
-                  </>}
+          {rightPanelTab === "dashboard" && <>
+              <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? "" : styles.dashboardSplitSolo}`.trim()}>
+                <div className={styles.dashboardMain}>
+                  {showMonitoredOverview ? <EquipmentOverviewDashboard equipment={equipmentWithRmmLive || equipment} checkmkData={checkmkData} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} loadingCheckMK={loadingCheckMK} /> : <>
+                      <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                      <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+                      {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
+                    </>}
+                </div>
+                {showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? <div className={styles.dashboardAside}>
+                  <ScoreAside health={rmmDeviceHealth} copy={{
+                scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+                breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
+                breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
+                breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+                statusOk: copy.rmm.overview?.scoreStatusOk,
+                statusBad: copy.rmm.overview?.scoreStatusBad,
+                statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+                statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+                statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+                checks: copy.rmm.overview?.scoreChecks,
+                formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                  points: String(points)
+                })
+              }} />
+                </div> : null}
               </div>
-              {showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? <div className={styles.dashboardAside}>
-                <ScoreAside health={rmmDeviceHealth} copy={{
-              scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
-              breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
-              breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
-              breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
-              statusOk: copy.rmm.overview?.scoreStatusOk,
-              statusBad: copy.rmm.overview?.scoreStatusBad,
-              statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
-              statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
-              statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
-              checks: copy.rmm.overview?.scoreChecks,
-              formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
-                points: String(points)
-              })
-            }} />
-              </div> : null}
-            </div>}
+              {equipmentDbId ? (
+                <EquipmentMaintenanceHistoryPanel
+                  copy={copy}
+                  locale={locale}
+                  equipmentId={equipmentDbId}
+                  clientId={equipmentClientId}
+                  refreshKey={maintenanceHistoryKey}
+                />
+              ) : null}
+            </>}
 
           {rightPanelTab === "supervision" && showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>
               <header className={specsStyles.panelHeader}>
@@ -2049,6 +2066,15 @@ export default function EquipmentDetailPage({
                 </div> : <>
                   <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
                   <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onCreateEvent={openCreateEventModal} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} isCommunity={isCommunity} proBadge={<ProFeatureBadge variant="inline" className={styles.proBadgeInline} />} hideDateFilter />
+                  {equipmentDbId ? (
+                    <EquipmentMaintenanceHistoryPanel
+                      copy={copy}
+                      locale={locale}
+                      equipmentId={equipmentDbId}
+                      clientId={equipmentClientId}
+                      refreshKey={maintenanceHistoryKey}
+                    />
+                  ) : null}
                 </>}
             </div>}
 

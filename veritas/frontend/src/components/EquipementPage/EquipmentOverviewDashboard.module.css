@@ -5,9 +5,50 @@
   min-width: 0;
 }
 
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 1.15rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.columnHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.15rem;
+  padding: 0 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
+}
+
+.columnHeadIcon {
+  font-size: 1.05rem;
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  min-width: 0;
+}
+
+.columnGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
   min-width: 0;
 }
@@ -37,6 +78,10 @@
 
 .span3 {
   grid-column: span 3;
+}
+
+.spanFull {
+  grid-column: 1 / -1;
 }
 
 .cardHead {
@@ -440,14 +485,23 @@
 }
 
 @media (max-width: 1200px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+
   .span8,
   .span4,
   .span6,
-  .span3 {
+  .span3,
+  .spanFull {
     grid-column: span 12;
   }
 
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .columnGrid {
     grid-template-columns: 1fr;
   }
 
@@ -461,6 +515,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .columnGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .span8,
   .span4,
   .span6,
@@ -468,7 +526,8 @@
     grid-column: span 1;
   }
 
-  .span8 {
+  .span8,
+  .spanFull {
     grid-column: span 2;
   }
 }
@@ -476,7 +535,8 @@
 @media (max-width: 640px) {
   .ringsRow,
   .donutLayout,
-  .netStats {
+  .netStats,
+  .columnGrid {
     grid-template-columns: 1fr;
   }
 }
