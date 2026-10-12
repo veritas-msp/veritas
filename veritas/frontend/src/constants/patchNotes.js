@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.85",
+    date: "2026-10-12",
+    highlights: [
+      "Supervision : panneau maintenance enrichi (entreprise, icônes, recherche, tri par date).",
+      "Fiche / sites équipement : cône de maintenance, motif visible, tooltip clarifié.",
+      "Coffre-fort entreprise : renommage à l’ajout/édition et colonne Description."
+    ]
+  },
+  {
     version: "1.0.84",
     date: "2026-10-12",
     highlights: [

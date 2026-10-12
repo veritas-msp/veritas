@@ -49,6 +49,22 @@ function isUuid(value) {
 function resolveUploadOriginalName(file) {
   return decodeMulterFilename(file?.originalname);
 }
+
+function sanitizeDisplayFileName(raw, fallback = "") {
+  let name = String(raw || "")
+    .trim()
+    .replace(/[/\\]+/g, "_")
+    .replace(/[\u0000-\u001f\u007f]/g, "");
+  if (!name) {
+    name = String(fallback || "")
+      .trim()
+      .replace(/[/\\]+/g, "_")
+      .replace(/[\u0000-\u001f\u007f]/g, "");
+  }
+  if (!name) name = "document";
+  if (name.length > 255) name = name.slice(0, 255);
+  return name;
+}
 function isAllowedUpload(file) {
   if (!file) return false;
   if (ALLOWED_MIME.has(file.mimetype)) return true;
@@ -433,7 +449,10 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
       category = "Autre",
       description = "",
       visibleToClient,
-      folderId
+      folderId,
+      fileName,
+      file_name,
+      displayName: bodyDisplayName
     } = req.body;
     if (!clientId) {
       fs.unlinkSync(req.file.path);
@@ -469,7 +488,11 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
             : req.file.mimetype || "application/octet-stream";
     const safeCategory = ALLOWED_CATEGORIES.has(category) ? category : "Autre";
     const hasFolders = await hasClientFileFoldersTable();
-    const displayName = resolveUploadOriginalName(req.file);
+    const originalName = resolveUploadOriginalName(req.file);
+    const displayName = sanitizeDisplayFileName(
+      fileName || file_name || bodyDisplayName,
+      originalName
+    );
     const columns = ["client_id", "client_name", "file_name", "file_path", "mime_type", "size_bytes", "category", "description", "uploaded_by"];
     const values = [resolvedClientId, clientName || null, displayName, req.file.filename, mimeType, req.file.size, safeCategory, description, resolveFileUploadedBy(req.user)];
     if (hasFolders) {
@@ -569,13 +592,29 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
     const hasVisibility = req.body?.visibleToClient !== undefined || req.body?.visible_to_client !== undefined;
     const hasCategory = req.body?.category !== undefined;
     const hasFolderId = req.body?.folderId !== undefined || req.body?.folder_id !== undefined;
-    if (!hasDescription && !hasVisibility && !hasCategory && !hasFolderId) {
+    const hasFileName =
+      req.body?.fileName !== undefined ||
+      req.body?.file_name !== undefined ||
+      req.body?.name !== undefined;
+    if (!hasDescription && !hasVisibility && !hasCategory && !hasFolderId && !hasFileName) {
       return res.status(400).json({
         error: "No data to update."
       });
     }
     const sets = [];
     const values = [];
+    if (hasFileName) {
+      const nextName = sanitizeDisplayFileName(
+        req.body.fileName ?? req.body.file_name ?? req.body.name
+      );
+      if (!nextName) {
+        return res.status(400).json({
+          error: "Document name is required."
+        });
+      }
+      values.push(nextName);
+      sets.push(`file_name = $${values.length}`);
+    }
     if (hasCategory) {
       const category = String(req.body.category || "").trim();
       if (!ALLOWED_CATEGORIES.has(category)) {

@@ -11,6 +11,7 @@ function mapRow(row) {
   return {
     id: row.id,
     clientId: row.client_id,
+    clientName: row.client_name || null,
     equipmentId: row.equipment_id,
     equipmentFamily: row.equipment_family,
     equipmentName: row.equipment_name || null,
@@ -39,29 +40,31 @@ export async function listActiveMonitoringExclusions({
   await ensureEquipmentMonitoringExclusionsSchema();
   const build = (withEndedAt) => {
     const clauses = withEndedAt
-      ? ["ended_at IS NULL", "(excluded_until IS NULL OR excluded_until > NOW())"]
-      : ["(excluded_until IS NULL OR excluded_until > NOW())"];
+      ? ["e.ended_at IS NULL", "(e.excluded_until IS NULL OR e.excluded_until > NOW())"]
+      : ["(e.excluded_until IS NULL OR e.excluded_until > NOW())"];
     const params = [];
     if (clientId != null && String(clientId).trim() !== "") {
       const clientNum = Number(clientId);
       if (Number.isFinite(clientNum)) {
         params.push(clientNum);
-        clauses.push(`client_id = $${params.length}`);
+        clauses.push(`e.client_id = $${params.length}`);
       }
     }
     if (equipmentId) {
       params.push(String(equipmentId));
-      clauses.push(`equipment_id = $${params.length}`);
+      clauses.push(`e.equipment_id = $${params.length}`);
     }
     if (family) {
       params.push(String(family).toLowerCase());
-      clauses.push(`equipment_family = $${params.length}`);
+      clauses.push(`e.equipment_family = $${params.length}`);
     }
     params.push(Math.min(500, Math.max(1, Number(limit) || 200)));
     return {
-      sql: `SELECT * FROM v_b_equipment_monitoring_exclusions
+      sql: `SELECT e.*, c.name AS client_name
+            FROM v_b_equipment_monitoring_exclusions e
+            LEFT JOIN v_b_clients c ON c.id = e.client_id
             WHERE ${clauses.join(" AND ")}
-            ORDER BY created_at DESC
+            ORDER BY e.excluded_until ASC NULLS LAST, e.created_at ASC
             LIMIT $${params.length}`,
       params
     };

@@ -39,6 +39,7 @@ import RmmAgentStatusBadge from "./RmmAgentStatusBadge";
 import { getOsIconName, repairOsLabel } from "./osIconUtils";
 import { buildRmmAgentRowFromEquipment, getRmmChassisInfo, getRmmInventoryFromEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
+import { fetchSupervisionExclusions } from "../../api/supervisionAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
@@ -1046,6 +1047,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const exportMenuRef = useRef(null);
   const [monitoringSummaries, setMonitoringSummaries] = useState({});
   const [clientAlertMap, setClientAlertMap] = useState({});
+  const [maintenanceByEquipmentId, setMaintenanceByEquipmentId] = useState({});
   const [mkStatusFilter, setMkStatusFilter] = useState(null);
   const [supervisionStatusFilter, setMonitoringStatusFilter] = useState("all");
   const [mkBulkSyncing, setMkBulkSyncing] = useState(false);
@@ -1189,6 +1191,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const clientId = embeddedClient?.id || fixedClientId || null;
     if (!embedded || !clientId) {
       setClientAlertMap({});
+      setMaintenanceByEquipmentId({});
       return;
     }
     const controller = createTrackedAbortController();
@@ -1200,10 +1203,69 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       if (err?.name === "AbortError") return;
       if (!controller.signal.aborted) setClientAlertMap({});
     });
+    fetchSupervisionExclusions({
+      clientId,
+      signal: controller.signal
+    }).then(rows => {
+      if (controller.signal.aborted) return;
+      const map = {};
+      for (const row of Array.isArray(rows) ? rows : []) {
+        if (row?.active === false) continue;
+        const kind = String(row.kind || "maintenance").toLowerCase();
+        if (kind !== "maintenance") continue;
+        const scope = String(row.scope || "device").toLowerCase();
+        if (scope !== "device") continue;
+        const id = String(row.equipmentId || row.equipment_id || "").trim().toLowerCase();
+        if (!id || map[id]) continue;
+        if (row.clientId != null && String(row.clientId) !== String(clientId)) continue;
+        map[id] = {
+          until: row.excludedUntil || row.excluded_until || null,
+          reason: String(row.reason || "").trim() || null
+        };
+      }
+      setMaintenanceByEquipmentId(map);
+    }).catch(err => {
+      if (err?.name === "AbortError") return;
+      if (!controller.signal.aborted) setMaintenanceByEquipmentId({});
+    });
     return () => {
       controller.abort();
     };
   }, [embedded, embeddedClient?.id, fixedClientId]);
+  const getEquipmentMaintenance = useCallback(equipment => {
+    const id = String(getEquipmentDbId(equipment) || "").trim().toLowerCase();
+    if (!id) return null;
+    return maintenanceByEquipmentId[id] || null;
+  }, [maintenanceByEquipmentId]);
+  const renderMaintenanceCone = equipment => {
+    const maint = getEquipmentMaintenance(equipment);
+    if (!maint) return null;
+    const m = pageCopy.maintenance || {};
+    let untilPart = m.indefinite || "Durée indéterminée";
+    if (maint.until) {
+      const ms = new Date(maint.until).getTime();
+      if (Number.isFinite(ms)) {
+        try {
+          const date = new Date(ms).toLocaleString(locale || undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+          untilPart = interpolate(m.until || "Jusqu’au {date}", { date });
+        } catch {
+          untilPart = interpolate(m.until || "Jusqu’au {date}", { date: new Date(ms).toLocaleString() });
+        }
+      }
+    }
+    const tooltip = [m.badge || "En maintenance", untilPart, maint.reason || null].filter(Boolean).join(" · ");
+    return <SmartTooltip content={tooltip}>
+        <span className={styles.maintenanceIcon} aria-label={m.badge || "En maintenance"}>
+          <Icon icon="mdi:traffic-cone" width={15} height={15} aria-hidden />
+        </span>
+      </SmartTooltip>;
+  };
   const renderAlertSuspendedBadge = equipment => {
     if (!isEquipmentAlertsSuspended(equipment)) return null;
     return <SmartTooltip content="Alerts surveillance suspendues">
@@ -3661,6 +3723,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (embedded) {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
+                                          {renderMaintenanceCone(equipment)}
                                           <span className={equipment.type === "Firewalls" || equipment.type === "Servers" || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined}>
                                             {formatValue(value)}
                                           </span>
@@ -3671,6 +3734,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (equipment.type === 'Firewalls') {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
+                                          {renderMaintenanceCone(equipment)}
                                           {renderFirewallBrandIcon(equipment)}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                           {renderAlertSuspendedBadge(equipment)}
@@ -3680,6 +3744,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (equipment.type === 'Routeur') {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
+                                          {renderMaintenanceCone(equipment)}
                                           {renderRouterBrandIcon(equipment)}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                           {renderAlertSuspendedBadge(equipment)}
@@ -3689,6 +3754,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (equipment.type === 'Servers') {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
+                                          {renderMaintenanceCone(equipment)}
                                           {renderServerNameIcon(equipment)}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                           {renderAlertSuspendedBadge(equipment)}
@@ -3700,6 +3766,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                 const iconName = getStorageIcon(equipment);
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
+                                          {renderMaintenanceCone(equipment)}
                                           <Icon icon={iconName} className={styles.typeIconSmall} width={16} height={16} />
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                         </div>
@@ -3709,6 +3776,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                 const connectionIcon = getInternetConnectionIcon(equipment);
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
+                                          {renderMaintenanceCone(equipment)}
                                           {connectionIcon}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                         </div>
@@ -3716,6 +3784,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               }
                               return <td key={col.key}>
                                       <div className={styles.nameCell}>
+                                        {renderMaintenanceCone(equipment)}
                                         <DisplayIcon className={styles.typeIconSmall} />
                                         <span className={equipment.type === 'Firewalls' || equipment.type === 'Servers' || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined}>{formatValue(value)}</span>
                                         {renderAlertSuspendedBadge(equipment)}
@@ -3909,6 +3978,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                       }}>
                               <div className={styles.cardHeader}>
                                 {iconElement}
+                                {renderMaintenanceCone(equipment)}
                                 <h3 className={`${styles.cardTitle} ${equipment.type === 'Firewalls' || equipment.type === 'Servers' || equipment.type === 'NAS' || equipment.type === 'Storage' || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : ''}`}>{formatValue(equipment.name)}</h3>
                                 {renderMonitoringStatus(equipment, {
                             compact: true

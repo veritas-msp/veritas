@@ -1729,6 +1729,7 @@ export default function EquipmentDetailPage({
     until: maintenanceUntilSuffix
   });
   const maintenanceReason = String(activeMaintenance?.reason || "").trim();
+  const maintenanceReasonLabel = copy.hero.maintenanceReasonLabel || "Motif";
   const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
   const showCheckmkHeroMenu = Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet");
   const showRmmHeroMenu = Boolean(rmmManaged && rmmAgentId);
@@ -1806,7 +1807,7 @@ export default function EquipmentDetailPage({
                       {inMaintenance ? (
                         <span
                           className={styles.heroMaintenanceBadge}
-                          title={[maintenanceBadgeTitle, maintenanceReason].filter(Boolean).join(" — ")}
+                          title={maintenanceBadgeTitle}
                           aria-label={copy.hero.maintenanceBadge || "En maintenance"}
                         >
                           <Icon icon="mdi:traffic-cone" width={12} height={12} aria-hidden />
@@ -1814,6 +1815,12 @@ export default function EquipmentDetailPage({
                         </span>
                       ) : null}
                     </h1>
+                    {inMaintenance && maintenanceReason ? (
+                      <p className={styles.heroMaintenanceReason} title={maintenanceReason}>
+                        <span className={styles.heroMaintenanceReasonLabel}>{maintenanceReasonLabel}</span>
+                        <span className={styles.heroMaintenanceReasonText}>{maintenanceReason}</span>
+                      </p>
+                    ) : null}
                     <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
                       {(() => {
                   const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
@@ -2282,6 +2289,8 @@ export default function EquipmentDetailPage({
           showMaintenance={showMaintenanceControl}
           inMaintenance={inMaintenance}
           maintenanceBusy={maintenanceBusy}
+          maintenanceReason={maintenanceReason}
+          maintenanceUntilLabel={maintenanceUntilLabel}
           onMaintenance={() => (inMaintenance ? setEndMaintenanceOpen(true) : setMaintenanceModalOpen(true))}
           showAlerts={Boolean(alertSettings.available)}
           onAlerts={() => setAlertModalOpen(true)}

@@ -525,6 +525,7 @@ export default forwardRef(function EnterpriseVaultPanel({
                   <tr>
                     <th className={styles.colDrag} aria-hidden />
                     <th>{copy.panel.colName}</th>
+                    <th className={styles.colDescription}>{copy.panel.colDescription}</th>
                     <th className={styles.colVisibility}>{copy.panel.colVisibility}</th>
                     <th className={styles.colSize}>{copy.panel.colSize}</th>
                     <th>{copy.panel.colDate}</th>
@@ -819,6 +820,7 @@ function VaultFolderRow({
           </span>
         </button>
       </td>
+      <td className={`${styles.mutedCell} ${styles.colDescription}`}>—</td>
       <td className={styles.colVisibility}>
         <button
           type="button"
@@ -880,6 +882,19 @@ function VaultFileRow({
           <Icon icon={isImage ? "mdi:file-image-outline" : isPdf ? "mdi:file-pdf-box" : "mdi:file-document-outline"} className={styles.rowFileIcon} aria-hidden />
           <span className={styles.rowName}>{fileName}</span>
         </button>
+      </td>
+      <td className={`${styles.mutedCell} ${styles.colDescription}`}>
+        {(() => {
+          const description = String(file.description || "").trim();
+          return (
+            <span
+              className={`${styles.descriptionCell} ${description ? "" : styles.descriptionEmpty}`.trim()}
+              title={description || undefined}
+            >
+              {description || "—"}
+            </span>
+          );
+        })()}
       </td>
       <td className={styles.colVisibility}>
         <button
@@ -1179,21 +1194,36 @@ function VaultUploadModal({
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(initialFile || null);
+  const [displayName, setDisplayName] = useState(initialFile?.name || "");
+  const [nameTouched, setNameTouched] = useState(false);
   const [visibleToClient, setVisibleToClient] = useState(false);
   const [uploading, setUploading] = useState(false);
   const dropRef = useRef(null);
   useEffect(() => {
-    if (initialFile) setFile(initialFile);
-  }, [initialFile]);
+    if (initialFile) {
+      setFile(initialFile);
+      if (!nameTouched) setDisplayName(initialFile.name || "");
+    }
+  }, [initialFile, nameTouched]);
+  const applySelectedFile = nextFile => {
+    setFile(nextFile || null);
+    if (!nextFile) {
+      if (!nameTouched) setDisplayName("");
+      return;
+    }
+    if (!nameTouched) setDisplayName(nextFile.name || "");
+  };
   const handleDrop = e => {
     e.preventDefault();
     const dropped = e.dataTransfer?.files?.[0];
-    if (dropped) setFile(dropped);
+    if (dropped) applySelectedFile(dropped);
   };
   const handleSubmit = async e => {
     e.preventDefault();
     if (!clientId) return toast.error(copy.toast.clientNotFound);
     if (!file) return toast.error(copy.toast.fileRequired);
+    const trimmedName = String(displayName || "").trim();
+    if (!trimmedName) return toast.error(copy.toast.nameRequired || copy.toast.fileRequired);
     try {
       setUploading(true);
       const result = await uploadClientFile({
@@ -1201,6 +1231,7 @@ function VaultUploadModal({
         clientName,
         category,
         description,
+        fileName: trimmedName,
         file,
         visibleToClient,
         folderId: folderId || null
@@ -1250,6 +1281,25 @@ function VaultUploadModal({
             </div>
 
             <div className={formStyles.field}>
+              <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-display-name">
+                {modal.nameLabel || "Nom"}
+              </label>
+              <input
+                id="vault-display-name"
+                className={formStyles.input}
+                type="text"
+                maxLength={255}
+                placeholder={modal.namePlaceholder || file?.name || ""}
+                value={displayName}
+                onChange={e => {
+                  setNameTouched(true);
+                  setDisplayName(e.target.value);
+                }}
+                disabled={uploading}
+              />
+            </div>
+
+            <div className={formStyles.field}>
               <label className={formStyles.label} htmlFor="vault-description">
                 {modal.descriptionLabel}
               </label>
@@ -1261,7 +1311,7 @@ function VaultUploadModal({
               <div ref={dropRef} className={`${styles.dropZone} ${file ? styles.dropZoneActive : ""}`} onDragOver={e => e.preventDefault()} onDrop={handleDrop} onClick={() => document.getElementById("vault-file-input")?.click()}>
                 <input id="vault-file-input" type="file" style={{
                 display: "none"
-              }} onChange={e => setFile(e.target.files?.[0] || null)} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.html,.htm,.zip" disabled={uploading} />
+              }} onChange={e => applySelectedFile(e.target.files?.[0] || null)} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.html,.htm,.zip" disabled={uploading} />
                 {file ? <span className={styles.dropZoneFile}>
                     <Icon icon="mdi:file-document-outline" aria-hidden />
                     {file.name} ({copy.formatSize(file.size)})
@@ -1295,7 +1345,7 @@ function VaultUploadModal({
               <button type="button" className={formStyles.ghostBtn} onClick={onClose} disabled={uploading}>
                 {modal.cancel}
               </button>
-              <button type="submit" className={formStyles.primaryBtn} disabled={uploading || !file}>
+              <button type="submit" className={formStyles.primaryBtn} disabled={uploading || !file || !String(displayName || "").trim()}>
                 {uploading ? <>
                     <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
                     {modal.uploading}
@@ -1316,19 +1366,24 @@ function VaultEditDescriptionModal({
   onClose,
   onSaved
 }) {
+  const [fileName, setFileName] = useState(displayFileName(file) || "");
   const [description, setDescription] = useState(file?.description || "");
   const [visibleToClient, setVisibleToClient] = useState(Boolean(file?.visible_to_client));
   const [saving, setSaving] = useState(false);
   useEffect(() => {
+    setFileName(displayFileName(file) || "");
     setDescription(file?.description || "");
     setVisibleToClient(Boolean(file?.visible_to_client));
   }, [file]);
   const handleSubmit = async e => {
     e.preventDefault();
     if (!file?.id) return;
+    const trimmedName = String(fileName || "").trim();
+    if (!trimmedName) return toast.error(copy.toast.nameRequired || copy.toast.updateError);
     try {
       setSaving(true);
       const updated = await updateClientFile(file.id, {
+        fileName: trimmedName,
         description: description.trim(),
         visibleToClient
       });
@@ -1353,7 +1408,7 @@ function VaultEditDescriptionModal({
               <h2 className={formStyles.title} id="vault-edit-description-title">
                 {modal.title}
               </h2>
-              <p className={formStyles.subtitle}>{displayFileName(file)}</p>
+              <p className={formStyles.subtitle}>{modal.subtitle || displayFileName(file)}</p>
             </div>
           </div>
           <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving} aria-label={modal.closeAria}>
@@ -1363,6 +1418,21 @@ function VaultEditDescriptionModal({
 
         <form className={styles.modalForm} onSubmit={handleSubmit}>
           <div className={styles.modalFormBody}>
+            <div className={formStyles.field}>
+              <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-edit-name">
+                {modal.nameLabel || "Nom"}
+              </label>
+              <input
+                id="vault-edit-name"
+                className={formStyles.input}
+                type="text"
+                maxLength={255}
+                value={fileName}
+                onChange={e => setFileName(e.target.value)}
+                disabled={saving}
+              />
+            </div>
+
             <div className={formStyles.field}>
               <label className={formStyles.label} htmlFor="vault-edit-description">
                 {modal.descriptionLabel}

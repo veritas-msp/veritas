@@ -47,6 +47,8 @@ export default function EquipmentDetailAside({
   inMaintenance = false,
   showMaintenance = false,
   maintenanceBusy = false,
+  maintenanceReason = "",
+  maintenanceUntilLabel = "",
   onAlerts,
   showAlerts = false
 }) {
@@ -72,9 +74,26 @@ export default function EquipmentDetailAside({
   const enterpriseCode = getClientNumber(enterpriseClient);
   const enterpriseLabel = getClientNameWithoutCode(enterpriseClient) || enterpriseName || null;
   const rmmManaged = isRmmManagedEquipment(equipment);
+  const reason = String(maintenanceReason || "").trim();
 
   const detailRows = [
     { key: "name", label: aside.fieldName || "Nom", value: name },
+    inMaintenance
+      ? {
+          key: "maintenance",
+          label: aside.fieldMaintenance || hero.maintenanceBadge || "En maintenance",
+          value: maintenanceUntilLabel
+            ? `Jusqu’au ${maintenanceUntilLabel}`
+            : hero.maintenanceBadge || "En maintenance"
+        }
+      : null,
+    inMaintenance && reason
+      ? {
+          key: "maintenanceReason",
+          label: aside.fieldMaintenanceReason || hero.maintenanceReasonLabel || "Motif",
+          value: reason
+        }
+      : null,
     ip ? { key: "ip", label: aside.fieldIp || "IP", value: ip, mono: true } : null,
     siteLabel ? { key: "site", label: aside.fieldSite || "Site", value: siteLabel } : null,
     enterpriseLabel ? {

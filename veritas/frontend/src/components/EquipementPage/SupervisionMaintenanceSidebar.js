@@ -1,6 +1,8 @@
 import { Icon } from "@iconify/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { FaTimes } from "react-icons/fa";
 import { interpolate } from "../../i18n/translate";
+import { getFleetFamilyIcon } from "../../utils/equipmentFamilyStats";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import styles from "./SupervisionMaintenanceSidebar.module.css";
 
@@ -28,6 +30,35 @@ function formatUntil(value, localeTag, indefiniteLabel) {
   }
 }
 
+function maintenanceSortKey(row) {
+  if (row.excludedUntil) {
+    const until = new Date(row.excludedUntil).getTime();
+    if (Number.isFinite(until)) return until;
+  }
+  if (row.createdAt) {
+    const created = new Date(row.createdAt).getTime();
+    if (Number.isFinite(created)) return created;
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
+function matchesSearch(row, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  return [
+    row.name,
+    row.clientName,
+    row.reason,
+    row.serviceLabel,
+    row.equipmentFamily,
+    row.scope
+  ]
+    .filter(value => value != null && String(value).trim() !== "")
+    .join(" ")
+    .toLowerCase()
+    .includes(q);
+}
+
 export default function SupervisionMaintenanceSidebar({
   exclusions = [],
   localeTag,
@@ -35,6 +66,8 @@ export default function SupervisionMaintenanceSidebar({
   onOpenDevice,
   onEndExclusion
 }) {
+  const [search, setSearch] = useState("");
+
   const items = useMemo(() => {
     const rows = (Array.isArray(exclusions) ? exclusions : []).filter(isMaintenanceExclusion);
     const out = [];
@@ -46,23 +79,31 @@ export default function SupervisionMaintenanceSidebar({
         scope === "service"
           ? String(row.serviceName || row.service_name || row.serviceKey || row.service_key || "").trim()
           : "";
+      const equipmentFamily = row.equipmentFamily || row.equipment_family || null;
       out.push({
         id: row.id || `${equipmentId}:${scope}:${serviceLabel || "device"}`,
         equipmentId,
         clientId: row.clientId ?? row.client_id ?? null,
-        equipmentFamily: row.equipmentFamily || row.equipment_family || null,
+        clientName: String(row.clientName || row.client_name || "").trim(),
+        equipmentFamily,
+        familyIcon: getFleetFamilyIcon(equipmentFamily),
         name: row.equipmentName || row.equipment_name || equipmentId,
         scope,
         serviceLabel,
         reason: String(row.reason || "").trim(),
         excludedUntil: row.excludedUntil || row.excluded_until || null,
+        createdAt: row.createdAt || row.created_at || null,
         raw: row
       });
     }
     out.sort((a, b) => {
-      const aUntil = a.excludedUntil ? new Date(a.excludedUntil).getTime() : Number.POSITIVE_INFINITY;
-      const bUntil = b.excludedUntil ? new Date(b.excludedUntil).getTime() : Number.POSITIVE_INFINITY;
+      const aUntil = maintenanceSortKey(a);
+      const bUntil = maintenanceSortKey(b);
       if (aUntil !== bUntil) return aUntil - bUntil;
+      const byClient = String(a.clientName || "").localeCompare(String(b.clientName || ""), localeTag || undefined, {
+        sensitivity: "base"
+      });
+      if (byClient !== 0) return byClient;
       const byName = String(a.name).localeCompare(String(b.name), localeTag || undefined, { sensitivity: "base" });
       if (byName !== 0) return byName;
       return String(a.serviceLabel || "").localeCompare(String(b.serviceLabel || ""), localeTag || undefined, {
@@ -72,8 +113,15 @@ export default function SupervisionMaintenanceSidebar({
     return out;
   }, [exclusions, localeTag]);
 
+  const filteredItems = useMemo(
+    () => items.filter(row => matchesSearch(row, search)),
+    [items, search]
+  );
+
   const title = copy.title || "Périphériques en maintenance";
   const indefinite = copy.indefinite || "Indéterminée";
+  const searchPlaceholder = copy.searchPlaceholder || "Rechercher…";
+  const hasSearch = Boolean(String(search || "").trim());
 
   return (
     <aside className={styles.root} aria-label={title} data-guide="supervision-maintenance-sidebar">
@@ -85,6 +133,31 @@ export default function SupervisionMaintenanceSidebar({
         <span className={styles.count}>{items.length}</span>
       </header>
 
+      {items.length > 0 ? (
+        <div className={styles.searchBar}>
+          <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
+          <input
+            type="search"
+            className={styles.searchInput}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            autoComplete="off"
+          />
+          {hasSearch ? (
+            <button
+              type="button"
+              className={styles.searchClear}
+              onClick={() => setSearch("")}
+              aria-label={copy.clearSearch || "Effacer"}
+            >
+              <FaTimes />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {items.length === 0 ? (
         <div className={styles.emptyWrap}>
           <MspEmptyState
@@ -94,9 +167,18 @@ export default function SupervisionMaintenanceSidebar({
             text={copy.emptyText || "Aucun périphérique en maintenance pour le moment."}
           />
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div className={styles.emptyWrap}>
+          <MspEmptyState
+            className={styles.emptyState}
+            icon="mdi:magnify"
+            title={copy.searchEmptyTitle || "Aucun résultat"}
+            text={copy.searchEmptyText || "Aucun périphérique ne correspond à cette recherche."}
+          />
+        </div>
       ) : (
         <ul className={styles.list}>
-          {items.map(row => {
+          {filteredItems.map(row => {
             const untilLabel = formatUntil(row.excludedUntil, localeTag, indefinite);
             const untilText = row.excludedUntil
               ? interpolate(copy.until || "Jusqu’au {date}", { date: untilLabel })
@@ -108,6 +190,7 @@ export default function SupervisionMaintenanceSidebar({
                 id: row.equipmentId,
                 dbId: row.equipmentId,
                 clientId: row.clientId,
+                clientName: row.clientName || null,
                 name: row.name,
                 type: row.equipmentFamily || null
               });
@@ -118,21 +201,33 @@ export default function SupervisionMaintenanceSidebar({
                     service: row.serviceLabel || "—"
                   })
                 : copy.deviceScope || "Tous les services";
+            const nameRow = (
+              <span className={styles.itemNameRow}>
+                <span className={styles.familyIcon} aria-hidden>
+                  <Icon icon={row.familyIcon || "mdi:devices"} />
+                </span>
+                <span className={styles.itemName}>{row.name}</span>
+              </span>
+            );
+            const meta = (
+              <>
+                {row.clientName ? <span className={styles.itemCompany}>{row.clientName}</span> : null}
+                <span className={styles.itemScope}>{scopeText}</span>
+                <span className={styles.itemUntil}>{untilText}</span>
+                {row.reason ? <span className={styles.itemReason}>{row.reason}</span> : null}
+              </>
+            );
             return (
               <li key={row.id} className={styles.item}>
                 {canOpen ? (
                   <button type="button" className={styles.itemMain} onClick={open} title={copy.openDevice || "Ouvrir"}>
-                    <span className={styles.itemName}>{row.name}</span>
-                    <span className={styles.itemScope}>{scopeText}</span>
-                    <span className={styles.itemUntil}>{untilText}</span>
-                    {row.reason ? <span className={styles.itemReason}>{row.reason}</span> : null}
+                    {nameRow}
+                    {meta}
                   </button>
                 ) : (
                   <div className={styles.itemMainStatic}>
-                    <span className={styles.itemName}>{row.name}</span>
-                    <span className={styles.itemScope}>{scopeText}</span>
-                    <span className={styles.itemUntil}>{untilText}</span>
-                    {row.reason ? <span className={styles.itemReason}>{row.reason}</span> : null}
+                    {nameRow}
+                    {meta}
                   </div>
                 )}
                 {typeof onEndExclusion === "function" ? (

@@ -2,6 +2,11 @@ import { createLocaleGetter, interpolate } from "../../i18n/translate";
 const PAGE_COPY = {
   fr: {
     searchPlaceholder: "Rechercher un équipement, IP, SN…",
+    maintenance: {
+      badge: "En maintenance",
+      until: "Jusqu’au {date}",
+      indefinite: "Durée indéterminée"
+    },
     embedded: {
       typeBarAria: "Types de périphériques",
       typeTooltip: "{label} ({count})",
@@ -231,6 +236,11 @@ const PAGE_COPY = {
   },
   en: {
     searchPlaceholder: "Search equipment, IP, SN…",
+    maintenance: {
+      badge: "In maintenance",
+      until: "Until {date}",
+      indefinite: "Indefinite duration"
+    },
     embedded: {
       typeBarAria: "Peripheral types",
       typeTooltip: "{label} ({count})",

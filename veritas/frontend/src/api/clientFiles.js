@@ -117,6 +117,7 @@ export async function uploadClientFile({
   category,
   description,
   file,
+  fileName,
   visibleToClient = false,
   folderId = null
 }) {
@@ -126,6 +127,7 @@ export async function uploadClientFile({
   if (clientName) form.append("clientName", clientName);
   if (category) form.append("category", category);
   if (description) form.append("description", description);
+  if (fileName) form.append("fileName", String(fileName));
   if (visibleToClient) form.append("visibleToClient", "true");
   if (folderId) form.append("folderId", String(folderId));
   const res = await fetch(BASE, {
@@ -151,13 +153,15 @@ export async function updateClientFile(id, {
   description,
   visibleToClient,
   category,
-  folderId
+  folderId,
+  fileName
 } = {}) {
   const body = {};
   if (description !== undefined) body.description = description;
   if (visibleToClient !== undefined) body.visibleToClient = visibleToClient;
   if (category !== undefined) body.category = category;
   if (folderId !== undefined) body.folderId = folderId;
+  if (fileName !== undefined) body.fileName = fileName;
   if (!Object.keys(body).length) {
     throw new Error("No data to update.");
   }

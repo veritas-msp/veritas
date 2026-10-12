@@ -414,6 +414,24 @@
   text-align: center;
 }
 
+.colDescription {
+  min-width: 10rem;
+  max-width: 18rem;
+}
+
+.descriptionCell {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.descriptionEmpty {
+  color: var(--msp-muted, #5c6b82);
+}
+
 .colSize {
   width: 5.5rem;
   text-align: right;

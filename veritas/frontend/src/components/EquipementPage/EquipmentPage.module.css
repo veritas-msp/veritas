@@ -1772,6 +1772,14 @@
   gap: 0.5rem;
 }
 
+.maintenanceIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #c2410c;
+}
+
 .alertSuspendedIcon {
   flex-shrink: 0;
   color: #d97706;
