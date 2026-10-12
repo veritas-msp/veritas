@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.81",
+    date: "2026-10-12",
+    highlights: [
+      "Fiche entreprise : signal fort pour les clients inactifs (bandeau, header teinté, badge renforcé)."
+    ]
+  },
+  {
     version: "1.0.80",
     date: "2026-10-12",
     highlights: [

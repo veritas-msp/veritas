@@ -925,9 +925,110 @@
 }
 
 .enterpriseDetailPage .heroStatusBadgeInactive {
-  border-color: rgba(217, 119, 6, 0.4);
-  background: var(--msp-surface, #fff);
+  border-color: rgba(194, 65, 12, 0.55);
+  background: rgba(194, 65, 12, 0.14);
+  color: #9a3412;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.5rem;
+}
+
+/* Client inactif : signal fort dans le hero */
+.enterpriseDetailPage.heroInactive .heroCover,
+.enterpriseDetailPage .heroCoverInactive {
+  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%23c2410c' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  --hero-cover-cross-opacity: 0.2;
+  background: linear-gradient(
+    180deg,
+    rgba(194, 65, 12, 0.14) 0%,
+    rgba(194, 65, 12, 0.05) 55%,
+    transparent 100%
+  );
+}
+
+.enterpriseDetailPage.heroInactive .heroBrandIcon,
+.enterpriseDetailPage .heroBrandIconInactive {
+  background: #c2410c !important;
+  color: #fff;
+}
+
+.inactiveBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 1.25rem;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(194, 65, 12, 0.28);
+  border-bottom: 1px solid rgba(194, 65, 12, 0.28);
+  background: linear-gradient(90deg, rgba(194, 65, 12, 0.14), rgba(194, 65, 12, 0.06) 55%, rgba(194, 65, 12, 0.1));
+  color: #9a3412;
+}
+
+.inactiveBanner svg {
+  flex-shrink: 0;
+  font-size: 1.35rem;
   color: #c2410c;
+}
+
+.inactiveBannerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.inactiveBannerText strong {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+
+.inactiveBannerText span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #b45309;
+}
+
+:global(html.dark) .enterpriseDetailPage .heroStatusBadgeInactive {
+  border-color: rgba(251, 146, 60, 0.55);
+  background: rgba(251, 146, 60, 0.16);
+  color: #fdba74;
+}
+
+:global(html.dark) .enterpriseDetailPage.heroInactive .heroCover,
+:global(html.dark) .enterpriseDetailPage .heroCoverInactive {
+  background: linear-gradient(
+    180deg,
+    rgba(251, 146, 60, 0.16) 0%,
+    rgba(251, 146, 60, 0.05) 55%,
+    transparent 100%
+  );
+}
+
+:global(html.dark) .enterpriseDetailPage.heroInactive .heroBrandIcon,
+:global(html.dark) .enterpriseDetailPage .heroBrandIconInactive {
+  background: #ea580c !important;
+}
+
+:global(html.dark) .inactiveBanner {
+  border-color: rgba(251, 146, 60, 0.35);
+  background: linear-gradient(90deg, rgba(251, 146, 60, 0.16), rgba(251, 146, 60, 0.06) 55%, rgba(251, 146, 60, 0.12));
+  color: #fdba74;
+}
+
+:global(html.dark) .inactiveBanner svg {
+  color: #fb923c;
+}
+
+:global(html.dark) .inactiveBannerText span {
+  color: #fcd34d;
 }
 
 .enterpriseDetailPage .heroDescription {
@@ -5275,9 +5376,10 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .enterpriseDetailPage .heroStatusBadgeInactive {
-  background: var(--msp-surface-3, #1e2d4a);
-  border-color: rgba(251, 191, 36, 0.4);
-  color: #fbbf24;
+  background: rgba(251, 146, 60, 0.16);
+  border-color: rgba(251, 146, 60, 0.55);
+  color: #fdba74;
+  font-weight: 700;
 }
 
 :global(html.dark) .sidebarContractIconChip,

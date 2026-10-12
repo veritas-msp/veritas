@@ -15,6 +15,8 @@ const DETAIL_COPY = {
     heroMetaAria: "Informations et étiquettes client",
     companyStatusActive: "Actif",
     companyStatusInactive: "Inactif",
+    inactiveBannerTitle: "Client inactif",
+    inactiveBannerText: "Hors périmètre opérationnel — vérifiez avant toute intervention.",
     heroDescriptionFallback: "Société spécialisée dans le secteur de l'industrie et des services.",
     heroDescriptionSector: "Société spécialisée dans le secteur {sector}.",
     heroKpis: {
@@ -556,6 +558,8 @@ const DETAIL_COPY = {
     heroMetaAria: "Client information and tags",
     companyStatusActive: "Active",
     companyStatusInactive: "Inactive",
+    inactiveBannerTitle: "Inactive client",
+    inactiveBannerText: "Out of operational scope — check before any intervention.",
     heroDescriptionFallback: "Company specialized in industry and services.",
     heroDescriptionSector: "Company specialized in the {sector} sector.",
     heroKpis: {
@@ -1099,6 +1103,8 @@ const DETAIL_COPY = {
     heroMetaAria: "Kundeninformationen und Tags",
     companyStatusActive: "Aktiv",
     companyStatusInactive: "Inaktiv",
+    inactiveBannerTitle: "Inaktiver Kunde",
+    inactiveBannerText: "Außerhalb des Betriebsbereichs — vor jedem Eingriff prüfen.",
     heroDescriptionFallback: "Unternehmen spezialisiert auf Industrie und Dienstleistungen.",
     heroDescriptionSector: "Unternehmen spezialisiert auf den Bereich {sector}.",
     heroKpis: {
@@ -1636,6 +1642,8 @@ const DETAIL_COPY = {
     heroMetaAria: "Informazioni ed etichette cliente",
     companyStatusActive: "Attiva",
     companyStatusInactive: "Inattiva",
+    inactiveBannerTitle: "Cliente inattivo",
+    inactiveBannerText: "Fuori perimetro operativo — verificare prima di qualsiasi intervento.",
     heroDescriptionFallback: "Società specializzata nel settore dell'industria e dei servizi.",
     heroDescriptionSector: "Società specializzata nel settore {sector}.",
     heroKpis: {
@@ -2173,6 +2181,8 @@ const DETAIL_COPY = {
     heroMetaAria: "Información y etiquetas del cliente",
     companyStatusActive: "Activa",
     companyStatusInactive: "Inactiva",
+    inactiveBannerTitle: "Cliente inactivo",
+    inactiveBannerText: "Fuera del perímetro operativo — compruebe antes de cualquier intervención.",
     heroDescriptionFallback: "Empresa especializada en el sector de la industria y los servicios.",
     heroDescriptionSector: "Empresa especializada en el sector {sector}.",
     heroKpis: {

@@ -3451,7 +3451,8 @@ export default function ClientDetailPage({
       </div>;
   }
   const companyStatusKey = normalizeCompanyStatusKey(formData.statut);
-  const companyStatusLabel = companyStatusKey === "inactive" ? copy.companyStatusInactive : copy.companyStatusActive;
+  const isCompanyInactive = companyStatusKey === "inactive";
+  const companyStatusLabel = isCompanyInactive ? copy.companyStatusInactive : copy.companyStatusActive;
   const clientCode = getClientNumber(client);
   const clientNameWithoutCode = getClientNameWithoutCode(client) || "-";
   const companyIcon = resolveEnterpriseIcon(formData.icon || client?.icon);
@@ -3535,22 +3536,26 @@ export default function ClientDetailPage({
       value: heroCreditsValue
     }
   ];
-  return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} msp-page-grid`}>
+  return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${isCompanyInactive ? styles.heroInactive : ""} msp-page-grid`.trim()}>
       <header className={styles.pageHero} ref={headerRef} data-guide="enterprise-hero">
         <div className={styles.heroTop}>
           <div className={styles.heroIdentityBlock}>
-            <div className={styles.heroCover} aria-hidden />
+            <div className={`${styles.heroCover} ${isCompanyInactive ? styles.heroCoverInactive : ""}`.trim()} aria-hidden />
             <div className={styles.heroIdentityRow}>
               <div className={styles.heroMain}>
-                <span className={styles.heroBrandIcon} style={{ background: companyIconColor || undefined }} aria-hidden>
-                  <Icon icon={companyIcon} width={30} height={30} />
+                <span
+                  className={`${styles.heroBrandIcon} ${isCompanyInactive ? styles.heroBrandIconInactive : ""}`.trim()}
+                  style={isCompanyInactive ? undefined : { background: companyIconColor || undefined }}
+                  aria-hidden
+                >
+                  <Icon icon={isCompanyInactive ? "mdi:account-off-outline" : companyIcon} width={30} height={30} />
                 </span>
                 <div className={styles.heroText}>
                   <h1 className={styles.heroTitle}>
                     {clientCode ? <span className={styles.heroTitleCode}>{clientCode}</span> : null}
                     <span className={styles.heroTitleName}>{clientNameWithoutCode}</span>
-                    <span className={`${styles.heroStatusBadge} ${companyStatusKey === "active" ? "" : styles.heroStatusBadgeInactive}`.trim()}>
-                      <StatusDot active={companyStatusKey === "active"} label="" className={styles.heroTitleStatus} />
+                    <span className={`${styles.heroStatusBadge} ${isCompanyInactive ? styles.heroStatusBadgeInactive : ""}`.trim()}>
+                      <StatusDot active={!isCompanyInactive} label="" className={styles.heroTitleStatus} />
                       {companyStatusLabel}
                     </span>
                   </h1>
@@ -3680,6 +3685,15 @@ export default function ClientDetailPage({
                 </div>
               </div>
             </div>
+            {isCompanyInactive ? (
+              <div className={styles.inactiveBanner} role="status">
+                <Icon icon="mdi:account-off-outline" aria-hidden />
+                <div className={styles.inactiveBannerText}>
+                  <strong>{copy.inactiveBannerTitle || copy.companyStatusInactive || "Client inactif"}</strong>
+                  <span>{copy.inactiveBannerText || "Ce client est hors périmètre opérationnel."}</span>
+                </div>
+              </div>
+            ) : null}
             {heroFacts.length ? (
               <div className={styles.heroFactStrip} aria-label={heroFactCopy.aria || copy.sidebarInfo}>
                 {heroFacts.map(fact => (
