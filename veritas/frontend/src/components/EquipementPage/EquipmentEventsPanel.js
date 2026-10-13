@@ -33,11 +33,8 @@ export default function EquipmentEventsPanel({
   customEnd,
   onCustomStartChange,
   onCustomEndChange,
-  onCreateEvent,
   onOpenPlanningEvent,
   onOpenTicket,
-  isCommunity,
-  proBadge,
   hideDateFilter = false
 }) {
   const localeCode = getLocaleDateTimeFormat(locale);
@@ -63,13 +60,6 @@ export default function EquipmentEventsPanel({
         <div className={enterpriseDetailStyles.panelHeaderMain}>
           <h2 className={enterpriseDetailStyles.panelTitle}>{copy.events.title}</h2>
         </div>
-        <button type="button" className={styles.panelSectionAction} onClick={onCreateEvent}>
-          <Icon icon="mdi:calendar-plus-outline" aria-hidden />
-          <span className={styles.heroMenuItemLabel}>
-            {copy.hero.createEvent}
-            {isCommunity ? proBadge : null}
-          </span>
-        </button>
       </header>
 
       <div className={enterpriseDetailStyles.panelBody}>

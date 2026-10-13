@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.90",
+    date: "2026-10-13",
+    highlights: [
+      "Fiche périphérique : onglets réordonnés (Dashboard, Supervision, Activité, Documents, Logs).",
+      "Supervision : sous-onglets Main / Historique ; Historique retiré de la barre principale.",
+      "Vue d’ensemble : Synthèse et Informations matériel en pleine hauteur ; libellés clarifiés.",
+      "Actions rapides : prise en main à distance et QuickConnect en tête ; bouton événement retiré de la carte événements liés."
+    ]
+  },
+  {
     version: "1.0.89",
     date: "2026-10-13",
     highlights: [

@@ -582,6 +582,7 @@
 .mainContent > :global([class*="panel"]),
 .mainContent > .dashboardSplit,
 .mainContent > .activityStack,
+.mainContent > .supervisionStack,
 .mainContent > .historyTabLayout,
 .mainContent > .ficheOnlyStack {
   flex: 1 1 0;
@@ -611,8 +612,7 @@
 }
 
 .mainContent > .dashboardSplit {
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .mainContent > .activityStack {
@@ -650,6 +650,14 @@
   gap: 0.65rem;
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dashboardMain > :global([class*="root"]),
+.dashboardMain > .ficheOnlyStack {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .dashboardAside {
@@ -665,7 +673,8 @@
   overflow: auto;
 }
 
-.activityStack {
+.activityStack,
+.supervisionStack {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -677,8 +686,16 @@
   overflow: hidden;
 }
 
-.activityStack > .activitySwitch {
+.activityStack > .activitySwitch,
+.supervisionStack > .activitySwitch {
   flex: 0 0 auto;
+}
+
+.supervisionStack > :global([class*="panel"]),
+.supervisionStack > .historyTabLayout,
+.supervisionStack > .emptyState {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .ficheOnlyStack {

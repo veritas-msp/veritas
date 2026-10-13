@@ -5,6 +5,8 @@
   min-width: 0;
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .paneSwitch {
@@ -63,6 +65,7 @@
   min-width: 0;
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -70,6 +73,7 @@
 .fichePane > :global([class*="panel"]) {
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
 }
 
 .supervisionGrid {
@@ -89,6 +93,26 @@
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+}
+
+.columnFill {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.paneGridFill {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  align-content: stretch;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.paneGridFill > .card {
+  min-height: 0;
+  height: 100%;
 }
 
 .columnHead {
@@ -128,6 +152,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
   border: 1px solid var(--msp-border-light, #e2e8f0);
   border-radius: 16px;
   background: var(--msp-surface, #fff);
@@ -188,12 +213,15 @@
 }
 
 .cardBody {
-  flex: 1;
+  flex: 1 1 0;
   padding: 0.85rem 1.1rem 1.1rem;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .chartWrap {
@@ -399,6 +427,29 @@
   overflow: auto;
   min-width: 0;
   max-height: 220px;
+}
+
+.paneGridFill .tableWrap {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+}
+
+.paneGridFill .donutLayout {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.paneGridFill .donutWrap {
+  min-height: 0;
+  height: 100%;
+}
+
+.paneGridFill .chartWrap,
+.paneGridFill .chartWrapSm {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .table {

@@ -9,7 +9,7 @@ const FR = {
   notFound: "Équipement non trouvé",
   tabs: {
     aria: "Sections de la fiche",
-    general: "Vue d'ensemble",
+    general: "Dashboard",
     system: "Cybersécurité",
     cybersecurity: "Cybersécurité",
     peripherals: "Software & peripherals",
@@ -23,6 +23,11 @@ const FR = {
     documents: "Documents",
     notes: "Notes",
     logs: "Logs"
+  },
+  supervisionPane: {
+    aria: "Sections supervision",
+    main: "Main",
+    history: "Historique"
   },
   historyTab: {
     subtitle: "Alertes récentes et périodes de maintenance de ce périphérique."
@@ -81,12 +86,12 @@ const FR = {
     servicesOk: "Services OK"
   },
   overview: {
-    paneAria: "Vue d'ensemble fiche, RMM ou supervision",
-    tabFiche: "Fiche",
+    paneAria: "Vue d'ensemble informations matériel, RMM ou synthèse",
+    tabFiche: "Informations matériel",
     tabRmm: "RMM",
-    tabSupervision: "Supervision",
+    tabSupervision: "Synthèse",
     rmmSectionTitle: "Agent RMM",
-    checkmkSectionTitle: "Supervision CheckMK",
+    checkmkSectionTitle: "Synthèse CheckMK",
     availabilityTitle: "Disponibilité",
     availabilityHint: "Sur la période sélectionnée",
     availabilityEmpty: "Aucune donnée de disponibilité",
@@ -884,7 +889,7 @@ const EN = {
   notFound: "Equipment not found",
   tabs: {
     aria: "Record sections",
-    general: "Overview",
+    general: "Dashboard",
     system: "Cybersecurity",
     cybersecurity: "Cybersecurity",
     peripherals: "Software & peripherals",
@@ -898,6 +903,11 @@ const EN = {
     documents: "Documents",
     notes: "Notes",
     logs: "Logs"
+  },
+  supervisionPane: {
+    aria: "Supervision sections",
+    main: "Main",
+    history: "History"
   },
   historyTab: {
     subtitle: "Recent alerts and maintenance periods for this device."
@@ -956,12 +966,12 @@ const EN = {
     servicesOk: "OK services"
   },
   overview: {
-    paneAria: "Overview sheet, RMM or supervision",
-    tabFiche: "Sheet",
+    paneAria: "Overview hardware info, RMM or summary",
+    tabFiche: "Hardware info",
     tabRmm: "RMM",
-    tabSupervision: "Supervision",
+    tabSupervision: "Summary",
     rmmSectionTitle: "RMM agent",
-    checkmkSectionTitle: "CheckMK supervision",
+    checkmkSectionTitle: "CheckMK summary",
     availabilityTitle: "Availability",
     availabilityHint: "For the selected period",
     availabilityEmpty: "No availability data",
@@ -1771,7 +1781,7 @@ const DE = {
   tabs: {
     ...EN.tabs,
     aria: "Datensatzabschnitte",
-    general: "Allgemein",
+    general: "Dashboard",
     system: "Cybersicherheit",
     cybersecurity: "Cybersicherheit",
     peripherals: "Software & peripherals",
@@ -1785,6 +1795,10 @@ const DE = {
     documents: "Dokumente",
     notes: "Notizen",
     logs: "Logs"
+  },
+  supervisionPane: {
+    ...EN.supervisionPane,
+    history: "Historie"
   },
   notes: {
     ...EN.notes,
@@ -2148,7 +2162,7 @@ const IT = {
   tabs: {
     ...EN.tabs,
     aria: "Sezioni scheda",
-    general: "Generale",
+    general: "Dashboard",
     system: "Cybersecurity",
     cybersecurity: "Cybersecurity",
     peripherals: "Software & peripherals",
@@ -2162,6 +2176,10 @@ const IT = {
     documents: "Documenti",
     notes: "Note",
     logs: "Log"
+  },
+  supervisionPane: {
+    ...EN.supervisionPane,
+    history: "Cronologia"
   },
   notes: {
     ...EN.notes,
@@ -2524,7 +2542,7 @@ const ES = {
   tabs: {
     ...EN.tabs,
     aria: "Secciones de la ficha",
-    general: "General",
+    general: "Dashboard",
     system: "Ciberseguridad",
     cybersecurity: "Ciberseguridad",
     peripherals: "Software & peripherals",
@@ -2538,6 +2556,10 @@ const ES = {
     documents: "Documentos",
     notes: "Notas",
     logs: "Logs"
+  },
+  supervisionPane: {
+    ...EN.supervisionPane,
+    history: "Historial"
   },
   notes: {
     ...EN.notes,

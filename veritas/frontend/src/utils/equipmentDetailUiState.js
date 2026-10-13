@@ -14,6 +14,7 @@ const DETAIL_TABS = new Set([
 ]);
 const ACTIVITY_PANES = new Set(["metrics", "veritas"]);
 const OVERVIEW_PANES = new Set(["fiche", "rmm", "supervision"]);
+const SUPERVISION_PANES = new Set(["main", "history"]);
 
 function storageKey(equipmentId) {
   return `${KEY_PREFIX}${equipmentId}`;
@@ -22,7 +23,7 @@ function storageKey(equipmentId) {
 export function normalizeEquipmentDetailTab(tab) {
   if (tab === "events" || tab === "stats" || tab === "metrics") return "activity";
   if (tab === "notes") return "dashboard";
-  if (tab === "maintenance") return "history";
+  if (tab === "history" || tab === "maintenance") return "supervision";
   return DETAIL_TABS.has(tab) ? tab : "dashboard";
 }
 
@@ -33,10 +34,17 @@ export function normalizeEquipmentActivityPane(pane, { allowMetrics = true } = {
   return allowMetrics ? "metrics" : "veritas";
 }
 
+export function normalizeEquipmentSupervisionPane(pane) {
+  if (pane === "history") return "history";
+  if (pane === "main") return "main";
+  return SUPERVISION_PANES.has(pane) ? pane : "main";
+}
+
 export function normalizeEquipmentOverviewPane(pane, { allowRmm = true, allowSupervision = true } = {}) {
+  if (pane === "supervision" && allowSupervision) return "supervision";
   if (pane === "fiche") return "fiche";
   if (pane === "rmm" && allowRmm) return "rmm";
-  if (pane === "supervision" && allowSupervision) return "supervision";
+  if (allowSupervision) return "supervision";
   return "fiche";
 }
 
@@ -69,6 +77,9 @@ export function writeEquipmentDetailUi(equipmentId, patch = {}) {
     }
     if (Object.prototype.hasOwnProperty.call(patch, "overviewPane")) {
       next.overviewPane = normalizeEquipmentOverviewPane(patch.overviewPane);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "supervisionPane")) {
+      next.supervisionPane = normalizeEquipmentSupervisionPane(patch.supervisionPane);
     }
     sessionStorage.setItem(storageKey(equipmentId), JSON.stringify(next));
   } catch {

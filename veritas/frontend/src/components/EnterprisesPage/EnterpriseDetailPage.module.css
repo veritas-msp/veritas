@@ -2835,6 +2835,7 @@
 .mainColumnEquipmentFill :global([class*="mainContent"]) > .panel,
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="dashboardSplit"]),
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="activityStack"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="supervisionStack"]),
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="historyTabLayout"]),
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="ficheOnlyStack"]) {
   flex: 1 1 0;
@@ -2873,8 +2874,7 @@
 
 .mainColumnEquipmentFill :global([class*="dashboardSplit"]) {
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
 }
 
 .mainColumnEquipmentFill :global([class*="activityStack"]) {

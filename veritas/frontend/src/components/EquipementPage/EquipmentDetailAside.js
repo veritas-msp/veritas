@@ -209,6 +209,14 @@ export default function EquipmentDetailAside({
           onClick: onRemoteAccess
         }
       : null,
+    showQuickConnect && onQuickConnect
+      ? {
+          key: "qc",
+          icon: "mdi:link-variant",
+          label: aside.actionQuickConnect || "Ouvrir QuickConnect",
+          onClick: onQuickConnect
+        }
+      : null,
     onSubscribe
       ? {
           key: "subscribe",
@@ -232,14 +240,6 @@ export default function EquipmentDetailAside({
   ].filter(Boolean);
 
   const secondaryActions = [
-    showQuickConnect && onQuickConnect
-      ? {
-          key: "qc",
-          icon: "mdi:link-variant",
-          label: aside.actionQuickConnect || "Ouvrir QuickConnect",
-          onClick: onQuickConnect
-        }
-      : null,
     showMaintenance && onMaintenance
       ? {
           key: "maintenance",

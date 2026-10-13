@@ -103,6 +103,7 @@ import {
 import {
   normalizeEquipmentActivityPane,
   normalizeEquipmentDetailTab,
+  normalizeEquipmentSupervisionPane,
   readEquipmentDetailUi,
   writeEquipmentDetailUi
 } from "../../utils/equipmentDetailUiState";
@@ -245,6 +246,13 @@ export default function EquipmentDetailPage({
         ? "metrics"
         : initialEquipmentUi?.activityPane,
       { allowMetrics: true }
+    )
+  );
+  const [supervisionPane, setSupervisionPane] = useState(() =>
+    normalizeEquipmentSupervisionPane(
+      initialEquipmentUi?.rightPanelTab === "history" || initialEquipmentUi?.rightPanelTab === "maintenance"
+        ? "history"
+        : initialEquipmentUi?.supervisionPane
     )
   );
   const logsControllerRef = useRef(null);
@@ -755,8 +763,16 @@ export default function EquipmentDetailPage({
     if (prev != null && String(prev) !== String(equipmentDbId)) {
       skipEquipmentUiPersistRef.current = true;
       const saved = readEquipmentDetailUi(equipmentDbId);
-      setRightPanelTab(normalizeEquipmentDetailTab(saved?.rightPanelTab));
+      const savedTab = saved?.rightPanelTab;
+      setRightPanelTab(normalizeEquipmentDetailTab(savedTab));
       setActivityPane(normalizeEquipmentActivityPane(saved?.activityPane));
+      setSupervisionPane(
+        normalizeEquipmentSupervisionPane(
+          savedTab === "history" || savedTab === "maintenance"
+            ? "history"
+            : saved?.supervisionPane
+        )
+      );
       setActivityDatePreset(saved?.activityDatePreset || "30d");
       setLogsCategory(saved?.logsCategory || "all");
       const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
@@ -788,10 +804,11 @@ export default function EquipmentDetailPage({
     writeEquipmentDetailUi(equipmentDbId, {
       rightPanelTab,
       activityPane,
+      supervisionPane,
       activityDatePreset,
       logsCategory
     });
-  }, [equipmentDbId, rightPanelTab, activityPane, activityDatePreset, logsCategory]);
+  }, [equipmentDbId, rightPanelTab, activityPane, supervisionPane, activityDatePreset, logsCategory]);
   useEffect(() => {
     const el = mainContentRef.current;
     if (!el || !equipmentDbId) return undefined;
@@ -1155,11 +1172,6 @@ export default function EquipmentDetailPage({
       setRightPanelTab("dashboard");
     }
   }, [rightPanelTab, showRmmOperationsTab]);
-  useEffect(() => {
-    if (rightPanelTab === "supervision" && !showSupervisionTab) {
-      setRightPanelTab("dashboard");
-    }
-  }, [rightPanelTab, showSupervisionTab]);
   useEffect(() => {
     if (rightPanelTab === "dashboard" || rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "supervision") return;
     checkmkControllerRef.current?.abort();
@@ -1642,10 +1654,10 @@ export default function EquipmentDetailPage({
     }
   };
   useEffect(() => {
-    if (rightPanelTab !== "supervision" || !showSupervisionTab) return;
+    if (rightPanelTab !== "supervision" || supervisionPane !== "main" || !showSupervisionTab) return;
     if (checkmkData || loadingCheckMK) return;
     loadCheckMKData();
-  }, [rightPanelTab, showSupervisionTab, checkmkData, loadingCheckMK]);
+  }, [rightPanelTab, supervisionPane, showSupervisionTab, checkmkData, loadingCheckMK]);
   const loadCheckMKAvailabilityOnly = async periodKey => {
     const mapping = checkmkMapping || equipment?.checkmkMapping;
     if (!mapping?.checkmk_host_name || !checkmkData) return;
@@ -2109,25 +2121,13 @@ export default function EquipmentDetailPage({
             <Icon icon="mdi:view-dashboard-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.general}</span>
           </button>
-          {showRmmOperationsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "operations"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "operations" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("operations")}>
-              <Icon icon="mdi:shield-lock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.cybersecurity || copy.tabs.system}</span>
-            </button> : null}
-          {showRmmPeripheralsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "peripherals"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "peripherals" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("peripherals")}>
-              <Icon icon="mdi:package-variant-closed" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.inventory || copy.tabs.peripherals}</span>
-            </button> : null}
-          {showSupervisionTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
-              <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.supervision}</span>
-            </button> : null}
+          <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
+            <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.supervision}</span>
+          </button>
           <button type="button" role="tab" aria-selected={rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => openActivityTab()}>
             <Icon icon="mdi:chart-timeline-variant" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.activity}</span>
-          </button>
-          <button type="button" role="tab" aria-selected={rightPanelTab === "history"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "history" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("history")}>
-            <Icon icon="mdi:clipboard-text-clock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.history || "Historique"}</span>
           </button>
           <button type="button" role="tab" aria-selected={rightPanelTab === "documents"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "documents" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("documents")}>
             <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
@@ -2137,6 +2137,14 @@ export default function EquipmentDetailPage({
             <Icon icon="mdi:history" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.logs}</span>
           </button>
+          {showRmmOperationsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "operations"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "operations" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("operations")}>
+              <Icon icon="mdi:shield-lock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.cybersecurity || copy.tabs.system}</span>
+            </button> : null}
+          {showRmmPeripheralsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "peripherals"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "peripherals" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("peripherals")}>
+              <Icon icon="mdi:package-variant-closed" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.inventory || copy.tabs.peripherals}</span>
+            </button> : null}
         </nav>
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
@@ -2154,12 +2162,12 @@ export default function EquipmentDetailPage({
                       showRmmTab={rmmManaged}
                       showSupervisionTab={Boolean(checkmkMapping?.checkmk_host_name)}
                       sheetContent={
-                        <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                        <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} />
                       }
                     />
                   ) : (
                     <div className={styles.ficheOnlyStack}>
-                      <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                      <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} />
                       {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
                     </div>
                   )}
@@ -2184,26 +2192,61 @@ export default function EquipmentDetailPage({
               </div>
             </>}
 
-          {rightPanelTab === "supervision" && showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>
-              <header className={enterpriseDetailStyles.panelHeader}>
-                <div>
-                  <h2 className={enterpriseDetailStyles.panelTitle}>
-                    <Icon icon="mdi:radar" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-                    {copy.tabs.supervision}
-                  </h2>
-                  <p className={styles.panelSubtitleInline}>
-                    {checkmkMapping?.checkmk_host_name || "CheckMK"}
-                    {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
-                  </p>
-                </div>
-              </header>
-              <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
-                <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} layout="tab" onAvailabilityPeriodChange={period => {
-              setCheckmkAvailabilityPeriod(period);
-              loadCheckMKAvailabilityOnly(period);
-            }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
+          {rightPanelTab === "supervision" ? <div className={styles.supervisionStack}>
+              <div className={styles.activitySwitch} role="tablist" aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}>
+                <button type="button" role="tab" aria-selected={supervisionPane === "main"} className={`${styles.activitySwitchBtn} ${supervisionPane === "main" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setSupervisionPane("main")}>
+                  <Icon icon="mdi:radar" aria-hidden />
+                  {copy.supervisionPane?.main || "Main"}
+                </button>
+                <button type="button" role="tab" aria-selected={supervisionPane === "history"} className={`${styles.activitySwitchBtn} ${supervisionPane === "history" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setSupervisionPane("history")}>
+                  <Icon icon="mdi:clipboard-text-clock-outline" aria-hidden />
+                  {copy.supervisionPane?.history || copy.tabs.history || "Historique"}
+                </button>
               </div>
-            </section> : null}
+
+              {supervisionPane === "main" ? showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>
+                  <header className={enterpriseDetailStyles.panelHeader}>
+                    <div>
+                      <h2 className={enterpriseDetailStyles.panelTitle}>
+                        <Icon icon="mdi:radar" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
+                        {copy.supervisionPane?.main || "Main"}
+                      </h2>
+                      <p className={styles.panelSubtitleInline}>
+                        {checkmkMapping?.checkmk_host_name || "CheckMK"}
+                        {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
+                      </p>
+                    </div>
+                  </header>
+                  <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
+                    <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} layout="tab" onAvailabilityPeriodChange={period => {
+                setCheckmkAvailabilityPeriod(period);
+                loadCheckMKAvailabilityOnly(period);
+              }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
+                  </div>
+                </section> : <div className={styles.emptyState}>
+                  <Icon icon="mdi:radar" className={styles.emptyIcon} />
+                  <h5>{copy.tabs.supervision}</h5>
+                  <p className={styles.emptyHint}>{copy.overview?.availabilityNoCheckmk || "Mappez CheckMK pour afficher la supervision"}</p>
+                </div> : (
+                <div className={styles.historyTabLayout}>
+                  <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+                  {equipmentDbId ? (
+                    <EquipmentMaintenanceHistoryPanel
+                      copy={copy}
+                      locale={locale}
+                      equipmentId={equipmentDbId}
+                      clientId={equipmentClientId}
+                      refreshKey={maintenanceHistoryKey}
+                    />
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} />
+                      <h5>{copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}</h5>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div> : null}
 
           {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>
               {showRmmMetricsTab ? <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
@@ -2225,31 +2268,11 @@ export default function EquipmentDetailPage({
                   </p>
                 </div> : (
                   <div className={styles.activityVeritasLayout}>
-                    <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onCreateEvent={openCreateEventModal} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} isCommunity={isCommunity} proBadge={<ProFeatureBadge variant="inline" className={styles.proBadgeInline} />} hideDateFilter />
+                    <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} hideDateFilter />
                     <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
                   </div>
                 )}
             </div>}
-
-          {rightPanelTab === "history" ? (
-            <div className={styles.historyTabLayout}>
-              <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
-              {equipmentDbId ? (
-                <EquipmentMaintenanceHistoryPanel
-                  copy={copy}
-                  locale={locale}
-                  equipmentId={equipmentDbId}
-                  clientId={equipmentClientId}
-                  refreshKey={maintenanceHistoryKey}
-                />
-              ) : (
-                <div className={styles.emptyState}>
-                  <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} />
-                  <h5>{copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}</h5>
-                </div>
-              )}
-            </div>
-          ) : null}
 
           {rightPanelTab === 'documents' && <section className={enterpriseDetailStyles.panel}>
               <header className={enterpriseDetailStyles.panelHeader}>
@@ -2411,7 +2434,10 @@ export default function EquipmentDetailPage({
             const url = buildQuickConnectUrl(formData.quickConnect);
             if (url) window.open(url, "_blank", "noopener,noreferrer");
           }}
-          onOpenSupervision={showSupervisionTab ? () => setRightPanelTab("supervision") : null}
+          onOpenSupervision={() => {
+            setSupervisionPane("main");
+            setRightPanelTab("supervision");
+          }}
           onRefreshCheckmk={checkmkMapping?.checkmk_host_name ? () => loadCheckMKData({ force: true }) : null}
           onOpenCheckmkMapping={showCheckmkHeroMenu ? () => setCheckmkMappingModal(true) : null}
           onRmmSync={showRmmHeroMenu ? (rmmSyncPending ? handleRmmCancelSync : handleRmmFullSync) : null}

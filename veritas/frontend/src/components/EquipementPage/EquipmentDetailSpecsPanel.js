@@ -10,8 +10,6 @@ import StorageDiskBayDisplay from "./StorageDiskBayDisplay";
 import { getEquipmentFormOptionsCopy } from "./equipmentFormOptionsI18n";
 import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
 import InternetDebitCounters from "./InternetDebitCounters";
-import EquipmentRemoteAccessLaunchButton from "./EquipmentRemoteAccessLaunchButton";
-import { shouldShowRemoteAccessFieldAction } from "./equipmentDetailRemoteAccess";
 import RmmHardwareOverview from "./RmmHardwareOverview";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentDetailCopy } from "./equipmentDetailPageI18n";
@@ -74,12 +72,10 @@ function SourceBadge({
 }
 function SpecField({
   field,
-  remoteAccessAction,
   equipmentLink,
   layout = "grid",
   copy
 }) {
-  const showRemoteAction = shouldShowRemoteAccessFieldAction(field.key, remoteAccessAction);
   const renderValue = () => {
     if (equipmentLink) {
       if (field.key === "firewallHAName" || field.key === "serverHAName" || field.key === "storageHAName") {
@@ -110,7 +106,6 @@ function SpecField({
         <div className={styles.fieldValueWrap}>
           {renderValue()}
           {field.source && field.source !== "manual" && field.source !== "rmm" ? <SourceBadge source={field.source} copy={copy} /> : null}
-          {showRemoteAction ? <EquipmentRemoteAccessLaunchButton variant="inline" label={remoteAccessAction.label} icon={remoteAccessAction.icon} title={remoteAccessAction.tooltip} onClick={remoteAccessAction.launch} /> : null}
         </div>
       </div>;
   }
@@ -119,7 +114,6 @@ function SpecField({
       <div className={styles.fieldValueWrap}>
         {renderValue()}
         {field.source && field.source !== "manual" && field.source !== "rmm" ? <SourceBadge source={field.source} copy={copy} /> : null}
-        {showRemoteAction ? <EquipmentRemoteAccessLaunchButton variant="inline" label={remoteAccessAction.label} icon={remoteAccessAction.icon} title={remoteAccessAction.tooltip} onClick={remoteAccessAction.launch} /> : null}
       </div>
     </div>;
 }
@@ -149,7 +143,6 @@ export default function EquipmentDetailSpecsPanel({
   peerServers = [],
   peerStorage = [],
   onOpenEquipment,
-  remoteAccessAction = null,
   compact = false,
   bare = false,
   hideResources = false,
@@ -458,7 +451,7 @@ export default function EquipmentDetailSpecsPanel({
                       </div>
                     </header>
                     <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
-                      {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
+                      {visibleFields.map(field => <SpecField key={field.key} field={field} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
                     </div>
                   </article>;
           })}
@@ -498,15 +491,12 @@ export default function EquipmentDetailSpecsPanel({
         if (!visibleFields.length && !showLocationMap && !hasDebitGauges && !(section.id === "storage" && showStorageDiskBays)) {
           return null;
         }
-        const isRemoteSection = section.id === "remote" && remoteAccessAction;
-        const showSectionRemoteAction = Boolean(isRemoteSection) && !visibleFields.some(field => shouldShowRemoteAccessFieldAction(field.key, remoteAccessAction));
         return <article key={section.id} className={styles.sectionCard}>
               <header className={styles.sectionHeader}>
                 <Icon icon={section.icon || "mdi:information-outline"} className={styles.sectionIcon} aria-hidden />
                 <div className={styles.sectionHeadText}>
                   <h3 className={styles.sectionTitle}>{section.label}</h3>
                 </div>
-                {showSectionRemoteAction ? <EquipmentRemoteAccessLaunchButton variant="inline" className={styles.sectionHeaderAction} label={remoteAccessAction.label} icon={remoteAccessAction.icon} title={remoteAccessAction.tooltip} onClick={remoteAccessAction.launch} /> : null}
               </header>
 
               {showLocationMap ? <SiteLocationVignette site={resolvedSite || {
@@ -516,7 +506,7 @@ export default function EquipmentDetailSpecsPanel({
               {hasDebitGauges ? <InternetDebitCounters download={formData?.debitDownload} upload={formData?.debitUpload} combined={formData?.debit} /> : null}
 
               {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
-                  {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
+                  {visibleFields.map(field => <SpecField key={field.key} field={field} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
                 </div> : null}
 
               {section.id === "storage" && showStorageDiskBays ? <div className={styles.storageDiskDisplay}>

@@ -411,6 +411,18 @@ export default function EquipmentOverviewDashboard({
     <div className={styles.root} data-guide="equipment-overview-dashboard">
       {showPaneSwitch ? (
         <div className={styles.paneSwitch} role="tablist" aria-label={ov.paneAria || "Vue d'ensemble"}>
+          {allowSupervision ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showSupervisionPane}
+              className={`${styles.paneSwitchBtn} ${showSupervisionPane ? styles.paneSwitchBtnActive : ""}`.trim()}
+              onClick={() => setOverviewPane("supervision")}
+            >
+              <Icon icon="mdi:radar" aria-hidden />
+              {ov.tabSupervision || "Synthèse"}
+            </button>
+          ) : null}
           {showFicheTab ? (
             <button
               type="button"
@@ -420,7 +432,7 @@ export default function EquipmentOverviewDashboard({
               onClick={() => setOverviewPane("fiche")}
             >
               <Icon icon="mdi:clipboard-text-outline" aria-hidden />
-              {ov.tabFiche || "Fiche"}
+              {ov.tabFiche || "Informations matériel"}
             </button>
           ) : null}
           {allowRmm ? (
@@ -435,23 +447,11 @@ export default function EquipmentOverviewDashboard({
               {ov.tabRmm || "RMM"}
             </button>
           ) : null}
-          {allowSupervision ? (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={showSupervisionPane}
-              className={`${styles.paneSwitchBtn} ${showSupervisionPane ? styles.paneSwitchBtnActive : ""}`.trim()}
-              onClick={() => setOverviewPane("supervision")}
-            >
-              <Icon icon="mdi:radar" aria-hidden />
-              {ov.tabSupervision || "Supervision"}
-            </button>
-          ) : null}
         </div>
       ) : null}
 
       {showFichePane ? (
-        <div className={styles.fichePane} aria-label={ov.tabFiche || "Fiche"}>
+        <div className={styles.fichePane} aria-label={ov.tabFiche || "Informations matériel"}>
           {sheetContent}
         </div>
       ) : null}
@@ -670,8 +670,8 @@ export default function EquipmentOverviewDashboard({
       ) : null}
 
       {showSupervisionPane ? (
-        <section className={styles.column} aria-label={ov.checkmkSectionTitle || "Supervision CheckMK"}>
-          <div className={`${styles.columnGrid} ${styles.paneGrid} ${styles.supervisionGrid}`.trim()}>
+        <section className={`${styles.column} ${styles.columnFill}`.trim()} aria-label={ov.checkmkSectionTitle || "Synthèse CheckMK"}>
+          <div className={`${styles.columnGrid} ${styles.paneGrid} ${styles.paneGridFill} ${styles.supervisionGrid}`.trim()}>
             <OverviewCard
               title={ov.availabilityTitle || "Disponibilité"}
               icon="mdi:chart-timeline-variant"
