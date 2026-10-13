@@ -1534,7 +1534,6 @@ export default function EquipmentDetailPage({
   };
   const openActivityTab = pane => {
     if (pane === "metrics" && showRmmMetricsTab) setActivityPane("metrics");
-    else if (pane === "maintenance") setActivityPane("maintenance");
     else setActivityPane("veritas");
     setRightPanelTab("activity");
   };
@@ -2127,6 +2126,10 @@ export default function EquipmentDetailPage({
             <Icon icon="mdi:chart-timeline-variant" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.activity}</span>
           </button>
+          <button type="button" role="tab" aria-selected={rightPanelTab === "history"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "history" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("history")}>
+            <Icon icon="mdi:clipboard-text-clock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.history || "Historique"}</span>
+          </button>
           <button type="button" role="tab" aria-selected={rightPanelTab === "documents"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "documents" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("documents")}>
             <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
             <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.documents}</span>
@@ -2152,27 +2155,14 @@ export default function EquipmentDetailPage({
                       showRmmTab={rmmManaged}
                       showSupervisionTab={Boolean(checkmkMapping?.checkmk_host_name)}
                       sheetContent={
-                        <>
-                          <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
-                          <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
-                        </>
+                        <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
                       }
                     />
                   ) : (
-                    <>
-                      <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
-                      <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+                    <div className={styles.ficheOnlyStack}>
+                      <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
                       {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
-                      {equipmentDbId ? (
-                        <EquipmentMaintenanceHistoryPanel
-                          copy={copy}
-                          locale={locale}
-                          equipmentId={equipmentDbId}
-                          clientId={equipmentClientId}
-                          refreshKey={maintenanceHistoryKey}
-                        />
-                      ) : null}
-                    </>
+                    </div>
                   )}
                 </div>
                 {showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? <div className={styles.dashboardAside}>
@@ -2217,20 +2207,16 @@ export default function EquipmentDetailPage({
             </section> : null}
 
           {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>
-              <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
-                  {showRmmMetricsTab ? <button type="button" role="tab" aria-selected={activityPane === "metrics"} className={`${styles.activitySwitchBtn} ${activityPane === "metrics" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("metrics")}>
+              {showRmmMetricsTab ? <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
+                  <button type="button" role="tab" aria-selected={activityPane === "metrics"} className={`${styles.activitySwitchBtn} ${activityPane === "metrics" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("metrics")}>
                     <Icon icon="mdi:chart-areaspline" aria-hidden />
                     {copy.activityPane?.metrics || copy.tabs.metrics}
-                  </button> : null}
+                  </button>
                   <button type="button" role="tab" aria-selected={activityPane === "veritas"} className={`${styles.activitySwitchBtn} ${activityPane === "veritas" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("veritas")}>
                     <Icon icon="mdi:ticket-confirmation-outline" aria-hidden />
                     {copy.activityPane?.veritas || "Interventions"}
                   </button>
-                  <button type="button" role="tab" aria-selected={activityPane === "maintenance"} className={`${styles.activitySwitchBtn} ${activityPane === "maintenance" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("maintenance")}>
-                    <Icon icon="mdi:wrench-clock" aria-hidden />
-                    {copy.activityPane?.maintenance || copy.maintenanceHistory?.title || "Maintenance"}
-                  </button>
-                </div>
+                </div> : null}
 
               {showRmmMetricsTab && activityPane === "metrics" ? rmmMetricsAgent ? <RmmMetricHistoryPanel agent={rmmMetricsAgent} active={rightPanelTab === "activity" || rightPanelTab === "metrics"} embedded /> : <div className={styles.emptyState}>
                   <Icon icon="mdi:chart-timeline-variant" className={styles.emptyIcon} />
@@ -2238,24 +2224,7 @@ export default function EquipmentDetailPage({
                   <p className={styles.emptyHint}>
                     {copy.metrics.unavailableHint}
                   </p>
-                </div> : activityPane === "maintenance" ? (
-                  equipmentDbId ? (
-                    <div className={styles.activityPaneFill}>
-                      <EquipmentMaintenanceHistoryPanel
-                        copy={copy}
-                        locale={locale}
-                        equipmentId={equipmentDbId}
-                        clientId={equipmentClientId}
-                        refreshKey={maintenanceHistoryKey}
-                      />
-                    </div>
-                  ) : (
-                    <div className={styles.emptyState}>
-                      <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} />
-                      <h5>{copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}</h5>
-                    </div>
-                  )
-                ) : (
+                </div> : (
                   <div className={styles.activityVeritasLayout}>
                     <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onCreateEvent={openCreateEventModal} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} isCommunity={isCommunity} proBadge={<ProFeatureBadge variant="inline" className={styles.proBadgeInline} />} hideDateFilter />
                     <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
@@ -2263,7 +2232,26 @@ export default function EquipmentDetailPage({
                 )}
             </div>}
 
-          {}
+          {rightPanelTab === "history" ? (
+            <div className={styles.historyTabLayout}>
+              <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+              {equipmentDbId ? (
+                <EquipmentMaintenanceHistoryPanel
+                  copy={copy}
+                  locale={locale}
+                  equipmentId={equipmentDbId}
+                  clientId={equipmentClientId}
+                  refreshKey={maintenanceHistoryKey}
+                />
+              ) : (
+                <div className={styles.emptyState}>
+                  <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} />
+                  <h5>{copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}</h5>
+                </div>
+              )}
+            </div>
+          ) : null}
+
           {rightPanelTab === 'documents' && <section className={enterpriseDetailStyles.panel}>
               <header className={specsStyles.panelHeader}>
                 <div>

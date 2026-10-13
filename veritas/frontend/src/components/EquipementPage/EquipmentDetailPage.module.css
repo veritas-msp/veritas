@@ -573,7 +573,9 @@
 
 .mainContent > :global([class*="panel"]),
 .mainContent > .dashboardSplit,
-.mainContent > .activityStack {
+.mainContent > .activityStack,
+.mainContent > .historyTabLayout,
+.mainContent > .ficheOnlyStack {
   flex: 1 1 0;
   min-height: 0;
   max-height: 100%;
@@ -669,6 +671,77 @@
 
 .activityStack > .activitySwitch {
   flex: 0 0 auto;
+}
+
+.ficheOnlyStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ficheOnlyStack > :global([class*="panelBare"]),
+.ficheOnlyStack > :global([class*="panel"]) {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.historyTabLayout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.historyTabLayout > * {
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.historyTabLayout > :global([class*="panel"]) > :global([class*="panelHeader"]),
+.historyTabLayout > :global([class*="panel"]) > :global([class*="cardHead"]),
+.historyTabLayout > :global([class*="card"]) > :global([class*="cardHead"]) {
+  flex: 0 0 auto;
+}
+
+.historyTabLayout > :global([class*="panel"]) > :global([class*="panelHeader"]),
+.historyTabLayout > :global([class*="panel"]) > :global([class*="header"]) {
+  flex: 0 0 auto;
+}
+
+.historyTabLayout > :global([class*="panel"]) > :global([class*="panelBody"]),
+.historyTabLayout > :global([class*="panel"]) > :global([class*="cardBody"]),
+.historyTabLayout > :global([class*="card"]) > :global([class*="cardBody"]),
+.historyTabLayout > :global([class*="root"]) > :global([class*="tableWrap"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 1100px) {
+  .historyTabLayout {
+    grid-template-columns: 1fr;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .historyTabLayout > * {
+    max-height: none;
+    height: auto;
+  }
 }
 
 .activityVeritasLayout {
@@ -1352,20 +1425,6 @@
 .equipmentDetailPage .headerActionButtonDisabled {
   background-color: var(--msp-surface-2);
   border-color: var(--msp-border);
-  color: var(--msp-muted-light);
-}
-
-.equipmentDetailPage .sidebarSummaryList {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem 1rem;
-}
-
-.equipmentDetailPage .sidebarSummaryLabel {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--msp-muted-light);
 }
 

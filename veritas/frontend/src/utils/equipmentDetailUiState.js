@@ -5,13 +5,14 @@ const DETAIL_TABS = new Set([
   "peripherals",
   "supervision",
   "activity",
+  "history",
   "documents",
   "logs",
   "events",
   "stats",
   "metrics"
 ]);
-const ACTIVITY_PANES = new Set(["metrics", "veritas", "maintenance"]);
+const ACTIVITY_PANES = new Set(["metrics", "veritas"]);
 const OVERVIEW_PANES = new Set(["fiche", "rmm", "supervision"]);
 
 function storageKey(equipmentId) {
@@ -21,11 +22,12 @@ function storageKey(equipmentId) {
 export function normalizeEquipmentDetailTab(tab) {
   if (tab === "events" || tab === "stats" || tab === "metrics") return "activity";
   if (tab === "notes") return "dashboard";
+  if (tab === "maintenance") return "history";
   return DETAIL_TABS.has(tab) ? tab : "dashboard";
 }
 
 export function normalizeEquipmentActivityPane(pane, { allowMetrics = true } = {}) {
-  if (pane === "maintenance") return "maintenance";
+  if (pane === "maintenance") return "veritas";
   if (pane === "veritas") return "veritas";
   if (pane === "metrics" && allowMetrics) return "metrics";
   return allowMetrics ? "metrics" : "veritas";

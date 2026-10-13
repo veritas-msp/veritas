@@ -2834,7 +2834,9 @@
 
 .mainColumnEquipmentFill :global([class*="mainContent"]) > .panel,
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="dashboardSplit"]),
-.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="activityStack"]) {
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="activityStack"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="historyTabLayout"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="ficheOnlyStack"]) {
   flex: 1 1 0;
   min-height: 0;
   max-height: 100%;

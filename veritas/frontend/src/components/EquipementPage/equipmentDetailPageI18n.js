@@ -19,9 +19,13 @@ const FR = {
     stats: "Statistiques",
     activity: "Activité",
     supervision: "Supervision",
+    history: "Historique",
     documents: "Documents",
     notes: "Notes",
     logs: "Logs"
+  },
+  historyTab: {
+    subtitle: "Alertes récentes et périodes de maintenance de ce périphérique."
   },
   hero: {
     metaAria: "Informations matériel",
@@ -890,9 +894,13 @@ const EN = {
     stats: "Statistics",
     activity: "Activity",
     supervision: "Supervision",
+    history: "History",
     documents: "Documents",
     notes: "Notes",
     logs: "Logs"
+  },
+  historyTab: {
+    subtitle: "Recent alerts and maintenance periods for this device."
   },
   hero: {
     metaAria: "Hardware information",
@@ -1773,6 +1781,7 @@ const DE = {
     stats: "Statistiken",
     activity: "Aktivität",
     supervision: "Überwachung",
+    history: "Historie",
     documents: "Dokumente",
     notes: "Notizen",
     logs: "Logs"
@@ -2149,6 +2158,7 @@ const IT = {
     stats: "Statistiche",
     activity: "Attività",
     supervision: "Supervisione",
+    history: "Cronologia",
     documents: "Documenti",
     notes: "Note",
     logs: "Log"
@@ -2524,6 +2534,7 @@ const ES = {
     stats: "Estadísticas",
     activity: "Actividad",
     supervision: "Supervisión",
+    history: "Historial",
     documents: "Documentos",
     notes: "Notas",
     logs: "Logs"

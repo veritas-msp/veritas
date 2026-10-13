@@ -151,6 +151,7 @@ export default function EquipmentDetailSpecsPanel({
   onOpenEquipment,
   remoteAccessAction = null,
   compact = false,
+  bare = false,
   hideResources = false,
   title
 }) {
@@ -422,18 +423,20 @@ export default function EquipmentDetailSpecsPanel({
     }
     return null;
   };
+  const hideChrome = compact || bare;
+
   if (!sections.length && !rmmManagedComputer) {
-    return <section className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
-        <header className={styles.panelHeader}>
+    return <section className={`${styles.panel} ${hideChrome ? styles.panelCompact : ""} ${bare ? styles.panelBare : ""}`.trim()}>
+        {!hideChrome ? <header className={styles.panelHeader}>
           <h2 className={styles.panelTitle}>
             <Icon icon="mdi:clipboard-text-outline" className={styles.panelTitleIcon} aria-hidden />
             {panelTitle}
           </h2>
-        </header>
+        </header> : null}
         <p className={styles.empty}>{copy.specs.empty}</p>
       </section>;
   }
-  if (rmmManagedComputer && !compact) {
+  if (rmmManagedComputer && !compact && !bare) {
     const showLocationMap = showSiteVignette;
     const hasGroupedContent = rmmGroupedSections.some(section => (section.fields || []).length > 0);
     return <section className={`${styles.panel} ${styles.panelRmmIdentity}`}>
@@ -464,8 +467,11 @@ export default function EquipmentDetailSpecsPanel({
         </div>
       </section>;
   }
-  return <section className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
-      {!compact ? <header className={styles.panelHeader}>
+
+  const cardsSource = rmmManagedComputer && (bare || compact) ? rmmGroupedSections : sections;
+
+  return <section className={`${styles.panel} ${hideChrome ? styles.panelCompact : ""} ${bare ? styles.panelBare : ""}`.trim()}>
+      {!hideChrome ? <header className={styles.panelHeader}>
           <div>
             <h2 className={styles.panelTitle}>
               <Icon icon="mdi:clipboard-text-outline" className={styles.panelTitleIcon} aria-hidden />
@@ -477,18 +483,21 @@ export default function EquipmentDetailSpecsPanel({
           </div>
         </header> : null}
 
-      <div className={`${styles.sections} ${compact ? styles.sectionsCompact : ""} ${compact ? "" : sectionsGridClass}`}>
-        {sections.map(section => {
+      <div className={`${styles.sections} ${hideChrome ? styles.sectionsCompact : ""} ${bare ? styles.sectionsFill : ""} ${hideChrome && !bare ? "" : sectionsGridClass} ${bare ? sectionsGridClass : ""}`.trim()}>
+        {cardsSource.map(section => {
         const isInternetLink = section.id === "internetLink";
         const hasDebitGauges = isInternetLink && (formData?.debitDownload || formData?.debitUpload || formData?.debit);
         const showLocationMap = (section.id === "identity" || section.id === "billingInstallation") && showSiteVignette;
         const visibleFields = (() => {
-          let fields = hasDebitGauges ? section.fields.filter(field => !DEBIT_FIELD_KEYS.has(field.key)) : section.fields;
+          let fields = hasDebitGauges ? (section.fields || []).filter(field => !DEBIT_FIELD_KEYS.has(field.key)) : (section.fields || []);
           if (showLocationMap) {
             fields = fields.filter(field => field.key !== "location");
           }
-          return fields;
+          return fields.filter(Boolean);
         })();
+        if (!visibleFields.length && !showLocationMap && !hasDebitGauges && !(section.id === "storage" && showStorageDiskBays)) {
+          return null;
+        }
         const isRemoteSection = section.id === "remote" && remoteAccessAction;
         const showSectionRemoteAction = Boolean(isRemoteSection) && !visibleFields.some(field => shouldShowRemoteAccessFieldAction(field.key, remoteAccessAction));
         return <article key={section.id} className={styles.sectionCard}>
@@ -506,7 +515,7 @@ export default function EquipmentDetailSpecsPanel({
 
               {hasDebitGauges ? <InternetDebitCounters download={formData?.debitDownload} upload={formData?.debitUpload} combined={formData?.debit} /> : null}
 
-              {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${compact ? styles.fieldGridCompact : ""}`}>
+              {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
                   {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
                 </div> : null}
 
@@ -515,6 +524,7 @@ export default function EquipmentDetailSpecsPanel({
                 </div> : null}
             </article>;
       })}
+        {rmmManagedComputer && bare && !hideResources ? <RmmHardwareOverview equipment={equipment} variant="resources" /> : null}
       </div>
     </section>;
 }

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.88",
+    date: "2026-10-13",
+    highlights: [
+      "Fiche périphérique : vue d’ensemble densifiée (cartes seules, sans cadre Fiche matériel) pour tenir sans scroll.",
+      "Nouvel onglet Historique : alertes récentes et périodes de maintenance côte à côte.",
+      "Colonne droite périphérique : styles strictement alignés sur les fiches entreprise / contact."
+    ]
+  },
+  {
     version: "1.0.87",
     date: "2026-10-12",
     highlights: [

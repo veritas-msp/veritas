@@ -15,10 +15,12 @@ import styles from "./EquipmentDetailAside.module.css";
 
 function SidebarSectionHeader({
   title,
+  icon = null,
   count = null,
   expanded = false,
   onToggle,
   controlsId,
+  actions = null,
   panelStyles
 }) {
   return (
@@ -31,10 +33,12 @@ function SidebarSectionHeader({
         aria-controls={controlsId || undefined}
       >
         <span className={panelStyles.sidebarInfoTitle}>
-          {title}
+          {icon ? <Icon icon={icon} className={panelStyles.sidebarSectionTitleIcon} aria-hidden /> : null}
+          <span className={panelStyles.sidebarSectionTitleText}>{title}</span>
           {count != null ? <span className={panelStyles.sidebarSectionCount}>{count}</span> : null}
         </span>
       </button>
+      {actions ? <div className={panelStyles.sidebarHeaderActions}>{actions}</div> : null}
       <button
         type="button"
         className={panelStyles.sidebarCollapseChevronBtn}
@@ -378,35 +382,34 @@ export default function EquipmentDetailAside({
           <section className={s.sidebarSection} data-guide="equipment-sidebar-info">
             <SidebarSectionHeader
               title={aside.infoTitle || "Informations détaillées"}
+              icon="mdi:information-outline"
               expanded={infoExpanded}
               onToggle={() => setInfoExpanded(prev => !prev)}
               controlsId="equipment-sidebar-info"
               panelStyles={s}
             />
             {infoExpanded ? (
-              <div className={s.sidebarBody} id="equipment-sidebar-info">
-                <div className={s.sidebarSummaryList}>
-                  {detailRows.map(row => (
-                    <div key={row.key} className={s.sidebarSummaryItem}>
-                      <span className={s.sidebarSummaryLabel}>{row.label}</span>
-                      {row.onClick ? (
-                        <button
-                          type="button"
-                          className={`${s.sidebarSummaryValue} ${styles.summaryLink} ${row.mono ? styles.mono : ""}`.trim()}
-                          onClick={row.onClick}
-                        >
-                          {row.value}
-                        </button>
-                      ) : (
-                        <span
-                          className={`${s.sidebarSummaryValue} ${row.mono ? styles.mono : ""}`.trim()}
-                        >
-                          {row.value}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              <div className={s.sidebarSummaryList} id="equipment-sidebar-info">
+                {detailRows.map(row => (
+                  <div key={row.key} className={s.sidebarSummaryItem}>
+                    <span className={s.sidebarSummaryLabel}>{row.label}</span>
+                    {row.onClick ? (
+                      <button
+                        type="button"
+                        className={`${s.sidebarSummaryValue} ${styles.summaryLink} ${row.mono ? styles.mono : ""}`.trim()}
+                        onClick={row.onClick}
+                      >
+                        {row.value}
+                      </button>
+                    ) : (
+                      <span
+                        className={`${s.sidebarSummaryValue} ${row.mono ? styles.mono : ""}`.trim()}
+                      >
+                        {row.value}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : null}
           </section>
@@ -415,6 +418,7 @@ export default function EquipmentDetailAside({
             <section className={s.sidebarSection} data-guide="equipment-sidebar-associated">
               <SidebarSectionHeader
                 title={aside.assocTitle || "Équipements associés"}
+                icon="mdi:lan-connect"
                 count={associatedItems.length}
                 expanded={assocExpanded}
                 onToggle={() => setAssocExpanded(prev => !prev)}
@@ -428,23 +432,27 @@ export default function EquipmentDetailAside({
                       const body = (
                         <>
                           <div className={s.sidebarContactAvatar} aria-hidden>
-                            <Icon icon={item.icon} width={18} height={18} />
+                            <Icon icon={item.icon} />
                           </div>
                           <div className={s.sidebarContactBody}>
-                            <span className={s.sidebarContactName}>{item.title}</span>
-                            {item.subtitle ? (
-                              <span className={s.sidebarContactMeta}>{item.subtitle}</span>
-                            ) : null}
+                            <div className={s.sidebarContactTop}>
+                              <div className={s.sidebarContactIdentity}>
+                                <span className={s.sidebarContactName}>{item.title}</span>
+                                {item.subtitle ? (
+                                  <span className={s.sidebarContactRole}>{item.subtitle}</span>
+                                ) : null}
+                              </div>
+                              <span
+                                className={`${styles.assocStatus} ${styles[`assocStatus_${item.status || "ok"}`] || ""}`.trim()}
+                              >
+                                {item.status === "warn"
+                                  ? aside.statusWarn || "Warn"
+                                  : item.status === "down"
+                                    ? aside.statusDown || "KO"
+                                    : aside.statusOk || "OK"}
+                              </span>
+                            </div>
                           </div>
-                          <span
-                            className={`${styles.assocStatus} ${styles[`assocStatus_${item.status || "ok"}`] || ""}`.trim()}
-                          >
-                            {item.status === "warn"
-                              ? aside.statusWarn || "Warn"
-                              : item.status === "down"
-                                ? aside.statusDown || "KO"
-                                : aside.statusOk || "OK"}
-                          </span>
                         </>
                       );
                       return (
