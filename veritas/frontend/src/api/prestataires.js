@@ -50,6 +50,37 @@ export async function fetchPrestataire(prestataireId, options = {}) {
   return await res.json();
 }
 
+export async function getPrestataireLogs(prestataireId, page = 1, limit = 25, options = {}) {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  const res = await fetch(`${BASE_URL}/${prestataireId}/logs?${params}`, {
+    credentials: "include",
+    signal: options.signal,
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    if (res.status === 404) {
+      return { logs: [], total: 0, page, limit, totalPages: 0 };
+    }
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error fetching provider logs");
+  }
+  return await res.json();
+}
+
+export async function purgePrestataireLogs(prestataireId) {
+  const res = await fetch(`${BASE_URL}/${prestataireId}/logs`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error purging provider logs");
+  }
+  return await res.json();
+}
+
 export async function fetchPrestataireMentionedTickets(prestataireId, options = {}) {
   const params = new URLSearchParams();
   if (options.limit != null) params.set("limit", String(options.limit));

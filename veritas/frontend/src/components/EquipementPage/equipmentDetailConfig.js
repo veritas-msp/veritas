@@ -242,8 +242,7 @@ const FIELD_LABELS = {
 };
 const SECTION_FIELDS = {
   billingInstallation: ["clientName", "location", "purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"],
-  supportLifecycle: ["remoteAccessSolution", "licenceMaintenance", "autresLicenses"],
-  technique: ["firewallType", "routeurType", "toipType", "alimentationType", "typeServer", "computerType", "storageType", "manufacturer", "model", "serial", "firmware", "systeme", "editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "domaine", "processeur", "memoire", "stockage", "hypervisor", "hostServerName", "role", "quickConnect", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "luns", "numeroDisque", "modeHA", "roleHA", "firewallHAName", "serverHAName", "storageHAName", "manageable", "poeSupport", "empilage", "alimentationPoE", "nombreExtensions", "domaineSip", "capaciteVA", "capaciteW", "nbPrises", "dateBatterie"],
+  technique: ["remoteAccessSolution", "licenceMaintenance", "autresLicenses", "firewallType", "routeurType", "toipType", "alimentationType", "typeServer", "computerType", "storageType", "manufacturer", "model", "serial", "firmware", "systeme", "editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "domaine", "processeur", "memoire", "stockage", "hypervisor", "hostServerName", "role", "quickConnect", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "luns", "numeroDisque", "modeHA", "roleHA", "firewallHAName", "serverHAName", "storageHAName", "manageable", "poeSupport", "empilage", "alimentationPoE", "nombreExtensions", "domaineSip", "capaciteVA", "capaciteW", "nbPrises", "dateBatterie"],
   reseau: ["ip", "gateway", "vlan", "mac", "adresseMac", "stormshieldWanUrl", "adminUrl", "assignedSsids", "fournisseur", "internetType", "debit", "debitDownload", "debitUpload", "categorie", "numeroLigne", "referenceContrat", "supportTelephone", "dateMiseEnService", "boxModele"],
   notes: ["commentaire"]
 };
@@ -335,8 +334,7 @@ function customFamilyCoversUnifiedKey(customFamily, unifiedKey) {
 }
 const UNIFIED_DETAIL_SECTIONS = [
   { id: "billingInstallation", label: "Facturation et installation", icon: "mdi:file-document-outline", description: "Client, site, achat et installation" },
-  { id: "supportLifecycle", label: "Support / cycle de vie", icon: "mdi:lifebuoy", description: "Prise en main et licences" },
-  { id: "technique", label: "Technique", icon: "mdi:cog-outline", description: "Caracteristiques techniques et systeme" },
+  { id: "technique", label: "Technique", icon: "mdi:cog-outline", description: "Prise en main, caracteristiques techniques et systeme" },
   { id: "reseau", label: "Reseau", icon: "mdi:lan", description: "Adressage, acces et connectivite" },
   { id: "notes", label: "Notes", icon: "mdi:note-text-outline", description: "Commentaires et informations utiles" }
 ];

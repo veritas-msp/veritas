@@ -1,5 +1,5 @@
 const KEY_PREFIX = "veritas_contact_detail_ui_v1_";
-const OVERVIEW_TABS = new Set(["activity", "portal", "share"]);
+const OVERVIEW_TABS = new Set(["activity", "portal", "share", "logs"]);
 
 function storageKey(contactId) {
   return `${KEY_PREFIX}${contactId}`;

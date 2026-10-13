@@ -143,7 +143,7 @@ export default function EquipmentDetailAside({
           value: reason
         }
       : null,
-    ip ? { key: "ip", label: aside.fieldIp || "IP", value: ip, mono: true } : null,
+    ip ? { key: "ip", label: aside.fieldIp || "IP", value: ip } : null,
     siteLabel ? { key: "site", label: aside.fieldSite || "Site", value: siteLabel } : null,
     enterpriseLabel
       ? {
@@ -178,8 +178,7 @@ export default function EquipmentDetailAside({
       ? {
           key: "serial",
           label: aside.fieldSerial || "N° de série",
-          value: chassis.serial || formData.serial,
-          mono: true
+          value: chassis.serial || formData.serial
         }
       : null
   ].filter(Boolean);
@@ -389,27 +388,25 @@ export default function EquipmentDetailAside({
               panelStyles={s}
             />
             {infoExpanded ? (
-              <div className={s.sidebarSummaryList} id="equipment-sidebar-info">
-                {detailRows.map(row => (
-                  <div key={row.key} className={s.sidebarSummaryItem}>
-                    <span className={s.sidebarSummaryLabel}>{row.label}</span>
-                    {row.onClick ? (
-                      <button
-                        type="button"
-                        className={`${s.sidebarSummaryValue} ${styles.summaryLink} ${row.mono ? styles.mono : ""}`.trim()}
-                        onClick={row.onClick}
-                      >
-                        {row.value}
-                      </button>
-                    ) : (
-                      <span
-                        className={`${s.sidebarSummaryValue} ${row.mono ? styles.mono : ""}`.trim()}
-                      >
-                        {row.value}
-                      </span>
-                    )}
-                  </div>
-                ))}
+              <div className={s.sidebarBody} id="equipment-sidebar-info">
+                <div className={s.sidebarInfoFields}>
+                  {detailRows.map(row => (
+                    <div key={row.key} className={s.sidebarInfoField}>
+                      <span className={s.sidebarInfoFieldLabel}>{row.label}</span>
+                      {row.onClick ? (
+                        <button
+                          type="button"
+                          className={`${s.sidebarInfoFieldValue} ${styles.summaryLink}`.trim()}
+                          onClick={row.onClick}
+                        >
+                          {row.value}
+                        </button>
+                      ) : (
+                        <span className={s.sidebarInfoFieldValue}>{row.value}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
           </section>

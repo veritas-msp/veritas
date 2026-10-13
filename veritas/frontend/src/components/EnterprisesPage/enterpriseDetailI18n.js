@@ -88,6 +88,7 @@ const DETAIL_COPY = {
     overviewTabMap: "Infrastructure",
     overviewTabActivity: "Tickets et Campagnes",
     overviewTabVault: "Coffre-fort",
+    overviewTabLogs: "Logs",
     overviewCharts: {
       loading: "Chargement de la vue d'ensemble…",
       loadError: "Impossible de charger la supervision de ce client",
@@ -646,6 +647,7 @@ const DETAIL_COPY = {
     overviewTabMap: "Infrastructure",
     overviewTabActivity: "Tickets & Campaigns",
     overviewTabVault: "Vault",
+    overviewTabLogs: "Logs",
     overviewCharts: {
       loading: "Loading overview…",
       loadError: "Unable to load monitoring for this client",
@@ -1202,6 +1204,7 @@ const DETAIL_COPY = {
     overviewTabMap: "Infrastruktur",
     overviewTabActivity: "Tickets & Kampagnen",
     overviewTabVault: "Tresor",
+    overviewTabLogs: "Logs",
     overviewCharts: {
       loading: "Übersicht wird geladen…",
       loadError: "Überwachung für diesen Kunden konnte nicht geladen werden",
@@ -1754,6 +1757,7 @@ const DETAIL_COPY = {
     overviewTabMap: "Infrastruttura",
     overviewTabActivity: "Ticket e Campagne",
     overviewTabVault: "Cassaforte",
+    overviewTabLogs: "Log",
     overviewCharts: {
       loading: "Caricamento panoramica…",
       loadError: "Impossibile caricare la supervisione di questo cliente",
@@ -2306,6 +2310,7 @@ const DETAIL_COPY = {
     overviewTabMap: "Infraestructura",
     overviewTabActivity: "Tickets y Campañas",
     overviewTabVault: "Caja fuerte",
+    overviewTabLogs: "Logs",
     overviewCharts: {
       loading: "Cargando vista general…",
       loadError: "No se pudo cargar la supervisión de este cliente",

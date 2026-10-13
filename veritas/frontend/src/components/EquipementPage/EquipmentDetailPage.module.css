@@ -771,7 +771,7 @@
 
 .activityVeritasLayout {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: 0.75rem;
   flex: 1 1 0;
   min-height: 0;
@@ -844,6 +844,10 @@
     max-height: none;
     height: auto;
   }
+}
+
+.supervisionMainPanel > :global([class*="panelBody"]) {
+  padding-top: 0.85rem;
 }
 
 .supervisionPanelBody {
@@ -1154,6 +1158,29 @@
   letter-spacing: normal;
 }
 
+.logsPanel {
+  min-height: 0;
+}
+
+.logsPanelBody {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow: hidden !important;
+  min-height: 0;
+}
+
+.logsPanelBody > .logsToolbar,
+.logsPanelBody > .logsPagination {
+  flex: 0 0 auto !important;
+  min-height: 0;
+}
+
+.logsPanelBody > .logsTableFill {
+  flex: 1 1 0 !important;
+  min-height: 0;
+}
+
 .logsHeaderActions {
   display: flex;
   align-items: center;
@@ -1189,9 +1216,9 @@
 .logsToolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.65rem;
-  margin-bottom: 0.85rem;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0;
 }
 
 .logsSearchWrap {
@@ -1248,21 +1275,9 @@
   background: var(--msp-surface-2, #f7f9fc);
 }
 
-.logsFilterLabel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 0 0 auto;
-}
-
-.logsFilterLabelText {
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--msp-muted, #5c6b82);
-}
-
 .logsFilterSelect {
-  min-width: 190px;
+  min-width: 180px;
+  flex: 0 0 auto;
   padding: 0.48rem 0.65rem;
   border: 1px solid var(--msp-border-light, #e2e8f0);
   border-radius: 8px;
@@ -1275,6 +1290,40 @@
   outline: none;
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.12);
+}
+
+.logsTableFill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.logsTableFill > .loadingState,
+.logsTableFill > .emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.logsTableWrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.logsPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding-top: 0.15rem;
 }
 
 .tabPanelBody {
@@ -2187,47 +2236,23 @@
 
 .logsTable {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
 }
 
-.logsTable thead {
-  background-color: var(--bg-tertiary, #1e1e3f);
-  border-bottom: 2px solid var(--border-primary, #2a2a4a);
+.logsTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2, #f7f9fc);
 }
 
-.logsTable th {
-  padding: 0.75rem;
-  text-align: left;
-  color: var(--text-primary, #f9fafb);
-  font-weight: 600;
-  font-size: 0.8125rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.logsTable th:nth-child(2),
+.logsTable td:nth-child(2) {
+  width: 22%;
 }
 
-.logsTable tbody tr {
-  border-bottom: 1px solid var(--border-primary, #2a2a4a);
-  transition: background-color 0.2s;
-}
-
-.logsTable tbody tr:hover {
-  background-color: var(--bg-tertiary, #1e1e3f);
-}
-
-.logsTable td {
-  padding: 0.75rem;
-  color: var(--text-primary, #f9fafb);
-  vertical-align: top;
-}
-
-.logsTable td:first-child {
-  font-weight: 500;
-}
-
-.logsTable td:last-child {
-  color: var(--text-secondary, #9ca3af);
-  font-size: 0.8125rem;
+.logsTable th:nth-child(3),
+.logsTable td:nth-child(3) {
+  width: 11rem;
   white-space: nowrap;
 }
 

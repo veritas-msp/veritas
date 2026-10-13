@@ -1,6 +1,7 @@
 const KEY_PREFIX = "veritas_equipment_detail_ui_v1_";
 const DETAIL_TABS = new Set([
-  "dashboard",
+  "synthese",
+  "fiche",
   "operations",
   "peripherals",
   "supervision",
@@ -22,9 +23,11 @@ function storageKey(equipmentId) {
 
 export function normalizeEquipmentDetailTab(tab) {
   if (tab === "events" || tab === "stats" || tab === "metrics") return "activity";
-  if (tab === "notes") return "dashboard";
+  if (tab === "notes" || tab === "fiche" || tab === "hardware") return "fiche";
   if (tab === "history" || tab === "maintenance") return "supervision";
-  return DETAIL_TABS.has(tab) ? tab : "dashboard";
+  if (tab === "dashboard" || tab === "overview" || tab === "general") return "synthese";
+  if (tab === "synthese" || tab === "summary") return "synthese";
+  return DETAIL_TABS.has(tab) ? tab : "synthese";
 }
 
 export function normalizeEquipmentActivityPane(pane, { allowMetrics = true } = {}) {
@@ -45,6 +48,7 @@ export function normalizeEquipmentOverviewPane(pane, { allowRmm = true, allowSup
   if (pane === "fiche") return "fiche";
   if (pane === "rmm" && allowRmm) return "rmm";
   if (allowSupervision) return "supervision";
+  if (allowRmm) return "rmm";
   return "fiche";
 }
 

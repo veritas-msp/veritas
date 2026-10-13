@@ -12,7 +12,8 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { fetchEquipmentRecentAlerts } from "../../api/supervisionAlerts";
+import { fetchEquipmentActivity } from "../../api/equipmentActivity";
+import { fetchEquipmentRecentAlerts, fetchSupervisionExclusionHistory } from "../../api/supervisionAlerts";
 import { getEquipmentClientId, getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { formatEquipmentDetailRelative, getEquipmentDetailCopy, interpolate } from "./equipmentDetailPageI18n";
@@ -38,6 +39,7 @@ import {
   readEquipmentDetailUi,
   writeEquipmentDetailUi
 } from "../../utils/equipmentDetailUiState";
+import { resolveEquipmentActivityRange } from "./equipmentActivityUtils";
 import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
 import styles from "./EquipmentOverviewDashboard.module.css";
 
@@ -131,6 +133,14 @@ function severityTone(severity) {
   return { cls: styles.statusInfo, color: "#64748b", key: key || "info" };
 }
 
+function lifecycleTone(kind, severity) {
+  if (kind === "alert") return severityTone(severity);
+  if (kind === "ticket") return { color: "#2b5fab", key: "ticket" };
+  if (kind === "planning") return { color: "#7c3aed", key: "planning" };
+  if (kind === "maintenance") return { color: "#c2410c", key: "maintenance" };
+  return { color: "#64748b", key: kind || "info" };
+}
+
 function capitalizeLabel(value) {
   const text = String(value || "").trim();
   if (!text) return "—";
@@ -144,17 +154,150 @@ function severityLabel(severity, glance) {
   return capitalizeLabel(tone.key);
 }
 
-function resolveEventWhen(raw, locale) {
-  const value =
-    raw?.at ||
-    raw?.triggeredAt ||
-    raw?.createdAt ||
-    raw?.created_at ||
-    raw?.timestamp ||
-    raw?.time ||
-    null;
+function lifecycleTypeLabel(kind, severity, ov, glance) {
+  if (kind === "ticket") return ov.kindTicket || "Ticket";
+  if (kind === "planning") return ov.kindPlanning || "Intervention";
+  if (kind === "maintenance") return ov.kindMaintenance || "Maintenance";
+  if (kind === "alert") return severityLabel(severity, glance);
+  return capitalizeLabel(kind);
+}
+
+function resolveEventWhen(value, locale) {
   if (!value) return "—";
   return formatEquipmentDetailRelative(value, locale) || "—";
+}
+
+function formatAbsoluteWhen(value, locale) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  try {
+    return d.toLocaleString(locale === "en" ? "en-GB" : locale || "fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return d.toISOString();
+  }
+}
+
+function buildLifecycleFeed({
+  alerts = [],
+  checkmkEvents = [],
+  tickets = [],
+  planningEvents = [],
+  maintenances = [],
+  locale,
+  ov,
+  glance
+}) {
+  const rows = [];
+
+  for (const alert of alerts) {
+    const whenRaw = alert.at || alert.triggeredAt || alert.createdAt || alert.created_at || null;
+    const severity = alert.severity || alert.level || "info";
+    rows.push({
+      id: `alert-${alert.id || whenRaw || Math.random()}`,
+      kind: "alert",
+      severity,
+      whenRaw,
+      when: resolveEventWhen(whenRaw, locale),
+      typeLabel: lifecycleTypeLabel("alert", severity, ov, glance),
+      message: alert.title || alert.criterionKey || alert.typeKey || "—",
+      actor: alert.acknowledgedByName || alert.userName || null
+    });
+  }
+
+  if (!alerts.length) {
+    for (const [index, event] of checkmkEvents.entries()) {
+      const whenRaw = event.time || event.timestamp || event.at || null;
+      const severity = event.state === 2 ? "critical" : event.state === 1 ? "warning" : "info";
+      rows.push({
+        id: `ck-${event.id || index}`,
+        kind: "alert",
+        severity,
+        whenRaw,
+        when: resolveEventWhen(whenRaw, locale),
+        typeLabel: lifecycleTypeLabel("alert", severity, ov, glance),
+        message: event.message || event.plugin_output || event.event_text || getServiceLabel(event) || "—",
+        actor: null
+      });
+    }
+  }
+
+  for (const ticket of tickets) {
+    const whenRaw = ticket.updated_at || ticket.created_at || null;
+    const number = ticket.ticket_number ? `#${ticket.ticket_number}` : "";
+    const status = ticket.status ? String(ticket.status) : "";
+    rows.push({
+      id: `ticket-${ticket.id || whenRaw}`,
+      kind: "ticket",
+      severity: "info",
+      whenRaw,
+      when: resolveEventWhen(whenRaw, locale),
+      typeLabel: lifecycleTypeLabel("ticket", null, ov, glance),
+      message: [number, ticket.title || ov.ticketFallback || "Ticket", status].filter(Boolean).join(" · "),
+      actor: ticket.assignee_name || ticket.created_by_name || ticket.author_name || null
+    });
+  }
+
+  for (const event of planningEvents) {
+    const whenRaw = event.start || event.event_start || event.created_at || null;
+    rows.push({
+      id: `planning-${event.id || whenRaw}`,
+      kind: "planning",
+      severity: "info",
+      whenRaw,
+      when: resolveEventWhen(whenRaw, locale),
+      typeLabel: lifecycleTypeLabel("planning", null, ov, glance),
+      message: [event.title || ov.planningFallback || "Intervention", event.type].filter(Boolean).join(" · "),
+      actor: event.assigned_user_name || event.created_by_name || null
+    });
+  }
+
+  for (const excl of maintenances) {
+    if ((excl.kind || "maintenance") !== "maintenance" || excl.scope !== "device") continue;
+    const reason = String(excl.reason || excl.comment || "").trim();
+    const untilLabel = formatAbsoluteWhen(excl.excludedUntil, locale);
+    const startRaw = excl.createdAt || excl.created_at || null;
+    if (startRaw) {
+      rows.push({
+        id: `maint-start-${excl.id || startRaw}`,
+        kind: "maintenance",
+        severity: "warning",
+        whenRaw: startRaw,
+        when: resolveEventWhen(startRaw, locale),
+        typeLabel: lifecycleTypeLabel("maintenance", null, ov, glance),
+        message: [
+          ov.maintenanceStarted || "Mise en maintenance",
+          reason || null,
+          untilLabel ? interpolate(ov.maintenanceUntil || "jusqu’au {date}", { date: untilLabel }) : null
+        ].filter(Boolean).join(" — "),
+        actor: excl.excludedByName || excl.createdByName || null
+      });
+    }
+    const endRaw = excl.endedAt || excl.ended_at || (!excl.active && excl.excludedUntil ? excl.excludedUntil : null);
+    if (endRaw && !excl.active) {
+      rows.push({
+        id: `maint-end-${excl.id || endRaw}`,
+        kind: "maintenance",
+        severity: "info",
+        whenRaw: endRaw,
+        when: resolveEventWhen(endRaw, locale),
+        typeLabel: lifecycleTypeLabel("maintenance", null, ov, glance),
+        message: ov.maintenanceEnded || "Fin de maintenance",
+        actor: excl.endedByName || null
+      });
+    }
+  }
+
+  return rows
+    .filter(row => row.whenRaw)
+    .sort((a, b) => new Date(b.whenRaw).getTime() - new Date(a.whenRaw).getTime())
+    .slice(0, 12);
 }
 
 function buildAvailabilitySeries(availPct) {
@@ -183,14 +326,16 @@ export default function EquipmentOverviewDashboard({
   maintenanceHistoryKey = 0,
   sheetContent = null,
   showRmmTab = null,
-  showSupervisionTab = null
+  showSupervisionTab = null,
+  forcedPane = null,
+  hidePaneSwitch = false
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
   const ov = copy.overview || {};
   const glance = copy.alertsGlance || {};
-  const [alerts, setAlerts] = useState([]);
-  const [loadingAlerts, setLoadingAlerts] = useState(true);
+  const [lifecycleFeed, setLifecycleFeed] = useState([]);
+  const [loadingLifecycle, setLoadingLifecycle] = useState(true);
 
   const equipmentId = getEquipmentDbId(equipment) || equipment?.dbId || equipment?.id;
   const equipmentDbId = equipmentId;
@@ -202,16 +347,28 @@ export default function EquipmentOverviewDashboard({
       ? Boolean(equipment?.checkmkMapping?.checkmk_host_name || checkmkData)
       : Boolean(showSupervisionTab);
   const showFicheTab = Boolean(sheetContent);
-  const showPaneSwitch = showFicheTab || allowRmm || allowSupervision;
+  const showPaneSwitch =
+    !hidePaneSwitch &&
+    !forcedPane &&
+    ((showFicheTab ? 1 : 0) + (allowRmm ? 1 : 0) + (allowSupervision ? 1 : 0) > 1);
 
   const [overviewPane, setOverviewPane] = useState(() =>
-    normalizeEquipmentOverviewPane(readEquipmentDetailUi(equipmentId)?.overviewPane, {
+    normalizeEquipmentOverviewPane(forcedPane || readEquipmentDetailUi(equipmentId)?.overviewPane, {
       allowRmm,
       allowSupervision
     })
   );
 
   useEffect(() => {
+    if (forcedPane) {
+      setOverviewPane(
+        normalizeEquipmentOverviewPane(forcedPane, {
+          allowRmm,
+          allowSupervision
+        })
+      );
+      return;
+    }
     const saved = readEquipmentDetailUi(equipmentId)?.overviewPane;
     setOverviewPane(
       normalizeEquipmentOverviewPane(saved, {
@@ -220,23 +377,23 @@ export default function EquipmentOverviewDashboard({
       })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restore pane when switching equipment
-  }, [equipmentId]);
+  }, [equipmentId, forcedPane]);
 
   useEffect(() => {
     setOverviewPane(prev =>
-      normalizeEquipmentOverviewPane(prev, { allowRmm, allowSupervision })
+      normalizeEquipmentOverviewPane(forcedPane || prev, { allowRmm, allowSupervision })
     );
-  }, [allowRmm, allowSupervision]);
+  }, [allowRmm, allowSupervision, forcedPane]);
 
   useEffect(() => {
-    if (!equipmentId) return;
+    if (!equipmentId || forcedPane) return;
     writeEquipmentDetailUi(equipmentId, {
       overviewPane: normalizeEquipmentOverviewPane(overviewPane, {
         allowRmm,
         allowSupervision
       })
     });
-  }, [equipmentId, overviewPane, allowRmm, allowSupervision]);
+  }, [equipmentId, overviewPane, allowRmm, allowSupervision, forcedPane]);
   const inventory = useMemo(() => getRmmInventoryFromEquipment(equipment), [equipment]);
   const metricAgent = useMemo(() => buildRmmAgentRowFromEquipment(equipment), [equipment]);
   const snapshot = useMemo(() => buildMetricSnapshot(metricAgent), [metricAgent]);
@@ -329,54 +486,62 @@ export default function EquipmentOverviewDashboard({
 
   useEffect(() => {
     if (!equipmentId) {
-      setAlerts([]);
-      setLoadingAlerts(false);
+      setLifecycleFeed([]);
+      setLoadingLifecycle(false);
       return undefined;
     }
     let cancelled = false;
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     (async () => {
-      setLoadingAlerts(true);
-      try {
-        const rows = await fetchEquipmentRecentAlerts(equipmentId, { days: 30, limit: 8 });
-        if (!cancelled) setAlerts(Array.isArray(rows) ? rows : []);
-      } catch {
-        if (!cancelled) setAlerts([]);
-      } finally {
-        if (!cancelled) setLoadingAlerts(false);
-      }
+      setLoadingLifecycle(true);
+      const range = resolveEquipmentActivityRange({ preset: "30d" });
+      const signal = controller?.signal;
+      const [alertsResult, activityResult, maintenanceResult] = await Promise.allSettled([
+        fetchEquipmentRecentAlerts(equipmentId, { days: 30, limit: 20 }),
+        fetchEquipmentActivity({
+          equipmentId,
+          clientId: equipmentClientId || undefined,
+          startDate: range.start?.toISOString?.() || undefined,
+          endDate: range.end?.toISOString?.() || undefined,
+          signal
+        }),
+        fetchSupervisionExclusionHistory({
+          equipmentId,
+          clientId: equipmentClientId || undefined,
+          kind: "maintenance",
+          limit: 20,
+          signal
+        })
+      ]);
+      if (cancelled) return;
+      const alerts = alertsResult.status === "fulfilled" && Array.isArray(alertsResult.value) ? alertsResult.value : [];
+      const activity = activityResult.status === "fulfilled" ? activityResult.value : null;
+      const maintenances =
+        maintenanceResult.status === "fulfilled" && Array.isArray(maintenanceResult.value)
+          ? maintenanceResult.value
+          : [];
+      setLifecycleFeed(
+        buildLifecycleFeed({
+          alerts,
+          checkmkEvents: checkmkData?.events?.events || [],
+          tickets: activity?.tickets || [],
+          planningEvents: activity?.events || [],
+          maintenances,
+          locale,
+          ov,
+          glance
+        })
+      );
+      setLoadingLifecycle(false);
     })();
     return () => {
       cancelled = true;
+      controller?.abort?.();
     };
-  }, [equipmentId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ov/glance follow locale; rebuild when checkmk/maintenance refresh
+  }, [equipmentId, equipmentClientId, maintenanceHistoryKey, checkmkData, locale]);
 
-  const recentEvents = useMemo(() => {
-    if (alerts.length) {
-      return alerts.slice(0, 6).map(alert => {
-        const severity = alert.severity || alert.level || "info";
-        return {
-          id: alert.id,
-          when: resolveEventWhen(alert, locale),
-          whenRaw: alert.at || alert.triggeredAt || alert.createdAt || alert.created_at || null,
-          type: severity,
-          typeLabel: severityLabel(severity, glance),
-          message: alert.title || alert.criterionKey || alert.typeKey || "—"
-        };
-      });
-    }
-    const checkmkEvents = checkmkData?.events?.events || [];
-    return checkmkEvents.slice(0, 6).map((event, index) => {
-      const severity = event.state === 2 ? "critical" : event.state === 1 ? "warning" : "info";
-      return {
-        id: event.id || `ck-${index}`,
-        when: resolveEventWhen(event, locale),
-        whenRaw: event.time || event.timestamp || event.at || null,
-        type: severity,
-        typeLabel: severityLabel(severity, glance),
-        message: event.message || event.plugin_output || event.event_text || getServiceLabel(event) || "—"
-      };
-    });
-  }, [alerts, checkmkData, glance, locale]);
+  const recentEvents = lifecycleFeed;
 
   const processRows = useMemo(() => {
     const apps = Array.isArray(inventory.software?.topCpu) ? inventory.software.topCpu : [];
@@ -772,10 +937,10 @@ export default function EquipmentOverviewDashboard({
 
             <OverviewCard
               className={styles.spanFull}
-              title={ov.eventsTitle || "Derniers événements"}
+              title={ov.eventsTitle || "Activité récente"}
               icon="mdi:history"
             >
-              {loadingAlerts && !recentEvents.length ? (
+              {loadingLifecycle && !recentEvents.length ? (
                 <p className={styles.empty}>{copy.loading}</p>
               ) : recentEvents.length ? (
                 <div className={styles.tableWrap}>
@@ -784,12 +949,13 @@ export default function EquipmentOverviewDashboard({
                       <tr>
                         <th>{ov.colWhen || "Date"}</th>
                         <th>{ov.colType || "Type"}</th>
-                        <th>{ov.colMessage || "Message"}</th>
+                        <th>{ov.colMessage || "Détail"}</th>
+                        <th>{ov.colBy || "Par"}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentEvents.map(row => {
-                        const tone = severityTone(row.type);
+                        const tone = lifecycleTone(row.kind, row.severity);
                         return (
                           <tr key={row.id}>
                             <td>
@@ -802,6 +968,7 @@ export default function EquipmentOverviewDashboard({
                               {row.typeLabel}
                             </td>
                             <td title={row.message}>{row.message}</td>
+                            <td className={styles.actorCell}>{row.actor || "—"}</td>
                           </tr>
                         );
                       })}
@@ -809,7 +976,7 @@ export default function EquipmentOverviewDashboard({
                   </table>
                 </div>
               ) : (
-                <p className={styles.empty}>{glance.empty || ov.eventsEmpty || "Aucun événement récent"}</p>
+                <p className={styles.empty}>{ov.eventsEmpty || glance.empty || "Aucune activité récente"}</p>
               )}
             </OverviewCard>
           </div>

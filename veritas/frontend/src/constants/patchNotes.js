@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.92",
+    date: "2026-10-13",
+    highlights: [
+      "Fiche périphérique : Synthèse et Informations matériel en onglets dédiés (Dashboard retiré).",
+      "Activité : statistiques à gauche, événements liés à droite ; Documents : glisser-déposer ; Logs en table pleine hauteur.",
+      "Supervision Main : header CheckMK clarifié (identité hôte + KPIs Santé / Disponibilité / Événements).",
+      "Journal d’activité ajouté aux fiches entreprise, contact et prestataire, avec plus d’actions tracées."
+    ]
+  },
+  {
     version: "1.0.91",
     date: "2026-10-13",
     highlights: [

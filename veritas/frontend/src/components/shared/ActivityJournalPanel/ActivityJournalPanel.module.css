@@ -1,0 +1,243 @@
+.logsPanel {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted-light, #8b9bb5);
+  font-weight: 500;
+}
+
+.logsPanelBody {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow: hidden !important;
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.logsPanelBody > .toolbar,
+.logsPanelBody > .pagination {
+  flex: 0 0 auto !important;
+  min-height: 0;
+}
+
+.logsPanelBody > .tableFill {
+  flex: 1 1 0 !important;
+  min-height: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.purgeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  border-radius: 8px;
+  background: rgba(254, 242, 242, 0.9);
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.purgeBtn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.purgeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.searchWrap {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.48rem 2rem 0.48rem 2.1rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 8px;
+  background: var(--msp-surface, #ffffff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.78rem;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.12);
+}
+
+.searchClear {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.searchClear:hover {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.tableFill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tableFill > .loadingState,
+.tableFill > .emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.emptyIcon {
+  font-size: 1.85rem;
+  opacity: 0.45;
+  margin-bottom: 0.35rem;
+}
+
+.emptyHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  max-width: 22rem;
+}
+
+.loadingState {
+  font-size: 0.85rem;
+}
+
+.tableWrapper {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.table {
+  width: 100%;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  width: 22%;
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  width: 11rem;
+  white-space: nowrap;
+}
+
+.actionInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.dateCell {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding-top: 0.15rem;
+}
+
+.paginationButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+}
+
+.paginationButton:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.paginationButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.paginationInfo {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  font-weight: 550;
+}

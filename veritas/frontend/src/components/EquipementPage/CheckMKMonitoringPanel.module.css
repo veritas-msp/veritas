@@ -136,7 +136,93 @@
   margin-bottom: 0.55rem;
 }
 
-/* Barre compacte : hôte + KPI sur une ligne, sans cartes imbriquées */
+/* Header Main : identité hôte + KPI séparés */
+.hostHeader {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.15rem 0.1rem 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, var(--msp-border));
+}
+
+.hostIdentity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.hostIdentityIcon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  font-size: 1.15rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.hostIdentityBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.hostIdentityPrimary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.55rem;
+  min-width: 0;
+}
+
+.hostName {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--msp-text, #0f1c2e);
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+
+.hostIdentityMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.hostMetaSep {
+  color: var(--msp-muted-light, #94a3b8);
+  font-weight: 600;
+}
+
+.hostSync {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--msp-surface-2, #f7f9fc);
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hostSync svg {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
 .infoBar {
   flex-shrink: 0;
   display: flex;
@@ -162,6 +248,24 @@
   letter-spacing: normal;
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
 }
 
 .kpiStrip {
@@ -204,9 +308,9 @@
 
 .kpiPeriodRow {
   display: inline-flex;
-  flex-wrap: nowrap;
-  gap: 0.15rem;
-  margin-left: 0.1rem;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
 }
 
 .splitLayout {
@@ -382,6 +486,14 @@
     display: none;
   }
 
+  .hostIdentity {
+    flex-wrap: wrap;
+  }
+
+  .hostSync {
+    margin-left: 0;
+  }
+
   .splitLayout {
     grid-template-columns: 1fr;
   }
@@ -392,50 +504,46 @@
   }
 }
 
+@media (max-width: 720px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .hostInfoSection {
   display: none;
 }
 
-.kpiGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-  gap: 0.55rem;
-  margin-bottom: 0.85rem;
-}
-
-.kpiCard {
-  background: var(--msp-surface-2);
-  border: 1px solid var(--msp-border-light, var(--msp-border));
-  border-radius: var(--msp-radius-sm, 10px);
-  padding: 0.65rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-height: 72px;
-}
-
 .kpiLabel {
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--msp-muted-light);
-  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--msp-muted, #5c6b82);
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .kpiValue {
-  font-size: 0.95rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  color: var(--msp-text);
-  line-height: 1.2;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
 .kpiInline .kpiValue {
   font-size: 0.92rem;
 }
 
+.kpiCard .kpiValue {
+  font-size: 1.15rem;
+}
+
 .kpiSub {
-  font-size: 0.68rem;
-  color: var(--msp-muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -960,9 +1068,9 @@
 }
 
 .skeletonKpi {
-  height: 1.1rem;
-  width: 4.5rem;
-  border-radius: 999px;
+  height: 4.25rem;
+  width: 100%;
+  border-radius: 10px;
 }
 
 .skeletonSection {

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useParams, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
+import { updateClient, saveClientModules, getClientLogs, purgeClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
+import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { listClientOffice365Credentials } from "../../api/clientOffice365";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
@@ -512,6 +513,9 @@ export default function ClientDetailPage({
   const [activityTabMounted, setActivityTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "activity"
   );
+  const [logsTabMounted, setLogsTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "logs"
+  );
   const [vaultTabMounted, setVaultTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "vault"
   );
@@ -920,6 +924,7 @@ export default function ClientDetailPage({
       setMapTabMounted(false);
       setActivityTabMounted(nextOverviewTab === "activity");
       setVaultTabMounted(nextOverviewTab === "vault");
+      setLogsTabMounted(nextOverviewTab === "logs");
       setActiveSiteFilter(saved?.siteFilter || null);
       setEquipmentSearchQuery(saved?.searchQuery || "");
       setActiveEquipmentTableType(saved?.activeType || null);
@@ -944,11 +949,13 @@ export default function ClientDetailPage({
     setMapTabMounted(true);
     setActivityTabMounted(true);
     setVaultTabMounted(true);
+    setLogsTabMounted(true);
   }, [client?.id]);
   useEffect(() => {
     if (overviewTab === "map") setMapTabMounted(true);
     if (overviewTab === "activity") setActivityTabMounted(true);
     if (overviewTab === "vault") setVaultTabMounted(true);
+    if (overviewTab === "logs") setLogsTabMounted(true);
   }, [overviewTab]);
   useEffect(() => {
     const el = pageRootRef.current;
@@ -3891,9 +3898,9 @@ export default function ClientDetailPage({
         </div>
       </header>
 
-      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "overview" || overviewTab === "activity" ? styles.pageBodyFill : ""}`.trim()}>
+      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "overview" || overviewTab === "activity" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "overview" ? styles.mainColumnOverview : ""} ${overviewTab === "activity" ? styles.mainColumnActivity : ""}`.trim()}>
+          <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "overview" ? styles.mainColumnOverview : ""} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnActivity : ""}`.trim()}>
             <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
               <button type="button" role="tab" aria-selected={overviewTab === "overview"} className={`${styles.heroTab} ${overviewTab === "overview" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("overview")} data-guide="enterprise-overview-tab">
                 <Icon icon="mdi:chart-timeline-variant" className={styles.heroTabIcon} aria-hidden />
@@ -3911,6 +3918,10 @@ export default function ClientDetailPage({
                 <Icon icon="mdi:safe-square-outline" className={styles.heroTabIcon} aria-hidden />
                 <span className={styles.heroTabLabel}>{copy.overviewTabVault}</span>
                 {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "logs"} className={`${styles.heroTab} ${overviewTab === "logs" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("logs")} data-guide="enterprise-logs">
+                <Icon icon="mdi:history" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabLogs || "Logs"}</span>
               </button>
             </nav>
             <div className={styles.mainCommunityPanels}>
@@ -4324,6 +4335,24 @@ export default function ClientDetailPage({
                 </ProFeatureLock>
               </div>
             </div>
+            </div>
+            ) : null}
+
+            {logsTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "logs"}
+              style={overviewTab === "logs" ? undefined : { display: "none" }}
+              data-guide="enterprise-logs-panel"
+            >
+              {client?.id ? (
+                <ActivityJournalPanel
+                  entityId={client.id}
+                  active={overviewTab === "logs"}
+                  fetchLogs={(page, options) => getClientLogs(client.id, page, options?.limit || 25, options)}
+                  purgeLogs={() => purgeClientLogs(client.id)}
+                />
+              ) : null}
             </div>
             ) : null}
             </div>

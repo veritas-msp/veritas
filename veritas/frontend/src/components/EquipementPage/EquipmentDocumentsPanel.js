@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -83,15 +83,19 @@ function DocumentCard({
 function EquipmentUploadModal({
   equipment,
   copy,
+  initialFile = null,
   onClose,
   onUploaded
 }) {
   const docCopy = copy.documents;
   const modal = docCopy.uploadModal;
   const [category, setCategory] = useState(DEFAULT_CATEGORY);
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState(() => initialFile || null);
   const [uploading, setUploading] = useState(false);
   const fileInputId = "equipment-doc-file-input";
+  useEffect(() => {
+    if (initialFile) setFile(initialFile);
+  }, [initialFile]);
   const handleDrop = e => {
     e.preventDefault();
     const dropped = e.dataTransfer?.files?.[0];
@@ -213,9 +217,52 @@ export default function EquipmentDocumentsPanel({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [pendingUploadFile, setPendingUploadFile] = useState(null);
+  const [fileDropActive, setFileDropActive] = useState(false);
+  const fileDropDepthRef = useRef(0);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const hasExternalFiles = useCallback(dataTransfer => {
+    if (!dataTransfer) return false;
+    return Array.from(dataTransfer.types || []).includes("Files");
+  }, []);
+  const openUploadWithFile = useCallback(file => {
+    if (!file) return;
+    setPendingUploadFile(file);
+    setShowUploadModal(true);
+    setFileDropActive(false);
+    fileDropDepthRef.current = 0;
+  }, []);
+  const handlePanelDragEnter = useCallback(e => {
+    if (!hasExternalFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    fileDropDepthRef.current += 1;
+    setFileDropActive(true);
+  }, [hasExternalFiles]);
+  const handlePanelDragLeave = useCallback(e => {
+    if (!hasExternalFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    fileDropDepthRef.current = Math.max(0, fileDropDepthRef.current - 1);
+    if (fileDropDepthRef.current === 0) setFileDropActive(false);
+  }, [hasExternalFiles]);
+  const handlePanelDragOver = useCallback(e => {
+    if (!hasExternalFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+  }, [hasExternalFiles]);
+  const handlePanelFileDrop = useCallback(e => {
+    if (!hasExternalFiles(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const dropped = e.dataTransfer?.files?.[0] || null;
+    fileDropDepthRef.current = 0;
+    setFileDropActive(false);
+    if (dropped) openUploadWithFile(dropped);
+  }, [hasExternalFiles, openUploadWithFile]);
   const filteredDocuments = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return documents;
@@ -278,7 +325,18 @@ export default function EquipmentDocumentsPanel({
         </p>
       </div>;
   }
-  return <div className={embedded ? styles.embeddedRoot : styles.panel}>
+  return <div
+      className={`${embedded ? styles.embeddedRoot : styles.panel} ${fileDropActive ? styles.panelFileDrop : ""}`.trim()}
+      onDragEnter={handlePanelDragEnter}
+      onDragLeave={handlePanelDragLeave}
+      onDragOver={handlePanelDragOver}
+      onDrop={handlePanelFileDrop}
+    >
+      {fileDropActive ? <div className={styles.fileDropOverlay} aria-hidden>
+          <Icon icon="mdi:cloud-upload-outline" aria-hidden />
+          <span>{docCopy.fileDropOverlay || docCopy.uploadModal?.dropHint}</span>
+        </div> : null}
+
       <div className={styles.toolbar}>
         <div className={styles.searchBar}>
           <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
@@ -290,7 +348,10 @@ export default function EquipmentDocumentsPanel({
             {filteredDocuments.length} / {documents.length}
           </span>
         </div>
-        <button type="button" className={styles.uploadBtn} onClick={() => setShowUploadModal(true)}>
+        <button type="button" className={styles.uploadBtn} onClick={() => {
+          setPendingUploadFile(null);
+          setShowUploadModal(true);
+        }}>
           <Icon icon="mdi:plus" aria-hidden />
           {docCopy.addDocument}
         </button>
@@ -299,6 +360,7 @@ export default function EquipmentDocumentsPanel({
       {loading ? <p className={styles.hint}>{docCopy.loading}</p> : documents.length === 0 ? <div className={styles.emptyState}>
           <Icon icon="mdi:file-document-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateText}>{docCopy.empty}</p>
+          <p className={styles.emptyDropHint}>{docCopy.fileDropHint || docCopy.uploadModal?.dropHint}</p>
         </div> : filteredDocuments.length === 0 ? <div className={styles.emptyState}>
           <Icon icon="mdi:file-search-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateText}>{interpolate(docCopy.noMatch, {
@@ -308,9 +370,13 @@ export default function EquipmentDocumentsPanel({
           {filteredDocuments.map(doc => <DocumentCard key={doc.id} doc={doc} copy={copy} locale={locale} onPreview={() => setPreviewDoc(doc)} onDelete={() => setDeleteTarget(doc)} />)}
         </div>}
 
-      {showUploadModal ? <EquipmentUploadModal equipment={equipment} copy={copy} onClose={() => setShowUploadModal(false)} onUploaded={created => {
+      {showUploadModal ? <EquipmentUploadModal equipment={equipment} copy={copy} initialFile={pendingUploadFile} onClose={() => {
+      setShowUploadModal(false);
+      setPendingUploadFile(null);
+    }} onUploaded={created => {
       setDocuments(prev => [created, ...prev]);
       setShowUploadModal(false);
+      setPendingUploadFile(null);
       toast.success(docCopy.toasts.added);
     }} /> : null}
 

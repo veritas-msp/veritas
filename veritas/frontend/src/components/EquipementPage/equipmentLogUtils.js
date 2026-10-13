@@ -84,6 +84,32 @@ export function getLogActionDetails(log) {
       label: count > 1 ? `RMM presence (${count}/h)` : "Heartbeat RMM"
     };
   }
+  if (actionLower === "client update" || actionLower === "contact update") {
+    return {
+      icon: "mdi:pencil-circle",
+      color: "#2b5fab",
+      label: actionLower.startsWith("client") ? "Modification entreprise" : "Modification contact"
+    };
+  }
+  if (actionLower === "link_client") {
+    return { icon: "mdi:link-variant", color: "#2b5fab", label: "Liaison entreprise" };
+  }
+  if (actionLower === "unlink_client") {
+    return { icon: "mdi:link-variant-off", color: "#5c6b82", label: "Déliaison entreprise" };
+  }
+  if (actionLower === "set_primary") {
+    return { icon: "mdi:star-circle", color: "#2b5fab", label: "Contact principal" };
+  }
+  if (actionLower.startsWith("portal_")) {
+    return {
+      icon: "mdi:web",
+      color: actionLower.includes("delete") ? "#5c6b82" : "#2b5fab",
+      label: actionLower.replace("portal_", "Portail · ")
+    };
+  }
+  if (actionLower === "purge_logs") {
+    return { icon: "mdi:delete-sweep", color: "#5c6b82", label: "Purge journal" };
+  }
   const actionMap = {
     create: {
       icon: "mdi:plus-circle",

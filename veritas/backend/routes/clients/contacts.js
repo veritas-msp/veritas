@@ -30,6 +30,31 @@ const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN
 const router = express.Router();
 router.use(verifyJWT);
 const uuidRegexUser = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function resolveContactLogUserId(req) {
+  const rawUserId = req?.user?.id || req?.user?.user_id || null;
+  return rawUserId && uuidRegexUser.test(String(rawUserId)) ? String(rawUserId) : null;
+}
+
+async function logContactAction(contactId, clientId, userId, action, details = null) {
+  try {
+    await pool.query(
+      `INSERT INTO v_b_contacts_logs
+        (contact_id, client_id, user_id, action, details, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [
+        contactId,
+        clientId || null,
+        userId || null,
+        action,
+        details != null ? JSON.stringify(details) : null
+      ]
+    );
+  } catch (logError) {
+    console.warn("Error writing contact log:", logError?.message || logError);
+  }
+}
+
 const buildContactChanges = (oldData, newData) => {
   const fields = [{
     key: 'nom',
@@ -341,6 +366,9 @@ router.post('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts_
     });
     invalidateContactsListCache(contact.client_id);
     invalidateContactsListCache(null);
+    await logContactAction(contactId, contact.client_id, resolveContactLogUserId(req), "portal_create", {
+      inviteSent: sendEmail
+    });
     res.status(201).json({
       contact_id: contactId,
       portal,
@@ -366,6 +394,7 @@ router.post('/:id/portal/invite', verifyJWT, requireAgent, requirePermission('co
       error: "Contact not found"
     });
     const portal = await resendPortalInviteForContact(contactId);
+    await logContactAction(contactId, contact.client_id, resolveContactLogUserId(req), "portal_invite", {});
     res.json({
       contact_id: contactId,
       portal,
@@ -461,6 +490,7 @@ router.delete('/:id/portal', verifyJWT, requireAgent, requirePermission('contact
     });
     invalidateContactsListCache(contact?.client_id);
     invalidateContactsListCache(null);
+    await logContactAction(contactId, contact?.client_id, resolveContactLogUserId(req), "portal_delete", {});
     res.json({
       success: true
     });
@@ -796,6 +826,13 @@ router.post('/', verifyJWT, requirePermission('contacts.create'), async (req, re
     await attachOrphanTicketsToContact(newContact).catch(err => {
       console.warn("attachOrphanTicketsToContact (create):", err?.message || err);
     });
+    await logContactAction(
+      newContact.id,
+      newContact.client_id,
+      resolveContactLogUserId(req),
+      "create",
+      { nom: newContact.nom, prenom: newContact.prenom, email: newContact.email }
+    );
     await dispatchNotificationEvent({
       source: "contact",
       element: "created",
@@ -917,19 +954,14 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
       ...updatedContact,
       client_id: newClientId
     });
-    const rawUserId = req.user?.id || req.user?.user_id || null;
-    const userId = rawUserId && uuidRegexUser.test(String(rawUserId)) ? String(rawUserId) : null;
     if (modifiedFields.length > 0) {
-      try {
-        await pool.query(`INSERT INTO v_b_contacts_logs
-           (contact_id, client_id, user_id, action, details, created_at)
-           VALUES ($1, $2, $3, $4, $5, NOW())`, [updatedContact.id, updatedContact.client_id, userId, 'Contact update', JSON.stringify({
-          modifiedFields,
-          changes
-        })]);
-      } catch (logError) {
-        console.warn('Error writing contact log:', logError);
-      }
+      await logContactAction(
+        updatedContact.id,
+        updatedContact.client_id,
+        resolveContactLogUserId(req),
+        "Contact update",
+        { modifiedFields, changes }
+      );
     }
     await dispatchNotificationEvent({
       source: "contact",
@@ -989,6 +1021,9 @@ router.post('/:id/memberships', verifyJWT, requirePermission('contacts_detail.ed
       isPrimary: req.body?.is_primary === true
     });
     const contact = await loadContactById(contactId);
+    await logContactAction(contactId, contact?.client_id, resolveContactLogUserId(req), "link_client", {
+      client_id: clientId
+    });
     return res.json(contact);
   } catch (err) {
     return res.status(500).json({ error: err.message || "Error adding membership" });
@@ -1004,6 +1039,9 @@ router.delete('/:id/memberships/:clientId', verifyJWT, requirePermission('contac
     await removeMembership(contactId, clientId);
     const contact = await loadContactById(contactId);
     if (!contact) return res.status(404).json({ error: "Contact not found" });
+    await logContactAction(contactId, contact.client_id, resolveContactLogUserId(req), "unlink_client", {
+      client_id: clientId
+    });
     return res.json(contact);
   } catch (err) {
     return res.status(500).json({ error: err.message || "Error removing membership" });
@@ -1018,6 +1056,9 @@ router.put('/:id/memberships/:clientId/primary', verifyJWT, requirePermission('c
     }
     await setPrimaryForClient(clientId, contactId);
     const contact = await loadContactById(contactId);
+    await logContactAction(contactId, contact?.client_id, resolveContactLogUserId(req), "set_primary", {
+      client_id: clientId
+    });
     return res.json(contact);
   } catch (err) {
     const status = err.code === "CONTACT_CLIENT_MISMATCH" ? 400 : 500;
@@ -1039,14 +1080,22 @@ router.delete('/:id/logs', verifyJWT, async (req, res) => {
     const {
       id
     } = req.params;
+    const contactId = parseInt(id, 10);
+    const contact = await loadContactById(contactId).catch(() => null);
     const result = await pool.query(`
       DELETE FROM v_b_contacts_logs
       WHERE contact_id = $1
       RETURNING id
-    `, [parseInt(id)]);
+    `, [contactId]);
+    const logsDeleted = result.rows.length;
+    await logContactAction(contactId, contact?.client_id, resolveContactLogUserId(req), "PURGE_LOGS", {
+      logs_deleted: logsDeleted,
+      timestamp: new Date().toISOString()
+    });
     res.json({
       success: true,
-      message: `${result.rows.length} logs deleted`
+      message: `${logsDeleted} logs deleted`,
+      logs_deleted: logsDeleted
     });
   } catch (err) {
     res.status(500).json({
@@ -1061,6 +1110,13 @@ router.delete('/:id', verifyJWT, requirePermission('contacts_detail.delete'), as
       id
     } = req.params;
     const existing = await pool.query(`SELECT client_id FROM v_b_contacts WHERE id = $1`, [parseInt(id)]);
+    await logContactAction(
+      parseInt(id, 10),
+      existing.rows[0]?.client_id,
+      resolveContactLogUserId(req),
+      "delete",
+      {}
+    );
     await deletePortalUserForContact(parseInt(id)).catch(() => {});
     const result = await pool.query(`
       DELETE FROM v_b_contacts

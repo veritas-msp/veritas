@@ -43,7 +43,7 @@ function mergeInternetDisplaySections(sections) {
   } : section);
 }
 function resolveSectionsGridClass(count) {
-  if (count === 4 || count > 3 && count % 3 === 1) return styles.sectionsGrid2;
+  if (count <= 4) return styles.sectionsGrid2;
   return styles.sectionsGrid3;
 }
 function SourceBadge({
@@ -501,11 +501,11 @@ export default function EquipmentDetailSpecsPanel({
 
               {showLocationMap ? <SiteLocationVignette site={resolvedSite || {
             name: locationName
-          }} locationLabel={locationName} /> : null}
+          }} locationLabel={locationName} size={bare ? "large" : "default"} /> : null}
 
               {hasDebitGauges ? <InternetDebitCounters download={formData?.debitDownload} upload={formData?.debitUpload} combined={formData?.debit} /> : null}
 
-              {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
+              {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${bare ? "" : styles.fieldGridCompact}`.trim()}>
                   {visibleFields.map(field => <SpecField key={field.key} field={field} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
                 </div> : null}
 

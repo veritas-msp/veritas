@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { FaPlus } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { fetchPrestataire, fetchPrestataireMentionedTickets, deletePrestataire } from "../../api/prestataires";
+import { fetchPrestataire, fetchPrestataireMentionedTickets, deletePrestataire, getPrestataireLogs, purgePrestataireLogs } from "../../api/prestataires";
+import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { fetchClientsList } from "../../api/clients";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import localStyles from "./PrestataireDetailPage.module.css";
@@ -476,7 +477,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
       <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
           <main
-            className={`${styles.mainColumn} ${overviewTab === "activity" ? styles.mainColumnActivity : ""}`.trim()}
+            className={`${styles.mainColumn} ${overviewTab === "activity" || overviewTab === "logs" ? styles.mainColumnActivity : ""}`.trim()}
           >
             <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria}>
               <button
@@ -488,6 +489,16 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
               >
                 <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
                 <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={overviewTab === "logs"}
+                className={`${styles.heroTab} ${overviewTab === "logs" ? styles.heroTabActive : ""}`}
+                onClick={() => setOverviewTab("logs")}
+              >
+                <Icon icon="mdi:history" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabLogs || "Logs"}</span>
               </button>
             </nav>
             {overviewTab === "activity" ? (
@@ -656,6 +667,19 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                   </section>
                 </div>
               </div>
+              </div>
+            ) : null}
+
+            {overviewTab === "logs" && prestataire?.id ? (
+              <div className={styles.overviewTabPanel} data-guide="prestataire-logs-panel">
+                <ActivityJournalPanel
+                  entityId={prestataire.id}
+                  active={overviewTab === "logs"}
+                  fetchLogs={(page, options) =>
+                    getPrestataireLogs(prestataire.id, page, options?.limit || 25, options)
+                  }
+                  purgeLogs={() => purgePrestataireLogs(prestataire.id)}
+                />
               </div>
             ) : null}
           </main>

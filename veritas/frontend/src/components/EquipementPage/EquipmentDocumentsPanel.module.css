@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  position: relative;
 }
 
 .embeddedRoot {
@@ -14,6 +15,36 @@
   height: 100%;
   overflow: auto;
   overscroll-behavior: contain;
+  position: relative;
+}
+
+.panelFileDrop {
+  outline: 2px dashed var(--msp-accent, #2b5fab);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+.fileDropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--msp-surface, #fff) 82%, var(--msp-accent, #2b5fab));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}
+
+.fileDropOverlay svg {
+  font-size: 2rem;
 }
 
 .toolbar {
@@ -251,6 +282,16 @@
   font-size: 0.8rem;
   font-weight: 550;
   line-height: 1.35;
+  text-align: center;
+  max-width: 18rem;
+}
+
+.emptyDropHint {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--msp-muted-light, #94a3b8);
   text-align: center;
   max-width: 18rem;
 }

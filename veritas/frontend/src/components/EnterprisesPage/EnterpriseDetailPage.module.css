@@ -2802,6 +2802,13 @@
   flex-direction: column;
 }
 
+.mainColumnActivity .overviewTabPanel > .panel,
+.mainColumnActivity .overviewTabPanel > section {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
 .mainColumnActivity .activityLayout {
   flex: 1 1 0;
   min-height: 0;

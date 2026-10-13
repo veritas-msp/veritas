@@ -139,6 +139,7 @@ export default function CheckMKMonitoringPanel({
   loadingCheckMK,
   loadingAvailability,
   checkmkAvailabilityPeriod,
+  lastSyncedAt = null,
   layout = "default",
   onAvailabilityPeriodChange,
   onOpenService,
@@ -349,10 +350,10 @@ export default function CheckMKMonitoringPanel({
   if (loadingCheckMK && !checkmkData) {
     return (
       <section className={`${panelClass} ${styles.panelCompact}`}>
-        <div className={styles.infoBar}>
+        <div className={styles.hostHeader}>
           <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
-          <div className={styles.kpiStrip}>
-            {[1, 2, 3, 4].map(i => (
+          <div className={styles.kpiGrid}>
+            {[1, 2, 3].map(i => (
               <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />
             ))}
           </div>
@@ -377,39 +378,66 @@ export default function CheckMKMonitoringPanel({
   const hostStateColor = HOST_STATE_COLORS[hostState] || "#6b7280";
   const hostName =
     checkmkHostDetails?.hostName || checkmkHostDetails?.title || checkmkMapping.checkmk_host_name;
+  const hostAlias = checkmkHostDetails?.alias || "";
+  const showAlias = Boolean(hostAlias && hostAlias !== hostName);
   const lastCheckLabel = formatHostTimestamp(checkmkHostDetails?.lastCheck);
+  const syncedLabel = lastSyncedAt
+    ? formatEquipmentDetailRelative(lastSyncedAt, locale) || lastCheckLabel
+    : lastCheckLabel;
+  const cmkEventTotal = allEvents.length + allNotifications.length;
+  const eventTotal = centreAlerts.length + cmkEventTotal;
 
   return (
     <section className={`${panelClass} ${styles.panelCompact}`}>
-      <div className={styles.infoBar}>
-        <div className={styles.infoBarHost}>
-          <Icon icon="simple-icons:checkmk" className={styles.titleIcon} aria-hidden />
-          <span className={styles.titleHost}>{hostName}</span>
-          {checkmkHostDetails?.alias ? <span className={styles.alias}>({checkmkHostDetails.alias})</span> : null}
-          {hostState ? (
-            <span
-              className={styles.hostStateBadge}
-              style={{
-                background: `${hostStateColor}22`,
-                color: hostStateColor,
-                border: `1px solid ${hostStateColor}55`
-              }}
-            >
-              <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} />
-              {hostState}
+      <header className={styles.hostHeader}>
+        <div className={styles.hostIdentity}>
+          <Icon icon="simple-icons:checkmk" className={styles.hostIdentityIcon} aria-hidden />
+          <div className={styles.hostIdentityBody}>
+            <div className={styles.hostIdentityPrimary}>
+              <span className={styles.hostName}>{hostName}</span>
+              {hostState ? (
+                <span
+                  className={styles.hostStateBadge}
+                  style={{
+                    background: `${hostStateColor}22`,
+                    color: hostStateColor,
+                    border: `1px solid ${hostStateColor}55`
+                  }}
+                >
+                  <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} aria-hidden />
+                  {hostState}
+                </span>
+              ) : null}
+            </div>
+            <div className={styles.hostIdentityMeta}>
+              {[
+                showAlias ? { key: "alias", label: hostAlias } : null,
+                checkmkHostDetails?.ipAddress
+                  ? { key: "ip", label: checkmkHostDetails.ipAddress, mono: true }
+                  : null,
+                checkmkMapping.checkmk_site
+                  ? { key: "site", label: `Site ${checkmkMapping.checkmk_site}` }
+                  : null
+              ]
+                .filter(Boolean)
+                .map((part, index) => (
+                  <React.Fragment key={part.key}>
+                    {index > 0 ? <span className={styles.hostMetaSep} aria-hidden>·</span> : null}
+                    <span className={part.mono ? styles.ipText : undefined}>{part.label}</span>
+                  </React.Fragment>
+                ))}
+            </div>
+          </div>
+          {syncedLabel ? (
+            <span className={styles.hostSync} title={lastSyncedAt || undefined}>
+              <Icon icon="mdi:update" aria-hidden />
+              {syncedLabel}
             </span>
           ) : null}
-          {checkmkHostDetails?.ipAddress ? (
-            <span className={styles.ipText}>{checkmkHostDetails.ipAddress}</span>
-          ) : null}
-          {checkmkMapping.checkmk_site ? (
-            <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
-          ) : null}
-          {lastCheckLabel ? <span className={styles.labelChip}>Check · {lastCheckLabel}</span> : null}
         </div>
 
-        <div className={styles.kpiStrip} role="group" aria-label="Indicateurs CheckMK">
-          <div className={styles.kpiInline}>
+        <div className={styles.kpiGrid} role="group" aria-label="Indicateurs CheckMK">
+          <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Santé</span>
             <span
               className={`${styles.kpiValue} ${
@@ -424,23 +452,16 @@ export default function CheckMKMonitoringPanel({
             </span>
             <span className={styles.kpiSub}>
               {serviceCounts[0]} OK · {serviceCounts[1]} W · {serviceCounts[2]} C
+              {liveProblemCount ? ` · ${liveProblemCount} alerte${liveProblemCount > 1 ? "s" : ""}` : ""}
             </span>
           </div>
-          <span className={styles.kpiSep} aria-hidden />
-          <div className={styles.kpiInline}>
-            <span className={styles.kpiLabel}>Services</span>
-            <span className={styles.kpiValue}>{kpis.totalServices}</span>
-            <span className={styles.kpiSub}>
-              {liveProblemCount ? `${liveProblemCount} alerte${liveProblemCount > 1 ? "s" : ""}` : "OK"}
-            </span>
-          </div>
-          <span className={styles.kpiSep} aria-hidden />
-          <div className={styles.kpiInline}>
-            <span className={styles.kpiLabel}>Dispo.</span>
+
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>Disponibilité</span>
             <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
               {loadingAvailability ? "…" : availUp != null ? `${Math.round(availUp)}%` : "—"}
             </span>
-            <div className={styles.kpiPeriodRow}>
+            <div className={styles.kpiPeriodRow} role="group" aria-label="Période de disponibilité">
               {CHECKMK_AVAILABILITY_PERIOD_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
@@ -454,16 +475,16 @@ export default function CheckMKMonitoringPanel({
               ))}
             </div>
           </div>
-          <span className={styles.kpiSep} aria-hidden />
-          <div className={styles.kpiInline}>
+
+          <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Événements</span>
-            <span className={styles.kpiValue}>{centreAlerts.length + allEvents.length + allNotifications.length}</span>
+            <span className={styles.kpiValue}>{eventTotal}</span>
             <span className={styles.kpiSub}>
-              {centreAlerts.length} · {allEvents.length + allNotifications.length} CMK
+              {centreAlerts.length} centre · {cmkEventTotal} CheckMK
             </span>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className={styles.splitLayout}>
         <div className={styles.section}>

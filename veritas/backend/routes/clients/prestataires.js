@@ -293,6 +293,79 @@ router.get("/", requirePermission("prestataires.view"), async (req, res) => {
   }
 });
 
+router.get("/:id/logs", requirePermission("prestataires.view"), async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: "Invalid provider id" });
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const offset = (page - 1) * limit;
+  try {
+    const existing = await pool.query(`SELECT id FROM v_b_prestataires WHERE id = $1`, [id]);
+    if (!existing.rows[0]) return res.status(404).json({ error: "Provider not found" });
+    const result = await pool.query(
+      `SELECT
+        l.id,
+        l.prestataire_id,
+        l.user_id,
+        COALESCE(u.username, u.email) AS user_name,
+        l.action,
+        l.details,
+        l.created_at
+       FROM v_b_prestataires_logs l
+       LEFT JOIN v_b_users u ON l.user_id::text = u.id::text
+       WHERE l.prestataire_id = $1
+       ORDER BY l.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [id, limit, offset]
+    );
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM v_b_prestataires_logs WHERE prestataire_id = $1`,
+      [id]
+    );
+    const total = Number(countResult.rows[0]?.total) || 0;
+    return res.json({
+      logs: result.rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Error retrieving logs",
+      details: err.message
+    });
+  }
+});
+
+router.delete("/:id/logs", requirePermission("prestataires_detail.edit"), async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: "Invalid provider id" });
+  try {
+    const existing = await pool.query(`SELECT id FROM v_b_prestataires WHERE id = $1`, [id]);
+    if (!existing.rows[0]) return res.status(404).json({ error: "Provider not found" });
+    const result = await pool.query(
+      `DELETE FROM v_b_prestataires_logs WHERE prestataire_id = $1 RETURNING id`,
+      [id]
+    );
+    const logsDeleted = result.rows.length;
+    await logAction(id, req.user?.id, "PURGE_LOGS", {
+      logs_deleted: logsDeleted,
+      timestamp: new Date().toISOString()
+    });
+    return res.json({
+      success: true,
+      message: `${logsDeleted} logs deleted`,
+      logs_deleted: logsDeleted
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Error purging logs",
+      details: err.message
+    });
+  }
+});
+
 router.get("/:id", requirePermission("prestataires.view"), async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: "Invalid provider id" });
@@ -509,7 +582,11 @@ router.put("/:id", requirePermission("prestataires_detail.edit"), async (req, re
     );
     if (memberships) await replaceLinks(id, memberships);
     if (hasContacts) await replaceContacts(id, contacts);
-    await logAction(id, req.user?.id, "update", { nom: payload.nom });
+    await logAction(id, req.user?.id, "update", {
+      nom: payload.nom,
+      membershipsUpdated: Boolean(memberships),
+      contactsUpdated: Boolean(hasContacts)
+    });
     return res.json(await loadById(id));
   } catch (err) {
     return res.status(500).json({

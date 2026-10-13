@@ -490,6 +490,15 @@
   vertical-align: middle;
 }
 
+.actorCell {
+  color: var(--msp-muted, #64748b);
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .statusPill {
   display: inline-flex;
   align-items: center;

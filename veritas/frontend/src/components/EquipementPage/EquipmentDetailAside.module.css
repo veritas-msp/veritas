@@ -20,12 +20,6 @@
   text-decoration: underline;
 }
 
-.mono {
-  font-variant-numeric: tabular-nums;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.8125rem;
-}
-
 .assocStatic {
   cursor: default;
 }

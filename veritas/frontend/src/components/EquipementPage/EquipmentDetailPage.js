@@ -55,6 +55,7 @@ import {
 import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { getLocaleTag } from "../../i18n/locales";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
 import {
   isCheckMKMappableType,
@@ -216,7 +217,7 @@ export default function EquipmentDetailPage({
   const [logsCategory, setLogsCategory] = useState(() => initialEquipmentUi?.logsCategory || "all");
   const [purgeLogsConfirmOpen, setPurgeLogsConfirmOpen] = useState(false);
   const [purgingLogs, setPurgingLogs] = useState(false);
-  const logsLimit = 10;
+  const logsLimit = 25;
   const LOG_FILTER_OPTIONS = useMemo(() => [{
     value: "all",
     label: copy.logs.filters.all
@@ -1053,7 +1054,7 @@ export default function EquipmentDetailPage({
     return () => clearInterval(interval);
   }, [rmmManaged, equipment?.clientId, equipment?.id, rmmSyncPending, refreshRmmEquipment]);
   useEffect(() => {
-    if (rightPanelTab === "dashboard" && rmmManaged) {
+    if ((rightPanelTab === "synthese" || rightPanelTab === "fiche") && rmmManaged) {
       refreshRmmEquipment();
     }
   }, [rightPanelTab, rmmManaged, refreshRmmEquipment]);
@@ -1164,16 +1165,25 @@ export default function EquipmentDetailPage({
   }, [showRmmMetricsTab]);
   useEffect(() => {
     if (rightPanelTab === "peripherals" && !showRmmPeripheralsTab) {
-      setRightPanelTab("dashboard");
+      setRightPanelTab("synthese");
     }
   }, [rightPanelTab, showRmmPeripheralsTab]);
   useEffect(() => {
     if (rightPanelTab === "operations" && !showRmmOperationsTab) {
-      setRightPanelTab("dashboard");
+      setRightPanelTab("synthese");
     }
   }, [rightPanelTab, showRmmOperationsTab]);
   useEffect(() => {
-    if (rightPanelTab === "dashboard" || rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "supervision") return;
+    if (
+      rightPanelTab === "synthese" ||
+      rightPanelTab === "fiche" ||
+      rightPanelTab === "activity" ||
+      rightPanelTab === "events" ||
+      rightPanelTab === "stats" ||
+      rightPanelTab === "supervision"
+    ) {
+      return;
+    }
     checkmkControllerRef.current?.abort();
     availabilityControllerRef.current?.abort();
   }, [rightPanelTab]);
@@ -1654,7 +1664,10 @@ export default function EquipmentDetailPage({
     }
   };
   useEffect(() => {
-    if (rightPanelTab !== "supervision" || supervisionPane !== "main" || !showSupervisionTab) return;
+    const needsCheckmk =
+      rightPanelTab === "synthese" ||
+      (rightPanelTab === "supervision" && supervisionPane === "main");
+    if (!needsCheckmk || !showSupervisionTab) return;
     if (checkmkData || loadingCheckMK) return;
     loadCheckMKData();
   }, [rightPanelTab, supervisionPane, showSupervisionTab, checkmkData, loadingCheckMK]);
@@ -1962,7 +1975,6 @@ export default function EquipmentDetailPage({
   const heroIp = equipment?.ip || formData.ip || rmmInventory?.network?.ip || rmmInventory?.ip || null;
   const heroSite = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
   const heroSiteLabel = getSiteDisplayName(heroSite) || formData.location || equipment?.location || null;
-  const showMonitoredOverview = Boolean(rmmManaged || checkmkMapping?.checkmk_host_name);
   const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
   const heroFacts = [
     typeDisplayLabel
@@ -2117,9 +2129,13 @@ export default function EquipmentDetailPage({
         <div className={`${enterpriseDetailStyles.pageGrid} ${styles.pageGridEquip}`.trim()}>
         <div className={`${enterpriseDetailStyles.mainColumn} ${enterpriseDetailStyles.mainColumnEquipmentFill} ${styles.mainColumnEquip}`.trim()}>
         <nav className={enterpriseDetailStyles.heroTabBar} role="tablist" aria-label={copy.tabs.aria}>
-          <button type="button" role="tab" aria-selected={rightPanelTab === "dashboard"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "dashboard" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("dashboard")}>
-            <Icon icon="mdi:view-dashboard-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.general}</span>
+          <button type="button" role="tab" aria-selected={rightPanelTab === "synthese"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "synthese" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("synthese")}>
+            <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.synthese || "Synthèse"}</span>
+          </button>
+          <button type="button" role="tab" aria-selected={rightPanelTab === "fiche"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "fiche" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("fiche")}>
+            <Icon icon="mdi:clipboard-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.fiche || "Informations matériel"}</span>
           </button>
           <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
             <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
@@ -2149,30 +2165,32 @@ export default function EquipmentDetailPage({
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
         <div ref={mainContentRef} className={styles.mainContent}>
-          {rightPanelTab === "dashboard" && <>
-              <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? "" : styles.dashboardSplitSolo}`.trim()}>
+          {rightPanelTab === "synthese" ? (
+              <div className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo}`.trim()}>
                 <div className={styles.dashboardMain}>
-                  {showMonitoredOverview ? (
-                    <EquipmentOverviewDashboard
-                      equipment={equipmentWithRmmLive || equipment}
-                      checkmkData={checkmkData}
-                      checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
-                      loadingCheckMK={loadingCheckMK}
-                      maintenanceHistoryKey={maintenanceHistoryKey}
-                      showRmmTab={rmmManaged}
-                      showSupervisionTab={Boolean(checkmkMapping?.checkmk_host_name)}
-                      sheetContent={
-                        <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} />
-                      }
-                    />
-                  ) : (
-                    <div className={styles.ficheOnlyStack}>
-                      <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} />
-                      {equipment.type === "Ordinateurs" ? <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} /> : null}
-                    </div>
-                  )}
+                  <EquipmentOverviewDashboard
+                    equipment={equipmentWithRmmLive || equipment}
+                    checkmkData={checkmkData}
+                    checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
+                    loadingCheckMK={loadingCheckMK}
+                    maintenanceHistoryKey={maintenanceHistoryKey}
+                    showRmmTab={rmmManaged}
+                    showSupervisionTab
+                    forcedPane={checkmkMapping?.checkmk_host_name || !rmmManaged ? "supervision" : "rmm"}
+                    hidePaneSwitch
+                  />
                 </div>
-                {showRmmHeroStatus && rmmDeviceHealth && !showMonitoredOverview ? <div className={styles.dashboardAside}>
+              </div>
+            ) : null}
+
+          {rightPanelTab === "fiche" ? (
+              <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
+                <div className={styles.dashboardMain}>
+                  <div className={styles.ficheOnlyStack}>
+                    <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} />
+                  </div>
+                </div>
+                {showRmmHeroStatus && rmmDeviceHealth ? <div className={styles.dashboardAside}>
                   <ScoreAside health={rmmDeviceHealth} copy={{
                 scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
                 breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
@@ -2190,7 +2208,7 @@ export default function EquipmentDetailPage({
               }} />
                 </div> : null}
               </div>
-            </>}
+            ) : null}
 
           {rightPanelTab === "supervision" ? <div className={styles.supervisionStack}>
               <div className={styles.activitySwitch} role="tablist" aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}>
@@ -2204,21 +2222,9 @@ export default function EquipmentDetailPage({
                 </button>
               </div>
 
-              {supervisionPane === "main" ? showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>
-                  <header className={enterpriseDetailStyles.panelHeader}>
-                    <div>
-                      <h2 className={enterpriseDetailStyles.panelTitle}>
-                        <Icon icon="mdi:radar" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-                        {copy.supervisionPane?.main || "Main"}
-                      </h2>
-                      <p className={styles.panelSubtitleInline}>
-                        {checkmkMapping?.checkmk_host_name || "CheckMK"}
-                        {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
-                      </p>
-                    </div>
-                  </header>
+              {supervisionPane === "main" ? showSupervisionTab ? <section className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel}`.trim()}>
                   <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
-                    <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} layout="tab" onAvailabilityPeriodChange={period => {
+                    <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} lastSyncedAt={checkmkLastSyncedAt} layout="tab" onAvailabilityPeriodChange={period => {
                 setCheckmkAvailabilityPeriod(period);
                 loadCheckMKAvailabilityOnly(period);
               }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
@@ -2268,8 +2274,8 @@ export default function EquipmentDetailPage({
                   </p>
                 </div> : (
                   <div className={styles.activityVeritasLayout}>
-                    <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} hideDateFilter />
                     <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
+                    <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} hideDateFilter />
                   </div>
                 )}
             </div>}
@@ -2314,11 +2320,13 @@ export default function EquipmentDetailPage({
               </div>
             </div> : null}
 
-          {}
-          {rightPanelTab === 'logs' && <section className={enterpriseDetailStyles.panel}>
+          {rightPanelTab === "logs" ? <section className={`${enterpriseDetailStyles.panel} ${styles.logsPanel}`.trim()}>
               <header className={enterpriseDetailStyles.panelHeader}>
                 <div className={enterpriseDetailStyles.panelHeaderMain}>
-                  <h2 className={enterpriseDetailStyles.panelTitle}>{copy.logs.title}</h2>
+                  <h2 className={enterpriseDetailStyles.panelTitle}>
+                    <Icon icon="mdi:history" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
+                    {copy.logs.title}
+                  </h2>
                 </div>
                 <div className={styles.logsHeaderActions}>
                   <button type="button" className={styles.logsPurgeBtn} onClick={() => setPurgeLogsConfirmOpen(true)} disabled={loadingLogs || purgingLogs || logsTotal === 0} title={copy.logs.purgeTitle}>
@@ -2327,7 +2335,7 @@ export default function EquipmentDetailPage({
                   </button>
                 </div>
               </header>
-              <div className={enterpriseDetailStyles.panelBody}>
+              <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
                 <div className={styles.logsToolbar}>
                   <div className={styles.logsSearchWrap}>
                     <Icon icon="mdi:magnify" className={styles.logsSearchIcon} aria-hidden />
@@ -2336,24 +2344,22 @@ export default function EquipmentDetailPage({
                         <Icon icon="mdi:close" aria-hidden />
                       </button> : null}
                   </div>
-                  <label className={styles.logsFilterLabel}>
-                    <span className={styles.logsFilterLabelText}>{copy.logs.filterType}</span>
-                    <select className={styles.logsFilterSelect} value={logsCategory} onChange={event => setLogsCategory(event.target.value)} aria-label={copy.logs.filterAria}>
-                      {LOG_FILTER_OPTIONS.map(option => <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>)}
-                    </select>
-                  </label>
+                  <select className={styles.logsFilterSelect} value={logsCategory} onChange={event => setLogsCategory(event.target.value)} aria-label={copy.logs.filterAria}>
+                    {LOG_FILTER_OPTIONS.map(option => <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>)}
+                  </select>
                 </div>
-                {loadingLogs ? <div className={styles.loadingState}>{copy.loading}</div> : logs.length === 0 ? <div className={styles.emptyState}>
-                    <Icon icon="mdi:history" className={styles.emptyIcon} />
-                    <h5>{logsFiltersActive ? copy.logs.emptyFiltered : copy.logs.empty}</h5>
-                    <p className={styles.emptyHint}>
-                      {logsFiltersActive ? copy.logs.emptyFilteredHint : copy.logs.emptyHint}
-                    </p>
-                  </div> : <>
-                    <div className={enterpriseDetailStyles.dataTableWrapper}>
-                      <table className={enterpriseDetailStyles.dataTable}>
+
+                <div className={styles.logsTableFill}>
+                  {loadingLogs ? <div className={styles.loadingState}>{copy.loading}</div> : logs.length === 0 ? <div className={styles.emptyState}>
+                      <Icon icon="mdi:history" className={styles.emptyIcon} />
+                      <h5>{logsFiltersActive ? copy.logs.emptyFiltered : copy.logs.empty}</h5>
+                      <p className={styles.emptyHint}>
+                        {logsFiltersActive ? copy.logs.emptyFilteredHint : copy.logs.emptyHint}
+                      </p>
+                    </div> : <div className={`${enterpriseDetailStyles.dataTableWrapper} ${styles.logsTableWrapper}`.trim()}>
+                      <table className={`${enterpriseDetailStyles.dataTable} ${styles.logsTable}`.trim()}>
                         <thead>
                           <tr>
                             <th>{copy.logs.colAction}</th>
@@ -2363,56 +2369,50 @@ export default function EquipmentDetailPage({
                         </thead>
                         <tbody>
                           {logs.map((log, index) => {
-                      const logMeta = getLogActionDetails(log);
-                      const logUser = log.user_name || log.user || copy.logs.systemUser;
-                      return <tr key={log.id || index} className={enterpriseDetailStyles.dataTableRowClickable} onClick={() => handleLogClick(log)} title={copy.logs.detailTitle}>
-                                <td>
-                                  <span className={styles.logActionInline} style={{
-                            color: logMeta.color
-                          }}>
-                                    <Icon icon={logMeta.icon} aria-hidden />
-                                    {log.action || logMeta.label}
-                                  </span>
-                                </td>
-                                <td>{logUser}</td>
-                                <td className={styles.eventMetaCell}>
-                                  {log.created_at || log.timestamp ? new Date(log.created_at || log.timestamp).toLocaleString({
-                            fr: "en-US",
-                            en: "en-GB",
-                            de: "de-DE",
-                            it: "it-IT",
-                            es: "es-ES"
-                          }[locale] || "en-US", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          }) : "-"}
-                                </td>
-                              </tr>;
-                    })}
+                            const logMeta = getLogActionDetails(log);
+                            const logUser = log.user_name || log.user || copy.logs.systemUser;
+                            const when = log.created_at || log.timestamp;
+                            return <tr key={log.id || index} className={enterpriseDetailStyles.dataTableRowClickable} onClick={() => handleLogClick(log)} title={copy.logs.detailTitle}>
+                              <td>
+                                <span className={styles.logActionInline} style={{ color: logMeta.color }}>
+                                  <Icon icon={logMeta.icon} aria-hidden />
+                                  {log.action || logMeta.label}
+                                </span>
+                              </td>
+                              <td>{logUser}</td>
+                              <td className={styles.eventMetaCell}>
+                                {when ? new Date(when).toLocaleString(getLocaleTag(locale), {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                }) : "—"}
+                              </td>
+                            </tr>;
+                          })}
                         </tbody>
                       </table>
-                    </div>
-                    {logsTotal > logsLimit && <div className={styles.pagination}>
-                        <button className={styles.paginationButton} onClick={() => loadLogs(logsPage - 1)} disabled={logsPage <= 1 || loadingLogs}>
-                          <Icon icon="mdi:chevron-left" />
-                        </button>
-                        <span className={styles.paginationInfo}>
-                          {interpolate(copy.logs.pagination, {
-                    page: logsPage,
-                    pages: Math.ceil(logsTotal / logsLimit),
-                    total: logsTotal
-                  })}
-                        </span>
-                        <button className={styles.paginationButton} onClick={() => loadLogs(logsPage + 1)} disabled={logsPage >= Math.ceil(logsTotal / logsLimit) || loadingLogs}>
-                          <Icon icon="mdi:chevron-right" />
-                        </button>
-                      </div>}
-                  </>}
+                    </div>}
+                </div>
+
+                {logsTotal > logsLimit ? <div className={styles.logsPagination}>
+                    <button type="button" className={styles.paginationButton} onClick={() => loadLogs(logsPage - 1)} disabled={logsPage <= 1 || loadingLogs} aria-label="Page précédente">
+                      <Icon icon="mdi:chevron-left" aria-hidden />
+                    </button>
+                    <span className={styles.paginationInfo}>
+                      {interpolate(copy.logs.pagination, {
+                        page: logsPage,
+                        pages: Math.ceil(logsTotal / logsLimit),
+                        total: logsTotal
+                      })}
+                    </span>
+                    <button type="button" className={styles.paginationButton} onClick={() => loadLogs(logsPage + 1)} disabled={logsPage >= Math.ceil(logsTotal / logsLimit) || loadingLogs} aria-label="Page suivante">
+                      <Icon icon="mdi:chevron-right" aria-hidden />
+                    </button>
+                  </div> : null}
               </div>
-            </section>}
+            </section> : null}
         </div>
         </div>
 

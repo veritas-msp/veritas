@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { fetchClientsList, addContactTag, removeContactTag, deleteContact, addContactMembership, removeContactMembership } from "../../api/clients";
+import { fetchClientsList, addContactTag, removeContactTag, deleteContact, addContactMembership, removeContactMembership, fetchContactLogs, purgeContactLogs } from "../../api/clients";
+import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { fetchTickets } from "../../api/tickets";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -223,6 +224,9 @@ export default function ContactDetailPage({
   const [shareTabMounted, setShareTabMounted] = useState(
     () => normalizeContactOverviewTab(initialContactUi?.overviewTab) === "share"
   );
+  const [logsTabMounted, setLogsTabMounted] = useState(
+    () => normalizeContactOverviewTab(initialContactUi?.overviewTab) === "logs"
+  );
   const [vaultClientId, setVaultClientId] = useState(() => initialContactUi?.vaultClientId || null);
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [membershipBusy, setMembershipBusy] = useState(false);
@@ -413,6 +417,7 @@ export default function ContactDetailPage({
       setOverviewTab(nextTab);
       setPortalTabMounted(nextTab === "portal");
       setShareTabMounted(nextTab === "share");
+      setLogsTabMounted(nextTab === "logs");
       setActivityTabMounted(true);
       setVaultClientId(saved?.vaultClientId || null);
     }
@@ -434,11 +439,13 @@ export default function ContactDetailPage({
     setActivityTabMounted(true);
     setPortalTabMounted(true);
     setShareTabMounted(true);
+    setLogsTabMounted(true);
   }, [contact?.id]);
   useEffect(() => {
     if (overviewTab === "activity") setActivityTabMounted(true);
     if (overviewTab === "portal") setPortalTabMounted(true);
     if (overviewTab === "share") setShareTabMounted(true);
+    if (overviewTab === "logs") setLogsTabMounted(true);
   }, [overviewTab]);
   useEffect(() => {
     const el = pageRootRef.current;
@@ -1065,7 +1072,7 @@ export default function ContactDetailPage({
 
       <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "portal" || overviewTab === "share" ? styles.mainColumnContactTab : ""}`.trim()}>
+          <main className={`${styles.mainColumn} ${overviewTab === "activity" || overviewTab === "logs" ? styles.mainColumnActivity : ""} ${overviewTab === "portal" || overviewTab === "share" ? styles.mainColumnContactTab : ""}`.trim()}>
             <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
               <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
                 <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
@@ -1079,6 +1086,10 @@ export default function ContactDetailPage({
                 <Icon icon="mdi:share-variant-outline" className={styles.heroTabIcon} aria-hidden />
                 <span className={styles.heroTabLabel}>{copy.overviewTabShare}</span>
                 {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+              </button>
+              <button type="button" role="tab" aria-selected={overviewTab === "logs"} className={`${styles.heroTab} ${overviewTab === "logs" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("logs")} data-guide="contact-logs">
+                <Icon icon="mdi:history" className={styles.heroTabIcon} aria-hidden />
+                <span className={styles.heroTabLabel}>{copy.overviewTabLogs || "Logs"}</span>
               </button>
             </nav>
             {activityTabMounted ? (
@@ -1292,6 +1303,30 @@ export default function ContactDetailPage({
                 </div>
               </div>
             </section>
+            </div>
+            ) : null}
+
+            {logsTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "logs"}
+              style={overviewTab === "logs" ? undefined : { display: "none" }}
+              data-guide="contact-logs-panel"
+            >
+              {contact?.id ? (
+                <ActivityJournalPanel
+                  entityId={contact.id}
+                  active={overviewTab === "logs"}
+                  fetchLogs={(page, options) =>
+                    fetchContactLogs(contact.id, {
+                      page,
+                      limit: options?.limit || 25,
+                      signal: options?.signal
+                    })
+                  }
+                  purgeLogs={() => purgeContactLogs(contact.id)}
+                />
+              ) : null}
             </div>
             ) : null}
           </main>
