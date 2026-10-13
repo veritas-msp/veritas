@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import styles from "./EquipmentDetailPage.module.css";
 import EquipmentDateRangeFilter from "./EquipmentDateRangeFilter";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 import { buildActivityFeedItems, getLocaleDateTimeFormat } from "./equipmentActivityUtils";
 function ActivityKindBadge({
   kind,
@@ -62,14 +63,16 @@ export default function EquipmentEventsPanel({
         </div>
       </header>
 
-      <div className={enterpriseDetailStyles.panelBody}>
+      <div className={`${enterpriseDetailStyles.panelBody} ${styles.eventsPanelBody}`.trim()}>
         {!hideDateFilter ? <EquipmentDateRangeFilter copy={copy} preset={datePreset} onPresetChange={onDatePresetChange} customStart={customStart} customEnd={customEnd} onCustomStartChange={onCustomStartChange} onCustomEndChange={onCustomEndChange} /> : null}
 
-        {loading ? <div className={styles.loadingState}>{copy.loading}</div> : feedItems.length === 0 ? <div className={styles.emptyState}>
-            <Icon icon="mdi:calendar-outline" className={styles.emptyIcon} />
-            <h5>{copy.events.emptyTitle}</h5>
-            <p className={styles.emptyHint}>{copy.events.emptyHint}</p>
-          </div> : <div className={enterpriseDetailStyles.dataTableWrapper}>
+        {loading ? <div className={styles.loadingState}>{copy.loading}</div> : feedItems.length === 0 ? (
+          <EquipmentEmptyState
+            icon="mdi:calendar-outline"
+            message={copy.events.emptyTitle || "Aucun événement ni ticket"}
+            className={styles.eventsEmptyFill}
+          />
+        ) : <div className={enterpriseDetailStyles.dataTableWrapper}>
             <table className={enterpriseDetailStyles.dataTable}>
               <thead>
                 <tr>

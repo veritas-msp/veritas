@@ -1,15 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
-import { findClientSiteByLocation, getSiteDisplayName } from "../../utils/clientSites";
-import { getClientNameWithoutCode, getClientNumber } from "../../utils/clientDisplay";
-import { getEquipmentClientId } from "../../utils/equipmentIdentity";
-import {
-  getRmmChassisInfo,
-  getRmmInventoryFromEquipment,
-  getRmmOsEditionInfo,
-  isRmmManagedEquipment
-} from "./rmmMonitoringUtils";
+import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
 import EquipmentNotesPanel from "./EquipmentNotesPanel";
 import styles from "./EquipmentDetailAside.module.css";
 
@@ -57,9 +49,9 @@ function SidebarSectionHeader({
 
 export default function EquipmentDetailAside({
   equipment,
-  formData = {},
-  clientSites = [],
-  modalClient = null,
+  formData: _formData = {},
+  clientSites: _clientSites = [],
+  modalClient: _modalClient = null,
   copy,
   checkmkMapping = null,
   remoteAccessAction = null,
@@ -67,7 +59,7 @@ export default function EquipmentDetailAside({
   onEdit,
   onCreateEvent,
   onCreateTicket,
-  onOpenEnterprise,
+  onOpenEnterprise: _onOpenEnterprise,
   onRemoteAccess,
   onQuickConnect,
   onOpenSupervision,
@@ -90,8 +82,8 @@ export default function EquipmentDetailAside({
   inMaintenance = false,
   showMaintenance = false,
   maintenanceBusy = false,
-  maintenanceReason = "",
-  maintenanceUntilLabel = "",
+  maintenanceReason: _maintenanceReason = "",
+  maintenanceUntilLabel: _maintenanceUntilLabel = "",
   onAlerts,
   showAlerts = false
 }) {
@@ -100,88 +92,8 @@ export default function EquipmentDetailAside({
   const hero = copy.hero || {};
   const subscribeCopy = copy.subscribe || {};
   const [actionsExpanded, setActionsExpanded] = useState(false);
-  const [infoExpanded, setInfoExpanded] = useState(true);
   const [assocExpanded, setAssocExpanded] = useState(true);
-  const inventory = useMemo(() => getRmmInventoryFromEquipment(equipment), [equipment]);
-  const osInfo = useMemo(() => getRmmOsEditionInfo(inventory, equipment), [inventory, equipment]);
-  const chassis = useMemo(() => getRmmChassisInfo(inventory), [inventory]);
-  const site = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
-  const siteLabel = getSiteDisplayName(site) || formData.location || equipment?.location || null;
-  const ip = equipment?.ip || formData.ip || inventory?.network?.ip || null;
-  const name = equipment?.name || formData.name || "—";
-  const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
-  const enterpriseName = equipment?.clientName || modalClient?.name || "";
-  const enterpriseClient =
-    modalClient && String(modalClient.id) === String(enterpriseId)
-      ? modalClient
-      : {
-          id: enterpriseId,
-          name: enterpriseName,
-          client_number: equipment?.clientNumber ?? equipment?.client_number,
-          clientNumber: equipment?.clientNumber ?? equipment?.client_number
-        };
-  const enterpriseCode = getClientNumber(enterpriseClient);
-  const enterpriseLabel = getClientNameWithoutCode(enterpriseClient) || enterpriseName || null;
   const rmmManaged = isRmmManagedEquipment(equipment);
-  const reason = String(maintenanceReason || "").trim();
-
-  const detailRows = [
-    { key: "name", label: aside.fieldName || "Nom", value: name },
-    inMaintenance
-      ? {
-          key: "maintenance",
-          label: aside.fieldMaintenance || hero.maintenanceBadge || "En maintenance",
-          value: maintenanceUntilLabel
-            ? `Jusqu’au ${maintenanceUntilLabel}`
-            : hero.maintenanceBadge || "En maintenance"
-        }
-      : null,
-    inMaintenance && reason
-      ? {
-          key: "maintenanceReason",
-          label: aside.fieldMaintenanceReason || hero.maintenanceReasonLabel || "Motif",
-          value: reason
-        }
-      : null,
-    ip ? { key: "ip", label: aside.fieldIp || "IP", value: ip } : null,
-    siteLabel ? { key: "site", label: aside.fieldSite || "Site", value: siteLabel } : null,
-    enterpriseLabel
-      ? {
-          key: "enterprise",
-          label: aside.fieldEnterprise || "Entreprise",
-          value: enterpriseCode ? `${enterpriseCode} · ${enterpriseLabel}` : enterpriseLabel,
-          onClick: enterpriseId && onOpenEnterprise ? onOpenEnterprise : null
-        }
-      : null,
-    osInfo.osCaption || formData.systeme
-      ? {
-          key: "os",
-          label: aside.fieldOs || "OS",
-          value: osInfo.osCaption || formData.systeme
-        }
-      : null,
-    chassis.manufacturer || formData.manufacturer
-      ? {
-          key: "mfr",
-          label: aside.fieldManufacturer || "Fabricant",
-          value: chassis.manufacturer || formData.manufacturer
-        }
-      : null,
-    chassis.model || formData.model
-      ? {
-          key: "model",
-          label: aside.fieldModel || "Modèle",
-          value: chassis.model || formData.model
-        }
-      : null,
-    chassis.serial || formData.serial
-      ? {
-          key: "serial",
-          label: aside.fieldSerial || "N° de série",
-          value: chassis.serial || formData.serial
-        }
-      : null
-  ].filter(Boolean);
 
   const primaryActions = [
     onCreateTicket
@@ -376,43 +288,10 @@ export default function EquipmentDetailAside({
         ) : null}
       </section>
 
-      <aside className={s.asidePanel}>
-        <div className={s.rightSidebarContent}>
-          <section className={s.sidebarSection} data-guide="equipment-sidebar-info">
-            <SidebarSectionHeader
-              title={aside.infoTitle || "Informations détaillées"}
-              icon="mdi:information-outline"
-              expanded={infoExpanded}
-              onToggle={() => setInfoExpanded(prev => !prev)}
-              controlsId="equipment-sidebar-info"
-              panelStyles={s}
-            />
-            {infoExpanded ? (
-              <div className={s.sidebarBody} id="equipment-sidebar-info">
-                <div className={s.sidebarInfoFields}>
-                  {detailRows.map(row => (
-                    <div key={row.key} className={s.sidebarInfoField}>
-                      <span className={s.sidebarInfoFieldLabel}>{row.label}</span>
-                      {row.onClick ? (
-                        <button
-                          type="button"
-                          className={`${s.sidebarInfoFieldValue} ${styles.summaryLink}`.trim()}
-                          onClick={row.onClick}
-                        >
-                          {row.value}
-                        </button>
-                      ) : (
-                        <span className={s.sidebarInfoFieldValue}>{row.value}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-
+      <aside className={`${s.asidePanel} ${styles.asidePanelFill}`.trim()}>
+        <div className={`${s.rightSidebarContent} ${styles.asideContentFill}`.trim()}>
           {associatedItems.length ? (
-            <section className={s.sidebarSection} data-guide="equipment-sidebar-associated">
+            <section className={`${s.sidebarSection} ${styles.asideSectionFixed}`.trim()} data-guide="equipment-sidebar-associated">
               <SidebarSectionHeader
                 title={aside.assocTitle || "Équipements associés"}
                 icon="mdi:lan-connect"
@@ -472,7 +351,9 @@ export default function EquipmentDetailAside({
             </section>
           ) : null}
 
-          <EquipmentNotesPanel equipment={equipment} variant="sidebar" defaultExpanded={false} />
+          <div className={styles.notesFill}>
+            <EquipmentNotesPanel equipment={equipment} variant="sidebar" defaultExpanded />
+          </div>
         </div>
       </aside>
     </div>

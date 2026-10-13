@@ -584,6 +584,34 @@
   color: var(--msp-muted, #64748b);
 }
 
+.emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  min-height: 8rem;
+}
+
+.emptyStateIcon {
+  font-size: 1.85rem;
+  color: var(--msp-muted, #64748b);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.emptyStateText {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--msp-muted, #64748b);
+  max-width: 22rem;
+  line-height: 1.45;
+}
+
 .availHero {
   display: flex;
   flex-direction: column;

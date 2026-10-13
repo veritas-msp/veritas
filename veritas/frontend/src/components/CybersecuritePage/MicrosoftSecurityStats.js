@@ -19,6 +19,10 @@ export default function MicrosoftSecurityStats({
   onStatsUpdate,
   refreshTrigger,
   isSyncing = false,
+  compact = false,
+  fill = false,
+  kpisOnly = false,
+  onOpenUsers = null,
   copy
 }) {
   const locale = useAppLocale();
@@ -378,119 +382,148 @@ export default function MicrosoftSecurityStats({
     }
   };
   if (loading) {
-    return <div className={styles.loadingState}>
+    return <div className={`${styles.loadingState} ${fill ? styles.fillRoot : ""}`.trim()}>
         <Icon icon="mdi:loading" className={styles.loadingIcon} />
         <p>{mfaCopy.loading}</p>
       </div>;
   }
-  const canLaunch = campaign.status === 'en_preparation' && !stats?.hasSnapshots;
-  const canFinish = campaign.status === 'active' && stats?.start && !stats?.end;
-  const isFinished = campaign.status === 'inactive' && stats?.start && stats?.end;
-  return <>
-      <div className={styles.currentStatsSection}>
-          {}
-          <div className={`${styles.statsCards} ${styles.statsCardsSegment}`} style={{
-        marginBottom: '1rem'
-      }}>
-            <SmartTooltip as="span" content={mfaCopy.filterAll}>
-              <button type="button" className={`${styles.statCard} ${styles.statCardClickable} ${userFilter === 'all' ? styles.statCardActive : ''}`} onClick={() => handleFilterChange('all')}>
-                <div className={styles.statCardIcon}>
-                  <Icon icon="mdi:account-multiple" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardLabel}>{mfaCopy.totalUsers}</div>
-                  <div className={styles.statCardValue}>{currentStats.user_count || 0}</div>
-                  <div className={styles.statCardSub}>
-                    {formatCampaignDetail(mfaCopy.mfaLine, {
-                  count: currentStats.user_mfa_count || 0,
-                  rate: currentStats.user_mfa_percentage || 0
-                })}
-                  </div>
-                </div>
-              </button>
-            </SmartTooltip>
-            <SmartTooltip as="span" content={mfaCopy.filterAdmins}>
-              <button type="button" className={`${styles.statCard} ${styles.statCardClickable} ${userFilter === 'admins' ? styles.statCardActive : ''}`} onClick={() => handleFilterChange('admins')}>
-                <div className={styles.statCardIcon} style={{
-              color: '#3b82f6'
-            }}>
-                  <Icon icon="mdi:shield-account" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardLabel}>{mfaCopy.admin}</div>
-                  <div className={styles.statCardValue} style={{
-                color: '#3b82f6'
-              }}>{currentStats.admin_count || 0}</div>
-                  <div className={styles.statCardSub}>
-                    {formatCampaignDetail(mfaCopy.mfaLine, {
-                  count: currentStats.admin_mfa_count || 0,
-                  rate: currentStats.admin_mfa_percentage || 0
-                })}
-                  </div>
-                </div>
-              </button>
-            </SmartTooltip>
-            <SmartTooltip as="span" content={mfaCopy.filterUsers}>
-              <button type="button" className={`${styles.statCard} ${styles.statCardClickable} ${userFilter === 'users' ? styles.statCardActive : ''}`} onClick={() => handleFilterChange('users')}>
-                <div className={styles.statCardIcon}>
-                  <Icon icon="mdi:account-outline" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardLabel}>{mfaCopy.nonAdmin}</div>
-                  <div className={styles.statCardValue}>{currentStats.regular_user_count || 0}</div>
-                  <div className={styles.statCardSub}>
-                    {formatCampaignDetail(mfaCopy.mfaLine, {
-                  count: currentStats.regular_user_mfa_count || 0,
-                  rate: currentStats.regular_user_mfa_percentage || 0
-                })}
-                  </div>
-                </div>
-              </button>
-            </SmartTooltip>
+
+  const segmentKpis = [
+    {
+      key: "all",
+      filter: "all",
+      icon: "mdi:account-multiple",
+      tone: "blue",
+      label: mfaCopy.totalUsers,
+      value: currentStats.user_count || 0,
+      sub: formatCampaignDetail(mfaCopy.mfaLine, {
+        count: currentStats.user_mfa_count || 0,
+        rate: currentStats.user_mfa_percentage || 0
+      }),
+      tooltip: mfaCopy.filterAll
+    },
+    {
+      key: "admins",
+      filter: "admins",
+      icon: "mdi:shield-account",
+      tone: "teal",
+      label: mfaCopy.admin,
+      value: currentStats.admin_count || 0,
+      sub: formatCampaignDetail(mfaCopy.mfaLine, {
+        count: currentStats.admin_mfa_count || 0,
+        rate: currentStats.admin_mfa_percentage || 0
+      }),
+      tooltip: mfaCopy.filterAdmins
+    },
+    {
+      key: "users",
+      filter: "users",
+      icon: "mdi:account-outline",
+      tone: "purple",
+      label: mfaCopy.nonAdmin,
+      value: currentStats.regular_user_count || 0,
+      sub: formatCampaignDetail(mfaCopy.mfaLine, {
+        count: currentStats.regular_user_mfa_count || 0,
+        rate: currentStats.regular_user_mfa_percentage || 0
+      }),
+      tooltip: mfaCopy.filterUsers
+    }
+  ];
+
+  const methodKpis = [
+    ["phoneauthenticationmethod", mfaMethodStats.phoneauthenticationmethod, "amber", mfaCopy.methodCalls],
+    ["emailauthenticationmethod", mfaMethodStats.emailauthenticationmethod, "rose", mfaCopy.methodEmail],
+    ["microsoftauthenticatorauthenticationmethod", mfaMethodStats.microsoftauthenticatorauthenticationmethod, "green", mfaCopy.methodAuthenticator],
+    ["softwareoathauthenticationmethod", mfaMethodStats.softwareoathauthenticationmethod, "orange", mfaCopy.methodSoftware]
+  ].filter(([, count]) => count !== undefined);
+
+  return (
+    <div
+      className={`${styles.statsRoot} ${compact ? styles.statsRootCompact : ""} ${fill && !kpisOnly ? styles.fillRoot : ""} ${kpisOnly ? styles.statsRootKpisOnly : ""}`.trim()}
+    >
+      <div className={`${styles.currentStatsSection} ${compact ? styles.currentStatsSectionCompact : ""} ${kpisOnly ? styles.currentStatsSectionFill : ""}`.trim()}>
+        <div className={styles.kpiBoard} role="list" aria-label={mfaCopy.totalUsers}>
+          <div className={styles.kpiGroup} role="presentation">
+            {segmentKpis.map(card => (
+              <div key={card.key} className={styles.kpiCell} role="listitem">
+                <SmartTooltip as="div" className={styles.kpiTooltipWrap} content={card.tooltip}>
+                  <button
+                    type="button"
+                    className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${userFilter === card.filter ? styles.ticketKpiCardActive : ""} ${Number(card.value) > 0 ? styles.kpiLive : ""}`.trim()}
+                    onClick={() => {
+                      if (kpisOnly && typeof onOpenUsers === "function") {
+                        onOpenUsers();
+                        return;
+                      }
+                      handleFilterChange(card.filter);
+                    }}
+                  >
+                    <span className={styles.kpiIconWrap} aria-hidden>
+                      <Icon icon={card.icon} />
+                    </span>
+                    <span className={styles.kpiText}>
+                      <span className={styles.kpiValue}>{card.value}</span>
+                      <span className={styles.kpiLabel}>{card.label}</span>
+                      <span className={styles.kpiSub}>{card.sub}</span>
+                    </span>
+                  </button>
+                </SmartTooltip>
+              </div>
+            ))}
           </div>
-
-          {}
-          {mfaMethodStats && Object.keys(mfaMethodStats).length > 0 && <div className={`${styles.statsCards} ${styles.statsCardsMfaMethods}`}>
-              {[['phoneauthenticationmethod', mfaMethodStats['phoneauthenticationmethod']], ['emailauthenticationmethod', mfaMethodStats['emailauthenticationmethod']], ['microsoftauthenticatorauthenticationmethod', mfaMethodStats['microsoftauthenticatorauthenticationmethod']], ['softwareoathauthenticationmethod', mfaMethodStats['softwareoathauthenticationmethod']]].filter(([methodType, count]) => count !== undefined).map(([methodType, count]) => {
-          const segmentTotal = segmentStats?.user_count || 0;
-          const percentage = segmentTotal > 0 ? Math.round(count / segmentTotal * 100) : 0;
-          return [methodType, count, percentage];
-        }).map(([methodType, count, percentage]) => {
-          const methodInfo = getMethodDisplayInfo(methodType);
-          const isActive = methodFilter === methodType;
-          let label = '';
-          switch (methodType) {
-            case 'phoneauthenticationmethod':
-              label = mfaCopy.methodCalls;
-              break;
-            case 'emailauthenticationmethod':
-              label = mfaCopy.methodEmail;
-              break;
-            case 'microsoftauthenticatorauthenticationmethod':
-              label = mfaCopy.methodAuthenticator;
-              break;
-            case 'softwareoathauthenticationmethod':
-              label = mfaCopy.methodSoftware;
-              break;
-            default:
-              label = methodInfo.name;
-          }
-          return <SmartTooltip key={methodType} as="span" content={label}>
-                      <button type="button" className={`${styles.statCard} ${styles.statCardClickable} ${isActive ? styles.statCardActive : ''}`} onClick={() => setMethodFilter(prev => prev === methodType ? null : methodType)}>
-                        <div className={styles.statCardIcon}>
-                          <Icon icon={methodInfo.icon} />
-                        </div>
-                        <div className={styles.statCardContent}>
-                          <div className={styles.statCardLabel}>{label}</div>
-                          <div className={styles.statCardValue}>{count}</div>
-                          <div className={styles.statCardSub}>{percentage}{mfaCopy.ofUsers}</div>
-                        </div>
-                      </button>
-                    </SmartTooltip>;
-        })}
-            </div>}
+          <div className={styles.kpiDivider} role="separator" aria-orientation="vertical" />
+          <div className={styles.kpiGroup} role="presentation">
+            {methodKpis.map(([methodType, count, tone, label]) => {
+              const methodInfo = getMethodDisplayInfo(methodType);
+              const isActive = methodFilter === methodType;
+              return (
+                <div key={methodType} className={`${styles.kpiCell} ${styles.kpiCellMethod}`.trim()} role="listitem">
+                  <SmartTooltip as="div" className={styles.kpiTooltipWrap} content={label}>
+                    <button
+                      type="button"
+                      className={`${styles.ticketKpiCard} ${styles.ticketKpiCardMethod} ${styles[`kpiTone_${tone}`]} ${isActive ? styles.ticketKpiCardActive : ""}`.trim()}
+                      onClick={() => {
+                        if (kpisOnly && typeof onOpenUsers === "function") {
+                          onOpenUsers();
+                          return;
+                        }
+                        setMethodFilter(prev => (prev === methodType ? null : methodType));
+                      }}
+                    >
+                      <span className={styles.kpiIconWrap} aria-hidden>
+                        <Icon icon={methodInfo.icon} />
+                      </span>
+                      <span className={styles.kpiText}>
+                        <span className={styles.kpiValue}>{count}</span>
+                        <span className={styles.kpiLabel}>{label}</span>
+                      </span>
+                    </button>
+                  </SmartTooltip>
+                </div>
+              );
+            })}
+          </div>
         </div>
+      </div>
 
-      <MfaDetailsTable clientId={clientId} allowedUsers={snapshotUsers} showCard={false} userFilter={userFilter} methodFilter={methodFilter} onSyncComplete={handleSyncComplete} onUpdate={handleMfaUpdate} hideServiceAccounts={hideServiceAccounts} onHideServiceAccountsChange={setHideServiceAccounts} copy={detailCopy} />
-    </>;
+      {!kpisOnly ? (
+        <div className={`${styles.tableSlot} ${fill ? styles.tableSlotFill : ""}`.trim()}>
+          <MfaDetailsTable
+            clientId={clientId}
+            allowedUsers={snapshotUsers}
+            showCard={false}
+            fill={fill}
+            compact={compact}
+            userFilter={userFilter}
+            methodFilter={methodFilter}
+            onSyncComplete={handleSyncComplete}
+            onUpdate={handleMfaUpdate}
+            hideServiceAccounts={hideServiceAccounts}
+            onHideServiceAccountsChange={setHideServiceAccounts}
+            copy={detailCopy}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
 }

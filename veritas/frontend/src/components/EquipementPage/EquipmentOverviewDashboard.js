@@ -41,6 +41,7 @@ import {
 } from "../../utils/equipmentDetailUiState";
 import { resolveEquipmentActivityRange } from "./equipmentActivityUtils";
 import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 import styles from "./EquipmentOverviewDashboard.module.css";
 
 const SERVICE_COLORS = {
@@ -644,7 +645,11 @@ export default function EquipmentOverviewDashboard({
                   />
                 </div>
               ) : (
-                <p className={styles.empty}>{ov.rmmMetricsEmpty || "Métriques RMM indisponibles"}</p>
+                <EquipmentEmptyState
+                  icon="mdi:chart-donut"
+                  message={ov.rmmMetricsEmpty || "Métriques RMM indisponibles"}
+                  compact
+                />
               )}
             </OverviewCard>
 
@@ -720,7 +725,11 @@ export default function EquipmentOverviewDashboard({
                   </ul>
                 </div>
               ) : (
-                <p className={styles.empty}>{ov.storageEmpty || "Aucun volume détecté"}</p>
+                <EquipmentEmptyState
+                  icon="mdi:harddisk"
+                  message={ov.storageEmpty || "Aucun volume détecté"}
+                  compact
+                />
               )}
               {storageSub ? <p className={styles.ringSub}>{storageSub}</p> : null}
             </OverviewCard>
@@ -742,7 +751,11 @@ export default function EquipmentOverviewDashboard({
                   ))}
                 </ul>
               ) : (
-                <p className={styles.empty}>{ov.processesEmpty || "Aucun processus remonté"}</p>
+                <EquipmentEmptyState
+                  icon="mdi:application-brackets-outline"
+                  message={ov.processesEmpty || "Aucun processus remonté"}
+                  compact
+                />
               )}
             </OverviewCard>
 
@@ -774,7 +787,11 @@ export default function EquipmentOverviewDashboard({
                   </p>
                 </>
               ) : (
-                <p className={styles.empty}>{ov.networkEmpty || "Aucune interface réseau"}</p>
+                <EquipmentEmptyState
+                  icon="mdi:lan"
+                  message={ov.networkEmpty || "Aucune interface réseau"}
+                  compact
+                />
               )}
             </OverviewCard>
 
@@ -816,7 +833,11 @@ export default function EquipmentOverviewDashboard({
                   </table>
                 </div>
               ) : (
-                <p className={styles.empty}>{ov.interfacesEmpty || "Aucune interface"}</p>
+                <EquipmentEmptyState
+                  icon="mdi:ethernet"
+                  message={ov.interfacesEmpty || "Aucune interface"}
+                  compact
+                />
               )}
             </OverviewCard>
 
@@ -873,13 +894,22 @@ export default function EquipmentOverviewDashboard({
                   </div>
                 </>
               ) : (
-                <p className={styles.empty}>
-                  {loadingCheckMK
-                    ? copy.loading
-                    : hasCheckmk
-                      ? ov.availabilityEmpty || "Aucune donnée de disponibilité"
-                      : ov.availabilityNoCheckmk || "Mappez CheckMK pour afficher la disponibilité"}
-                </p>
+                <EquipmentEmptyState
+                  icon={
+                    loadingCheckMK
+                      ? null
+                      : hasCheckmk
+                        ? "mdi:chart-timeline-variant"
+                        : "mdi:radar"
+                  }
+                  message={
+                    loadingCheckMK
+                      ? copy.loading
+                      : hasCheckmk
+                        ? ov.availabilityEmpty || "Aucune donnée de disponibilité"
+                        : ov.availabilityNoCheckmk || "Mappez CheckMK pour afficher la disponibilité"
+                  }
+                />
               )}
             </OverviewCard>
 
@@ -929,9 +959,10 @@ export default function EquipmentOverviewDashboard({
                   </ul>
                 </div>
               ) : (
-                <p className={styles.empty}>
-                  {loadingCheckMK ? copy.loading : ov.servicesEmpty || "Aucun service CheckMK"}
-                </p>
+                <EquipmentEmptyState
+                  icon={loadingCheckMK ? null : "mdi:list-status"}
+                  message={loadingCheckMK ? copy.loading : ov.servicesEmpty || "Aucun service CheckMK"}
+                />
               )}
             </OverviewCard>
 
@@ -941,7 +972,7 @@ export default function EquipmentOverviewDashboard({
               icon="mdi:history"
             >
               {loadingLifecycle && !recentEvents.length ? (
-                <p className={styles.empty}>{copy.loading}</p>
+                <EquipmentEmptyState message={copy.loading} icon={null} />
               ) : recentEvents.length ? (
                 <div className={styles.tableWrap}>
                   <table className={styles.table}>
@@ -976,7 +1007,10 @@ export default function EquipmentOverviewDashboard({
                   </table>
                 </div>
               ) : (
-                <p className={styles.empty}>{ov.eventsEmpty || glance.empty || "Aucune activité récente"}</p>
+                <EquipmentEmptyState
+                  icon="mdi:history"
+                  message={ov.eventsEmpty || glance.empty || "Aucune activité récente"}
+                />
               )}
             </OverviewCard>
           </div>

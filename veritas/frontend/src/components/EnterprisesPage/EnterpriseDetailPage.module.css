@@ -2681,14 +2681,16 @@
 .enterpriseDetailPage:has(.pageBodyFill),
 .contactDetailPage:has(.pageBodyFill),
 .prestataireDetailPage:has(.pageBodyFill),
-.equipmentDetailPage:has(.pageBodyFill) {
+.equipmentDetailPage:has(.pageBodyFill),
+.contratDetailPage:has(.pageBodyFill) {
   overflow: hidden;
 }
 
 .enterpriseDetailPage:has(.pageBodyFill) > .pageHero,
 .contactDetailPage:has(.pageBodyFill) > .pageHero,
 .prestataireDetailPage:has(.pageBodyFill) > .pageHero,
-.equipmentDetailPage:has(.pageBodyFill) > .pageHero {
+.equipmentDetailPage:has(.pageBodyFill) > .pageHero,
+.contratDetailPage:has(.pageBodyFill) > .pageHero {
   flex: 0 0 auto;
 }
 
@@ -2701,7 +2703,8 @@
 .enterpriseDetailPage .pageBodyFill,
 .contactDetailPage .pageBodyFill,
 .prestataireDetailPage .pageBodyFill,
-.equipmentDetailPage .pageBodyFill {
+.equipmentDetailPage .pageBodyFill,
+.contratDetailPage .pageBodyFill {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
@@ -3653,8 +3656,15 @@
   background: color-mix(in srgb, var(--msp-accent, #2b5fab) 7%, var(--msp-surface-2, #f3f6fb));
   color: var(--msp-text);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition: background-color 0.15s ease, transform 0.12s ease;
+  box-sizing: border-box;
+  font: inherit;
+}
+
+a.quickActionItem:visited {
+  color: var(--msp-text);
 }
 
 .quickActionItem:hover {

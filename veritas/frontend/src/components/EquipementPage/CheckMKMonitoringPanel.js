@@ -7,6 +7,7 @@ import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./CheckMKMonitoringPanel.module.css";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 import {
   CHECKMK_DATE_FILTER_OPTIONS,
   CHECKMK_AVAILABILITY_PERIOD_OPTIONS,
@@ -75,7 +76,7 @@ function sortAlertRows(list, sort) {
 
 function CompactAlertList({ rows, emptyLabel, onOpenRow, locale }) {
   if (!rows.length) {
-    return <div className={styles.compactEmpty}>{emptyLabel}</div>;
+    return <EquipmentEmptyState icon="mdi:bell-off-outline" message={emptyLabel} compact />;
   }
   return (
     <ul className={styles.compactList}>
@@ -335,14 +336,16 @@ export default function CheckMKMonitoringPanel({
   if (!checkmkMapping?.checkmk_host_name) {
     return (
       <section className={panelClass}>
-        <div className={styles.emptyMsg}>
-          <Icon icon="simple-icons:checkmk" className={styles.emptyIcon} aria-hidden />
-          <h5 className={styles.emptyTitle}>Périphérique non mappé</h5>
-          <p className={styles.emptyText}>Mappez cet équipement à CheckMK pour afficher la supervision.</p>
-          <button type="button" className={styles.mapCta} onClick={onOpenMapping}>
-            Mapper CheckMK
-          </button>
-        </div>
+        <EquipmentEmptyState
+          icon="mdi:radar"
+          message="Mappez CheckMK pour afficher la supervision"
+        >
+          {onOpenMapping ? (
+            <button type="button" className={styles.mapCta} onClick={onOpenMapping}>
+              Mapper CheckMK
+            </button>
+          ) : null}
+        </EquipmentEmptyState>
       </section>
     );
   }
@@ -369,7 +372,10 @@ export default function CheckMKMonitoringPanel({
   if (!checkmkData) {
     return (
       <section className={panelClass}>
-        <div className={styles.emptyMsg}>Aucune donnée CheckMK disponible.</div>
+        <EquipmentEmptyState
+          icon="mdi:radar"
+          message="Aucune donnée CheckMK disponible"
+        />
       </section>
     );
   }
@@ -646,7 +652,7 @@ export default function CheckMKMonitoringPanel({
           </div>
 
           {loadingCentre && eventsSource === "centre" && !paginatedHistory.length ? (
-            <div className={styles.compactEmpty}>Chargement…</div>
+            <EquipmentEmptyState message="Chargement…" icon={null} compact />
           ) : (
             <CompactAlertList
               rows={paginatedHistory}

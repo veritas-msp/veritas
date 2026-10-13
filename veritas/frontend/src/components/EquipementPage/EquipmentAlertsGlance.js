@@ -6,6 +6,7 @@ import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { formatEquipmentDetailRelative, getEquipmentDetailCopy } from "./equipmentDetailPageI18n";
 import { getSupervisionAlertRulesCopy } from "./supervisionAlertRulesPanelI18n";
 import styles from "./EquipmentAlertsGlance.module.css";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 
 const SEVERITY_ICONS = {
   critical: "mdi:alert-octagon",
@@ -114,10 +115,14 @@ export default function EquipmentAlertsGlance({
           </h2>
           {!isEmpty ? <p className={styles.subtitle}>{glance.subtitle}</p> : null}
         </div>
-        {isEmpty ? <p className={styles.emptyInline}>{glance.empty}</p> : !loading && !error ? <span className={styles.count}>{alerts.length}</span> : null}
+        {!isEmpty && !loading && !error ? <span className={styles.count}>{alerts.length}</span> : null}
       </header>
 
-      {loading ? <p className={styles.state}>{glance.loading}</p> : error ? <p className={`${styles.state} ${styles.stateError}`}>{glance.error}</p> : alerts.length === 0 ? null : <div className={styles.tableWrap}>
+      {loading ? <p className={styles.state}>{glance.loading}</p> : error ? (
+        <EquipmentEmptyState icon="mdi:alert-circle-outline" message={glance.error || error} />
+      ) : alerts.length === 0 ? (
+        <EquipmentEmptyState icon="mdi:bell-off-outline" message={glance.empty} />
+      ) : <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>

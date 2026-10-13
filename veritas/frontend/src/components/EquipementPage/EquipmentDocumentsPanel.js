@@ -13,6 +13,7 @@ import { getLocaleTag } from "../../i18n/locales";
 import { getEquipmentDetailCopy, interpolate } from "./equipmentDetailPageI18n";
 import { getEquipmentModalsCopy } from "./equipmentModalsI18n";
 import styles from "./EquipmentDocumentsPanel.module.css";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 
 const CATEGORY_VALUES = ["Facture / garantie", "Photo", "Configuration", "Manuel", "Procédure", "Autre"];
 const DEFAULT_CATEGORY = "Autre";
@@ -357,16 +358,17 @@ export default function EquipmentDocumentsPanel({
         </button>
       </div>
 
-      {loading ? <p className={styles.hint}>{docCopy.loading}</p> : documents.length === 0 ? <div className={styles.emptyState}>
-          <Icon icon="mdi:file-document-outline" className={styles.emptyStateIcon} aria-hidden />
-          <p className={styles.emptyStateText}>{docCopy.empty}</p>
-          <p className={styles.emptyDropHint}>{docCopy.fileDropHint || docCopy.uploadModal?.dropHint}</p>
-        </div> : filteredDocuments.length === 0 ? <div className={styles.emptyState}>
-          <Icon icon="mdi:file-search-outline" className={styles.emptyStateIcon} aria-hidden />
-          <p className={styles.emptyStateText}>{interpolate(docCopy.noMatch, {
-          query: searchQuery.trim()
-        })}</p>
-        </div> : <div className={styles.grid}>
+      {loading ? <p className={styles.hint}>{docCopy.loading}</p> : documents.length === 0 ? (
+        <EquipmentEmptyState
+          icon="mdi:file-document-outline"
+          message={docCopy.empty}
+        />
+      ) : filteredDocuments.length === 0 ? (
+        <EquipmentEmptyState
+          icon="mdi:file-search-outline"
+          message={interpolate(docCopy.noMatch, { query: searchQuery.trim() })}
+        />
+      ) : <div className={styles.grid}>
           {filteredDocuments.map(doc => <DocumentCard key={doc.id} doc={doc} copy={copy} locale={locale} onPreview={() => setPreviewDoc(doc)} onDelete={() => setDeleteTarget(doc)} />)}
         </div>}
 

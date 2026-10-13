@@ -15,6 +15,8 @@ export default function MfaDetailsTable({
   onUpdate,
   onSyncComplete,
   showCard = true,
+  fill = false,
+  compact = false,
   userFilter = 'all',
   methodFilter = null,
   onUserDataUpdate,
@@ -471,14 +473,18 @@ export default function MfaDetailsTable({
       </div>
       {searchAndActionsRow}
     </div> : <>
-      <h3 className={styles.tableSectionTitle}>{tableCopy.title}</h3>
-      <div className={styles.tableSectionSeparator} />
+      {!compact ? (
+        <>
+          <h3 className={styles.tableSectionTitle}>{tableCopy.title}</h3>
+          <div className={styles.tableSectionSeparator} />
+        </>
+      ) : null}
       {searchAndActionsRow}
     </>;
   const content = <>
-      {headerContent}
+      <div className={styles.tableToolbar}>{headerContent}</div>
 
-      <div className={styles.tableContainer}>
+      <div className={`${styles.tableContainer} ${fill ? styles.tableContainerFill : ""}`.trim()}>
         <table className={styles.mfaTable}>
           <thead>
             <tr>
@@ -629,9 +635,9 @@ export default function MfaDetailsTable({
 
 
     </>;
-  return showCard ? <div className={styles.detailsCard}>
-      {content}
-    </div> : <div className={styles.tableSectionWrap}>
-      {content}
-    </div>;
+  const wrapClass = showCard
+    ? `${styles.detailsCard} ${fill ? styles.fillWrap : ""}`.trim()
+    : `${styles.tableSectionWrap} ${fill ? styles.fillWrap : ""} ${compact ? styles.tableSectionWrapCompact : ""}`.trim();
+
+  return <div className={wrapClass}>{content}</div>;
 }

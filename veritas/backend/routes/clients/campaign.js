@@ -69,11 +69,11 @@ async function ensureCampaignReportPdf(clientId, campaignId) {
 }
 const router = express.Router();
 const DEFAULT_MS_SECURITY_STEPS_BY_LOCALE = {
-  fr: ["Oral then written communication to the client", "Provide user help documentation at MFA enrollment", "Campaign start snapshot", "Forcer l'enrollement des comptes administrateurs et/ou utilisateurs", "Snapshot de fin de campagne", "Provide campaign report to the client"],
-  en: ["Oral then written communication to the client", "Provide user help documentation for MFA enrollment", "Campaign start snapshot", "Enforce MFA enrollment for administrator and/or user accounts", "Campaign end snapshot", "Provide the campaign report to the client"],
-  de: ["Mündliche und anschließend schriftliche Kommunikation mit dem Kunden", "Bereitstellung der Benutzerhilfe-Dokumentation zur MFA-Registrierung", "Snapshot zu Beginn der Kampagne", "MFA-Enrollment für Administrator- und/oder Benutzerkonten erzwingen", "Snapshot zum Ende der Kampagne", "Bereitstellung des Kampagnenberichts an den Kunden"],
-  it: ["Comunicazione orale e poi scritta al cliente", "Messa a disposizione della documentazione di aiuto utente per la registrazione MFA", "Snapshot di inizio campagna", "Forzare l'enrollment degli account amministratore e/o utente", "Snapshot di fine campagna", "Messa a disposizione del report di campagna al cliente"],
-  es: ["Comunicación oral y luego escrita al cliente", "Puesta a disposición de la documentación de ayuda al usuario para el registro MFA", "Instantánea de inicio de campaña", "Forzar el enrollment de las cuentas de administrador y/o usuarios", "Instantánea de fin de campaña", "Puesta a disposición del informe de campaña al cliente"]
+  fr: ["Phase 1", "Phase 2", "Phase 3", "Phase 4"],
+  en: ["Phase 1", "Phase 2", "Phase 3", "Phase 4"],
+  de: ["Phase 1", "Phase 2", "Phase 3", "Phase 4"],
+  it: ["Phase 1", "Phase 2", "Phase 3", "Phase 4"],
+  es: ["Phase 1", "Phase 2", "Phase 3", "Phase 4"]
 };
 function normalizeCampaignLocale(locale) {
   const code = String(locale || "fr").trim().toLowerCase().slice(0, 2);
@@ -148,6 +148,90 @@ async function getClientMfaStatsFromDb(clientId) {
     mfaDisabledCount,
     lastSync: row.last_sync
   };
+}
+function formatCurrentMfaStats(stats) {
+  if (!stats) return null;
+  return {
+    adminCount: stats.adminCount,
+    userCount: stats.userCount,
+    adminMfaCount: Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
+    userMfaCount: stats.mfaEnabledCount,
+    adminMfaPercentage: stats.adminMfaPercentage,
+    userMfaPercentage: stats.userMfaPercentage,
+    mfaPercentage: stats.mfaPercentage,
+    mfaEnabledCount: stats.mfaEnabledCount,
+    mfaDisabledCount: stats.mfaDisabledCount,
+    regularUserCount: stats.userCount - stats.adminCount,
+    regularUserMfaCount: stats.mfaEnabledCount - Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
+    nonAdminMfaPercentage: stats.nonAdminMfaPercentage
+  };
+}
+function normalizeAssignedUserIds(raw, fallbackId = null) {
+  let ids = [];
+  if (Array.isArray(raw)) {
+    ids = raw;
+  } else if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) ids = parsed;
+    } catch (_) {
+      if (raw.trim()) ids = [raw.trim()];
+    }
+  } else if (raw && typeof raw === "object") {
+    ids = Object.values(raw);
+  }
+  ids = ids.map(id => String(id || "").trim()).filter(Boolean);
+  const fallback = fallbackId != null && String(fallbackId).trim() ? String(fallbackId).trim() : null;
+  if (fallback && !ids.includes(fallback)) ids = [fallback, ...ids];
+  return [...new Set(ids)];
+}
+function parseOptionalTimestamp(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+function dueDateFromEndAt(endAt) {
+  if (!endAt) return null;
+  const d = new Date(endAt);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+async function enrichCampaignStepRow(step) {
+  if (!step) return step;
+  const assignedIds = normalizeAssignedUserIds(step.assigned_user_ids, step.assigned_user_id);
+  let assignees = [];
+  if (assignedIds.length > 0) {
+    const usersResult = await pool.query(
+      `SELECT id, username, email FROM v_b_users WHERE id::text = ANY($1::text[])`,
+      [assignedIds]
+    );
+    const byId = new Map(usersResult.rows.map(u => [String(u.id), u]));
+    assignees = assignedIds.map(id => {
+      const u = byId.get(String(id));
+      return {
+        id: String(id),
+        username: u?.username || null,
+        email: u?.email || null,
+        label: u?.username || u?.email || String(id)
+      };
+    });
+  }
+  const primary = assignees[0] || null;
+  return {
+    ...step,
+    assigned_user_ids: assignedIds,
+    assignees,
+    assigned_user_id: primary?.id || step.assigned_user_id || null,
+    username: primary?.username || step.username || null,
+    email: primary?.email || step.email || null,
+    start_at: step.start_at || null,
+    end_at: step.end_at || null
+  };
+}
+async function enrichCampaignStepRows(rows) {
+  return Promise.all((Array.isArray(rows) ? rows : []).map(enrichCampaignStepRow));
 }
 router.get('/all-campaigns', requireAnyPermission('cybersecurite.view', 'clients.view'), async (req, res) => {
   try {
@@ -419,7 +503,8 @@ router.put('/:id/campaigns/:campaignId', requirePermission('clients_detail.campa
       glpi_ticket_id,
       provider,
       tenant_id,
-      azure_credential_id
+      azure_credential_id,
+      management
     } = req.body;
     const userId = req.user?.id || req.user?.user_id || null;
     let userName = req.user?.name || req.user?.username || req.user?.email || 'Unknown user';
@@ -468,6 +553,11 @@ router.put('/:id/campaigns/:campaignId', requirePermission('clients_detail.campa
     if (objectif_adoption !== undefined) {
       updates.push(`objectif_adoption = $${paramIndex++}`);
       values.push(normalizeNumericColumn(objectif_adoption));
+    }
+    if (management !== undefined) {
+      const payload = management && typeof management === "object" && !Array.isArray(management) ? management : {};
+      updates.push(`management = $${paramIndex++}::jsonb`);
+      values.push(JSON.stringify(payload));
     }
     const wantsAzureUpdate = provider !== undefined || tenant_id !== undefined || azure_credential_id !== undefined;
     if (wantsAzureUpdate) {
@@ -943,30 +1033,18 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('cybersecuri
     const snapshots = snapshotsResult.rows;
     const startSnapshot = snapshots.find(s => s.snapshot_type === 'start');
     const endSnapshot = snapshots.find(s => s.snapshot_type === 'end');
+    let liveMfa = null;
+    if (campaign.type === 'microsoft_security') {
+      try {
+        liveMfa = await getClientMfaStatsFromDb(id);
+      } catch (_) {}
+    }
+    const currentPayload = formatCurrentMfaStats(liveMfa);
+    const effectiveLastSync = liveMfa?.lastSync || lastSync || undefined;
     if (!startSnapshot && !endSnapshot) {
-      const includeCurrent = req.query.includeCurrent === 'true';
-      if (includeCurrent && campaign.type === 'microsoft_security') {
-        const stats = await getClientMfaStatsFromDb(id);
-        if (stats) {
-          return res.json({
-            current: {
-              adminCount: stats.adminCount,
-              userCount: stats.userCount,
-              adminMfaCount: Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
-              userMfaCount: stats.mfaEnabledCount,
-              adminMfaPercentage: stats.adminMfaPercentage,
-              userMfaPercentage: stats.userMfaPercentage,
-              regularUserCount: stats.userCount - stats.adminCount,
-              regularUserMfaCount: stats.mfaEnabledCount - Math.round(stats.adminCount * stats.adminMfaPercentage / 100)
-            },
-            lastSync: stats.lastSync,
-            hasSnapshots: false
-          });
-        }
-      }
       return res.json({
-        current: null,
-        lastSync: lastSync ?? undefined,
+        current: currentPayload,
+        lastSync: effectiveLastSync,
         hasSnapshots: false
       });
     }
@@ -1062,7 +1140,8 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('cybersecuri
           createdAt: endSnapshot.created_at
         },
         comparison: comparison,
-        lastSync: lastSync ?? undefined,
+        current: currentPayload,
+        lastSync: effectiveLastSync,
         hasSnapshots: true
       });
     }
@@ -1083,7 +1162,8 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('cybersecuri
         },
         end: null,
         comparison: null,
-        lastSync: lastSync ?? undefined,
+        current: currentPayload,
+        lastSync: effectiveLastSync,
         hasSnapshots: true
       });
     }
@@ -1091,7 +1171,8 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('cybersecuri
       start: null,
       end: null,
       comparison: null,
-      lastSync: lastSync ?? undefined,
+      current: currentPayload,
+      lastSync: effectiveLastSync,
       hasSnapshots: false
     });
   } catch (error) {
@@ -1222,7 +1303,7 @@ router.get('/:id/campaigns/:campaignId/steps', requireAnyPermission('cybersecuri
        LEFT JOIN v_b_users u ON s.assigned_user_id::text = u.id::text
        WHERE s.campaign_id = $1
        ORDER BY s.order_index ASC, s.created_at ASC`, [campaignId]);
-    res.json(result.rows);
+    res.json(await enrichCampaignStepRows(result.rows));
   } catch (error) {
     console.error('Error fetching steps:', error);
     res.status(500).json({
@@ -1239,9 +1320,12 @@ router.post('/:id/campaigns/:campaignId/steps', requirePermission('clients_detai
     const {
       name,
       assigned_user_id,
+      assigned_user_ids,
       due_date,
       duration_hours,
-      order_index
+      order_index,
+      start_at,
+      end_at
     } = req.body;
     if (!name) {
       return res.status(400).json({
@@ -1253,16 +1337,33 @@ router.post('/:id/campaigns/:campaignId/steps', requirePermission('clients_detai
       const maxOrderResult = await pool.query(`SELECT COALESCE(MAX(order_index), 0) as max_order FROM v_b_clients_c_campaign_steps WHERE campaign_id = $1`, [campaignId]);
       finalOrderIndex = (maxOrderResult.rows[0]?.max_order || 0) + 1;
     }
-    const result = await pool.query(`INSERT INTO v_b_clients_c_campaign_steps 
-       (campaign_id, name, assigned_user_id, due_date, duration_hours, order_index)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`, [campaignId, name, assigned_user_id || null, due_date || null, duration_hours || null, finalOrderIndex]);
-    if (result.rows[0].assigned_user_id) {
-      const userResult = await pool.query(`SELECT username, email FROM v_b_users WHERE id = $1`, [result.rows[0].assigned_user_id]);
-      result.rows[0].username = userResult.rows[0]?.username;
-      result.rows[0].email = userResult.rows[0]?.email;
+    const assigneeIds = normalizeAssignedUserIds(assigned_user_ids, assigned_user_id);
+    const primaryAssignee = assigneeIds[0] || null;
+    const startAt = parseOptionalTimestamp(start_at) ?? null;
+    const endAt = parseOptionalTimestamp(end_at) ?? null;
+    const dueDateValue = due_date || dueDateFromEndAt(endAt);
+    let durationValue = duration_hours ?? null;
+    if ((durationValue === null || durationValue === undefined || durationValue === "") && startAt && endAt) {
+      const ms = new Date(endAt).getTime() - new Date(startAt).getTime();
+      if (Number.isFinite(ms) && ms > 0) {
+        durationValue = Math.round(ms / 36e5 * 100) / 100;
+      }
     }
-    res.status(201).json(result.rows[0]);
+    const result = await pool.query(`INSERT INTO v_b_clients_c_campaign_steps 
+       (campaign_id, name, assigned_user_id, assigned_user_ids, due_date, duration_hours, order_index, start_at, end_at)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
+       RETURNING *`, [
+      campaignId,
+      name,
+      primaryAssignee,
+      JSON.stringify(assigneeIds),
+      dueDateValue || null,
+      durationValue || null,
+      finalOrderIndex,
+      startAt,
+      endAt
+    ]);
+    res.status(201).json(await enrichCampaignStepRow(result.rows[0]));
   } catch (error) {
     console.error('Error creating step:', error);
     res.status(500).json({
@@ -1326,7 +1427,7 @@ router.put('/:id/campaigns/:campaignId/steps/reorder', requirePermission('client
          LEFT JOIN v_b_users u ON s.assigned_user_id::text = u.id::text
          WHERE s.campaign_id = $1
          ORDER BY s.order_index ASC, s.created_at ASC`, [campaignId]);
-      res.json(result.rows);
+      res.json(await enrichCampaignStepRows(result.rows));
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -1349,10 +1450,13 @@ router.put('/:id/campaigns/:campaignId/steps/:stepId', requirePermission('client
     const {
       name,
       assigned_user_id,
+      assigned_user_ids,
       due_date,
       duration_hours,
       completed,
-      order_index
+      order_index,
+      start_at,
+      end_at
     } = req.body;
     const updates = [];
     const values = [];
@@ -1361,9 +1465,29 @@ router.put('/:id/campaigns/:campaignId/steps/:stepId', requirePermission('client
       updates.push(`name = $${paramIndex++}`);
       values.push(name);
     }
-    if (assigned_user_id !== undefined) {
+    if (assigned_user_ids !== undefined || assigned_user_id !== undefined) {
+      const assigneeIds = normalizeAssignedUserIds(
+        assigned_user_ids !== undefined ? assigned_user_ids : undefined,
+        assigned_user_id
+      );
+      const primaryAssignee = assigneeIds[0] || null;
+      updates.push(`assigned_user_ids = $${paramIndex++}::jsonb`);
+      values.push(JSON.stringify(assigneeIds));
       updates.push(`assigned_user_id = $${paramIndex++}`);
-      values.push(assigned_user_id || null);
+      values.push(primaryAssignee);
+    }
+    if (start_at !== undefined) {
+      updates.push(`start_at = $${paramIndex++}`);
+      values.push(parseOptionalTimestamp(start_at));
+    }
+    if (end_at !== undefined) {
+      const parsedEnd = parseOptionalTimestamp(end_at);
+      updates.push(`end_at = $${paramIndex++}`);
+      values.push(parsedEnd);
+      if (due_date === undefined) {
+        updates.push(`due_date = $${paramIndex++}`);
+        values.push(dueDateFromEndAt(parsedEnd));
+      }
     }
     if (due_date !== undefined) {
       updates.push(`due_date = $${paramIndex++}`);
@@ -1397,12 +1521,7 @@ router.put('/:id/campaigns/:campaignId/steps/:stepId', requirePermission('client
         error: 'Step not found'
       });
     }
-    if (result.rows[0].assigned_user_id) {
-      const userResult = await pool.query(`SELECT username, email FROM v_b_users WHERE id = $1`, [result.rows[0].assigned_user_id]);
-      result.rows[0].username = userResult.rows[0]?.username;
-      result.rows[0].email = userResult.rows[0]?.email;
-    }
-    res.json(result.rows[0]);
+    res.json(await enrichCampaignStepRow(result.rows[0]));
   } catch (error) {
     console.error('Error updating step:', error);
     res.status(500).json({

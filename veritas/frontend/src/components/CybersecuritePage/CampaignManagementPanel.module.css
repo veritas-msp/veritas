@@ -1,0 +1,292 @@
+.root {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.kpiRow {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.kpiCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+}
+
+.kpiLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.kpiValue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.grid {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.panel {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.phasesPanel,
+.timePanel {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.phasesBody {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column;
+  padding: 0.55rem 0.75rem 0.75rem !important;
+}
+
+.panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.timeBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.timeForm,
+.checklistForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 7rem;
+}
+
+.fieldGrow {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+
+.field span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.field input,
+.checklistForm input,
+.notesArea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.notesArea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.35rem;
+  padding: 0 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryBtn {
+  border: 1px solid var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.iconBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.timeList,
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.timeItem,
+.checkItem {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 0.65rem;
+  align-items: start;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.checkItem {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+}
+
+.timeMain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+
+.timeNoteText {
+  grid-column: 1 / -2;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.muted {
+  color: var(--msp-muted, #5c6b82);
+}
+
+.empty {
+  margin: 0;
+  padding: 0.85rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--msp-muted, #5c6b82);
+  border: 1px dashed var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.iconBtn:hover:not(:disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.checkBox {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 6px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.checkBoxOn {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+}
+
+.checkDone span {
+  text-decoration: line-through;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 1200px) {
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .phasesPanel,
+  .timePanel {
+    height: auto;
+    min-height: 18rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .kpiRow {
+    grid-template-columns: 1fr;
+  }
+}

@@ -691,11 +691,21 @@
   flex: 0 0 auto;
 }
 
-.supervisionStack > :global([class*="panel"]),
-.supervisionStack > .historyTabLayout,
-.supervisionStack > .emptyState {
+.activityStack > .supervisionEmptyFill {
   flex: 1 1 0;
   min-height: 0;
+}
+
+.supervisionStack > :global([class*="panel"]),
+.supervisionStack > .historyTabLayout,
+.supervisionStack > .emptyState,
+.supervisionStack > .supervisionEmptyFill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.supervisionEmptyFill {
+  min-height: 100%;
 }
 
 .ficheOnlyStack {
@@ -754,6 +764,15 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+
+.historyTabLayout > :global([class*="panel"]) > :global([class*="panelBody"]) > :global([class*="emptyState"]),
+.historyTabLayout > :global([class*="panel"]) > :global([class*="cardBody"]) > :global([class*="emptyState"]),
+.historyTabLayout > :global([class*="card"]) > :global([class*="cardBody"]) > :global([class*="emptyState"]) {
+  flex: 1 1 0;
+  min-height: 100%;
 }
 
 @media (max-width: 1100px) {
@@ -771,7 +790,7 @@
 
 .activityVeritasLayout {
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: 0.75rem;
   flex: 1 1 0;
   min-height: 0;
@@ -799,6 +818,26 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+}
+
+.activityVeritasLayout > :global([class*="panel"]) > :global([class*="panelBody"]) > :global([class*="emptyState"]) {
+  flex: 1 1 0;
+  min-height: 100%;
+}
+
+.eventsPanelBody {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.eventsEmptyFill {
+  flex: 1 1 0 !important;
+  min-height: 100%;
+  height: 100%;
 }
 
 .activityPaneFill {
@@ -1301,13 +1340,15 @@
 }
 
 .logsTableFill > .loadingState,
-.logsTableFill > .emptyState {
+.logsTableFill > .emptyState,
+.logsTableFill > :global([class*="emptyState"]) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   margin: 0;
+  min-height: 100%;
 }
 
 .logsTableWrapper {
@@ -1332,32 +1373,47 @@
 }
 
 .equipmentDetailPage .emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 8rem;
+  padding: 1.5rem 0.75rem;
   text-align: center;
-  padding: 1.75rem 1.25rem;
-  color: var(--msp-muted, #5c6b82);
-  background: var(--msp-surface-2, #f7f9fc);
-  border: 1px dashed var(--msp-border-light, #e2e8f0);
-  border-radius: 10px;
+  color: var(--msp-muted, #64748b);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .equipmentDetailPage .emptyState h4,
 .equipmentDetailPage .emptyState h5 {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--msp-text, #0f1c2e);
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--msp-muted, #64748b);
+  max-width: 22rem;
+  line-height: 1.45;
 }
 
-.equipmentDetailPage .emptyState p {
+.equipmentDetailPage .emptyState p,
+.equipmentDetailPage .emptyState .emptyHint {
   margin: 0;
-  font-size: 0.8rem;
-  color: var(--msp-muted, #5c6b82);
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--msp-muted, #64748b);
+  max-width: 22rem;
+  line-height: 1.45;
 }
 
 .equipmentDetailPage .emptyIcon {
-  font-size: 1.75rem;
-  color: var(--msp-muted-light, #8b9bb5);
-  margin-bottom: 0.15rem;
+  font-size: 1.85rem;
+  color: var(--msp-muted, #64748b);
+  opacity: 0.5;
+  margin-bottom: 0;
 }
 
 .equipmentDetailPage .loadingState {
@@ -1517,11 +1573,11 @@
 }
 
 .equipmentDetailPage .emptyState {
-  color: var(--msp-muted);
+  color: var(--msp-muted, #64748b);
 }
 
 .equipmentDetailPage .emptyState h5 {
-  color: var(--msp-text);
+  color: var(--msp-muted, #64748b);
 }
 
 .equipmentDetailPage :global(.heroAvatar) {
@@ -2191,34 +2247,52 @@
   cursor: not-allowed;
 }
 
-.loading,
-.emptyState {
+.loading {
   text-align: center;
   padding: 1.5rem 1.25rem;
-  color: var(--text-muted, #9ca3af);
-  background-color: var(--bg-secondary, #1a1a2e);
-  border: 1px solid var(--border-primary, #2a2a4a);
-  border-radius: 0.5rem;
+  color: var(--msp-muted, #64748b);
+}
+
+.emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 8rem;
+  padding: 1.5rem 0.75rem;
+  text-align: center;
+  color: var(--msp-muted, #64748b);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .emptyIcon {
-  font-size: 1.5rem;
-  color: var(--text-muted, #9ca3af);
-  margin-bottom: 0.25rem;
+  font-size: 1.85rem;
+  color: var(--msp-muted, #64748b);
+  opacity: 0.5;
+  margin-bottom: 0;
 }
 
 .emptyState h4,
 .emptyState h5 {
-  margin: 0.25rem 0 0.25rem 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text-primary, #f9fafb);
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--msp-muted, #64748b);
+  max-width: 22rem;
+  line-height: 1.45;
 }
 
 .emptyState p {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.85rem;
-  color: var(--text-muted, #9ca3af);
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--msp-muted, #64748b);
+  max-width: 22rem;
+  line-height: 1.45;
 }
 
 .error {

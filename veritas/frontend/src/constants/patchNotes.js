@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.93",
+    date: "2026-10-13",
+    highlights: [
+      "Fiche campagne MFA : layout 3 colonnes (propriétés type ticket, onglets, actions rapides).",
+      "Gestion unifiée : création des phases, planning/assignations et suivi du temps passé.",
+      "Nouvel onglet Documents pour la documentation portail client ; checklist et notes retirées de Gestion.",
+      "KPIs Microsoft Security sur une ligne, adoption j-1, et dropdown d’assignation des phases corrigé.",
+      "Fiche périphérique : états vides unifiés sur les panneaux (notes, docs, supervision, etc.)."
+    ]
+  },
+  {
     version: "1.0.92",
     date: "2026-10-13",
     highlights: [

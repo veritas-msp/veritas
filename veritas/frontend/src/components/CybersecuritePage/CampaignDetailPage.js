@@ -1,29 +1,35 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { Icon } from "@iconify/react";
-import { FaArrowLeft, FaEdit, FaTimes, FaRocket, FaFlagCheckered, FaSpinner, FaSync, FaUndo, FaPause, FaPlay, FaDownload, FaFolderOpen } from "react-icons/fa";
+import { FaArrowLeft, FaTimes, FaFlagCheckered, FaSpinner, FaUndo, FaPause, FaPlay, FaDownload, FaFolderOpen } from "react-icons/fa";
 import { toast } from 'react-toastify';
 import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllCampaigns, updateClientCampaign, deleteCampaign, launchCampaign, finishCampaign, resetCampaign, pauseCampaign, resumeCampaign, getCampaignStats, downloadCampaignReport, publishCampaignReport } from "../../api/campaigns";
 import { fetchClientsList } from "../../api/clients";
 import { getClientOffice365Credentials, getClientMfaDetails } from "../../api/clientOffice365";
-import CampaignSteps from "./CampaignSteps";
 import CampaignFormModal from "./CampaignFormModal";
 import CampaignReportPublishModal from "./CampaignReportPublishModal";
 import MicrosoftSecurityStats from "./MicrosoftSecurityStats";
 import CampaignAdoptionStats from "./CampaignAdoptionStats";
+import CampaignManagementPanel from "./CampaignManagementPanel";
+import EnterpriseVaultPanel from "../EnterprisesPage/EnterpriseVaultPanel";
+import { getEnterpriseVaultCopy } from "../EnterprisesPage/enterpriseVaultI18n";
 import ReportSyncProgressModal from "../RapportPage/monitoring/ReportSyncProgressModal";
 import { runSupervisionSyncJobs, syncOffice365ForClient, fillSyncCopy } from "../RapportPage/monitoring/supervisionReportSync";
 import API_BASE_URL from "../../config.js";
 import styles from "./CampaignDetailPage.module.css";
 import enterpriseStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
+import ticketStyles from "../TicketPage/TicketDetailPage.module.css";
+import ticketFs from "../TicketPage/TicketCreatePage.module.css";
+import StatusDot from "../shared/StatusDot/StatusDot";
 import SmartTooltip from "../SmartTooltip";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { getCyberModalsCopy } from "./cyberModalsI18n";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { getCampaignDetailCopy, formatCampaignDetail, formatMicrosoftSyncError } from "./campaignDetailI18n";
+import { recordCampaignDailyAdoption } from "./campaignAdoptionDaily";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const CAMPAIGN_TYPES = [{
   value: 'microsoft_security',
@@ -77,6 +83,7 @@ export default function CampaignDetailPage({
   const pageCopy = useMemo(() => getCybersecuritePageCopy(locale), [locale]);
   const campaignsCopy = pageCopy.campaigns;
   const detailCopy = useMemo(() => getCampaignDetailCopy(locale), [locale]);
+  const vaultCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const CAMPAIGN_DETAIL_CLIENTS_CACHE_KEY = "campaign_detail_clients_list_cache_v1";
   const CAMPAIGN_DETAIL_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
   const CAMPAIGN_DETAIL_STATS_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -109,7 +116,6 @@ export default function CampaignDetailPage({
   const syncProgressCancelRef = useRef(false);
   const syncProgressAbortRef = useRef(null);
   const syncInFlightRef = useRef(false);
-  const autoSyncTriggeredRef = useRef(false);
   const clientsControllerRef = useRef(null);
   const campaignControllerRef = useRef(null);
   const statsControllerRef = useRef(null);
@@ -127,6 +133,8 @@ export default function CampaignDetailPage({
   const [publishVisibleToClient, setPublishVisibleToClient] = useState(false);
   const [publishingReport, setPublishingReport] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
+  const [activeSection, setActiveSection] = useState("overview");
+  const [dailyAdoptionTrend, setDailyAdoptionTrend] = useState({ today: null, previousDay: null, delta: null });
   const initialData = campaignData?.campaign || campaignData || {};
   const [editForm, setEditForm] = useState({
     client_id: initialData?.client_id || '',
@@ -207,7 +215,6 @@ export default function CampaignDetailPage({
   };
   useEffect(() => {
     currentSyncClientIdRef.current = campaign?.client_id || null;
-    autoSyncTriggeredRef.current = false;
   }, [campaign?.client_id, campaign?.id]);
   const loadCampaignDetails = async (options = {}) => {
     const refreshStats = options?.refreshStats !== false;
@@ -377,14 +384,11 @@ export default function CampaignDetailPage({
       setLastSyncO365(null);
     }
   };
-  const handleMicrosoftSync = async (options = {}) => {
-    const autoStarted = options?.autoStarted === true;
+  const handleMicrosoftSync = async () => {
     if (!campaign || !campaign.client_id || campaign.type !== 'microsoft_security') return;
     if (syncInFlightRef.current || syncLoading || syncProgress.open) return;
     if (!office365Credentials) {
-      if (!autoStarted) {
-        toast.error(detailCopy.actions.needEntra);
-      }
+      toast.error(detailCopy.actions.needEntra);
       return;
     }
     const targetClientId = campaign.client_id;
@@ -397,9 +401,6 @@ export default function CampaignDetailPage({
     syncProgressAbortRef.current = abortController;
     syncProgressCancelRef.current = false;
     syncInFlightRef.current = true;
-    if (autoStarted) {
-      autoSyncTriggeredRef.current = true;
-    }
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
     const jobs = [{
@@ -629,19 +630,6 @@ export default function CampaignDetailPage({
       open: false
     }));
   };
-  useEffect(() => {
-    if (campaign?.type !== 'microsoft_security' || !campaign?.client_id) return;
-    if (!initialFetchDone || checkingCredentials) return;
-    if (office365Credentials === null) return;
-    if (autoSyncTriggeredRef.current || syncInFlightRef.current || syncLoading || syncProgress.open) return;
-    const lastSyncValue = campaignStats?.lastSync || lastSyncO365;
-    const needsSync = !lastSyncValue || Date.now() - new Date(lastSyncValue).getTime() > RECENT_SYNC_MAX_AGE_MS;
-    if (needsSync) {
-      void handleMicrosoftSync({
-        autoStarted: true
-      });
-    }
-  }, [campaign?.id, campaign?.type, campaign?.client_id, initialFetchDone, checkingCredentials, office365Credentials, campaignStats?.lastSync, lastSyncO365, syncLoading, syncProgress.open]);
   const handleLaunchCampaign = async () => {
     if (!campaign) return;
     try {
@@ -718,6 +706,56 @@ export default function CampaignDetailPage({
       setActionLoading(false);
     }
   };
+  const patchCampaignFields = async (patch, successMessage) => {
+    if (!campaign) return;
+    try {
+      setActionLoading(true);
+      const updated = await updateClientCampaign(campaign.client_id, campaign.id, patch);
+      const next = updated && typeof updated === "object" ? { ...campaign, ...updated, ...patch } : { ...campaign, ...patch };
+      setCampaign(next);
+      if (successMessage) toast.success(successMessage);
+    } catch (error) {
+      console.error("Error updating campaign fields:", error);
+      toast.error(error.message || detailCopy.toasts.updateError || detailCopy.toasts.launchError);
+      throw error;
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStatusChange = async nextStatus => {
+    if (!campaign || !nextStatus || nextStatus === campaign.status) return;
+    if (campaign.status === "en_preparation" && nextStatus === "active") {
+      await handleLaunchCampaign();
+      return;
+    }
+    if (campaign.status === "active" && nextStatus === "suspendue") {
+      await handlePauseCampaign();
+      return;
+    }
+    if (campaign.status === "suspendue" && nextStatus === "active") {
+      await handleResumeCampaign();
+      return;
+    }
+    if ((campaign.status === "active" || campaign.status === "suspendue") && nextStatus === "inactive") {
+      await handleFinishCampaign();
+      return;
+    }
+    await patchCampaignFields({ status: nextStatus }, detailCopy.toasts.statusUpdated || detailCopy.toasts.updated);
+    await loadCampaignDetails({ refreshStats: false, skipCache: true });
+  };
+
+  const handleDateFieldChange = async (field, value) => {
+    if (!campaign) return;
+    const current = campaign[field] ? String(campaign[field]).slice(0, 10) : "";
+    const next = value || "";
+    if (current === next) return;
+    await patchCampaignFields(
+      { [field]: next || null },
+      detailCopy.toasts.updated
+    );
+  };
+
   const handleFinishCampaign = async () => {
     if (!campaign) return;
     try {
@@ -873,6 +911,28 @@ export default function CampaignDetailPage({
       setConfirmText('');
     }
   };
+  const currentMfaRate = useMemo(() => {
+    const raw =
+      campaignStats?.current?.mfaPercentage ??
+      campaignStats?.current?.userMfaPercentage ??
+      campaignStats?.end?.mfaPercentage ??
+      null;
+    return raw == null || Number.isNaN(Number(raw)) ? null : Number(raw);
+  }, [campaignStats]);
+
+  useEffect(() => {
+    if (!campaign?.id || campaign.type !== "microsoft_security" || currentMfaRate == null) {
+      setDailyAdoptionTrend({ today: null, previousDay: null, delta: null });
+      return;
+    }
+    setDailyAdoptionTrend(recordCampaignDailyAdoption(campaign.id, currentMfaRate));
+  }, [campaign?.id, campaign?.type, currentMfaRate]);
+
+  useEffect(() => {
+    if (activeSection === "context") setActiveSection("overview");
+    if (activeSection === "phases") setActiveSection("management");
+  }, [activeSection]);
+
   if (loading) {
     return <div className={`${enterpriseStyles.contratDetailPage} ${enterpriseStyles.enterpriseDetailPage} ${styles.campaignDetailPage} msp-page-grid`}>
         <div className={styles.loading}>{detailCopy.loading}</div>
@@ -891,12 +951,6 @@ export default function CampaignDetailPage({
   const statusInfo = getStatusInfo(campaign.status);
   const typeInfo = getTypeInfo(campaign.type);
   const client = clients.find(c => c.id === campaign.client_id);
-  const statusBadgeClass = {
-    active: enterpriseStyles.contractBadge_active,
-    en_preparation: enterpriseStyles.contractBadge_expiring,
-    suspendue: enterpriseStyles.contractBadge_suspended,
-    inactive: enterpriseStyles.contractBadge_unknown
-  }[campaign.status] || enterpriseStyles.contractBadge_unknown;
   const clientLabel = client?.name || campaign.client_name || (campaign.client_id ? formatCampaignDetail(detailCopy.clientFallback, {
     id: campaign.client_id
   }) : null);
@@ -904,6 +958,7 @@ export default function CampaignDetailPage({
   const isPaused = campaign.status === 'suspendue';
   const isFinished = campaign.status === 'inactive';
   const isPreparing = campaign.status === 'en_preparation';
+  const statusIsActive = isActive;
   const showLaunchButton = isPreparing;
   const showResumeButton = isPaused;
   const showPauseButton = isActive;
@@ -915,279 +970,747 @@ export default function CampaignDetailPage({
   const canLaunchBecauseOfSync = campaign.type !== 'microsoft_security' || lastSync && Date.now() - lastSync.getTime() <= RECENT_SYNC_MAX_AGE_MS;
   const canLaunchCampaign = campaignStepsCount > 0 && (campaign.type !== 'microsoft_security' || office365Credentials !== null) && canLaunchBecauseOfSync;
   const launchTooltipMessage = !canLaunchBecauseOfSync && campaign.type === 'microsoft_security' ? lastSync ? detailCopy.actions.syncTooOld : detailCopy.actions.syncMissing : !canLaunchCampaign ? campaignStepsCount === 0 ? detailCopy.actions.needSteps : detailCopy.actions.needEntra : detailCopy.actions.launchTooltip;
-  return <div className={`${enterpriseStyles.contratDetailPage} ${enterpriseStyles.enterpriseDetailPage} ${styles.campaignDetailPage} msp-page-grid`}>
-      <header className={enterpriseStyles.pageHero}>
-        <div className={enterpriseStyles.heroRow}>
-          <button type="button" className={enterpriseStyles.backBtn} onClick={() => onNavigate('Campaigns')} aria-label={detailCopy.back}>
-            <FaArrowLeft />
-          </button>
-          <div className={enterpriseStyles.heroMain}>
-            <div className={enterpriseStyles.heroAvatar}>
-              <Icon icon="mdi:shield-lock" aria-hidden />
-            </div>
-            <div className={enterpriseStyles.heroText}>
-              <h1 className={enterpriseStyles.heroTitle}>
-                {campaign.name || typeInfo?.label || campaignsCopy?.types?.microsoft_security || detailCopy.fallbackName}
-              </h1>
-              <div className={enterpriseStyles.heroMeta}>
-                <span className={`${enterpriseStyles.contractBadge} ${statusBadgeClass}`}>
-                  {statusInfo.label}
+  const isMicrosoftSecurity = campaign.type === "microsoft_security";
+  const campaignTitle = campaign.name || typeInfo?.label || campaignsCopy?.types?.microsoft_security || detailCopy.fallbackName;
+
+  return <div className={`${enterpriseStyles.contratDetailPage} ${enterpriseStyles.enterpriseDetailPage} ${styles.campaignDetailPage} ${styles.campaignShell} msp-page-grid`}>
+      <header className={enterpriseStyles.pageHero} data-guide="campaign-hero">
+        <div className={enterpriseStyles.heroTop}>
+          <div className={enterpriseStyles.heroIdentityBlock}>
+            <div className={enterpriseStyles.heroCover} aria-hidden />
+            <div className={enterpriseStyles.heroIdentityRow}>
+              <div className={enterpriseStyles.heroMain}>
+                <span className={enterpriseStyles.heroBrandIcon} aria-hidden>
+                  <Icon icon="mdi:shield-lock" width={30} height={30} />
                 </span>
-                {typeInfo?.label && <span className={enterpriseStyles.heroMetaItem}>
-                    <Icon icon="mdi:shield-check-outline" aria-hidden />
-                    {typeInfo.label}
-                  </span>}
-                {clientLabel && (onNavigate && campaign?.client_id ? <button type="button" className={`${enterpriseStyles.heroMetaItem} ${enterpriseStyles.heroMetaLink}`} onClick={() => onNavigate("ContratDetail", {
-                clientId: campaign.client_id,
-                name: clientLabel
-              })}>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      {clientLabel}
-                    </button> : <span className={enterpriseStyles.heroMetaItem}>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      {clientLabel}
-                    </span>)}
-                {campaign.created_at && <span className={enterpriseStyles.heroMetaItem}>
-                    <Icon icon="mdi:calendar-outline" aria-hidden />
-                    {new Date(campaign.created_at).toLocaleDateString(locale, {
-                  day: "2-digit",
-                  month: "long",
-                  year: "numeric"
-                })}
-                  </span>}
+                <div className={enterpriseStyles.heroText}>
+                  <h1 className={enterpriseStyles.heroTitle}>
+                    <span className={enterpriseStyles.heroTitleName}>{campaignTitle}</span>
+                    <span className={`${enterpriseStyles.heroStatusBadge} ${statusIsActive ? "" : enterpriseStyles.heroStatusBadgeInactive}`.trim()}>
+                      <StatusDot active={statusIsActive} label="" className={enterpriseStyles.heroTitleStatus} />
+                      {statusInfo.label}
+                    </span>
+                  </h1>
+                  <div className={enterpriseStyles.heroMeta} aria-label={detailCopy.sidebar?.general || detailCopy.microsoftSecurity}>
+                    {typeInfo?.label ? (
+                      <span className={enterpriseStyles.heroMetaItem}>
+                        <Icon icon="mdi:shield-check-outline" aria-hidden />
+                        {typeInfo.label}
+                      </span>
+                    ) : null}
+                    {clientLabel ? (
+                      onNavigate && campaign?.client_id ? (
+                        <button
+                          type="button"
+                          className={`${enterpriseStyles.heroMetaItem} ${enterpriseStyles.heroMetaLink}`}
+                          onClick={() => onNavigate("ContratDetail", {
+                            clientId: campaign.client_id,
+                            name: clientLabel
+                          })}
+                        >
+                          <Icon icon="mdi:domain" aria-hidden />
+                          {clientLabel}
+                        </button>
+                      ) : (
+                        <span className={enterpriseStyles.heroMetaItem}>
+                          <Icon icon="mdi:domain" aria-hidden />
+                          {clientLabel}
+                        </span>
+                      )
+                    ) : null}
+                    {campaign.tenant_id ? (
+                      <span
+                        className={enterpriseStyles.heroMetaItem}
+                        title={String(campaign.tenant_id)}
+                      >
+                        <Icon icon="mdi:identifier" aria-hidden />
+                        {`${String(campaign.tenant_id).slice(0, 8)}…${String(campaign.tenant_id).slice(-4)}`}
+                      </span>
+                    ) : null}
+                    {campaign.created_at ? (
+                      <span className={enterpriseStyles.heroMetaItem}>
+                        <Icon icon="mdi:calendar-outline" aria-hidden />
+                        {new Date(campaign.created_at).toLocaleDateString(locale, {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric"
+                        })}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
+
             </div>
-          </div>
-          <div className={enterpriseStyles.heroActions}>
-            {campaign.type === 'microsoft_security' && <>
-                <SmartTooltip as="span" content={syncLoading ? detailCopy.actions.syncing : detailCopy.actions.sync}>
-                  <button type="button" className={styles.heroActionBtn} onClick={() => { void handleMicrosoftSync(); }} disabled={syncLoading || syncProgress.open} aria-label={detailCopy.actions.sync}>
-                    {syncLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaSync className={styles.heroActionIcon} />}
-                  </button>
-                </SmartTooltip>
-                <div className={styles.heroActionSep} />
-              </>}
-            {showLaunchButton && <SmartTooltip as="span" content={launchTooltipMessage}>
-                <button type="button" className={styles.lifecycleBtn} onClick={handleLaunchCampaign} disabled={actionLoading || !canLaunchCampaign} aria-label={detailCopy.actions.launchTooltip}>
-                  {actionLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaRocket className={styles.heroActionIcon} />}
-                  <span>{detailCopy.actions.launch}</span>
-                </button>
-              </SmartTooltip>}
-            {showResumeButton && <SmartTooltip as="span" content={detailCopy.actions.resumeTooltip}>
-                <button type="button" className={styles.lifecycleBtn} onClick={handleResumeCampaign} disabled={actionLoading} aria-label={detailCopy.actions.resumeTooltip}>
-                  {actionLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaPlay className={styles.heroActionIcon} />}
-                  <span>{detailCopy.actions.resume}</span>
-                </button>
-              </SmartTooltip>}
-            {showPauseButton && <SmartTooltip as="span" content={detailCopy.actions.pauseTooltip}>
-                <button type="button" className={styles.lifecycleBtnSecondary} onClick={handlePauseCampaign} disabled={actionLoading} aria-label={detailCopy.actions.pauseTooltip}>
-                  {actionLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaPause className={styles.heroActionIcon} />}
-                  <span>{detailCopy.actions.pause}</span>
-                </button>
-              </SmartTooltip>}
-            {showFinishButton && <SmartTooltip as="span" content={detailCopy.actions.finishTooltip}>
-                <button type="button" className={styles.lifecycleBtn} onClick={handleFinishCampaign} disabled={actionLoading} aria-label={detailCopy.actions.finishTooltip}>
-                  {actionLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaFlagCheckered className={styles.heroActionIcon} />}
-                  <span>{detailCopy.actions.finish}</span>
-                </button>
-              </SmartTooltip>}
-            {showResetButton && <SmartTooltip as="span" content={detailCopy.actions.reset}>
-                <button type="button" className={styles.heroActionBtn} onClick={handleResetCampaign} disabled={actionLoading} aria-label={detailCopy.actions.resetAria}>
-                  {actionLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaUndo className={styles.heroActionIcon} />}
-                </button>
-              </SmartTooltip>}
-            {showReportActions && <>
-                <div className={styles.heroActionSep} />
-                <SmartTooltip as="span" content={detailCopy.actions.downloadReport}>
-                  <button type="button" className={styles.lifecycleBtnSecondary} onClick={handleDownloadReport} disabled={downloadingReport || publishingReport} aria-label={detailCopy.actions.downloadReport}>
-                    {downloadingReport ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaDownload className={styles.heroActionIcon} />}
-                    <span>{detailCopy.report.download}</span>
-                  </button>
-                </SmartTooltip>
-                <SmartTooltip as="span" content={detailCopy.actions.publishReport}>
-                  <button type="button" className={styles.lifecycleBtn} onClick={openPublishReportModal} disabled={downloadingReport || publishingReport} aria-label={detailCopy.actions.publishReport}>
-                    <FaFolderOpen className={styles.heroActionIcon} />
-                    <span>{detailCopy.report.publish}</span>
-                  </button>
-                </SmartTooltip>
-              </>}
-            <div className={styles.heroActionSep} />
-            <SmartTooltip as="span" content={detailCopy.actions.edit}>
-              <button type="button" className={styles.heroActionBtn} onClick={openCampaignEditModal} aria-label={detailCopy.actions.edit}>
-                <FaEdit className={styles.heroActionIcon} />
-              </button>
-            </SmartTooltip>
           </div>
         </div>
       </header>
 
-      <div className={`${enterpriseStyles.pageBody} ${styles.pageBodyFull}`}>
-        <div className={campaign.type === 'microsoft_security' ? styles.pageGridFull : styles.pageGridTwoCol}>
-          {campaign.type === 'microsoft_security' && <div className={styles.colMicrosoft}>
-              <section className={enterpriseStyles.panel}>
-                <div className={enterpriseStyles.panelHeader}>
-                  <h2 className={enterpriseStyles.panelTitle}>{detailCopy.microsoftSecurity}</h2>
-                  <span className={styles.lastSyncMeta}>
-                    {displayLastSync ? formatCampaignDetail(detailCopy.updatedAt, {
-                  date: new Date(displayLastSync).toLocaleDateString(locale),
-                  time: new Date(displayLastSync).toLocaleTimeString(locale, {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
-                }) : detailCopy.updatedNever}
-                  </span>
-                </div>
-                <div className={enterpriseStyles.panelBody}>
-                  <MicrosoftSecurityStats campaign={campaign} clientId={campaign.client_id} stats={campaignStats} onCampaignUpdate={() => loadCampaignDetails({
-                refreshStats: false,
-                skipCache: true
-              })} onStatsUpdate={() => loadCampaignStats({
-                skipCache: true
-              })} refreshTrigger={syncTrigger} isSyncing={syncLoading} copy={detailCopy} />
-                </div>
-              </section>
-            </div>}
+      <div className={`${enterpriseStyles.pageBody} ${enterpriseStyles.pageBodyFill} ${styles.pageBodyFill}`.trim()}>
+        {(() => {
+          const sectionCopy = detailCopy.sections || {};
+          const overviewCopy = detailCopy.overviewKpis || {};
+          const portalLinks = isMicrosoftSecurity
+            ? [
+                {
+                  href: "https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview",
+                  icon: "mdi:shield-account",
+                  title: detailCopy.portals.entraTitle
+                },
+                {
+                  href: "https://security.microsoft.com/",
+                  icon: "mdi:shield-lock",
+                  title: detailCopy.portals.defenderTitle
+                },
+                {
+                  href: "https://admin.microsoft.com/",
+                  icon: "mdi:microsoft",
+                  title: detailCopy.portals.m365Title
+                },
+                {
+                  href: "https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview",
+                  icon: "mdi:microsoft-azure",
+                  title: detailCopy.portals.azureTitle
+                }
+              ]
+            : [];
+          const sectionItems = [
+            { id: "overview", icon: "mdi:view-dashboard-outline", label: sectionCopy.overview || "Vue d'ensemble" },
+            ...(isMicrosoftSecurity
+              ? [
+                  { id: "users", icon: "mdi:account-group-outline", label: sectionCopy.users || "Utilisateurs" },
+                  { id: "adoption", icon: "mdi:chart-line", label: sectionCopy.adoption || detailCopy.adoptionPanel || "Adoption" }
+                ]
+              : []),
+            { id: "management", icon: "mdi:clipboard-text-clock-outline", label: sectionCopy.management || detailCopy.tabs?.management || "Gestion" },
+            { id: "documents", icon: "mdi:folder-eye-outline", label: sectionCopy.documents || detailCopy.management?.docsTitle || "Documents" }
+          ];
+          const safeSection = sectionItems.some(item => item.id === activeSection) ? activeSection : "overview";
+          const progressPct = Math.min(100, Math.max(0, Number(campaign.global_progress) || 0));
+          const progressCurrent =
+            campaignStepsCount > 0
+              ? Math.min(
+                  campaignStepsCount,
+                  Math.round((progressPct / 100) * campaignStepsCount) || 0
+                )
+              : 0;
+          const adoptionGoal =
+            typeof campaign.objectif_adoption === "number" && !Number.isNaN(campaign.objectif_adoption)
+              ? campaign.objectif_adoption
+              : Number(campaign.objectif_adoption) === 0
+                ? 0
+                : null;
+          const currentRateRaw = currentMfaRate;
+          const startRate =
+            campaignStats?.start?.mfaPercentage != null ? Number(campaignStats.start.mfaPercentage) : null;
+          const dailyTrend = dailyAdoptionTrend;
+          const vsStart =
+            currentRateRaw != null && startRate != null
+              ? Math.round((Number(currentRateRaw) - startRate) * 100) / 100
+              : null;
+          const gapToGoal =
+            currentRateRaw != null && adoptionGoal != null
+              ? Math.round((adoptionGoal - Number(currentRateRaw)) * 100) / 100
+              : null;
+          const lastSyncLabel = displayLastSync
+            ? formatCampaignDetail(detailCopy.updatedAt, {
+                date: new Date(displayLastSync).toLocaleDateString(locale),
+                time: new Date(displayLastSync).toLocaleTimeString(locale, {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })
+              })
+            : detailCopy.updatedNever;
 
-          <div className={campaign.type === 'microsoft_security' ? styles.colCenter : styles.colMain}>
-            {campaign.type === 'microsoft_security' && <section className={enterpriseStyles.panel}>
-                <div className={enterpriseStyles.panelHeader}>
-                  <h2 className={enterpriseStyles.panelTitle}>{detailCopy.adoptionPanel}</h2>
-                </div>
-                <div className={enterpriseStyles.panelBody}>
-                  <CampaignAdoptionStats campaign={campaign} clientId={campaign.client_id} stats={campaignStats} onCampaignUpdate={() => loadCampaignDetails({
-                refreshStats: false,
-                skipCache: true
-              })} onStatsUpdate={() => loadCampaignStats({
-                skipCache: true
-              })} hideTitle copy={detailCopy} />
-                </div>
-              </section>}
+          const formatPct = value => (value == null || Number.isNaN(Number(value)) ? "—" : `${Number(value).toFixed(Number(value) % 1 === 0 ? 0 : 1)} %`);
+          const formatDelta = value => {
+            if (value == null || Number.isNaN(Number(value))) return null;
+            const n = Number(value);
+            const sign = n > 0 ? "+" : "";
+            return `${sign}${n.toFixed(n % 1 === 0 ? 0 : 1)} pt`;
+          };
 
-            <section className={enterpriseStyles.panel}>
-              <div className={enterpriseStyles.panelBody}>
-                <CampaignSteps campaign={campaign} clientId={campaign.client_id} onCampaignUpdate={() => loadCampaignDetails({
-                refreshStats: false,
-                skipCache: true
-              })} onStepsCountUpdate={handleStepsCountUpdate} embedded={false} copy={detailCopy} />
+          const overviewKpis = [
+            {
+              key: "progress",
+              icon: "mdi:progress-check",
+              tone: "blue",
+              label: overviewCopy.progress || "Progression globale",
+              value: formatPct(progressPct),
+              sub: formatCampaignDetail(detailCopy.sidebar.stepProgress, {
+                current: progressCurrent,
+                total: campaignStepsCount
+              })
+            },
+            {
+              key: "goal",
+              icon: "mdi:flag-checkered",
+              tone: "violet",
+              label: overviewCopy.goal || "Objectif d'adoption",
+              value: adoptionGoal != null ? formatPct(adoptionGoal) : "—",
+              sub:
+                gapToGoal == null
+                  ? overviewCopy.goalHint || "Définir un objectif"
+                  : gapToGoal <= 0
+                    ? overviewCopy.goalReached || "Objectif atteint"
+                    : formatCampaignDetail(overviewCopy.goalRemaining || "Reste {n}", { n: formatPct(gapToGoal) })
+            },
+            ...(isMicrosoftSecurity
+              ? [
+                  {
+                    key: "current",
+                    icon: "mdi:shield-key-outline",
+                    tone: "green",
+                    label: overviewCopy.currentRate || "Taux MFA actuel",
+                    value: formatPct(currentRateRaw),
+                    sub:
+                      campaignStats?.current?.mfaEnabledCount != null
+                        ? formatCampaignDetail(overviewCopy.enrolled || "{count} enrôlés", {
+                            count: campaignStats.current.mfaEnabledCount
+                          })
+                        : lastSyncLabel
+                  },
+                  {
+                    key: "trend",
+                    icon:
+                      dailyTrend.delta == null
+                        ? "mdi:minus"
+                        : dailyTrend.delta > 0
+                          ? "mdi:trending-up"
+                          : dailyTrend.delta < 0
+                            ? "mdi:trending-down"
+                            : "mdi:minus",
+                    tone:
+                      dailyTrend.delta == null
+                        ? "amber"
+                        : dailyTrend.delta > 0
+                          ? "green"
+                          : dailyTrend.delta < 0
+                            ? "red"
+                            : "amber",
+                    label: overviewCopy.trendDay || "Tendance j-1",
+                    value: formatDelta(dailyTrend.delta) || "—",
+                    sub:
+                      dailyTrend.previousDay != null
+                        ? formatCampaignDetail(overviewCopy.yesterday || "Hier : {rate}", {
+                            rate: formatPct(dailyTrend.previousDay)
+                          })
+                        : overviewCopy.trendPending || "Pas encore de donnée j-1"
+                  },
+                  {
+                    key: "vsStart",
+                    icon: "mdi:compare-horizontal",
+                    tone: vsStart == null ? "teal" : vsStart >= 0 ? "teal" : "coral",
+                    label: overviewCopy.vsStart || "Vs début campagne",
+                    value: formatDelta(vsStart) || "—",
+                    sub:
+                      startRate != null
+                        ? formatCampaignDetail(overviewCopy.startRate || "Début : {rate}", {
+                            rate: formatPct(startRate)
+                          })
+                        : overviewCopy.noStart || "Snapshot de début requis"
+                  }
+                ]
+              : [])
+          ];
+
+          const leftPaneCopy = detailCopy.leftPane || {};
+          const startDateValue = campaign.start_date ? String(campaign.start_date).slice(0, 10) : "";
+          const endDateValue = campaign.end_date ? String(campaign.end_date).slice(0, 10) : "";
+
+          return (
+            <div className={styles.workspace}>
+              <aside
+                className={`${ticketStyles.leftPane} ${enterpriseStyles.rightSidebarContent} ${styles.leftPane}`.trim()}
+                aria-label={leftPaneCopy.properties || "Propriétés"}
+              >
+                <section className={`${enterpriseStyles.sidebarSection} ${ticketStyles.paneSectionOverflow}`.trim()}>
+                  <div className={enterpriseStyles.sidebarInfoHeader}>
+                    <span className={enterpriseStyles.sidebarInfoTitle} id="campaign-detail-properties-label">
+                      {leftPaneCopy.properties || "Propriétés"}
+                    </span>
+                  </div>
+                  <div
+                    className={`${enterpriseStyles.sidebarBody} ${ticketStyles.rightPaneSectionBody} ${ticketStyles.leftPanePropertiesBody} ${ticketFs.settingsPanel}`.trim()}
+                  >
+                    <div className={ticketFs.equipmentField}>
+                      <label className={ticketFs.equipmentFieldLabel} htmlFor="campaign-left-status">
+                        {leftPaneCopy.status || detailCopy.sidebar.status}
+                      </label>
+                      <select
+                        id="campaign-left-status"
+                        className={ticketFs.select}
+                        value={campaign.status || "en_preparation"}
+                        disabled={actionLoading}
+                        onChange={e => {
+                          void handleStatusChange(e.target.value);
+                        }}
+                      >
+                        {CAMPAIGN_STATUSES.map(item => (
+                          <option key={item.value} value={item.value}>
+                            {campaignsCopy?.statuses?.[item.value] || item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className={ticketFs.equipmentField}>
+                      <label className={ticketFs.equipmentFieldLabel}>
+                        {leftPaneCopy.progress || detailCopy.sidebar.progress}
+                      </label>
+                      <div className={styles.leftProgressCard}>
+                        <div className={styles.leftProgressTop}>
+                          <strong>{formatPct(progressPct)}</strong>
+                          <span>
+                            {formatCampaignDetail(detailCopy.sidebar.stepProgress, {
+                              current: progressCurrent,
+                              total: campaignStepsCount
+                            })}
+                          </span>
+                        </div>
+                        <div className={styles.progressBar}>
+                          <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={ticketFs.equipmentField}>
+                      <label className={ticketFs.equipmentFieldLabel} htmlFor="campaign-left-start">
+                        {leftPaneCopy.startDate || detailCopy.sidebar.startDate}
+                      </label>
+                      <input
+                        id="campaign-left-start"
+                        type="date"
+                        className={ticketFs.input}
+                        value={startDateValue}
+                        disabled={actionLoading}
+                        onChange={e => {
+                          void handleDateFieldChange("start_date", e.target.value);
+                        }}
+                      />
+                    </div>
+
+                    <div className={ticketFs.equipmentField}>
+                      <label className={ticketFs.equipmentFieldLabel} htmlFor="campaign-left-end">
+                        {leftPaneCopy.endDate || detailCopy.sidebar.endDate}
+                      </label>
+                      <input
+                        id="campaign-left-end"
+                        type="date"
+                        className={ticketFs.input}
+                        value={endDateValue}
+                        disabled={actionLoading}
+                        min={startDateValue || undefined}
+                        onChange={e => {
+                          void handleDateFieldChange("end_date", e.target.value);
+                        }}
+                      />
+                    </div>
+
+                    <div className={ticketFs.equipmentField}>
+                      <label className={ticketFs.equipmentFieldLabel} htmlFor="campaign-left-type">
+                        {leftPaneCopy.type || detailCopy.sidebar.type}
+                      </label>
+                      <input
+                        id="campaign-left-type"
+                        type="text"
+                        className={ticketFs.input}
+                        value={typeInfo?.label || campaign.type || "—"}
+                        disabled
+                        readOnly
+                      />
+                    </div>
+
+                    <div className={ticketFs.equipmentField}>
+                      <label className={ticketFs.equipmentFieldLabel} htmlFor="campaign-left-goal">
+                        {leftPaneCopy.adoptionGoal || detailCopy.sidebar.adoptionGoal}
+                      </label>
+                      <input
+                        id="campaign-left-goal"
+                        type="text"
+                        className={ticketFs.input}
+                        value={adoptionGoal != null ? formatPct(adoptionGoal) : "—"}
+                        disabled
+                        readOnly
+                      />
+                    </div>
+
+                    {showResumeButton || showPauseButton || showFinishButton || showReportActions || showResetButton ? (
+                      <>
+                        <hr className={ticketStyles.paneSectionDivider} aria-hidden />
+                        <div className={styles.leftActions}>
+                          <span className={ticketFs.equipmentFieldLabel}>{leftPaneCopy.actions || "Actions"}</span>
+                          {showResumeButton ? (
+                            <SmartTooltip content={detailCopy.actions.resumeTooltip}>
+                              <button
+                                type="button"
+                                className={styles.leftActionPrimary}
+                                onClick={handleResumeCampaign}
+                                disabled={actionLoading}
+                              >
+                                {actionLoading ? <FaSpinner className={styles.spinner} /> : <FaPlay />}
+                                <span>{detailCopy.actions.resume}</span>
+                              </button>
+                            </SmartTooltip>
+                          ) : null}
+                          {showPauseButton ? (
+                            <SmartTooltip content={detailCopy.actions.pauseTooltip}>
+                              <button
+                                type="button"
+                                className={styles.leftActionSecondary}
+                                onClick={handlePauseCampaign}
+                                disabled={actionLoading}
+                              >
+                                {actionLoading ? <FaSpinner className={styles.spinner} /> : <FaPause />}
+                                <span>{detailCopy.actions.pause}</span>
+                              </button>
+                            </SmartTooltip>
+                          ) : null}
+                          {showFinishButton ? (
+                            <SmartTooltip content={detailCopy.actions.finishTooltip}>
+                              <button
+                                type="button"
+                                className={styles.leftActionPrimary}
+                                onClick={handleFinishCampaign}
+                                disabled={actionLoading}
+                              >
+                                {actionLoading ? <FaSpinner className={styles.spinner} /> : <FaFlagCheckered />}
+                                <span>{detailCopy.actions.finish}</span>
+                              </button>
+                            </SmartTooltip>
+                          ) : null}
+                          {showReportActions ? (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.leftActionSecondary}
+                                onClick={handleDownloadReport}
+                                disabled={downloadingReport || publishingReport}
+                              >
+                                {downloadingReport ? <FaSpinner className={styles.spinner} /> : <FaDownload />}
+                                <span>{detailCopy.report.download}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.leftActionPrimary}
+                                onClick={openPublishReportModal}
+                                disabled={downloadingReport || publishingReport}
+                              >
+                                <FaFolderOpen />
+                                <span>{detailCopy.report.publish}</span>
+                              </button>
+                            </>
+                          ) : null}
+                          {showResetButton ? (
+                            <SmartTooltip content={detailCopy.actions.reset}>
+                              <button
+                                type="button"
+                                className={styles.leftActionSecondary}
+                                onClick={handleResetCampaign}
+                                disabled={actionLoading}
+                                aria-label={detailCopy.actions.resetAria}
+                              >
+                                {actionLoading ? <FaSpinner className={styles.spinner} /> : <FaUndo />}
+                                <span>{detailCopy.actions.resetShort || detailCopy.actions.resetAria}</span>
+                              </button>
+                            </SmartTooltip>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </section>
+              </aside>
+
+              <div className={styles.mainColumn}>
+                <nav
+                  className={`${enterpriseStyles.heroTabBar} ${styles.campaignTabBar}`.trim()}
+                  role="tablist"
+                  aria-label={sectionCopy.aria || detailCopy.tabs?.aria || "Sections"}
+                >
+                  {sectionItems.map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={safeSection === item.id}
+                      className={`${enterpriseStyles.heroTab} ${safeSection === item.id ? enterpriseStyles.heroTabActive : ""}`.trim()}
+                      onClick={() => setActiveSection(item.id)}
+                    >
+                      <Icon icon={item.icon} className={enterpriseStyles.heroTabIcon} aria-hidden />
+                      <span className={enterpriseStyles.heroTabLabel}>{item.label}</span>
+                    </button>
+                  ))}
+                </nav>
+
+                <div className={styles.sectionMain}>
+                  {safeSection === "overview" ? (
+                    <div className={`${styles.overviewStack} ${styles.sectionFill}`.trim()}>
+                      <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.overviewTopPanel}`.trim()}>
+                        <div className={enterpriseStyles.panelHeader}>
+                          <div className={enterpriseStyles.panelHeaderMain}>
+                            <h2 className={enterpriseStyles.panelTitle}>{sectionCopy.overview || "Vue d'ensemble"}</h2>
+                            <p className={styles.sectionHint}>
+                              {statusInfo.label}
+                              {clientLabel ? ` · ${clientLabel}` : ""}
+                              {isMicrosoftSecurity ? ` · ${lastSyncLabel}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`${enterpriseStyles.panelBody} ${styles.overviewPanelBody}`.trim()}>
+                          <div className={styles.overviewKpiGrid} role="list">
+                            {overviewKpis.map(kpi => (
+                              <div
+                                key={kpi.key}
+                                role="listitem"
+                                className={`${styles.overviewKpiCard} ${styles[`kpiTone_${kpi.tone}`] || ""}`.trim()}
+                              >
+                                <div className={styles.overviewKpiTop}>
+                                  <span className={styles.overviewKpiIcon} aria-hidden>
+                                    <Icon icon={kpi.icon} />
+                                  </span>
+                                </div>
+                                <span className={styles.overviewKpiValue}>{kpi.value}</span>
+                                <span className={styles.overviewKpiLabel}>{kpi.label}</span>
+                                {kpi.sub ? <span className={styles.overviewKpiSub}>{kpi.sub}</span> : null}
+                              </div>
+                            ))}
+                          </div>
+                          <div className={styles.progressBlock}>
+                            <div className={styles.progressBlockHead}>
+                              <span className={styles.denseBlockTitle}>{detailCopy.sidebar.progress}</span>
+                              <span className={styles.progressText}>
+                                {formatCampaignDetail(detailCopy.sidebar.stepProgress, {
+                                  current: progressCurrent,
+                                  total: campaignStepsCount
+                                })}
+                              </span>
+                            </div>
+                            <div className={styles.progressBar}>
+                              <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {isMicrosoftSecurity ? (
+                        <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.sectionPanelFill}`.trim()}>
+                          <div className={enterpriseStyles.panelHeader}>
+                            <div className={enterpriseStyles.panelHeaderMain}>
+                              <h2 className={enterpriseStyles.panelTitle}>{detailCopy.microsoftSecurity}</h2>
+                            </div>
+                            <button type="button" className={styles.textLinkBtn} onClick={() => setActiveSection("users")}>
+                              {sectionCopy.openUsers || "Voir le détail"}
+                            </button>
+                          </div>
+                          <div className={`${enterpriseStyles.panelBody} ${styles.sectionPanelBodyFill}`.trim()}>
+                            <MicrosoftSecurityStats
+                              campaign={campaign}
+                              clientId={campaign.client_id}
+                              stats={campaignStats}
+                              compact
+                              kpisOnly
+                              onOpenUsers={() => setActiveSection("users")}
+                              onCampaignUpdate={() => loadCampaignDetails({ refreshStats: false, skipCache: true })}
+                              onStatsUpdate={() => loadCampaignStats({ skipCache: true })}
+                              refreshTrigger={syncTrigger}
+                              isSyncing={syncLoading}
+                              copy={detailCopy}
+                            />
+                          </div>
+                        </section>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {safeSection === "users" && isMicrosoftSecurity ? (
+                    <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.sectionPanelFill}`.trim()}>
+                      <div className={enterpriseStyles.panelHeader}>
+                        <div className={enterpriseStyles.panelHeaderMain}>
+                          <h2 className={enterpriseStyles.panelTitle}>{detailCopy.microsoftSecurity}</h2>
+                          <p className={styles.sectionHint}>{lastSyncLabel}</p>
+                        </div>
+                      </div>
+                      <div className={`${enterpriseStyles.panelBody} ${styles.sectionPanelBodyFill}`.trim()}>
+                        <MicrosoftSecurityStats
+                          campaign={campaign}
+                          clientId={campaign.client_id}
+                          stats={campaignStats}
+                          compact
+                          fill
+                          onCampaignUpdate={() => loadCampaignDetails({ refreshStats: false, skipCache: true })}
+                          onStatsUpdate={() => loadCampaignStats({ skipCache: true })}
+                          refreshTrigger={syncTrigger}
+                          isSyncing={syncLoading}
+                          copy={detailCopy}
+                        />
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {safeSection === "adoption" && isMicrosoftSecurity ? (
+                    <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.sectionPanelFill}`.trim()}>
+                      <div className={enterpriseStyles.panelHeader}>
+                        <div className={enterpriseStyles.panelHeaderMain}>
+                          <h2 className={enterpriseStyles.panelTitle}>{detailCopy.adoptionPanel}</h2>
+                        </div>
+                      </div>
+                      <div className={`${enterpriseStyles.panelBody} ${styles.sectionPanelBodyFill}`.trim()}>
+                        <CampaignAdoptionStats
+                          campaign={campaign}
+                          clientId={campaign.client_id}
+                          stats={campaignStats}
+                          onCampaignUpdate={() => loadCampaignDetails({ refreshStats: false, skipCache: true })}
+                          onStatsUpdate={() => loadCampaignStats({ skipCache: true })}
+                          hideTitle
+                          compact
+                          copy={detailCopy}
+                        />
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {safeSection === "management" ? (
+                    <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.sectionPanelFill} ${styles.managementSection}`.trim()}>
+                      <div className={`${enterpriseStyles.panelBody} ${styles.sectionPanelBodyFill}`.trim()}>
+                        <CampaignManagementPanel
+                          campaign={campaign}
+                          clientId={campaign.client_id}
+                          copy={detailCopy}
+                          onCampaignUpdate={() => loadCampaignDetails({ refreshStats: false, skipCache: true })}
+                          onStepsCountUpdate={handleStepsCountUpdate}
+                        />
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {safeSection === "documents" ? (
+                    <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.sectionPanelFill}`.trim()}>
+                      <div className={enterpriseStyles.panelHeader}>
+                        <div className={enterpriseStyles.panelHeaderMain}>
+                          <h2 className={enterpriseStyles.panelTitle}>
+                            {detailCopy.management?.docsTitle || sectionCopy.documents || "Documents"}
+                          </h2>
+                          <p className={styles.sectionHint}>
+                            {detailCopy.management?.docsHint || ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`${enterpriseStyles.panelBody} ${styles.sectionPanelBodyFill}`.trim()}>
+                        {campaign.client_id ? (
+                          <EnterpriseVaultPanel
+                            copy={vaultCopy}
+                            clientId={campaign.client_id}
+                            clientName={clientLabel || ""}
+                          />
+                        ) : (
+                          <p className={styles.sectionHint}>
+                            {detailCopy.management?.docsNoClient || "Aucun client lié à cette campagne."}
+                          </p>
+                        )}
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
               </div>
-            </section>
-          </div>
 
-          <aside className={`${enterpriseStyles.asidePanel} ${styles.asideFull} ${styles.colAside}`}>
-            <div className={enterpriseStyles.rightSidebarContent}>
-              <section className={enterpriseStyles.sidebarSection}>
-                <div className={enterpriseStyles.sidebarInfoHeader}>
-                  <span className={enterpriseStyles.sidebarInfoTitle}>{detailCopy.sidebar.general}</span>
-                </div>
-                <div className={enterpriseStyles.sidebarSummaryList}>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.type}</span>
-                    <span className={enterpriseStyles.sidebarSummaryValue}>
-                      {typeInfo?.label || campaign.type || '-'}
-                    </span>
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.provider}</span>
-                    <span className={enterpriseStyles.sidebarSummaryValue}>
-                      {campaign.provider === 'microsoft' || campaign.type === 'microsoft_security' ? 'Microsoft' : campaign.provider || '-'}
-                    </span>
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.tenant}</span>
-                    {campaign.tenant_id ? <span className={enterpriseStyles.sidebarSummaryValue} title={campaign.tenant_id}>
-                        {`${String(campaign.tenant_id).slice(0, 8)}…${String(campaign.tenant_id).slice(-4)}`}
-                      </span> : <span className={enterpriseStyles.sidebarSummaryValueEmpty}>-</span>}
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.status}</span>
-                    <span className={enterpriseStyles.sidebarSummaryValue}>
-                      {statusInfo.label}
-                    </span>
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.startDate}</span>
-                    {campaign.start_date ? <span className={enterpriseStyles.sidebarSummaryValue}>
-                        {new Date(campaign.start_date).toLocaleDateString(locale)}
-                      </span> : <span className={enterpriseStyles.sidebarSummaryValueEmpty}>-</span>}
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.endDate}</span>
-                    {campaign.end_date ? <span className={enterpriseStyles.sidebarSummaryValue}>
-                        {new Date(campaign.end_date).toLocaleDateString(locale)}
-                      </span> : <span className={enterpriseStyles.sidebarSummaryValueEmpty}>-</span>}
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.adoptionGoal}</span>
-                    <span className={enterpriseStyles.sidebarSummaryValue}>
-                      {typeof campaign.objectif_adoption === 'number' && !isNaN(campaign.objectif_adoption) ? `${campaign.objectif_adoption} %` : Number(campaign.objectif_adoption) === 0 ? '0 %' : '-'}
-                    </span>
-                  </div>
-                  <div className={enterpriseStyles.sidebarSummaryItem}>
-                    <span className={enterpriseStyles.sidebarSummaryLabel}>{detailCopy.sidebar.description}</span>
-                    {campaign.description ? <span className={enterpriseStyles.sidebarSummaryValue}>
-                        {campaign.description}
-                      </span> : <span className={enterpriseStyles.sidebarSummaryValueEmpty}>{detailCopy.sidebar.noDescription}</span>}
-                  </div>
-                </div>
-              </section>
-
-              <section className={enterpriseStyles.sidebarSection}>
-                <div className={enterpriseStyles.sidebarInfoHeader}>
-                  <span className={enterpriseStyles.sidebarInfoTitle}>{detailCopy.sidebar.progress}</span>
-                </div>
-                <div className={styles.progressContainer}>
-                  <div className={styles.progressBar}>
-                    <div className={styles.progressFill} style={{
-                    width: `${Math.min(100, Math.max(0, campaign.global_progress ?? 0))}%`
-                  }} />
-                  </div>
-                  <span className={styles.progressText}>
-                    {formatCampaignDetail(detailCopy.sidebar.stepProgress, {
-                    current: campaignStepsCount > 0 ? Math.min(campaignStepsCount, Math.round((campaign.global_progress ?? 0) / 100 * campaignStepsCount) || 0) : 0,
-                    total: campaignStepsCount
-                  })}
-                  </span>
-                </div>
-              </section>
-
-              <section className={enterpriseStyles.sidebarSection}>
-                <div className={enterpriseStyles.sidebarInfoHeader}>
-                  <span className={enterpriseStyles.sidebarInfoTitle}>{detailCopy.sidebar.shortcuts}</span>
-                </div>
-                <div className={styles.portalLinks}>
-                  <a href="https://entra.microsoft.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview" target="_blank" rel="noreferrer" className={styles.portalLink}>
-                    <Icon icon="mdi:shield-account" className={styles.portalLinkIcon} />
-                    <div className={styles.portalLinkContent}>
-                      <span className={styles.portalLinkTitle}>{detailCopy.portals.entraTitle}</span>
-                      <span className={styles.portalLinkSubtitle}>{detailCopy.portals.entraSubtitle}</span>
+              <div className={`${enterpriseStyles.asideStack} ${styles.asideStack}`.trim()}>
+                <section
+                  className={`${enterpriseStyles.quickActionsCard} ${styles.quickActionsCardFill}`.trim()}
+                  aria-label={detailCopy.sidebar.quickActions || "Actions rapides"}
+                >
+                  <h3 className={enterpriseStyles.quickActionsTitle}>
+                    {detailCopy.sidebar.quickActions || "Actions rapides"}
+                  </h3>
+                  <ul className={enterpriseStyles.quickActionsList}>
+                    {isMicrosoftSecurity ? (
+                      <li>
+                        <button
+                          type="button"
+                          className={enterpriseStyles.quickActionItem}
+                          onClick={() => { void handleMicrosoftSync(); }}
+                          disabled={syncLoading || syncProgress.open}
+                        >
+                          <span className={enterpriseStyles.quickActionIcon} aria-hidden>
+                            {syncLoading || syncProgress.open
+                              ? <Icon icon="mdi:loading" className={styles.spinner} />
+                              : <Icon icon="mdi:sync" />}
+                          </span>
+                          <span className={enterpriseStyles.quickActionLabel}>
+                            {syncLoading || syncProgress.open
+                              ? (detailCopy.actions.syncing || "Synchronisation…")
+                              : (detailCopy.actions.syncShort || detailCopy.actions.sync || "Synchroniser")}
+                          </span>
+                          <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
+                        </button>
+                      </li>
+                    ) : null}
+                    {showLaunchButton ? (
+                      <li>
+                        <SmartTooltip as="div" className={styles.quickActionTooltipWrap} content={launchTooltipMessage}>
+                          <button
+                            type="button"
+                            className={enterpriseStyles.quickActionItem}
+                            onClick={handleLaunchCampaign}
+                            disabled={actionLoading || !canLaunchCampaign}
+                          >
+                            <span className={enterpriseStyles.quickActionIcon} aria-hidden>
+                              {actionLoading
+                                ? <Icon icon="mdi:loading" className={styles.spinner} />
+                                : <Icon icon="mdi:rocket-launch-outline" />}
+                            </span>
+                            <span className={enterpriseStyles.quickActionLabel}>{detailCopy.actions.launch}</span>
+                            <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
+                          </button>
+                        </SmartTooltip>
+                      </li>
+                    ) : null}
+                    <li>
+                      <button
+                        type="button"
+                        className={enterpriseStyles.quickActionItem}
+                        onClick={openCampaignEditModal}
+                      >
+                        <span className={enterpriseStyles.quickActionIcon} aria-hidden>
+                          <Icon icon="mdi:pencil-outline" />
+                        </span>
+                        <span className={enterpriseStyles.quickActionLabel}>
+                          {detailCopy.actions.editShort || detailCopy.actions.edit || "Éditer"}
+                        </span>
+                        <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
+                      </button>
+                    </li>
+                  </ul>
+                  {portalLinks.length > 0 ? (
+                    <div className={styles.quickActionsShortcuts}>
+                      <h4 className={`${enterpriseStyles.sidebarInfoTitle} ${styles.quickActionsSectionTitle}`.trim()}>
+                        {detailCopy.sidebar.shortcuts || "Raccourcis"}
+                      </h4>
+                      <ul className={enterpriseStyles.quickActionsList}>
+                        {portalLinks.map(item => (
+                          <li key={item.href}>
+                            <a
+                              href={item.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`${enterpriseStyles.quickActionItem} ${styles.quickActionLink}`.trim()}
+                            >
+                              <span className={enterpriseStyles.quickActionIcon} aria-hidden>
+                                <Icon icon={item.icon} />
+                              </span>
+                              <span className={enterpriseStyles.quickActionLabel}>{item.title}</span>
+                              <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                  </a>
-                  <a href="https://security.microsoft.com/" target="_blank" rel="noreferrer" className={styles.portalLink}>
-                    <Icon icon="mdi:shield-lock" className={styles.portalLinkIcon} />
-                    <div className={styles.portalLinkContent}>
-                      <span className={styles.portalLinkTitle}>{detailCopy.portals.defenderTitle}</span>
-                      <span className={styles.portalLinkSubtitle}>{detailCopy.portals.defenderSubtitle}</span>
-                    </div>
-                  </a>
-                  <a href="https://admin.microsoft.com/" target="_blank" rel="noreferrer" className={styles.portalLink}>
-                    <Icon icon="mdi:microsoft" className={styles.portalLinkIcon} />
-                    <div className={styles.portalLinkContent}>
-                      <span className={styles.portalLinkTitle}>{detailCopy.portals.m365Title}</span>
-                      <span className={styles.portalLinkSubtitle}>{detailCopy.portals.m365Subtitle}</span>
-                    </div>
-                  </a>
-                  <a href="https://portal.azure.com/#view/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/~/Overview" target="_blank" rel="noreferrer" className={styles.portalLink}>
-                    <Icon icon="mdi:microsoft-azure" className={styles.portalLinkIcon} />
-                    <div className={styles.portalLinkContent}>
-                      <span className={styles.portalLinkTitle}>{detailCopy.portals.azureTitle}</span>
-                      <span className={styles.portalLinkSubtitle}>{detailCopy.portals.azureSubtitle}</span>
-                    </div>
-                  </a>
-                </div>
-              </section>
+                  ) : null}
+                </section>
+              </div>
             </div>
-          </aside>
-        </div>
+          );
+        })()}
       </div>
 
       {}

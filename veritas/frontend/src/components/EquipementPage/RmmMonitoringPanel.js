@@ -8,6 +8,7 @@ import { formatDiskUsage, formatRmmDateTime, formatStorageGB, getRmmAgentVersion
 import RmmCyberOverview from "./RmmCyberOverview";
 import RmmHardwareOverview from "./RmmHardwareOverview";
 import RmmInventoryOverview from "./RmmInventoryOverview";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 import styles from "./RmmMonitoringPanel.module.css";
 function ToneBadge({
   label,
@@ -94,12 +95,12 @@ function RmmStorageSections({
   const hasAny = showVolumes && hasVolumes || showExtras && hasExtras;
   if (!hasAny) {
     if (quietEmpty) return null;
-    return <div className={styles.emptyState}>
-        <p className={styles.manualNote}>
-          No volume, disk, or storage device reported. Run a full agent sync to
-          populate this tab.
-        </p>
-      </div>;
+    return (
+      <EquipmentEmptyState
+        icon="mdi:harddisk"
+        message="Aucun volume ni disque remonté. Lancez une synchronisation agent complète."
+      />
+    );
   }
   return <FullSectionGroup title={showVolumes && !showExtras ? "Storage" : showExtras && !showVolumes ? "Storage extras" : "Storage"}>
       {showVolumes && disks.length > 0 ? <FullSection title="Volumes">
@@ -404,15 +405,12 @@ function RmmInventorySections({
   }, [softwareItems, softwareSearch]);
   const hasAny = printerItems.length > 0 || monitors.length > 0 || usbDevices.length > 0 || softwareItems.length > 0;
   if (!hasAny) {
-    return <div className={styles.emptyInventoryCard} role="status">
-        <div className={styles.emptyInventoryIconWrap} aria-hidden>
-          <Icon icon="mdi:printer-pos-outline" className={styles.emptyInventoryIcon} />
-        </div>
-        <div className={styles.emptyInventoryCopy}>
-          <p className={styles.emptyInventoryTitle}>{copy.rmm.peripheralsEmptyTitle}</p>
-          <p className={styles.emptyInventoryText}>{copy.rmm.peripheralsEmptyHint}</p>
-        </div>
-      </div>;
+    return (
+      <EquipmentEmptyState
+        icon="mdi:printer-pos-outline"
+        message={copy.rmm.peripheralsEmptyTitle || "Aucun périphérique ni logiciel remonté"}
+      />
+    );
   }
   return <>
       {printerItems.length > 0 ? <FullSection title="Printers">
@@ -707,9 +705,12 @@ export default function RmmMonitoringPanel({
   const panelHeader = <PanelHeader equipment={equipment} lastInventoryAt={lastInventoryAt} lastFullInventoryAt={lastFullInventoryAt} agentVersion={agentVersion} managed={managed} syncPending={syncPending} syncRequestedAt={syncRequestedAt} heartbeatIntervalMinutes={heartbeatMinutes} title={variant === "operations" ? copy.tabs.cybersecurity || copy.tabs.system : variant === "peripherals" ? copy.tabs.inventory || copy.tabs.peripherals : copy.rmm.title} titleIcon={variant === "operations" ? "mdi:shield-lock-outline" : variant === "peripherals" ? "mdi:package-variant-closed" : "mdi:remote-desktop"} copy={copy} locale={locale} agentStatusInHero={agentStatusInHero} />;
   if (variant === "peripherals") {
     if (!managed) {
-      return <div className={styles.emptyState}>
-          <p className={styles.manualNote}>{copy.rmm.installAgentPeripherals}</p>
-        </div>;
+      return (
+        <EquipmentEmptyState
+          icon="mdi:remote-desktop"
+          message={copy.rmm.installAgentPeripherals}
+        />
+      );
     }
     return <section className={styles.panel}>
         {!agentStatusInHero ? panelHeader : null}
@@ -720,9 +721,12 @@ export default function RmmMonitoringPanel({
   }
   if (variant === "operations") {
     if (!managed) {
-      return <div className={styles.emptyState}>
-          <p className={styles.manualNote}>{copy.rmm.installAgentOperations}</p>
-        </div>;
+      return (
+        <EquipmentEmptyState
+          icon="mdi:shield-lock-outline"
+          message={copy.rmm.installAgentOperations}
+        />
+      );
     }
     return <section className={styles.panel}>
         {!agentStatusInHero ? panelHeader : null}
@@ -734,9 +738,10 @@ export default function RmmMonitoringPanel({
   if (!managed) {
     return <section className={styles.panel}>
         <PanelHeader equipment={equipment} lastInventoryAt={null} managed={false} copy={copy} locale={locale} />
-        <div className={styles.emptyState}>
-          <p className={styles.manualNote}>{copy.rmm.installAgentGeneral}</p>
-        </div>
+        <EquipmentEmptyState
+          icon="mdi:remote-desktop"
+          message={copy.rmm.installAgentGeneral}
+        />
       </section>;
   }
   return <section className={styles.panel}>

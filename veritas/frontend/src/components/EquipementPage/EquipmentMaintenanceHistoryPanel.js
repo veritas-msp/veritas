@@ -6,6 +6,7 @@ import { getLocaleDateTimeFormat } from "./equipmentActivityUtils";
 import styles from "./EquipmentDetailPage.module.css";
 import overviewStyles from "./EquipmentOverviewDashboard.module.css";
 import maintStyles from "./EquipmentMaintenanceHistoryPanel.module.css";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 
 function formatDateTime(value, localeCode) {
   if (!value) return "—";
@@ -70,22 +71,20 @@ function HistoryBody({
   }
   if (error) {
     return (
-      <div className={compact ? overviewStyles.empty : styles.emptyState}>
-        {!compact ? <Icon icon="mdi:alert-circle-outline" className={styles.emptyIcon} /> : null}
-        {!compact ? <h5>{t.errorTitle || "Erreur"}</h5> : null}
-        <p className={compact ? undefined : styles.emptyHint}>{error}</p>
-      </div>
+      <EquipmentEmptyState
+        icon="mdi:alert-circle-outline"
+        message={error}
+        compact={compact}
+      />
     );
   }
   if (items.length === 0) {
     return (
-      <div className={compact ? overviewStyles.empty : styles.emptyState}>
-        {!compact ? <Icon icon="mdi:wrench-clock" className={styles.emptyIcon} /> : null}
-        {!compact ? <h5>{t.emptyTitle || "Aucune période de maintenance"}</h5> : null}
-        <p className={compact ? undefined : styles.emptyHint}>
-          {t.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
-        </p>
-      </div>
+      <EquipmentEmptyState
+        icon="mdi:wrench-clock"
+        message={t.emptyTitle || "Aucune période de maintenance"}
+        compact={compact}
+      />
     );
   }
 
@@ -271,7 +270,7 @@ export default function EquipmentMaintenanceHistoryPanel({
         ) : null}
       </header>
 
-      <div className={enterpriseDetailStyles.panelBody}>{body}</div>
+      <div className={`${enterpriseDetailStyles.panelBody} ${maintStyles.panelBodyFill}`.trim()}>{body}</div>
     </section>
   );
 }

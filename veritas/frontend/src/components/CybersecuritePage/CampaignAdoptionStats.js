@@ -15,6 +15,7 @@ export default function CampaignAdoptionStats({
   onCampaignUpdate,
   onStatsUpdate,
   hideTitle = false,
+  compact = false,
   copy
 }) {
   const locale = useAppLocale();
@@ -47,9 +48,9 @@ export default function CampaignAdoptionStats({
     }
   };
   if (loading) {
-    return <div className={styles.adoptionBlock}>
+    return <div className={`${styles.adoptionBlock} ${compact ? styles.adoptionBlockCompact : ""}`.trim()}>
         {!hideTitle && <h3 className={styles.groupTitle}>{adoption.title}</h3>}
-        <div className={styles.loadingState}>
+        <div className={`${styles.loadingState} ${compact ? styles.loadingStateCompact : ""}`.trim()}>
           <Icon icon="mdi:loading" className={styles.loadingIcon} />
           <p>{adoption.loading}</p>
         </div>
@@ -110,22 +111,22 @@ export default function CampaignAdoptionStats({
       toast.error(error.message || adoption.toastLoadError);
     }
   };
-  return <div className={styles.adoptionBlock}>
+  return <div className={`${styles.adoptionBlock} ${compact ? styles.adoptionBlockCompact : ""}`.trim()}>
       {!hideTitle && <h3 className={styles.groupTitle}>{adoption.title}</h3>}
 
-      {!hasStartSnapshot ? <div className={styles.adoptionEmpty}>
+      {!hasStartSnapshot ? <div className={`${styles.adoptionEmpty} ${compact ? styles.adoptionEmptyCompact : ""}`.trim()}>
           <Icon icon="mdi:chart-timeline-variant" className={styles.adoptionEmptyIcon} />
           <p className={styles.adoptionEmptyTitle}>{adoption.emptyTitle}</p>
           <p className={styles.adoptionEmptyText}>
             {adoption.emptyText}
           </p>
         </div> : <>
-          <div className={styles.snapshotsRow}>
+          <div className={`${styles.snapshotsRow} ${compact ? styles.snapshotsRowCompact : ""}`.trim()}>
             {renderSnapshot(adoption.start, stats.start)}
             {renderSnapshot(adoption.end, stats.end)}
           </div>
 
-          {hasStartSnapshot && hasEndSnapshot && <div className={styles.comparisonRow}>
+          {hasStartSnapshot && hasEndSnapshot && <div className={`${styles.comparisonRow} ${compact ? styles.comparisonRowCompact : ""}`.trim()}>
               <div className={styles.comparisonKpis}>
                 {stats.comparison && <>
                     <div className={styles.comparisonKpi}>

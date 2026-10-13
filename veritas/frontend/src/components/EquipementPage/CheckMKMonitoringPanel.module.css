@@ -25,6 +25,11 @@
   flex-direction: column;
 }
 
+.panelTab > :global([class*="emptyState"]) {
+  flex: 1 1 auto;
+  min-height: 100%;
+}
+
 .header {
   display: flex;
   align-items: center;

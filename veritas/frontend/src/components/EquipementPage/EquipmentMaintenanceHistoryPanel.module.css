@@ -1,3 +1,15 @@
+.panelBodyFill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.panelBodyFill > :global([class*="emptyState"]) {
+  flex: 1 1 0;
+  min-height: 100%;
+}
+
 .titleIcon {
   margin-right: 0.4rem;
   vertical-align: -0.15em;

@@ -15,6 +15,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentDetailCopy } from "./equipmentDetailPageI18n";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import styles from "./EquipmentDetailSpecsPanel.module.css";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 const DEBIT_FIELD_KEYS = new Set(["debit", "debitDownload", "debitUpload"]);
 /** Champs déjà couverts par la carte CPU/RAM/Stockage RMM — évite le doublon texte. */
 const RMM_RESOURCE_FIELD_KEYS = new Set(["processeur", "memoire", "stockage"]);
@@ -41,6 +42,20 @@ function mergeInternetDisplaySections(sections) {
     ...section,
     fields: [...typeSection.fields, ...section.fields]
   } : section);
+}
+/** Évite la carte Réseau isolée en bas : champs réseau rattachés à Technique. */
+function mergeReseauIntoTechnique(sections) {
+  const reseauSection = sections.find(section => section.id === "reseau");
+  const techniqueSection = sections.find(section => section.id === "technique");
+  if (!reseauSection || !techniqueSection) return sections;
+  const networkFields = reseauSection.fields || [];
+  return sections
+    .filter(section => section.id !== "reseau")
+    .map(section =>
+      section.id === "technique"
+        ? { ...section, fields: [...(section.fields || []), ...networkFields] }
+        : section
+    );
 }
 function resolveSectionsGridClass(count) {
   if (count <= 4) return styles.sectionsGrid2;
@@ -203,7 +218,9 @@ export default function EquipmentDetailSpecsPanel({
     });
   }, [equipment?.type, displayFormData]);
   const rawSections = buildEquipmentDetailSections(equipment, displayFormData, locale, { extensionFields });
-  const baseSections = equipment?.type === "Internet" ? mergeInternetDisplaySections(rawSections) : rawSections;
+  const baseSections = mergeReseauIntoTechnique(
+    equipment?.type === "Internet" ? mergeInternetDisplaySections(rawSections) : rawSections
+  );
   const sections = useMemo(() => {
     let nextSections = baseSections;
     if (haPeer && equipment?.type === "Firewalls") {
@@ -426,7 +443,7 @@ export default function EquipmentDetailSpecsPanel({
             {panelTitle}
           </h2>
         </header> : null}
-        <p className={styles.empty}>{copy.specs.empty}</p>
+        <EquipmentEmptyState icon="mdi:clipboard-text-outline" message={copy.specs.empty} />
       </section>;
   }
   if (rmmManagedComputer && !compact && !bare) {

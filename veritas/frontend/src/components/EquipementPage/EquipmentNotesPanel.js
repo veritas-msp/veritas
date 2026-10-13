@@ -10,6 +10,7 @@ import SmartTooltip from "../SmartTooltip";
 import enterpriseStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import { formatEquipmentDetailRelative, getEquipmentDetailCopy, interpolate } from "./equipmentDetailPageI18n";
 import EquipmentNoteModal from "./EquipmentNoteModal";
+import EquipmentEmptyState from "./EquipmentEmptyState";
 import styles from "./EquipmentNotesPanel.module.css";
 
 function formatNoteDate(value, locale) {
@@ -194,10 +195,10 @@ export default function EquipmentNotesPanel({
   ) : loading ? (
     <div className={enterpriseStyles.loadingState}>{notesCopy.loading}</div>
   ) : notes.length === 0 ? (
-    <div className={enterpriseStyles.emptyState}>
-      <Icon icon="mdi:note-text-outline" className={enterpriseStyles.emptyIcon} aria-hidden />
-      <h5>{notesCopy.empty || "Aucune note"}</h5>
-    </div>
+    <EquipmentEmptyState
+      icon="mdi:note-text-outline"
+      message={notesCopy.empty || "Aucune note"}
+    />
   ) : (
     <ul className={enterpriseStyles.clientNotesList}>
       {notes.map(note => {
@@ -271,7 +272,7 @@ export default function EquipmentNotesPanel({
     const s = enterpriseStyles;
     return (
       <>
-        <section className={`${s.sidebarSection} ${s.sidebarNotesSection}`.trim()} data-guide="equipment-sidebar-notes">
+        <section className={`${s.sidebarSection} ${s.sidebarNotesSection} ${styles.sidebarNotesFill}`.trim()} data-guide="equipment-sidebar-notes">
           <SidebarSectionHeader
             title={notesCopy.sidebarTitle || copy.tabs?.notes || "Notes"}
             icon="mdi:note-text-outline"
@@ -299,7 +300,7 @@ export default function EquipmentNotesPanel({
             }
           />
           {expanded ? (
-            <div className={s.sidebarBody} id="equipment-sidebar-notes">
+            <div className={`${s.sidebarBody} ${styles.sidebarNotesBodyFill}`.trim()} id="equipment-sidebar-notes">
               {notesList}
             </div>
           ) : null}
