@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.89",
+    date: "2026-10-13",
+    highlights: [
+      "Fiche périphérique : toutes les cartes des onglets alignées sur le style du Journal d’activité (typo, en-têtes, ombres)."
+    ]
+  },
+  {
     version: "1.0.88",
     date: "2026-10-13",
     highlights: [

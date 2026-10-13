@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import styles from "./EquipmentDetailPage.module.css";
-import specsStyles from "./EquipmentDetailSpecsPanel.module.css";
 import EquipmentDateRangeFilter from "./EquipmentDateRangeFilter";
 import { getEquipmentDetailTypeLabel, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
 const STATUS_KEYS = ["new", "in_progress", "pending", "resolved", "closed"];
@@ -106,13 +105,13 @@ export default function EquipmentStatsPanel({
     return rows;
   }, [alertSettings?.alertsEnabled, copy, equipment, locale, onOpenEnterprise, rmmManaged, typeLabel]);
   return <section className={enterpriseDetailStyles.panel}>
-      <header className={specsStyles.panelHeader}>
+      <header className={enterpriseDetailStyles.panelHeader}>
         <div>
-          <h2 className={specsStyles.panelTitle}>
-            <Icon icon="mdi:chart-box-outline" className={specsStyles.panelTitleIcon} aria-hidden />
+          <h2 className={enterpriseDetailStyles.panelTitle}>
+            <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
             {copy.stats.title}
           </h2>
-          <p className={specsStyles.panelSubtitle}>{copy.stats.subtitle}</p>
+          <p className={styles.panelSubtitleInline}>{copy.stats.subtitle}</p>
         </div>
       </header>
 

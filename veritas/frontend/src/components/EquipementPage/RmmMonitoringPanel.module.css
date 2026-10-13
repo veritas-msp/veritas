@@ -5,21 +5,22 @@
   min-height: 0;
   height: 100%;
   background: var(--msp-surface);
-  border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius, 16px);
-  box-shadow: var(--msp-shadow);
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 16px;
+  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
   overflow: hidden;
 }
 
 .panelHeader {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid var(--msp-border);
-  background: linear-gradient(180deg, var(--msp-surface) 0%, var(--msp-surface-2) 100%);
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface);
+  flex-shrink: 0;
 }
 
 .titleBlock {
@@ -28,20 +29,23 @@
 }
 
 .title {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   margin: 0 0 0.25rem;
-  font-size: 0.8125rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted);
+  min-width: 0;
 }
 
 .titleIcon {
   color: var(--msp-accent);
   font-size: 1rem;
+  opacity: 0.9;
+  flex-shrink: 0;
 }
 
 .subtitle {
@@ -311,32 +315,34 @@
 }
 
 .sectionCard {
-  background: var(--msp-surface-2, #f7f9fc);
+  background: var(--msp-surface, #fff);
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 10px;
+  border-radius: 16px;
   overflow: hidden;
   min-width: 0;
+  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
 }
 
 .sectionHeader {
-  padding: 0.45rem 0.65rem;
+  padding: 0.9rem 1.1rem;
   border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface-3, #f4f7fb);
+  background: var(--msp-surface);
+  flex-shrink: 0;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--msp-muted, #5c6b82);
+  letter-spacing: 0.06em;
+  color: var(--msp-muted, #64748b);
 }
 
 .sectionBody {
   display: flex;
   flex-direction: column;
-  padding: 0.35rem 0.65rem 0.45rem;
+  padding: 0.85rem 1.1rem 1.1rem;
 }
 
 .field {

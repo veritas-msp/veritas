@@ -5868,9 +5868,9 @@ button.sidebarOptionIcon:hover {
 
 :global(html.dark) .equipmentDetailPage [class*="EquipmentDetailSpecsPanel_panelHeader"],
 :global(html.dark) .equipmentDetailPage [class*="RmmMonitoringPanel_panelHeader"] {
-  background-color: var(--msp-surface-2);
-  background-image: linear-gradient(180deg, var(--msp-surface-3) 0%, var(--msp-surface-2) 100%);
-  border-bottom-color: var(--msp-border);
+  background-color: var(--msp-surface);
+  background-image: none;
+  border-bottom-color: var(--msp-border-light);
 }
 
 :global(html.dark) .contactOverviewBlock + .contactOverviewBlock {

@@ -7,11 +7,11 @@
 }
 
 .embedded {
-  border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius, 16px);
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 16px;
   overflow: hidden;
   background: var(--msp-surface);
-  box-shadow: var(--msp-shadow);
+  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
 }
 
 .toolbar {
@@ -20,9 +20,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  padding: 0.85rem 1.1rem;
-  background: linear-gradient(180deg, var(--msp-surface) 0%, var(--msp-surface-2) 100%);
-  border-bottom: 1px solid var(--msp-border);
+  padding: 0.9rem 1.1rem;
+  background: var(--msp-surface);
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  flex-shrink: 0;
 }
 
 .toolbarIntro {
@@ -35,14 +36,15 @@
 .toolbarIntroIcon {
   font-size: 1rem;
   color: var(--msp-accent);
+  opacity: 0.9;
   flex-shrink: 0;
 }
 
 .toolbarIntroTitle {
   display: block;
-  font-size: 0.8125rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted);
 }
@@ -279,11 +281,11 @@
 .donutCard,
 .zoneCard {
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--msp-surface, #fff);
-  padding: 0.55rem 0.6rem 0.6rem;
+  padding: 0.85rem 1.1rem 1.1rem;
   min-width: 0;
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
 }
 
 .donutCard {
@@ -329,10 +331,12 @@
 
 .donutCardTitle {
   margin: 0;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   line-height: 1.25;
-  color: var(--msp-text, #0f1c2e);
+  color: var(--msp-muted, #64748b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

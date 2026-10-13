@@ -35,7 +35,6 @@ import EquipmentDetailSpecsPanel from "./EquipmentDetailSpecsPanel";
 import EquipmentAlertsGlance from "./EquipmentAlertsGlance";
 import EquipmentOverviewDashboard from "./EquipmentOverviewDashboard";
 import EquipmentDetailAside from "./EquipmentDetailAside";
-import specsStyles from "./EquipmentDetailSpecsPanel.module.css";
 import { resolveEquipmentRemoteAccessAction } from "./equipmentDetailRemoteAccess";
 import EquipmentDocumentsPanel from "./EquipmentDocumentsPanel";
 import EquipmentEventsPanel from "./EquipmentEventsPanel";
@@ -2186,13 +2185,13 @@ export default function EquipmentDetailPage({
             </>}
 
           {rightPanelTab === "supervision" && showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>
-              <header className={specsStyles.panelHeader}>
+              <header className={enterpriseDetailStyles.panelHeader}>
                 <div>
-                  <h2 className={specsStyles.panelTitle}>
-                    <Icon icon="mdi:radar" className={specsStyles.panelTitleIcon} aria-hidden />
+                  <h2 className={enterpriseDetailStyles.panelTitle}>
+                    <Icon icon="mdi:radar" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
                     {copy.tabs.supervision}
                   </h2>
-                  <p className={specsStyles.panelSubtitle}>
+                  <p className={styles.panelSubtitleInline}>
                     {checkmkMapping?.checkmk_host_name || "CheckMK"}
                     {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
                   </p>
@@ -2253,13 +2252,13 @@ export default function EquipmentDetailPage({
           ) : null}
 
           {rightPanelTab === 'documents' && <section className={enterpriseDetailStyles.panel}>
-              <header className={specsStyles.panelHeader}>
+              <header className={enterpriseDetailStyles.panelHeader}>
                 <div>
-                  <h2 className={specsStyles.panelTitle}>
-                    <Icon icon="mdi:file-document-multiple-outline" className={specsStyles.panelTitleIcon} aria-hidden />
+                  <h2 className={enterpriseDetailStyles.panelTitle}>
+                    <Icon icon="mdi:file-document-multiple-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
                     {copy.tabs.documents}
                   </h2>
-                  <p className={specsStyles.panelSubtitle}>{copy.documents.subtitle}</p>
+                  <p className={styles.panelSubtitleInline}>{copy.documents.subtitle}</p>
                 </div>
               </header>
               <div className={enterpriseDetailStyles.panelBody}>
