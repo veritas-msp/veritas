@@ -3742,19 +3742,31 @@ export default function ClientDetailPage({
       value: heroCreditsValue
     }
   ];
-  return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${isCompanyInactive ? styles.heroInactive : ""} msp-page-grid`.trim()}>
+  const onboardingHint = clientOnboarding
+    ? clientOnboarding.ageDays < 1
+      ? interpolate(copy.onboardingBannerHintToday, {
+          remaining: clientOnboarding.remainingDays
+        })
+      : interpolate(copy.onboardingBannerHint, {
+          days: clientOnboarding.ageDays,
+          remaining: clientOnboarding.remainingDays
+        })
+    : null;
+  const showOnboardingHero = Boolean(clientOnboarding) && !isCompanyInactive;
+
+  return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${isCompanyInactive ? styles.heroInactive : ""} ${showOnboardingHero ? styles.heroInOnboarding : ""} msp-page-grid`.trim()}>
       <header className={styles.pageHero} ref={headerRef} data-guide="enterprise-hero">
         <div className={styles.heroTop}>
           <div className={styles.heroIdentityBlock}>
-            <div className={`${styles.heroCover} ${isCompanyInactive ? styles.heroCoverInactive : ""}`.trim()} aria-hidden />
+            <div className={`${styles.heroCover} ${isCompanyInactive ? styles.heroCoverInactive : showOnboardingHero ? styles.heroCoverOnboarding : ""}`.trim()} aria-hidden />
             <div className={styles.heroIdentityRow}>
               <div className={styles.heroMain}>
                 <span
-                  className={`${styles.heroBrandIcon} ${isCompanyInactive ? styles.heroBrandIconInactive : ""}`.trim()}
-                  style={isCompanyInactive ? undefined : { background: companyIconColor || undefined }}
+                  className={`${styles.heroBrandIcon} ${isCompanyInactive ? styles.heroBrandIconInactive : showOnboardingHero ? styles.heroBrandIconOnboarding : ""}`.trim()}
+                  style={isCompanyInactive || showOnboardingHero ? undefined : { background: companyIconColor || undefined }}
                   aria-hidden
                 >
-                  <Icon icon={isCompanyInactive ? "mdi:account-off-outline" : companyIcon} width={30} height={30} />
+                  <Icon icon={isCompanyInactive ? "mdi:account-off-outline" : showOnboardingHero ? "mdi:account-clock-outline" : companyIcon} width={30} height={30} />
                 </span>
                 <div className={styles.heroText}>
                   <h1 className={styles.heroTitle}>
@@ -3764,7 +3776,22 @@ export default function ClientDetailPage({
                       <StatusDot active={!isCompanyInactive} label="" className={styles.heroTitleStatus} />
                       {companyStatusLabel}
                     </span>
+                    {showOnboardingHero ? (
+                      <span
+                        className={styles.heroOnboardingBadge}
+                        title={onboardingHint || copy.onboardingBadge || "Onboarding"}
+                        aria-label={copy.onboardingBadge || "Onboarding"}
+                      >
+                        <Icon icon="mdi:account-clock-outline" width={12} height={12} aria-hidden />
+                        {copy.onboardingBadge || "Onboarding"}
+                      </span>
+                    ) : null}
                   </h1>
+                  {showOnboardingHero && onboardingHint ? (
+                    <p className={styles.heroOnboardingHint} title={onboardingHint}>
+                      {onboardingHint}
+                    </p>
+                  ) : null}
                   <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
                     {heroLocationLabel ? <span className={styles.heroLocation}>
                         <Icon icon="mdi:map-marker" aria-hidden />
@@ -3836,24 +3863,6 @@ export default function ClientDetailPage({
                 />
               </div>
             </div>
-            {clientOnboarding ? (
-              <div className={`${styles.onboardingBanner} ${styles.heroOnboardingCard}`} role="status">
-                <Icon icon="mdi:account-clock-outline" aria-hidden />
-                <div className={styles.onboardingBannerText}>
-                  <strong>{copy.onboardingBannerTitle}</strong>
-                  <span>
-                    {clientOnboarding.ageDays < 1
-                      ? interpolate(copy.onboardingBannerHintToday, {
-                          remaining: clientOnboarding.remainingDays
-                        })
-                      : interpolate(copy.onboardingBannerHint, {
-                          days: clientOnboarding.ageDays,
-                          remaining: clientOnboarding.remainingDays
-                        })}
-                  </span>
-                </div>
-              </div>
-            ) : null}
             {isCompanyInactive ? (
               <div className={styles.inactiveBanner} role="status">
                 <Icon icon="mdi:account-off-outline" aria-hidden />

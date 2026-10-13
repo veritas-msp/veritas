@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.91",
+    date: "2026-10-13",
+    highlights: [
+      "Fiche entreprise : client en onboarding avec badge et header teinté, comme un périphérique en maintenance."
+    ]
+  },
+  {
     version: "1.0.90",
     date: "2026-10-13",
     highlights: [

@@ -960,6 +960,56 @@
   color: #fff;
 }
 
+/* Client onboarding — même logique visuelle que maintenance périphérique */
+.enterpriseDetailPage.heroInOnboarding .heroCover,
+.enterpriseDetailPage .heroCoverOnboarding {
+  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%23b45309' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
+  --hero-cover-cross-opacity: 0.22;
+  background: linear-gradient(
+    180deg,
+    rgba(180, 83, 9, 0.16) 0%,
+    rgba(180, 83, 9, 0.07) 55%,
+    transparent 100%
+  );
+}
+
+.enterpriseDetailPage.heroInOnboarding .heroBrandIcon,
+.enterpriseDetailPage .heroBrandIconOnboarding {
+  background: #b45309 !important;
+  color: #fff;
+}
+
+.heroOnboardingBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 5px;
+  border: 1px solid rgba(180, 83, 9, 0.45);
+  background: rgba(180, 83, 9, 0.12);
+  color: #b45309;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.heroOnboardingBadge svg {
+  flex-shrink: 0;
+}
+
+.heroOnboardingHint {
+  margin: 0.2rem 0 0;
+  max-width: 42rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 550;
+  color: #9a3412;
+}
+
 .inactiveBanner {
   display: flex;
   align-items: center;
@@ -1021,6 +1071,31 @@
 :global(html.dark) .enterpriseDetailPage.heroInactive .heroBrandIcon,
 :global(html.dark) .enterpriseDetailPage .heroBrandIconInactive {
   background: #ea580c !important;
+}
+
+:global(html.dark) .enterpriseDetailPage.heroInOnboarding .heroCover,
+:global(html.dark) .enterpriseDetailPage .heroCoverOnboarding {
+  background: linear-gradient(
+    180deg,
+    rgba(251, 191, 36, 0.18) 0%,
+    rgba(251, 191, 36, 0.06) 55%,
+    transparent 100%
+  );
+}
+
+:global(html.dark) .enterpriseDetailPage.heroInOnboarding .heroBrandIcon,
+:global(html.dark) .enterpriseDetailPage .heroBrandIconOnboarding {
+  background: #d97706 !important;
+}
+
+:global(html.dark) .heroOnboardingBadge {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.14);
+  color: #fbbf24;
+}
+
+:global(html.dark) .heroOnboardingHint {
+  color: #fcd34d;
 }
 
 :global(html.dark) .inactiveBanner {
