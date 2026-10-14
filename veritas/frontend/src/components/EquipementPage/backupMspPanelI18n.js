@@ -23,7 +23,7 @@ const BACKUP_MSP_PANEL_COPY = {
       jobsToTreat: "{count} job à traiter",
       jobsToTreatPlural: "{count} jobs à traiter",
       alertsTitle: "Jobs en erreur ou en retard",
-      criticalTitle: "Dernière sauvegarde > 48 h ou inconnue",
+      criticalTitle: "Dernière sauvegarde > 48 h",
       warningTitle: "Dernière sauvegarde > 24 h",
       okTitle: "Dernière sauvegarde < 24 h",
       inactiveTitle: "Jobs inactifs, exclus des alertes"
@@ -112,7 +112,7 @@ const BACKUP_MSP_PANEL_COPY = {
       jobsToTreat: "{count} job to review",
       jobsToTreatPlural: "{count} jobs to review",
       alertsTitle: "Jobs in error or delayed",
-      criticalTitle: "Last backup > 48 h or unknown",
+      criticalTitle: "Last backup > 48 h",
       warningTitle: "Last backup > 24 h",
       okTitle: "Last backup < 24 h",
       inactiveTitle: "Inactive jobs, excluded from alerts"
@@ -201,7 +201,7 @@ const BACKUP_MSP_PANEL_COPY = {
       jobsToTreat: "{count} Job zu bearbeiten",
       jobsToTreatPlural: "{count} Jobs zu bearbeiten",
       alertsTitle: "Jobs mit Fehler oder Verzögerung",
-      criticalTitle: "Letztes Backup > 48 h oder unbekannt",
+      criticalTitle: "Letztes Backup > 48 h",
       warningTitle: "Letztes Backup > 24 h",
       okTitle: "Letztes Backup < 24 h",
       inactiveTitle: "Inaktive Jobs, von Alarmen ausgeschlossen"
@@ -290,7 +290,7 @@ const BACKUP_MSP_PANEL_COPY = {
       jobsToTreat: "{count} job da trattare",
       jobsToTreatPlural: "{count} job da trattare",
       alertsTitle: "Job in errore o in ritardo",
-      criticalTitle: "Ultimo backup > 48 h o sconosciuto",
+      criticalTitle: "Ultimo backup > 48 h",
       warningTitle: "Ultimo backup > 24 h",
       okTitle: "Ultimo backup < 24 h",
       inactiveTitle: "Job inattivi, esclusi dagli avvisi"
@@ -379,7 +379,7 @@ const BACKUP_MSP_PANEL_COPY = {
       jobsToTreat: "{count} job por tratar",
       jobsToTreatPlural: "{count} jobs por tratar",
       alertsTitle: "Jobs con error o retraso",
-      criticalTitle: "Último backup > 48 h o desconocido",
+      criticalTitle: "Último backup > 48 h",
       warningTitle: "Último backup > 24 h",
       okTitle: "Último backup < 24 h",
       inactiveTitle: "Jobs inactivos, excluidos de las alertas"

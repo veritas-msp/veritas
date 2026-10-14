@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.95",
+    date: "2026-10-14",
+    highlights: [
+      "Instance sauvegarde / jobs : les jobs non synchronisés s’affichent en « En attente » au lieu d’« Error ».",
+      "Tickets prestation : à l’upload d’un document de tâche, option coffre-fort client et visibilité portail."
+    ]
+  },
+  {
     version: "1.0.94",
     date: "2026-10-14",
     highlights: [

@@ -5,9 +5,10 @@ const STATUS_ORDER = {
   critical: 0,
   warning: 1,
   ok: 2,
-  unmapped: 3,
-  hycu: 4,
-  inactive: 5
+  pending: 3,
+  unmapped: 4,
+  hycu: 5,
+  inactive: 6
 };
 export function isBackupJobMapped(job) {
   if (!job) return false;
@@ -72,7 +73,8 @@ export function getBackupJobStatus(job) {
   if (!isBackupJobMapped(job)) return 'unmapped';
   const lastBackupStart = job.last_backup_start ?? job.rawData?.last_backup_start ?? job.last_backup_date ?? job.rawData?.last_backup_date;
   const lastBackupMs = lastBackupStart ? new Date(lastBackupStart).getTime() : null;
-  if (lastBackupMs == null || Number.isNaN(lastBackupMs)) return 'critical';
+  // No last-backup date yet (not synced / never ran) — not an error.
+  if (lastBackupMs == null || Number.isNaN(lastBackupMs)) return 'pending';
   const age = Date.now() - lastBackupMs;
   if (age > BACKUP_JOB_H48_MS) return 'critical';
   if (age > BACKUP_JOB_H24_MS) return 'warning';
@@ -86,6 +88,8 @@ export function getBackupJobStatusLabel(status) {
       return 'Retard';
     case 'ok':
       return 'OK';
+    case 'pending':
+      return 'En attente';
     case 'hycu':
       return 'HYCU';
     case 'unmapped':
@@ -99,11 +103,13 @@ export function getBackupJobStatusLabel(status) {
 export function getBackupJobStatusTitle(status) {
   switch (status) {
     case 'critical':
-      return 'Last backup more than 48 h ago or unknown';
+      return 'Last backup more than 48 h ago';
     case 'warning':
       return 'Last backup more than 24 h ago';
     case 'ok':
       return 'Last backup less than 24 h ago';
+    case 'pending':
+      return 'No backup data yet · waiting for sync';
     case 'hycu':
       return 'HYCU job · map to HYCU to sync status';
     case 'unmapped':
@@ -130,6 +136,10 @@ export function getBackupJobRowStyle(status) {
       return {
         backgroundColor: '#dcfce7'
       };
+    case 'pending':
+      return {
+        backgroundColor: '#f1f5f9'
+      };
     case 'inactive':
       return {
         backgroundColor: '#f3f4f6',
@@ -152,6 +162,7 @@ export function computeBackupJobStats(jobs) {
     critical: 0,
     warning: 0,
     ok: 0,
+    pending: 0,
     unmapped: 0,
     hycu: 0,
     inactive: 0,
@@ -162,7 +173,13 @@ export function computeBackupJobStats(jobs) {
     if (job?.type !== 'job') return;
     stats.total += 1;
     const status = getBackupJobStatus(job);
-    if (status === 'critical') stats.critical += 1;else if (status === 'warning') stats.warning += 1;else if (status === 'ok') stats.ok += 1;else if (status === 'unmapped') stats.unmapped += 1;else if (status === 'hycu') stats.hycu += 1;else if (status === 'inactive') stats.inactive += 1;
+    if (status === 'critical') stats.critical += 1;
+    else if (status === 'warning') stats.warning += 1;
+    else if (status === 'ok') stats.ok += 1;
+    else if (status === 'pending') stats.pending += 1;
+    else if (status === 'unmapped') stats.unmapped += 1;
+    else if (status === 'hycu') stats.hycu += 1;
+    else if (status === 'inactive') stats.inactive += 1;
     if (status === 'critical' || status === 'warning' || status === 'ok') stats.monitored += 1;
   });
   stats.issues = stats.critical + stats.warning;

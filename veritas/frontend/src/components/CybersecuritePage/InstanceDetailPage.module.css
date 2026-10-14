@@ -183,6 +183,7 @@
   color: #dc2626;
 }
 
+.status_pending,
 .status_unmapped,
 .status_hycu,
 .status_inactive {
@@ -357,9 +358,11 @@
   color: #f87171;
 }
 
+:global(html.dark) .status_pending,
 :global(html.dark) .status_unmapped,
 :global(html.dark) .status_hycu,
 :global(html.dark) .status_inactive,
+:global(body.dark) .status_pending,
 :global(body.dark) .status_unmapped,
 :global(body.dark) .status_hycu,
 :global(body.dark) .status_inactive {

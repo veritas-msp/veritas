@@ -37,6 +37,13 @@ import { PLANNING_EVENT_TYPES } from "../PlanningPage/planningEventTypes";
 import { getEquipmentPickerLabel } from "./ticketEquipmentUtils";
 import API_BASE_URL from "../../config";
 import { interpolate } from "../../i18n/translate";
+import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
+import TicketVaultArchiveOptions, {
+  collectVaultArchiveEntries,
+  createDefaultVaultFileOptions,
+  getAttachmentFileKey
+} from "./TicketVaultArchiveOptions";
+import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
 
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
@@ -174,9 +181,13 @@ export default function SalesTasksPanel({
   onConsumeTaskCredits,
   onRefundTaskCredits,
   onUploadDocuments,
-  onDeleteDocument
+  onDeleteDocument,
+  clientId = null,
+  clientName = "",
+  isPro = false
 }) {
   const locale = useAppLocale();
+  const vaultArchiveCopy = useMemo(() => getTicketVaultArchiveCopy(locale), [locale]);
   const catalogTypes = usePlanningEventTypes();
   const planningFormCopy = useMemo(() => getPlanningEventFormCopy(locale, catalogTypes), [locale, catalogTypes]);
   const selectableTypes = useMemo(() => {
@@ -216,6 +227,7 @@ export default function SalesTasksPanel({
   const [pendingFiles, setPendingFiles] = useState([]);
   const [docsToRemove, setDocsToRemove] = useState([]);
   const [docsBusy, setDocsBusy] = useState(false);
+  const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
   const assigneePickerRef = useRef(null);
   const documentInputRef = useRef(null);
   const justAddedTimersRef = useRef(new Map());
@@ -325,6 +337,7 @@ export default function SalesTasksPanel({
     setExistingDocuments([]);
     setPendingFiles([]);
     setDocsToRemove([]);
+    setVaultOptionsByKey({});
     resetCreditForm(false);
   };
 
@@ -369,6 +382,7 @@ export default function SalesTasksPanel({
     setExistingDocuments(Array.isArray(task.documents) ? task.documents : []);
     setPendingFiles([]);
     setDocsToRemove([]);
+    setVaultOptionsByKey({});
     const alreadyDebited = Boolean(
       getTaskCreditBalance(sourceBalances, task.id) || creditDebitedSources?.has?.(`task:${task.id}`)
     );
@@ -509,12 +523,88 @@ export default function SalesTasksPanel({
       accepted.push(file);
     }
     if (accepted.length > 0) {
-      setPendingFiles(prev => [...prev, ...accepted]);
+      setPendingFiles(prev => {
+        const merged = [...prev, ...accepted];
+        setVaultOptionsByKey(opts => {
+          const nextOpts = { ...opts };
+          accepted.forEach(file => {
+            const key = getAttachmentFileKey(file);
+            if (!nextOpts[key]) nextOpts[key] = createDefaultVaultFileOptions();
+          });
+          return nextOpts;
+        });
+        return merged;
+      });
     }
   };
 
   const removePendingFile = index => {
-    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+    setPendingFiles(prev => {
+      const removed = prev[index];
+      const next = prev.filter((_, i) => i !== index);
+      if (removed) {
+        const key = getAttachmentFileKey(removed);
+        setVaultOptionsByKey(opts => {
+          if (!opts?.[key]) return opts;
+          const nextOpts = { ...opts };
+          delete nextOpts[key];
+          return nextOpts;
+        });
+      }
+      return next;
+    });
+  };
+
+  const removePendingFileByKey = fileKey => {
+    setPendingFiles(prev => prev.filter(file => getAttachmentFileKey(file) !== fileKey));
+    setVaultOptionsByKey(prev => {
+      if (!prev?.[fileKey]) return prev;
+      const next = { ...prev };
+      delete next[fileKey];
+      return next;
+    });
+  };
+
+  const patchVaultFileOptions = (fileKey, patch) => {
+    setVaultOptionsByKey(prev => ({
+      ...prev,
+      [fileKey]: {
+        ...createDefaultVaultFileOptions(),
+        ...(prev?.[fileKey] || {}),
+        ...patch
+      }
+    }));
+  };
+
+  const maybeArchiveTaskDocumentsToVault = async (files = []) => {
+    if (!isPro) return;
+    const entries = collectVaultArchiveEntries(files, vaultOptionsByKey);
+    if (!Array.isArray(entries) || entries.length === 0) return;
+    if (!clientId) {
+      toast.error(vaultArchiveCopy.noClient);
+      return;
+    }
+    try {
+      const result = await archiveTicketFilesToVault({
+        entries,
+        clientId,
+        clientName
+      });
+      if (result.skipped > 0) toast.info(vaultArchiveCopy.formatSkipped(result.skipped));
+      if (result.ok > 0 && result.failed === 0) {
+        const anyVisible = entries.some(entry => entry.visibleToClient);
+        const anyInternal = entries.some(entry => !entry.visibleToClient);
+        if (anyVisible && !anyInternal) toast.success(vaultArchiveCopy.toast.archivedVisible);
+        else if (!anyVisible && anyInternal) toast.success(vaultArchiveCopy.toast.archivedInternal);
+        else toast.success(vaultArchiveCopy.toast.archived);
+      } else if (result.ok > 0 && result.failed > 0) {
+        toast.warning(vaultArchiveCopy.formatPartial(result.ok, result.failed));
+      } else if (result.failed > 0) {
+        toast.error(vaultArchiveCopy.toast.error);
+      }
+    } catch (error) {
+      toast.error(error.message || vaultArchiveCopy.toast.error);
+    }
   };
 
   const markExistingDocForRemoval = docId => {
@@ -539,6 +629,7 @@ export default function SalesTasksPanel({
       if (pendingFiles.length > 0) {
         try {
           await onUploadDocuments?.(taskId, pendingFiles);
+          await maybeArchiveTaskDocumentsToVault(pendingFiles);
         } catch (error) {
           toast.error(error.message || copy.documentsUploadError);
           return false;
@@ -949,48 +1040,67 @@ export default function SalesTasksPanel({
               {existingDocuments.length === 0 && pendingFiles.length === 0 ? (
                 <p className={styles.taskPlanningHint}>{copy.documentsEmpty}</p>
               ) : (
-                <ul className={styles.taskDocList}>
-                  {existingDocuments.map(doc => (
-                    <li key={doc.id || doc.filePath} className={styles.taskDocItem}>
-                      <a
-                        href={toAbsoluteUrl(doc.filePath)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.taskDocLink}
-                        title={copy.documentsOpen}
-                      >
-                        <Icon icon="mdi:file-document-outline" aria-hidden />
-                        <span>{doc.fileName}</span>
-                      </a>
-                      <button
-                        type="button"
-                        className={styles.taskRemove}
-                        onClick={() => markExistingDocForRemoval(doc.id)}
-                        aria-label={copy.documentsRemove}
-                        disabled={saving || docsBusy}
-                      >
-                        <Icon icon="mdi:delete-outline" />
-                      </button>
-                    </li>
-                  ))}
-                  {pendingFiles.map((file, index) => (
-                    <li key={`pending-${file.name}-${index}`} className={styles.taskDocItem}>
-                      <span className={styles.taskDocPending}>
-                        <Icon icon="mdi:upload-outline" aria-hidden />
-                        <span>{file.name}</span>
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.taskRemove}
-                        onClick={() => removePendingFile(index)}
-                        aria-label={copy.documentsRemove}
-                        disabled={saving || docsBusy}
-                      >
-                        <Icon icon="mdi:close" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {existingDocuments.length > 0 ? (
+                    <ul className={styles.taskDocList}>
+                      {existingDocuments.map(doc => (
+                        <li key={doc.id || doc.filePath} className={styles.taskDocItem}>
+                          <a
+                            href={toAbsoluteUrl(doc.filePath)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.taskDocLink}
+                            title={copy.documentsOpen}
+                          >
+                            <Icon icon="mdi:file-document-outline" aria-hidden />
+                            <span>{doc.fileName}</span>
+                          </a>
+                          <button
+                            type="button"
+                            className={styles.taskRemove}
+                            onClick={() => markExistingDocForRemoval(doc.id)}
+                            aria-label={copy.documentsRemove}
+                            disabled={saving || docsBusy}
+                          >
+                            <Icon icon="mdi:delete-outline" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {pendingFiles.length > 0 && isPro ? (
+                    <TicketVaultArchiveOptions
+                      files={pendingFiles}
+                      optionsByKey={vaultOptionsByKey}
+                      onOptionsChange={patchVaultFileOptions}
+                      onRemoveFile={removePendingFileByKey}
+                      getRemoveAria={name => copy.documentsRemove || `Remove ${name}`}
+                      hasClient={Boolean(clientId)}
+                      disabled={saving || docsBusy}
+                      copy={vaultArchiveCopy}
+                    />
+                  ) : pendingFiles.length > 0 ? (
+                    <ul className={styles.taskDocList}>
+                      {pendingFiles.map((file, index) => (
+                        <li key={`pending-${file.name}-${index}`} className={styles.taskDocItem}>
+                          <span className={styles.taskDocPending}>
+                            <Icon icon="mdi:upload-outline" aria-hidden />
+                            <span>{file.name}</span>
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.taskRemove}
+                            onClick={() => removePendingFile(index)}
+                            aria-label={copy.documentsRemove}
+                            disabled={saving || docsBusy}
+                          >
+                            <Icon icon="mdi:close" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
               )}
             </div>
           </>

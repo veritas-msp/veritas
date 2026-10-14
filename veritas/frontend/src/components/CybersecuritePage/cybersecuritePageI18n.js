@@ -292,6 +292,7 @@ const CYBERSECURITE_PAGE_COPY = {
           ok: "OK",
           warning: "Retard",
           critical: "En erreur",
+          pending: "En attente",
           unmapped: "Non mappé",
           hycu: "HYCU",
           inactive: "Inactif"
@@ -726,6 +727,7 @@ const CYBERSECURITE_PAGE_COPY = {
           ok: "OK",
           warning: "Delayed",
           critical: "Failed",
+          pending: "Pending",
           unmapped: "Unmapped",
           hycu: "HYCU",
           inactive: "Inactive"
@@ -1160,6 +1162,7 @@ const CYBERSECURITE_PAGE_COPY = {
           ok: "OK",
           warning: "Verzögert",
           critical: "Fehler",
+          pending: "Ausstehend",
           unmapped: "Nicht zugeordnet",
           hycu: "HYCU",
           inactive: "Inaktiv"
@@ -1594,6 +1597,7 @@ const CYBERSECURITE_PAGE_COPY = {
           ok: "OK",
           warning: "Ritardo",
           critical: "Errore",
+          pending: "In attesa",
           unmapped: "Non mappato",
           hycu: "HYCU",
           inactive: "Inattivo"
@@ -2028,6 +2032,7 @@ const CYBERSECURITE_PAGE_COPY = {
           ok: "OK",
           warning: "Retraso",
           critical: "Error",
+          pending: "En espera",
           unmapped: "Sin mapear",
           hycu: "HYCU",
           inactive: "Inactivo"

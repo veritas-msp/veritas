@@ -147,7 +147,7 @@ const SUPERVISION_COPY = {
       searchPlaceholder: "Rechercher titre, entreprise, IP, hôte…",
       sortBy: "Trier par {label}",
       backupReasons: {
-        critical: "Dernière sauvegarde il y a plus de 48 h, ou inconnue",
+        critical: "Dernière sauvegarde il y a plus de 48 h",
         warning: "Dernière sauvegarde il y a plus de 24 h"
       },
       emptyTitle: "Zzz... tout est calme",
@@ -807,7 +807,7 @@ const SUPERVISION_COPY = {
       searchPlaceholder: "Search title, company, IP, host…",
       sortBy: "Sort by {label}",
       backupReasons: {
-        critical: "Last backup more than 48 h ago, or unknown",
+        critical: "Last backup more than 48 h ago",
         warning: "Last backup more than 24 h ago"
       },
       emptyTitle: "Zzz... all quiet",
@@ -1415,7 +1415,7 @@ const SUPERVISION_COPY = {
       searchPlaceholder: "Titel, Firma, IP, Host suchen…",
       sortBy: "Nach {label} sortieren",
       backupReasons: {
-        critical: "Letztes Backup vor mehr als 48 h, oder unbekannt",
+        critical: "Letztes Backup vor mehr als 48 h",
         warning: "Letztes Backup vor mehr als 24 h"
       },
       emptyTitle: "Zzz... alles ruhig",
@@ -1820,7 +1820,7 @@ const SUPERVISION_COPY = {
       searchPlaceholder: "Cerca titolo, azienda, IP, host…",
       sortBy: "Ordina per {label}",
       backupReasons: {
-        critical: "Ultimo backup da più di 48 h, o sconosciuto",
+        critical: "Ultimo backup da più di 48 h",
         warning: "Ultimo backup da più di 24 h"
       },
       emptyTitle: "Zzz... tutto calmo",
@@ -2224,7 +2224,7 @@ const SUPERVISION_COPY = {
       searchPlaceholder: "Buscar título, empresa, IP, host…",
       sortBy: "Ordenar por {label}",
       backupReasons: {
-        critical: "Última copia hace más de 48 h, o desconocida",
+        critical: "Última copia hace más de 48 h",
         warning: "Última copia hace más de 24 h"
       },
       emptyTitle: "Zzz... todo en calma",

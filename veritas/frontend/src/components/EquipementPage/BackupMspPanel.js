@@ -785,7 +785,7 @@ export default function BackupMspPanel({
               const jobStatus = getBackupJobStatus(item);
               const statusLabel = getBackupJobStatusLabel(jobStatus);
               const statusTitle = getBackupJobStatusTitle(jobStatus);
-              const badgeClass = jobStatus === "critical" ? styles.jobStatusBadgeCritical : jobStatus === "warning" ? styles.jobStatusBadgeWarning : jobStatus === "ok" ? styles.jobStatusBadgeOk : jobStatus === "inactive" ? styles.jobStatusBadgeInactive : jobStatus === "unmapped" ? styles.jobStatusBadgeUnmapped : styles.jobStatusBadgeHycu;
+              const badgeClass = jobStatus === "critical" ? styles.jobStatusBadgeCritical : jobStatus === "warning" ? styles.jobStatusBadgeWarning : jobStatus === "ok" ? styles.jobStatusBadgeOk : jobStatus === "inactive" ? styles.jobStatusBadgeInactive : jobStatus === "unmapped" || jobStatus === "pending" ? styles.jobStatusBadgeUnmapped : styles.jobStatusBadgeHycu;
               return <tr key={`${item.id}-${index}`} className={styles.equipmentRow} style={{
                 cursor: "default",
                 ...getBackupJobRowStyle(jobStatus)

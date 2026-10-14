@@ -392,7 +392,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const locale = useAppLocale();
   const { can } = usePermissions();
   const { user } = useAuthContext();
-  const { isCommunity } = useVeritasEdition();
+  const { isCommunity, isPro } = useVeritasEdition();
   const copy = useMemo(() => getTicketSalesDetailCopy(locale), [locale]);
   const detailCopy = useMemo(() => getTicketDetailCopy(locale), [locale]);
   const currentUserId = useMemo(() => user?.id || user?.uuid || user?.user_id || null, [user]);
@@ -2673,6 +2673,9 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         creditCopy={copy.credits.modal}
                         creditDebitedSources={creditDebitedSources}
                         creditAlreadyLabel={copy.credits.alreadyTask}
+                        clientId={clientId}
+                        clientName={ticket?.client_name || ticket?.client_nom || ticket?.clientName || ""}
+                        isPro={isPro}
                         onAddTask={handleAddTask}
                         onUpdateTask={handleUpdateTask}
                         onToggleTask={handleToggleTask}
