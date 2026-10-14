@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.97",
+    date: "2026-10-14",
+    highlights: [
+      "Tickets : correction de l’écran blanc dû à une dépendance circulaire des formulaires équipement.",
+      "Prise en main à distance serveur : journalisation chargée à la demande pour éviter les cycles d’import."
+    ]
+  },
+  {
     version: "1.0.96",
     date: "2026-10-14",
     highlights: [

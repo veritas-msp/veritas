@@ -1,5 +1,11 @@
 import { EQUIPMENT_REMOTE_ACTION_ICON } from "../equipmentRemoteAccessUtils";
-import { logEquipmentRemoteAccessAttempt } from "../equipmentActivityLog";
+
+function logRemoteAccessAttempt(equipment, payload) {
+  void import("../equipmentActivityLog")
+    .then(mod => mod.logEquipmentRemoteAccessAttempt?.(equipment, payload))
+    .catch(() => {});
+}
+
 export const SERVER_REMOTE_ACCESS_LABEL = "Prise en main";
 export const SERVER_REMOTE_ACCESS_SOLUTIONS = [{
   value: "anydesk",
@@ -172,7 +178,7 @@ export function openServerRemoteAccess(equipment) {
     id
   } = readServerRemoteAccess(equipment);
   if (!id) {
-    void logEquipmentRemoteAccessAttempt(equipment, {
+    void logRemoteAccessAttempt(equipment, {
       solution,
       id,
       ok: false,
@@ -187,7 +193,7 @@ export function openServerRemoteAccess(equipment) {
   if (targets.length === 0) {
     if (navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(id);
-      void logEquipmentRemoteAccessAttempt(equipment, {
+      void logRemoteAccessAttempt(equipment, {
         solution,
         id,
         ok: true,
@@ -198,7 +204,7 @@ export function openServerRemoteAccess(equipment) {
         reason: "copied"
       };
     }
-    void logEquipmentRemoteAccessAttempt(equipment, {
+    void logRemoteAccessAttempt(equipment, {
       solution,
       id,
       ok: false,
@@ -212,7 +218,7 @@ export function openServerRemoteAccess(equipment) {
   for (const target of targets) {
     try {
       window.open(target.url, "_blank", "noopener,noreferrer");
-      void logEquipmentRemoteAccessAttempt(equipment, {
+      void logRemoteAccessAttempt(equipment, {
         solution,
         id,
         ok: true,
@@ -224,7 +230,7 @@ export function openServerRemoteAccess(equipment) {
       };
     } catch {}
   }
-  void logEquipmentRemoteAccessAttempt(equipment, {
+  void logRemoteAccessAttempt(equipment, {
     solution,
     id,
     ok: false,

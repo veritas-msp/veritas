@@ -39,6 +39,20 @@ import { normalizeContactCommunications, sortCommunicationsByType } from "../../
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getContactDetailGuideSteps } from "../PageGuide/contactDetailGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import {
+  DETAIL_CACHE_NS,
+  getDetailCache,
+  invalidateDetailCache,
+  setDetailCache
+} from "../../utils/detailPageCache";
+import {
+  normalizeContactOverviewTab,
+  readContactDetailUi,
+  writeContactDetailUi
+} from "../../utils/contactDetailUiState";
+import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
+import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
 
 function SidebarSectionHeader({
   title,
@@ -68,20 +82,6 @@ function SidebarSectionHeader({
       </button>
     </div>;
 }
-import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-import {
-  DETAIL_CACHE_NS,
-  getDetailCache,
-  invalidateDetailCache,
-  setDetailCache
-} from "../../utils/detailPageCache";
-import {
-  normalizeContactOverviewTab,
-  readContactDetailUi,
-  writeContactDetailUi
-} from "../../utils/contactDetailUiState";
-import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
-import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
 const normalizePhone = value => {
   let normalized = (value || "").toString().trim();
   if (normalized.startsWith("'")) {

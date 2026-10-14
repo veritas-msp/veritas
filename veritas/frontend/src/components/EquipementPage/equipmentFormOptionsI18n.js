@@ -1,7 +1,7 @@
 import { createLocaleGetter } from "../../i18n/translate";
 import { SERVER_ROLE_GROUPS, canonicalizeServerRole } from "./constants/serverRoleOptions";
 import { STORAGE_ROLE_GROUPS, canonicalizeStorageRole } from "./constants/storageRoleOptions";
-import { OS_OPTION_GROUPS, RAID_OPTIONS, SERVER_HYPERVISOR_OPTIONS } from "./equipmentFormConfig";
+import { OS_OPTION_GROUPS, RAID_OPTIONS, SERVER_HYPERVISOR_OPTIONS } from "./equipmentFormSelectConstants";
 const SERVER_ROLE_GROUP_LABELS_FR = {
   Infrastructure: "Infrastructure",
   "Annuaire & réseau": "Annuaire & réseau",
