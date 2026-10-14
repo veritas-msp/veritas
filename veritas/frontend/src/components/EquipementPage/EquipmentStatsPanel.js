@@ -111,7 +111,6 @@ export default function EquipmentStatsPanel({
             <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
             {copy.stats.title}
           </h2>
-          <p className={styles.panelSubtitleInline}>{copy.stats.subtitle}</p>
         </div>
       </header>
 

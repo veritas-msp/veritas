@@ -89,14 +89,14 @@ function OverviewCard({ title, icon, className, children, actions = null }) {
   );
 }
 
-function RingGauge({ pct, label, sub, color = "#2b5fab" }) {
+function RingGauge({ pct, label = null, sub, color = "#2b5fab", centreLabel = "Utilisation", compact = false }) {
   const used = Math.max(0, Math.min(100, Number(pct) || 0));
   const segments = buildUsageDonutSegments(used);
   segments[0].color = color;
   return (
-    <div className={styles.ringBlock}>
-      <span className={styles.ringLabel}>{label}</span>
-      <div className={styles.ringWrap}>
+    <div className={`${styles.ringBlock} ${compact ? styles.ringBlockCompact : ""}`.trim()}>
+      {label ? <span className={styles.ringLabel}>{label}</span> : null}
+      <div className={`${styles.ringWrap} ${compact ? styles.ringWrapCompact : ""}`.trim()}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -118,10 +118,58 @@ function RingGauge({ pct, label, sub, color = "#2b5fab" }) {
         </ResponsiveContainer>
         <div className={styles.donutCenter}>
           <strong>{pct != null ? formatPct(pct) : "—"}</strong>
-          <span>Utilisation</span>
+          <span>{centreLabel}</span>
         </div>
       </div>
       {sub ? <span className={styles.ringSub}>{sub}</span> : null}
+    </div>
+  );
+}
+
+function isAdapterUp(adapter) {
+  return (
+    adapter?.status !== "Down" &&
+    adapter?.status !== "down" &&
+    adapter?.status !== false &&
+    adapter?.status !== 0
+  );
+}
+
+function RamSlotsBoard({ modules = [], slotCount, copy }) {
+  const used = modules.length;
+  const slots = Math.max(Number(slotCount) || 0, used);
+  if (!slots && !used) return null;
+  const total = Math.max(slots, used, 1);
+  return (
+    <div className={styles.ramSlotsBoard} role="list" aria-label={copy.ramSlotsAria || "Emplacements mémoire"}>
+      <div className={styles.ramSlotsRow}>
+        {Array.from({ length: total }, (_, index) => {
+          const module = modules[index];
+          const filled = Boolean(module);
+          const capacity =
+            module?.capacityGB != null ? `${formatStorageGB(module.capacityGB)} Go` : null;
+          const speed = module?.speedMHz != null ? `${module.speedMHz} MHz` : null;
+          const title = filled
+            ? [capacity, speed, module?.manufacturer, module?.partNumber].filter(Boolean).join(" · ")
+            : copy.ramSlotsEmpty || "Libre";
+          return (
+            <div
+              key={index}
+              role="listitem"
+              className={`${styles.ramSlot} ${filled ? styles.ramSlotFilled : styles.ramSlotEmpty}`}
+              title={title}
+            >
+              <span className={styles.ramSlotIndex}>#{index + 1}</span>
+              <span className={styles.ramSlotCap}>
+                {filled ? capacity || (copy.ramSlotsFilled || "Occupé") : copy.ramSlotsEmpty || "Libre"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <p className={styles.ramSlotsMeta}>
+        {used} / {total} {copy.ramSlotsUsed || "barrettes installées"}
+      </p>
     </div>
   );
 }
@@ -472,6 +520,25 @@ export default function EquipmentOverviewDashboard({
     return [];
   }, [drives, storageUsedGB, storagePct, ov.free, ov.used]);
 
+  const hardware = inventory.hardware || {};
+  const ramModules = Array.isArray(hardware.ramModules)
+    ? hardware.ramModules
+        .map(module => ({
+          ...module,
+          capacityGB: module?.capacityGB ?? module?.capacityGb ?? null
+        }))
+        .filter(module => module.capacityGB != null && Number(module.capacityGB) > 0)
+    : [];
+  const ramSlotCount = Number(hardware.ramSlotCount) > 0 ? Number(hardware.ramSlotCount) : ramModules.length || null;
+  const firstRamModule = ramModules[0] || null;
+  const ramSpeed = firstRamModule?.speedMHz != null ? `${firstRamModule.speedMHz} MHz` : null;
+  const cpuName = hardware.cpu || inventory.processeur || null;
+  const cpuClock =
+    hardware.currentClockMHz != null
+      ? `${hardware.currentClockMHz} MHz`
+      : hardware.maxClockMHz != null
+        ? `${hardware.maxClockMHz} MHz`
+        : null;
   const cpuSub =
     snapshot.cpuPct != null && hardwareCoresLabel(inventory)
       ? hardwareCoresLabel(inventory)
@@ -484,6 +551,9 @@ export default function EquipmentOverviewDashboard({
     storageUsedGB > 0 && storageTotalGB > 0
       ? `${formatStorageGB(storageUsedGB)} / ${formatStorageGB(storageTotalGB)} Go`
       : null;
+  const adaptersUpCount = adapters.filter(isAdapterUp).length;
+  const primaryIp = equipment?.ip || network.ip || null;
+  const utilisationLabel = ov.utilisation || ov.used || "Utilisation";
 
   useEffect(() => {
     if (!equipmentId) {
@@ -564,7 +634,6 @@ export default function EquipmentOverviewDashboard({
   }, [inventory, ov.processCountLabel, perf.processCount, snapshot.cpuPct]);
 
   const hasCheckmk = Boolean(checkmkData) || loadingCheckMK;
-  const hasRmmMetrics = snapshot.cpuPct != null || snapshot.ramPct != null || storagePct != null;
   const activePane = normalizeEquipmentOverviewPane(overviewPane, {
     allowRmm,
     allowSupervision
@@ -623,68 +692,81 @@ export default function EquipmentOverviewDashboard({
       ) : null}
 
       {showRmmPane ? (
-        <section className={styles.column} aria-label={ov.rmmSectionTitle || "Agent RMM"}>
-          <div className={`${styles.columnGrid} ${styles.paneGrid}`.trim()}>
-            <OverviewCard
-              title={ov.cpuRamTitle || "Processeur & Mémoire"}
-              icon="mdi:chip"
-            >
-              {hasRmmMetrics ? (
-                <div className={styles.ringsRow}>
+        <section className={`${styles.column} ${styles.columnFill}`.trim()} aria-label={ov.rmmSectionTitle || "Agent RMM"}>
+          <div className={styles.metricsRow}>
+            <OverviewCard title={ov.cpuTitle || ov.cpu || "CPU"} icon="mdi:cpu-64-bit">
+              {snapshot.cpuPct != null || cpuSub || cpuName ? (
+                <div className={styles.metricCardBody}>
                   <RingGauge
                     pct={snapshot.cpuPct}
-                    label={ov.cpu || "CPU"}
                     sub={cpuSub}
+                    compact
+                    centreLabel={utilisationLabel}
                     color={snapshot.cpuPct >= 90 ? "#ef4444" : snapshot.cpuPct >= 70 ? "#f59e0b" : "#2b5fab"}
                   />
-                  <RingGauge
-                    pct={snapshot.ramPct}
-                    label={ov.memory || "Mémoire"}
-                    sub={ramSub}
-                    color={snapshot.ramPct >= 90 ? "#ef4444" : snapshot.ramPct >= 70 ? "#f59e0b" : "#2b5fab"}
-                  />
+                  <ul className={styles.metricFacts}>
+                    {cpuName ? (
+                      <li title={cpuName}>
+                        <span>{ov.cpu || "CPU"}</span>
+                        <strong>{cpuName}</strong>
+                      </li>
+                    ) : null}
+                    {cpuClock ? (
+                      <li>
+                        <span>{ov.cpuClock || "Fréquence"}</span>
+                        <strong>{cpuClock}</strong>
+                      </li>
+                    ) : null}
+                    {perf.processCount != null ? (
+                      <li>
+                        <span>{ov.cpuProcesses || "Processus"}</span>
+                        <strong>{perf.processCount}</strong>
+                      </li>
+                    ) : null}
+                  </ul>
                 </div>
               ) : (
                 <EquipmentEmptyState
-                  icon="mdi:chart-donut"
+                  icon="mdi:cpu-64-bit"
                   message={ov.rmmMetricsEmpty || "Métriques RMM indisponibles"}
                   compact
                 />
               )}
             </OverviewCard>
 
-            <OverviewCard
-              title={ov.storageTitle || "Stockage"}
-              icon="mdi:harddisk"
-            >
+            <OverviewCard title={ov.memoryTitle || ov.memory || "Mémoire"} icon="mdi:memory">
+              {snapshot.ramPct != null || ramSub || ramModules.length ? (
+                <div className={styles.metricCardBody}>
+                  <RingGauge
+                    pct={snapshot.ramPct}
+                    sub={[ramSub, ramSpeed].filter(Boolean).join(" · ") || null}
+                    compact
+                    centreLabel={utilisationLabel}
+                    color={snapshot.ramPct >= 90 ? "#ef4444" : snapshot.ramPct >= 70 ? "#f59e0b" : "#2b5fab"}
+                  />
+                  <RamSlotsBoard modules={ramModules} slotCount={ramSlotCount} copy={ov} />
+                </div>
+              ) : (
+                <EquipmentEmptyState
+                  icon="mdi:memory"
+                  message={ov.rmmMetricsEmpty || "Métriques RMM indisponibles"}
+                  compact
+                />
+              )}
+            </OverviewCard>
+
+            <OverviewCard title={ov.storageTitle || "Stockage"} icon="mdi:harddisk">
               {storageDonut.length ? (
-                <div className={styles.donutLayout}>
-                  <div className={styles.donutWrap}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={storageDonut}
-                          dataKey="value"
-                          nameKey="name"
-                          innerRadius="62%"
-                          outerRadius="84%"
-                          paddingAngle={2}
-                          stroke="none"
-                        >
-                          {storageDonut.map(entry => (
-                            <Cell key={entry.name} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<ChartTooltip unit={storageUsedGB > 0 ? " Go" : "%"} />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className={styles.donutCenter}>
-                      <strong>{storagePct != null ? formatPct(storagePct) : "—"}</strong>
-                      <span>{ov.used || "Utilisation"}</span>
-                    </div>
-                  </div>
+                <div className={styles.metricCardBody}>
+                  <RingGauge
+                    pct={storagePct}
+                    sub={storageSub}
+                    compact
+                    centreLabel={utilisationLabel}
+                    color={storagePct >= 90 ? "#ef4444" : storagePct >= 75 ? "#f59e0b" : "#2b5fab"}
+                  />
                   <ul className={styles.driveLegend}>
-                    {(drives.length ? drives : storageDonut).slice(0, 5).map((row, i) => {
+                    {(drives.length ? drives : storageDonut).slice(0, 3).map((row, i) => {
                       const color = DISK_COLORS[i % DISK_COLORS.length];
                       const pct = row.pct != null
                         ? Number(row.pct)
@@ -701,11 +783,9 @@ export default function EquipmentOverviewDashboard({
                             <span className={styles.legendValue}>
                               {row.usedGB != null && row.sizeGB != null
                                 ? `${formatStorageGB(row.usedGB)} / ${formatStorageGB(row.sizeGB)} Go`
-                                : row.usedGB != null
-                                  ? `${formatStorageGB(row.usedGB)} Go`
-                                  : pct != null
-                                    ? formatPct(pct)
-                                    : "—"}
+                                : pct != null
+                                  ? formatPct(pct)
+                                  : "—"}
                             </span>
                           </div>
                           {pct != null ? (
@@ -723,6 +803,11 @@ export default function EquipmentOverviewDashboard({
                       );
                     })}
                   </ul>
+                  {drives.length > 3 ? (
+                    <p className={styles.ringSub}>
+                      +{drives.length - 3} {ov.driveCount || "volumes"}
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <EquipmentEmptyState
@@ -731,9 +816,57 @@ export default function EquipmentOverviewDashboard({
                   compact
                 />
               )}
-              {storageSub ? <p className={styles.ringSub}>{storageSub}</p> : null}
             </OverviewCard>
 
+            <OverviewCard title={ov.networkTitle || "Réseau"} icon="mdi:lan">
+              {adapters.length || primaryIp ? (
+                <div className={styles.metricCardBody}>
+                  <div className={styles.netStats}>
+                    <div className={styles.netStat}>
+                      <span className={styles.netStatLabel}>{ov.adaptersUp || "Interfaces IP"}</span>
+                      <span className={styles.netStatValue}>
+                        {adaptersUpCount}
+                        <span className={styles.netStatMuted}> / {adapters.length || 0}</span>
+                      </span>
+                    </div>
+                    <div className={styles.netStat}>
+                      <span className={styles.netStatLabel}>{ov.primaryIp || "IP principale"}</span>
+                      <span className={styles.netStatValue} style={{ fontSize: "0.82rem" }}>
+                        {primaryIp || "—"}
+                      </span>
+                    </div>
+                  </div>
+                  {adapters.length ? (
+                    <ul className={styles.netIfList}>
+                      {adapters.slice(0, 4).map((adapter, index) => {
+                        const up = isAdapterUp(adapter);
+                        const name = adapter.description || adapter.name || `IF-${index + 1}`;
+                        return (
+                          <li key={`${name}-${index}`}>
+                            <span className={styles.netIfName} title={name}>{name}</span>
+                            <span className={`${styles.statusPill} ${up ? styles.statusUp : styles.statusDown}`}>
+                              {up ? "Up" : "Down"}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                  <p className={styles.ringSub}>
+                    {ov.networkThroughputHint || "Débit temps réel bientôt disponible"}
+                  </p>
+                </div>
+              ) : (
+                <EquipmentEmptyState
+                  icon="mdi:lan"
+                  message={ov.networkEmpty || "Aucune interface réseau"}
+                  compact
+                />
+              )}
+            </OverviewCard>
+          </div>
+
+          <div className={`${styles.columnGrid} ${styles.paneGrid} ${styles.paneGridFill}`.trim()}>
             <OverviewCard
               title={ov.processesTitle || "Top processus (CPU)"}
               icon="mdi:application-brackets-outline"
@@ -760,43 +893,6 @@ export default function EquipmentOverviewDashboard({
             </OverviewCard>
 
             <OverviewCard
-              title={ov.networkTitle || "Réseau"}
-              icon="mdi:lan"
-            >
-              {adapters.length ? (
-                <>
-                  <div className={styles.netStats}>
-                    <div className={styles.netStat}>
-                      <span className={styles.netStatLabel}>{ov.adaptersUp || "Interfaces up"}</span>
-                      <span className={styles.netStatValue}>
-                        {adapters.filter(a => a.status !== "Down" && a.status !== "down" && a.status !== false).length}
-                        <span style={{ fontWeight: 550, color: "#64748b", fontSize: "0.8rem" }}>
-                          {" "}/ {adapters.length}
-                        </span>
-                      </span>
-                    </div>
-                    <div className={styles.netStat}>
-                      <span className={styles.netStatLabel}>{ov.primaryIp || "IP principale"}</span>
-                      <span className={styles.netStatValue} style={{ fontSize: "0.85rem" }}>
-                        {equipment?.ip || network.ip || "—"}
-                      </span>
-                    </div>
-                  </div>
-                  <p className={styles.empty} style={{ padding: "0.35rem 0 0" }}>
-                    {ov.networkThroughputHint || "Débit temps réel bientôt disponible"}
-                  </p>
-                </>
-              ) : (
-                <EquipmentEmptyState
-                  icon="mdi:lan"
-                  message={ov.networkEmpty || "Aucune interface réseau"}
-                  compact
-                />
-              )}
-            </OverviewCard>
-
-            <OverviewCard
-              className={styles.spanFull}
               title={ov.interfacesTitle || "Interfaces réseau"}
               icon="mdi:ethernet"
             >
@@ -811,11 +907,7 @@ export default function EquipmentOverviewDashboard({
                     </thead>
                     <tbody>
                       {adapters.slice(0, 8).map((adapter, index) => {
-                        const up =
-                          adapter.status !== "Down" &&
-                          adapter.status !== "down" &&
-                          adapter.status !== false &&
-                          adapter.status !== 0;
+                        const up = isAdapterUp(adapter);
                         return (
                           <tr key={`${adapter.description || adapter.name || "if"}-${index}`}>
                             <td title={adapter.description || adapter.name}>

@@ -4080,6 +4080,30 @@ router.delete(
   }
 );
 
+/** Rewrite data-inline-upload placeholders to uploaded attachment URLs (keeps paste positions). */
+function rewriteInlineUploadPlaceholders(html, attachments = []) {
+  const source = String(html || "");
+  if (!source || !/data-inline-upload=/i.test(source)) return source;
+  const byName = new Map();
+  for (const attachment of Array.isArray(attachments) ? attachments : []) {
+    const name = String(attachment?.file_name || "").trim().toLowerCase();
+    const filePath = String(attachment?.file_path || "").trim();
+    if (name && filePath) byName.set(name, filePath);
+  }
+  if (byName.size === 0) return source;
+  return source.replace(/<img\b[^>]*>/gi, tag => {
+    const keyMatch = tag.match(/\bdata-inline-upload\s*=\s*(["'])(.*?)\1/i) || tag.match(/\bdata-inline-upload\s*=\s*([^\s>]+)/i);
+    if (!keyMatch) return tag;
+    const key = String(keyMatch[2] || keyMatch[1] || "").trim();
+    const filePath = byName.get(key.toLowerCase());
+    if (!filePath) return tag;
+    const altMatch = tag.match(/\balt\s*=\s*(["'])(.*?)\1/i);
+    const alt = String(altMatch?.[2] || key).replace(/"/g, "");
+    const safePath = String(filePath).replace(/"/g, "");
+    return `<img src="${safePath}" alt="${alt}">`;
+  });
+}
+
 router.post("/:id/comments", verifyJWT, attachmentUpload.array("attachments", 10), [param("id").isUUID(), body("isInternal").optional().isBoolean()], requireTicketCommentPermission, async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
@@ -4096,7 +4120,7 @@ router.post("/:id/comments", verifyJWT, attachmentUpload.array("attachments", 10
         error: "This ticket is closed. Reopen it to add a message."
       });
     }
-    const content = String(req.body?.content || "").trim();
+    let content = String(req.body?.content || "").trim();
     const files = Array.isArray(req.files) ? req.files : [];
     if (!content && files.length === 0) {
       return res.status(400).json({
@@ -4123,6 +4147,12 @@ router.post("/:id/comments", verifyJWT, attachmentUpload.array("attachments", 10
          FROM v_b_ticket_attachments
          WHERE comment_id = $1
          ORDER BY created_at ASC`, [createdComment.id]);
+    const rewrittenContent = rewriteInlineUploadPlaceholders(content, attachmentsResult.rows);
+    if (rewrittenContent !== content) {
+      await pool.query(`UPDATE v_b_ticket_comments SET content = $1 WHERE id = $2`, [rewrittenContent, createdComment.id]);
+      createdComment.content = rewrittenContent;
+      content = rewrittenContent;
+    }
     await dispatchNotificationEvent({
       source: "tickets",
       element: "commented",

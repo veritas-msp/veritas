@@ -5,6 +5,18 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.94",
+    date: "2026-10-14",
+    highlights: [
+      "Tickets : images collées dans une réponse restent à leur place dans le message publié.",
+      "Tickets : correction de l’affichage « -> » (plus de « -&gt; ») dans les messages postés.",
+      "Tickets : suppression du cadenas en double / superposé sur les réponses internes.",
+      "Fiche périphérique : onglets regroupés (Informations, Activité–Documents–Logs, RMM, Supervision) et Synthèse RMM enrichie (CPU, mémoire, stockage, réseau).",
+      "Fiche périphérique : mise en page densifiée, note appareil dans le hero, états vides unifiés.",
+      "Journal d’activité : bouton Purge déplacé dans la barre d’outils (à droite de la recherche)."
+    ]
+  },
+  {
     version: "1.0.93",
     date: "2026-10-13",
     highlights: [

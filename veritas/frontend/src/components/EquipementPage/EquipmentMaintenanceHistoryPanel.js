@@ -73,7 +73,8 @@ function HistoryBody({
     return (
       <EquipmentEmptyState
         icon="mdi:alert-circle-outline"
-        message={error}
+        title={t.errorTitle || t.title || "Erreur"}
+        subtitle={error}
         compact={compact}
       />
     );
@@ -82,7 +83,8 @@ function HistoryBody({
     return (
       <EquipmentEmptyState
         icon="mdi:wrench-clock"
-        message={t.emptyTitle || "Aucune période de maintenance"}
+        title={t.emptyTitle || "Aucune période de maintenance"}
+        subtitle={t.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
         compact={compact}
       />
     );
@@ -225,6 +227,29 @@ export default function EquipmentMaintenanceHistoryPanel({
   );
 
   if (!canLoad) return null;
+
+  const isEmpty = !loading && !error && items.length === 0;
+  const isError = !loading && Boolean(error);
+
+  if (isEmpty || isError) {
+    return (
+      <EquipmentEmptyState
+        className={maintStyles.emptyFill}
+        icon={isError ? "mdi:alert-circle-outline" : "mdi:wrench-clock"}
+        title={
+          isError
+            ? t.errorTitle || t.title || "Erreur"
+            : t.emptyTitle || "Aucune période de maintenance"
+        }
+        subtitle={
+          isError
+            ? error
+            : t.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."
+        }
+        compact={embedded}
+      />
+    );
+  }
 
   const body = (
     <HistoryBody

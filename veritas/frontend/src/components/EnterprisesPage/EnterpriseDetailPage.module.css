@@ -2922,13 +2922,40 @@
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="activityStack"]),
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="supervisionStack"]),
 .mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="historyTabLayout"]),
-.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="ficheOnlyStack"]) {
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="ficheOnlyStack"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="ficheLayout"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="logsPanel"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="RmmMonitoringPanel"]),
+.mainColumnEquipmentFill :global([class*="mainContent"]) > :global([class*="root"]) {
   flex: 1 1 0;
   min-height: 0;
   max-height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.equipmentDetailPage .pageBodyFill .pageGrid {
+  align-items: stretch;
+}
+
+.equipmentDetailPage .pageBodyFill .asideStack {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  position: relative;
+  top: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.equipmentDetailPage .pageBodyFill .asidePanel {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
 }
 
 .mainColumnEquipmentFill :global([class*="mainContent"]) > .panel > .panelHeader,

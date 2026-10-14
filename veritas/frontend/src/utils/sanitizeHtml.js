@@ -7,7 +7,9 @@ const DEFAULT_CONFIG = {
 };
 export const TICKET_COMMENT_CONFIG = {
   ALLOWED_TAGS: [...BASE_ALLOWED_TAGS, "img"],
-  ALLOWED_ATTR: [...BASE_ALLOWED_ATTR, "src", "width", "height", "style"]
+  ALLOWED_ATTR: [...BASE_ALLOWED_ATTR, "src", "width", "height", "style", "data-inline-upload"],
+  // Allow pasted data:image previews in optimistic / draft comment HTML.
+  ADD_DATA_URI_TAGS: ["img"]
 };
 function convertLegacyFontTags(html) {
   return String(html || "")
@@ -53,11 +55,45 @@ export function contentLooksLikeHtml(content) {
   const withoutEmails = raw.replace(/<[^>\s<>]+@[^>\s<>]+>/g, "");
   return /<\/?(?:p|div|br|span|table|tr|td|th|ul|ol|li|a|b|i|em|strong|u|s|h[1-6]|blockquote|pre|code|img|html|body|head|style|font|center|hr)\b[^>]*>/i.test(withoutEmails);
 }
+
+/**
+ * Decode common HTML entities produced by contentEditable.innerHTML (e.g. "->" → "-&gt;").
+ * Safe for plain-text comments rendered as React text nodes.
+ */
+export function decodeHtmlEntities(value) {
+  const source = String(value ?? "");
+  if (!source || !/&(?:#x?[0-9a-f]+|[a-z]+);/i.test(source)) return source;
+  if (typeof document !== "undefined") {
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = source;
+    return textarea.value;
+  }
+  return source
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
+/**
+ * contentEditable serializes ">" as "&gt;" even without real markup.
+ * Decode those entities for plain drafts so posted messages show "->" correctly.
+ */
+export function normalizeTicketCommentContent(raw) {
+  const source = String(raw ?? "");
+  if (!source) return source;
+  if (contentLooksLikeHtml(source)) return source;
+  return decodeHtmlEntities(source);
+}
+
 /** Render template/comment HTML for preview: keep rich markup, convert plain text newlines. */
 export function toRichPreviewHtml(raw) {
   const content = String(raw ?? "");
   if (!content.trim()) return "";
-  const asHtml = contentLooksLikeHtml(content) ? content : content.replace(/\n/g, "<br>");
+  const normalized = normalizeTicketCommentContent(content);
+  const asHtml = contentLooksLikeHtml(normalized) ? normalized : normalized.replace(/\n/g, "<br>");
   return sanitizeTicketCommentHtml(asHtml);
 }
 export const REMEDIATION_HTML_CONFIG = {

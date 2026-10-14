@@ -9,7 +9,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { emitNotificationsUpdated } from "../../hooks/useNotifications";
 import { interpolate } from "../../i18n/translate";
-import { toRichPreviewHtml } from "../../utils/sanitizeHtml";
+import { normalizeTicketCommentContent, toRichPreviewHtml } from "../../utils/sanitizeHtml";
 import IncomingEmailMessage from "./IncomingEmailMessage";
 import { isIncomingEmailContent } from "../../utils/incomingEmailContent";
 import { isChatOutboundComment } from "../../utils/ticketChatLayout";
@@ -30,7 +30,7 @@ import { getTicketValidationCopy } from "./ticketValidationI18n";
 import TicketEmojiPicker from "./TicketEmojiPicker";
 import TicketInsertLinkModal, { captureEditorSelection, insertLinkHtml, restoreEditorSelection } from "./TicketInsertLinkModal";
 import TicketImageLightbox from "./TicketImageLightbox";
-import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, htmlContainsInlineImage } from "../../utils/ticketEditorImages";
+import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, filterAttachmentsNotInlinedInHtml, htmlContainsInlineImage, rewriteInlineUploadPlaceholders } from "../../utils/ticketEditorImages";
 import styles from "./TicketDetailPage.module.css";
 
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
@@ -395,7 +395,7 @@ export default function TicketChatPanel({
 
   const saveEditComment = async () => {
     if (!ticketId || !editingCommentId || savingCommentEdit) return;
-    const draftRaw = String(commentEditEditorRef.current?.innerHTML || editingCommentDraft || "").trim();
+    const draftRaw = normalizeTicketCommentContent(String(commentEditEditorRef.current?.innerHTML || editingCommentDraft || "").trim());
     const draftText = htmlToPlainText(draftRaw).trim();
     const editingComment = visibleComments.find(comment => String(comment.id) === String(editingCommentId));
     const remainingAttachments = (editingComment?.attachments || []).filter(
@@ -629,13 +629,15 @@ export default function TicketChatPanel({
     setSubmitting(true);
     const draftInternal = commentInternal;
     const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
+    const submitContent = normalizeTicketCommentContent(extracted.html);
+    const optimisticContent = normalizeTicketCommentContent(draftContentRaw);
     const optimisticId = `pending-${Date.now()}`;
     const optimisticComment = {
       id: optimisticId,
       _clientKey: optimisticId,
       author_name: currentUserDisplayName,
       author_user_id: currentUserId || null,
-      content: extracted.html,
+      content: optimisticContent,
       is_internal: draftInternal,
       created_at: new Date().toISOString(),
       attachments: draftFiles.map((file, idx) => ({
@@ -654,25 +656,26 @@ export default function TicketChatPanel({
       let createdComment = null;
       if (draftFiles.length > 0) {
         createdComment = await addTicketCommentWithAttachments(ticketId, {
-          content: extracted.html,
+          content: submitContent,
           isInternal: draftInternal,
           files: draftFiles
         });
       } else {
-        createdComment = await addTicketComment(ticketId, extracted.html, draftInternal);
+        createdComment = await addTicketComment(ticketId, submitContent, draftInternal);
       }
+      const normalizedAttachments =
+        Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0
+          ? createdComment.attachments.map(normalizeAttachment).filter(Boolean)
+          : optimisticComment.attachments;
       const nextComment = {
         id: createdComment?.id || optimisticId,
         _clientKey: optimisticId,
         author_name: createdComment?.author_name || currentUserDisplayName,
         author_user_id: createdComment?.author_user_id || currentUserId || null,
-        content: createdComment?.content || extracted.html,
+        content: rewriteInlineUploadPlaceholders(createdComment?.content || submitContent, normalizedAttachments),
         is_internal: typeof createdComment?.is_internal === "boolean" ? createdComment.is_internal : draftInternal,
         created_at: createdComment?.created_at || optimisticComment.created_at,
-        attachments:
-          Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0
-            ? createdComment.attachments.map(normalizeAttachment).filter(Boolean)
-            : optimisticComment.attachments
+        attachments: normalizedAttachments
       };
       setOverlayComments(prev => prev.map(comment => (String(comment.id) === optimisticId || comment._clientKey === optimisticId ? nextComment : comment)));
       toast.success(copy.toasts.replySent);
@@ -811,11 +814,6 @@ export default function TicketChatPanel({
                   variant={internal ? "neutral" : isOutbound ? "agent" : "client"}
                 />
                 <div className={styles.commentBubble}>
-                  {internal ? (
-                    <span className={styles.commentInternalDot} title={copy.comment?.privateTitle || copy.reply.modePrivate} aria-label={copy.comment?.privateTitle || copy.reply.modePrivate}>
-                      <Icon icon="mdi:lock-outline" />
-                    </span>
-                  ) : null}
                   <div className={styles.commentHeader}>
                     <div className={styles.commentHeaderMain}>
                       <div className={styles.commentMetaLine}>
@@ -940,9 +938,12 @@ export default function TicketChatPanel({
                     />
                   )}
 
-                  {!isEditingComment && attachments.length > 0 && !isIncomingEmailContent(comment.content || comment.body || "") ? (
+                  {!isEditingComment && attachments.length > 0 && !isIncomingEmailContent(comment.content || comment.body || "") ? (() => {
+                    const visibleAttachments = filterAttachmentsNotInlinedInHtml(attachments, comment.content || comment.body || "");
+                    if (visibleAttachments.length === 0) return null;
+                    return (
                     <div className={styles.attachmentsList}>
-                      {attachments.map(attachment => {
+                      {visibleAttachments.map(attachment => {
                         const attachmentUrl = attachment.url || attachment.path;
                         if (!attachmentUrl) return null;
                         const attachmentLabel = attachment.filename || attachment.name || "file";
@@ -966,7 +967,8 @@ export default function TicketChatPanel({
                         );
                       })}
                     </div>
-                  ) : null}
+                    );
+                  })() : null}
                 </div>
               </article>
             );

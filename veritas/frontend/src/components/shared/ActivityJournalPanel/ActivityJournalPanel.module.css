@@ -71,6 +71,11 @@
   gap: 0.55rem;
 }
 
+.toolbar .purgeBtn {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .searchWrap {
   position: relative;
   flex: 1 1 220px;

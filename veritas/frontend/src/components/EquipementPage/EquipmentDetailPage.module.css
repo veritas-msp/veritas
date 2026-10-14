@@ -22,10 +22,39 @@
   z-index: 1;
 }
 
+.heroIdentityRowEquip {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+.heroTabBarGrouped {
+  gap: 0.35rem;
+}
+
+.heroTabGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.heroTabGroup > :global([class*="heroTab"]) {
+  flex: 1 1 0;
+}
+
+.heroTabSep {
+  flex: 0 0 auto;
+  width: 1px;
+  align-self: stretch;
+  margin: 0.35rem 0.15rem;
+  background: color-mix(in srgb, var(--msp-border, #d0dae8) 85%, transparent);
+  border-radius: 1px;
+}
+
 .heroRightCluster {
   position: relative;
   z-index: 1;
-  grid-column: 3;
+  grid-column: 2;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -33,7 +62,86 @@
   gap: 0.75rem 1rem;
   flex-shrink: 0;
   min-width: 0;
+  max-width: min(22rem, 38vw);
   align-self: center;
+}
+
+.heroNoteChip {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  max-width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 2px 12px rgba(15, 28, 46, 0.05);
+  cursor: default;
+  outline: none;
+}
+
+.heroNoteChip:focus-visible {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 18%, transparent);
+}
+
+.heroNoteIcon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  font-size: 1.15rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.heroNoteText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.heroNoteLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
+}
+
+.heroNotePreview {
+  font-size: 0.8rem;
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--msp-text, #0f172a);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.heroNoteTooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 22rem;
+  text-align: left;
+}
+
+.heroNoteTooltipTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.heroNoteTooltipBody {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .heroAvailWidget {
@@ -421,7 +529,94 @@
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  align-items: stretch !important;
+}
+
+.ficheLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1 1 0 !important;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.ficheMainRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
   align-items: stretch;
+  overflow: hidden;
+}
+
+.ficheMainRowWithScore {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+}
+
+.ficheMainRow > * {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.ficheScoreCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ficheScoreCol > :global([class*="scoreAside"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.ficheSecondaryRow {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 38%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ficheSecondaryRow:not(:has(> *)) {
+  display: none;
+  flex: 0 0 0;
+  max-height: 0;
+}
+
+.ficheSecondaryRow > :global([class*="panelBare"]),
+.ficheSecondaryRow > :global([class*="panel"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+/* Aside colonne droite : pleine hauteur sur tous les onglets */
+.equipmentDetailPage :global([class*="pageBodyFill"]) > :global([class*="pageGrid"]) > :global([class*="asideStack"]),
+.shell :global([class*="asideStack"]) {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0;
+  align-self: stretch !important;
+  position: relative !important;
+  top: auto !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .mainColumnEquip {
@@ -431,6 +626,21 @@
   max-height: 100%;
   overflow: hidden;
   align-self: stretch;
+}
+
+@media (max-width: 1400px) {
+  .ficheMainRowWithScore {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ficheMainRow > * {
+    height: auto;
+    min-height: 0;
+  }
+
+  .ficheSecondaryRow {
+    max-height: none;
+  }
 }
 
 @media (max-width: 1100px) {
@@ -584,10 +794,14 @@
 .mainContent > .activityStack,
 .mainContent > .supervisionStack,
 .mainContent > .historyTabLayout,
-.mainContent > .ficheOnlyStack {
+.mainContent > .ficheOnlyStack,
+.mainContent > .ficheLayout,
+.mainContent > .logsPanel,
+.mainContent > :global([class*="RmmMonitoring"]) {
   flex: 1 1 0;
   min-height: 0;
   max-height: 100%;
+  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -745,6 +959,15 @@
   flex-direction: column;
 }
 
+.historyTabLayout > :global([class*="emptyState"]) {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
 .historyTabLayout > :global([class*="panel"]) > :global([class*="panelHeader"]),
 .historyTabLayout > :global([class*="panel"]) > :global([class*="cardHead"]),
 .historyTabLayout > :global([class*="card"]) > :global([class*="cardHead"]) {
@@ -825,6 +1048,8 @@
 .activityVeritasLayout > :global([class*="panel"]) > :global([class*="panelBody"]) > :global([class*="emptyState"]) {
   flex: 1 1 0;
   min-height: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .eventsPanelBody {
@@ -838,6 +1063,8 @@
   flex: 1 1 0 !important;
   min-height: 100%;
   height: 100%;
+  align-items: center;
+  justify-content: center;
 }
 
 .activityPaneFill {
@@ -896,7 +1123,8 @@
   min-width: 0;
   min-height: 0;
   flex: 1 1 0;
-  overflow: auto;
+  height: 100%;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 
@@ -906,6 +1134,16 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+}
+
+.supervisionMainPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .supervisionToolbarActions {
@@ -1199,6 +1437,12 @@
 
 .logsPanel {
   min-height: 0;
+  flex: 1 1 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .logsPanelBody {
@@ -1258,6 +1502,11 @@
   align-items: center;
   gap: 0.55rem;
   margin-bottom: 0;
+}
+
+.logsToolbar .logsPurgeBtn {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .logsSearchWrap {

@@ -1,6 +1,6 @@
 /**
  * Helpers for ticket reply editors: clipboard paste images → File attachments,
- * and stripping leftover base64 <img> from HTML before submit.
+ * keeping inline <img> positions via placeholders rewritten to uploaded URLs.
  */
 
 function extensionFromMime(mime) {
@@ -11,6 +11,21 @@ function extensionFromMime(mime) {
   if (type.includes("jpeg") || type.includes("jpg")) return "jpg";
   if (type.includes("bmp")) return "bmp";
   return "png";
+}
+
+function escapeHtmlAttr(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function readAttr(tag, name) {
+  const quoted = tag.match(new RegExp(`\\b${name}\\s*=\\s*(["'])(.*?)\\1`, "i"));
+  if (quoted) return String(quoted[2] || "").trim();
+  const bare = tag.match(new RegExp(`\\b${name}\\s*=\\s*([^\\s>]+)`, "i"));
+  return bare ? String(bare[1] || "").trim() : "";
 }
 
 export function dataUrlToFile(dataUrl, filenameHint = "pasted-image") {
@@ -48,7 +63,8 @@ export function extractClipboardImageFiles(clipboardData) {
 }
 
 /**
- * Remove inline data:image <img> tags from HTML and return File objects instead.
+ * Convert inline data:image <img> tags into File attachments while keeping
+ * positional placeholders (data-inline-upload) so the server can rewrite src URLs.
  * Keeps non-data images (http/https) untouched.
  */
 export function extractInlineDataImagesFromHtml(html) {
@@ -59,18 +75,59 @@ export function extractInlineDataImagesFromHtml(html) {
   const files = [];
   let index = 0;
   const cleaned = source.replace(/<img\b[^>]*>/gi, tag => {
-    const srcMatch = tag.match(/\bsrc\s*=\s*(["'])(.*?)\1/i) || tag.match(/\bsrc\s*=\s*([^\s>]+)/i);
-    const src = srcMatch ? String(srcMatch[2] || srcMatch[1] || "").trim() : "";
+    const src = readAttr(tag, "src");
     if (!/^data:image\//i.test(src)) return tag;
     index += 1;
     try {
-      files.push(dataUrlToFile(src, `pasted-image-${index}`));
+      const file = dataUrlToFile(src, `pasted-image-${index}`);
+      files.push(file);
+      const alt = readAttr(tag, "alt") || file.name;
+      return `<img src="" alt="${escapeHtmlAttr(alt)}" data-inline-upload="${escapeHtmlAttr(file.name)}">`;
     } catch {
       // Drop broken data URLs from the draft.
+      return "";
     }
-    return "";
   });
   return { html: cleaned, files };
+}
+
+/**
+ * Replace data-inline-upload placeholders with uploaded attachment URLs.
+ * Matching is by file name (pasted-image-N.ext).
+ */
+export function rewriteInlineUploadPlaceholders(html, attachments = []) {
+  const source = String(html || "");
+  if (!source || !/data-inline-upload=/i.test(source)) return source;
+  const byName = new Map();
+  (Array.isArray(attachments) ? attachments : []).forEach(attachment => {
+    const name = String(attachment?.filename || attachment?.name || attachment?.file_name || "").trim().toLowerCase();
+    const url = String(attachment?.url || attachment?.path || attachment?.file_path || "").trim();
+    if (name && url) byName.set(name, url);
+  });
+  if (byName.size === 0) return source;
+  return source.replace(/<img\b[^>]*>/gi, tag => {
+    const key = readAttr(tag, "data-inline-upload");
+    if (!key) return tag;
+    const url = byName.get(key.toLowerCase());
+    if (!url) return tag;
+    const alt = readAttr(tag, "alt") || key;
+    return `<img src="${escapeHtmlAttr(url)}" alt="${escapeHtmlAttr(alt)}">`;
+  });
+}
+
+/** Hide attachment-bar previews for images already rendered inline in the HTML body. */
+export function filterAttachmentsNotInlinedInHtml(attachments = [], html = "") {
+  const source = String(html || "");
+  const list = Array.isArray(attachments) ? attachments : [];
+  if (!source || list.length === 0) return list;
+  return list.filter(attachment => {
+    const url = String(attachment?.url || attachment?.path || attachment?.file_path || "").trim();
+    if (!url) return true;
+    if (source.includes(url)) return false;
+    const uploadsIndex = url.toLowerCase().indexOf("/uploads/");
+    if (uploadsIndex >= 0 && source.includes(url.slice(uploadsIndex))) return false;
+    return true;
+  });
 }
 
 export function htmlContainsInlineImage(html) {

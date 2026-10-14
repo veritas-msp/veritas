@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
-import EquipmentNotesPanel from "./EquipmentNotesPanel";
 import styles from "./EquipmentDetailAside.module.css";
 
 function SidebarSectionHeader({
@@ -85,7 +84,9 @@ export default function EquipmentDetailAside({
   maintenanceReason: _maintenanceReason = "",
   maintenanceUntilLabel: _maintenanceUntilLabel = "",
   onAlerts,
-  showAlerts = false
+  showAlerts = false,
+  variant = "full",
+  fill = false
 }) {
   const s = enterpriseDetailStyles;
   const aside = copy.aside || {};
@@ -249,113 +250,131 @@ export default function EquipmentDetailAside({
           : null
       ].filter(Boolean);
 
+  const quickActionsCard = (
+    <section
+      className={`${s.quickActionsCard} ${fill || variant === "quickActionsOnly" ? styles.quickActionsCardFill : ""}`.trim()}
+      data-guide="equipment-quick-actions"
+      aria-label={aside.actionsTitle || "Actions rapides"}
+    >
+      <h3 className={s.quickActionsTitle}>{aside.actionsTitle || "Actions rapides"}</h3>
+      <ul className={`${s.quickActionsList} ${fill || variant === "quickActionsOnly" ? styles.quickActionsListFill : ""}`.trim()}>
+        {visibleActions.map(action => (
+          <li key={action.key}>
+            <button
+              type="button"
+              className={s.quickActionItem}
+              onClick={action.onClick}
+              disabled={action.disabled}
+              aria-pressed={action.pressed}
+            >
+              <span className={s.quickActionIcon} aria-hidden>
+                <Icon icon={action.icon} />
+              </span>
+              <span className={s.quickActionLabel}>{action.label}</span>
+              <Icon icon="mdi:chevron-right" className={s.quickActionChevron} aria-hidden />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {hasSecondary ? (
+        <button
+          type="button"
+          className={s.quickActionsSeeAll}
+          onClick={() => setActionsExpanded(prev => !prev)}
+        >
+          {aside.seeAll || "Voir toutes les actions"}
+          <Icon icon={actionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
+        </button>
+      ) : null}
+    </section>
+  );
+
+  const associatedPanel = associatedItems.length ? (
+    <aside className={`${s.asidePanel} ${styles.asidePanelFill}`.trim()}>
+      <div className={`${s.rightSidebarContent} ${styles.asideContentFill}`.trim()}>
+        <section className={`${s.sidebarSection} ${styles.asideSectionFixed}`.trim()} data-guide="equipment-sidebar-associated">
+          <SidebarSectionHeader
+            title={aside.assocTitle || "Équipements associés"}
+            icon="mdi:lan-connect"
+            count={associatedItems.length}
+            expanded={assocExpanded}
+            onToggle={() => setAssocExpanded(prev => !prev)}
+            controlsId="equipment-sidebar-associated"
+            panelStyles={s}
+          />
+          {assocExpanded ? (
+            <div className={s.sidebarBody} id="equipment-sidebar-associated">
+              <ul className={s.sidebarContactsList}>
+                {associatedItems.map(item => {
+                  const body = (
+                    <>
+                      <div className={s.sidebarContactAvatar} aria-hidden>
+                        <Icon icon={item.icon} />
+                      </div>
+                      <div className={s.sidebarContactBody}>
+                        <div className={s.sidebarContactTop}>
+                          <div className={s.sidebarContactIdentity}>
+                            <span className={s.sidebarContactName}>{item.title}</span>
+                            {item.subtitle ? (
+                              <span className={s.sidebarContactRole}>{item.subtitle}</span>
+                            ) : null}
+                          </div>
+                          <span
+                            className={`${styles.assocStatus} ${styles[`assocStatus_${item.status || "ok"}`] || ""}`.trim()}
+                          >
+                            {item.status === "warn"
+                              ? aside.statusWarn || "Warn"
+                              : item.status === "down"
+                                ? aside.statusDown || "KO"
+                                : aside.statusOk || "OK"}
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                  return (
+                    <li key={item.key}>
+                      {item.onClick ? (
+                        <button type="button" className={s.sidebarContactItem} onClick={item.onClick}>
+                          {body}
+                        </button>
+                      ) : (
+                        <div className={`${s.sidebarContactItem} ${styles.assocStatic}`.trim()}>
+                          {body}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </aside>
+  ) : null;
+
+  if (variant === "quickActionsOnly") {
+    return (
+      <div className={`${s.asideStack} ${fill ? styles.asideStackFill : ""}`.trim()}>
+        {quickActionsCard}
+      </div>
+    );
+  }
+
+  if (variant === "associatedAndNotes" || variant === "associatedOnly") {
+    if (!associatedPanel) return null;
+    return (
+      <div className={`${s.asideStack} ${fill ? styles.asideStackFill : ""}`.trim()}>
+        {associatedPanel}
+      </div>
+    );
+  }
+
   return (
     <div className={s.asideStack}>
-      <section
-        className={s.quickActionsCard}
-        data-guide="equipment-quick-actions"
-        aria-label={aside.actionsTitle || "Actions rapides"}
-      >
-        <h3 className={s.quickActionsTitle}>{aside.actionsTitle || "Actions rapides"}</h3>
-        <ul className={s.quickActionsList}>
-          {visibleActions.map(action => (
-            <li key={action.key}>
-              <button
-                type="button"
-                className={s.quickActionItem}
-                onClick={action.onClick}
-                disabled={action.disabled}
-                aria-pressed={action.pressed}
-              >
-                <span className={s.quickActionIcon} aria-hidden>
-                  <Icon icon={action.icon} />
-                </span>
-                <span className={s.quickActionLabel}>{action.label}</span>
-                <Icon icon="mdi:chevron-right" className={s.quickActionChevron} aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
-        {hasSecondary ? (
-          <button
-            type="button"
-            className={s.quickActionsSeeAll}
-            onClick={() => setActionsExpanded(prev => !prev)}
-          >
-            {aside.seeAll || "Voir toutes les actions"}
-            <Icon icon={actionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
-          </button>
-        ) : null}
-      </section>
-
-      <aside className={`${s.asidePanel} ${styles.asidePanelFill}`.trim()}>
-        <div className={`${s.rightSidebarContent} ${styles.asideContentFill}`.trim()}>
-          {associatedItems.length ? (
-            <section className={`${s.sidebarSection} ${styles.asideSectionFixed}`.trim()} data-guide="equipment-sidebar-associated">
-              <SidebarSectionHeader
-                title={aside.assocTitle || "Équipements associés"}
-                icon="mdi:lan-connect"
-                count={associatedItems.length}
-                expanded={assocExpanded}
-                onToggle={() => setAssocExpanded(prev => !prev)}
-                controlsId="equipment-sidebar-associated"
-                panelStyles={s}
-              />
-              {assocExpanded ? (
-                <div className={s.sidebarBody} id="equipment-sidebar-associated">
-                  <ul className={s.sidebarContactsList}>
-                    {associatedItems.map(item => {
-                      const body = (
-                        <>
-                          <div className={s.sidebarContactAvatar} aria-hidden>
-                            <Icon icon={item.icon} />
-                          </div>
-                          <div className={s.sidebarContactBody}>
-                            <div className={s.sidebarContactTop}>
-                              <div className={s.sidebarContactIdentity}>
-                                <span className={s.sidebarContactName}>{item.title}</span>
-                                {item.subtitle ? (
-                                  <span className={s.sidebarContactRole}>{item.subtitle}</span>
-                                ) : null}
-                              </div>
-                              <span
-                                className={`${styles.assocStatus} ${styles[`assocStatus_${item.status || "ok"}`] || ""}`.trim()}
-                              >
-                                {item.status === "warn"
-                                  ? aside.statusWarn || "Warn"
-                                  : item.status === "down"
-                                    ? aside.statusDown || "KO"
-                                    : aside.statusOk || "OK"}
-                              </span>
-                            </div>
-                          </div>
-                        </>
-                      );
-                      return (
-                        <li key={item.key}>
-                          {item.onClick ? (
-                            <button type="button" className={s.sidebarContactItem} onClick={item.onClick}>
-                              {body}
-                            </button>
-                          ) : (
-                            <div className={`${s.sidebarContactItem} ${styles.assocStatic}`.trim()}>
-                              {body}
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
-
-          <div className={styles.notesFill}>
-            <EquipmentNotesPanel equipment={equipment} variant="sidebar" defaultExpanded />
-          </div>
-        </div>
-      </aside>
+      {quickActionsCard}
+      {associatedPanel}
     </div>
   );
 }

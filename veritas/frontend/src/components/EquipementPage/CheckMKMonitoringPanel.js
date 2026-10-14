@@ -335,7 +335,7 @@ export default function CheckMKMonitoringPanel({
 
   if (!checkmkMapping?.checkmk_host_name) {
     return (
-      <section className={panelClass}>
+      <section className={`${panelClass} ${styles.panelTabEmpty}`.trim()}>
         <EquipmentEmptyState
           icon="mdi:radar"
           message="Mappez CheckMK pour afficher la supervision"
@@ -371,7 +371,7 @@ export default function CheckMKMonitoringPanel({
 
   if (!checkmkData) {
     return (
-      <section className={panelClass}>
+      <section className={`${panelClass} ${styles.panelTabEmpty}`.trim()}>
         <EquipmentEmptyState
           icon="mdi:radar"
           message="Aucune donnée CheckMK disponible"

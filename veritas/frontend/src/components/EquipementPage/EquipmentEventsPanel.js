@@ -56,7 +56,11 @@ export default function EquipmentEventsPanel({
       minute: "2-digit"
     });
   };
-  return <section className={enterpriseDetailStyles.panel}>
+
+  const isEmpty = !loading && feedItems.length === 0;
+
+  return (
+    <section className={enterpriseDetailStyles.panel}>
       <header className={enterpriseDetailStyles.panelHeader}>
         <div className={enterpriseDetailStyles.panelHeaderMain}>
           <h2 className={enterpriseDetailStyles.panelTitle}>{copy.events.title}</h2>
@@ -64,15 +68,32 @@ export default function EquipmentEventsPanel({
       </header>
 
       <div className={`${enterpriseDetailStyles.panelBody} ${styles.eventsPanelBody}`.trim()}>
-        {!hideDateFilter ? <EquipmentDateRangeFilter copy={copy} preset={datePreset} onPresetChange={onDatePresetChange} customStart={customStart} customEnd={customEnd} onCustomStartChange={onCustomStartChange} onCustomEndChange={onCustomEndChange} /> : null}
-
-        {loading ? <div className={styles.loadingState}>{copy.loading}</div> : feedItems.length === 0 ? (
-          <EquipmentEmptyState
-            icon="mdi:calendar-outline"
-            message={copy.events.emptyTitle || "Aucun événement ni ticket"}
-            className={styles.eventsEmptyFill}
+        {!hideDateFilter ? (
+          <EquipmentDateRangeFilter
+            copy={copy}
+            preset={datePreset}
+            onPresetChange={onDatePresetChange}
+            customStart={customStart}
+            customEnd={customEnd}
+            onCustomStartChange={onCustomStartChange}
+            onCustomEndChange={onCustomEndChange}
           />
-        ) : <div className={enterpriseDetailStyles.dataTableWrapper}>
+        ) : null}
+
+        {loading ? (
+          <div className={styles.loadingState}>{copy.loading}</div>
+        ) : isEmpty ? (
+          <EquipmentEmptyState
+            className={styles.eventsEmptyFill}
+            icon="mdi:calendar-outline"
+            title={copy.events.emptyTitle || "Aucun événement ni ticket"}
+            subtitle={
+              copy.events.emptyHint ||
+              "Planifiez une intervention ou consultez les tickets liés à ce matériel sur la période choisie."
+            }
+          />
+        ) : (
+          <div className={enterpriseDetailStyles.dataTableWrapper}>
             <table className={enterpriseDetailStyles.dataTable}>
               <thead>
                 <tr>
@@ -83,13 +104,23 @@ export default function EquipmentEventsPanel({
                 </tr>
               </thead>
               <tbody>
-                {feedItems.map(item => <tr key={item.id} className={styles.activityRowClickable} onClick={() => {
-              if (item.kind === "ticket") onOpenTicket?.(item.raw);else onOpenPlanningEvent?.(item.raw);
-            }} onKeyDown={e => {
-              if (e.key !== "Enter" && e.key !== " ") return;
-              e.preventDefault();
-              if (item.kind === "ticket") onOpenTicket?.(item.raw);else onOpenPlanningEvent?.(item.raw);
-            }} tabIndex={0} role="button">
+                {feedItems.map(item => (
+                  <tr
+                    key={item.id}
+                    className={styles.activityRowClickable}
+                    onClick={() => {
+                      if (item.kind === "ticket") onOpenTicket?.(item.raw);
+                      else onOpenPlanningEvent?.(item.raw);
+                    }}
+                    onKeyDown={e => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      if (item.kind === "ticket") onOpenTicket?.(item.raw);
+                      else onOpenPlanningEvent?.(item.raw);
+                    }}
+                    tabIndex={0}
+                    role="button"
+                  >
                     <td>
                       <ActivityKindBadge kind={item.kind} copy={copy} />
                     </td>
@@ -100,13 +131,20 @@ export default function EquipmentEventsPanel({
                       </div>
                     </td>
                     <td>
-                      {item.kind === "ticket" ? <TicketStatusBadge status={item.status} copy={copy} /> : <span className={styles.activityMetaMuted}>{item.subtitle || "-"}</span>}
+                      {item.kind === "ticket" ? (
+                        <TicketStatusBadge status={item.status} copy={copy} />
+                      ) : (
+                        <span className={styles.activityMetaMuted}>{item.subtitle || "-"}</span>
+                      )}
                     </td>
                     <td className={styles.eventMetaCell}>{formatDate(item.date)}</td>
-                  </tr>)}
+                  </tr>
+                ))}
               </tbody>
             </table>
-          </div>}
+          </div>
+        )}
       </div>
-    </section>;
+    </section>
+  );
 }

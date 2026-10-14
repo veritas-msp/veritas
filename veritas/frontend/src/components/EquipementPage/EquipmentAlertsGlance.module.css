@@ -11,8 +11,12 @@
   overflow: hidden;
 }
 
-.rootCompact .header {
-  border-bottom: none;
+.emptyFill {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  align-self: stretch;
 }
 
 .emptyInline {

@@ -3045,26 +3045,6 @@
   }
 }
 
-.commentInternalDot {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.4rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1rem;
-  height: 1rem;
-  color: var(--msp-accent, #2b5fab);
-  font-size: 0.75rem;
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.commentItemOutbound .commentInternalDot {
-  right: auto;
-  left: 0.4rem;
-}
-
 .commentHeaderMain {
   display: flex;
   align-items: center;

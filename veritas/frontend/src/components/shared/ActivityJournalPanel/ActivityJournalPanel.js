@@ -144,20 +144,6 @@ export default function ActivityJournalPanel({
           </h2>
           <p className={styles.subtitle}>{copy.subtitle}</p>
         </div>
-        {typeof purgeLogs === "function" ? (
-          <div className={styles.headerActions}>
-            <button
-              type="button"
-              className={styles.purgeBtn}
-              onClick={() => setPurgeOpen(true)}
-              disabled={loading || purging || total === 0}
-              title={copy.purgeTitle}
-            >
-              <Icon icon="mdi:delete-sweep" aria-hidden />
-              {copy.purge}
-            </button>
-          </div>
-        ) : null}
       </header>
 
       <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
@@ -183,6 +169,18 @@ export default function ActivityJournalPanel({
               </button>
             ) : null}
           </div>
+          {typeof purgeLogs === "function" ? (
+            <button
+              type="button"
+              className={styles.purgeBtn}
+              onClick={() => setPurgeOpen(true)}
+              disabled={loading || purging || total === 0}
+              title={copy.purgeTitle}
+            >
+              <Icon icon="mdi:delete-sweep" aria-hidden />
+              {copy.purge}
+            </button>
+          ) : null}
         </div>
 
         <div className={styles.tableFill}>

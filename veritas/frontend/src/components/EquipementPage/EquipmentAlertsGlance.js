@@ -106,23 +106,45 @@ export default function EquipmentAlertsGlance({
 
   const isEmpty = !loading && !error && alerts.length === 0;
 
-  return <section className={`${styles.root} ${isEmpty ? styles.rootCompact : ""}`.trim()} aria-label={glance.title}>
+  if (error) {
+    return (
+      <EquipmentEmptyState
+        className={styles.emptyFill}
+        icon="mdi:alert-circle-outline"
+        title={glance.title}
+        subtitle={glance.error || error}
+      />
+    );
+  }
+
+  if (isEmpty) {
+    return (
+      <EquipmentEmptyState
+        className={styles.emptyFill}
+        icon="mdi:bell-off-outline"
+        title={glance.emptyTitle || glance.title}
+        subtitle={glance.emptyHint || glance.empty}
+      />
+    );
+  }
+
+  return (
+    <section className={styles.root} aria-label={glance.title}>
       <header className={styles.header}>
         <div className={styles.headerText}>
           <h2 className={styles.title}>
             <Icon icon="mdi:history" className={styles.titleIcon} aria-hidden />
             {glance.title}
           </h2>
-          {!isEmpty ? <p className={styles.subtitle}>{glance.subtitle}</p> : null}
+          <p className={styles.subtitle}>{glance.subtitle}</p>
         </div>
-        {!isEmpty && !loading && !error ? <span className={styles.count}>{alerts.length}</span> : null}
+        {!loading ? <span className={styles.count}>{alerts.length}</span> : null}
       </header>
 
-      {loading ? <p className={styles.state}>{glance.loading}</p> : error ? (
-        <EquipmentEmptyState icon="mdi:alert-circle-outline" message={glance.error || error} />
-      ) : alerts.length === 0 ? (
-        <EquipmentEmptyState icon="mdi:bell-off-outline" message={glance.empty} />
-      ) : <div className={styles.tableWrap}>
+      {loading ? (
+        <p className={styles.state}>{glance.loading}</p>
+      ) : (
+        <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -134,13 +156,14 @@ export default function EquipmentAlertsGlance({
             </thead>
             <tbody>
               {alerts.map(alert => {
-            const severity = String(alert.severity || "info").toLowerCase();
-            const statusKey = String(alert.status || "").toLowerCase();
-            const title = resolveAlertTitle(alert, glance, criteriaCopy);
-            const typeLabel = resolveTypeLabel(alert, glance, criteriaCopy);
-            const statusLabel = glance.status?.[statusKey] || alert.status || "—";
-            const severityLabel = glance.severity?.[severity] || severity;
-            return <tr key={alert.id} className={styles[`sev_${severity}`] || ""}>
+                const severity = String(alert.severity || "info").toLowerCase();
+                const statusKey = String(alert.status || "").toLowerCase();
+                const title = resolveAlertTitle(alert, glance, criteriaCopy);
+                const typeLabel = resolveTypeLabel(alert, glance, criteriaCopy);
+                const statusLabel = glance.status?.[statusKey] || alert.status || "—";
+                const severityLabel = glance.severity?.[severity] || severity;
+                return (
+                  <tr key={alert.id} className={styles[`sev_${severity}`] || ""}>
                     <td className={styles.whenCell}>
                       <time dateTime={alert.at || undefined} title={alert.at ? new Date(alert.at).toLocaleString() : undefined}>
                         {formatEquipmentDetailRelative(alert.at, locale)}
@@ -159,10 +182,13 @@ export default function EquipmentAlertsGlance({
                     <td>
                       <span className={`${styles.chip} ${styles[`status_${statusKey}`] || ""}`}>{statusLabel}</span>
                     </td>
-                  </tr>;
-          })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>}
-    </section>;
+        </div>
+      )}
+    </section>
+  );
 }

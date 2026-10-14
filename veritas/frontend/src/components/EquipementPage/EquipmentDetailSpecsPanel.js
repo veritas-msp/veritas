@@ -149,6 +149,21 @@ function SiteLocationVignette({
       </div>
     </div>;
 }
+function sectionMatchesFilter(sectionId, filter) {
+  if (!filter || filter === "all") return true;
+  const id = String(sectionId || "");
+  if (filter === "lifecycle") {
+    return id === "rmm-lifecycle" || id === "billingInstallation";
+  }
+  if (filter === "identity") {
+    return id === "rmm-identity" || id === "identity" || id === "technique";
+  }
+  if (filter === "rest") {
+    return !["rmm-lifecycle", "rmm-identity", "billingInstallation", "identity", "technique", "notes"].includes(id);
+  }
+  return true;
+}
+
 export default function EquipmentDetailSpecsPanel({
   equipment,
   formData,
@@ -161,6 +176,8 @@ export default function EquipmentDetailSpecsPanel({
   compact = false,
   bare = false,
   hideResources = false,
+  sectionFilter = "all",
+  column = false,
   title
 }) {
   const locale = useAppLocale();
@@ -478,9 +495,18 @@ export default function EquipmentDetailSpecsPanel({
       </section>;
   }
 
-  const cardsSource = rmmManagedComputer && (bare || compact) ? rmmGroupedSections : sections;
+  const cardsSource = (rmmManagedComputer && (bare || compact) ? rmmGroupedSections : sections)
+    .filter(section => sectionMatchesFilter(section.id, sectionFilter));
+  const showResources = rmmManagedComputer && bare && !hideResources && (sectionFilter === "all" || sectionFilter === "rest");
+  const gridClass = column
+    ? styles.sectionsColumn
+    : `${bare ? styles.sectionsFill : ""} ${hideChrome && !bare ? "" : sectionsGridClass} ${bare ? sectionsGridClass : ""}`.trim();
 
-  return <section className={`${styles.panel} ${hideChrome ? styles.panelCompact : ""} ${bare ? styles.panelBare : ""}`.trim()}>
+  if (!cardsSource.length && !showResources) {
+    return null;
+  }
+
+  return <section className={`${styles.panel} ${hideChrome ? styles.panelCompact : ""} ${bare ? styles.panelBare : ""} ${column ? styles.panelColumn : ""}`.trim()}>
       {!hideChrome ? <header className={styles.panelHeader}>
           <div>
             <h2 className={styles.panelTitle}>
@@ -493,7 +519,7 @@ export default function EquipmentDetailSpecsPanel({
           </div>
         </header> : null}
 
-      <div className={`${styles.sections} ${hideChrome ? styles.sectionsCompact : ""} ${bare ? styles.sectionsFill : ""} ${hideChrome && !bare ? "" : sectionsGridClass} ${bare ? sectionsGridClass : ""}`.trim()}>
+      <div className={`${styles.sections} ${hideChrome ? styles.sectionsCompact : ""} ${gridClass}`.trim()}>
         {cardsSource.map(section => {
         const isInternetLink = section.id === "internetLink";
         const hasDebitGauges = isInternetLink && (formData?.debitDownload || formData?.debitUpload || formData?.debit);
@@ -531,7 +557,7 @@ export default function EquipmentDetailSpecsPanel({
                 </div> : null}
             </article>;
       })}
-        {rmmManagedComputer && bare && !hideResources ? <RmmHardwareOverview equipment={equipment} variant="resources" /> : null}
+        {showResources ? <RmmHardwareOverview equipment={equipment} variant="resources" /> : null}
       </div>
     </section>;
 }

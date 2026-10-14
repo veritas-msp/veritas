@@ -327,14 +327,16 @@ export default function EquipmentDetailPage({
   );
   const equipmentMkType = normalizeCheckMKEquipmentType(equipment?.type);
   const hasCheckmkHost = Boolean(resolvedCheckmkMapping?.checkmk_host_name);
-  // Synthèse = CheckMK et/ou RMM : inutile si les deux sont absents (tout vide).
-  const showSyntheseTab = hasCheckmkHost || rmmManaged;
+  // Synthèse RMM : uniquement si l’agent RMM est présent.
+  const showSyntheseTab = Boolean(rmmManaged);
   // Onglet Supervision uniquement s'il y a un mapping CheckMK (sinon tout est vide).
   const showSupervisionTab = Boolean(
     checkmkIntegrationEnabled &&
       equipmentMkType !== "Internet" &&
       hasCheckmkHost
   );
+  const showRmmTabGroup = showSyntheseTab || showRmmOperationsTab || showRmmPeripheralsTab;
+  const showSupervisionTabGroup = showSupervisionTab;
   const rmmMetricsAgent = useMemo(() => showRmmMetricsTab ? buildRmmAgentRowFromEquipment(equipment) : null, [equipment, showRmmMetricsTab]);
   useEffect(() => {
     if (!equipment?.id) return;
@@ -1989,6 +1991,9 @@ export default function EquipmentDetailPage({
   const heroSite = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
   const heroSiteLabel = getSiteDisplayName(heroSite) || formData.location || equipment?.location || null;
   const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
+  const deviceNote = String(formData.commentaire || equipment?.commentaire || "").trim();
+  const deviceNotePreview =
+    deviceNote.length > 96 ? `${deviceNote.slice(0, 96).trimEnd()}…` : deviceNote;
   const heroFacts = [
     typeDisplayLabel
       ? { key: "family", icon: heroIcon || "mdi:devices", label: copy.hero.factType || copy.hero.factFamily || "Type", value: typeDisplayLabel }
@@ -2016,7 +2021,7 @@ export default function EquipmentDetailPage({
                 className={`${enterpriseDetailStyles.heroCover} ${inMaintenance ? styles.heroCoverMaintenance : ""}`.trim()}
                 aria-hidden
               />
-              <div className={enterpriseDetailStyles.heroIdentityRow}>
+              <div className={`${enterpriseDetailStyles.heroIdentityRow} ${styles.heroIdentityRowEquip}`.trim()}>
                 <div className={enterpriseDetailStyles.heroMain}>
                   <span className={`${enterpriseDetailStyles.heroBrandIcon} ${inMaintenance ? styles.heroBrandIconMaintenance : ""}`.trim()} aria-hidden>
                     <Icon icon={inMaintenance ? "mdi:traffic-cone" : heroIcon} width={30} height={30} />
@@ -2118,6 +2123,31 @@ export default function EquipmentDetailPage({
                     {showRmmHeroStatus ? <RmmCollectionStatusLine equipment={equipmentWithRmmLive} heartbeatIntervalMinutes={rmmHeartbeatMinutes} locale={locale} copy={copy} compact className={enterpriseDetailStyles.heroMetaItemRmm} /> : null}
                   </div>
                 </div>
+                {deviceNote ? (
+                  <div className={styles.heroRightCluster}>
+                    <SmartTooltip
+                      content={
+                        <div className={styles.heroNoteTooltip}>
+                          <strong className={styles.heroNoteTooltipTitle}>{copy.hero.factNote || "Note"}</strong>
+                          <p className={styles.heroNoteTooltipBody}>{deviceNote}</p>
+                        </div>
+                      }
+                      data-tooltip-position="bottom-end"
+                    >
+                      <div
+                        className={styles.heroNoteChip}
+                        tabIndex={0}
+                        aria-label={`${copy.hero.factNote || "Note"}: ${deviceNote}`}
+                      >
+                        <Icon icon="mdi:note-text-outline" className={styles.heroNoteIcon} aria-hidden />
+                        <div className={styles.heroNoteText}>
+                          <span className={styles.heroNoteLabel}>{copy.hero.factNote || "Note"}</span>
+                          <span className={styles.heroNotePreview}>{deviceNotePreview}</span>
+                        </div>
+                      </div>
+                    </SmartTooltip>
+                  </div>
+                ) : null}
               </div>
 
             {heroFacts.length ? <div
@@ -2141,43 +2171,63 @@ export default function EquipmentDetailPage({
       <div className={`${enterpriseDetailStyles.pageBody} ${enterpriseDetailStyles.pageBodyFill} ${styles.shell}`.trim()}>
         <div className={`${enterpriseDetailStyles.pageGrid} ${styles.pageGridEquip}`.trim()}>
         <div className={`${enterpriseDetailStyles.mainColumn} ${enterpriseDetailStyles.mainColumnEquipmentFill} ${styles.mainColumnEquip}`.trim()}>
-        <nav className={enterpriseDetailStyles.heroTabBar} role="tablist" aria-label={copy.tabs.aria}>
-          {showSyntheseTab ? (
-            <button type="button" role="tab" aria-selected={rightPanelTab === "synthese"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "synthese" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("synthese")}>
-              <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.synthese || "Synthèse"}</span>
+        <nav className={`${enterpriseDetailStyles.heroTabBar} ${styles.heroTabBarGrouped}`.trim()} role="tablist" aria-label={copy.tabs.aria}>
+          <div className={styles.heroTabGroup} role="presentation">
+            <button type="button" role="tab" aria-selected={rightPanelTab === "fiche"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "fiche" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("fiche")}>
+              <Icon icon="mdi:clipboard-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.fiche || "Informations matériel"}</span>
             </button>
-          ) : null}
-          <button type="button" role="tab" aria-selected={rightPanelTab === "fiche"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "fiche" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("fiche")}>
-            <Icon icon="mdi:clipboard-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.fiche || "Informations matériel"}</span>
-          </button>
-          {showSupervisionTab ? (
-            <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
-              <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.supervision}</span>
+            <button type="button" role="tab" aria-selected={rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => openActivityTab()}>
+              <Icon icon="mdi:chart-timeline-variant" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.activity}</span>
             </button>
+            <button type="button" role="tab" aria-selected={rightPanelTab === "documents"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "documents" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("documents")}>
+              <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.documents}</span>
+            </button>
+            <button type="button" role="tab" aria-selected={rightPanelTab === "logs"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "logs" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("logs")}>
+              <Icon icon="mdi:history" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.logs}</span>
+            </button>
+          </div>
+
+          {showRmmTabGroup ? (
+            <>
+              <span className={styles.heroTabSep} aria-hidden />
+              <div className={styles.heroTabGroup} role="presentation" data-tab-group="rmm">
+                {showSyntheseTab ? (
+                  <button type="button" role="tab" aria-selected={rightPanelTab === "synthese"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "synthese" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("synthese")}>
+                    <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+                    <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.synthese || "Synthèse RMM"}</span>
+                  </button>
+                ) : null}
+                {showRmmOperationsTab ? (
+                  <button type="button" role="tab" aria-selected={rightPanelTab === "operations"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "operations" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("operations")}>
+                    <Icon icon="mdi:shield-lock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+                    <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.cybersecurity || copy.tabs.system}</span>
+                  </button>
+                ) : null}
+                {showRmmPeripheralsTab ? (
+                  <button type="button" role="tab" aria-selected={rightPanelTab === "peripherals"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "peripherals" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("peripherals")}>
+                    <Icon icon="mdi:package-variant-closed" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+                    <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.inventory || copy.tabs.peripherals}</span>
+                  </button>
+                ) : null}
+              </div>
+            </>
           ) : null}
-          <button type="button" role="tab" aria-selected={rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => openActivityTab()}>
-            <Icon icon="mdi:chart-timeline-variant" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.activity}</span>
-          </button>
-          <button type="button" role="tab" aria-selected={rightPanelTab === "documents"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "documents" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("documents")}>
-            <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.documents}</span>
-          </button>
-          <button type="button" role="tab" aria-selected={rightPanelTab === "logs"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "logs" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("logs")}>
-            <Icon icon="mdi:history" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-            <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.logs}</span>
-          </button>
-          {showRmmOperationsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "operations"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "operations" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("operations")}>
-              <Icon icon="mdi:shield-lock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.cybersecurity || copy.tabs.system}</span>
-            </button> : null}
-          {showRmmPeripheralsTab ? <button type="button" role="tab" aria-selected={rightPanelTab === "peripherals"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "peripherals" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("peripherals")}>
-              <Icon icon="mdi:package-variant-closed" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.inventory || copy.tabs.peripherals}</span>
-            </button> : null}
+
+          {showSupervisionTabGroup ? (
+            <>
+              <span className={styles.heroTabSep} aria-hidden />
+              <div className={styles.heroTabGroup} role="presentation" data-tab-group="supervision">
+                <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
+                  <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
+                  <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.supervision}</span>
+                </button>
+              </div>
+            </>
+          ) : null}
         </nav>
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
@@ -2193,7 +2243,7 @@ export default function EquipmentDetailPage({
                     maintenanceHistoryKey={maintenanceHistoryKey}
                     showRmmTab={rmmManaged}
                     showSupervisionTab={hasCheckmkHost}
-                    forcedPane={hasCheckmkHost || !rmmManaged ? "supervision" : "rmm"}
+                    forcedPane={rmmManaged ? "rmm" : "supervision"}
                     hidePaneSwitch
                   />
                 </div>
@@ -2201,29 +2251,62 @@ export default function EquipmentDetailPage({
             ) : null}
 
           {rightPanelTab === "fiche" ? (
-              <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
-                <div className={styles.dashboardMain}>
-                  <div className={styles.ficheOnlyStack}>
-                    <EquipmentDetailSpecsPanel bare equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} />
-                  </div>
+              <div className={styles.ficheLayout}>
+                <div
+                  className={`${styles.ficheMainRow} ${showRmmHeroStatus && rmmDeviceHealth ? styles.ficheMainRowWithScore : ""}`.trim()}
+                >
+                  <EquipmentDetailSpecsPanel
+                    bare
+                    column
+                    hideResources
+                    sectionFilter="lifecycle"
+                    equipment={equipment}
+                    formData={formData}
+                    clientSites={clientSites}
+                    clientSsids={clientSsids}
+                    peerFirewalls={peerFirewalls}
+                    peerServers={peerServers}
+                    peerStorage={peerStorage}
+                    onOpenEquipment={openLinkedEquipment}
+                  />
+                  {showRmmHeroStatus && rmmDeviceHealth ? (
+                    <div className={styles.ficheScoreCol}>
+                      <ScoreAside
+                        health={rmmDeviceHealth}
+                        copy={{
+                          scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+                          breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
+                          breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
+                          breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+                          statusOk: copy.rmm.overview?.scoreStatusOk,
+                          statusBad: copy.rmm.overview?.scoreStatusBad,
+                          statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+                          statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+                          statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+                          checks: copy.rmm.overview?.scoreChecks,
+                          formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                            points: String(points)
+                          })
+                        }}
+                      />
+                    </div>
+                  ) : null}
                 </div>
-                {showRmmHeroStatus && rmmDeviceHealth ? <div className={styles.dashboardAside}>
-                  <ScoreAside health={rmmDeviceHealth} copy={{
-                scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
-                breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
-                breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
-                breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
-                statusOk: copy.rmm.overview?.scoreStatusOk,
-                statusBad: copy.rmm.overview?.scoreStatusBad,
-                statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
-                statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
-                statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
-                checks: copy.rmm.overview?.scoreChecks,
-                formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
-                  points: String(points)
-                })
-              }} />
-                </div> : null}
+                <div className={styles.ficheSecondaryRow}>
+                  <EquipmentDetailSpecsPanel
+                    bare
+                    hideResources={false}
+                    sectionFilter="rest"
+                    equipment={equipment}
+                    formData={formData}
+                    clientSites={clientSites}
+                    clientSsids={clientSsids}
+                    peerFirewalls={peerFirewalls}
+                    peerServers={peerServers}
+                    peerStorage={peerStorage}
+                    onOpenEquipment={openLinkedEquipment}
+                  />
+                </div>
               </div>
             ) : null}
 
@@ -2260,7 +2343,8 @@ export default function EquipmentDetailPage({
                   ) : (
                     <EquipmentEmptyState
                       icon="mdi:wrench-clock"
-                      message={copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}
+                      title={copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}
+                      subtitle={copy.maintenanceHistory?.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
                     />
                   )}
                 </div>
@@ -2300,7 +2384,6 @@ export default function EquipmentDetailPage({
                     <Icon icon="mdi:file-document-multiple-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
                     {copy.tabs.documents}
                   </h2>
-                  <p className={styles.panelSubtitleInline}>{copy.documents.subtitle}</p>
                 </div>
               </header>
               <div className={enterpriseDetailStyles.panelBody}>
@@ -2341,12 +2424,6 @@ export default function EquipmentDetailPage({
                     {copy.logs.title}
                   </h2>
                 </div>
-                <div className={styles.logsHeaderActions}>
-                  <button type="button" className={styles.logsPurgeBtn} onClick={() => setPurgeLogsConfirmOpen(true)} disabled={loadingLogs || purgingLogs || logsTotal === 0} title={copy.logs.purgeTitle}>
-                    <Icon icon="mdi:delete-sweep" aria-hidden />
-                    {copy.logs.purge}
-                  </button>
-                </div>
               </header>
               <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
                 <div className={styles.logsToolbar}>
@@ -2362,6 +2439,10 @@ export default function EquipmentDetailPage({
                         {option.label}
                       </option>)}
                   </select>
+                  <button type="button" className={styles.logsPurgeBtn} onClick={() => setPurgeLogsConfirmOpen(true)} disabled={loadingLogs || purgingLogs || logsTotal === 0} title={copy.logs.purgeTitle}>
+                    <Icon icon="mdi:delete-sweep" aria-hidden />
+                    {copy.logs.purge}
+                  </button>
                 </div>
 
                 <div className={styles.logsTableFill}>

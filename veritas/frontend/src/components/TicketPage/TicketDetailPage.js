@@ -32,8 +32,8 @@ import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
 import { addTicketAssignee, addTicketAssigneeTeam, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, createTicketSideConversation, deleteTicket, fetchTicketCategories, fetchTicket, fetchTicketSideConversations, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketAssigneeTeam, removeTicketWatcher, replyTicketSideConversation, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketSideConversationStatus, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
 import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi, suggestTicketPriorityAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
-import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
-import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, htmlContainsInlineImage } from "../../utils/ticketEditorImages";
+import { decodeHtmlEntities, normalizeTicketCommentContent, sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
+import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, filterAttachmentsNotInlinedInHtml, htmlContainsInlineImage, rewriteInlineUploadPlaceholders } from "../../utils/ticketEditorImages";
 import { contentLooksLikeHtml, isIncomingEmailContent } from "../../utils/incomingEmailContent";
 import { isChatOutboundComment, isClientResponseComment } from "../../utils/ticketChatLayout";
 import IncomingEmailMessage from "./IncomingEmailMessage";
@@ -1819,7 +1819,8 @@ export default function TicketDetailPage({
     const draftFiles = mergeAttachmentFiles(attachmentFiles, extracted.files);
     const draftContentText = htmlToPlainText(extracted.html);
     if (!ticketId || !draftContentText && draftFiles.length === 0) return;
-    const draftContent = resolveTemplateVariables(extracted.html);
+    const draftContent = resolveTemplateVariables(normalizeTicketCommentContent(extracted.html));
+    const optimisticContent = resolveTemplateVariables(normalizeTicketCommentContent(draftContentRaw));
     const draftInternal = commentInternal;
     const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
     try {
@@ -1834,7 +1835,7 @@ export default function TicketDetailPage({
       _clientKey: optimisticId,
       author_name: currentUserDisplayName,
       author_user_id: currentUserId || null,
-      content: draftContent,
+      content: optimisticContent,
       is_internal: draftInternal,
       created_at: new Date().toISOString(),
       attachments: draftFiles.map((f, idx) => ({
@@ -1868,15 +1869,16 @@ export default function TicketDetailPage({
       } else {
         createdComment = await addTicketComment(ticketId, draftContent, draftInternal);
       }
+      const normalizedAttachments = Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0 ? createdComment.attachments.map(normalizeAttachment).filter(Boolean) : optimisticComment.attachments;
       const nextComment = {
         id: createdComment?.id || optimisticId,
         _clientKey: optimisticId,
         author_name: createdComment?.author_name || currentUserDisplayName,
         author_user_id: createdComment?.author_user_id || currentUserId || null,
-        content: createdComment?.content || draftContent,
+        content: rewriteInlineUploadPlaceholders(createdComment?.content || draftContent, normalizedAttachments),
         is_internal: typeof createdComment?.is_internal === "boolean" ? createdComment.is_internal : draftInternal,
         created_at: createdComment?.created_at || optimisticComment.created_at,
-        attachments: Array.isArray(createdComment?.attachments) && createdComment.attachments.length > 0 ? createdComment.attachments.map(normalizeAttachment).filter(Boolean) : optimisticComment.attachments
+        attachments: normalizedAttachments
       };
       setTicket(prev => {
         if (!prev) return prev;
@@ -1966,7 +1968,8 @@ export default function TicketDetailPage({
     }
     setSubmittingStatus(targetStatus);
     const draftInternal = commentInternal;
-    const resolvedContent = resolveTemplateVariables(extracted.html);
+    const resolvedContent = resolveTemplateVariables(normalizeTicketCommentContent(extracted.html));
+    const optimisticContent = resolveTemplateVariables(normalizeTicketCommentContent(draftContentRaw));
     const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
     const optimisticId = `pending-${Date.now()}`;
     const optimisticComment = {
@@ -1974,7 +1977,7 @@ export default function TicketDetailPage({
       _clientKey: optimisticId,
       author_name: currentUserDisplayName,
       author_user_id: currentUserId || null,
-      content: resolvedContent,
+      content: optimisticContent,
       is_internal: draftInternal,
       created_at: new Date().toISOString(),
       attachments: draftFiles.map((f, idx) => ({
@@ -2025,15 +2028,16 @@ export default function TicketDetailPage({
         creditOptions.refundSupportCredit = true;
       }
       const mappedStatus = await applyStatusWithFallback(targetStatus, creditOptions);
+      const normalizedAttachments = Array.isArray(commentResult?.attachments) && commentResult.attachments.length > 0 ? commentResult.attachments.map(normalizeAttachment).filter(Boolean) : optimisticComment.attachments;
       const nextComment = {
         id: commentResult?.id || optimisticId,
         _clientKey: optimisticId,
         author_name: commentResult?.author_name || currentUserDisplayName,
         author_user_id: commentResult?.author_user_id || currentUserId || null,
-        content: commentResult?.content || resolvedContent,
+        content: rewriteInlineUploadPlaceholders(commentResult?.content || resolvedContent, normalizedAttachments),
         is_internal: typeof commentResult?.is_internal === "boolean" ? commentResult.is_internal : draftInternal,
         created_at: commentResult?.created_at || optimisticComment.created_at,
-        attachments: Array.isArray(commentResult?.attachments) && commentResult.attachments.length > 0 ? commentResult.attachments.map(normalizeAttachment).filter(Boolean) : optimisticComment.attachments
+        attachments: normalizedAttachments
       };
       setTicket(prev => {
         if (!prev) return prev;
@@ -2081,7 +2085,7 @@ export default function TicketDetailPage({
   const openResolveModalFlow = useCallback(() => {
     const draftContentRaw = String(commentDraft || "").trim();
     const draftContentText = htmlToPlainText(draftContentRaw);
-    const hasDraft = Boolean(draftContentText) || attachmentFiles.length > 0;
+    const hasDraft = Boolean(draftContentText) || attachmentFiles.length > 0 || htmlContainsInlineImage(draftContentRaw);
     if (hasDraft) {
       try {
         copy.validateAttachmentFiles(attachmentFiles);
@@ -4072,7 +4076,7 @@ export default function TicketDetailPage({
   };
   const saveEditComment = async () => {
     if (!ticketId || !editingCommentId || savingCommentEdit) return;
-    const draftRaw = String(commentEditEditorRef.current?.innerHTML || editingCommentDraft || "").trim();
+    const draftRaw = normalizeTicketCommentContent(String(commentEditEditorRef.current?.innerHTML || editingCommentDraft || "").trim());
     const draftText = htmlToPlainText(draftRaw).trim();
     const editingComment = (ticket?.comments || []).find(comment => String(comment.id) === String(editingCommentId));
     const remainingAttachments = (editingComment?.attachments || []).filter(attachment => !isAttachmentMarkedForRemoval(attachment, editingCommentRemovedAttachmentKeys));
@@ -4211,16 +4215,19 @@ export default function TicketDetailPage({
     try {
       const pendingReply = pendingResolveReplyRef.current;
       if (pendingReply) {
-        copy.validateAttachmentFiles(pendingReply.files || []);
+        const extractedPending = extractInlineDataImagesFromHtml(String(pendingReply.content || ""));
+        const pendingFiles = mergeAttachmentFiles(pendingReply.files || [], extractedPending.files);
+        copy.validateAttachmentFiles(pendingFiles);
+        const pendingContent = resolveTemplateVariables(normalizeTicketCommentContent(extractedPending.html));
         let commentResult = null;
-        if (pendingReply.files?.length > 0) {
+        if (pendingFiles.length > 0) {
           commentResult = await addTicketCommentWithAttachments(ticketId, {
-            content: resolveTemplateVariables(pendingReply.content),
+            content: pendingContent,
             isInternal: pendingReply.internal,
-            files: pendingReply.files
+            files: pendingFiles
           });
         } else {
-          commentResult = await addTicketComment(ticketId, resolveTemplateVariables(pendingReply.content), pendingReply.internal);
+          commentResult = await addTicketComment(ticketId, pendingContent, pendingReply.internal);
         }
         notifyWhatsAppDelivery(commentResult?.whatsappDelivery, copy);
         setCommentDraft("");
@@ -4903,7 +4910,9 @@ export default function TicketDetailPage({
         __html: safeHtml
       }} />;
     }
-    const withoutLegacyAnchors = raw.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, (_match, href, label) => `${label || copy.linkFallback} (${href})`);
+    // contentEditable.innerHTML encodes ">" as "&gt;" even without tags — decode for plain-text render.
+    const plain = decodeHtmlEntities(raw);
+    const withoutLegacyAnchors = plain.replace(/<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi, (_match, href, label) => `${label || copy.linkFallback} (${href})`);
     const urlRegex = /(https?:\/\/[^\s)]+)(\)?)/g;
     const lines = withoutLegacyAnchors.split("\n");
     return lines.map((line, lineIndex) => {
@@ -5569,9 +5578,6 @@ export default function TicketDetailPage({
                     variant={comment.is_internal ? "neutral" : isOutbound ? "agent" : "client"}
                   />
                   <div className={styles.commentBubble}>
-                    {comment.is_internal ? <span className={styles.commentInternalDot} title={copy.comment.privateTitle} aria-label={copy.comment.privateTitle}>
-                        <Icon icon="mdi:lock-outline" />
-                      </span> : null}
                     <div className={styles.commentHeader}>
                       <div className={styles.commentHeaderMain}>
                         <div className={styles.commentMetaLine}>
@@ -5649,8 +5655,11 @@ export default function TicketDetailPage({
                       </div> : isResolutionProposal ? <div className={`${styles.commentBody} ${styles.commentBodyResolution}`}>
                         {renderResolutionCommentCard(comment, resolutionValidation)}
                       </div> : <div className={styles.commentBody} onClick={handleInlineImageClick}>{renderCommentBody(comment)}</div>}
-                    {!isEditingComment && Array.isArray(comment.attachments) && comment.attachments.length > 0 && !isIncomingEmailContent(comment.content) && <div className={styles.attachmentsList}>
-                        {comment.attachments.map(attachment => {
+                    {!isEditingComment && Array.isArray(comment.attachments) && comment.attachments.length > 0 && !isIncomingEmailContent(comment.content) && (() => {
+                      const visibleAttachments = filterAttachmentsNotInlinedInHtml(comment.attachments, comment.content);
+                      if (visibleAttachments.length === 0) return null;
+                      return <div className={styles.attachmentsList}>
+                        {visibleAttachments.map(attachment => {
                           const attachmentUrl = attachment.url || attachment.path;
                           if (!attachmentUrl) return null;
                           const attachmentLabel = attachment.filename || attachment.name || copy.attachmentDefault;
@@ -5666,7 +5675,8 @@ export default function TicketDetailPage({
                               {attachmentLabel}
                             </a>;
                         })}
-                      </div>}
+                      </div>;
+                    })()}
                   </div>
                 </article>;
                 })}
