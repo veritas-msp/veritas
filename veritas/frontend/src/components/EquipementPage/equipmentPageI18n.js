@@ -107,7 +107,7 @@ const PAGE_COPY = {
       systeme: "OS",
       computerType: "Type",
       domaine: "Domaine",
-      agentStatus: "Agent RMM",
+      agentStatus: "RMM",
       role: "Rôles",
       raid: "RAID",
       nbDisquesActuels: "NB disque actuels",
@@ -119,6 +119,8 @@ const PAGE_COPY = {
       ha: "HA",
       activeStatus: "Actif"
     },
+    rmmAgentInstalled: "Agent RMM installé",
+    rmmAgentMissing: "Pas d'agent RMM",
     ha: {
       primary: "Primaire",
       secondary: "Secondaire"
@@ -170,7 +172,7 @@ const PAGE_COPY = {
         systeme: "OS",
         computerType: "Type",
         domaine: "Domaine",
-        agentStatus: "Agent",
+        agentStatus: "RMM",
         serial: "SN"
       },
       Sauvegarde: {
@@ -341,7 +343,7 @@ const PAGE_COPY = {
       systeme: "OS",
       computerType: "Type",
       domaine: "Domain",
-      agentStatus: "RMM agent",
+      agentStatus: "RMM",
       role: "Roles",
       raid: "RAID",
       nbDisquesActuels: "Current disks",
@@ -353,6 +355,8 @@ const PAGE_COPY = {
       ha: "HA",
       activeStatus: "Active"
     },
+    rmmAgentInstalled: "RMM agent installed",
+    rmmAgentMissing: "No RMM agent",
     ha: {
       primary: "Primary",
       secondary: "Secondary"
@@ -398,7 +402,7 @@ const PAGE_COPY = {
         systeme: "OS",
         computerType: "Type",
         domaine: "Domain",
-        agentStatus: "Agent",
+        agentStatus: "RMM",
         serial: "SN"
       },
       Backup: {
@@ -564,7 +568,7 @@ const PAGE_COPY = {
       systeme: "OS",
       computerType: "Typ",
       domaine: "Domäne",
-      agentStatus: "RMM-Agent",
+      agentStatus: "RMM",
       role: "Rollen",
       raid: "RAID",
       nbDisquesActuels: "Aktuelle Festplatten",
@@ -576,6 +580,8 @@ const PAGE_COPY = {
       ha: "HA",
       activeStatus: "Aktiv"
     },
+    rmmAgentInstalled: "RMM-Agent installiert",
+    rmmAgentMissing: "Kein RMM-Agent",
     ha: {
       primary: "Primary",
       secondary: "Secondary"
@@ -621,7 +627,7 @@ const PAGE_COPY = {
         systeme: "OS",
         computerType: "Typ",
         domaine: "Domäne",
-        agentStatus: "Agent",
+        agentStatus: "RMM",
         serial: "SN"
       },
       Sauvegarde: {
@@ -783,7 +789,7 @@ const PAGE_COPY = {
       systeme: "OS",
       computerType: "Tipo",
       domaine: "Dominio",
-      agentStatus: "Agente RMM",
+      agentStatus: "RMM",
       role: "Ruoli",
       raid: "RAID",
       nbDisquesActuels: "Dischi attuali",
@@ -795,6 +801,8 @@ const PAGE_COPY = {
       ha: "HA",
       activeStatus: "Attivo"
     },
+    rmmAgentInstalled: "Agente RMM installato",
+    rmmAgentMissing: "Nessun agente RMM",
     ha: {
       primary: "Primario",
       secondary: "Secondario"
@@ -840,7 +848,7 @@ const PAGE_COPY = {
         systeme: "OS",
         computerType: "Tipo",
         domaine: "Dominio",
-        agentStatus: "Agente",
+        agentStatus: "RMM",
         serial: "SN"
       },
       Sauvegarde: {
@@ -1002,7 +1010,7 @@ const PAGE_COPY = {
       systeme: "SO",
       computerType: "Tipo",
       domaine: "Dominio",
-      agentStatus: "Agente RMM",
+      agentStatus: "RMM",
       role: "Roles",
       raid: "RAID",
       nbDisquesActuels: "Discos actuales",
@@ -1014,6 +1022,8 @@ const PAGE_COPY = {
       ha: "HA",
       activeStatus: "Activo"
     },
+    rmmAgentInstalled: "Agente RMM instalado",
+    rmmAgentMissing: "Sin agente RMM",
     ha: {
       primary: "Primario",
       secondary: "Secundario"
@@ -1059,7 +1069,7 @@ const PAGE_COPY = {
         systeme: "SO",
         computerType: "Tipo",
         domaine: "Dominio",
-        agentStatus: "Agente",
+        agentStatus: "RMM",
         serial: "SN"
       },
       Sauvegarde: {

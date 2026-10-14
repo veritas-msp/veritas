@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.98",
+    date: "2026-10-14",
+    highlights: [
+      "Campagnes : suppression via un vrai modal de confirmation ; liste rafraîchie après création / édition / suppression.",
+      "Fiche périphérique : notes remises dans la colonne droite, avec espacement sous le titre de section.",
+      "Liste matériel (ordinateurs) : colonne RMM avec pastille verte (agent installé) ou grise (absent).",
+      "Administration RMM · Agents : mise à jour par sélection, par entreprise ou par vague."
+    ]
+  },
+  {
     version: "1.0.97",
     date: "2026-10-14",
     highlights: [

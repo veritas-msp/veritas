@@ -1,0 +1,32 @@
+.confirmLabel {
+  display: block;
+  margin: 0 0 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.confirmInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.confirmInput:focus {
+  outline: none;
+  border-color: rgba(220, 38, 38, 0.55);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.confirmInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchClientsList } from "../../api/clients";
-import { createRmmEnrollmentToken, updateRmmEnrollmentToken, downloadRmmWindowsAgentSetupMsi, fetchRmmInstallerInfo, fetchRmmMetricsStorage, fetchRmmAgents, fetchRmmEnrollmentTokens, fetchRmmSettings, revokeRmmEnrollmentToken, restoreRmmEnrollmentToken, deleteRmmEnrollmentTokenPermanently, updateRmmAgentStatus, updateRmmSettings } from "../../api/rmm";
+import { createRmmEnrollmentToken, updateRmmEnrollmentToken, downloadRmmWindowsAgentSetupMsi, fetchRmmInstallerInfo, fetchRmmMetricsStorage, fetchRmmAgents, fetchRmmEnrollmentTokens, fetchRmmSettings, revokeRmmEnrollmentToken, restoreRmmEnrollmentToken, deleteRmmEnrollmentTokenPermanently, updateRmmAgentStatus, updateRmmSettings, requestRmmAgentUpdate } from "../../api/rmm";
 import { Badge, Btn, Card, ConfirmModal, Page, SubTabs, Table, Pagination, BtnIcon } from "./AdminUi";
 import { useTablePagination } from "./useTablePagination";
 import adminUi from "./AdminUi.module.css";
@@ -9,6 +9,7 @@ import { Icon } from "@iconify/react";
 import RmmEnrollmentTokenValue from "../Rmm/RmmEnrollmentTokenValue";
 import RmmEnrollmentTokenFormModal from "./RmmEnrollmentTokenFormModal";
 import RmmEnrollmentTokenCreatedModal from "./RmmEnrollmentTokenCreatedModal";
+import RmmAgentBulkUpdateModal from "./RmmAgentBulkUpdateModal";
 import { buildDefaultTokenDraft, buildEditTokenDraft, fromDatetimeLocalValue } from "./rmmTokenConstants";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import RmmTokenSettingsPanel from "./RmmTokenSettingsPanel";
@@ -19,6 +20,37 @@ import styles from "./AdminRmm.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getAdminModalCopy } from "./adminModalsI18n";
 import { formatRmmClientLabel, formatRmmDateTime, getAdminRmmCopy, interpolate } from "./adminRmmI18n";
+
+const UPDATE_CONCURRENCY = 5;
+
+async function runAgentUpdates(agentList, requestUpdate) {
+  let ok = 0;
+  let skipped = 0;
+  let failed = 0;
+  const succeededIds = [];
+  const requestedAtById = new Map();
+  for (let i = 0; i < agentList.length; i += UPDATE_CONCURRENCY) {
+    const chunk = agentList.slice(i, i + UPDATE_CONCURRENCY);
+    const results = await Promise.allSettled(chunk.map(agent => requestUpdate(agent.id)));
+    results.forEach((result, index) => {
+      const agent = chunk[index];
+      if (result.status === "fulfilled") {
+        ok += 1;
+        succeededIds.push(agent.id);
+        if (result.value?.update_requested_at) {
+          requestedAtById.set(agent.id, result.value.update_requested_at);
+        }
+        return;
+      }
+      if (result.reason?.code === "ALREADY_UP_TO_DATE") {
+        skipped += 1;
+        return;
+      }
+      failed += 1;
+    });
+  }
+  return { ok, skipped, failed, succeededIds, requestedAtById };
+}
 const DEPLOY_PLATFORM_KEYS = ["windows", "macos", "linux", "ios", "android", "chromeos"];
 const RMM_TAB_KEYS = [{
   key: "deploy",
@@ -175,6 +207,9 @@ export default function AdminRmm({
   const [metricsStorage, setMetricsStorage] = useState(null);
   const [selectedDeployPlatform, setSelectedDeployPlatform] = useState("windows");
   const [agentSearch, setAgentSearch] = useState("");
+  const [selectedAgentIds, setSelectedAgentIds] = useState(() => new Set());
+  const [bulkUpdateMode, setBulkUpdateMode] = useState(null);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
   const rmmTabs = useMemo(() => RMM_TAB_KEYS.map(item => ({
     ...item,
     label: copy.tabs[item.key],
@@ -239,6 +274,96 @@ export default function AdminRmm({
       return haystack.includes(q);
     });
   }, [agents, agentSearch]);
+  const filteredAgentIds = useMemo(() => filteredAgents.map(agent => agent.id), [filteredAgents]);
+  const allFilteredSelected =
+    filteredAgentIds.length > 0 && filteredAgentIds.every(id => selectedAgentIds.has(id));
+  const latestAgentVersion =
+    installerInfo?.version || agents.find(agent => agent.latest_agent_version)?.latest_agent_version || null;
+
+  const toggleSelectAgent = useCallback(agentId => {
+    setSelectedAgentIds(prev => {
+      const next = new Set(prev);
+      if (next.has(agentId)) next.delete(agentId);
+      else next.add(agentId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAllFiltered = useCallback(() => {
+    setSelectedAgentIds(prev => {
+      const next = new Set(prev);
+      if (filteredAgentIds.length > 0 && filteredAgentIds.every(id => next.has(id))) {
+        filteredAgentIds.forEach(id => next.delete(id));
+      } else {
+        filteredAgentIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  }, [filteredAgentIds]);
+
+  const openBulkUpdate = useCallback(mode => {
+    if (mode === "selection" && selectedAgentIds.size === 0) {
+      toast.info(copy.agents?.update?.selectFirst || "Sélectionnez au moins un agent.");
+      return;
+    }
+    setBulkUpdateMode(mode);
+  }, [copy.agents?.update?.selectFirst, selectedAgentIds.size]);
+
+  const applyUpdateResults = useCallback((result) => {
+    const { ok, skipped, failed, succeededIds, requestedAtById } = result;
+    if (succeededIds.length) {
+      const nowIso = new Date().toISOString();
+      setAgents(prev => prev.map(agent => {
+        if (!succeededIds.includes(agent.id)) return agent;
+        return {
+          ...agent,
+          update_requested_at: requestedAtById.get(agent.id) || nowIso
+        };
+      }));
+    }
+    if (ok > 0 && failed === 0 && skipped === 0) {
+      toast.success(interpolate(copy.toast.agentUpdateOk, { count: String(ok) }));
+    } else if (ok > 0 || skipped > 0 || failed > 0) {
+      toast[failed > 0 ? "warn" : "success"](
+        interpolate(copy.toast.agentUpdatePartial, {
+          ok: String(ok),
+          skipped: String(skipped),
+          failed: String(failed)
+        })
+      );
+    } else {
+      toast.info(copy.toast.agentUpdateNone);
+    }
+  }, [copy.toast.agentUpdateNone, copy.toast.agentUpdateOk, copy.toast.agentUpdatePartial]);
+
+  const handleBulkUpdateConfirm = useCallback(async targets => {
+    if (!targets?.length) return;
+    setBulkUpdating(true);
+    try {
+      const result = await runAgentUpdates(targets, requestRmmAgentUpdate);
+      applyUpdateResults(result);
+      setBulkUpdateMode(null);
+      setSelectedAgentIds(new Set());
+    } catch (err) {
+      toast.error(err.message || copy.toast.agentUpdateError);
+    } finally {
+      setBulkUpdating(false);
+    }
+  }, [applyUpdateResults, copy.toast.agentUpdateError]);
+
+  const handleUpdateOneAgent = useCallback(async agent => {
+    if (!agent?.id) return;
+    setBulkUpdating(true);
+    try {
+      const result = await runAgentUpdates([agent], requestRmmAgentUpdate);
+      applyUpdateResults(result);
+    } catch (err) {
+      toast.error(err.message || copy.toast.agentUpdateError);
+    } finally {
+      setBulkUpdating(false);
+    }
+  }, [applyUpdateResults, copy.toast.agentUpdateError]);
+
   const handleSaveSettings = async () => {
     if (!settings) return;
     setSaving(true);
@@ -542,18 +667,65 @@ export default function AdminRmm({
       {tab === "agents" && <Card title={copy.agents.title} description={copy.agents.description} fill>
           {loading ? <p className={adminUi.adminMutedText}>{copy.common.loadingShort}</p> : <>
               <div className={styles.agentsToolbar}>
-                <div className={`${adminUi.searchWrap} ${styles.agentsSearch}`}>
-                  <Icon icon="mdi:magnify" className={adminUi.searchIcon} aria-hidden />
-                  <input type="search" className={adminUi.searchInput} value={agentSearch} onChange={e => setAgentSearch(e.target.value)} placeholder={copy.agents.searchPlaceholder} aria-label={copy.agents.searchAria} autoComplete="off" />
-                  {agentSearch ? <button type="button" className={adminUi.searchClear} onClick={() => setAgentSearch("")} aria-label={copy.agents.searchClear}>
-                      <Icon icon="mdi:close" aria-hidden />
-                    </button> : null}
+                <div className={styles.agentsToolbarMain}>
+                  <div className={`${adminUi.searchWrap} ${styles.agentsSearch}`}>
+                    <Icon icon="mdi:magnify" className={adminUi.searchIcon} aria-hidden />
+                    <input type="search" className={adminUi.searchInput} value={agentSearch} onChange={e => setAgentSearch(e.target.value)} placeholder={copy.agents.searchPlaceholder} aria-label={copy.agents.searchAria} autoComplete="off" />
+                    {agentSearch ? <button type="button" className={adminUi.searchClear} onClick={() => setAgentSearch("")} aria-label={copy.agents.searchClear}>
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button> : null}
+                  </div>
+                  <span className={adminUi.count}>
+                    {filteredAgents.length}/{agents.length}
+                    {selectedAgentIds.size > 0 ? ` · ${selectedAgentIds.size}` : ""}
+                  </span>
                 </div>
-                <span className={adminUi.count}>
-                  {filteredAgents.length}/{agents.length}
-                </span>
+                <div className={styles.agentsToolbarActions}>
+                  <Btn
+                    icon="mdi:checkbox-marked-outline"
+                    variant="secondary"
+                    disabled={bulkUpdating || selectedAgentIds.size === 0}
+                    onClick={() => openBulkUpdate("selection")}
+                  >
+                    {copy.agents.updateSelected}
+                  </Btn>
+                  <Btn
+                    icon="mdi:domain"
+                    variant="secondary"
+                    disabled={bulkUpdating || agents.length === 0}
+                    onClick={() => openBulkUpdate("company")}
+                  >
+                    {copy.agents.updateByCompany}
+                  </Btn>
+                  <Btn
+                    icon="mdi:waves"
+                    variant="secondary"
+                    disabled={bulkUpdating || agents.length === 0}
+                    onClick={() => openBulkUpdate("wave")}
+                  >
+                    {copy.agents.updateByWave}
+                  </Btn>
+                </div>
               </div>
               <Table columns={[{
+          key: "select",
+          label: <input
+            type="checkbox"
+            checked={allFilteredSelected}
+            onChange={toggleSelectAllFiltered}
+            aria-label={copy.agents.selectAll}
+          />,
+          width: 40,
+          render: row => <div className={styles.agentSelectCell}>
+            <input
+              type="checkbox"
+              checked={selectedAgentIds.has(row.id)}
+              onChange={() => toggleSelectAgent(row.id)}
+              aria-label={copy.agents.selectRow}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+        }, {
           key: "client_name",
           label: copy.agents.colCompany
         }, {
@@ -580,18 +752,31 @@ export default function AdminRmm({
         }, {
           key: "online",
           label: copy.agents.colStatus,
-          render: row => row.online ? <Badge variant="success">{copy.agents.statusOnline}</Badge> : <Badge variant="warn">{copy.agents.statusOffline}</Badge>
+          render: row => row.update_requested_at
+            ? <Badge variant="warn">{copy.agents.statusUpdatePending}</Badge>
+            : row.online
+              ? <Badge variant="success">{copy.agents.statusOnline}</Badge>
+              : <Badge variant="warn">{copy.agents.statusOffline}</Badge>
         }, {
           key: "last_seen_at",
           label: copy.agents.colLastSeen
         }, {
           key: "actions",
           label: "",
-          render: row => <Btn variant="ghost" onClick={() => handleRevokeAgent(row.id)}>
-                        {copy.common.revoke}
-                      </Btn>
+          render: row => <div className={styles.agentRowActions}>
+            <BtnIcon
+              icon="mdi:cloud-download-outline"
+              title={copy.agents.updateOne}
+              disabled={bulkUpdating || Boolean(row.update_requested_at)}
+              onClick={() => handleUpdateOneAgent(row._raw || row)}
+            />
+            <Btn variant="ghost" onClick={() => handleRevokeAgent(row.id)}>
+              {copy.common.revoke}
+            </Btn>
+          </div>
         }]} rows={filteredAgents.map(a => ({
         id: a.id,
+        _raw: a,
         client_name: a.client_name || "-",
         hostname: a.hostname || a.machine_id || "-",
         agent_version: a.agent_version || "-",
@@ -599,6 +784,7 @@ export default function AdminRmm({
         heartbeat_interval_minutes: a.heartbeat_interval_minutes != null ? `${a.heartbeat_interval_minutes} min` : "-",
         auto_update_enabled: a.auto_update_enabled !== false,
         online: a.online,
+        update_requested_at: a.update_requested_at || null,
         status: a.status,
         last_seen_at: a.last_seen_at ? formatRmmDateTime(a.last_seen_at, locale) : "-"
       }))} emptyMessage={agentSearch.trim() ? copy.agents.emptySearch : copy.agents.empty} />
@@ -618,6 +804,20 @@ export default function AdminRmm({
       <ConfirmModal open={!!confirmRestore} title={rmmCopy.restoreTitle} message={rmmCopy.restoreMessage} confirmLabel={rmmCopy.restoreConfirm} onConfirm={handleRestoreToken} onClose={() => setConfirmRestore(null)} />
 
       <ConfirmModal open={!!confirmPermanentDelete} title={rmmCopy.purgeTitle} icon="mdi:delete-forever-outline" message={rmmCopy.purgeMessage} confirmLabel={rmmCopy.purgeConfirm} confirmVariant="dangerSolid" onConfirm={handlePermanentDeleteToken} onClose={() => setConfirmPermanentDelete(null)} />
+
+      <RmmAgentBulkUpdateModal
+        open={Boolean(bulkUpdateMode)}
+        mode={bulkUpdateMode || "selection"}
+        copy={copy}
+        agents={agents}
+        selectedIds={selectedAgentIds}
+        latestVersion={latestAgentVersion}
+        saving={bulkUpdating}
+        onClose={() => {
+          if (!bulkUpdating) setBulkUpdateMode(null);
+        }}
+        onConfirm={handleBulkUpdateConfirm}
+      />
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
     </Page>;

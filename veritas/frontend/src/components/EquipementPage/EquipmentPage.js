@@ -35,9 +35,8 @@ import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationE
 import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { updateRmmAgentStatus } from "../../api/rmm";
-import RmmAgentStatusBadge from "./RmmAgentStatusBadge";
 import { getOsIconName, repairOsLabel } from "./osIconUtils";
-import { buildRmmAgentRowFromEquipment, getRmmChassisInfo, getRmmInventoryFromEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
+import { buildRmmAgentRowFromEquipment, getRmmChassisInfo, getRmmInventoryFromEquipment, isRmmManagedEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
 import { fetchSupervisionExclusions } from "../../api/supervisionAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
@@ -842,7 +841,7 @@ const ORDINATEUR_COLUMN_LABELS = {
   computerType: 'Type',
   systeme: 'OS',
   domaine: 'Domaine',
-  agentStatus: 'Agent',
+  agentStatus: 'RMM',
   serial: 'SN'
 };
 const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'role', 'ip', 'vlan', 'ha', 'systeme', 'serial', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'mapping'];
@@ -1118,10 +1117,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
   };
   const renderAgentDot = equipment => {
-    const online = resolveRmmAgentOnline(equipment);
-    return renderStateIcon(Boolean(online), {
-      onLabel: "Agent en ligne",
-      offLabel: "Agent hors ligne"
+    const installed = isRmmManagedEquipment(equipment);
+    return renderStateIcon(installed, {
+      onLabel: pageCopy.rmmAgentInstalled || "Agent RMM installé",
+      offLabel: pageCopy.rmmAgentMissing || "Pas d'agent RMM"
     });
   };
   useEffect(() => {
@@ -2091,7 +2090,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return 2;
     }
     if (colKey === "agentStatus") {
-      return resolveRmmAgentOnline(equipment) ? 1 : 0;
+      return isRmmManagedEquipment(equipment) ? 1 : 0;
     }
     if (colKey === "ssidCount") {
       const ssids = Array.isArray(equipment?.ssids)
@@ -3070,7 +3069,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           value = isDegraded ? (status || "Degraded") : "OK";
         }
       } else if (col.key === 'agentStatus') {
-        value = resolveRmmAgentOnline(equipment) ? "Online" : "Offline";
+        value = isRmmManagedEquipment(equipment) ? "RMM" : "-";
       } else if (col.key === 'activeStatus') {
         value = readEquipmentIsActive(equipment) ? "Active" : "Inactive";
       } else if (col.key === 'memoire' && value) {
@@ -3869,9 +3868,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               const domainLabel = formatValue(equipment.domaine || equipment.rawData?.domaine || value);
                               return <td key={col.key}>{domainLabel && domainLabel !== '-' ? domainLabel : '-'}</td>;
                             } else if (col.key === 'agentStatus') {
-                              return <td key={col.key}>
-                                      {embedded ? renderAgentDot(equipment) : <RmmAgentStatusBadge equipment={equipment} compact />}
-                                    </td>;
+                              return <td key={col.key}>{renderAgentDot(equipment)}</td>;
                             } else if (col.key === 'computerType') {
                               const computerTypeLabel = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
                               return <td key={col.key}>{computerTypeLabel || '-'}</td>;

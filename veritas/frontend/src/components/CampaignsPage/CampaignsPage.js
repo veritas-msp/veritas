@@ -11,9 +11,11 @@ import { getCybersecuritePageCopy } from "../CybersecuritePage/cybersecuritePage
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import styles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-
-const CAMPAIGNS_CACHE_KEY = "campaigns_page_cache_v2";
-const CAMPAIGNS_CACHE_TTL_MS = 3 * 60 * 1000;
+import {
+  invalidateCampaignsPageCache,
+  readCampaignsPageCache,
+  writeCampaignsPageCache
+} from "./campaignsPageCache";
 
 function getTodayDate() {
   return new Date().toISOString().split("T")[0];
@@ -64,73 +66,52 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
   const campaignsControllerRef = useRef(null);
   const clientsControllerRef = useRef(null);
   const mountedRef = useRef(true);
-
-  const readCache = useCallback((key, ttlMs) => {
-    try {
-      const raw = sessionStorage.getItem(key);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      const isFresh = parsed?.savedAt && Date.now() - parsed.savedAt < ttlMs;
-      return isFresh ? parsed.data : null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const writeCache = useCallback((key, data) => {
-    try {
-      sessionStorage.setItem(key, JSON.stringify({ savedAt: Date.now(), data }));
-    } catch {}
-  }, []);
-
-  const invalidateCampaignsCache = useCallback(() => {
-    try {
-      sessionStorage.removeItem(CAMPAIGNS_CACHE_KEY);
-    } catch {}
-  }, []);
+  const lastRefreshTokenRef = useRef(null);
 
   const loadCampaignsDataset = useCallback(async ({ skipCache = false } = {}) => {
     if (!skipCache) {
-      const cached = readCache(CAMPAIGNS_CACHE_KEY, CAMPAIGNS_CACHE_TTL_MS);
+      const cached = readCampaignsPageCache();
       if (Array.isArray(cached)) return cached;
     }
-    if (campaignsRequestRef.current) {
+    if (!skipCache && campaignsRequestRef.current) {
       return await campaignsRequestRef.current;
     }
     campaignsControllerRef.current?.abort();
+    campaignsRequestRef.current = null;
     const controller = createTrackedAbortController();
     campaignsControllerRef.current = controller;
     const request = getAllCampaigns({}, { signal: controller.signal })
       .then(data => {
         const normalized = Array.isArray(data) ? data : [];
-        writeCache(CAMPAIGNS_CACHE_KEY, normalized);
+        writeCampaignsPageCache(normalized);
         return normalized;
       })
       .catch(error => {
         if (error?.name !== "AbortError") {
-          try {
-            sessionStorage.removeItem(CAMPAIGNS_CACHE_KEY);
-          } catch {}
+          invalidateCampaignsPageCache();
         }
         throw error;
       })
       .finally(() => {
-        campaignsRequestRef.current = null;
+        if (campaignsRequestRef.current === request) {
+          campaignsRequestRef.current = null;
+        }
       });
     campaignsRequestRef.current = request;
     return await request;
-  }, [readCache, writeCache]);
+  }, []);
 
   const loadCampaigns = useCallback(async (options = {}) => {
+    const { skipCache = false, soft = false } = options;
     try {
-      setLoadingCampaigns(true);
-      const data = await loadCampaignsDataset(options);
+      if (!soft) setLoadingCampaigns(true);
+      const data = await loadCampaignsDataset({ skipCache });
       if (mountedRef.current) setCampaigns(data || []);
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error while loading campaigns:", error);
       if (mountedRef.current) {
-        setCampaigns([]);
+        if (!soft) setCampaigns([]);
         toast.error(campaignsCopy?.toasts?.loadError || "Impossible de charger les campagnes");
       }
     } finally {
@@ -160,8 +141,16 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
         mountedRef.current = false;
       };
     }
+    const cached = readCampaignsPageCache();
+    if (Array.isArray(cached) && cached.length >= 0) {
+      setCampaigns(cached);
+      setLoadingCampaigns(false);
+    }
     (async () => {
-      await Promise.all([loadCampaigns(), loadClients()]);
+      await Promise.all([
+        loadCampaigns({ skipCache: true, soft: Array.isArray(cached) }),
+        loadClients()
+      ]);
     })();
     return () => {
       mountedRef.current = false;
@@ -169,6 +158,15 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
       clientsControllerRef.current?.abort();
     };
   }, [editionLoaded, isCommunity, loadCampaigns, loadClients]);
+
+  useEffect(() => {
+    if (isCommunity) return;
+    const refreshToken = pageParams?.refresh;
+    if (refreshToken == null || refreshToken === lastRefreshTokenRef.current) return;
+    lastRefreshTokenRef.current = refreshToken;
+    invalidateCampaignsPageCache();
+    void loadCampaigns({ skipCache: true });
+  }, [isCommunity, loadCampaigns, pageParams?.refresh]);
 
   const openAddCampaign = useCallback((clientId = "") => {
     if (isCommunity) {
@@ -194,7 +192,7 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
       if (editingCampaign) {
         await updateClientCampaign(formData.client_id, editingCampaign.id, formData);
         toast.success(campaignsCopy.toasts.updated);
-        invalidateCampaignsCache();
+        invalidateCampaignsPageCache();
         await loadCampaigns({ skipCache: true });
         setShowModal(false);
         setEditingCampaign(null);
@@ -208,7 +206,7 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
         setShowModal(false);
         setEditingCampaign(null);
         setFormData(emptyForm());
-        invalidateCampaignsCache();
+        invalidateCampaignsPageCache();
         await loadCampaigns({ skipCache: true });
         if (onNavigate && newCampaign) {
           onNavigate("CampaignDetail", {
@@ -270,7 +268,7 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
                   onViewCampaign={handleViewCampaign}
                   onAddCampaign={() => openAddCampaign()}
                   onCampaignsChanged={async () => {
-                    invalidateCampaignsCache();
+                    invalidateCampaignsPageCache();
                     await loadCampaigns({ skipCache: true });
                   }}
                 />

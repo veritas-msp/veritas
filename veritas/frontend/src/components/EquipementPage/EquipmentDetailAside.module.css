@@ -43,6 +43,10 @@
   flex: 0 0 auto;
 }
 
+.assocBody {
+  padding-top: 0.65rem;
+}
+
 .notesFill {
   flex: 1 1 0;
   min-height: 0;

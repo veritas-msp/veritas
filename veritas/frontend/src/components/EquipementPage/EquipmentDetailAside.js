@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
+import EquipmentNotesPanel from "./EquipmentNotesPanel";
 import styles from "./EquipmentDetailAside.module.css";
 
 function SidebarSectionHeader({
@@ -289,70 +290,81 @@ export default function EquipmentDetailAside({
     </section>
   );
 
-  const associatedPanel = associatedItems.length ? (
-    <aside className={`${s.asidePanel} ${styles.asidePanelFill}`.trim()}>
-      <div className={`${s.rightSidebarContent} ${styles.asideContentFill}`.trim()}>
-        <section className={`${s.sidebarSection} ${styles.asideSectionFixed}`.trim()} data-guide="equipment-sidebar-associated">
-          <SidebarSectionHeader
-            title={aside.assocTitle || "Équipements associés"}
-            icon="mdi:lan-connect"
-            count={associatedItems.length}
-            expanded={assocExpanded}
-            onToggle={() => setAssocExpanded(prev => !prev)}
-            controlsId="equipment-sidebar-associated"
-            panelStyles={s}
-          />
-          {assocExpanded ? (
-            <div className={s.sidebarBody} id="equipment-sidebar-associated">
-              <ul className={s.sidebarContactsList}>
-                {associatedItems.map(item => {
-                  const body = (
-                    <>
-                      <div className={s.sidebarContactAvatar} aria-hidden>
-                        <Icon icon={item.icon} />
+  const showNotes = variant !== "associatedOnly" && variant !== "quickActionsOnly";
+  const associatedSection = associatedItems.length ? (
+    <section className={`${s.sidebarSection} ${styles.asideSectionFixed}`.trim()} data-guide="equipment-sidebar-associated">
+      <SidebarSectionHeader
+        title={aside.assocTitle || "Équipements associés"}
+        icon="mdi:lan-connect"
+        count={associatedItems.length}
+        expanded={assocExpanded}
+        onToggle={() => setAssocExpanded(prev => !prev)}
+        controlsId="equipment-sidebar-associated"
+        panelStyles={s}
+      />
+      {assocExpanded ? (
+        <div className={`${s.sidebarBody} ${styles.assocBody}`.trim()} id="equipment-sidebar-associated">
+          <ul className={s.sidebarContactsList}>
+            {associatedItems.map(item => {
+              const body = (
+                <>
+                  <div className={s.sidebarContactAvatar} aria-hidden>
+                    <Icon icon={item.icon} />
+                  </div>
+                  <div className={s.sidebarContactBody}>
+                    <div className={s.sidebarContactTop}>
+                      <div className={s.sidebarContactIdentity}>
+                        <span className={s.sidebarContactName}>{item.title}</span>
+                        {item.subtitle ? (
+                          <span className={s.sidebarContactRole}>{item.subtitle}</span>
+                        ) : null}
                       </div>
-                      <div className={s.sidebarContactBody}>
-                        <div className={s.sidebarContactTop}>
-                          <div className={s.sidebarContactIdentity}>
-                            <span className={s.sidebarContactName}>{item.title}</span>
-                            {item.subtitle ? (
-                              <span className={s.sidebarContactRole}>{item.subtitle}</span>
-                            ) : null}
-                          </div>
-                          <span
-                            className={`${styles.assocStatus} ${styles[`assocStatus_${item.status || "ok"}`] || ""}`.trim()}
-                          >
-                            {item.status === "warn"
-                              ? aside.statusWarn || "Warn"
-                              : item.status === "down"
-                                ? aside.statusDown || "KO"
-                                : aside.statusOk || "OK"}
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  );
-                  return (
-                    <li key={item.key}>
-                      {item.onClick ? (
-                        <button type="button" className={s.sidebarContactItem} onClick={item.onClick}>
-                          {body}
-                        </button>
-                      ) : (
-                        <div className={`${s.sidebarContactItem} ${styles.assocStatic}`.trim()}>
-                          {body}
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+                      <span
+                        className={`${styles.assocStatus} ${styles[`assocStatus_${item.status || "ok"}`] || ""}`.trim()}
+                      >
+                        {item.status === "warn"
+                          ? aside.statusWarn || "Warn"
+                          : item.status === "down"
+                            ? aside.statusDown || "KO"
+                            : aside.statusOk || "OK"}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              );
+              return (
+                <li key={item.key}>
+                  {item.onClick ? (
+                    <button type="button" className={s.sidebarContactItem} onClick={item.onClick}>
+                      {body}
+                    </button>
+                  ) : (
+                    <div className={`${s.sidebarContactItem} ${styles.assocStatic}`.trim()}>
+                      {body}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+    </section>
+  ) : null;
+
+  const sidebarPanel =
+    associatedSection || showNotes ? (
+      <aside className={`${s.asidePanel} ${styles.asidePanelFill}`.trim()}>
+        <div className={`${s.rightSidebarContent} ${styles.asideContentFill}`.trim()}>
+          {associatedSection}
+          {showNotes ? (
+            <div className={styles.notesFill}>
+              <EquipmentNotesPanel equipment={equipment} variant="sidebar" defaultExpanded />
             </div>
           ) : null}
-        </section>
-      </div>
-    </aside>
-  ) : null;
+        </div>
+      </aside>
+    ) : null;
 
   if (variant === "quickActionsOnly") {
     return (
@@ -363,10 +375,10 @@ export default function EquipmentDetailAside({
   }
 
   if (variant === "associatedAndNotes" || variant === "associatedOnly") {
-    if (!associatedPanel) return null;
+    if (!sidebarPanel) return null;
     return (
       <div className={`${s.asideStack} ${fill ? styles.asideStackFill : ""}`.trim()}>
-        {associatedPanel}
+        {sidebarPanel}
       </div>
     );
   }
@@ -374,7 +386,7 @@ export default function EquipmentDetailAside({
   return (
     <div className={s.asideStack}>
       {quickActionsCard}
-      {associatedPanel}
+      {sidebarPanel}
     </div>
   );
 }

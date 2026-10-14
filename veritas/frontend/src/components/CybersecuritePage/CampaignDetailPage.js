@@ -9,7 +9,9 @@ import { getAllCampaigns, updateClientCampaign, deleteCampaign, launchCampaign, 
 import { fetchClientsList } from "../../api/clients";
 import { getClientOffice365Credentials, getClientMfaDetails } from "../../api/clientOffice365";
 import CampaignFormModal from "./CampaignFormModal";
+import CampaignDeleteModal from "./CampaignDeleteModal";
 import CampaignReportPublishModal from "./CampaignReportPublishModal";
+import { invalidateCampaignsPageCache } from "../CampaignsPage/campaignsPageCache";
 import MicrosoftSecurityStats from "./MicrosoftSecurityStats";
 import CampaignAdoptionStats from "./CampaignAdoptionStats";
 import CampaignManagementPanel from "./CampaignManagementPanel";
@@ -99,8 +101,8 @@ export default function CampaignDetailPage({
   const [campaignModalOpen, setCampaignModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState([]);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [confirmText, setConfirmText] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingCampaign, setDeletingCampaign] = useState(false);
   const [campaignStats, setCampaignStats] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
@@ -876,6 +878,7 @@ export default function CampaignDetailPage({
     try {
       setSaving(true);
       await updateClientCampaign(campaign.client_id, campaign.id, editForm);
+      invalidateCampaignsPageCache();
       toast.success(detailCopy.toasts.updated);
       setCampaign({
         ...campaign,
@@ -894,10 +897,13 @@ export default function CampaignDetailPage({
     }
   };
   const handleDelete = async () => {
-    if (!campaign || confirmText !== detailCopy.delete.confirmWord) return;
+    if (!campaign) return;
+    setDeletingCampaign(true);
     try {
       await deleteCampaign(campaign.id);
+      invalidateCampaignsPageCache();
       toast.success(detailCopy.toasts.deleted);
+      setDeleteModalOpen(false);
       onNavigate('Campaigns', {
         refresh: Date.now()
       }, {
@@ -907,8 +913,7 @@ export default function CampaignDetailPage({
       console.error('Error during deletion:', error);
       toast.error(detailCopy.toasts.deleteError);
     } finally {
-      setConfirmDeleteId(null);
-      setConfirmText('');
+      setDeletingCampaign(false);
     }
   };
   const currentMfaRate = useMemo(() => {
@@ -1719,45 +1724,21 @@ export default function CampaignDetailPage({
       await handleSave();
     }} saving={saving} copy={campaignsCopy} getCampaignTypeLabel={type => campaignsCopy?.types?.[type] || type} lockClient onDeleteCampaign={() => {
       setCampaignModalOpen(false);
-      setConfirmDeleteId(campaign.id);
-      setConfirmText('');
+      setDeleteModalOpen(true);
     }} statusOptions={CAMPAIGN_STATUSES.map(s => ({
       value: s.value,
       label: campaignsCopy?.statuses?.[s.value] || s.label
     }))} />
 
-      {}
-      {confirmDeleteId && <div className={styles.modalOverlay} onClick={() => setConfirmDeleteId(null)}>
-          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3>{detailCopy.delete.title}</h3>
-              <button className={styles.closeButton} onClick={() => setConfirmDeleteId(null)}>
-                ×
-              </button>
-            </div>
-
-            <div className={styles.modalBody}>
-              <p>{detailCopy.delete.message}</p>
-              <div>
-                <label className={styles.confirmLabel}>
-                  {formatCampaignDetail(detailCopy.delete.confirmLabel, {
-                word: detailCopy.delete.confirmWord
-              })}
-                </label>
-                <input type="text" value={confirmText} onChange={e => setConfirmText(e.target.value)} placeholder={detailCopy.delete.confirmPlaceholder} className={styles.confirmInput} autoFocus />
-              </div>
-            </div>
-
-            <div className={styles.modalActions}>
-              <button className={styles.secondaryButton} onClick={() => setConfirmDeleteId(null)}>
-                {detailCopy.delete.cancel}
-              </button>
-              <button className={styles.primaryButton} onClick={handleDelete} disabled={confirmText !== detailCopy.delete.confirmWord}>
-                {detailCopy.delete.confirm}
-              </button>
-            </div>
-          </div>
-        </div>}
+      <CampaignDeleteModal
+        open={deleteModalOpen}
+        campaignName={campaignTitle}
+        saving={deletingCampaign}
+        onClose={() => {
+          if (!deletingCampaign) setDeleteModalOpen(false);
+        }}
+        onConfirm={handleDelete}
+      />
 
       {}
       {ReactDOM.createPortal(<AnimatePresence>
