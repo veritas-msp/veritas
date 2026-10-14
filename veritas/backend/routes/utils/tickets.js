@@ -9,7 +9,8 @@ import path from "path";
 import multer from "multer";
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
 import { notifyTicketAssignedUsers, notifyTicketChangeEmails, notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "../../services/systemNotificationService.js";
-import { notifyInAppTicketAssigned, notifyInAppTicketCommented, notifyInAppTicketCreated, notifyInAppTicketStatusChanged, normalizeInAppSettings } from "../../services/userNotificationService.js";
+import { notifyInAppTicketAssigned, notifyInAppTicketCommented, notifyInAppTicketCreated, notifyInAppTicketMentioned, notifyInAppTicketStatusChanged, normalizeInAppSettings } from "../../services/userNotificationService.js";
+import { extractTicketMentionsFromHtml } from "../../utils/ticketMentions.js";
 import { getTicketSatisfaction, listTicketSatisfactions, countTicketSatisfactions, enrichTicketRowsWithSatisfaction } from "../../services/ticketSatisfactionService.js";
 import { applyImportedTicketResolution, ensureTicketStatusMatchesValidation, getTicketResolutionValidation, markResolutionValidationReopened, resolveTicketWithClientValidation } from "../../services/ticketResolutionValidationService.js";
 import { createTicketValidationRequest, listTicketValidationRequests, respondTicketValidationRequest, updateTicketValidationRequest } from "../../services/ticketValidationRequestService.js";
@@ -4175,6 +4176,23 @@ router.post("/:id/comments", verifyJWT, attachmentUpload.array("attachments", 10
       isInternal: Boolean(req.body.isInternal),
       contentPreview: content
     }).catch(() => {});
+    try {
+      const mentions = extractTicketMentionsFromHtml(content);
+      const teamMemberIds = mentions.teamIds.length > 0 ? await listTeamMemberUserIds(mentions.teamIds) : [];
+      const mentionedUserIds = [...new Set([...(mentions.userIds || []), ...(teamMemberIds || [])])];
+      if (mentionedUserIds.length > 0) {
+        await notifyInAppTicketMentioned({
+          ticketId: id,
+          commentId: createdComment.id,
+          authorUserId: req.user?.id || null,
+          mentionedUserIds,
+          isInternal: Boolean(req.body.isInternal),
+          contentPreview: content
+        });
+      }
+    } catch (mentionErr) {
+      console.error("Error notifying ticket mentions:", mentionErr);
+    }
     await notifyTicketCommented({
       ticketId: id,
       authorUserId: req.user?.id || null,

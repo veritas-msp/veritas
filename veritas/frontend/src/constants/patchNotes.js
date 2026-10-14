@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.96",
+    date: "2026-10-14",
+    highlights: [
+      "Tickets : mention @agent ou @équipe dans une réponse, avec notification in-app aux personnes concernées.",
+      "Campagnes : correction de la liste globale vide (campagnes clients à nouveau visibles)."
+    ]
+  },
+  {
     version: "1.0.95",
     date: "2026-10-14",
     highlights: [

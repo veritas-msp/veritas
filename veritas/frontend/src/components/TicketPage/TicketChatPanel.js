@@ -30,6 +30,13 @@ import { getTicketValidationCopy } from "./ticketValidationI18n";
 import TicketEmojiPicker from "./TicketEmojiPicker";
 import TicketInsertLinkModal, { captureEditorSelection, insertLinkHtml, restoreEditorSelection } from "./TicketInsertLinkModal";
 import TicketImageLightbox from "./TicketImageLightbox";
+import TicketMentionMenu from "./TicketMentionMenu";
+import {
+  buildMentionCandidates,
+  getCaretClientRect,
+  getMentionQueryAtCaret,
+  insertMentionChip
+} from "./ticketMentionUtils";
 import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, filterAttachmentsNotInlinedInHtml, htmlContainsInlineImage, rewriteInlineUploadPlaceholders } from "../../utils/ticketEditorImages";
 import styles from "./TicketDetailPage.module.css";
 
@@ -130,6 +137,7 @@ export default function TicketChatPanel({
   ticket = null,
   comments = [],
   users = [],
+  teams = [],
   validationRequests = [],
   formatDateTime,
   emptyLabel,
@@ -163,6 +171,9 @@ export default function TicketChatPanel({
   const [commentInternal, setCommentInternal] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState([]);
   const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
+  const [mentionMenu, setMentionMenu] = useState(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const mentionStateRef = useRef(null);
   const [submitting, setSubmitting] = useState(false);
   const [overlayComments, setOverlayComments] = useState([]);
   const [justSentCommentIds, setJustSentCommentIds] = useState([]);
@@ -290,6 +301,79 @@ export default function TicketChatPanel({
     document.execCommand("insertText", false, emoji);
     setCommentDraft(commentEditorRef.current.innerHTML || "");
   };
+
+  const closeMentionMenu = useCallback(() => {
+    mentionStateRef.current = null;
+    setMentionMenu(null);
+    setMentionActiveIndex(0);
+  }, []);
+
+  const refreshMentionMenu = useCallback(() => {
+    if (disabled) {
+      closeMentionMenu();
+      return;
+    }
+    const mentionState = getMentionQueryAtCaret();
+    if (!mentionState) {
+      closeMentionMenu();
+      return;
+    }
+    const items = buildMentionCandidates({
+      users,
+      teams,
+      query: mentionState.query,
+      excludeUserId: currentUserId
+    });
+    mentionStateRef.current = mentionState;
+    setMentionMenu({
+      query: mentionState.query,
+      items,
+      anchorRect: getCaretClientRect()
+    });
+    setMentionActiveIndex(0);
+  }, [closeMentionMenu, currentUserId, disabled, teams, users]);
+
+  const applyMentionSelection = useCallback(item => {
+    if (!item) return;
+    const applied = insertMentionChip(mentionStateRef.current, item);
+    closeMentionMenu();
+    if (applied && commentEditorRef.current) {
+      setCommentDraft(commentEditorRef.current.innerHTML || "");
+      commentEditorRef.current.focus();
+    }
+  }, [closeMentionMenu]);
+
+  const handleCommentEditorInput = useCallback(event => {
+    setCommentDraft(event.currentTarget?.innerHTML || "");
+    refreshMentionMenu();
+  }, [refreshMentionMenu]);
+
+  const handleCommentEditorKeyDown = useCallback(event => {
+    if (!mentionMenu) return;
+    const items = mentionMenu.items || [];
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMentionMenu();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (items.length === 0) return;
+      setMentionActiveIndex(prev => (prev + 1) % items.length);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (items.length === 0) return;
+      setMentionActiveIndex(prev => (prev - 1 + items.length) % items.length);
+      return;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      if (items.length === 0) return;
+      event.preventDefault();
+      applyMentionSelection(items[mentionActiveIndex] || items[0]);
+    }
+  }, [applyMentionSelection, closeMentionMenu, mentionActiveIndex, mentionMenu]);
 
   const applyCommentTemplate = templateId => {
     setCommentTemplateSelection(templateId);
@@ -1122,15 +1206,28 @@ export default function TicketChatPanel({
                 <div
                   ref={commentEditorRef}
                   className={styles.editor}
-                  contentEditable
+                  contentEditable={!disabled}
                   suppressContentEditableWarning
-                  onInput={e => setCommentDraft(e.currentTarget?.innerHTML || "")}
+                  onInput={handleCommentEditorInput}
+                  onKeyDown={handleCommentEditorKeyDown}
                   onPaste={handleEditorPaste}
                   style={{
                     minHeight: "140px",
                     whiteSpace: "pre-wrap",
                     overflowY: "auto"
                   }}
+                />
+                <TicketMentionMenu
+                  open={Boolean(mentionMenu)}
+                  anchorRect={mentionMenu?.anchorRect || null}
+                  items={mentionMenu?.items || []}
+                  activeIndex={mentionActiveIndex}
+                  query={mentionMenu?.query || ""}
+                  onSelect={applyMentionSelection}
+                  onClose={closeMentionMenu}
+                  emptyLabel={copy.reply?.mentionEmpty || "Aucun agent ou équipe"}
+                  agentsLabel={copy.reply?.mentionAgents || "Agents"}
+                  teamsLabel={copy.reply?.mentionTeams || "Équipes"}
                 />
                 {attachmentFiles.length > 0 && isPro ? (
                   <TicketVaultArchiveOptions

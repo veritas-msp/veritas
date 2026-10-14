@@ -175,6 +175,10 @@ const USER_PROFILE_COPY = {
           label: "Commentaire ajouté",
           description: "Alerte lors d'un nouveau message sur un ticket suivi."
         },
+        ticket_mentioned: {
+          label: "Mention (@agent / @équipe)",
+          description: "Alerte quand on vous mentionne (ou votre équipe) dans un message."
+        },
         ticket_assigned: {
           label: "Assignation",
           description: "Alerte quand un agent est ajouté comme assigné."
@@ -480,6 +484,10 @@ const USER_PROFILE_COPY = {
         ticket_commented: {
           label: "Comment added",
           description: "Alert when a new message is posted on a followed ticket."
+        },
+        ticket_mentioned: {
+          label: "Mention (@agent / @team)",
+          description: "Alert when someone mentions you or your team in a ticket message."
         },
         ticket_assigned: {
           label: "Assignment",
@@ -787,6 +795,10 @@ const USER_PROFILE_COPY = {
           label: "Kommentar hinzugefügt",
           description: "Alert bei einer neuen Nachricht auf einem verfolgten Ticket."
         },
+        ticket_mentioned: {
+          label: "Erwähnung (@Agent / @Team)",
+          description: "Alert, wenn Sie oder Ihr Team in einer Ticket-Nachricht erwähnt werden."
+        },
         ticket_assigned: {
           label: "Zuweisung",
           description: "Alert, wenn ein Agent als Zuständiger hinzugefügt wird."
@@ -1093,6 +1105,10 @@ const USER_PROFILE_COPY = {
           label: "Commento aggiunto",
           description: "Alert per un nuovo messaggio su un ticket seguito."
         },
+        ticket_mentioned: {
+          label: "Menzione (@agente / @team)",
+          description: "Alert quando vieni menzionato (o il tuo team) in un messaggio ticket."
+        },
         ticket_assigned: {
           label: "Assegnazione",
           description: "Alert quando un agente viene aggiunto come assegnatario."
@@ -1398,6 +1414,10 @@ const USER_PROFILE_COPY = {
         ticket_commented: {
           label: "Comentario añadido",
           description: "Alerta cuando hay un nuevo mensaje en un ticket seguido."
+        },
+        ticket_mentioned: {
+          label: "Mención (@agente / @equipo)",
+          description: "Alerta cuando te mencionan (o a tu equipo) en un mensaje de ticket."
         },
         ticket_assigned: {
           label: "Asignación",

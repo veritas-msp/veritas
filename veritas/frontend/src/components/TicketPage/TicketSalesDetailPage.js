@@ -22,6 +22,7 @@ import {
 } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchActiveUsers } from "../../api/users";
+import { fetchTeamsForPlanning } from "../../api/teams";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -408,6 +409,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   const [ticket, setTicket] = useState(null);
   const [users, setUsers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [clients, setClients] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -510,12 +512,13 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     }
     setLoading(true);
     try {
-      const [row, usersRes, contactsRes, clientsRes, categoriesRes] = await Promise.all([
+      const [row, usersRes, contactsRes, clientsRes, categoriesRes, teamsRes] = await Promise.all([
         fetchTicket(ticketId),
         fetchActiveUsers().catch(() => []),
         fetchContactsList().catch(() => []),
         fetchClientsList().catch(() => []),
-        fetchSalesTicketCategories().catch(() => [])
+        fetchSalesTicketCategories().catch(() => []),
+        fetchTeamsForPlanning().catch(() => [])
       ]);
       setTicket(row);
       setTitleDraft(String(row?.title || ""));
@@ -524,6 +527,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       setContacts(Array.isArray(contactsRes) ? contactsRes : []);
       setClients(Array.isArray(clientsRes) ? clientsRes : []);
       setCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
+      setTeams(Array.isArray(teamsRes) ? teamsRes : []);
       setPmTasks(buildPmTasksFromTicket(row));
       setCategorySearch(String(row?.category || ""));
       // Requester / client labels are resolved once lists are loaded.
@@ -2637,6 +2641,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         ticket={ticket}
                         comments={comments}
                         users={users}
+                        teams={teams}
                         validationRequests={Array.isArray(ticket?.validationRequests) ? ticket.validationRequests : []}
                         formatDateTime={copy.formatDateTime}
                         emptyLabel={copy.comments.empty}

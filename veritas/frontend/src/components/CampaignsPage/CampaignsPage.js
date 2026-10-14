@@ -12,7 +12,7 @@ import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import styles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 
-const CAMPAIGNS_CACHE_KEY = "campaigns_page_cache_v1";
+const CAMPAIGNS_CACHE_KEY = "campaigns_page_cache_v2";
 const CAMPAIGNS_CACHE_TTL_MS = 3 * 60 * 1000;
 
 function getTodayDate() {
@@ -106,6 +106,14 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
         writeCache(CAMPAIGNS_CACHE_KEY, normalized);
         return normalized;
       })
+      .catch(error => {
+        if (error?.name !== "AbortError") {
+          try {
+            sessionStorage.removeItem(CAMPAIGNS_CACHE_KEY);
+          } catch {}
+        }
+        throw error;
+      })
       .finally(() => {
         campaignsRequestRef.current = null;
       });
@@ -121,11 +129,14 @@ export default function CampaignsPage({ onNavigate, pageParams }) {
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error while loading campaigns:", error);
-      if (mountedRef.current) setCampaigns([]);
+      if (mountedRef.current) {
+        setCampaigns([]);
+        toast.error(campaignsCopy?.toasts?.loadError || "Impossible de charger les campagnes");
+      }
     } finally {
       if (mountedRef.current) setLoadingCampaigns(false);
     }
-  }, [loadCampaignsDataset]);
+  }, [campaignsCopy?.toasts?.loadError, loadCampaignsDataset]);
 
   const loadClients = useCallback(async () => {
     try {

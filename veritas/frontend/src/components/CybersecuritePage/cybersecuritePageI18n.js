@@ -427,6 +427,7 @@ const CYBERSECURITE_PAGE_COPY = {
         updated: "Campagne mise à jour avec succès",
         created: "Campagne créée avec succès",
         saveError: "Erreur lors de la sauvegarde de la campagne",
+        loadError: "Impossible de charger les campagnes",
         confirmDelete: 'Veuillez écrire "JE CONFIRME" pour valider la suppression',
         deleted: "Campagne supprimée avec succès",
         deleteError: "Erreur lors de la suppression de la campagne"
@@ -862,6 +863,7 @@ const CYBERSECURITE_PAGE_COPY = {
         updated: "Campaign updated successfully",
         created: "Campaign created successfully",
         saveError: "Error saving campaign",
+        loadError: "Unable to load campaigns",
         confirmDelete: 'Please type "I CONFIRM" to validate deletion',
         deleted: "Campaign deleted successfully",
         deleteError: "Error deleting campaign"

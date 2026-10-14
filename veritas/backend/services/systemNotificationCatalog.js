@@ -111,6 +111,22 @@ export const SYSTEM_NOTIFICATION_DEFS = [{
   defaultInAppBody: "{{comment.author}} : {{comment.preview}}",
   variables: ["ticket.ticket_number", "ticket.title", "comment.author", "comment.preview", "entreprise.nom", "user.username"]
 }, {
+  key: "tickets.mentioned",
+  group: "tickets",
+  channels: ["inapp"],
+  recipients: "mentioned",
+  inAppKey: "ticket_mentioned",
+  inAppFields: ["excludeInternalComments"],
+  defaultEnabled: true,
+  defaultEmail: false,
+  defaultInApp: true,
+  defaultSubject: "Mention sur le ticket #{{ticket.ticket_number}}",
+  defaultTitle: "Mention ticket",
+  defaultBody: "<p>Bonjour {{user.username}},</p><p>{{comment.author}} vous a mentionné sur le ticket <strong>#{{ticket.ticket_number}} — {{ticket.title}}</strong></p><p>{{comment.preview}}</p>",
+  defaultInAppTitle: "Mention · #{{ticket.ticket_number}}",
+  defaultInAppBody: "{{comment.author}} vous a mentionné : {{comment.preview}}",
+  variables: ["ticket.ticket_number", "ticket.title", "comment.author", "comment.preview", "entreprise.nom", "user.username"]
+}, {
   key: "tickets.resolved",
   group: "tickets",
   channels: ["email", "inapp"],

@@ -233,20 +233,18 @@ async function enrichCampaignStepRow(step) {
 async function enrichCampaignStepRows(rows) {
   return Promise.all((Array.isArray(rows) ? rows : []).map(enrichCampaignStepRow));
 }
-router.get('/all-campaigns', requireAnyPermission('cybersecurite.view', 'clients.view'), async (req, res) => {
+router.get('/all-campaigns', requireAnyPermission('campaigns.view', 'cybersecurite.view', 'clients.view'), async (req, res) => {
   try {
-    await pool.query('SELECT 1');
-    const countResult = await pool.query('SELECT COUNT(*) as total FROM v_b_clients_c_campaign');
     const {
       status,
       type,
       client_id
     } = req.query;
+    // Use c.* (same as /:id/campaigns) so optional Azure columns
+    // (provider / tenant_id / azure_credential_id) never break the list when absent.
     let query = `
       SELECT
-        c.id, c.client_id, c.name, c.type, c.status, c.start_date, c.end_date,
-        c.global_progress, c.description, c.objectif_adoption, c.created_at, c.updated_at, c.created_by,
-        c.updated_by, c.provider, c.tenant_id, c.azure_credential_id,
+        c.*,
         cl.name as client_name
       FROM v_b_clients_c_campaign c
       LEFT JOIN v_b_clients cl ON c.client_id::text = cl.id::text
@@ -284,7 +282,7 @@ router.get('/all-campaigns', requireAnyPermission('cybersecurite.view', 'clients
     });
   }
 });
-router.get('/:id/campaigns', requireAnyPermission('cybersecurite.view', 'clients.view'), async (req, res) => {
+router.get('/:id/campaigns', requireAnyPermission('campaigns.view', 'cybersecurite.view', 'clients.view'), async (req, res) => {
   try {
     const {
       id
@@ -1006,7 +1004,7 @@ router.post('/:id/campaigns/:campaignId/reset', requirePermission('clients_detai
     });
   }
 });
-router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('cybersecurite.view', 'clients.view'), async (req, res) => {
+router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('campaigns.view', 'cybersecurite.view', 'clients.view'), async (req, res) => {
   try {
     const {
       id,
@@ -1183,7 +1181,7 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('cybersecuri
     });
   }
 });
-router.get('/:id/campaigns/:campaignId/report.pdf', requireAnyPermission('cybersecurite.view', 'clients.view'), async (req, res) => {
+router.get('/:id/campaigns/:campaignId/report.pdf', requireAnyPermission('campaigns.view', 'cybersecurite.view', 'clients.view'), async (req, res) => {
   try {
     const {
       id,
@@ -1293,7 +1291,7 @@ router.post('/:id/campaigns/:campaignId/publish-report', requirePermission('docu
     });
   }
 });
-router.get('/:id/campaigns/:campaignId/steps', requireAnyPermission('cybersecurite.view', 'clients.view'), async (req, res) => {
+router.get('/:id/campaigns/:campaignId/steps', requireAnyPermission('campaigns.view', 'cybersecurite.view', 'clients.view'), async (req, res) => {
   try {
     const {
       campaignId

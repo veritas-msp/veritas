@@ -35,6 +35,10 @@ export const DEFAULT_IN_APP_SETTINGS = {
     },
     ticket_validation_responded: {
       enabled: false
+    },
+    ticket_mentioned: {
+      enabled: true,
+      excludeInternalComments: false
     }
   }
 };
@@ -52,6 +56,16 @@ export const IN_APP_EVENT_OPTIONS = [{
     label: "Followers",
     hint: "Agents following the ticket"
   }, {
+    key: "excludeInternalComments",
+    label: "Ignore internal notes",
+    hint: "Do not alert for private replies"
+  }]
+}, {
+  key: "ticket_mentioned",
+  label: "Mention (@agent / @team)",
+  description: "Alert when someone mentions you or your team in a ticket message.",
+  icon: "mdi:at",
+  fields: [{
     key: "excludeInternalComments",
     label: "Ignore internal notes",
     hint: "Do not alert for private replies"
@@ -135,7 +149,7 @@ export const IN_APP_EVENT_GROUPS = [{
   id: "activity",
   title: "Activity",
   description: "Exchanges and messages on tickets.",
-  eventKeys: ["ticket_commented", "ticket_validation_requested", "ticket_validation_responded"]
+  eventKeys: ["ticket_commented", "ticket_mentioned", "ticket_validation_requested", "ticket_validation_responded"]
 }, {
   id: "assignment",
   title: "Assignment",
@@ -170,7 +184,8 @@ export function normalizeInAppSettings(raw = {}) {
       ticket_resolved: normalizeEvent("ticket_resolved", defaults.events.ticket_resolved),
       ticket_satisfaction: normalizeEvent("ticket_satisfaction", defaults.events.ticket_satisfaction),
       ticket_validation_requested: normalizeEvent("ticket_validation_requested", defaults.events.ticket_validation_requested),
-      ticket_validation_responded: normalizeEvent("ticket_validation_responded", defaults.events.ticket_validation_responded)
+      ticket_validation_responded: normalizeEvent("ticket_validation_responded", defaults.events.ticket_validation_responded),
+      ticket_mentioned: normalizeEvent("ticket_mentioned", defaults.events.ticket_mentioned)
     }
   };
 }
@@ -199,6 +214,9 @@ export const DEFAULT_USER_IN_APP_PREFERENCES = {
       enabled: true
     },
     ticket_validation_responded: {
+      enabled: true
+    },
+    ticket_mentioned: {
       enabled: true
     }
   }

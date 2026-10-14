@@ -7,7 +7,17 @@ const DEFAULT_CONFIG = {
 };
 export const TICKET_COMMENT_CONFIG = {
   ALLOWED_TAGS: [...BASE_ALLOWED_TAGS, "img"],
-  ALLOWED_ATTR: [...BASE_ALLOWED_ATTR, "src", "width", "height", "style", "data-inline-upload"],
+  ALLOWED_ATTR: [
+    ...BASE_ALLOWED_ATTR,
+    "src",
+    "width",
+    "height",
+    "style",
+    "data-inline-upload",
+    "data-mention-type",
+    "data-mention-id",
+    "contenteditable"
+  ],
   // Allow pasted data:image previews in optimistic / draft comment HTML.
   ADD_DATA_URI_TAGS: ["img"]
 };

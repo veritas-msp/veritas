@@ -41,7 +41,14 @@ import TicketDetailPageSkeleton from "./TicketDetailPageSkeleton";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
 import { fetchActiveUsers, fetchCurrentUser } from "../../api/users";
-import { fetchTeams } from "../../api/teams";
+import { fetchTeamsForPlanning } from "../../api/teams";
+import TicketMentionMenu from "./TicketMentionMenu";
+import {
+  buildMentionCandidates,
+  getCaretClientRect,
+  getMentionQueryAtCaret,
+  insertMentionChip
+} from "./ticketMentionUtils";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
 import { fetchPrestataires } from "../../api/prestataires";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -1216,6 +1223,9 @@ export default function TicketDetailPage({
   const [attachmentFiles, setAttachmentFiles] = useState([]);
   const [imageLightbox, setImageLightbox] = useState(null);
   const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
+  const [mentionMenu, setMentionMenu] = useState(null);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const mentionStateRef = useRef(null);
   const [isDragOverReplyBox, setIsDragOverReplyBox] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [titleEditing, setTitleEditing] = useState(false);
@@ -1502,7 +1512,7 @@ export default function TicketDetailPage({
         signal: controller.signal
       }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchTicketCategories({
         signal: controller.signal
-      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchTeams().catch(() => [])]);
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchTeamsForPlanning().catch(() => [])]);
       const ticketsRes = await fetchTickets({
         limit: 200
       }, {
@@ -1513,7 +1523,7 @@ export default function TicketDetailPage({
       setSalesProgress(Math.max(0, Math.min(100, Math.round(Number(ticketRes?.progress_percent ?? ticketRes?.progressPercent ?? 0) || 0))));
       setTicketNativeChannel(ticketRes.channel || "web");
       setUsers(Array.isArray(usersRes) ? usersRes : []);
-      setTeams(Array.isArray(teamsRes) ? teamsRes.filter(team => team?.is_active !== false) : []);
+      setTeams(Array.isArray(teamsRes) ? teamsRes : []);
       setClients(Array.isArray(clientsRes) ? clientsRes : []);
       setContacts(Array.isArray(contactsRes) ? contactsRes : []);
       setTicketCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
@@ -2370,6 +2380,75 @@ export default function TicketDetailPage({
   const insertEmoji = (emoji = "😊") => {
     runEditorCommand("insertText", `${emoji}`);
   };
+  const closeMentionMenu = useCallback(() => {
+    mentionStateRef.current = null;
+    setMentionMenu(null);
+    setMentionActiveIndex(0);
+  }, []);
+  const refreshMentionMenu = useCallback(() => {
+    if (isReadOnly) {
+      closeMentionMenu();
+      return;
+    }
+    const mentionState = getMentionQueryAtCaret();
+    if (!mentionState) {
+      closeMentionMenu();
+      return;
+    }
+    const selfId = user?.id || user?.uuid || user?.user_id || null;
+    const items = buildMentionCandidates({
+      users,
+      teams,
+      query: mentionState.query,
+      excludeUserId: selfId
+    });
+    mentionStateRef.current = mentionState;
+    setMentionMenu({
+      query: mentionState.query,
+      items,
+      anchorRect: getCaretClientRect()
+    });
+    setMentionActiveIndex(0);
+  }, [closeMentionMenu, isReadOnly, teams, user, users]);
+  const applyMentionSelection = useCallback(item => {
+    if (!item) return;
+    const applied = insertMentionChip(mentionStateRef.current, item);
+    closeMentionMenu();
+    if (applied && commentEditorRef.current) {
+      setCommentDraft(commentEditorRef.current.innerHTML || "");
+      commentEditorRef.current.focus();
+    }
+  }, [closeMentionMenu]);
+  const handleCommentEditorInput = useCallback(event => {
+    setCommentDraft(event.currentTarget?.innerHTML || "");
+    refreshMentionMenu();
+  }, [refreshMentionMenu]);
+  const handleCommentEditorKeyDown = useCallback(event => {
+    if (!mentionMenu) return;
+    const items = mentionMenu.items || [];
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMentionMenu();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (items.length === 0) return;
+      setMentionActiveIndex(prev => (prev + 1) % items.length);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (items.length === 0) return;
+      setMentionActiveIndex(prev => (prev - 1 + items.length) % items.length);
+      return;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      if (items.length === 0) return;
+      event.preventDefault();
+      applyMentionSelection(items[mentionActiveIndex] || items[0]);
+    }
+  }, [applyMentionSelection, closeMentionMenu, mentionActiveIndex, mentionMenu]);
   const applyCommentTemplate = templateId => {
     setCommentTemplateSelection(templateId);
     if (!templateId) return;
@@ -5803,11 +5882,32 @@ export default function TicketDetailPage({
                   </>}
               </div>
               {replyBoxExpanded ? <>
-                  <div ref={commentEditorRef} className={styles.editor} contentEditable={!isReadOnly} suppressContentEditableWarning onInput={e => setCommentDraft(e.currentTarget?.innerHTML || "")} onPaste={handleEditorPaste} style={{
-                  minHeight: "140px",
-                  whiteSpace: "pre-wrap",
-                  overflowY: "auto"
-                }} />
+                  <div
+                    ref={commentEditorRef}
+                    className={styles.editor}
+                    contentEditable={!isReadOnly}
+                    suppressContentEditableWarning
+                    onInput={handleCommentEditorInput}
+                    onKeyDown={handleCommentEditorKeyDown}
+                    onPaste={handleEditorPaste}
+                    style={{
+                      minHeight: "140px",
+                      whiteSpace: "pre-wrap",
+                      overflowY: "auto"
+                    }}
+                  />
+                  <TicketMentionMenu
+                    open={Boolean(mentionMenu)}
+                    anchorRect={mentionMenu?.anchorRect || null}
+                    items={mentionMenu?.items || []}
+                    activeIndex={mentionActiveIndex}
+                    query={mentionMenu?.query || ""}
+                    onSelect={applyMentionSelection}
+                    onClose={closeMentionMenu}
+                    emptyLabel={copy.reply?.mentionEmpty || "Aucun agent ou équipe"}
+                    agentsLabel={copy.reply?.mentionAgents || "Agents"}
+                    teamsLabel={copy.reply?.mentionTeams || "Équipes"}
+                  />
                   {attachmentFiles.length > 0 && isPro ? (
                     <TicketVaultArchiveOptions
                       files={attachmentFiles}

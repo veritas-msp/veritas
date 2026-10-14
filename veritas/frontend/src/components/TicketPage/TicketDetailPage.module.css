@@ -2593,6 +2593,97 @@
   cursor: default;
 }
 
+.editor :global(.ticket-mention),
+.commentBody :global(.ticket-mention) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.35rem;
+  margin: 0 0.1rem;
+  border-radius: 999px;
+  background: rgba(43, 95, 171, 0.12);
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+  font-size: 0.92em;
+  white-space: nowrap;
+  vertical-align: baseline;
+  user-select: all;
+}
+
+.mentionMenu {
+  position: fixed;
+  z-index: 12000;
+  overflow: auto;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  padding: 0.35rem;
+}
+
+.mentionGroup + .mentionGroup {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--msp-border, #e2e8f0);
+}
+
+.mentionGroupLabel {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
+}
+
+.mentionOption {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--msp-text, #0f172a);
+  font-size: 0.85rem;
+}
+
+.mentionOption:hover,
+.mentionOptionActive {
+  background: rgba(43, 95, 171, 0.1);
+}
+
+.mentionOptionMain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.mentionOptionLabel {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mentionOptionHint {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mentionEmpty {
+  padding: 0.65rem 0.55rem;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #64748b);
+  text-align: center;
+}
+
 .readonlyField {
   background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-muted-light, #8b9bb5);
@@ -4784,6 +4875,33 @@
 :global(html.dark) .sideChatPopup,
 :global(html.dark) .ticketOptionsMenu,
 :global(html.dark) .ticketActionModalCard,
+:global(html.dark) .editor :global(.ticket-mention),
+:global(html.dark) .commentBody :global(.ticket-mention),
+:global(body.dark) .editor :global(.ticket-mention),
+:global(body.dark) .commentBody :global(.ticket-mention) {
+  background: rgba(96, 165, 250, 0.18);
+  color: #93c5fd;
+}
+
+:global(html.dark) .mentionMenu,
+:global(body.dark) .mentionMenu {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .mentionOption,
+:global(body.dark) .mentionOption {
+  color: #e2e8f0;
+}
+
+:global(html.dark) .mentionOption:hover,
+:global(html.dark) .mentionOptionActive,
+:global(body.dark) .mentionOption:hover,
+:global(body.dark) .mentionOptionActive {
+  background: rgba(96, 165, 250, 0.16);
+}
+
 :global(html.dark) .emojiMenu {
   background: var(--msp-surface, #1a2540);
   border-color: var(--msp-border, #2a3a55);

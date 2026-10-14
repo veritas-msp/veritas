@@ -49,6 +49,12 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
           hint: "Ne pas alerter pour les réponses privées"
         }
       },
+      ticket_mentioned: {
+        excludeInternalComments: {
+          label: "Ignorer les notes internes",
+          hint: "Ne pas alerter pour les réponses privées"
+        }
+      },
       ticket_created: {
         notifyAssignees: {
           label: "Assignés",
@@ -152,6 +158,12 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
           label: "Followers",
           hint: "Agents following the ticket"
         },
+        excludeInternalComments: {
+          label: "Ignore internal notes",
+          hint: "Do not alert for private replies"
+        }
+      },
+      ticket_mentioned: {
         excludeInternalComments: {
           label: "Ignore internal notes",
           hint: "Do not alert for private replies"
@@ -265,6 +277,12 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
           hint: "Keine Alerts für private Antworten"
         }
       },
+      ticket_mentioned: {
+        excludeInternalComments: {
+          label: "Interne Notizen ignorieren",
+          hint: "Keine Alerts für private Antworten"
+        }
+      },
       ticket_created: {
         notifyAssignees: {
           label: "Zuständige",
@@ -373,6 +391,12 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
           hint: "Non avvisare per le risposte private"
         }
       },
+      ticket_mentioned: {
+        excludeInternalComments: {
+          label: "Ignora note interne",
+          hint: "Non avvisare per le risposte private"
+        }
+      },
       ticket_created: {
         notifyAssignees: {
           label: "Assegnatari",
@@ -476,6 +500,12 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
           label: "Seguidores",
           hint: "Agentes que siguen el ticket"
         },
+        excludeInternalComments: {
+          label: "Ignorar notas internas",
+          hint: "No alertar por respuestas privadas"
+        }
+      },
+      ticket_mentioned: {
         excludeInternalComments: {
           label: "Ignorar notas internas",
           hint: "No alertar por respuestas privadas"

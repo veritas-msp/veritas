@@ -332,7 +332,10 @@ const DETAIL_COPY = {
       expandSummary: "Rédiger une réponse",
       draftHint: "Brouillon en cours",
       expandAria: "Développer la zone de réponse",
-      expandTooltip: "Développer la zone de réponse"
+      expandTooltip: "Développer la zone de réponse",
+      mentionEmpty: "Aucun agent ou équipe",
+      mentionAgents: "Agents",
+      mentionTeams: "Équipes"
     },
     rightPane: {
       channel: "Canal",
@@ -951,7 +954,10 @@ const DETAIL_COPY = {
       expandSummary: "Write a reply",
       draftHint: "Draft in progress",
       expandAria: "Expand reply area",
-      expandTooltip: "Expand reply area"
+      expandTooltip: "Expand reply area",
+      mentionEmpty: "No agent or team",
+      mentionAgents: "Agents",
+      mentionTeams: "Teams"
     },
     rightPane: {
       channel: "Channel",

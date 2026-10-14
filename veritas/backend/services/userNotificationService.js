@@ -42,6 +42,10 @@ export const DEFAULT_IN_APP_SETTINGS = {
     },
     ticket_validation_responded: {
       enabled: false
+    },
+    ticket_mentioned: {
+      enabled: true,
+      excludeInternalComments: false
     }
   }
 };
@@ -69,7 +73,8 @@ export function normalizeInAppSettings(raw = {}) {
       ticket_resolved: normalizeEvent("ticket_resolved", events.ticket_resolved),
       ticket_satisfaction: normalizeEvent("ticket_satisfaction", events.ticket_satisfaction),
       ticket_validation_requested: normalizeEvent("ticket_validation_requested", events.ticket_validation_requested),
-      ticket_validation_responded: normalizeEvent("ticket_validation_responded", events.ticket_validation_responded)
+      ticket_validation_responded: normalizeEvent("ticket_validation_responded", events.ticket_validation_responded),
+      ticket_mentioned: normalizeEvent("ticket_mentioned", events.ticket_mentioned)
     }
   };
 }
@@ -98,6 +103,9 @@ export const DEFAULT_USER_IN_APP_PREFERENCES = {
       enabled: true
     },
     ticket_validation_responded: {
+      enabled: true
+    },
+    ticket_mentioned: {
       enabled: true
     }
   }
@@ -341,6 +349,69 @@ export async function notifyInAppTicketCommented({
     }
   })));
 }
+
+/**
+ * In-app ping for users explicitly @mentioned (user or team) in a ticket comment.
+ */
+export async function notifyInAppTicketMentioned({
+  ticketId,
+  commentId,
+  authorUserId,
+  mentionedUserIds = [],
+  isInternal = false,
+  contentPreview = ""
+} = {}) {
+  const settings = await loadInAppSettings();
+  if (!settings.enabled) return { notified: 0 };
+  const eventSettings = settings.events.ticket_mentioned || { enabled: true };
+  if (eventSettings.enabled === false) return { notified: 0 };
+  if (isInternal && eventSettings.excludeInternalComments) return { notified: 0 };
+
+  const authorId = authorUserId ? String(authorUserId) : null;
+  const uniqueTargets = [...new Set((Array.isArray(mentionedUserIds) ? mentionedUserIds : [])
+    .map(id => String(id || "").trim())
+    .filter(id => id && id !== authorId))];
+  if (uniqueTargets.length === 0) return { notified: 0 };
+
+  const notifiableRecipients = await filterNotifiableUserIds(uniqueTargets, "ticket_mentioned");
+  if (notifiableRecipients.length === 0) return { notified: 0 };
+
+  const ticket = await resolveTicketContext(ticketId);
+  if (!ticket) return { notified: 0 };
+
+  const authorName = await resolveAuthorName(authorUserId);
+  const preview = String(contentPreview || "").replace(/\s+/g, " ").trim().slice(0, 140);
+  const ticketLabel = buildTicketLabel(ticket);
+  const fallbackTitle = `Mention on ${ticketLabel}`;
+  const fallbackBody = preview ? `${authorName} mentioned you: ${preview}` : `${authorName} mentioned you in a ticket message`;
+  const copy = await resolveSystemInAppCopy("tickets.mentioned", ticketSystemContext(ticket, {
+    comment: {
+      author: authorName,
+      preview
+    }
+  }), fallbackTitle, fallbackBody);
+
+  await insertUserNotifications(notifiableRecipients.map(userId => ({
+    userId,
+    type: "ticket_mentioned",
+    title: copy.title,
+    body: copy.body,
+    ticketId,
+    commentId: commentId || null,
+    payload: {
+      authorUserId,
+      authorName,
+      isInternal: Boolean(isInternal),
+      ticketNumber: ticket.ticket_number ?? null,
+      ticketTitle: ticket.title || "",
+      clientName: ticket.client_name || "",
+      mentioned: true
+    }
+  })));
+
+  return { notified: notifiableRecipients.length };
+}
+
 export async function notifyInAppTicketAssigned({
   ticketId,
   assignedUserId,

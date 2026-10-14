@@ -55,6 +55,14 @@ export const SYSTEM_NOTIFICATION_DEFS = [{
   recipients: "Les assignés et les followers",
   variables: ["ticket.ticket_number", "ticket.title", "comment.author", "comment.preview", "entreprise.nom", "user.username"]
 }, {
+  key: "tickets.mentioned",
+  group: "tickets",
+  channels: ["inapp"],
+  inAppKey: "ticket_mentioned",
+  inAppFields: ["excludeInternalComments"],
+  recipients: "Les agents (ou membres d'équipe) mentionnés",
+  variables: ["ticket.ticket_number", "ticket.title", "comment.author", "comment.preview", "entreprise.nom", "user.username"]
+}, {
   key: "tickets.resolved",
   group: "tickets",
   channels: ["email", "inapp"],

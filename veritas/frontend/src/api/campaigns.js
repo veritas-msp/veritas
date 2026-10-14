@@ -24,28 +24,27 @@ export async function getClientCampaigns(clientId, filters = {}, options = {}) {
   }
 }
 export async function getAllCampaigns(filters = {}, options = {}) {
-  try {
-    const params = new URLSearchParams();
-    if (filters.status) params.append('status', filters.status);
-    if (filters.type) params.append('type', filters.type);
-    if (filters.client_id) params.append('client_id', filters.client_id);
-    const response = await fetch(`${BASE_URL}/all-campaigns?${params}`, {
-      method: 'GET',
-      credentials: 'include',
-      signal: options.signal,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+  const params = new URLSearchParams();
+  if (filters.status) params.append('status', filters.status);
+  if (filters.type) params.append('type', filters.type);
+  if (filters.client_id) params.append('client_id', filters.client_id);
+  const response = await fetch(`${BASE_URL}/all-campaigns?${params}`, {
+    method: 'GET',
+    credentials: 'include',
+    signal: options.signal,
+    headers: {
+      'Content-Type': 'application/json'
     }
-    return await response.json();
-  } catch (error) {
-    if (error?.name === 'AbortError') throw error;
-    console.error('Error fetching campaigns:', error);
-    return [];
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const err = new Error(data.error || data.message || `Error ${response.status}: ${response.statusText}`);
+    err.status = response.status;
+    err.code = data.code;
+    throw err;
   }
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
 }
 export async function createClientCampaign(clientId, campaignData) {
   try {

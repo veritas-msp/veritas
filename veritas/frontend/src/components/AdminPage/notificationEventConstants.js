@@ -152,6 +152,7 @@ export const IN_APP_KEY_BY_EVENT = {
   "tickets.updated": "ticket_updated",
   "tickets.resolved": "ticket_resolved",
   "tickets.commented": "ticket_commented",
+  "tickets.mentioned": "ticket_mentioned",
   "tickets.assigned": "ticket_assigned",
   "tickets.satisfaction": "ticket_satisfaction",
   "tickets.validation_requested": "ticket_validation_requested",
