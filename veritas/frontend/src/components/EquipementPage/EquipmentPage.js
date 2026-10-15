@@ -36,7 +36,7 @@ import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { updateRmmAgentStatus } from "../../api/rmm";
 import { getOsIconName, repairOsLabel } from "./osIconUtils";
-import { buildRmmAgentRowFromEquipment, getRmmChassisInfo, getRmmInventoryFromEquipment, isRmmManagedEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
+import { buildRmmAgentRowFromEquipment, getRmmAgentVersion, getRmmChassisInfo, getRmmInventoryFromEquipment, isRmmManagedEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
 import { fetchSupervisionExclusions } from "../../api/supervisionAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
@@ -756,6 +756,10 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       label: label("agentStatus"),
       key: "agentStatus"
     },
+    agentVersion: {
+      label: label("agentVersion"),
+      key: "agentVersion"
+    },
     ssidCount: {
       label: "SSID",
       key: "ssidCount"
@@ -836,12 +840,13 @@ const INTERNET_COLUMN_KEYS = ['name', 'client', 'location', 'ip', 'internetType'
 const INTERNET_COLUMN_LABELS = {
   internetType: 'Connection type'
 };
-const ORDINATEUR_COLUMN_KEYS = ['name', 'client', 'computerType', 'location', 'ip', 'systeme', 'domaine', 'agentStatus', 'mac', 'serial'];
+const ORDINATEUR_COLUMN_KEYS = ['name', 'client', 'computerType', 'location', 'ip', 'systeme', 'domaine', 'agentStatus', 'agentVersion', 'mac', 'serial'];
 const ORDINATEUR_COLUMN_LABELS = {
   computerType: 'Type',
   systeme: 'OS',
   domaine: 'Domaine',
   agentStatus: 'RMM',
+  agentVersion: 'Version',
   serial: 'SN'
 };
 const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'role', 'ip', 'vlan', 'ha', 'systeme', 'serial', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'mapping'];
@@ -882,7 +887,7 @@ const EMBEDDED_TYPE_COLUMNS = {
   Routeur: ["name", "activeStatus", "location", "model", "serial", "ip", "monitoring", "mapping"],
   Servers: ["name", "activeStatus", "location", "role", "model", "serial", "ip", "systeme", "ha", "monitoring", "mapping"],
   Storage: ["name", "activeStatus", "location", "model", "serial", "ip", "disksUsage", "capacite", "raid", "ha", "monitoring", "mapping"],
-  Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "agentStatus", "mapping"],
+  Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "agentStatus", "agentVersion", "mapping"],
   Switch: ["name", "activeStatus", "location", "model", "serial", "mac", "ha", "monitoring", "mapping"],
   BorneWifi: ["name", "activeStatus", "location", "model", "serial", "mac", "ssidCount", "monitoring", "mapping"],
   TOIP: ["name", "activeStatus", "location", "model", "version", "ip", "mapping"],
@@ -2092,6 +2097,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (colKey === "agentStatus") {
       return isRmmManagedEquipment(equipment) ? 1 : 0;
     }
+    if (colKey === "agentVersion") {
+      return getRmmAgentVersion(equipment) || "";
+    }
     if (colKey === "ssidCount") {
       const ssids = Array.isArray(equipment?.ssids)
         ? equipment.ssids
@@ -3070,6 +3078,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         }
       } else if (col.key === 'agentStatus') {
         value = isRmmManagedEquipment(equipment) ? "RMM" : "-";
+      } else if (col.key === 'agentVersion') {
+        value = getRmmAgentVersion(equipment) || "-";
       } else if (col.key === 'activeStatus') {
         value = readEquipmentIsActive(equipment) ? "Active" : "Inactive";
       } else if (col.key === 'memoire' && value) {
@@ -3869,6 +3879,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key}>{domainLabel && domainLabel !== '-' ? domainLabel : '-'}</td>;
                             } else if (col.key === 'agentStatus') {
                               return <td key={col.key}>{renderAgentDot(equipment)}</td>;
+                            } else if (col.key === 'agentVersion') {
+                              const version = getRmmAgentVersion(equipment) || "-";
+                              return <td key={col.key} className={styles.monospace} title={version !== "-" ? version : undefined}>{version}</td>;
                             } else if (col.key === 'computerType') {
                               const computerTypeLabel = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
                               return <td key={col.key}>{computerTypeLabel || '-'}</td>;

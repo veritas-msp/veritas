@@ -156,6 +156,61 @@ export function addCalendarHours(startDate, hours) {
   date.setTime(date.getTime() + Number(hours || 0) * 60 * 60 * 1000);
   return date;
 }
+
+/**
+ * Business minutes between two instants (positive if to > from).
+ * Outside opening hours, only open intervals are counted.
+ */
+export function businessMinutesBetween(fromDate, toDate, settingsInput) {
+  const settings = normalizeSlaSettings(settingsInput);
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return 0;
+  if (to.getTime() === from.getTime()) return 0;
+  if (to < from) {
+    return -businessMinutesBetween(to, from, settings);
+  }
+  let current = new Date(from);
+  let total = 0;
+  let guard = 0;
+  while (current < to && guard < 200000) {
+    guard += 1;
+    const parts = getZonedDateParts(current, settings.timezone);
+    const row = getScheduleRow(settings, parts.dayOfWeek);
+    if (!row?.enabled) {
+      current = findNextEnabledDayStart(parts, settings);
+      if (current >= to) break;
+      continue;
+    }
+    const open = parseHHMM(row.open);
+    const close = parseHHMM(row.close);
+    let minutes = parts.hour * 60 + parts.minute;
+    if (minutes < open) {
+      current = setZonedMinutesFromMidnight(current, settings.timezone, open);
+      if (current >= to) break;
+      continue;
+    }
+    if (minutes >= close) {
+      current = findNextEnabledDayStart(parts, settings);
+      if (current >= to) break;
+      continue;
+    }
+    const endParts = getZonedDateParts(to, settings.timezone);
+    const sameDay =
+      endParts.year === parts.year &&
+      endParts.month === parts.month &&
+      endParts.day === parts.day;
+    const endMinute = sameDay
+      ? Math.min(close, endParts.hour * 60 + endParts.minute)
+      : close;
+    const available = Math.max(0, endMinute - minutes);
+    total += available;
+    if (sameDay) break;
+    current = findNextEnabledDayStart(parts, settings);
+  }
+  return total;
+}
+
 export function computeSlaDueAt({
   startDate,
   amount,

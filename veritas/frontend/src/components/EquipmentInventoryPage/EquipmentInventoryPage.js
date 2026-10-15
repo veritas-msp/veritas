@@ -189,6 +189,43 @@ function supervisionStatusMeta(item, copy) {
   };
 }
 
+function isInventoryRmmManaged(item) {
+  return Boolean(
+    item?.agentManaged ||
+      item?.rmmAgentId ||
+      item?.rawData?.source === "rmm" ||
+      item?.data?.source === "rmm" ||
+      item?.rawData?.agentId ||
+      item?.rawData?.agent_id ||
+      item?.data?.agentId ||
+      item?.data?.agent_id
+  );
+}
+
+function inventoryAgentVersion(item) {
+  const version =
+    item?.agentVersion ||
+    item?.agent_version ||
+    item?.data?.agentVersion ||
+    item?.data?.agent_version ||
+    item?.rawData?.agentVersion ||
+    item?.rawData?.agent_version ||
+    null;
+  if (version == null || String(version).trim() === "") return "";
+  return String(version).trim();
+}
+
+function rmmStatusMeta(item, copy) {
+  const installed = isInventoryRmmManaged(item);
+  return {
+    installed,
+    label: installed
+      ? copy.rmmAgentInstalled || "Agent RMM installé"
+      : copy.rmmAgentMissing || "Pas d'agent RMM",
+    tone: installed ? "ok" : "off"
+  };
+}
+
 function StatusDot({ tone, label }) {
   return (
     <SmartTooltip content={label}>
@@ -244,10 +281,30 @@ const STANDARD_INVENTORY_COLUMNS = [
   "site",
   "tags",
   "status",
+  "rmm",
+  "agentVersion",
   "alerts",
   "supervision",
   "alertsMonth"
 ];
+
+function withRmmInventoryColumns(columns) {
+  if (!Array.isArray(columns)) return columns;
+  let next = columns;
+  if (!next.includes("rmm")) {
+    const statusIdx = next.indexOf("status");
+    const alertsIdx = next.indexOf("alerts");
+    const insertAt =
+      statusIdx >= 0 ? statusIdx + 1 : alertsIdx >= 0 ? alertsIdx : next.length;
+    next = [...next.slice(0, insertAt), "rmm", ...next.slice(insertAt)];
+  }
+  if (!next.includes("agentVersion")) {
+    const rmmIdx = next.indexOf("rmm");
+    const insertAt = rmmIdx >= 0 ? rmmIdx + 1 : next.length;
+    next = [...next.slice(0, insertAt), "agentVersion", ...next.slice(insertAt)];
+  }
+  return next;
+}
 
 function shouldShowInventoryOsColumn(selectedTypes) {
   if (!selectedTypes || selectedTypes.size === 0) return false;
@@ -347,6 +404,10 @@ function getInventoryColumnValue(item, columnId, { locale, copy, customFields })
       return Array.isArray(item.tags) ? item.tags.map(tag => tag.label).filter(Boolean).join(", ") : "";
     case "status":
       return item.is_active === false ? copy.status.inactive : copy.status.active;
+    case "rmm":
+      return rmmStatusMeta(item, copy).label;
+    case "agentVersion":
+      return inventoryAgentVersion(item);
     case "alerts":
       return alertStatusMeta(item, copy).label;
     case "supervision":
@@ -379,6 +440,10 @@ function getSortValue(item, key, locale) {
       return Array.isArray(item.tags) ? item.tags.map(tag => tag.label).filter(Boolean).join(", ") : "";
     case "status":
       return item.is_active === false ? 1 : 0;
+    case "rmm":
+      return isInventoryRmmManaged(item) ? 1 : 0;
+    case "agentVersion":
+      return inventoryAgentVersion(item);
     case "alerts":
       return item?.alertStatus || (item?.alertSuspended ? "suspended" : item?.alertsEnabled ? "active" : "disabled");
     case "supervision":
@@ -696,37 +761,41 @@ export default function EquipmentInventoryPage({ onNavigate }) {
           .map(key => customColumnKey(key))
       : [];
     if (customFamilyView && String(customFamilyView.type).startsWith("Custom:")) {
-      return withOsInventoryColumn(
-        [
-          "company",
-          "name",
-          "tags",
-          ...extraKeys,
-          "status",
-          "alerts",
-          "supervision",
-          "alertsMonth"
-        ],
-        showOsColumn
+      return withRmmInventoryColumns(
+        withOsInventoryColumn(
+          [
+            "company",
+            "name",
+            "tags",
+            ...extraKeys,
+            "status",
+            "alerts",
+            "supervision",
+            "alertsMonth"
+          ],
+          showOsColumn
+        )
       );
     }
     if (extraKeys.length) {
-      return withOsInventoryColumn(
-        [
-          "company",
-          "name",
-          "type",
-          "ip",
-          "serial",
-          "site",
-          "tags",
-          ...extraKeys,
-          "status",
-          "alerts",
-          "supervision",
-          "alertsMonth"
-        ],
-        showOsColumn
+      return withRmmInventoryColumns(
+        withOsInventoryColumn(
+          [
+            "company",
+            "name",
+            "type",
+            "ip",
+            "serial",
+            "site",
+            "tags",
+            ...extraKeys,
+            "status",
+            "alerts",
+            "supervision",
+            "alertsMonth"
+          ],
+          showOsColumn
+        )
       );
     }
     const source = filtered.length ? filtered : items;
@@ -734,12 +803,14 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       source.length > 0 &&
       source.every(item => item.isCustom || String(item.type || "").startsWith("Custom:"));
     if (allCustom) {
-      return withOsInventoryColumn(
-        ["company", "name", "type", "site", "tags", "status", "alerts", "supervision", "alertsMonth"],
-        showOsColumn
+      return withRmmInventoryColumns(
+        withOsInventoryColumn(
+          ["company", "name", "type", "site", "tags", "status", "alerts", "supervision", "alertsMonth"],
+          showOsColumn
+        )
       );
     }
-    return withOsInventoryColumn(STANDARD_INVENTORY_COLUMNS, showOsColumn);
+    return withRmmInventoryColumns(withOsInventoryColumn(STANDARD_INVENTORY_COLUMNS, showOsColumn));
   }, [customFamilyView, filtered, items, showOsColumn]);
 
   useEffect(() => {
@@ -1114,6 +1185,20 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         );
       case "status":
         return <td key={columnId}>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>;
+      case "rmm":
+        return (
+          <td key={columnId} className={styles.dotCol}>
+            <StatusDot tone={extras.rmmMeta.tone} label={extras.rmmMeta.label} />
+          </td>
+        );
+      case "agentVersion": {
+        const version = inventoryAgentVersion(item) || "—";
+        return (
+          <td key={columnId} className={styles.versionCol} title={version === "—" ? undefined : version}>
+            {version}
+          </td>
+        );
+      }
       case "alerts":
         return (
           <td key={columnId} className={styles.dotCol}>
@@ -1447,6 +1532,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                         const isSelected = selectedIds.has(item.id);
                                         const alertMeta = alertStatusMeta(item, copy);
                                         const supervisionMeta = supervisionStatusMeta(item, copy);
+                                        const rmmMeta = rmmStatusMeta(item, copy);
                                         const monthCount = Number(item.alertsLastMonth) || 0;
                                         const monthTitle = copy.formatAlertsMonthBreakdown
                                           ? copy.formatAlertsMonthBreakdown(
@@ -1492,6 +1578,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                               renderColumnCell(item, columnId, {
                                                 alertMeta,
                                                 supervisionMeta,
+                                                rmmMeta,
                                                 monthTitle,
                                                 monthCount
                                               })

@@ -1,7 +1,32 @@
 const PRIORITY_KEYS = ["urgent", "high", "normal", "low"];
 import { pool } from "../database/db.js";
-import { computeSlaDueAt } from "./slaBusinessTime.js";
+import { businessMinutesBetween, computeSlaDueAt } from "./slaBusinessTime.js";
+import { DEFAULT_SLA_SETTINGS, normalizeSlaSettings } from "./slaSettings.js";
 import { loadSlaSettings } from "./slaSettingsStore.js";
+
+function isBusinessSlaTimeMode(timeMode) {
+  return timeMode === "business_hours" || timeMode === "business_days";
+}
+
+function resolveSettingsForRemaining(sla, slaSettingsInput) {
+  const base = normalizeSlaSettings(slaSettingsInput || DEFAULT_SLA_SETTINGS);
+  const timeMode =
+    sla?.timeMode && ["calendar", "business_hours", "business_days"].includes(sla.timeMode)
+      ? sla.timeMode
+      : base.timeMode;
+  return normalizeSlaSettings({
+    ...base,
+    timeMode
+  });
+}
+
+function computeRemainingMs(nowMs, dueAtMs, settings) {
+  if (dueAtMs == null || Number.isNaN(dueAtMs)) return null;
+  if (!isBusinessSlaTimeMode(settings.timeMode)) {
+    return dueAtMs - nowMs;
+  }
+  return businessMinutesBetween(nowMs, dueAtMs, settings) * 60 * 1000;
+}
 export const DEFAULT_SLA_BY_PRIORITY = {
   urgent: {
     firstResponseHours: 1,
@@ -189,10 +214,7 @@ export function resolveTicketSlaInfo(ticket, {
       clientContrat: resolvedContrat,
       priority: ticket?.priority,
       createdAt: ticket?.created_at || new Date(),
-      slaSettings: refreshFirstResponse ? {
-        ...slaSettings,
-        timeMode: "calendar"
-      } : slaSettings
+      slaSettings
     });
     if (built.enabled) {
       sla = refreshFirstResponse ? {
@@ -271,7 +293,7 @@ function isTicketClosed(status) {
   const normalized = normalizeTicketStatus(status);
   return normalized === "resolved" || normalized === "closed";
 }
-export function computeSlaDisplay(ticket, now = Date.now()) {
+export function computeSlaDisplay(ticket, now = Date.now(), slaSettingsInput) {
   const sla = parseSlaInfo(ticket?.sla_info);
   if (!sla.enabled) {
     return {
@@ -282,6 +304,7 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
       sla_remaining_ms: null
     };
   }
+  const settings = resolveSettingsForRemaining(sla, slaSettingsInput);
   const status = normalizeTicketStatus(ticket?.status);
   const closed = isTicketClosed(status);
   const isNew = isNewTicketStatus(status);
@@ -302,7 +325,7 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
     };
   }
   if (isNew && firstResponseDue) {
-    const remaining = firstResponseDue - now;
+    const remaining = computeRemainingMs(now, firstResponseDue, settings);
     const warningMs = Math.max(15 * 60 * 1000, (sla.policy?.firstResponseHours || 4) * 60 * 60 * 1000 * 0.2);
     return {
       sla_status: remaining <= 0 ? "breached" : remaining <= warningMs ? "warning" : "active",
@@ -313,7 +336,7 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
     };
   }
   if (!isNew && resolutionDue) {
-    const remaining = resolutionDue - now;
+    const remaining = computeRemainingMs(now, resolutionDue, settings);
     const warningMs = Math.max(30 * 60 * 1000, (sla.policy?.resolutionHours || 24) * 60 * 60 * 1000 * 0.2);
     return {
       sla_status: remaining <= 0 ? "breached" : remaining <= warningMs ? "warning" : "active",
@@ -346,7 +369,7 @@ export function enrichTicketWithSla(ticket, ctx = {}) {
     ...publicTicket,
     sla_info: resolvedSlaInfo
   };
-  const slaView = computeSlaDisplay(ticketWithSla);
+  const slaView = computeSlaDisplay(ticketWithSla, Date.now(), ctx.slaSettings);
   return {
     ...ticketWithSla,
     ...slaView,

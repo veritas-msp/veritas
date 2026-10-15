@@ -108,6 +108,7 @@ const PAGE_COPY = {
       computerType: "Type",
       domaine: "Domaine",
       agentStatus: "RMM",
+      agentVersion: "Version",
       role: "Rôles",
       raid: "RAID",
       nbDisquesActuels: "NB disque actuels",
@@ -173,6 +174,7 @@ const PAGE_COPY = {
         computerType: "Type",
         domaine: "Domaine",
         agentStatus: "RMM",
+        agentVersion: "Version",
         serial: "SN"
       },
       Sauvegarde: {
@@ -344,6 +346,7 @@ const PAGE_COPY = {
       computerType: "Type",
       domaine: "Domain",
       agentStatus: "RMM",
+      agentVersion: "Version",
       role: "Roles",
       raid: "RAID",
       nbDisquesActuels: "Current disks",
@@ -403,6 +406,7 @@ const PAGE_COPY = {
         computerType: "Type",
         domaine: "Domain",
         agentStatus: "RMM",
+        agentVersion: "Version",
         serial: "SN"
       },
       Backup: {
@@ -569,6 +573,7 @@ const PAGE_COPY = {
       computerType: "Typ",
       domaine: "Domäne",
       agentStatus: "RMM",
+      agentVersion: "Version",
       role: "Rollen",
       raid: "RAID",
       nbDisquesActuels: "Aktuelle Festplatten",
@@ -628,6 +633,7 @@ const PAGE_COPY = {
         computerType: "Typ",
         domaine: "Domäne",
         agentStatus: "RMM",
+        agentVersion: "Version",
         serial: "SN"
       },
       Sauvegarde: {
@@ -790,6 +796,7 @@ const PAGE_COPY = {
       computerType: "Tipo",
       domaine: "Dominio",
       agentStatus: "RMM",
+      agentVersion: "Versione",
       role: "Ruoli",
       raid: "RAID",
       nbDisquesActuels: "Dischi attuali",
@@ -849,6 +856,7 @@ const PAGE_COPY = {
         computerType: "Tipo",
         domaine: "Dominio",
         agentStatus: "RMM",
+        agentVersion: "Versione",
         serial: "SN"
       },
       Sauvegarde: {
@@ -1011,6 +1019,7 @@ const PAGE_COPY = {
       computerType: "Tipo",
       domaine: "Dominio",
       agentStatus: "RMM",
+      agentVersion: "Versión",
       role: "Roles",
       raid: "RAID",
       nbDisquesActuels: "Discos actuales",
@@ -1070,6 +1079,7 @@ const PAGE_COPY = {
         computerType: "Tipo",
         domaine: "Dominio",
         agentStatus: "RMM",
+        agentVersion: "Versión",
         serial: "SN"
       },
       Sauvegarde: {

@@ -19,9 +19,50 @@ export function createDefaultWeekSchedule() {
     close: "18:00"
   }));
 }
+export const DEFAULT_WEEKLY_WORKED_HOURS = 39;
+export const MIN_WEEKLY_WORKED_HOURS = 1;
+export const MAX_WEEKLY_WORKED_HOURS = 80;
+
+export function normalizeWeeklyWorkedHours(value, fallback = DEFAULT_WEEKLY_WORKED_HOURS) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(MAX_WEEKLY_WORKED_HOURS, Math.max(MIN_WEEKLY_WORKED_HOURS, Math.round(n * 100) / 100));
+}
+
+export function countOpenScheduleDays(weekSchedule = []) {
+  return (Array.isArray(weekSchedule) ? weekSchedule : []).filter(row => row?.enabled).length;
+}
+
+export function distributeWeeklyHours(weeklyWorkedHours, openDayCount) {
+  const days = Math.max(0, Math.floor(Number(openDayCount) || 0));
+  const weekly = normalizeWeeklyWorkedHours(weeklyWorkedHours);
+  if (days <= 0) {
+    return { hoursPerFullDay: 8, dayHours: [] };
+  }
+  const fullDay = Math.max(1, Math.ceil(weekly / days));
+  const dayHours = Array.from({ length: days }, () => fullDay);
+  let total = fullDay * days;
+  let i = days - 1;
+  while (total > weekly && i >= 0) {
+    const step = Math.min(1, total - weekly);
+    dayHours[i] = Math.max(0, Math.round((dayHours[i] - step) * 100) / 100);
+    total = Math.round((total - step) * 100) / 100;
+    i -= 1;
+  }
+  return { hoursPerFullDay: fullDay, dayHours };
+}
+
+export function getStandardWorkdayHours(settings) {
+  const openDays = countOpenScheduleDays(settings?.weekSchedule);
+  const weekly = normalizeWeeklyWorkedHours(settings?.weeklyWorkedHours, DEFAULT_WEEKLY_WORKED_HOURS);
+  if (openDays <= 0) return 8;
+  return distributeWeeklyHours(weekly, openDays).hoursPerFullDay;
+}
+
 export const DEFAULT_SLA_SETTINGS = {
   timeMode: "calendar",
   timezone: "Europe/Paris",
+  weeklyWorkedHours: DEFAULT_WEEKLY_WORKED_HOURS,
   weekSchedule: createDefaultWeekSchedule()
 };
 function parseJsonObject(value, fallback = {}) {
@@ -77,6 +118,7 @@ export function normalizeSlaSettings(input = {}) {
   return {
     timeMode,
     timezone,
+    weeklyWorkedHours: normalizeWeeklyWorkedHours(source.weeklyWorkedHours, DEFAULT_SLA_SETTINGS.weeklyWorkedHours),
     weekSchedule: WEEKDAY_ORDER.map(day => byDay.get(day) || defaults.find(r => r.day === day))
   };
 }

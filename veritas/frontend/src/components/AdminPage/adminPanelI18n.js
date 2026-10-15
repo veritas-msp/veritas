@@ -165,7 +165,7 @@ const ADMIN_PANEL_COPY = {
       },
       sla: {
         label: "SLA",
-        description: "Mode de calcul, horaires et activation par entreprise"
+        description: "Mode de calcul, horaires, heures / semaine et activation par entreprise"
       },
       "nav-client-config": {
         label: "Configuration fiche",
@@ -296,7 +296,7 @@ const ADMIN_PANEL_COPY = {
       },
       sla: {
         label: "SLA",
-        description: "Calculation mode, hours and per-enterprise activation"
+        description: "Calculation mode, opening hours, hours / week and per-enterprise activation"
       },
       "nav-client-config": {
         label: "Record configuration",
@@ -427,7 +427,7 @@ const ADMIN_PANEL_COPY = {
       },
       sla: {
         label: "SLA",
-        description: "Berechnungsmodus, Öffnungszeiten und Aktivierung pro Unternehmen"
+        description: "Berechnungsmodus, Öffnungszeiten, Stunden / Woche und Aktivierung pro Unternehmen"
       },
       "nav-client-config": {
         label: "Akten-Konfiguration",
@@ -562,7 +562,7 @@ const ADMIN_PANEL_COPY = {
       },
       sla: {
         label: "SLA",
-        description: "Modalità di calcolo, orari e attivazione per azienda"
+        description: "Modalità di calcolo, orari, ore / settimana e attivazione per azienda"
       },
       "nav-client-config": {
         label: "Configurazione scheda",
@@ -697,7 +697,7 @@ const ADMIN_PANEL_COPY = {
       },
       sla: {
         label: "SLA",
-        description: "Modo de cálculo, horarios y activación por empresa"
+        description: "Modo de cálculo, horarios, horas / semana y activación por empresa"
       },
       "nav-client-config": {
         label: "Configuración de ficha",

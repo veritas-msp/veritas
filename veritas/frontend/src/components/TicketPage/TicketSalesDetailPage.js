@@ -29,6 +29,10 @@ import { useAuthContext } from "../../contexts/AuthContext";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { resolveSalesKind, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries, computeSalesTaskStats } from "../../utils/salesTicketUtils";
+import { fetchSlaSettings } from "../../api/slaSettings";
+import { normalizeSlaSettings } from "../../utils/slaSettingsUtils";
+import { getStandardWorkdayHours } from "../../utils/slaWorkweekUtils";
+import { setCachedSlaSettings } from "../../utils/slaSettingsCache";
 import { reconcileSalesTaskPlanningEvent, deleteSalesTaskPlanningEvents } from "../../utils/salesTaskPlanningEvent";
 import { interpolate } from "../../i18n/translate";
 import SmartTooltip from "../SmartTooltip";
@@ -394,7 +398,32 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const { can } = usePermissions();
   const { user } = useAuthContext();
   const { isCommunity, isPro } = useVeritasEdition();
-  const copy = useMemo(() => getTicketSalesDetailCopy(locale), [locale]);
+  const [slaSettings, setSlaSettings] = useState(null);
+  const standardWorkdayHours = useMemo(
+    () => getStandardWorkdayHours(slaSettings || {}),
+    [slaSettings]
+  );
+  const copy = useMemo(
+    () => getTicketSalesDetailCopy(locale, { standardWorkdayHours }),
+    [locale, standardWorkdayHours]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSlaSettings()
+      .then(data => {
+        if (cancelled) return;
+        const normalized = normalizeSlaSettings(data);
+        setSlaSettings(normalized);
+        setCachedSlaSettings(normalized);
+      })
+      .catch(() => {
+        if (!cancelled) setSlaSettings(normalizeSlaSettings({}));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const detailCopy = useMemo(() => getTicketDetailCopy(locale), [locale]);
   const currentUserId = useMemo(() => user?.id || user?.uuid || user?.user_id || null, [user]);
   const canDeleteTicket = can("sales_detail.delete");

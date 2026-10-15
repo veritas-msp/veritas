@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.99",
+    date: "2026-10-15",
+    highlights: [
+      "Administration SLA : horaires toujours éditables, heures travaillées / semaine, décompte SLA en temps ouvré.",
+      "Prestations : stats tâches exprimées en jours selon la journée standard (heures / semaine).",
+      "Inventaire matériel et fiche entreprise : colonnes RMM (pastille) et Version agent.",
+      "Notifications tickets : ouverture via le numéro de ticket (URL correcte)."
+    ]
+  },
+  {
     version: "1.0.98",
     date: "2026-10-14",
     highlights: [

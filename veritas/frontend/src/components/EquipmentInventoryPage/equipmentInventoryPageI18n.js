@@ -60,6 +60,8 @@ const COPY = {
       site: "Site",
       tags: "Tags",
       status: "Statut",
+      rmm: "RMM",
+      agentVersion: "Version",
       alerts: "Alertes",
       supervision: "Supervision",
       alertsMonth: "30 jours",
@@ -69,6 +71,8 @@ const COPY = {
       active: "Actif",
       inactive: "Inactif"
     },
+    rmmAgentInstalled: "Agent RMM installé",
+    rmmAgentMissing: "Pas d'agent RMM",
     alertStatus: {
       active: "Alertes natives actives",
       disabled: "Alertes natives désactivées",
@@ -185,6 +189,8 @@ const COPY = {
       site: "Site",
       tags: "Tags",
       status: "Status",
+      rmm: "RMM",
+      agentVersion: "Version",
       alerts: "Alerts",
       supervision: "Supervision",
       alertsMonth: "30 days",
@@ -194,6 +200,8 @@ const COPY = {
       active: "Active",
       inactive: "Inactive"
     },
+    rmmAgentInstalled: "RMM agent installed",
+    rmmAgentMissing: "No RMM agent",
     alertStatus: {
       active: "Native alerts active",
       disabled: "Native alerts disabled",
@@ -309,6 +317,8 @@ const COPY = {
       site: "Standort",
       tags: "Tags",
       status: "Status",
+      rmm: "RMM",
+      agentVersion: "Version",
       alerts: "Alarme",
       supervision: "Supervision",
       alertsMonth: "30 Tage",
@@ -318,6 +328,8 @@ const COPY = {
       active: "Aktiv",
       inactive: "Inaktiv"
     },
+    rmmAgentInstalled: "RMM-Agent installiert",
+    rmmAgentMissing: "Kein RMM-Agent",
     alertStatus: {
       active: "Native Alarme aktiv",
       disabled: "Native Alarme deaktiviert",
@@ -428,6 +440,8 @@ const COPY = {
       site: "Sede",
       tags: "Tag",
       status: "Stato",
+      rmm: "RMM",
+      agentVersion: "Versione",
       alerts: "Avvisi",
       supervision: "Supervisione",
       alertsMonth: "30 giorni",
@@ -437,6 +451,8 @@ const COPY = {
       active: "Attivo",
       inactive: "Inattivo"
     },
+    rmmAgentInstalled: "Agente RMM installato",
+    rmmAgentMissing: "Nessun agente RMM",
     alertStatus: {
       active: "Avvisi nativi attivi",
       disabled: "Avvisi nativi disattivati",
@@ -547,6 +563,8 @@ const COPY = {
       site: "Sitio",
       tags: "Etiquetas",
       status: "Estado",
+      rmm: "RMM",
+      agentVersion: "Versión",
       alerts: "Alertas",
       supervision: "Supervisión",
       alertsMonth: "30 días",
@@ -556,6 +574,8 @@ const COPY = {
       active: "Activo",
       inactive: "Inactivo"
     },
+    rmmAgentInstalled: "Agente RMM instalado",
+    rmmAgentMissing: "Sin agente RMM",
     alertStatus: {
       active: "Alertas nativas activas",
       disabled: "Alertas nativas desactivadas",

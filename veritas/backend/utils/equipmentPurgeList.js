@@ -114,6 +114,13 @@ function buildLeanSelect(table) {
         WHEN lower(COALESCE(e.data->>'manageable', '')) IN ('true', 't', '1', 'yes') THEN true
         ELSE false
       END AS manageable,
+      COALESCE(NULLIF(TRIM(e.data->>'source'), ''), '') AS rmm_source,
+      COALESCE(NULLIF(TRIM(e.data->>'agentId'), ''), NULLIF(TRIM(e.data->>'agent_id'), ''), '') AS rmm_agent_id,
+      COALESCE(
+        NULLIF(TRIM(e.data->>'agentVersion'), ''),
+        NULLIF(TRIM(e.data->>'agent_version'), ''),
+        ''
+      ) AS rmm_agent_version,
       e.created_at
     FROM ${table} e
     INNER JOIN v_b_clients c ON c.id = e.client_id
@@ -126,6 +133,17 @@ function mapLeanRow(row, familyMeta) {
   const dbId = String(row.id);
   const clientId = row.client_id;
   const name = row.display_name || row.row_name || row.item_key || "—";
+  const rmmSource = String(row.rmm_source || "").trim();
+  const rmmAgentId = String(row.rmm_agent_id || "").trim() || null;
+  const agentVersion = String(row.rmm_agent_version || "").trim() || null;
+  const isRmm =
+    rmmSource.toLowerCase() === "rmm" || Boolean(rmmAgentId);
+  const supportsRmm =
+    familyMeta.family === "ordinateurs" ||
+    familyMeta.family === "servers" ||
+    familyMeta.type === "Ordinateurs" ||
+    familyMeta.type === "Serveurs" ||
+    familyMeta.type === "Servers";
   return {
     id: `${clientId}:${dbId}`,
     dbId,
@@ -151,6 +169,9 @@ function mapLeanRow(row, familyMeta) {
     remoteAccessId: row.remote_access_id || "",
     anydeskId: row.anydesk_id || "",
     manageable: row.manageable === true,
+    agentManaged: supportsRmm ? isRmm : undefined,
+    rmmAgentId: supportsRmm ? rmmAgentId : undefined,
+    agentVersion: supportsRmm ? agentVersion : undefined,
     createdAt: row.created_at || row.createdAt || null,
     created_at: row.created_at || row.createdAt || null,
     rawData: {
@@ -168,7 +189,12 @@ function mapLeanRow(row, familyMeta) {
       remoteAccessSolution: row.remote_access_solution || "",
       remoteAccessId: row.remote_access_id || "",
       anydeskId: row.anydesk_id || "",
-      manageable: row.manageable === true
+      manageable: row.manageable === true,
+      source: rmmSource || undefined,
+      agentId: rmmAgentId || undefined,
+      agent_id: rmmAgentId || undefined,
+      agentVersion: agentVersion || undefined,
+      agent_version: agentVersion || undefined
     },
     is_active: row.is_active !== false,
     familyKey: familyMeta.familyKey || null,

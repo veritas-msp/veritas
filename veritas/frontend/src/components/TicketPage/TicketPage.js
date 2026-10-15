@@ -36,6 +36,7 @@ import TicketConfirmModal from "./TicketConfirmModal";
 import playModeStyles from "./ticketPlayMode.module.css";
 import { isTicketPlayModeEnabled, navigateToRandomTicket, setTicketPlayModeEnabled } from "./ticketPlayModeUtils";
 import { getTicketSlaDisplay } from "../../utils/ticketSlaUtils";
+import { ensureSlaSettingsLoaded, getCachedSlaSettings } from "../../utils/slaSettingsCache";
 import ClientOnboardingBadge from "../Misc/ClientOnboardingBadge/ClientOnboardingBadge";
 import { TICKET_SATISFACTION_VIEWS, TICKET_SATISFACTION_VIEW_IDS, isTicketSatisfactionViewId, resolveTicketSatisfactionScope, localizeTicketSatisfactionViews } from "../../utils/ticketSatisfactionViewConstants";
 import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
@@ -268,6 +269,11 @@ export default function TicketPage({
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    ensureSlaSettingsLoaded()
+      .then(() => setSlaNow(Date.now()))
+      .catch(() => {});
   }, []);
   useEffect(() => {
     const controller = createTrackedAbortController();
@@ -663,7 +669,11 @@ export default function TicketPage({
           if (columnId === "status") return pageCopy.getStatusBadge(ticketStatus) || t.status || "-";
           if (columnId === "priority") return pageCopy.getPriorityLabel(t.priority);
           if (columnId === "sla") {
-            const sla = getTicketSlaDisplay(t, { clients, now: Date.now() });
+            const sla = getTicketSlaDisplay(t, {
+              clients,
+              now: Date.now(),
+              slaSettings: getCachedSlaSettings() || undefined
+            });
             return sla?.label || "";
           }
           if (columnId === "created_at") return formatDateTime(t.created_at);
@@ -1518,7 +1528,11 @@ export default function TicketPage({
                           );
                         }
                         if (columnId === "sla") {
-                          const sla = getTicketSlaDisplay(t, { clients, now: slaNow });
+                          const sla = getTicketSlaDisplay(t, {
+                            clients,
+                            now: slaNow,
+                            slaSettings: getCachedSlaSettings() || undefined
+                          });
                           return (
                             <td key={columnId}>
                               <span className={`${styles.slaBadge} ${styles[`slaBadge_${sla.tone}`] || styles.slaBadge_neutral}`} title={sla.phase === "first_response" ? pageCopy.table.slaFirstResponse : sla.phase === "resolution" ? pageCopy.table.slaResolution : pageCopy.table.sla}>

@@ -75,6 +75,7 @@ const EXPORT_KEYS_BY_TYPE = {
     "processeur",
     "memoire",
     "agentStatus",
+    "agentVersion",
     ...COMMON_NETWORK,
     ...BILLING_KEYS,
     ...COMMON_NOTES
@@ -217,6 +218,7 @@ const FIELD_LABEL_FALLBACKS = {
     boxModele: "Modèle box",
     monitoring: "Supervision",
     agentStatus: "Agent RMM",
+    agentVersion: "Version agent",
     activeStatus: "Actif",
     maintenanceLicense: "Date licence maintenance"
   },
@@ -264,6 +266,7 @@ const FIELD_LABEL_FALLBACKS = {
     boxModele: "Box model",
     monitoring: "Supervision",
     agentStatus: "RMM agent",
+    agentVersion: "Agent version",
     activeStatus: "Active",
     maintenanceLicense: "Maintenance license date"
   }

@@ -251,7 +251,7 @@ const COPY = {
       toggleTitle: "Statistiques des tâches",
       toggleAria: "Afficher les statistiques des tâches",
       empty: "Aucune tâche pour calculer des statistiques.",
-      hoursHint: "Heures calculées à partir des plages début → fin des tâches.",
+      hoursHint: "Heures calculées à partir des plages début → fin des tâches. 1 jour = {hours} h ouvrées (Administration → SLA).",
       hoursPlanned: "Heures planifiées",
       hoursDone: "Heures terminées",
       hoursRemaining: "Heures restantes",
@@ -569,7 +569,7 @@ const COPY = {
       toggleTitle: "Task statistics",
       toggleAria: "Show task statistics",
       empty: "No tasks to compute statistics.",
-      hoursHint: "Hours are calculated from each task’s start → end range.",
+      hoursHint: "Hours are calculated from each task’s start → end range. 1 day = {hours} business hours (Administration → SLA).",
       hoursPlanned: "Planned hours",
       hoursDone: "Completed hours",
       hoursRemaining: "Remaining hours",
@@ -882,7 +882,7 @@ const COPY = {
       toggleTitle: "Aufgabenstatistik",
       toggleAria: "Aufgabenstatistik anzeigen",
       empty: "Keine Aufgaben für Statistiken.",
-      hoursHint: "Stunden werden aus den Start→Ende-Zeiträumen der Aufgaben berechnet.",
+      hoursHint: "Stunden werden aus den Start→Ende-Zeiträumen der Aufgaben berechnet. 1 Tag = {hours} Geschäftsstunden (Administration → SLA).",
       hoursPlanned: "Geplante Stunden",
       hoursDone: "Erledigte Stunden",
       hoursRemaining: "Verbleibende Stunden",
@@ -1195,7 +1195,7 @@ const COPY = {
       toggleTitle: "Statistiche attività",
       toggleAria: "Mostra le statistiche delle attività",
       empty: "Nessuna attività per calcolare le statistiche.",
-      hoursHint: "Le ore sono calcolate dagli intervalli inizio → fine delle attività.",
+      hoursHint: "Le ore sono calcolate dagli intervalli inizio → fine delle attività. 1 giorno = {hours} ore lavorative (Amministrazione → SLA).",
       hoursPlanned: "Ore pianificate",
       hoursDone: "Ore completate",
       hoursRemaining: "Ore rimanenti",
@@ -1508,7 +1508,7 @@ const COPY = {
       toggleTitle: "Estadísticas de tareas",
       toggleAria: "Mostrar estadísticas de tareas",
       empty: "No hay tareas para calcular estadísticas.",
-      hoursHint: "Las horas se calculan a partir de los rangos inicio → fin de las tareas.",
+      hoursHint: "Las horas se calculan a partir de los rangos inicio → fin de las tareas. 1 día = {hours} h laborables (Administración → SLA).",
       hoursPlanned: "Horas planificadas",
       hoursDone: "Horas completadas",
       hoursRemaining: "Horas restantes",
@@ -1588,13 +1588,20 @@ const COPY = {
   }
 };
 
-export function getTicketSalesDetailCopy(locale) {
+export function getTicketSalesDetailCopy(locale, { standardWorkdayHours = 8 } = {}) {
   const t = pickLocaleMessages(COPY, locale);
   const localeTag = LOCALE_BCP47[locale] || "fr-FR";
+  const dayHours = Math.max(1, Number(standardWorkdayHours) || 8);
+  const minutesPerDay = Math.round(dayHours * 60);
   return {
     ...t,
     locale,
     localeTag,
+    standardWorkdayHours: dayHours,
+    taskStats: {
+      ...t.taskStats,
+      hoursHint: interpolate(t.taskStats.hoursHint, { hours: String(dayHours) })
+    },
     statusOptions: STATUS_KEYS.map(value => ({
       value,
       label: t.status[value]
@@ -1621,9 +1628,10 @@ export function getTicketSalesDetailCopy(locale) {
       if (ms === 0) return interpolate(t.formatDuration.hoursOnly, { hours: "0" });
       if (ms < 60000) return t.formatDuration.lessThanOneMin;
       const totalMinutes = Math.floor(ms / 60000);
-      const days = Math.floor(totalMinutes / (60 * 24));
-      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
-      const minutes = totalMinutes % 60;
+      const days = Math.floor(totalMinutes / minutesPerDay);
+      const remAfterDays = totalMinutes % minutesPerDay;
+      const hours = Math.floor(remAfterDays / 60);
+      const minutes = remAfterDays % 60;
       if (days > 0) {
         return hours > 0
           ? interpolate(t.formatDuration.daysHours, { days: String(days), hours: String(hours) })

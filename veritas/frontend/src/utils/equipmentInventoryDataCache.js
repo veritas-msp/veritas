@@ -1,6 +1,6 @@
 /** Cache sessionStorage pour la liste inventaire matériel (TTL + invalidation). */
 
-export const EQUIPMENT_INVENTORY_CACHE_KEY = "equipment_inventory_data_cache_v1";
+export const EQUIPMENT_INVENTORY_CACHE_KEY = "equipment_inventory_data_cache_v2";
 export const EQUIPMENT_INVENTORY_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export function readEquipmentInventoryCache() {

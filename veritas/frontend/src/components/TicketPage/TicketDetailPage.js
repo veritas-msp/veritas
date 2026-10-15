@@ -59,6 +59,7 @@ import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import { fetchTicketAutomationConfig, getTicketAutomationConfig, saveTicketAutomationConfig, subscribeTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
 import { DEFAULT_TICKET_CHAT_UI_SETTINGS, normalizeTicketChatUiSettings } from "../../utils/ticketChatUiSettings";
 import { formatClientSlaRows, getTicketSlaDisplay, parseClientSla } from "../../utils/ticketSlaUtils";
+import { ensureSlaSettingsLoaded, getCachedSlaSettings } from "../../utils/slaSettingsCache";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketDetailCopy } from "./ticketDetailPageI18n";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
@@ -1323,6 +1324,11 @@ export default function TicketDetailPage({
   const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
   const [deletingTicket, setDeletingTicket] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
+  useEffect(() => {
+    ensureSlaSettingsLoaded()
+      .then(() => setSlaNow(Date.now()))
+      .catch(() => {});
+  }, []);
   const [salesProgress, setSalesProgress] = useState(0);
   const [savingSalesProgress, setSavingSalesProgress] = useState(false);
   const [loadingClientCredits, setLoadingClientCredits] = useState(false);
@@ -3661,7 +3667,8 @@ export default function TicketDetailPage({
   const contractSlaEmpty = !effectiveTicketClientId || clientSlaRows.length === 0;
   const ticketSlaView = useMemo(() => getTicketSlaDisplay(ticket, {
     clients,
-    now: slaNow
+    now: slaNow,
+    slaSettings: getCachedSlaSettings() || undefined
   }), [ticket, clients, slaNow]);
   const ticketSlaTitle = useMemo(() => {
     if (ticketSlaView.phase === "first_response") return copy.slaTitle.firstResponse;

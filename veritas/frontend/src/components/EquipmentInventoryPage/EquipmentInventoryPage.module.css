@@ -632,6 +632,14 @@
   width: 4.5rem;
 }
 
+.versionCol {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .countPill {
   display: inline-flex;
   min-width: 1.55rem;

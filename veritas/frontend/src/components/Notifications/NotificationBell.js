@@ -177,11 +177,16 @@ export default function NotificationBell({
     }
     setOpen(false);
     if (notification?.ticketId && onNavigate) {
-      const family = notification.payload?.ticketFamily;
+      const family = String(notification.payload?.ticketFamily || "").toLowerCase();
       const page = family === "sales" ? "TicketSalesDetail" : "TicketDetail";
+      const ticketNumber =
+        notification.payload?.ticketNumber ?? notification.payload?.ticket_number ?? null;
       onNavigate(page, {
         ticketId: notification.ticketId,
         id: notification.ticketId,
+        ticketNumber: ticketNumber != null && String(ticketNumber).trim() !== ""
+          ? String(ticketNumber).trim().replace(/^#/, "")
+          : undefined,
         title: notification.payload?.ticketTitle || notification.title,
         ticketFamily: family === "sales" ? "sales" : undefined,
         fromPage: family === "sales" ? "TicketSales" : "Ticket"

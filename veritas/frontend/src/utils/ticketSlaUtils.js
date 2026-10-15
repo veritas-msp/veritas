@@ -1,3 +1,7 @@
+import { computeSlaRemainingMs } from "./slaBusinessTime";
+import { DEFAULT_SLA_SETTINGS, normalizeSlaSettings } from "./slaSettingsUtils";
+import { getSlaSettingsForDisplay } from "./slaSettingsCache";
+
 export const DEFAULT_SLA_BY_PRIORITY = {
   urgent: {
     firstResponseHours: 1,
@@ -16,6 +20,18 @@ export const DEFAULT_SLA_BY_PRIORITY = {
     resolutionHours: 48
   }
 };
+
+function resolveSlaSettingsForRemaining(sla, slaSettingsInput) {
+  const base = getSlaSettingsForDisplay(slaSettingsInput);
+  const timeMode =
+    sla?.timeMode && ["calendar", "business_hours", "business_days"].includes(sla.timeMode)
+      ? sla.timeMode
+      : base.timeMode;
+  return normalizeSlaSettings({
+    ...base,
+    timeMode: timeMode || DEFAULT_SLA_SETTINGS.timeMode
+  });
+}
 export const SLA_PRIORITY_LABELS = {
   urgent: "Urgente",
   high: "Haute",
@@ -303,9 +319,10 @@ export function getTicketSlaDisplay(ticket, options = {}) {
   };
   const {
     now = Date.now(),
+    slaSettings,
     ...context
   } = options;
-  const enrichedView = computeSlaDisplay(ticket, now);
+  const enrichedView = computeSlaDisplay(ticket, now, slaSettings);
   if (enrichedView.label && enrichedView.label !== "-") {
     return {
       ...enrichedView,
@@ -322,7 +339,7 @@ export function getTicketSlaDisplay(ticket, options = {}) {
   const view = computeSlaDisplay({
     ...ticket,
     sla_info: resolvedInfo
-  }, now);
+  }, now, slaSettings);
   if (view.label && view.label !== "-") {
     return {
       ...view,
@@ -354,7 +371,7 @@ export function getTicketSlaSortValue(ticket, options = {}) {
   }
   return Number.POSITIVE_INFINITY;
 }
-export function computeSlaDisplay(ticket, now = Date.now()) {
+export function computeSlaDisplay(ticket, now = Date.now(), slaSettingsInput) {
   const sla = parseSlaInfo(ticket?.sla_info);
   if (!sla.enabled) {
     return slaLabelFallback(ticket) || {
@@ -364,6 +381,7 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
       phase: null
     };
   }
+  const settings = resolveSlaSettingsForRemaining(sla, slaSettingsInput);
   const status = normalizeTicketStatus(ticket?.status);
   const closed = isTicketClosed(status);
   const isNew = isNewTicketStatusForSla(status);
@@ -378,11 +396,11 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
       (ticket?.updated_at ? new Date(ticket.updated_at).getTime() : null);
     const firstOverdueMs =
       firstResponseDue && firstResponseAt && firstResponseAt > firstResponseDue
-        ? firstResponseDue - firstResponseAt
+        ? computeSlaRemainingMs(firstResponseAt, firstResponseDue, settings)
         : null;
     const resolutionOverdueMs =
       resolutionDue && resolutionAt && resolutionAt > resolutionDue
-        ? resolutionDue - resolutionAt
+        ? computeSlaRemainingMs(resolutionAt, resolutionDue, settings)
         : null;
     const firstOk = !firstResponseDue || (firstResponseAt ? firstResponseAt <= firstResponseDue : true);
     const resolutionOk = !resolutionDue || (resolutionAt ? resolutionAt <= resolutionDue : true);
@@ -408,7 +426,7 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
     };
   }
   if (isNew && firstResponseDue) {
-    const remaining = firstResponseDue - now;
+    const remaining = computeSlaRemainingMs(now, firstResponseDue, settings);
     const warningMs = Math.max(15 * 60 * 1000, (sla.policy?.firstResponseHours || 4) * 60 * 60 * 1000 * 0.2);
     return {
       label: formatSlaRemainingLabel(remaining),
@@ -419,7 +437,7 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
     };
   }
   if (!isNew && resolutionDue) {
-    const remaining = resolutionDue - now;
+    const remaining = computeSlaRemainingMs(now, resolutionDue, settings);
     const warningMs = Math.max(30 * 60 * 1000, (sla.policy?.resolutionHours || 24) * 60 * 60 * 1000 * 0.2);
     return {
       label: formatSlaRemainingLabel(remaining),
@@ -437,8 +455,8 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
     remainingMs: null
   };
 }
-export function getSlaMeta(ticket, now = Date.now()) {
-  const view = computeSlaDisplay(ticket, now);
+export function getSlaMeta(ticket, now = Date.now(), slaSettings) {
+  const view = computeSlaDisplay(ticket, now, slaSettings);
   return {
     label: view.label,
     tone: view.tone,

@@ -12,12 +12,18 @@ const SLA_COPY = {
     timezoneLabel: "Fuseau horaire support",
     timezoneHint: "Référence pour les horaires d'ouverture et le calcul des échéances.",
     scheduleTitle: "Horaires d'ouverture du support",
-    scheduleDescription: "Plages utilisées pour les heures et jours ouvrés. Hors de ces créneaux, le compteur SLA est en pause.",
+    scheduleDescription: "Plages utilisées pour les heures et jours ouvrés, et pour convertir les stats prestations en jours. Hors créneaux (mode ouvré), le compteur SLA est en pause.",
     weekdaysTemplate: "Lun–Ven 9h–18h",
     dayColumn: "Jour",
     openColumn: "Ouvert",
     startColumn: "Début",
     endColumn: "Fin",
+    weeklyTitle: "Heures travaillées / semaine",
+    weeklyDescription: "Volume hebdomadaire pour dériver la durée d'une journée standard (stats prestations : conversion heures → jours).",
+    weeklyLabel: "Heures / semaine",
+    weeklyHint: "Ex. 39 h → 8 h × 4 jours + 7 h le dernier jour ouvré.",
+    weeklyDistribution: "Répartition : {summary}",
+    weeklyNoOpenDays: "Activez au moins un jour ouvré pour calculer la répartition.",
     applicationTitle: "Application",
     applicationDescription: "Ces réglages s'appliquent à tous les tickets créés après enregistrement. Les échéances déjà calculées ne sont pas recalculées.",
     bullet1: "Les délais par entreprise restent définis dans la fiche client (section Support).",
@@ -30,7 +36,7 @@ const SLA_COPY = {
       business_days: "Jours ouvrés"
     },
     timeModeHints: {
-      calendar: "Les délais entreprise (en heures) s'additionnent en continu, y compris la nuit et le week-end.",
+      calendar: "Les délais entreprise (en heures) s'additionnent en continu, y compris la nuit et le week-end. Les horaires ci-dessous restent utilisés pour les stats prestations.",
       business_hours: "Les délais comptent uniquement pendant les plages d'ouverture ci-dessous. Hors horaires, le compteur est en pause.",
       business_days: "Chaque unité de délai correspond à une journée ouvrée complète (jusqu'à l'heure de fermeture du jour)."
     },
@@ -42,6 +48,15 @@ const SLA_COPY = {
       4: "Jeudi",
       5: "Vendredi",
       6: "Samedi"
+    },
+    weekdaysShort: {
+      0: "Dim",
+      1: "Lun",
+      2: "Mar",
+      3: "Mer",
+      4: "Jeu",
+      5: "Ven",
+      6: "Sam"
     }
   },
   en: {
@@ -56,12 +71,18 @@ const SLA_COPY = {
     timezoneLabel: "Support timezone",
     timezoneHint: "Reference for opening hours and due date calculation.",
     scheduleTitle: "Support opening hours",
-    scheduleDescription: "Ranges used for business hours and days. Outside these slots, the SLA counter is paused.",
+    scheduleDescription: "Ranges used for business hours/days and to convert service task stats into days. Outside slots (business mode), the SLA counter is paused.",
     weekdaysTemplate: "Mon–Fri 9 AM–6 PM",
     dayColumn: "Day",
     openColumn: "Open",
     startColumn: "Start",
     endColumn: "End",
+    weeklyTitle: "Worked hours / week",
+    weeklyDescription: "Weekly volume used to derive a standard day length (service task stats: hours → days).",
+    weeklyLabel: "Hours / week",
+    weeklyHint: "E.g. 39 h → 8 h × 4 days + 7 h on the last open day.",
+    weeklyDistribution: "Distribution: {summary}",
+    weeklyNoOpenDays: "Enable at least one open day to compute the distribution.",
     applicationTitle: "Application",
     applicationDescription: "These settings apply to all tickets created after saving. Already calculated due dates are not recalculated.",
     bullet1: "Per-enterprise deadlines remain defined on the client record (Support section).",
@@ -74,7 +95,7 @@ const SLA_COPY = {
       business_days: "Business days"
     },
     timeModeHints: {
-      calendar: "Enterprise deadlines (in hours) accumulate continuously, including nights and weekends.",
+      calendar: "Enterprise deadlines (in hours) accumulate continuously, including nights and weekends. Opening hours below still apply to service task stats.",
       business_hours: "Deadlines count only during the opening hours below. Outside hours, the counter is paused.",
       business_days: "Each delay unit equals one full business day (until closing time)."
     },
@@ -86,6 +107,15 @@ const SLA_COPY = {
       4: "Thursday",
       5: "Friday",
       6: "Saturday"
+    },
+    weekdaysShort: {
+      0: "Sun",
+      1: "Mon",
+      2: "Tue",
+      3: "Wed",
+      4: "Thu",
+      5: "Fri",
+      6: "Sat"
     }
   },
   de: {
@@ -100,12 +130,18 @@ const SLA_COPY = {
     timezoneLabel: "Support-Zeitzone",
     timezoneHint: "Referenz für Öffnungszeiten und Fälligkeitsberechnung.",
     scheduleTitle: "Support-Öffnungszeiten",
-    scheduleDescription: "Zeiträume für Geschäftsstunden und -tage. Außerhalb pausiert der SLA-Zähler.",
+    scheduleDescription: "Zeiträume für Geschäftsstunden/-tage und zur Umrechnung von Leistungsstatistik in Tage. Außerhalb (Geschäftsmodus) pausiert der SLA-Zähler.",
     weekdaysTemplate: "Mo–Fr 9–18 Uhr",
     dayColumn: "Tag",
     openColumn: "Geöffnet",
     startColumn: "Beginn",
     endColumn: "Ende",
+    weeklyTitle: "Arbeitsstunden / Woche",
+    weeklyDescription: "Wochenvolumen zur Ableitung der Standardtageslänge (Leistungsstatistik: Stunden → Tage).",
+    weeklyLabel: "Stunden / Woche",
+    weeklyHint: "Z. B. 39 Std. → 8 Std. × 4 Tage + 7 Std. am letzten Arbeitstag.",
+    weeklyDistribution: "Verteilung: {summary}",
+    weeklyNoOpenDays: "Aktivieren Sie mindestens einen Arbeitstag für die Verteilung.",
     applicationTitle: "Anwendung",
     applicationDescription: "Gilt für alle Tickets nach dem Speichern. Bereits berechnete Fristen werden nicht neu berechnet.",
     bullet1: "Fristen pro Unternehmen bleiben in der Kundendatei (Support) definiert.",
@@ -118,7 +154,7 @@ const SLA_COPY = {
       business_days: "Arbeitstage"
     },
     timeModeHints: {
-      calendar: "Fristen (in Stunden) laufen kontinuierlich, auch nachts und am Wochenende.",
+      calendar: "Fristen (in Stunden) laufen kontinuierlich, auch nachts und am Wochenende. Öffnungszeiten unten gelten weiterhin für die Leistungsstatistik.",
       business_hours: "Fristen zählen nur während der Öffnungszeiten unten. Außerhalb pausiert der Zähler.",
       business_days: "Jede Einheit entspricht einem vollen Arbeitstag (bis Schließzeit)."
     },
@@ -130,6 +166,15 @@ const SLA_COPY = {
       4: "Donnerstag",
       5: "Freitag",
       6: "Samstag"
+    },
+    weekdaysShort: {
+      0: "So",
+      1: "Mo",
+      2: "Di",
+      3: "Mi",
+      4: "Do",
+      5: "Fr",
+      6: "Sa"
     }
   },
   it: {
@@ -144,12 +189,18 @@ const SLA_COPY = {
     timezoneLabel: "Fuso orario supporto",
     timezoneHint: "Riferimento per orari di apertura e calcolo scadenze.",
     scheduleTitle: "Orari di apertura del supporto",
-    scheduleDescription: "Fasce per ore e giorni lavorativi. Fuori da questi intervalli, il contatore SLA è in pausa.",
+    scheduleDescription: "Fasce per ore/giorni lavorativi e per convertire le statistiche prestazioni in giorni. Fuori fascia (modalità lavorativa), il contatore SLA è in pausa.",
     weekdaysTemplate: "Lun–Ven 9–18",
     dayColumn: "Giorno",
     openColumn: "Aperto",
     startColumn: "Inizio",
     endColumn: "Fine",
+    weeklyTitle: "Ore lavorate / settimana",
+    weeklyDescription: "Volume settimanale per derivare la durata del giorno standard (statistiche prestazioni: ore → giorni).",
+    weeklyLabel: "Ore / settimana",
+    weeklyHint: "Es. 39 h → 8 h × 4 giorni + 7 h nell'ultimo giorno aperto.",
+    weeklyDistribution: "Ripartizione: {summary}",
+    weeklyNoOpenDays: "Attiva almeno un giorno lavorativo per calcolare la ripartizione.",
     applicationTitle: "Applicazione",
     applicationDescription: "Si applica a tutti i ticket creati dopo il salvataggio. Le scadenze già calcolate non vengono ricalcolate.",
     bullet1: "Le scadenze per azienda restano nella scheda cliente (sezione Supporto).",
@@ -162,7 +213,7 @@ const SLA_COPY = {
       business_days: "Giorni lavorativi"
     },
     timeModeHints: {
-      calendar: "Le scadenze (in ore) si accumulano continuamente, anche di notte e nel weekend.",
+      calendar: "Le scadenze (in ore) si accumulano continuamente, anche di notte e nel weekend. Gli orari sotto restano usati per le statistiche prestazioni.",
       business_hours: "Le scadenze contano solo durante gli orari di apertura sotto. Fuori orario, pausa.",
       business_days: "Ogni unità corrisponde a un giorno lavorativo completo (fino alla chiusura)."
     },
@@ -174,6 +225,15 @@ const SLA_COPY = {
       4: "Giovedì",
       5: "Venerdì",
       6: "Sabato"
+    },
+    weekdaysShort: {
+      0: "Dom",
+      1: "Lun",
+      2: "Mar",
+      3: "Mer",
+      4: "Gio",
+      5: "Ven",
+      6: "Sab"
     }
   },
   es: {
@@ -188,12 +248,18 @@ const SLA_COPY = {
     timezoneLabel: "Zona horaria de soporte",
     timezoneHint: "Referencia para horarios de apertura y cálculo de vencimientos.",
     scheduleTitle: "Horario de apertura del soporte",
-    scheduleDescription: "Franjas para horas y días laborables. Fuera de ellas, el contador SLA está en pausa.",
+    scheduleDescription: "Franjas para horas/días laborables y para convertir estadísticas de prestaciones en días. Fuera de franja (modo laborable), el contador SLA está en pausa.",
     weekdaysTemplate: "Lun–Vie 9h–18h",
     dayColumn: "Día",
     openColumn: "Abierto",
     startColumn: "Inicio",
     endColumn: "Fin",
+    weeklyTitle: "Horas trabajadas / semana",
+    weeklyDescription: "Volumen semanal para derivar la duración del día estándar (estadísticas de prestaciones: horas → días).",
+    weeklyLabel: "Horas / semana",
+    weeklyHint: "Ej. 39 h → 8 h × 4 días + 7 h el último día abierto.",
+    weeklyDistribution: "Reparto: {summary}",
+    weeklyNoOpenDays: "Active al menos un día laborable para calcular el reparto.",
     applicationTitle: "Aplicación",
     applicationDescription: "Se aplica a todos los tickets creados tras guardar. Los vencimientos ya calculados no se recalculan.",
     bullet1: "Los plazos por empresa siguen en la ficha cliente (sección Soporte).",
@@ -206,7 +272,7 @@ const SLA_COPY = {
       business_days: "Días laborables"
     },
     timeModeHints: {
-      calendar: "Los plazos (en horas) se acumulan continuamente, incluidas noches y fines de semana.",
+      calendar: "Los plazos (en horas) se acumulan continuamente, incluidas noches y fines de semana. Los horarios abajo siguen usándose para estadísticas de prestaciones.",
       business_hours: "Los plazos cuentan solo durante los horarios de apertura abajo. Fuera de horario, pausa.",
       business_days: "Cada unidad equivale a un día laborable completo (hasta la hora de cierre)."
     },
@@ -218,6 +284,15 @@ const SLA_COPY = {
       4: "Jueves",
       5: "Viernes",
       6: "Sábado"
+    },
+    weekdaysShort: {
+      0: "Dom",
+      1: "Lun",
+      2: "Mar",
+      3: "Mié",
+      4: "Jue",
+      5: "Vie",
+      6: "Sáb"
     }
   }
 };
@@ -240,4 +315,7 @@ export function getSlaTimeModeHint(locale, mode) {
 }
 export function getWeekdayLabel(locale, day) {
   return getSlaCopy(locale).weekdays?.[day] || String(day);
+}
+export function getWeekdayShortLabel(locale, day) {
+  return getSlaCopy(locale).weekdaysShort?.[day] || getWeekdayLabel(locale, day);
 }

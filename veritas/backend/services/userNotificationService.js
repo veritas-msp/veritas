@@ -212,10 +212,22 @@ async function filterNotifiableUserIds(userIds = [], eventKey) {
     return true;
   });
 }
+function resolveTicketFamilyFromRow(ticket = {}) {
+  const type = String(ticket.type || "").trim().toLowerCase();
+  if (type === "prestation" || type === "installation") return "sales";
+  const category = String(ticket.category || "");
+  if ((type === "demande" || type === "request") && (category.startsWith("prestation-") || category.startsWith("installation-"))) {
+    return "sales";
+  }
+  return "support";
+}
+
 async function resolveTicketContext(ticketId) {
   const result = await pool.query(`SELECT t.id,
             t.ticket_number,
             t.title,
+            t.type,
+            t.category,
             t.assigned_user_id,
             c.name AS client_name
      FROM v_b_tickets t
@@ -343,6 +355,7 @@ export async function notifyInAppTicketCommented({
       authorUserId,
       authorName,
       isInternal: Boolean(isInternal),
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -402,6 +415,7 @@ export async function notifyInAppTicketMentioned({
       authorUserId,
       authorName,
       isInternal: Boolean(isInternal),
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || "",
@@ -445,6 +459,7 @@ export async function notifyInAppTicketAssigned({
     commentId: null,
     payload: {
       assignedByUserId: assignedByUserId || null,
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -477,6 +492,7 @@ export async function notifyInAppTicketCreated({
     commentId: null,
     payload: {
       createdByUserId: createdByUserId || null,
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -522,6 +538,7 @@ export async function notifyInAppTicketStatusChanged({
     payload: {
       newStatus: newStatus || "",
       changedByUserId: changedByUserId || null,
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -577,6 +594,7 @@ export async function notifyInAppTicketSatisfaction({
       message: String(message || "").trim(),
       authorUserId: authorUserId || null,
       authorName,
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -626,7 +644,7 @@ export async function notifyInAppTicketValidationRequested({
       requestedByUserId: requestedByUserId || null,
       authorName,
       message: String(message || "").trim(),
-      ticketFamily,
+      ticketFamily: ticketFamily || resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -686,6 +704,7 @@ export async function notifyInAppSideConversation({
       authorUserId,
       authorName,
       subject: subjectLabel,
+      ticketFamily: resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
@@ -740,7 +759,7 @@ export async function notifyInAppTicketValidationResponded({
       validatorName,
       decision,
       responseMessage: String(responseMessage || "").trim(),
-      ticketFamily,
+      ticketFamily: ticketFamily || resolveTicketFamilyFromRow(ticket),
       ticketNumber: ticket.ticket_number ?? null,
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
