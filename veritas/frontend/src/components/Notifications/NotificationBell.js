@@ -6,6 +6,8 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { groupNotificationsByPriority, groupArchivedNotifications } from "../../utils/notificationGroups";
 import { getNotificationBellCopy, formatNotificationRelativeTime } from "./notificationBellI18n";
 import { interpolate } from "../../i18n/translate";
+import { fetchTicket } from "../../api/tickets";
+import { isSalesTicket } from "../../utils/salesTicketUtils";
 import styles from "./NotificationBell.module.css";
 import { SIDEBAR_FLYOUT_GAP_PX } from "../../utils/sidebarFlyoutPosition";
 function NotificationItem({
@@ -177,19 +179,38 @@ export default function NotificationBell({
     }
     setOpen(false);
     if (notification?.ticketId && onNavigate) {
-      const family = String(notification.payload?.ticketFamily || "").toLowerCase();
-      const page = family === "sales" ? "TicketSalesDetail" : "TicketDetail";
-      const ticketNumber =
+      let family = String(notification.payload?.ticketFamily || "").toLowerCase();
+      let ticketNumber =
         notification.payload?.ticketNumber ?? notification.payload?.ticket_number ?? null;
+      let title = notification.payload?.ticketTitle || notification.title;
+      // Prestations mis-routed to TicketDetail white-screen; resolve family when payload is missing/wrong.
+      if (family !== "sales") {
+        try {
+          const ticket = await fetchTicket(notification.ticketId);
+          if (isSalesTicket(ticket)) {
+            family = "sales";
+          } else {
+            family = "support";
+          }
+          if (ticketNumber == null || String(ticketNumber).trim() === "") {
+            ticketNumber = ticket?.ticket_number ?? ticket?.ticketNumber ?? null;
+          }
+          if (!title) title = ticket?.title || title;
+        } catch {
+          family = "support";
+        }
+      }
+      const isSales = family === "sales";
+      const page = isSales ? "TicketSalesDetail" : "TicketDetail";
       onNavigate(page, {
         ticketId: notification.ticketId,
         id: notification.ticketId,
         ticketNumber: ticketNumber != null && String(ticketNumber).trim() !== ""
           ? String(ticketNumber).trim().replace(/^#/, "")
           : undefined,
-        title: notification.payload?.ticketTitle || notification.title,
-        ticketFamily: family === "sales" ? "sales" : undefined,
-        fromPage: family === "sales" ? "TicketSales" : "Ticket"
+        title,
+        ticketFamily: isSales ? "sales" : "support",
+        fromPage: isSales ? "TicketSales" : "Ticket"
       });
     }
   };

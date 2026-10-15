@@ -1,6 +1,6 @@
 import { normalizeServerRoles } from "./constants/serverRoleOptions";
 import { normalizeStorageRoles } from "./constants/storageRoleOptions";
-import { readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
+import { readServerRemoteAccess } from "./constants/serverRemoteAccessCore";
 import { toDateInputValue } from "./constants/firewallLicenceUtils";
 import { applyFirewallDeploymentTypeChange, applyRouterTypeChange } from "./constants/equipmentCatalog";
 import { isInternetIpNonFixe } from "../RapportPage/monitoring/internetIpUtils";

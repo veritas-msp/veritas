@@ -1,12 +1,29 @@
-import { logEquipmentActivity } from "../../api/equipment";
 import { getEquipmentClientId, getEquipmentDbId } from "../../utils/equipmentIdentity";
-import { getServerRemoteAccessSolutionDef } from "./constants/serverRemoteAccessUtils";
+
+// Keep this module free of static imports from api/equipment and serverRemoteAccessUtils
+// to avoid circular TDZ crashes (api/equipment → equipmentFormConfig → serverRemoteAccessUtils).
+const REMOTE_ACCESS_LABELS = {
+  anydesk: "AnyDesk",
+  teamviewer: "TeamViewer",
+  rustdesk: "RustDesk",
+  splashtop: "Splashtop",
+  rdp: "Remote desktop (RDP)",
+  other: "Other"
+};
+
 function getEquipmentLogName(equipment) {
   return equipment?.name || equipment?.rawData?.nom || equipment?.rawData?.name || "";
 }
+
 function getEquipmentLogType(equipment) {
   return equipment?.type || equipment?.rawData?.type || "";
 }
+
+function resolveRemoteAccessSolutionLabel(solution) {
+  const key = String(solution || "").trim().toLowerCase();
+  return REMOTE_ACCESS_LABELS[key] || solution || "Prise en main";
+}
+
 async function writeEquipmentActivityLog(equipment, action, details) {
   const clientId = getEquipmentClientId(equipment);
   const equipmentId = getEquipmentDbId(equipment);
@@ -14,6 +31,7 @@ async function writeEquipmentActivityLog(equipment, action, details) {
   const type = getEquipmentLogType(equipment);
   if (!clientId || !name || !type) return;
   try {
+    const { logEquipmentActivity } = await import("../../api/equipment");
     await logEquipmentActivity({
       clientId,
       type,
@@ -26,6 +44,7 @@ async function writeEquipmentActivityLog(equipment, action, details) {
     console.warn("Journal hardware:", error);
   }
 }
+
 function buildRemoteAccessOutcomeLabel(reason, ok) {
   if (ok && reason === "opened") return "Client distant ouvert";
   if (ok && reason === "copied") return "ID copied to clipboard";
@@ -34,14 +53,14 @@ function buildRemoteAccessOutcomeLabel(reason, ok) {
   if (reason === "failed") return "Failed to open";
   return ok ? "Attempt succeeded" : "Attempt failed";
 }
+
 export async function logEquipmentRemoteAccessAttempt(equipment, {
   solution,
   id,
   ok,
   reason
 }) {
-  const def = getServerRemoteAccessSolutionDef(solution);
-  const solutionLabel = def?.label || solution || "Prise en main";
+  const solutionLabel = resolveRemoteAccessSolutionLabel(solution);
   const success = Boolean(ok);
   const action = success ? `Login distante · ${solutionLabel}` : `Tentative connexion distante · ${solutionLabel}`;
   await writeEquipmentActivityLog(equipment, action, {
@@ -54,6 +73,7 @@ export async function logEquipmentRemoteAccessAttempt(equipment, {
     success
   });
 }
+
 export async function logEquipmentQuickConnectAttempt(equipment, {
   url,
   ok,

@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.100",
+    date: "2026-10-15",
+    highlights: [
+      "Notifications : les tickets prestation s’ouvrent sur la bonne page (/sales) au lieu du détail support.",
+      "Correction de l’écran blanc au clic notif (dépendance circulaire prise en main distante / journal matériel)."
+    ]
+  },
+  {
     version: "1.0.99",
     date: "2026-10-15",
     highlights: [

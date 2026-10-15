@@ -1573,6 +1573,20 @@ export default function TicketDetailPage({
     loadDetail();
     return () => detailAbortRef.current?.abort();
   }, [ticketId]);
+  // Notifications / deep-links can open a prestation ticket on /tickets — bounce to /sales.
+  useEffect(() => {
+    if (!ticket?.id || !onNavigate) return;
+    if (ticketData?.fromPage === "TicketSales") return;
+    if (!isSalesTicket(ticket)) return;
+    onNavigate("TicketSalesDetail", {
+      ticketId: ticket.id,
+      id: ticket.id,
+      ticketNumber: ticket.ticket_number ?? ticket.ticketNumber,
+      title: ticket.title,
+      ticketFamily: "sales",
+      fromPage: "TicketSales"
+    });
+  }, [ticket, onNavigate, ticketData?.fromPage]);
   useEffect(() => {
     if (tagAddOpen) {
       tagInputRef.current?.focus();
