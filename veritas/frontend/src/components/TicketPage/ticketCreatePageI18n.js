@@ -1,4 +1,8 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
+import {
+  ATTACHMENT_FORMATS_LABEL,
+  assertTicketAttachmentFiles
+} from "./ticketAttachmentAccept";
 const TICKET_TYPE_KEYS = ["incident", "demande", "probleme", "changement"];
 const PRIORITY_KEYS = ["low", "normal", "high", "urgent"];
 const CHANNEL_KEYS = ["phone", "email", "web", "chat", "whatsapp"];
@@ -23,7 +27,6 @@ const CHANNEL_ICONS = {
   whatsapp: "mdi:whatsapp"
 };
 const TIP_ICONS = ["mdi:ear-hearing", "mdi:message-reply-text", "mdi:account-voice", "mdi:text-box-search-outline"];
-const ATTACHMENT_FORMATS_LABEL = "PDF, JPG, PNG, DOC, DOCX, CSV, XLS, XLSX, MP4, 3GP, MP3, OGG, AAC, AMR, M4A";
 const LOCALE_BCP47 = {
   fr: "fr-FR",
   en: "en-GB",
@@ -1714,21 +1717,12 @@ export function getTicketCreateCopy(locale) {
       };
     },
     validateAttachmentFiles: (files = []) => {
-      for (const file of files) {
-        const name = String(file?.name || "");
-        const ext = name.includes(".") ? `.${name.split(".").pop().toLowerCase()}` : "";
-        const allowed = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
-        if (!allowed.has(ext)) {
-          throw new Error(interpolate(t.attachmentTypeError, {
-            formats: ATTACHMENT_FORMATS_LABEL
-          }));
-        }
-        if (Number(file?.size || 0) > 15 * 1024 * 1024) {
-          throw new Error(interpolate(t.attachmentSizeError, {
-            name
-          }));
-        }
-      }
+      assertTicketAttachmentFiles(files, {
+        typeError: t.attachmentTypeError,
+        sizeError: t.attachmentSizeError,
+        formatsLabel: ATTACHMENT_FORMATS_LABEL,
+        interpolate
+      });
     }
   };
 }

@@ -954,10 +954,33 @@
 }
 
 .centerPane {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   padding: 0.75rem 0.8rem 0.8rem;
+}
+
+.centerPaneDragActive {
+  outline: 2px dashed var(--msp-accent, #2b5fab);
+  outline-offset: -4px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.04));
+}
+
+.paneDropOverlay {
+  position: absolute;
+  inset: 0.4rem;
+  z-index: 12;
+  border: 2px dashed var(--msp-accent, #2b5fab);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: rgba(43, 95, 171, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 0.75rem;
+  pointer-events: none;
 }
 
 .rightSidebar {
@@ -2749,6 +2772,7 @@
 }
 
 .chatPanelRoot {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -5401,6 +5425,13 @@
   border-color: rgba(90, 143, 212, 0.45);
   color: #a8d4ff;
   background: rgba(90, 143, 212, 0.12);
+}
+
+:global(html.dark) .centerPaneDragActive,
+:global(html.dark) .paneDropOverlay {
+  background: rgba(96, 165, 250, 0.08);
+  outline-color: #60a5fa;
+  border-color: #60a5fa;
 }
 
 :global(html.dark) .replyBoxDragActive,

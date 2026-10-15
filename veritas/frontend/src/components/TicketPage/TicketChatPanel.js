@@ -39,8 +39,8 @@ import {
 } from "./ticketMentionUtils";
 import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, filterAttachmentsNotInlinedInHtml, htmlContainsInlineImage, rewriteInlineUploadPlaceholders } from "../../utils/ticketEditorImages";
 import styles from "./TicketDetailPage.module.css";
+import { ATTACHMENT_ACCEPT } from "./ticketAttachmentAccept";
 
-const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
 const REPLY_BOX_EXPANDED_KEY = "ticket_sales_reply_box_expanded";
 
 function htmlToPlainText(rawHtml) {
@@ -857,7 +857,19 @@ export default function TicketChatPanel({
   };
 
   return (
-    <div className={styles.chatPanelRoot}>
+    <div
+      className={`${styles.chatPanelRoot} ${isDragOverReplyBox ? styles.centerPaneDragActive : ""}`.trim()}
+      onDragOver={handleReplyDragOver}
+      onDragEnter={handleReplyDragOver}
+      onDragLeave={handleReplyDragLeave}
+      onDrop={handleReplyDrop}
+    >
+      {isDragOverReplyBox && !disabled ? (
+        <div className={styles.paneDropOverlay} aria-hidden>
+          <div className={styles.dropOverlayTitle}>{copy.reply.dropTitle}</div>
+          <div className={styles.dropOverlayHint}>{copy.reply.dropHint}</div>
+        </div>
+      ) : null}
       <div className={styles.timelineWrap}>
         <TicketValidationBanner
           requests={validationRequests}
@@ -1064,18 +1076,7 @@ export default function TicketChatPanel({
         <>
           <div
             className={`${styles.replyBox} ${isDragOverReplyBox ? styles.replyBoxDragActive : ""} ${!replyBoxExpanded ? styles.replyBoxCollapsed : ""}`.trim()}
-            onDragOver={handleReplyDragOver}
-            onDragEnter={handleReplyDragOver}
-            onDragLeave={handleReplyDragLeave}
-            onDrop={handleReplyDrop}
           >
-            {isDragOverReplyBox && replyBoxExpanded ? (
-              <div className={styles.dropOverlay}>
-                <div className={styles.dropOverlayTitle}>{copy.reply.dropTitle}</div>
-                <div className={styles.dropOverlayHint}>{copy.reply.dropHint}</div>
-              </div>
-            ) : null}
-
             <div className={styles.replyTopBar}>
               {replyBoxExpanded ? (
                 <>

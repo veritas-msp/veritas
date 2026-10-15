@@ -27,10 +27,7 @@ import account from "../Misc/AccountPage/AccountPage.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import s from "./TicketCreatePage.module.css";
-const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_ATTACHMENT_FILES = 10;
-const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
-const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
 function mergeAttachmentFiles(currentFiles = [], nextFiles = []) {
   const merged = [...currentFiles];
   const existingKeys = new Set(currentFiles.map(file => `${file.name}-${file.size}-${file.lastModified || 0}`));

@@ -44,9 +44,14 @@ import TicketVaultArchiveOptions, {
   getAttachmentFileKey
 } from "./TicketVaultArchiveOptions";
 import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
+import {
+  ATTACHMENT_ACCEPT,
+  ATTACHMENT_FORMATS_LABEL,
+  MAX_TICKET_ATTACHMENT_BYTES,
+  isAllowedTicketAttachmentExtension
+} from "./ticketAttachmentAccept";
 
-const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
-const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = MAX_TICKET_ATTACHMENT_BYTES;
 
 function toAbsoluteUrl(path) {
   const raw = String(path || "").trim();
@@ -227,6 +232,7 @@ export default function SalesTasksPanel({
   const [pendingFiles, setPendingFiles] = useState([]);
   const [docsToRemove, setDocsToRemove] = useState([]);
   const [docsBusy, setDocsBusy] = useState(false);
+  const [docsDragOver, setDocsDragOver] = useState(false);
   const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
   const assigneePickerRef = useRef(null);
   const documentInputRef = useRef(null);
@@ -516,6 +522,14 @@ export default function SalesTasksPanel({
     if (next.length === 0) return;
     const accepted = [];
     for (const file of next) {
+      if (!isAllowedTicketAttachmentExtension(file?.name)) {
+        toast.error(
+          interpolate(copy.documentsTypeError || "Type de fichier non autorisé. Formats : {formats}.", {
+            formats: ATTACHMENT_FORMATS_LABEL
+          })
+        );
+        continue;
+      }
       if (file.size > MAX_ATTACHMENT_BYTES) {
         toast.error(copy.documentsFileTooLarge || copy.fileTooLarge || "File too large");
         continue;
@@ -1013,7 +1027,34 @@ export default function SalesTasksPanel({
               <h3 className={layout.sectionTitle}>{modalCopy.documentsTitle || copy.documents}</h3>
               <p className={layout.sectionDesc}>{modalCopy.documentsDesc || copy.documentsHint || ""}</p>
             </div>
-            <div className={layout.fieldStack}>
+            <div
+              className={`${layout.fieldStack} ${styles.taskDocDropZone} ${docsDragOver ? styles.taskDocDropZoneActive : ""}`.trim()}
+              onDragOver={event => {
+                event.preventDefault();
+                if (saving || docsBusy) return;
+                if (!docsDragOver) setDocsDragOver(true);
+              }}
+              onDragEnter={event => {
+                event.preventDefault();
+                if (saving || docsBusy) return;
+                setDocsDragOver(true);
+              }}
+              onDragLeave={event => {
+                event.preventDefault();
+                if (!event.currentTarget.contains(event.relatedTarget)) setDocsDragOver(false);
+              }}
+              onDrop={event => {
+                event.preventDefault();
+                setDocsDragOver(false);
+                if (saving || docsBusy) return;
+                addPendingFiles(event.dataTransfer?.files);
+              }}
+            >
+              {docsDragOver ? (
+                <div className={styles.taskDocDropHint} aria-hidden>
+                  {copy.documentsDropHint || "Déposez vos fichiers ici"}
+                </div>
+              ) : null}
               <div className={styles.taskDocActions}>
                 <input
                   ref={documentInputRef}

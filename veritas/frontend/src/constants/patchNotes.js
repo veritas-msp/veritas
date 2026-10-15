@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.101",
+    date: "2026-10-15",
+    highlights: [
+      "Tickets support : correction de l’écran blanc (variable isReadOnly lue trop tôt au montage).",
+      "Tickets support et prestation : glisser-déposer depuis l’Explorateur (docs, e-mails .eml/.msg, ZIP, etc.).",
+      "Zone de dépôt élargie à toute la discussion ; documents de tâches prestation aussi."
+    ]
+  },
+  {
     version: "1.0.100",
     date: "2026-10-15",
     highlights: [

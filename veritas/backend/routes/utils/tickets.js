@@ -56,7 +56,16 @@ const TICKET_UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "tickets");
 fs.mkdirSync(TICKET_UPLOAD_DIR, {
   recursive: true
 });
-const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  ".pdf",
+  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
+  ".doc", ".docx", ".odt", ".rtf", ".txt",
+  ".xls", ".xlsx", ".ods", ".csv",
+  ".ppt", ".pptx",
+  ".eml", ".msg", ".ics",
+  ".zip",
+  ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"
+]);
 const attachmentStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, TICKET_UPLOAD_DIR),
   filename: (_req, file, cb) => {
@@ -72,7 +81,7 @@ const attachmentUpload = multer({
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(String(file.originalname || "")).toLowerCase();
     if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) {
-      return cb(new Error("Type de finon allowed. Accepted formats: PDF, JPG, PNG, DOC, DOCX, CSV, XLS, XLSX, MP4, 3GP, MP3, OGG, AAC, AMR, M4A."));
+      return cb(new Error("Type de fichier non autorisé. Formats acceptés : PDF, JPG, PNG, GIF, WEBP, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, EML, MSG, ZIP, CSV, ICS, MP4, MP3."));
     }
     cb(null, true);
   }

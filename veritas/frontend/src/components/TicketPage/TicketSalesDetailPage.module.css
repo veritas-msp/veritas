@@ -809,6 +809,32 @@
   color: #fff;
 }
 
+.taskDocDropZone {
+  position: relative;
+  border: 1px dashed transparent;
+  border-radius: 10px;
+  padding: 0.15rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.taskDocDropZoneActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
+}
+
+.taskDocDropHint {
+  pointer-events: none;
+  margin-bottom: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border: 2px dashed var(--msp-accent, #2b5fab);
+  border-radius: 10px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.08);
+}
+
 .taskDocActions {
   display: flex;
   align-items: center;

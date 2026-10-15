@@ -1,5 +1,6 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 import { getTicketCreateCopy, ATTACHMENT_FORMATS_LABEL } from "./ticketCreatePageI18n";
+import { assertTicketAttachmentFiles } from "./ticketAttachmentAccept";
 import { getTicketReminderModalCopy } from "./ticketReminderModalI18n";
 const LOCALE_BCP47 = {
   fr: "fr-FR",
@@ -269,7 +270,7 @@ const DETAIL_COPY = {
     },
     reply: {
       dropTitle: "Déposez vos fichiers ici",
-      dropHint: "Limites: 15 Mo max/fichier | Extensions autorisées: PDF, JPG, PNG, DOC, DOCX, CSV, XLS, XLSX",
+      dropHint: "15 Mo max/fichier · PDF, images, Office, e-mails (.eml/.msg), ZIP, médias…",
       templateSelect: "Sélectionner un template",
       templateTitle: "Appliquer un template de réponse",
       toolBold: "Gras",
@@ -891,7 +892,7 @@ const DETAIL_COPY = {
     },
     reply: {
       dropTitle: "Drop your files here",
-      dropHint: "Limits: 15 MB max/file | Allowed: PDF, JPG, PNG, DOC, DOCX, CSV, XLS, XLSX",
+      dropHint: "15 MB max/file · PDF, images, Office, emails (.eml/.msg), ZIP, media…",
       templateSelect: "Select a template",
       templateTitle: "Apply a reply template",
       toolBold: "Bold",
@@ -1655,21 +1656,12 @@ export function getTicketDetailCopy(locale) {
       count: String(count)
     }),
     validateAttachmentFiles: (files = []) => {
-      for (const file of files) {
-        const name = String(file?.name || "");
-        const ext = name.includes(".") ? `.${name.split(".").pop().toLowerCase()}` : "";
-        const allowed = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
-        if (!allowed.has(ext)) {
-          throw new Error(interpolate(base.attachmentTypeError, {
-            formats: ATTACHMENT_FORMATS_LABEL
-          }));
-        }
-        if (Number(file?.size || 0) > 15 * 1024 * 1024) {
-          throw new Error(interpolate(base.attachmentSizeError, {
-            name
-          }));
-        }
-      }
+      assertTicketAttachmentFiles(files, {
+        typeError: base.attachmentTypeError,
+        sizeError: base.attachmentSizeError,
+        formatsLabel: ATTACHMENT_FORMATS_LABEL,
+        interpolate
+      });
     }
   };
 }

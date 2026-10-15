@@ -86,6 +86,7 @@ import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
 import SalesFormFieldValue from "./SalesFormFieldValue";
 import SuggestionAutocomplete from "../shared/SuggestionAutocomplete/SuggestionAutocomplete";
+import { ATTACHMENT_ACCEPT, MAX_TICKET_ATTACHMENT_BYTES } from "./ticketAttachmentAccept";
 const CONTRACT_FACT_STATUS_CLASS = {
   active: fs.contractFact_active,
   expiring: fs.contractFact_expiring,
@@ -934,10 +935,7 @@ function buildLinkedTicketsFromComments(comments = []) {
   });
   return Array.from(map.values());
 }
-const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
-const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
-const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
-const ATTACHMENT_FORMATS_LABEL = "PDF, JPG, PNG, DOC, DOCX, CSV, XLS, XLSX, MP4, 3GP, MP3, OGG, AAC, AMR, M4A";
+const MAX_ATTACHMENT_SIZE_BYTES = MAX_TICKET_ATTACHMENT_BYTES;
 const BACKEND_BASE_URL = String(API_BASE_URL || "").replace(/\/api\/?$/, "");
 function notifyWhatsAppDelivery(whatsappDelivery, copy) {
   if (!whatsappDelivery?.attempted || whatsappDelivery.skipped) return;
@@ -1939,6 +1937,9 @@ export default function TicketDetailPage({
   const supportCredit = ticket?.supportCredit || null;
   const normalizedTicketStatus = ticket?.status === "open" ? "new" : ticket?.status;
   const isDeleted = Boolean(ticket?.deleted_at || ticket?.is_deleted);
+  // Declared early: refreshMentionMenu useCallback deps read isReadOnly (TDZ white screen otherwise).
+  const isTicketClosed = String(ticket?.status || "").toLowerCase() === "closed";
+  const isReadOnly = isDeleted || isTicketClosed;
   const resolutionValidation = ticket?.resolutionValidation || null;
   const canResolveWithValidation = !isDeleted && !["closed", "resolved"].includes(String(normalizedTicketStatus || "")) && !resolutionValidation?.isPending;
   const showConsumeCreditOption = supportCredit?.eligible && !supportCredit?.consumed && selectedSubmitAction === "solved" && !canResolveWithValidation;
@@ -3905,8 +3906,6 @@ export default function TicketDetailPage({
       return getEquipmentSearchText(equipment, locale).includes(query);
     }).slice(0, 40);
   }, [clientEquipments, linkedEquipmentIds, linkedEquipmentSearch, locale]);
-  const isTicketClosed = String(ticket?.status || "").toLowerCase() === "closed";
-  const isReadOnly = isDeleted || isTicketClosed;
   const showOrphanRequesterActions = Boolean(!isSalesTicketDetail && !isReadOnly && orphanRequesterEmail && (canCreateContact || canLinkRequesterEmail));
   const openQuickAddRequesterContact = useCallback(() => {
     if (!orphanRequesterEmail || !canCreateContact) return;
@@ -5579,7 +5578,19 @@ export default function TicketDetailPage({
             </RightPaneStaticSection>
           </aside>
 
-          <section className={styles.centerPane}>
+          <section
+            className={`${styles.centerPane} ${isDragOverReplyBox ? styles.centerPaneDragActive : ""}`.trim()}
+            onDragOver={handleReplyDragOver}
+            onDragEnter={handleReplyDragOver}
+            onDragLeave={handleReplyDragLeave}
+            onDrop={handleReplyDrop}
+          >
+            {isDragOverReplyBox && !isReadOnly ? (
+              <div className={styles.paneDropOverlay} aria-hidden>
+                <div className={styles.dropOverlayTitle}>{copy.reply.dropTitle}</div>
+                <div className={styles.dropOverlayHint}>{copy.reply.dropHint}</div>
+              </div>
+            ) : null}
             <div className={styles.timelineWrap}>
               <TicketValidationBanner
                 requests={validationRequests}
@@ -5785,13 +5796,7 @@ export default function TicketDetailPage({
                   <Icon icon="mdi:chevron-up" aria-hidden />
                 </button> : null}
             </div>
-            {!isReadOnly ? <div className={`${styles.replyBox} ${isDragOverReplyBox ? styles.replyBoxDragActive : ""} ${!replyBoxExpanded ? styles.replyBoxCollapsed : ""}`.trim()} onDragOver={handleReplyDragOver} onDragEnter={handleReplyDragOver} onDragLeave={handleReplyDragLeave} onDrop={handleReplyDrop}>
-              {isDragOverReplyBox && replyBoxExpanded && <div className={styles.dropOverlay}>
-                  <div className={styles.dropOverlayTitle}>{copy.reply.dropTitle}</div>
-                  <div className={styles.dropOverlayHint}>
-                    {copy.reply.dropHint}
-                  </div>
-                </div>}
+            {!isReadOnly ? <div className={`${styles.replyBox} ${isDragOverReplyBox ? styles.replyBoxDragActive : ""} ${!replyBoxExpanded ? styles.replyBoxCollapsed : ""}`.trim()}>
               <div className={styles.replyTopBar}>
                 {replyBoxExpanded ? <>
                     <div className={styles.replyTopLeft}>
