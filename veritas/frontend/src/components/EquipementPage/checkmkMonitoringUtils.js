@@ -32,17 +32,17 @@ export const CHECKMK_AVAILABILITY_PERIOD_OPTIONS = [{
 export const SERVICE_STATE_META = [{
   state: 0,
   label: 'OK',
-  color: '#13BA8E',
+  color: '#6fbf94',
   icon: 'mdi:check-circle'
 }, {
   state: 1,
   label: 'Warning',
-  color: '#f59e0b',
+  color: '#e0ad5c',
   icon: 'mdi:alert'
 }, {
   state: 2,
   label: 'Critical',
-  color: '#ef4444',
+  color: '#e07b7b',
   icon: 'mdi:alert-circle'
 }, {
   state: 3,

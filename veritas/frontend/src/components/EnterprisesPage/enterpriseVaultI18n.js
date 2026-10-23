@@ -26,7 +26,7 @@ const ENTERPRISE_VAULT_COPY = {
       intro: "Factures, notices, guides et rapports partagés avec le contact sur son portail client.",
       sharedCountOne: " {count} document visible côté client.",
       sharedCountMany: " {count} documents visibles côté client.",
-      searchPlaceholder: "Rechercher un document…",
+      searchPlaceholder: "Rechercher",
       clearSearchAria: "Effacer",
       allTypes: "Tous les types",
       loading: "Chargement du coffre-fort…",
@@ -83,6 +83,36 @@ const ENTERPRISE_VAULT_COPY = {
       uploadDocument: "Ajouter un document",
       contextMenuAria: "Menu contextuel du coffre-fort",
       contextBlankTitle: "Coffre-fort"
+    },
+    columnsSettings: "Colonnes",
+    table: {
+      name: "Nom",
+      description: "Description",
+      visibility: "Portail",
+      size: "Taille",
+      date: "Date"
+    },
+    columnsModal: {
+      title: "Colonnes du coffre-fort",
+      subtitle: "Choisissez les colonnes visibles dans le tableau du coffre-fort.",
+      privateTab: "Vue privée",
+      publicTab: "Vue publique",
+      privateHintInactive: "Pas encore de vue privée : la vue publique s’affiche. Cochez des colonnes pour créer la vôtre.",
+      privateHintActive: "Votre vue privée remplace la vue publique.",
+      publicHint: "Colonnes visibles par défaut pour tous les utilisateurs sans vue privée.",
+      adminOnly: "Seuls les administrateurs peuvent modifier la vue publique.",
+      resetPrivate: "Revenir à la vue publique",
+      resetSuccess: "Vue privée réinitialisée",
+      savePrivateSuccess: "Vue privée enregistrée",
+      savePublicSuccess: "Vue publique enregistrée",
+      saveError: "Erreur lors de l’enregistrement des colonnes",
+      atLeastOne: "Sélectionnez au moins une colonne.",
+      reorderHint: "Glissez les lignes pour changer l’ordre des colonnes dans le tableau.",
+      dragColumn: "Glisser la colonne {name}",
+      save: "Enregistrer"
+    },
+    toasts: {
+      loadColumns: "Erreur lors du chargement des colonnes"
     },
     card: {
       previewTitle: "Prévisualiser",
@@ -188,7 +218,7 @@ const ENTERPRISE_VAULT_COPY = {
       intro: "Invoices, manuals, guides and reports shared with the contact on their client portal.",
       sharedCountOne: " {count} document visible on the portal.",
       sharedCountMany: " {count} documents visible on the portal.",
-      searchPlaceholder: "Search for a document…",
+      searchPlaceholder: "Search",
       clearSearchAria: "Clear",
       allTypes: "All types",
       loading: "Loading document vault…",
@@ -245,6 +275,36 @@ const ENTERPRISE_VAULT_COPY = {
       uploadDocument: "Add a document",
       contextMenuAria: "Vault context menu",
       contextBlankTitle: "Vault"
+    },
+    columnsSettings: "Columns",
+    table: {
+      name: "Name",
+      description: "Description",
+      visibility: "Portal",
+      size: "Size",
+      date: "Date"
+    },
+    columnsModal: {
+      title: "Vault columns",
+      subtitle: "Choose which columns are visible in the vault table.",
+      privateTab: "Private view",
+      publicTab: "Public view",
+      privateHintInactive: "No private view yet — the public view is used. Toggle columns to create yours.",
+      privateHintActive: "Your private columns override the public view.",
+      publicHint: "Default columns for all users without a private view.",
+      adminOnly: "Only administrators can edit the public view.",
+      resetPrivate: "Use public view",
+      resetSuccess: "Private view reset",
+      savePrivateSuccess: "Private view saved",
+      savePublicSuccess: "Public view saved",
+      saveError: "Error while saving columns",
+      atLeastOne: "Select at least one column.",
+      reorderHint: "Drag rows to change the column order in the table.",
+      dragColumn: "Drag column {name}",
+      save: "Save"
+    },
+    toasts: {
+      loadColumns: "Error loading columns"
     },
     card: {
       previewTitle: "Preview",
@@ -350,7 +410,7 @@ const ENTERPRISE_VAULT_COPY = {
       intro: "Rechnungen, Handbücher, Anleitungen und Berichte, die mit dem Kontakt im Kundenportal geteilt werden.",
       sharedCountOne: " {count} Dokument im Portal sichtbar.",
       sharedCountMany: " {count} Dokumente im Portal sichtbar.",
-      searchPlaceholder: "Dokument suchen…",
+      searchPlaceholder: "Suchen",
       clearSearchAria: "Löschen",
       allTypes: "Alle Typen",
       loading: "Dokumententresor wird geladen…",
@@ -505,7 +565,7 @@ const ENTERPRISE_VAULT_COPY = {
       intro: "Fatture, manuali, guide e report condivisi con il contatto sul portale cliente.",
       sharedCountOne: " {count} documento visibile sul portale.",
       sharedCountMany: " {count} documenti visibili sul portale.",
-      searchPlaceholder: "Cerca un documento…",
+      searchPlaceholder: "Cerca",
       clearSearchAria: "Cancella",
       allTypes: "Tutti i tipi",
       loading: "Caricamento cassaforte documenti…",
@@ -660,7 +720,7 @@ const ENTERPRISE_VAULT_COPY = {
       intro: "Facturas, manuales, guías e informes compartidos con el contacto en su portal cliente.",
       sharedCountOne: " {count} documento visible en el portal.",
       sharedCountMany: " {count} documentos visibles en el portal.",
-      searchPlaceholder: "Buscar un documento…",
+      searchPlaceholder: "Buscar",
       clearSearchAria: "Borrar",
       allTypes: "Todos los tipos",
       loading: "Cargando caja fuerte documental…",
@@ -812,6 +872,18 @@ export function getEnterpriseVaultCopy(locale) {
     panel: {
       ...fallback.panel,
       ...(t.panel || {})
+    },
+    table: {
+      ...fallback.table,
+      ...(t.table || {})
+    },
+    columnsModal: {
+      ...fallback.columnsModal,
+      ...(t.columnsModal || {})
+    },
+    toasts: {
+      ...fallback.toasts,
+      ...(t.toasts || {})
     },
     card: {
       ...fallback.card,

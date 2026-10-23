@@ -54,6 +54,8 @@ export async function getPrestataireLogs(prestataireId, page = 1, limit = 25, op
   const params = new URLSearchParams();
   params.set("page", String(page));
   params.set("limit", String(limit));
+  if (options.sortBy) params.set("sortBy", String(options.sortBy));
+  if (options.sortDir) params.set("sortDir", String(options.sortDir));
   const res = await fetch(`${BASE_URL}/${prestataireId}/logs?${params}`, {
     credentials: "include",
     signal: options.signal,

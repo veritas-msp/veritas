@@ -5,8 +5,32 @@ import styles from "./Sidebar.module.css";
 import { DOCUMENTS_CONFIG } from "../../../utils/constants";
 import SidebarTooltip from "./SidebarTooltip";
 import SidebarAccessNavItem from "./SidebarAccessNavItem";
-import UserAvatar from "../../shared/UserAvatar/UserAvatar";
 import { Icon } from "@iconify/react";
+import {
+  AudioLinesIcon,
+  BookTextIcon,
+  BriefcaseBusinessIcon,
+  BugIcon,
+  CalendarDaysIcon,
+  ChartColumnIncreasingIcon,
+  CircleHelpIcon,
+  CloudUploadIcon,
+  EllipsisIcon,
+  FileTextIcon,
+  HeartHandshakeIcon,
+  HomeIcon,
+  LaptopMinimalCheckIcon,
+  LogoutIcon,
+  MessageSquareIcon,
+  MoonIcon,
+  RadioIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+  SlidersHorizontalIcon,
+  SunIcon,
+  UserIcon,
+  UsersIcon
+} from "./lucideAnimated";
 import { useTheme } from "../../../hooks/useTheme";
 import { useVeritasEdition } from "../../../hooks/useVeritasEdition";
 import { useAppLocale } from "../../../hooks/useAppGeneralSettings";
@@ -32,26 +56,27 @@ import {
   readStoredSidebarRailCollapsed,
   SIDEBAR_RAIL_COLLAPSED_EVENT
 } from "../../../utils/sidebarLayoutPreferences";
+import { buildAgentPath } from "../../../navigation/agentRoutes";
 function normalizeProfileLabel(profile) {
   if (profile == null) return "";
   return String(profile).replace(/\s+$/, "").trim();
 }
-function getUserInitials(user) {
-  if (!user) return "?";
-  const name = (user.name || user.displayName || "").toString().trim();
-  if (name) {
-    const parts = name.split(/\s+/).filter(Boolean);
-    if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  }
-  const local = (user.email || "").split("@")[0] || "";
-  const segments = local.split(/[._-]+/).filter(Boolean);
-  if (segments.length >= 2) {
-    return `${segments[0][0]}${segments[1][0]}`.toUpperCase();
-  }
-  return (local.slice(0, 2) || "?").toUpperCase();
+function AccountMenuButton({
+  icon: IconComponent,
+  children,
+  ...props
+}) {
+  const iconRef = useRef(null);
+  return <button type="button" role="menuitem" {...props} onMouseEnter={event => {
+    iconRef.current?.startAnimation?.();
+    props.onMouseEnter?.(event);
+  }} onMouseLeave={event => {
+    iconRef.current?.stopAnimation?.();
+    props.onMouseLeave?.(event);
+  }}>
+      <IconComponent ref={iconRef} className={styles.userMenuItemIcon} size={18} />
+      {children}
+    </button>;
 }
 function SectionDivider({
   show,
@@ -107,6 +132,10 @@ export default function Sidebar({
   const moreMenuRef = useRef(null);
   const moreMenuTriggerRef = useRef(null);
   const moreMenuDropdownRef = useRef(null);
+  const searchIconRef = useRef(null);
+  const helpIconRef = useRef(null);
+  const userIconRef = useRef(null);
+  const dotsIconRef = useRef(null);
   const closeUserMenu = useCallback(() => {
     setUserMenuOpen(false);
     setProfilesMenuOpen(false);
@@ -145,7 +174,7 @@ export default function Sidebar({
   }, [startSidebarGuide]);
   const isDarkTheme = theme === "dark";
   const themeTooltip = isDarkTheme ? copy.theme.lightMode : copy.theme.darkMode;
-  const themeMenuIcon = isDarkTheme ? "mdi:weather-sunny" : "mdi:weather-night";
+  const ThemeMenuIcon = isDarkTheme ? SunIcon : MoonIcon;
   // Desktop vertical : rail icônes ou sidebar étendue avec libellés (préférence persistée).
   // Barre horizontale : icônes + tooltips. Mobile : drawer (libellés masqués en CSS).
   const [railCollapsed, setRailCollapsed] = useState(() => readStoredSidebarRailCollapsed());
@@ -245,7 +274,6 @@ export default function Sidebar({
   const showIconTooltip = isCollapsed || isMobile || isHorizontalDesktop;
   /* Libellés toujours montés en vertical : révélés par clip pendant l’animation de largeur */
   const showSidebarLabels = !isHorizontalDesktop;
-  const userInitials = getUserInitials(user);
   const profileLabel = normalizeProfileLabel(profile);
   const switchableProfiles = useMemo(() => {
     const list = Array.isArray(assignedProfiles)
@@ -482,20 +510,32 @@ export default function Sidebar({
             <div className={styles.logoHeader} data-sidebar-guide="brand">
               <div className={`${styles.logoHeaderRow} ${isCollapsed ? styles.logoHeaderRowCollapsed : ""}`}>
                 {showIconTooltip ? <SidebarTooltip as="span" content={copy.home} className={styles.sidebarTooltipHost}>
-                    <div className={styles.logoWrapper} onClick={() => {
-                  onSelect("Home");
-                  if (isMobile) setShowMenu(false);
-                }}>
+                    <a
+                      href={buildAgentPath("Home") || "/"}
+                      className={styles.logoWrapper}
+                      onClick={e => {
+                        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                        e.preventDefault();
+                        onSelect("Home");
+                        if (isMobile) setShowMenu(false);
+                      }}
+                    >
                       <div className={styles.brandMark}>V</div>
                       {showSidebarLabels ? <span className={styles.logoText}>Veritas</span> : null}
-                    </div>
-                  </SidebarTooltip> : <div className={styles.logoWrapper} onClick={() => {
-                  onSelect("Home");
-                  if (isMobile) setShowMenu(false);
-                }}>
+                    </a>
+                  </SidebarTooltip> : <a
+                    href={buildAgentPath("Home") || "/"}
+                    className={styles.logoWrapper}
+                    onClick={e => {
+                      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                      e.preventDefault();
+                      onSelect("Home");
+                      if (isMobile) setShowMenu(false);
+                    }}
+                  >
                     <div className={styles.brandMark}>V</div>
                     {showSidebarLabels ? <span className={styles.logoText}>Veritas</span> : null}
-                  </div>}
+                  </a>}
               </div>
             </div>
 
@@ -521,24 +561,24 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  <ul className={styles.navList}>
+                  <div className={styles.navList} role="list">
                     <LayoutGroup id="sidebar-crm">
                     <AnimatePresence initial={false} mode="popLayout">
-                      {!!access["Contrat"] && <SidebarAccessNavItem key="Contrat" itemKey="Contrat" showTooltip={showIconTooltip} tooltip={copy.nav.enterprises} className={`${styles.navItem} ${current === "Contrat" || current === "ContratDetail" ? styles.active : ""}`} onClick={() => {
+                      {!!access["Contrat"] && <SidebarAccessNavItem key="Contrat" itemKey="Contrat" href={buildAgentPath("Contrat")} showTooltip={showIconTooltip} tooltip={copy.nav.enterprises} className={`${styles.navItem} ${current === "Contrat" || current === "ContratDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Contrat");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mingcute:building-1-fill" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.enterprises : null} />}
-                      {!!access["Contact"] && <SidebarAccessNavItem key="Contact" itemKey="Contact" showTooltip={showIconTooltip} tooltip={copy.nav.contact} className={`${styles.navItem} ${current === "Contact" || current === "ContactDetail" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<HomeIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.enterprises : null} />}
+                      {!!access["Contact"] && <SidebarAccessNavItem key="Contact" itemKey="Contact" href={buildAgentPath("Contact")} showTooltip={showIconTooltip} tooltip={copy.nav.contact} className={`${styles.navItem} ${current === "Contact" || current === "ContactDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Contact");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mingcute:contacts-3-fill" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.contact : null} />}
-                      {!!access["Prestataire"] && <SidebarAccessNavItem key="Prestataire" itemKey="Prestataire" showTooltip={showIconTooltip} tooltip={copy.nav.prestataire} className={`${styles.navItem} ${current === "Prestataire" || current === "PrestataireDetail" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<UsersIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.contact : null} />}
+                      {!!access["Prestataire"] && <SidebarAccessNavItem key="Prestataire" itemKey="Prestataire" href={buildAgentPath("Prestataire")} showTooltip={showIconTooltip} tooltip={copy.nav.prestataire} className={`${styles.navItem} ${current === "Prestataire" || current === "PrestataireDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Prestataire");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:handshake-outline" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.prestataire : null} />}
+                  }} icon={<HeartHandshakeIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.prestataire : null} />}
                     </AnimatePresence>
                     </LayoutGroup>
-                  </ul>
+                  </div>
                 </motion.div>}
             </AnimatePresence>
             <SectionDivider show={showCrmSection && (showExploitationSection || showManagedSection || showPilotageSection)} isCollapsed={isCollapsed} />
@@ -559,24 +599,24 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  <ul className={styles.navList}>
+                  <div className={styles.navList} role="list">
                     <LayoutGroup id="sidebar-exploitation">
                     <AnimatePresence initial={false} mode="popLayout">
-                      {!!access["Ticket"] && <SidebarAccessNavItem key="Ticket" itemKey="Ticket" showTooltip={showIconTooltip} tooltip={copy.nav.support} className={`${styles.navItem} ${current === "Ticket" || current === "TicketCreate" ? styles.active : ""}`} onClick={() => {
+                      {!!access["Ticket"] && <SidebarAccessNavItem key="Ticket" itemKey="Ticket" href={buildAgentPath("Ticket")} showTooltip={showIconTooltip} tooltip={copy.nav.support} className={`${styles.navItem} ${current === "Ticket" || current === "TicketCreate" ? styles.active : ""}`} onClick={() => {
                     onSelect("Ticket");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:message-processing-outline" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.support : null} />}
-                      {!!access["TicketSales"] && <SidebarAccessNavItem key="TicketSales" itemKey="TicketSales" showTooltip={showIconTooltip} tooltip={copy.nav.sales} className={`${styles.navItem} ${current === "TicketSales" || current === "TicketSalesCreate" || current === "TicketSalesDetail" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<MessageSquareIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.support : null} />}
+                      {!!access["TicketSales"] && <SidebarAccessNavItem key="TicketSales" itemKey="TicketSales" href={buildAgentPath("TicketSales")} showTooltip={showIconTooltip} tooltip={copy.nav.sales} className={`${styles.navItem} ${current === "TicketSales" || current === "TicketSalesCreate" || current === "TicketSalesDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("TicketSales");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:briefcase-outline" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.sales : null} />}
-                      {!!access["Planning"] && <SidebarAccessNavItem key="Planning" itemKey="Planning" showTooltip={showIconTooltip} tooltip={copy.nav.planning} className={`${styles.navItem} ${current === "Planning" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<BriefcaseBusinessIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.sales : null} />}
+                      {!!access["Planning"] && <SidebarAccessNavItem key="Planning" itemKey="Planning" href={buildAgentPath("Planning")} showTooltip={showIconTooltip} tooltip={copy.nav.planning} className={`${styles.navItem} ${current === "Planning" ? styles.active : ""}`} onClick={() => {
                     onSelect("Planning");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mingcute:calendar-time-add-fill" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.planning : null} />}
+                  }} icon={<CalendarDaysIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.planning : null} />}
                     </AnimatePresence>
                     </LayoutGroup>
-                  </ul>
+                  </div>
                 </motion.div>}
             </AnimatePresence>
             <SectionDivider show={showExploitationSection && (showManagedSection || showPilotageSection)} isCollapsed={isCollapsed} />
@@ -598,32 +638,32 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  <ul className={styles.navList}>
+                  <div className={styles.navList} role="list">
                     <LayoutGroup id="sidebar-managed">
                     <AnimatePresence initial={false} mode="popLayout">
-                      {!!access["Hardware"] && <SidebarAccessNavItem key="Hardware" itemKey="Hardware" showTooltip={showIconTooltip} tooltip={copy.nav.supervision} className={`${styles.navItem} ${current === "Hardware" || current === "Equipment" ? styles.active : ""}`} onClick={() => {
+                      {!!access["Hardware"] && <SidebarAccessNavItem key="Hardware" itemKey="Hardware" href={buildAgentPath("Hardware")} showTooltip={showIconTooltip} tooltip={copy.nav.supervision} className={`${styles.navItem} ${current === "Hardware" || current === "Equipment" ? styles.active : ""}`} onClick={() => {
                     onSelect("Hardware");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:radar" className={`${styles.itemIcon} ${styles.itemIconInfra}`} />} label={showSidebarLabels ? copy.nav.supervision : null} />}
-                      {!!access["Campaigns"] && <SidebarAccessNavItem key="Campaigns" itemKey="Campaigns" showTooltip={showIconTooltip} tooltip={copy.nav.campaigns} className={`${styles.navItem} ${current === "Campaigns" || current === "CampaignDetail" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<RadioIcon className={`${styles.itemIcon} ${styles.itemIconInfra}`} />} label={showSidebarLabels ? copy.nav.supervision : null} />}
+                      {!!access["Campaigns"] && <SidebarAccessNavItem key="Campaigns" itemKey="Campaigns" href={buildAgentPath("Campaigns")} showTooltip={showIconTooltip} tooltip={copy.nav.campaigns} className={`${styles.navItem} ${current === "Campaigns" || current === "CampaignDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Campaigns");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:bullhorn-outline" className={`${styles.itemIcon} ${styles.itemIconCyber}`} />} label={showSidebarLabels ? copy.nav.campaigns : null} />}
-                      {!!access["EquipmentInventory"] && <SidebarAccessNavItem key="EquipmentInventory" itemKey="EquipmentInventory" showTooltip={showIconTooltip} tooltip={copy.nav.inventory} className={`${styles.navItem} ${current === "EquipmentInventory" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<AudioLinesIcon className={`${styles.itemIcon} ${styles.itemIconCyber}`} />} label={showSidebarLabels ? copy.nav.campaigns : null} />}
+                      {!!access["EquipmentInventory"] && <SidebarAccessNavItem key="EquipmentInventory" itemKey="EquipmentInventory" href={buildAgentPath("EquipmentInventory")} showTooltip={showIconTooltip} tooltip={copy.nav.inventory} className={`${styles.navItem} ${current === "EquipmentInventory" ? styles.active : ""}`} onClick={() => {
                     onSelect("EquipmentInventory");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:devices" className={`${styles.itemIcon} ${styles.itemIconInventory}`} />} label={showSidebarLabels ? copy.nav.inventory : null} />}
-                      {!!access["Cybersecurite"] && <SidebarAccessNavItem key="Cybersecurite" itemKey="Cybersecurite" showTooltip={showIconTooltip} tooltip={copy.nav.cyber} className={`${styles.navItem} ${current === "Cybersecurite" || current === "AntivirusDetail" || current === "AntispamDetail" || current === "InstanceDetail" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<LaptopMinimalCheckIcon className={`${styles.itemIcon} ${styles.itemIconInventory}`} />} label={showSidebarLabels ? copy.nav.inventory : null} />}
+                      {!!access["Cybersecurite"] && <SidebarAccessNavItem key="Cybersecurite" itemKey="Cybersecurite" href={buildAgentPath("Cybersecurite")} showTooltip={showIconTooltip} tooltip={copy.nav.cyber} className={`${styles.navItem} ${current === "Cybersecurite" || current === "AntivirusDetail" || current === "AntispamDetail" || current === "InstanceDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Cybersecurite");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:shield-lock" className={`${styles.itemIcon} ${styles.itemIconCyber}`} />} label={showSidebarLabels ? copy.nav.cyber : null} />}
-                      {!!access["Service"] && <SidebarAccessNavItem key="Service" itemKey="Service" showTooltip={showIconTooltip} tooltip={copy.nav.cloud} className={`${styles.navItem} ${current === "Service" || current === "TenantDetail" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<ShieldCheckIcon className={`${styles.itemIcon} ${styles.itemIconCyber}`} />} label={showSidebarLabels ? copy.nav.cyber : null} />}
+                      {!!access["Service"] && <SidebarAccessNavItem key="Service" itemKey="Service" href={buildAgentPath("Service")} showTooltip={showIconTooltip} tooltip={copy.nav.cloud} className={`${styles.navItem} ${current === "Service" || current === "TenantDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Service");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:cloud-outline" className={`${styles.itemIcon} ${styles.itemIconService}`} />} label={showSidebarLabels ? copy.nav.cloud : null} />}
+                  }} icon={<CloudUploadIcon className={`${styles.itemIcon} ${styles.itemIconService}`} />} label={showSidebarLabels ? copy.nav.cloud : null} />}
                     </AnimatePresence>
                     </LayoutGroup>
-                  </ul>
+                  </div>
                 </motion.div>}
             </AnimatePresence>
             <SectionDivider show={showManagedSection && showPilotageSection} isCollapsed={isCollapsed} />
@@ -645,17 +685,17 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  <ul className={styles.navList}>
+                  <div className={styles.navList} role="list">
                     <LayoutGroup id="sidebar-pilotage-access">
                     <AnimatePresence initial={false} mode="popLayout">
-                    {!!access["Dashboard"] && <SidebarAccessNavItem key="Dashboard" itemKey="Dashboard" showTooltip={showIconTooltip} tooltip={copy.nav.dashboard} className={`${styles.navItem} ${current === "Dashboard" ? styles.active : ""}`} onClick={() => {
+                    {!!access["Dashboard"] && <SidebarAccessNavItem key="Dashboard" itemKey="Dashboard" href={buildAgentPath("Dashboard")} showTooltip={showIconTooltip} tooltip={copy.nav.dashboard} className={`${styles.navItem} ${current === "Dashboard" ? styles.active : ""}`} onClick={() => {
                     onSelect("Dashboard");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:chart-box-outline" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.dashboard : null} />}
-                    {!!access["KnowledgeBase"] && <SidebarAccessNavItem key="KnowledgeBase" itemKey="KnowledgeBase" showTooltip={showIconTooltip} tooltip={copy.nav.knowledgeBase} className={`${styles.navItem} ${current === "KnowledgeBase" ? styles.active : ""}`} onClick={() => {
+                  }} icon={<ChartColumnIncreasingIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.dashboard : null} />}
+                    {!!access["KnowledgeBase"] && <SidebarAccessNavItem key="KnowledgeBase" itemKey="KnowledgeBase" href={buildAgentPath("KnowledgeBase")} showTooltip={showIconTooltip} tooltip={copy.nav.knowledgeBase} className={`${styles.navItem} ${current === "KnowledgeBase" ? styles.active : ""}`} onClick={() => {
                     onSelect("KnowledgeBase");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mdi:book-open-page-variant-outline" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.knowledgeBase : null} />}
+                  }} icon={<BookTextIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.knowledgeBase : null} />}
                     {DOCUMENTS_CONFIG.filter(doc => {
                     if (doc.key === "Mon") return false;
                     if (doc.key === "DocumentsHub" && isCommunity) return false;
@@ -663,7 +703,7 @@ export default function Sidebar({
                   }).map(doc => {
                     const iconName = doc.icon?.startsWith("mdi:") || doc.icon?.startsWith("material-symbols:") ? doc.icon : doc.key === "Synth" ? "material-symbols:home" : "";
                     const isActive = current === doc.key;
-                    return <SidebarAccessNavItem key={doc.key} itemKey={doc.key} showTooltip={showIconTooltip} tooltip={localizeDocumentLabel(doc.key, doc.label, locale)} className={`${styles.navItem} ${isActive ? styles.active : ""}`} onClick={() => {
+                    return <SidebarAccessNavItem key={doc.key} itemKey={doc.key} href={buildAgentPath(doc.key)} showTooltip={showIconTooltip} tooltip={localizeDocumentLabel(doc.key, doc.label, locale)} className={`${styles.navItem} ${isActive ? styles.active : ""}`} onClick={() => {
                       onSelect(doc.key);
                       if (isMobile) setShowMenu(false);
                     }} icon={iconName ? <Icon icon={iconName} className={styles.itemIcon} /> : null} label={showSidebarLabels ? <span className={styles.labelWithDot}>
@@ -672,13 +712,13 @@ export default function Sidebar({
                               </span> : drafts?.[doc.key] ? <span className={styles.draftDot}>⬤</span> : null} />;
                   })}
 
-                      {!!access["Mon"] && !isCommunity && <SidebarAccessNavItem key="Report" itemKey="Report" showTooltip={showIconTooltip} tooltip={copy.nav.reports} className={`${styles.navItem} ${current === "Report" ? styles.active : ""}`} onClick={() => {
+                      {!!access["Mon"] && !isCommunity && <SidebarAccessNavItem key="Report" itemKey="Report" href={buildAgentPath("Report")} showTooltip={showIconTooltip} tooltip={copy.nav.reports} className={`${styles.navItem} ${current === "Report" ? styles.active : ""}`} onClick={() => {
                     onSelect("Report");
                     if (isMobile) setShowMenu(false);
-                  }} icon={<Icon icon="mingcute:report-forms-fill" className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.reports : null} />}
+                  }} icon={<FileTextIcon className={styles.itemIcon} />} label={showSidebarLabels ? copy.nav.reports : null} />}
                     </AnimatePresence>
                     </LayoutGroup>
-                  </ul>
+                  </div>
                 </motion.div>}
             </AnimatePresence>
             <SectionDivider show={showPilotageSection && (isCommunity || !isHorizontalDesktop)} isCollapsed={isCollapsed} />
@@ -749,8 +789,10 @@ export default function Sidebar({
                         aria-expanded={moreMenuOpen}
                         aria-haspopup="menu"
                         aria-label={moreAria}
+                        onMouseEnter={() => dotsIconRef.current?.startAnimation?.()}
+                        onMouseLeave={() => dotsIconRef.current?.stopAnimation?.()}
                       >
-                        <Icon icon="mdi:dots-horizontal" className={styles.squareBtnIcon} aria-hidden />
+                        <EllipsisIcon ref={dotsIconRef} className={styles.squareBtnIcon} size={20} />
                       </button>
                     </SidebarTooltip>
                   ) : (
@@ -762,20 +804,22 @@ export default function Sidebar({
                       aria-expanded={moreMenuOpen}
                       aria-haspopup="menu"
                       aria-label={moreAria}
+                      onMouseEnter={() => dotsIconRef.current?.startAnimation?.()}
+                      onMouseLeave={() => dotsIconRef.current?.stopAnimation?.()}
                     >
-                      <Icon icon="mdi:dots-horizontal" className={styles.squareBtnIcon} aria-hidden />
+                      <EllipsisIcon ref={dotsIconRef} className={styles.squareBtnIcon} size={20} />
                     </button>
                   )}
                   {moreMenuOpen && moreMenuFixedStyle && createPortal(<div ref={moreMenuDropdownRef} className={styles.userMenuDropdown} style={moreMenuFixedStyle} role="menu" aria-label={copy.more?.menu || moreTooltip}>
                     <div className={styles.userMenuDropdownTitle}>
                       {copy.more?.menu || moreTooltip}
                     </div>
-                    <button type="button" role="menuitem" className={styles.userMenuItem} aria-label={searchAria} onClick={() => runMoreMenuAction(() => setSearchOpen(true))}>
-                      <Icon icon="mdi:magnify" className={styles.userMenuItemIcon} />
+                    <button type="button" role="menuitem" className={styles.userMenuItem} aria-label={searchAria} onClick={() => runMoreMenuAction(() => setSearchOpen(true))} onMouseEnter={() => searchIconRef.current?.startAnimation?.()} onMouseLeave={() => searchIconRef.current?.stopAnimation?.()}>
+                      <SearchIcon ref={searchIconRef} className={styles.userMenuItemIcon} size={18} />
                       {searchTooltip}
                     </button>
-                    <button type="button" role="menuitem" className={styles.userMenuItem} aria-label={helpAria} onClick={() => runMoreMenuAction(startHelp)}>
-                      <Icon icon="mdi:help-circle-outline" className={styles.userMenuItemIcon} />
+                    <button type="button" role="menuitem" className={styles.userMenuItem} aria-label={helpAria} onClick={() => runMoreMenuAction(startHelp)} onMouseEnter={() => helpIconRef.current?.startAnimation?.()} onMouseLeave={() => helpIconRef.current?.stopAnimation?.()}>
+                      <CircleHelpIcon ref={helpIconRef} className={styles.userMenuItemIcon} size={18} />
                       {helpAria}
                     </button>
                   </div>, document.body)}
@@ -789,11 +833,11 @@ export default function Sidebar({
                     className={`${styles.userMenuTriggerRow} ${isCollapsed ? styles.userMenuTriggerRowCollapsed : ""}`}
                   >
                     {showIconTooltip ? <SidebarTooltip as="span" content={copy.account.menu} className={styles.userAvatarTooltipHost}>
-                        <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "PatchNotes"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={toggleUserMenu} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
-                          {user ? <UserAvatar user={user} name={user.username || user.email} size={34} variant="agent" /> : userInitials}
+                        <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "PatchNotes"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={toggleUserMenu} onMouseEnter={() => userIconRef.current?.startAnimation?.()} onMouseLeave={() => userIconRef.current?.stopAnimation?.()} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
+                          <UserIcon ref={userIconRef} className={styles.userAvatarIcon} size={20} />
                         </button>
-                      </SidebarTooltip> : <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "PatchNotes"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={toggleUserMenu} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
-                        {user ? <UserAvatar user={user} name={user.username || user.email} size={34} variant="agent" /> : userInitials}
+                      </SidebarTooltip> : <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "PatchNotes"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={toggleUserMenu} onMouseEnter={() => userIconRef.current?.startAnimation?.()} onMouseLeave={() => userIconRef.current?.stopAnimation?.()} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
+                        <UserIcon ref={userIconRef} className={styles.userAvatarIcon} size={20} />
                       </button>}
                     {isMobile ? (
                       <button type="button" className={styles.userMenuLabelButton} onClick={toggleUserMenu} aria-expanded={userMenuOpen} aria-haspopup="menu">
@@ -810,15 +854,13 @@ export default function Sidebar({
                       {copy.account.menu}
                     </div>
 
-                    <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "User" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("User"))}>
-                      <Icon icon="mingcute:contacts-4-fill" className={styles.userMenuItemIcon} />
+                    <AccountMenuButton icon={UserIcon} className={`${styles.userMenuItem} ${current === "User" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("User"))}>
                       {copy.account.myAccount}
-                    </button>
+                    </AccountMenuButton>
                     {showAdminMenu ? (
-                      <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "Admin" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("Admin"))}>
-                        <Icon icon="mingcute:settings-6-fill" className={styles.userMenuItemIcon} />
+                      <AccountMenuButton icon={SlidersHorizontalIcon} className={`${styles.userMenuItem} ${current === "Admin" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("Admin"))}>
                         {copy.account.admin}
-                      </button>
+                      </AccountMenuButton>
                     ) : null}
                     {switchableProfiles.length > 1 ? <>
                         <button
@@ -868,28 +910,24 @@ export default function Sidebar({
 
                     <div className={styles.userMenuDivider} role="separator" />
 
-                    <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "PatchNotes" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("PatchNotes"))}>
-                      <Icon icon="mdi:notebook-outline" className={styles.userMenuItemIcon} />
+                    <AccountMenuButton icon={BookTextIcon} className={`${styles.userMenuItem} ${current === "PatchNotes" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("PatchNotes"))}>
                       {copy.account.patchNotes}
-                    </button>
-                    <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "ReportBug" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("ReportBug"))}>
-                      <Icon icon="mingcute:bug-fill" className={styles.userMenuItemIcon} />
+                    </AccountMenuButton>
+                    <AccountMenuButton icon={BugIcon} className={`${styles.userMenuItem} ${current === "ReportBug" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("ReportBug"))}>
                       {copy.account.support}
-                    </button>
+                    </AccountMenuButton>
 
                     <div className={styles.userMenuDivider} role="separator" />
 
-                    <button type="button" role="menuitem" className={styles.userMenuItem} onClick={() => toggleTheme()} aria-label={themeTooltip}>
-                      <Icon icon={themeMenuIcon} className={styles.userMenuItemIcon} />
+                    <AccountMenuButton icon={ThemeMenuIcon} className={styles.userMenuItem} onClick={() => toggleTheme()} aria-label={themeTooltip}>
                       {themeTooltip}
-                    </button>
+                    </AccountMenuButton>
 
                     <div className={styles.userMenuDivider} role="separator" />
 
-                    <button type="button" role="menuitem" className={`${styles.userMenuItem} ${styles.userMenuItemDanger}`} onClick={() => runUserMenuAction(() => onLogout())}>
-                      <Icon icon="mingcute:exit-fill" className={styles.userMenuItemIcon} />
+                    <AccountMenuButton icon={LogoutIcon} className={`${styles.userMenuItem} ${styles.userMenuItemDanger}`} onClick={() => runUserMenuAction(() => onLogout())}>
                       {copy.account.logout}
-                    </button>
+                    </AccountMenuButton>
                   </div>, document.body)}
                 </div>
               </div>

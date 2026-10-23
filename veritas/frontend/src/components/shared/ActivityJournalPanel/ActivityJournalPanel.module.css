@@ -5,6 +5,170 @@
   flex-direction: column;
 }
 
+.logsPanelEmbedded {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.logsPanelBodyEmbedded {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+  flex: 1 1 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 0.55rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.embeddedToolbar {
+  flex: 0 0 auto;
+  padding: 0 !important;
+  width: 100%;
+}
+
+.tableStack {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.tableStack :global([class*="tableScrollShell"]) {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.tableStack :global([class*="tableWrapperEmbedded"]),
+.tableStack :global([class*="tableWrapper"]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.tableStack :global([class*="tableCardSurface"]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableStack .tableWrapper,
+.tableStack .tableWrapperEmbedded {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+
+.tableStack .loadingState,
+.tableStack .emptyState {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  margin: 0;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.embeddedToolbarActions {
+  margin-left: auto;
+  flex: 0 0 auto !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.columnsPillBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 7px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 0;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.columnsPillBtn:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.columnsPillBtn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 45%, transparent);
+  outline-offset: 2px;
+}
+
+:global(html.dark) .columnsPillBtn,
+:global(body.dark) .columnsPillBtn {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+  color: var(--msp-muted-light, #6a88a8);
+}
+
+:global(html.dark) .columnsPillBtn:hover,
+:global(body.dark) .columnsPillBtn:hover {
+  border-color: var(--msp-accent, #5a9de0);
+  color: var(--msp-accent, #5a9de0);
+}
+
+.tableWrapperEmbedded {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.paginationBar {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.paginationEmbedded {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.2rem 0.1rem;
+  border-top: none;
+  margin-top: 0.25rem;
+  background: transparent;
+  justify-content: space-between;
+}
+
+.logsPanelBodyEmbedded > .paginationBar,
+.logsPanelBody > .paginationBar {
+  flex: 0 0 auto !important;
+}
+
 .subtitle {
   margin: 0.25rem 0 0;
   font-size: 0.78rem;
@@ -43,25 +207,47 @@
 .purgeBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.4rem 0.7rem;
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  border-radius: 8px;
-  background: rgba(254, 242, 242, 0.9);
+  justify-content: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  border-radius: 7px;
+  background: rgba(254, 242, 242, 0.95);
   color: #b91c1c;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  line-height: 0;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
 }
 
 .purgeBtn:hover:not(:disabled) {
   background: #fee2e2;
-  border-color: rgba(220, 38, 38, 0.4);
+  border-color: rgba(220, 38, 38, 0.45);
+  color: #991b1b;
 }
 
 .purgeBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+:global(html.dark) .purgeBtn,
+:global(body.dark) .purgeBtn {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+}
+
+:global(html.dark) .purgeBtn:hover:not(:disabled),
+:global(body.dark) .purgeBtn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.2);
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fecaca;
 }
 
 .toolbar {
@@ -73,7 +259,6 @@
 
 .toolbar .purgeBtn {
   flex: 0 0 auto;
-  margin-left: auto;
 }
 
 .searchWrap {
@@ -178,11 +363,63 @@
   width: 100%;
 }
 
+.sortableTh {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s;
+}
+
+.sortableTh:hover,
+.sortableTh[aria-sort="ascending"],
+.sortableTh[aria-sort="descending"] {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.thContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+}
+
+.sortIndicator {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  opacity: 1;
+}
+
+.table th,
+.table td {
+  padding: 0.55rem 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
 .table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--msp-surface-2, #f7f9fc);
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 92%, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
+  white-space: nowrap;
+}
+
+:global(html.dark) .table thead th {
+  background: var(--msp-surface-2, #152035);
+  color: var(--msp-muted-light, #6a88a8);
+  border-bottom-color: var(--msp-border, #2a3a55);
 }
 
 .table th:nth-child(2),

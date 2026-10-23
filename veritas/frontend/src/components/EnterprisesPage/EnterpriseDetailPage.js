@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
@@ -7,10 +8,9 @@ import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournal
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { listClientOffice365Credentials } from "../../api/clientOffice365";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
-import { mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
+import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
-import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
-import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
+import { filterCustomFamilyMap } from "../../utils/siteFilterUtils";
 import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi, normalizeEnterpriseOverviewTab } from "../../utils/enterprisePeripheralsUiState";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 import { fetchUsers, fetchActiveUsers } from "../../api/users";
@@ -55,17 +55,23 @@ import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContact
 import { buildSiteAddress, buildClientAddressFromSites, detectClientSiteRenames, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare, siteMatchesQuery } from "../../utils/clientSites";
 import { normalizeServeurLieList, pickBackupJobType } from "./backupJobUtils";
 import SiteMapPreview from "./SiteMapPreview";
-import { normalizeLegalIdentifier, getLegalIdentifierCopy } from "../../utils/siret";
+import { normalizeLegalIdentifier } from "../../utils/siret";
 import { normalizeContactCommunications, getCommunicationTypeDef, buildContactApiPayload } from "../../utils/contactCommunications";
 import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
+import { INFRA_BRICK_GROUPS, buildInfraBrickGroups } from "./infraHoneycombLayout";
+import { getInfraTypeIcon } from "./infraMapUtils";
+import { getInfraMapCopy } from "./infraMapI18n";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
 import CrmDetailPageSkeleton from "./CrmDetailPageSkeleton";
-import EnterpriseOverviewTab from "./EnterpriseOverviewTab";
 import UpcomingEventBookmarks from "./UpcomingEventBookmarks";
+import { UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit } from "../UiKit";
 import styles from "./EnterpriseDetailPage.module.css";
+import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
-import { formatClientSlaRows, parseClientSla, getTicketSlaDisplay, SLA_PRIORITY_LABELS } from "../../utils/ticketSlaUtils";
+import { formatClientSlaRows, parseClientSla, getTicketSlaDisplay, getTicketSlaSortValue, SLA_PRIORITY_LABELS } from "../../utils/ticketSlaUtils";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { normalizeClientOptions } from "../../constants/contractModules";
 import { formatTableDate } from "../../utils/tableDateFormat";
 import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
@@ -74,8 +80,15 @@ import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
-import { getEnterpriseDetailCopy, getContractTypeLabel, getPrestationCategoryLabel, getTicketStatusLabel, getEventTypeLabels, getCampaignTypeLabel, getCampaignStatusLabel, interpolate } from "./enterpriseDetailI18n";
-import { resolveEnterpriseIcon, resolveEnterpriseIconColor } from "./enterpriseIconChoices";
+import { getEnterpriseDetailCopy, getContractStatusDetail, getContractTypeLabel, getPrestationCategoryLabel, getTicketStatusLabel, getEventTypeLabels, getCampaignTypeLabel, getCampaignStatusLabel, interpolate } from "./enterpriseDetailI18n";
+import IconPicker from "../AdminPage/IconPicker";
+import {
+  DEFAULT_ENTERPRISE_ICON,
+  ENTERPRISE_ICON_CHOICES,
+  ENTERPRISE_ICON_COLOR_PRESETS,
+  resolveEnterpriseIcon,
+  resolveEnterpriseIconColor
+} from "./enterpriseIconChoices";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeatureLock from "../Misc/ProFeature/ProFeatureLock";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
@@ -102,7 +115,7 @@ import { buildBitdefenderQueryParams } from "../../api/clientBitdefender";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getEnterpriseDetailGuideSteps } from "../PageGuide/enterpriseDetailGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
-import { FaArrowLeft, FaCamera, FaPencilAlt, FaTimes, FaPlus, FaFileExport, FaEthernet } from "react-icons/fa";
+import { FaArrowLeft, FaCamera, FaPencilAlt, FaTimes, FaPlus, FaEthernet, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { IoServerSharp } from "react-icons/io5";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import {
@@ -157,6 +170,35 @@ const isOngoingCampaign = campaign => {
   return status === "active" || status === "en_cours" || status === "en_preparation" || status === "suspendue";
 };
 const isPrestationTicket = ticket => isSalesTicket(ticket);
+const ACTIVITY_SORT_DEFAULTS = {
+  support: { key: "updated", direction: "desc" },
+  prestations: { key: "created", direction: "desc" },
+  campaigns: { key: "start", direction: "desc" }
+};
+
+const compareActivitySortValues = (a, b, direction = "asc") => {
+  const mul = direction === "desc" ? -1 : 1;
+  if (a == null && b == null) return 0;
+  if (a == null || a === "") return 1;
+  if (b == null || b === "") return -1;
+  if (typeof a === "number" && typeof b === "number") {
+    if (Number.isNaN(a) && Number.isNaN(b)) return 0;
+    if (Number.isNaN(a)) return 1;
+    if (Number.isNaN(b)) return -1;
+    return (a - b) * mul;
+  }
+  return String(a).localeCompare(String(b), undefined, {
+    numeric: true,
+    sensitivity: "base"
+  }) * mul;
+};
+
+const toActivitySortTime = value => {
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : null;
+};
+
 const normalizeTicketStatus = status => status === "open" ? "new" : status;
 const isOpenTicket = ticket => {
   const status = normalizeTicketStatus(ticket?.status);
@@ -188,8 +230,10 @@ function SidebarSectionHeader({
         <span className={panelStyles.sidebarInfoTitle}>
           {icon ? <Icon icon={icon} className={panelStyles.sidebarSectionTitleIcon} aria-hidden /> : null}
           <span className={panelStyles.sidebarSectionTitleText}>{title}</span>
+          <span className={panelStyles.sidebarSectionCountSlot} aria-hidden={count == null ? true : undefined}>
           {count != null ? <span className={panelStyles.sidebarSectionCount}>{count}</span> : null}
-          {badge}
+          </span>
+          {badge ? <span className={panelStyles.sidebarSectionBadgeSlot}>{badge}</span> : null}
         </span>
       </button>
       {actions ? <div className={panelStyles.sidebarHeaderActions}>{actions}</div> : null}
@@ -312,6 +356,10 @@ function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
         horaire: job.horaire || "",
         retention: job.retention || "",
         serveurLie: normalizeServeurLieList(job.serveurLie),
+        destination:
+          instance.logiciel === "HYCU Backup"
+            ? "Datacenter PSI"
+            : job.destination || job.stockageLie || "",
         isMapped: isBackupJobCheckmkMapped(job, mappingsMap[jobId]),
         checkmkMapping: buildJobCheckmkMapping(job, mappingsMap[jobId]),
         last_backup_date: job.last_backup_date ?? null,
@@ -336,7 +384,6 @@ export default function ClientDetailPage({
   const locale = useAppLocale();
   const common = useCommonCopy();
   const copy = useMemo(() => getEnterpriseDetailCopy(locale), [locale]);
-  const legalIdCopy = useMemo(() => getLegalIdentifierCopy(locale), [locale]);
   const vaultCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const campaignsCopy = useMemo(() => getCybersecuritePageCopy(locale).campaigns, [locale]);
   const catalogTypes = usePlanningEventTypes();
@@ -398,7 +445,6 @@ export default function ClientDetailPage({
   const [deletionBlockersModalOpen, setDeletionBlockersModalOpen] = useState(false);
   const [deletionCheckClient, setDeletionCheckClient] = useState(null);
   const [loadingDeletionCheck, setLoadingDeletionCheck] = useState(false);
-  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const {
     subscribed: enterpriseSubscribed,
     loading: enterpriseSubscribeLoading,
@@ -431,12 +477,33 @@ export default function ClientDetailPage({
   const [editingEvent, setEditingEvent] = useState(null);
   const [sitesModalOpen, setSitesModalOpen] = useState(false);
   const [equipmentSearchQuery, setEquipmentSearchQuery] = useState(() => initialPeripheralsUi?.searchQuery || "");
-  const [equipmentResultCount, setEquipmentResultCount] = useState(0);
   const [hardwareEquipmentTotalCount, setHardwareEquipmentTotalCount] = useState(0);
   const [equipmentExportMenuOpen, setEquipmentExportMenuOpen] = useState(false);
   const [activeEquipmentTableType, setActiveEquipmentTableType] = useState(() => initialPeripheralsUi?.activeType || null);
   const equipmentPageRef = useRef(null);
   const equipmentSectionRef = useRef(null);
+  const [equipTypeNavPortalEl, setEquipTypeNavPortalEl] = useState(null);
+  const [vaultTreeNavPortalEl, setVaultTreeNavPortalEl] = useState(null);
+  const [activitySection, setActivitySection] = useState("support");
+  const [selectedCyberBrickType, setSelectedCyberBrickType] = useState(null);
+  const [activityTableSort, setActivityTableSort] = useState(ACTIVITY_SORT_DEFAULTS);
+  const [heroIconEditorOpen, setHeroIconEditorOpen] = useState(false);
+  const [heroIconSaving, setHeroIconSaving] = useState(false);
+  const [heroIconPanelPos, setHeroIconPanelPos] = useState({ top: 0, left: 0 });
+  const heroIconBtnRef = useRef(null);
+  const heroIconPanelRef = useRef(null);
+  const [supportSearchQuery, setSupportSearchQuery] = useState("");
+  const [prestationSearchQuery, setPrestationSearchQuery] = useState("");
+  const [campaignSearchQuery, setCampaignSearchQuery] = useState("");
+  const [supportStatusFilter, setSupportStatusFilter] = useState("all");
+  const [prestationStatusFilter, setPrestationStatusFilter] = useState("all");
+  const [campaignStatusFilter, setCampaignStatusFilter] = useState("all");
+  const [activityPageSize, setActivityPageSize] = useState(50);
+  const [activityTablePage, setActivityTablePage] = useState({
+    support: 1,
+    prestations: 1,
+    campaigns: 1
+  });
   const pageRootRef = useRef(null);
   const peripheralsUiClientRef = useRef(resolvedClientId);
   const skipPeripheralsUiPersistRef = useRef(false);
@@ -453,6 +520,7 @@ export default function ClientDetailPage({
   const [contactsSearch, setContactsSearch] = useState("");
   const [prestatairesSearch, setPrestatairesSearch] = useState("");
   const [sitesPage, setSitesPage] = useState(1);
+  const [contractSectionExpanded, setContractSectionExpanded] = useState(false);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
   const [prestatairesSectionExpanded, setPrestatairesSectionExpanded] = useState(false);
   const [sitesSectionExpanded, setSitesSectionExpanded] = useState(false);
@@ -510,6 +578,9 @@ export default function ClientDetailPage({
   const [overviewTab, setOverviewTab] = useState(() => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab));
   // Keep-alive des onglets lourds : montés une fois (hidden) pour éviter flash / re-fetch.
   const [mapTabMounted, setMapTabMounted] = useState(false);
+  const [cyberTabMounted, setCyberTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "cyber"
+  );
   const [activityTabMounted, setActivityTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "activity"
   );
@@ -687,6 +758,80 @@ export default function ClientDetailPage({
     ),
     [client, domainsData]
   );
+  const infraMapCopy = useMemo(() => getInfraMapCopy(locale), [locale]);
+  const cyberBrickGroups = useMemo(() => {
+    try {
+      return buildInfraBrickGroups({
+        antivirusItems: configuredAntivirusSolutions,
+        antispamItems: configuredAntispamSolutions,
+        domainItems: configuredDomains,
+        domainIntegrationReady: globalOvhConfigured,
+        sslItems: sslData,
+        licenceItems: licencesData,
+        backupInstances,
+        tenantInfo: {
+          configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
+          items: configuredMicrosoftTenants,
+          status: client?.Office365?.status || client?.microsoft?.status || "actif"
+        },
+        googleWorkspaceInfo: {
+          configured: Boolean(client?.googleWorkspace?.configured || client?.hasGoogleWorkspaceCredentials),
+          domain: client?.googleWorkspace?.domain || null,
+          status: client?.googleWorkspace?.status || "actif"
+        },
+        campaignItems: campaigns,
+        getBrickGroupLabel: (groupId, fallback) => infraMapCopy.getBrickGroupLabel(groupId) || fallback,
+        getBrickTypeLabel: (type, fallback) => infraMapCopy.getBrickTypeLabel(type) || fallback
+      });
+    } catch (error) {
+      console.error("cyberBrickGroups build failed:", error);
+      return INFRA_BRICK_GROUPS.map(group => ({
+        id: group.id,
+        label: infraMapCopy.getBrickGroupLabel(group.id) || group.label,
+        icon: group.icon,
+        bricks: group.types.map(type => ({
+          id: type,
+          type,
+          label: infraMapCopy.getBrickTypeLabel(type) || type,
+          count: 0,
+          items: []
+        }))
+      }));
+    }
+  }, [
+    backupInstances,
+    campaigns,
+    client,
+    configuredAntivirusSolutions,
+    configuredAntispamSolutions,
+    configuredDomains,
+    configuredMicrosoftTenants,
+    globalOvhConfigured,
+    infraMapCopy,
+    licencesData,
+    sslData
+  ]);
+  const cyberBrickByType = useMemo(() => {
+    const map = {};
+    cyberBrickGroups.forEach(group => {
+      (group.bricks || []).forEach(brick => {
+        if (brick?.type) map[brick.type] = brick;
+      });
+    });
+    return map;
+  }, [cyberBrickGroups]);
+  const effectiveCyberBrickType = useMemo(() => {
+    const allTypes = INFRA_BRICK_GROUPS.flatMap(group => group.types);
+    if (!allTypes.length) return null;
+    if (selectedCyberBrickType && allTypes.includes(selectedCyberBrickType)) return selectedCyberBrickType;
+    return allTypes[0];
+  }, [selectedCyberBrickType]);
+  useEffect(() => {
+    if (overviewTab !== "cyber") return;
+    if (!effectiveCyberBrickType) return;
+    if (selectedCyberBrickType === effectiveCyberBrickType) return;
+    setSelectedCyberBrickType(effectiveCyberBrickType);
+  }, [overviewTab, effectiveCyberBrickType, selectedCyberBrickType]);
   useEffect(() => {
     if (!client?.id) {
       setGlobalOvhConfigured(false);
@@ -908,6 +1053,7 @@ export default function ClientDetailPage({
     if (prev != null && String(prev) !== String(id)) {
       // Switched to another enterprise in the same mount: reset section chrome.
       setSlaExpanded(false);
+      setContractSectionExpanded(false);
       setContactsSectionExpanded(false);
       setPrestatairesSectionExpanded(false);
       setSitesSectionExpanded(false);
@@ -922,6 +1068,7 @@ export default function ClientDetailPage({
       const nextOverviewTab = normalizeEnterpriseOverviewTab(saved?.overviewTab);
       setOverviewTab(nextOverviewTab);
       setMapTabMounted(false);
+      setCyberTabMounted(nextOverviewTab === "cyber");
       setActivityTabMounted(nextOverviewTab === "activity");
       setVaultTabMounted(nextOverviewTab === "vault");
       setLogsTabMounted(nextOverviewTab === "logs");
@@ -947,12 +1094,14 @@ export default function ClientDetailPage({
     if (!client?.id) return;
     // Eager keep-alive dès que la fiche est prête : plus de flash au 1er switch d'onglet.
     setMapTabMounted(true);
+    setCyberTabMounted(true);
     setActivityTabMounted(true);
     setVaultTabMounted(true);
     setLogsTabMounted(true);
   }, [client?.id]);
   useEffect(() => {
     if (overviewTab === "map") setMapTabMounted(true);
+    if (overviewTab === "cyber") setCyberTabMounted(true);
     if (overviewTab === "activity") setActivityTabMounted(true);
     if (overviewTab === "vault") setVaultTabMounted(true);
     if (overviewTab === "logs") setLogsTabMounted(true);
@@ -1063,7 +1212,6 @@ export default function ClientDetailPage({
   }, [client?.id]);
   useEffect(() => {
     setEquipmentSearchQuery("");
-    setEquipmentResultCount(0);
     setHardwareEquipmentTotalCount(0);
     setEquipmentExportMenuOpen(false);
     setDeleteClientModalOpen(false);
@@ -2239,15 +2387,408 @@ export default function ClientDetailPage({
       setSavingCampaign(false);
     }
   };
-  const ongoingCampaigns = useMemo(() => {
-    const source = isCommunity ? DEMO_CAMPAIGNS : campaigns;
-    return source.filter(isOngoingCampaign);
-  }, [campaigns, isCommunity]);
-  const openSupportCount = useMemo(() => supportTickets.filter(isOpenTicket).length, [supportTickets]);
-  const openPrestationCount = useMemo(() => {
-    const source = isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets;
-    return source.filter(isOpenTicket).length;
-  }, [isCommunity, prestationTickets]);
+  const campaignSourceList = useMemo(
+    () => (isCommunity ? DEMO_CAMPAIGNS : campaigns),
+    [campaigns, isCommunity]
+  );
+  const ongoingCampaigns = useMemo(
+    () => campaignSourceList.filter(isOngoingCampaign),
+    [campaignSourceList]
+  );
+  const filteredCampaigns = useMemo(() => {
+    const query = campaignSearchQuery.trim().toLowerCase();
+    return campaignSourceList.filter(campaign => {
+      const ongoing = isOngoingCampaign(campaign);
+      if (campaignStatusFilter === "open" && !ongoing) return false;
+      if (campaignStatusFilter === "closed" && ongoing) return false;
+      if (!query) return true;
+      const statusLabel = getCampaignStatusLabel(campaign.status, locale);
+      const typeLabel = getCampaignTypeLabel(campaign.type, locale);
+      const haystack = [
+        campaign.name,
+        campaign.type,
+        typeLabel,
+        campaign.status,
+        statusLabel
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [campaignSearchQuery, campaignSourceList, campaignStatusFilter, locale]);
+  const prestationTicketsSource = useMemo(
+    () => (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets),
+    [isCommunity, prestationTickets]
+  );
+  const handleActivityTableSort = useCallback((section, column) => {
+    setActivityTableSort(prev => {
+      const defaults = ACTIVITY_SORT_DEFAULTS[section] || { key: null, direction: "asc" };
+      const current = prev[section] || defaults;
+      const firstDirection = ["updated", "created", "start", "progress", "sla"].includes(column) ? "desc" : "asc";
+      const next = cycleSortState({
+        column,
+        sortBy: current.key,
+        sortDirection: current.direction || "asc",
+        defaultSortBy: defaults.key,
+        defaultSortDirection: defaults.direction,
+        firstDirection
+      });
+      return {
+        ...prev,
+        [section]: {
+          key: next.sortBy,
+          direction: next.sortDirection
+        }
+      };
+    });
+  }, []);
+  const getActivitySortMeta = useCallback(section => {
+    const defaults = ACTIVITY_SORT_DEFAULTS[section] || { key: null, direction: "asc" };
+    const current = activityTableSort[section] || defaults;
+    return {
+      key: current.key || defaults.key,
+      direction: current.direction || defaults.direction
+    };
+  }, [activityTableSort]);
+  const matchesActivityStatusFilter = useCallback((ticket, statusFilter) => {
+    if (statusFilter === "open") return isOpenTicket(ticket);
+    if (statusFilter === "closed") return !isOpenTicket(ticket);
+    return true;
+  }, []);
+  const filteredSupportTickets = useMemo(() => {
+    const query = supportSearchQuery.trim().toLowerCase();
+    const slaOptions = {
+      clients: client ? [client] : [],
+      now: slaNow
+    };
+    return supportTickets.filter(ticket => {
+      if (!matchesActivityStatusFilter(ticket, supportStatusFilter)) return false;
+      if (!query) return true;
+      const status = getTicketStatusLabel(normalizeTicketStatus(ticket.status), locale);
+      const slaLabel = isCommunity ? "" : getTicketSlaDisplay(ticket, slaOptions).label || "";
+      const haystack = [
+        ticket.ticket_number,
+        ticket.title,
+        status,
+        slaLabel
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [client, isCommunity, locale, matchesActivityStatusFilter, slaNow, supportSearchQuery, supportStatusFilter, supportTickets]);
+  const filteredPrestationTickets = useMemo(() => {
+    const query = prestationSearchQuery.trim().toLowerCase();
+    return prestationTicketsSource.filter(ticket => {
+      if (!matchesActivityStatusFilter(ticket, prestationStatusFilter)) return false;
+      if (!query) return true;
+      const status = getTicketStatusLabel(normalizeTicketStatus(ticket.status), locale);
+      const typeLabel = getPrestationCategoryLabel(ticket.category, locale);
+      const haystack = [
+        ticket.ticket_number,
+        typeLabel,
+        status
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [locale, matchesActivityStatusFilter, prestationSearchQuery, prestationStatusFilter, prestationTicketsSource]);
+  const sortedSupportTickets = useMemo(() => {
+    const { key, direction } = getActivitySortMeta("support");
+    const list = [...filteredSupportTickets];
+    const slaOptions = {
+      clients: client ? [client] : [],
+      now: slaNow
+    };
+    list.sort((left, right) => {
+      let a;
+      let b;
+      switch (key) {
+        case "number":
+          a = Number(left.ticket_number);
+          b = Number(right.ticket_number);
+          if (Number.isFinite(a) && Number.isFinite(b)) return compareActivitySortValues(a, b, direction);
+          return compareActivitySortValues(String(left.ticket_number || ""), String(right.ticket_number || ""), direction);
+        case "title":
+          a = left.title || "";
+          b = right.title || "";
+          break;
+        case "status":
+          a = getTicketStatusLabel(normalizeTicketStatus(left.status), locale);
+          b = getTicketStatusLabel(normalizeTicketStatus(right.status), locale);
+          break;
+        case "sla":
+          a = getTicketSlaSortValue(left, slaOptions);
+          b = getTicketSlaSortValue(right, slaOptions);
+          break;
+        case "updated":
+        default:
+          a = toActivitySortTime(left.updated_at || left.created_at);
+          b = toActivitySortTime(right.updated_at || right.created_at);
+          break;
+      }
+      return compareActivitySortValues(a, b, direction);
+    });
+    return list;
+  }, [client, filteredSupportTickets, getActivitySortMeta, locale, slaNow]);
+  const sortedPrestationTickets = useMemo(() => {
+    const { key, direction } = getActivitySortMeta("prestations");
+    const list = [...filteredPrestationTickets];
+    list.sort((left, right) => {
+      let a;
+      let b;
+      switch (key) {
+        case "number":
+          a = Number(left.ticket_number);
+          b = Number(right.ticket_number);
+          if (Number.isFinite(a) && Number.isFinite(b)) return compareActivitySortValues(a, b, direction);
+          return compareActivitySortValues(String(left.ticket_number || ""), String(right.ticket_number || ""), direction);
+        case "type":
+          a = getPrestationCategoryLabel(left.category, locale);
+          b = getPrestationCategoryLabel(right.category, locale);
+          break;
+        case "status":
+          a = getTicketStatusLabel(normalizeTicketStatus(left.status), locale);
+          b = getTicketStatusLabel(normalizeTicketStatus(right.status), locale);
+          break;
+        case "created":
+        default:
+          a = toActivitySortTime(left.created_at);
+          b = toActivitySortTime(right.created_at);
+          break;
+      }
+      return compareActivitySortValues(a, b, direction);
+    });
+    return list;
+  }, [filteredPrestationTickets, getActivitySortMeta, locale]);
+  const sortedOngoingCampaigns = useMemo(() => {
+    const { key, direction } = getActivitySortMeta("campaigns");
+    const list = [...filteredCampaigns];
+    list.sort((left, right) => {
+      let a;
+      let b;
+      switch (key) {
+        case "name":
+          a = left.name || "";
+          b = right.name || "";
+          break;
+        case "type":
+          a = getCampaignTypeLabel(left.type, locale);
+          b = getCampaignTypeLabel(right.type, locale);
+          break;
+        case "status":
+          a = getCampaignStatusLabel(left.status, locale);
+          b = getCampaignStatusLabel(right.status, locale);
+          break;
+        case "progress":
+          a = typeof left.global_progress === "number" ? left.global_progress : null;
+          b = typeof right.global_progress === "number" ? right.global_progress : null;
+          break;
+        case "start":
+        default:
+          a = toActivitySortTime(left.start_date);
+          b = toActivitySortTime(right.start_date);
+          break;
+      }
+      return compareActivitySortValues(a, b, direction);
+    });
+    return list;
+  }, [filteredCampaigns, getActivitySortMeta, locale]);
+  const renderActivitySortableTh = useCallback((section, columnKey, label) => {
+    const { key, direction } = getActivitySortMeta(section);
+    const isSorted = key === columnKey;
+    return (
+      <th
+        key={columnKey}
+        className={styles.sortableTh}
+        onClick={() => handleActivityTableSort(section, columnKey)}
+        aria-sort={isSorted ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <span className={styles.activityThContent}>
+          {label}
+          {isSorted ? (
+            <SortIcon active direction={direction || "asc"} className={styles.activitySortIndicator} />
+          ) : null}
+        </span>
+      </th>
+    );
+  }, [getActivitySortMeta, handleActivityTableSort]);
+  const getActivityTablePage = useCallback(section => {
+    const page = Number(activityTablePage[section]) || 1;
+    return page < 1 ? 1 : page;
+  }, [activityTablePage]);
+
+  const setActivitySectionPage = useCallback((section, nextPage) => {
+    setActivityTablePage(prev => ({
+      ...prev,
+      [section]: Math.max(1, Number(nextPage) || 1)
+    }));
+  }, []);
+
+  const paginateActivityList = useCallback((section, list) => {
+    const total = Array.isArray(list) ? list.length : 0;
+    const safePageSize = Math.max(1, Number(activityPageSize) || 50);
+    const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / safePageSize));
+    const page = Math.min(getActivityTablePage(section), totalPages);
+    const start = (page - 1) * safePageSize;
+    return {
+      page,
+      totalPages,
+      total,
+      safePageSize,
+      pagedList: total === 0 ? [] : list.slice(start, start + safePageSize)
+    };
+  }, [activityPageSize, getActivityTablePage]);
+
+  const pagedSupportTickets = useMemo(
+    () => paginateActivityList("support", sortedSupportTickets),
+    [paginateActivityList, sortedSupportTickets]
+  );
+  const pagedPrestationTickets = useMemo(
+    () => paginateActivityList("prestations", sortedPrestationTickets),
+    [paginateActivityList, sortedPrestationTickets]
+  );
+  const pagedOngoingCampaigns = useMemo(
+    () => paginateActivityList("campaigns", sortedOngoingCampaigns),
+    [paginateActivityList, sortedOngoingCampaigns]
+  );
+
+  useEffect(() => {
+    setActivityTablePage(prev => ({ ...prev, support: 1 }));
+  }, [supportSearchQuery, supportStatusFilter]);
+
+  useEffect(() => {
+    setActivityTablePage(prev => ({ ...prev, prestations: 1 }));
+  }, [prestationSearchQuery, prestationStatusFilter]);
+
+  useEffect(() => {
+    setActivityTablePage(prev => ({ ...prev, campaigns: 1 }));
+  }, [campaignSearchQuery, campaignStatusFilter]);
+
+  const renderActivityPagination = useCallback(sectionMeta => {
+    const { section, total, page, totalPages, safePageSize } = sectionMeta;
+    const rangeStart = total === 0 ? 0 : (page - 1) * safePageSize + 1;
+    const rangeEnd = total === 0 ? 0 : Math.min(page * safePageSize, total);
+    return (
+      <div className={`${equipStyles.pagination} ${equipStyles.paginationEmbedded} ${styles.activityPagination}`}>
+        <div className={equipStyles.paginationLeft}>
+          <span className={equipStyles.paginationLabel}>{copy.activityPerPage || "Par page"}</span>
+          <select
+            className={equipStyles.paginationSelect}
+            value={safePageSize}
+            onChange={e => {
+              setActivityPageSize(Number(e.target.value));
+              setActivitySectionPage(section, 1);
+            }}
+            aria-label={copy.activityPerPage || "Par page"}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className={equipStyles.paginationInfo}>
+            {interpolate(copy.activityRangeInfo || "{start}–{end} sur {total}", {
+              start: String(rangeStart),
+              end: String(rangeEnd),
+              total: String(total)
+            })}
+          </span>
+        </div>
+        <div className={equipStyles.paginationRight}>
+          <SmartTooltip content={copy.activityPrevPage || "Page précédente"}>
+            <button
+              type="button"
+              className={equipStyles.pageBtn}
+              onClick={() => setActivitySectionPage(section, page - 1)}
+              disabled={page <= 1 || total === 0}
+              aria-label={copy.activityPrevPage || "Page précédente"}
+            >
+              <FaChevronLeft />
+            </button>
+          </SmartTooltip>
+          <span className={equipStyles.paginationInfo}>
+            {interpolate(copy.activityPageInfo || "Page {current} / {total}", {
+              current: String(total === 0 ? 0 : page),
+              total: String(total === 0 ? 0 : totalPages)
+            })}
+          </span>
+          <SmartTooltip content={copy.activityNextPage || "Page suivante"}>
+            <button
+              type="button"
+              className={equipStyles.pageBtn}
+              onClick={() => setActivitySectionPage(section, page + 1)}
+              disabled={page >= totalPages || total === 0}
+              aria-label={copy.activityNextPage || "Page suivante"}
+            >
+              <FaChevronRight />
+            </button>
+          </SmartTooltip>
+        </div>
+      </div>
+    );
+  }, [
+    copy.activityNextPage,
+    copy.activityPageInfo,
+    copy.activityPerPage,
+    copy.activityPrevPage,
+    copy.activityRangeInfo,
+    setActivitySectionPage
+  ]);
+
+  const renderActivityToolbar = useCallback((searchValue, onSearchChange, statusFilter, onStatusFilterChange, extraActions = null) => {
+    const placeholder = copy.activitySearchPlaceholder || "Rechercher";
+    const statusOptions = [
+      { id: "all", label: copy.activityFilterAll || "Tous" },
+      { id: "open", label: copy.activityFilterOpen || "Ouverts" },
+      { id: "closed", label: copy.activityFilterClosed || "Clos" }
+    ];
+    return (
+      <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}>
+        <div className={equipStyles.embeddedSearchWrap}>
+          <div className={equipStyles.embeddedSearchBox}>
+            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+            <input
+              type="text"
+              className={equipStyles.embeddedSearchInput}
+              value={searchValue}
+              onChange={event => onSearchChange(event.target.value)}
+              placeholder={placeholder}
+              aria-label={placeholder}
+            />
+            {searchValue ? (
+              <button
+                type="button"
+                className={equipStyles.embeddedSearchClear}
+                onClick={() => onSearchChange("")}
+                aria-label={copy.activityClearSearchAria || "Effacer la recherche"}
+              >
+                <FaTimes aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
+            <div className={styles.macosSegmented} role="group" aria-label={copy.activityFilterStatusAria || "Filtrer par statut"}>
+              {statusOptions.map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`${styles.macosSegment} ${statusFilter === option.id ? styles.macosSegmentActive : ""}`}
+                  aria-pressed={statusFilter === option.id}
+                  onClick={() => onStatusFilterChange(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {extraActions}
+          </div>
+        </div>
+      </div>
+    );
+  }, [
+    copy.activityClearSearchAria,
+    copy.activityFilterAll,
+    copy.activityFilterClosed,
+    copy.activityFilterOpen,
+    copy.activityFilterStatusAria,
+    copy.activitySearchPlaceholder
+  ]);
   const campaignBookmarkEvents = useMemo(
     () => (isCommunity ? [] : mapCampaignsToBookmarkEvents(campaigns, client?.id)),
     [campaigns, client?.id, isCommunity]
@@ -2291,71 +2832,6 @@ export default function ClientDetailPage({
     if (!client?.id || isCommunity) return;
     void reloadSupportCredits();
   }, [client?.id, isCommunity, reloadSupportCredits]);
-  const getEnterpriseEquipment = useCallback((tableType) => {
-    if (!client?.id) return [];
-    const familyKey = parseCustomFamilyType(tableType);
-    if (familyKey) {
-      const family = (customFamilyMap || []).find(entry => entry.familyKey === familyKey);
-      const rawItems = Array.isArray(family?.items) ? family.items : [];
-      let items = rawItems.map(item => mapCustomEquipmentItem(item, family || familyKey, {
-        clientId: client.id,
-        clientName: client.name || ""
-      }));
-      if (activeSiteFilter) {
-        items = filterBySite(items, activeSiteFilter);
-      }
-      return items;
-    }
-    const clientForMap = {
-      ...client,
-      sites: formData.sites ?? client.sites ?? [],
-      equipements: client.equipements || {}
-    };
-    let items = mapClientHardwareEquipment(clientForMap).filter(eq => equipmentMatchesFleetFamily(eq.type, tableType));
-    if (activeSiteFilter) {
-      items = filterBySite(items, activeSiteFilter);
-    }
-    return items;
-  }, [client, formData.sites, activeSiteFilter, customFamilyMap]);
-  const openComputerFleetStats = useCallback((options = {}) => {
-    if (!client?.id) return;
-    const tableType = options.equipmentType
-      || activeEquipmentTableType
-      || equipmentPageRef.current?.getEmbeddedActiveType?.()
-      || "Ordinateurs";
-    const fromEquipmentPage = equipmentPageRef.current?.getEquipmentForStats?.(tableType)
-      || (tableType === "Ordinateurs" ? equipmentPageRef.current?.getComputersForStats?.() : null);
-    const fallback = getEnterpriseEquipment(tableType);
-    const items = Array.isArray(fromEquipmentPage) && fromEquipmentPage.length > 0 ? fromEquipmentPage : fallback;
-    if (!items.length) {
-      toast.info(copy.toast.noComputersToAnalyze);
-      return;
-    }
-    const familyKey = parseCustomFamilyType(tableType);
-    const customFamily = familyKey
-      ? ((customFamilyMap || []).find(entry => entry.familyKey === familyKey) || null)
-      : null;
-    const familyLabel = customFamily?.label || familyKey || undefined;
-    onNavigate?.("ComputerFleetStats", {
-      clientId: client.id,
-      clientName: getClientNameWithoutCode(client) || client?.name || "",
-      client_number: getClientNumber(client) || undefined,
-      equipmentType: tableType,
-      familyLabel,
-      familyIcon: customFamily?.icon || undefined,
-      siteFilter: activeSiteFilter || null
-    }, options.background ? {
-      background: true
-    } : undefined);
-  }, [client, getEnterpriseEquipment, activeSiteFilter, activeEquipmentTableType, customFamilyMap, onNavigate, copy.toast.noComputersToAnalyze]);
-  const equipmentStatsAction = useMemo(() => {
-    const tableType = activeEquipmentTableType || equipmentPageRef.current?.getEmbeddedActiveType?.() || null;
-    if (!tableType) return null;
-    return {
-      label: copy.computerFleetStats,
-      run: () => openComputerFleetStats({ equipmentType: tableType })
-    };
-  }, [activeEquipmentTableType, openComputerFleetStats, copy.computerFleetStats]);
   const siteFilterBadge = activeSiteFilter ? <span className={styles.panelFilterBadge}>
       {interpolate(copy.filterBadge, {
       value: activeSiteFilter
@@ -2448,15 +2924,6 @@ export default function ClientDetailPage({
     return email ? `mailto:${encodeURIComponent(email)}` : "";
   };
   const quickActionsCopy = copy.quickActions || {};
-  const quickMailHref = useMemo(() => {
-    const primaryEmail = formData.primaryContact?.email;
-    if (primaryEmail) return toMailtoHref(primaryEmail);
-    for (const contact of Array.isArray(contacts) ? contacts : []) {
-      const email = contact?.email || normalizeContactCommunications(contact).find(entry => entry.type === "email")?.value;
-      if (email) return toMailtoHref(email);
-    }
-    return "";
-  }, [formData.primaryContact?.email, contacts]);
   const handleQuickCreateTicket = () => {
     if (!canCreateTicket || !client?.id || !onNavigate) return;
     onNavigate("TicketCreate", {
@@ -2472,23 +2939,6 @@ export default function ClientDetailPage({
     }
     setEditingEvent(null);
     setEventModalOpen(true);
-  };
-  const handleQuickAddEquipment = () => {
-    if (!canManageDevices) return;
-    setOverviewTab("map");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        equipmentPageRef.current?.openAddEquipmentModal?.();
-        equipmentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
-  };
-  const handleQuickSendEmail = () => {
-    if (quickMailHref) {
-      window.location.href = quickMailHref;
-      return;
-    }
-    toast.info(quickActionsCopy.noEmail || "Aucun e-mail de contact disponible");
   };
   const formatContactCommunicationLines = contact => normalizeContactCommunications(contact).map(entry => {
     const typeDef = getCommunicationTypeDef(entry.type);
@@ -2846,6 +3296,104 @@ export default function ClientDetailPage({
     setEnterpriseEditModalOpen(false);
     setHasChanges(false);
   };
+  const persistHeroIconAppearance = useCallback(async patch => {
+    if (!client?.id || !canEditClient || heroIconSaving) return;
+    const nextIcon = patch.icon !== undefined ? patch.icon : formData.icon;
+    const nextColor = patch.iconColor !== undefined ? patch.iconColor : formData.iconColor;
+    const normalizedIcon = String(nextIcon || "").trim();
+    const normalizedColor = String(nextColor || "").trim();
+    const prevIcon = String(formData.icon || "").trim();
+    const prevColor = String(formData.iconColor || "").trim();
+    if (normalizedIcon === prevIcon && normalizedColor === prevColor) return;
+    setFormData(prev => ({
+      ...prev,
+      icon: normalizedIcon,
+      iconColor: normalizedColor
+    }));
+    setInitialFormData(prev => (prev ? cloneFormSnapshot({
+      ...prev,
+      icon: normalizedIcon,
+      iconColor: normalizedColor
+    }) : prev));
+    setHeroIconSaving(true);
+    try {
+      await updateClient(client.id, {
+        icon: normalizedIcon || null,
+        iconColor: normalizedColor || null,
+        icon_color: normalizedColor || null
+      });
+      setClient(prev => {
+        if (!prev) return prev;
+        const nextClient = {
+          ...prev,
+          icon: normalizedIcon || null,
+          icon_color: normalizedColor || null,
+          iconColor: normalizedColor || null
+        };
+        writeEnterpriseCache(client.id, { client: nextClient });
+        return nextClient;
+      });
+      notifyEnterprisesListRefresh();
+    } catch (error) {
+      console.error("Error saving enterprise icon:", error);
+      setFormData(prev => ({
+        ...prev,
+        icon: prevIcon,
+        iconColor: prevColor
+      }));
+      setInitialFormData(prev => (prev ? cloneFormSnapshot({
+        ...prev,
+        icon: prevIcon,
+        iconColor: prevColor
+      }) : prev));
+      toast.error(interpolate(copy.toast.saveError, {
+        message: error?.message || ""
+      }));
+    } finally {
+      setHeroIconSaving(false);
+    }
+  }, [
+    canEditClient,
+    client?.id,
+    copy.toast.saveError,
+    formData.icon,
+    formData.iconColor,
+    heroIconSaving
+  ]);
+  useEffect(() => {
+    if (!heroIconEditorOpen) return undefined;
+    const updatePosition = () => {
+      const rect = heroIconBtnRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.min(360, window.innerWidth - 24);
+      const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+      const preferredTop = rect.bottom + 8;
+      const panelHeight = 420;
+      const top = preferredTop + panelHeight > window.innerHeight - 12
+        ? Math.max(12, rect.top - panelHeight - 8)
+        : preferredTop;
+      setHeroIconPanelPos({ top, left, width });
+    };
+    updatePosition();
+    const onPointerDown = event => {
+      const target = event.target;
+      if (heroIconBtnRef.current?.contains(target) || heroIconPanelRef.current?.contains(target)) return;
+      setHeroIconEditorOpen(false);
+    };
+    const onKeyDown = event => {
+      if (event.key === "Escape") setHeroIconEditorOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [heroIconEditorOpen]);
   const handleEditContact = contact => {
     setEditingContact(contact);
     setContactModalOpen(true);
@@ -3508,30 +4056,13 @@ export default function ClientDetailPage({
   useEffect(() => {
     setSitesPage(page => Math.min(page, sitesTotalPages));
   }, [sitesTotalPages]);
-  const enterpriseGuideSteps = useMemo(() => {
-    const steps = getEnterpriseDetailGuideSteps({
+  const enterpriseGuideSteps = useMemo(() => getEnterpriseDetailGuideSteps({
       expandContacts: () => setContactsSectionExpanded(true),
       expandNotes: () => setNotesSectionExpanded(true),
-      showOverview: () => setOverviewTab("overview"),
       showInfraMap: () => setOverviewTab("map"),
       showActivity: () => setOverviewTab("activity"),
-      showVault: () => setOverviewTab("vault"),
-      focusEquipmentStats: () => {
-        setOverviewTab("map");
-        equipmentPageRef.current?.focusType?.("Ordinateurs");
-        setActiveEquipmentTableType("Ordinateurs");
-        requestAnimationFrame(() => {
-          equipmentSectionRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-          });
-        });
-      }
-    }, locale);
-    const hasOrdinateurs = (equipmentTotals?.byType?.Ordinateurs || 0) > 0;
-    if (hasOrdinateurs) return steps;
-    return steps.filter(step => step.target !== '[data-guide="enterprise-equipment-stats"]');
-  }, [equipmentTotals, locale]);
+    showVault: () => setOverviewTab("vault")
+  }, locale), [locale]);
   const handlePhotoUpload = () => {
     setPhotoModalOpen(true);
   };
@@ -3634,7 +4165,7 @@ export default function ClientDetailPage({
           showTitleIcon
           showMidSlot
           tabCount={4}
-          body="overview"
+          body="panels"
           showAside
           asideSections={7}
         />
@@ -3659,96 +4190,15 @@ export default function ClientDetailPage({
   const companyIconColor = resolveEnterpriseIconColor(formData.iconColor || client?.icon_color || client?.iconColor);
   const commercialUser = users.find(u => String(u.id) === String(formData.commercialId));
   const commercialLabel = client?.commercial || commercialUser?.username || commercialUser?.email || null;
-  const primaryHeroSite = clientSites.find(site => site.isPrimary) || clientSites[0] || null;
-  const heroLocationLabel = primaryHeroSite
-    ? [primaryHeroSite.addressCity, primaryHeroSite.addressCountry].filter(Boolean).join(", ") || getSiteDisplayName(primaryHeroSite)
-    : null;
-  const heroFactCopy = copy.heroFacts || {};
   const activeContractModules = enabledModules.filter(mod => !!formData.modules?.[mod.moduleKey]);
-  const heroPrimaryAddress = primaryHeroSite ? buildSiteAddress(primaryHeroSite) : "";
-  const heroLegalId = formData.siret ? normalizeLegalIdentifier(formData.siret) : "";
-  const heroSector = formData.secteur?.trim() || "";
-  const heroContractStart = formData.contrat?.debut ? formatTableDate(formData.contrat.debut) : "";
-  const heroContractEnd = formData.contrat?.expiration ? formatTableDate(formData.contrat.expiration) : "";
-  const heroContractValue = heroContractStart && heroContractEnd
-    ? `${heroContractStart} → ${heroContractEnd}`
-    : heroContractStart || heroContractEnd || "";
-  const heroCreditsRemaining =
-    !isCommunity && supportCreditBalance != null ? Number(supportCreditBalance) || 0 : null;
-  const heroCreditsTotal = (() => {
-    if (isCommunity) return null;
-    const packs = Array.isArray(supportCreditPacks) ? supportCreditPacks : [];
-    const total = packs.reduce((sum, pack) => sum + (Number(pack?.initial_amount) || 0), 0);
-    if (total > 0) return total;
-    if (heroCreditsRemaining != null) return heroCreditsRemaining;
-    return null;
-  })();
-  const heroCreditsValue =
-    heroCreditsRemaining != null && heroCreditsTotal != null
-      ? interpolate(heroFactCopy.creditsBalance || "{remaining}/{total} crédits", {
-          remaining: String(heroCreditsRemaining),
-          total: String(heroCreditsTotal)
-        })
-      : "—";
-  const heroOptionsValue = interpolate(heroFactCopy.optionsCount || "{count} options", {
-    count: String(activeContractModules.length)
-  });
-  const heroFacts = [
-    {
-      key: "sites",
-      icon: "mdi:office-building-marker-outline",
-      label: copy.sitesTitle,
-      value: String(clientSites.length)
-    },
-    {
-      key: "contacts",
-      icon: "mdi:account-group-outline",
-      label: copy.contactsTitle,
-      value: String(activeContactCount)
-    },
-    {
-      key: "providers",
-      icon: "mdi:handshake-outline",
-      label: copy.providersTitle,
-      value: String(Array.isArray(prestataires) ? prestataires.length : 0)
-    },
-    {
-      key: "address",
-      icon: "mdi:home-map-marker",
-      label: heroFactCopy.address || "Adresse",
-      value: heroPrimaryAddress || "—"
-    },
-    {
-      key: "legal",
-      icon: "mdi:identifier",
-      label: legalIdCopy.label,
-      value: heroLegalId || "—"
-    },
-    {
-      key: "sector",
-      icon: "mdi:briefcase-outline",
-      label: copy.sectorLabel,
-      value: heroSector || "—"
-    },
-    {
-      key: "contract",
-      icon: "mdi:calendar-range",
-      label: heroFactCopy.contract || "Contrat",
-      value: heroContractValue || "—"
-    },
-    {
-      key: "options",
-      icon: "mdi:puzzle-outline",
-      label: copy.contractOptionsShort || copy.contractOptionsLabel,
-      value: heroOptionsValue
-    },
-    {
-      key: "credits",
-      icon: "mdi:ticket-percent-outline",
-      label: copy.creditsTitle,
-      value: heroCreditsValue
-    }
-  ];
+  const contractStartLabel = formData.contrat?.debut ? formatTableDate(formData.contrat.debut) : "";
+  const contractEndLabel = formData.contrat?.expiration ? formatTableDate(formData.contrat.expiration) : "";
+  const contractTypeLabel = formData.contrat?.type ? getContractTypeLabel(formData.contrat.type, locale) : "";
+  const contractStatus = getContractStatusDetail(
+    formData.contrat?.expiration,
+    Boolean(formData.contrat?.suspendu),
+    locale
+  );
   const onboardingHint = clientOnboarding
     ? clientOnboarding.ageDays < 1
       ? interpolate(copy.onboardingBannerHintToday, {
@@ -3768,21 +4218,42 @@ export default function ClientDetailPage({
             <div className={`${styles.heroCover} ${isCompanyInactive ? styles.heroCoverInactive : showOnboardingHero ? styles.heroCoverOnboarding : ""}`.trim()} aria-hidden />
             <div className={styles.heroIdentityRow}>
               <div className={styles.heroMain}>
+                {canEditClient ? (
+                  <button
+                    ref={heroIconBtnRef}
+                    type="button"
+                    className={`${styles.heroBrandIcon} ${styles.heroBrandIconButton} ${isCompanyInactive ? styles.heroBrandIconInactive : showOnboardingHero ? styles.heroBrandIconOnboarding : ""} ${heroIconEditorOpen ? styles.heroBrandIconButtonOpen : ""}`.trim()}
+                    style={isCompanyInactive || showOnboardingHero ? undefined : { background: companyIconColor || undefined }}
+                    onClick={() => setHeroIconEditorOpen(open => !open)}
+                    aria-expanded={heroIconEditorOpen}
+                    aria-haspopup="dialog"
+                    aria-label={copy.heroIconEditAria || "Changer l'icône et la couleur"}
+                    title={copy.heroIconEditAria || "Changer l'icône et la couleur"}
+                    disabled={heroIconSaving}
+                  >
+                    <Icon icon={isCompanyInactive ? "mdi:account-off-outline" : showOnboardingHero ? "mdi:account-clock-outline" : companyIcon} width={16} height={16} />
+                    <span className={styles.heroBrandIconEditHint} aria-hidden>
+                      <Icon icon="mdi:pencil-outline" width={10} height={10} />
+                    </span>
+                  </button>
+                ) : (
                 <span
                   className={`${styles.heroBrandIcon} ${isCompanyInactive ? styles.heroBrandIconInactive : showOnboardingHero ? styles.heroBrandIconOnboarding : ""}`.trim()}
                   style={isCompanyInactive || showOnboardingHero ? undefined : { background: companyIconColor || undefined }}
                   aria-hidden
                 >
-                  <Icon icon={isCompanyInactive ? "mdi:account-off-outline" : showOnboardingHero ? "mdi:account-clock-outline" : companyIcon} width={30} height={30} />
+                    <Icon icon={isCompanyInactive ? "mdi:account-off-outline" : showOnboardingHero ? "mdi:account-clock-outline" : companyIcon} width={16} height={16} />
                 </span>
+                )}
                 <div className={styles.heroText}>
                   <h1 className={styles.heroTitle}>
+                    <StatusDot
+                      active={!isCompanyInactive}
+                      label={companyStatusLabel}
+                      className={styles.heroTitleStatus}
+                    />
                     {clientCode ? <span className={styles.heroTitleCode}>{clientCode}</span> : null}
                     <span className={styles.heroTitleName}>{clientNameWithoutCode}</span>
-                    <span className={`${styles.heroStatusBadge} ${isCompanyInactive ? styles.heroStatusBadgeInactive : ""}`.trim()}>
-                      <StatusDot active={!isCompanyInactive} label="" className={styles.heroTitleStatus} />
-                      {companyStatusLabel}
-                    </span>
                     {showOnboardingHero ? (
                       <span
                         className={styles.heroOnboardingBadge}
@@ -3800,10 +4271,6 @@ export default function ClientDetailPage({
                     </p>
                   ) : null}
                   <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                    {heroLocationLabel ? <span className={styles.heroLocation}>
-                        <Icon icon="mdi:map-marker" aria-hidden />
-                        {heroLocationLabel}
-                      </span> : null}
                     {commercialLabel ? <span className={styles.heroMetaItem}>
                         <Icon icon="mdi:account-tie-outline" aria-hidden />
                         {commercialLabel}
@@ -3879,67 +4346,229 @@ export default function ClientDetailPage({
                 </div>
               </div>
             ) : null}
-            {heroFacts.length ? (
-              <div className={styles.heroFactStrip} aria-label={heroFactCopy.aria || copy.sidebarInfo}>
-                {heroFacts.map(fact => (
-                  <div key={fact.key} className={styles.heroFactItem}>
-                    <span className={styles.heroFactIcon} aria-hidden>
-                      <Icon icon={fact.icon} />
-                    </span>
-                    <div className={styles.heroFactText}>
-                      <span className={styles.heroFactLabel}>{fact.label}</span>
-                      <span className={styles.heroFactValue} title={String(fact.value)}>{fact.value}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
           </div>
         </div>
       </header>
 
-      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "overview" || overviewTab === "activity" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
+      {heroIconEditorOpen && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={heroIconPanelRef}
+              className={styles.heroIconPopover}
+              style={{
+                top: heroIconPanelPos.top,
+                left: heroIconPanelPos.left,
+                width: heroIconPanelPos.width || undefined
+              }}
+              role="dialog"
+              aria-label={copy.heroIconEditAria || "Changer l'icône et la couleur"}
+            >
+              <div className={styles.heroIconPopoverSection}>
+                <span className={styles.heroIconPopoverLabel}>{copy.heroIconColorLabel || "Couleur"}</span>
+                <div className={styles.heroIconColorPicker} role="group" aria-label={copy.heroIconColorAria || "Couleur de l'icône"}>
+                  {ENTERPRISE_ICON_COLOR_PRESETS.map(color => {
+                    const selected = resolveEnterpriseIconColor(formData.iconColor).toLowerCase() === color.toLowerCase();
+                    return (
+                      <button
+                        key={color}
+                        type="button"
+                        className={`${styles.heroIconColorSwatch} ${selected ? styles.heroIconColorSwatchActive : ""}`}
+                        style={{ "--swatch-color": color }}
+                        onClick={() => persistHeroIconAppearance({ iconColor: color })}
+                        aria-label={`${copy.heroIconColorLabel || "Couleur"} ${color}`}
+                        aria-pressed={selected}
+                        disabled={heroIconSaving}
+                      />
+                    );
+                  })}
+                  <label className={styles.heroIconColorCustom} title={copy.heroIconColorCustom || "Couleur personnalisée"}>
+                    <input
+                      type="color"
+                      className={styles.heroIconColorInput}
+                      value={resolveEnterpriseIconColor(formData.iconColor)}
+                      onChange={event => persistHeroIconAppearance({ iconColor: event.target.value })}
+                      aria-label={copy.heroIconColorCustom || "Couleur personnalisée"}
+                      disabled={heroIconSaving}
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className={styles.heroIconPopoverSection}>
+                <span className={styles.heroIconPopoverLabel}>{copy.heroIconLabel || "Icône"}</span>
+                <div className={styles.heroIconPickerHost}>
+                  <IconPicker
+                    value={formData.icon || DEFAULT_ENTERPRISE_ICON}
+                    onChange={icon => persistHeroIconAppearance({ icon })}
+                    choices={ENTERPRISE_ICON_CHOICES}
+                    searchable
+                    searchPlaceholder={copy.heroIconSearchPlaceholder || "Rechercher une icône…"}
+                    searchAria={copy.heroIconSearchAria || "Rechercher une icône"}
+                    clearSearchLabel={copy.heroIconClearSearch || "Effacer la recherche"}
+                    changeLabel={copy.heroIconEditAria || "Changer l'icône"}
+                    pickerAria={copy.heroIconPickerAria || "Choisir une icône d'entreprise"}
+                    color={resolveEnterpriseIconColor(formData.iconColor)}
+                  />
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "cyber" || overviewTab === "activity" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "overview" ? styles.mainColumnOverview : ""} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnActivity : ""}`.trim()}>
-            <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
-              <button type="button" role="tab" aria-selected={overviewTab === "overview"} className={`${styles.heroTab} ${overviewTab === "overview" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("overview")} data-guide="enterprise-overview-tab">
-                <Icon icon="mdi:chart-timeline-variant" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabOverview}</span>
+          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
+            <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
+              <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
+                <nav className={finderKit.finderPrimary} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
+                  <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${finderKit.finderItem} ${overviewTab === "map" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
+                    <Icon icon="mdi:lan" className={finderKit.finderItemIcon} aria-hidden />
+                    <span className={finderKit.finderItemLabel}>{copy.overviewTabMap}</span>
               </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.heroTab} ${overviewTab === "map" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
-                <Icon icon="mdi:lan" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabMap}</span>
+                  <button type="button" role="tab" aria-selected={overviewTab === "cyber"} className={`${finderKit.finderItem} ${overviewTab === "cyber" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("cyber")} data-guide="enterprise-cyber-tab">
+                    <Icon icon="mdi:shield-lock-outline" className={finderKit.finderItemIcon} aria-hidden />
+                    <span className={finderKit.finderItemLabel}>{copy.overviewTabCyber || "Cyber & Cloud"}</span>
               </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
-                <Icon icon="mdi:ticket-confirmation-outline" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
-              </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.heroTab} ${overviewTab === "vault" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
-                <Icon icon="mdi:safe-square-outline" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabVault}</span>
+                  <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${finderKit.finderItem} ${overviewTab === "activity" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
+                    <Icon icon="mdi:ticket-confirmation-outline" className={finderKit.finderItemIcon} aria-hidden />
+                    <span className={finderKit.finderItemLabel}>{copy.overviewTabActivity}</span>
+                  </button>
+                  <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${finderKit.finderItem} ${overviewTab === "vault" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
+                    <Icon icon="mdi:safe-square-outline" className={finderKit.finderItemIcon} aria-hidden />
+                    <span className={finderKit.finderItemLabel}>{copy.overviewTabVault}</span>
                 {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
               </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "logs"} className={`${styles.heroTab} ${overviewTab === "logs" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("logs")} data-guide="enterprise-logs">
-                <Icon icon="mdi:history" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabLogs || "Logs"}</span>
+                  <button type="button" role="tab" aria-selected={overviewTab === "logs"} className={`${finderKit.finderItem} ${overviewTab === "logs" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("logs")} data-guide="enterprise-logs">
+                    <Icon icon="mdi:history" className={finderKit.finderItemIcon} aria-hidden />
+                    <span className={finderKit.finderItemLabel}>{copy.overviewTabLogs || "Logs"}</span>
               </button>
             </nav>
+
+                {overviewTab === "map" || overviewTab === "cyber" || overviewTab === "activity" || overviewTab === "vault" ? (
+                <UiKitScrollFadeShell
+                  className={finderKit.finderSecondaryShell}
+                  deps={[overviewTab, activitySection, selectedCyberBrickType, equipTypeNavPortalEl, vaultTreeNavPortalEl]}
+                >
+                  <div className={finderKit.finderSecondary}>
+                    {overviewTab === "map" ? (
+                      <>
+                        <p className={finderKit.finderSecTitle}>{copy.navSectionEquipment || "Familles"}</p>
+                        <div
+                          ref={setEquipTypeNavPortalEl}
+                          className={finderKit.finderTypeNavHost}
+                          data-guide="enterprise-equipment-type-nav"
+                        />
+                      </>
+                    ) : null}
+
+                    {overviewTab === "cyber" ? (
+                      <>
+                        <nav className={finderKit.finderSecNav} aria-label={copy.navSectionCyber || "Services"} data-guide="enterprise-cyber-services-nav">
+                          {INFRA_BRICK_GROUPS.map(group => (
+                            <div key={group.id} className={finderKit.finderSecGroup} data-infra-group={group.id}>
+                              <p className={finderKit.finderSecGroupTitle}>
+                                {infraMapCopy.getBrickGroupLabel(group.id) || group.label}
+                              </p>
+                              {group.types.map(type => {
+                                const brick = cyberBrickByType[type];
+                                const count = Number(brick?.count) || 0;
+                                const label = brick?.label || infraMapCopy.getBrickTypeLabel(type) || type;
+                                const isActive = (selectedCyberBrickType || effectiveCyberBrickType) === type;
+                                const isComingSoon = Boolean(brick?.comingSoon);
+                                return (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    className={`${finderKit.finderSecItem} ${isActive ? finderKit.finderSecItemActive : ""}`.trim()}
+                                    aria-current={isActive ? "page" : undefined}
+                                    onClick={() => setSelectedCyberBrickType(type)}
+                                    onContextMenu={event => {
+                                      if (!brick) return;
+                                      if (!canManageSolutions && type !== "Campagne") return;
+                                      if (!SERVICE_BRICK_MENU_TYPES.has(type)) return;
+                                      if (type !== "Campagne" && !client?.id) return;
+                                      openServiceBrickMenu(brick, event);
+                                    }}
+                                  >
+                                    <Icon icon={getInfraTypeIcon(type, brick?.icon)} className={finderKit.finderSecItemIcon} aria-hidden />
+                                    <span className={finderKit.finderSecItemLabel}>{label}</span>
+                                    {isComingSoon ? (
+                                      <span className={finderKit.finderSecSoon}>{infraMapCopy.brick?.comingSoon || "Bientôt"}</span>
+                                    ) : (
+                                      <span className={finderKit.finderSecCount}>{count}</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </nav>
+                      </>
+                    ) : null}
+
+                    {overviewTab === "activity" ? (
+                      <>
+                        <p className={finderKit.finderSecTitle}>{copy.navSectionActivity || "Sections"}</p>
+                        <nav className={finderKit.finderSecNav} aria-label={copy.navSectionActivity || "Sections"}>
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "support" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "support" ? "page" : undefined}
+                            onClick={() => setActivitySection("support")}
+                          >
+                            <Icon icon="mdi:ticket-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.supportTicketsTitle}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "prestations" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "prestations" ? "page" : undefined}
+                            onClick={() => setActivitySection("prestations")}
+                          >
+                            <Icon icon="mdi:briefcase-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.prestationsTitle}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "campaigns" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "campaigns" ? "page" : undefined}
+                            onClick={() => setActivitySection("campaigns")}
+                          >
+                            <Icon icon="mdi:bullhorn-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.campaignsTitle}</span>
+                          </button>
+                        </nav>
+                      </>
+                    ) : null}
+
+                    {overviewTab === "vault" ? (
+                      <>
+                        <div className={finderKit.finderSecTitleRow}>
+                          <p className={finderKit.finderSecTitle}>{vaultCopy.panel.treeTitle}</p>
+                          <button
+                            type="button"
+                            className={finderKit.finderVaultAddBtn}
+                            onClick={() => vaultPanelRef.current?.openCreateFolder?.()}
+                            title={vaultCopy.panel.newFolder}
+                            aria-label={vaultCopy.panel.newFolder}
+                          >
+                            <Icon icon="mdi:plus" aria-hidden />
+                          </button>
+                        </div>
+                        <div
+                          ref={setVaultTreeNavPortalEl}
+                          className={`${finderKit.finderTypeNavHost} ${styles.finderVaultTreeHost}`}
+                          data-guide="enterprise-vault-tree-nav"
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                </UiKitScrollFadeShell>
+                ) : null}
+              </aside>
+
+              <div className={`${finderKit.finderContent} ${styles.enterpriseFinderContent}`}>
             <div className={styles.mainCommunityPanels}>
-            <div
-              className={styles.overviewTabPanel}
-              hidden={overviewTab !== "overview"}
-              style={overviewTab === "overview" ? undefined : { display: "none" }}
-            >
-              <EnterpriseOverviewTab
-                client={client}
-                clientId={client?.id}
-                locale={locale}
-                copy={copy.overviewCharts || {}}
-                equipmentRevision={equipmentRevision}
-                contrat={formData?.contrat || client?.contrat || null}
-                onNavigate={onNavigate}
-              />
-            </div>
             {mapTabMounted ? (
             <div
               className={styles.overviewTabPanel}
@@ -3947,160 +4576,207 @@ export default function ClientDetailPage({
               style={overviewTab === "map" ? undefined : { display: "none" }}
             >
             <div className={styles.mapTabStack}>
-            <div className={styles.mapModulesBlock} data-guide="enterprise-infra-map">
-              {siteFilterBadge ? <div className={styles.mapModulesToolbar}>{siteFilterBadge}</div> : null}
-              <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} hideSkeleton backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
-                  configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
-                  items: configuredMicrosoftTenants,
-                  tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
-                  email: client?.Office365?.email || client?.microsoft?.email || null,
-                  displayName: configuredMicrosoftTenants[0]?.tenantName || client?.Office365?.tenantName || client?.microsoft?.tenantName || null,
-                  status: client?.Office365?.status || client?.microsoft?.status || "actif",
-                  lastSync: client?.Office365?.lastSync || client?.microsoft?.lastSync || null,
-                  clientId: client.id,
-                  clientName: client.name
-                }} googleWorkspaceInfo={{
-                  configured: Boolean(client?.googleWorkspace?.configured || client?.hasGoogleWorkspaceCredentials),
-                  domain: client?.googleWorkspace?.domain || null,
-                  status: client?.googleWorkspace?.status || "actif",
-                  clientId: client.id,
-                  clientName: client.name
-                }} onNodeClick={handleInfraNodeClick} onBrickClick={canManageSolutions || canManageCampaigns || canManageDevices ? (brick, event) => {
-                  if (!canManageSolutions && !["Campagne"].includes(brick.type) && !parseCustomFamilyType(brick.type)) return;
-                  const familyKey = brick.familyKey || parseCustomFamilyType(brick.type);
-                  if (familyKey) {
-                    if (!canManageDevices && !canManageSolutions) return;
-                    const family = customFamilyMap.find(entry => entry.familyKey === familyKey);
-                    if (family) {
-                      setOverviewTab("map");
-                      equipmentPageRef.current?.focusType?.(`Custom:${familyKey}`);
-                      requestAnimationFrame(() => {
-                        equipmentSectionRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start"
-                        });
-                      });
-                      const itemCount = Number(family.count) || (Array.isArray(family.items) ? family.items.length : 0);
-                      if (canManageDevices && itemCount === 0) {
+            <div className={`${styles.panel} ${styles.mapUnifiedCard}`}>
+            <section className={styles.mapEquipmentSection} ref={equipmentSectionRef} data-guide="enterprise-equipment">
+              <div className={`${styles.panelBody} ${styles.mapEquipmentBody}`}>
+                <div className={styles.equipmentSection}>
+                  <EquipmentPage
+                    ref={equipmentPageRef}
+                    embedded
+                    embeddedTypeNav="portal"
+                    typeNavPortalTarget={overviewTab === "map" ? equipTypeNavPortalEl : null}
+                    fixedClientId={client.id}
+                    embeddedClient={client ? {
+                      ...client,
+                      sites: formData.sites ?? client.sites ?? [],
+                      ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
+                      ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
+                    } : null}
+                    equipmentRevision={equipmentRevision}
+                    hideEmbeddedSkeleton
+                    initialEmbeddedType={initialPeripheralsUi?.activeType || null}
+                    initialTablePageByType={initialPeripheralsUi?.tablePageByType || null}
+                    initialTableSort={initialPeripheralsUi?.tableSort || null}
+                    initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null}
+                    onNavigate={onNavigate}
+                    searchQuery={equipmentSearchQuery}
+                    onSearchQueryChange={setEquipmentSearchQuery}
+                    onTotalCountChange={setHardwareEquipmentTotalCount}
+                    onEquipmentChanged={refreshClientEquipment}
+                    onClientSsidsUpdated={ssids => {
+                      setClient(prev => prev ? {
+                        ...prev,
+                        ssid: ssids,
+                        ssids
+                      } : prev);
+                    }}
+                    customFamilyMap={filteredCustomFamilyMap}
+                    backupInstances={backupInstances}
+                    siteFilter={activeSiteFilter}
+                    onCustomFamilyManage={(family, item) => {
                         setCustomEquipmentModal({
                           family,
-                          item: null
-                        });
-                      }
-                      return;
-                    }
-                  }
-                  if (!canManageSolutions && brick.type !== "Campagne") return;
-                  if (SERVICE_BRICK_MENU_TYPES.has(brick.type)) {
-                    if (brick.type !== "Campagne" && !client?.id) return;
-                    openServiceBrickMenu(brick, event);
-                    return;
-                  }
-                } : undefined} />
-            </div>
-
-            <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
-              <div className={styles.panelHeader}>
-                <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>
-                    <Icon icon="mdi:devices" className={styles.panelTitleIcon} aria-hidden />
-                    {copy.peripheralsTitle}
-                  </h2>
-                  {siteFilterBadge}
-                </div>
-                <div className={styles.panelToolbar}>
-                  <span className={styles.equipmentResultCount}>
-                    {interpolate(equipmentResultCount > 1 ? copy.resultCountPlural : copy.resultCount, {
-                      count: equipmentResultCount
-                    })}
-                  </span>
-                  {equipmentStatsAction ? <SmartTooltip as="span" content={equipmentStatsAction.label}>
-                      <button type="button" className={styles.exportHeaderButton} data-guide="enterprise-equipment-stats" onClick={() => openComputerFleetStats()} onMouseDown={e => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        openComputerFleetStats({
-                          background: true,
-                          equipmentType: activeEquipmentTableType || undefined
-                        });
-                      }
-                    }} aria-label={equipmentStatsAction.label}>
-                        <Icon icon="mdi:chart-box-outline" />
-                      </button>
-                    </SmartTooltip> : null}
+                        item: item || null
+                      });
+                    }}
+                    onEmbeddedActiveTypeChange={setActiveEquipmentTableType}
+                    embeddedToolbarEnd={
+                      <>
+                        <div className={styles.equipmentToolbarActions}>
                   <div className={styles.exportMenuWrap} ref={equipmentExportMenuRef}>
-                    <SmartTooltip as="span" content={copy.exportCsv}>
-                      <button type="button" className={styles.exportHeaderButton} onClick={() => setEquipmentExportMenuOpen(open => !open)} aria-expanded={equipmentExportMenuOpen} aria-haspopup="menu">
-                        <FaFileExport />
-                      </button>
-                    </SmartTooltip>
-                    {equipmentExportMenuOpen && <div className={styles.exportMenu} role="menu">
-                        <button type="button" className={styles.exportMenuItem} role="menuitem" onClick={() => {
-                        setEquipmentExportMenuOpen(false);
-                        equipmentPageRef.current?.handleExportCurrentTable();
-                      }}>
-                          {copy.exportCurrentTable}
-                        </button>
-                        <button type="button" className={styles.exportMenuItem} role="menuitem" onClick={() => {
-                        setEquipmentExportMenuOpen(false);
-                        equipmentPageRef.current?.handleExportAllTables();
-                      }}>
-                          {copy.exportAllTables}
-                        </button>
-                      </div>}
-                  </div>
-                  {canManageDevices ? <>
-                    <SmartTooltip as="span" content={copy.unifiLinkSite || "Lien UniFi"}>
+                    <SmartTooltip as="span" content={copy.peripheralsMoreActions || "Plus d'actions"}>
                       <button
                         type="button"
-                        className={styles.addEquipmentButton}
-                        onClick={() => setUnifiLinkModalOpen(true)}
-                        aria-label={copy.unifiLinkSite || "Lien UniFi"}
+                                className={`${finderKit.btnSquare} ${finderKit.btnSquareSecondary} ${styles.exportHeaderButton}`}
+                        onClick={() => setEquipmentExportMenuOpen(open => !open)}
+                        aria-expanded={equipmentExportMenuOpen}
+                        aria-haspopup="menu"
+                        aria-label={copy.peripheralsMoreActions || "Plus d'actions"}
                       >
-                        <Icon icon="simple-icons:ubiquiti" aria-hidden />
+                                <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
                       </button>
                     </SmartTooltip>
-                    {unifiLink?.linked ? (
-                      <SmartTooltip as="span" content={copy.unifiImport || "Importer depuis UniFi"}>
+                    {equipmentExportMenuOpen ? (
+                      <div className={styles.exportMenu} role="menu">
                         <button
                           type="button"
-                          className={styles.addEquipmentButton}
-                          onClick={() => setUnifiImportModalOpen(true)}
-                          aria-label={copy.unifiImport || "Importer depuis UniFi"}
+                          className={styles.exportMenuItem}
+                          role="menuitem"
+                          onClick={() => {
+                            setEquipmentExportMenuOpen(false);
+                            equipmentPageRef.current?.handleExportCurrentTable();
+                          }}
                         >
-                          <Icon icon="mdi:cloud-download-outline" aria-hidden />
+                          <Icon icon="mdi:file-export-outline" className={styles.exportMenuItemIcon} aria-hidden />
+                          <span>{copy.exportCurrentTable}</span>
                         </button>
-                      </SmartTooltip>
+                        <button
+                          type="button"
+                          className={styles.exportMenuItem}
+                          role="menuitem"
+                          onClick={() => {
+                            setEquipmentExportMenuOpen(false);
+                            equipmentPageRef.current?.handleExportAllTables();
+                          }}
+                        >
+                          <Icon icon="mdi:table-arrow-right" className={styles.exportMenuItemIcon} aria-hidden />
+                          <span>{copy.exportAllTables}</span>
+                        </button>
+                        {canManageDevices ? (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.exportMenuItem}
+                              role="menuitem"
+                              onClick={() => {
+                                setEquipmentExportMenuOpen(false);
+                                setUnifiLinkModalOpen(true);
+                              }}
+                            >
+                              <Icon icon="simple-icons:ubiquiti" className={styles.exportMenuItemIcon} aria-hidden />
+                              <span>{copy.unifiLinkSite || "Lien UniFi"}</span>
+                            </button>
+                            {unifiLink?.linked ? (
+                              <button
+                                type="button"
+                                className={styles.exportMenuItem}
+                                role="menuitem"
+                                onClick={() => {
+                                  setEquipmentExportMenuOpen(false);
+                                  setUnifiImportModalOpen(true);
+                                }}
+                              >
+                                <Icon icon="mdi:cloud-download-outline" className={styles.exportMenuItemIcon} aria-hidden />
+                                <span>{copy.unifiImport || "Importer depuis UniFi"}</span>
+                              </button>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </div>
                     ) : null}
+                  </div>
+                  {canManageDevices ? (
                     <SmartTooltip as="span" content={copy.addEquipment}>
-                      <button type="button" className={styles.addEquipmentButton} onClick={() => equipmentPageRef.current?.openAddEquipmentModal()}>
+                      <button
+                        type="button"
+                                className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
+                        onClick={() => equipmentPageRef.current?.openAddEquipmentModal()}
+                        aria-label={copy.addEquipment}
+                      >
                         <FaPlus />
                       </button>
                     </SmartTooltip>
-                  </> : null}
+                  ) : null}
                 </div>
-              </div>
-              <div className={styles.panelBody}>
-                <div className={styles.equipmentSection}>
-                  <EquipmentPage ref={equipmentPageRef} embedded fixedClientId={client.id} embeddedClient={client ? {
-                    ...client,
-                    sites: formData.sites ?? client.sites ?? [],
-                    ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
-                    ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
-                  } : null} equipmentRevision={equipmentRevision} hideEmbeddedSkeleton initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
-                    setClient(prev => prev ? {
-                      ...prev,
-                      ssid: ssids,
-                      ssids
-                    } : prev);
-                  }} customFamilyMap={filteredCustomFamilyMap} backupInstances={backupInstances} siteFilter={activeSiteFilter} onCustomFamilyManage={(family, item) => {
-                    setCustomEquipmentModal({
-                      family,
-                      item: item || null
-                    });
-                  }} onEmbeddedActiveTypeChange={setActiveEquipmentTableType} />
+                      </>
+                    }
+                  />
                 </div>
               </div>
             </section>
+            </div>
+            </div>
+            </div>
+            ) : null}
+
+            {cyberTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "cyber"}
+              style={overviewTab === "cyber" ? undefined : { display: "none" }}
+            >
+              <div className={`${styles.panel} ${styles.cyberServicesCard}`} data-guide="enterprise-infra-map">
+                {siteFilterBadge ? <div className={styles.mapModulesToolbar}>{siteFilterBadge}</div> : null}
+                <InfrastructureMap
+                  clientId={client.id}
+                  client={client}
+                  active={overviewTab === "cyber"}
+                  equipmentRevision={equipmentRevision}
+                  isCommunity={isCommunity}
+                  selectedType={selectedCyberBrickType || effectiveCyberBrickType}
+                  backupInstances={backupInstances}
+                  backupJobs={backupJobs}
+                  antivirusItems={configuredAntivirusSolutions}
+                  antispamItems={configuredAntispamSolutions}
+                  domainItems={configuredDomains}
+                  domainIntegrationReady={globalOvhConfigured}
+                  sslItems={sslData}
+                  licenceItems={licencesData}
+                  siteFilter={activeSiteFilter}
+                  campaignItems={campaigns}
+                  tenantInfo={{
+                    configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
+                    items: configuredMicrosoftTenants,
+                    tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
+                    email: client?.Office365?.email || client?.microsoft?.email || null,
+                    displayName: configuredMicrosoftTenants[0]?.tenantName || client?.Office365?.tenantName || client?.microsoft?.tenantName || null,
+                    status: client?.Office365?.status || client?.microsoft?.status || "actif",
+                    lastSync: client?.Office365?.lastSync || client?.microsoft?.lastSync || null,
+                    clientId: client.id,
+                    clientName: client.name
+                  }}
+                  googleWorkspaceInfo={{
+                    configured: Boolean(client?.googleWorkspace?.configured || client?.hasGoogleWorkspaceCredentials),
+                    domain: client?.googleWorkspace?.domain || null,
+                    status: client?.googleWorkspace?.status || "actif",
+                    clientId: client.id,
+                    clientName: client.name
+                  }}
+                  onNavigate={onNavigate}
+                  onSynced={() => loadCybersecurityData(client.id)}
+                  onBrickOpen={brick => {
+                    if (!brick?.type) return;
+                    if (!canManageSolutions && brick.type !== "Campagne") return;
+                    if (brick.type === "Campagne" && !canManageCampaigns && !canManageSolutions) return;
+                    handleServiceBrickOpenPage(brick.type);
+                  }}
+                  onBrickConfigure={brick => {
+                    if (!brick?.type) return;
+                    if (!canManageSolutions && brick.type !== "Campagne") return;
+                    if (brick.type === "Campagne" && !canManageCampaigns) return;
+                    handleServiceBrickEdit(brick.type);
+                  }}
+                />
             </div>
             </div>
             ) : null}
@@ -4112,61 +4788,33 @@ export default function ClientDetailPage({
               style={overviewTab === "activity" ? undefined : { display: "none" }}
             >
             <div className={styles.activityLayout} data-guide="enterprise-activity-panel">
-                    <div className={styles.activityKpiRow}>
-                      <div className={styles.activityKpiCard}>
-                        <span className={styles.activityKpiValue}>{supportTickets.length}</span>
-                        <span className={styles.activityKpiLabel}>{copy.kpiSupportTotal}</span>
-                      </div>
-                      <div className={styles.activityKpiCard}>
-                        <span className={styles.activityKpiValue}>{openSupportCount}</span>
-                        <span className={styles.activityKpiLabel}>{copy.kpiSupportOpen}</span>
-                      </div>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
-                        <div className={styles.activityKpiCard}>
-                          <span className={styles.activityKpiValue}>{(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length}</span>
-                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationTotal}</span>
-                        </div>
-                      </ProFeatureLock>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
-                        <div className={styles.activityKpiCard}>
-                          <span className={styles.activityKpiValue}>{openPrestationCount}</span>
-                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationOpen}</span>
-                        </div>
-                      </ProFeatureLock>
-                    </div>
-                    <div className={styles.activityGridSplit}>
-                      <section className={styles.panel}>
-                        <div className={styles.panelHeader}>
-                          <div className={styles.panelHeaderMain}>
-                            <h2 className={styles.panelTitle}>
-                              <Icon icon="mdi:ticket-outline" className={styles.panelTitleIcon} aria-hidden />
-                              {copy.supportTicketsTitle}
-                            </h2>
-                          </div>
-                          <span className={styles.activityBlockCount}>
-                            {interpolate(copy.openCount, {
-                        count: openSupportCount
-                      })}
-                          </span>
-                        </div>
-                        <div className={styles.panelBody}>
-                          <div className={styles.dataTableWrapper}>
+                    <div className={styles.activityUnifiedCard} data-guide="enterprise-activity-sections" data-activity-section={activitySection}>
+                      {activitySection === "support" ? (
+                      <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="support">
+                        <div className={styles.activityUnifiedBody}>
+                          {renderActivityToolbar(supportSearchQuery, setSupportSearchQuery, supportStatusFilter, setSupportStatusFilter)}
+                          <div className={styles.activityTableStack}>
+                            <div className={equipStyles.tableScrollShell}>
+                              <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
+                                <div className={equipStyles.tableCardSurface}>
                             <table className={styles.dataTable}>
                               <thead>
                                 <tr>
-                                  <th>{copy.table.number}</th>
-                                  <th>{copy.table.title}</th>
-                                  <th>{copy.table.status}</th>
-                                  {!isCommunity && <th>{copy.table.sla}</th>}
-                                  <th>{copy.table.updated}</th>
+                                        {renderActivitySortableTh("support", "number", copy.table.number)}
+                                        {renderActivitySortableTh("support", "title", copy.table.title)}
+                                        {renderActivitySortableTh("support", "status", copy.table.status)}
+                                        {!isCommunity && renderActivitySortableTh("support", "sla", copy.table.sla)}
+                                        {renderActivitySortableTh("support", "updated", copy.table.updated)}
                                 </tr>
                               </thead>
                               <tbody>
-                                {supportTickets.length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                      {pagedSupportTickets.total === 0 ? <tr className={styles.dataTableEmptyRow}>
                                     <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
-                                      {copy.emptySupportTickets}
+                                            {supportSearchQuery.trim() && supportTickets.length > 0
+                                              ? (copy.emptyActivitySearch || copy.emptySupportTickets)
+                                              : copy.emptySupportTickets}
                                     </td>
-                                  </tr> : supportTickets.map(ticket => {
+                                        </tr> : pagedSupportTickets.pagedList.map(ticket => {
                           const status = normalizeTicketStatus(ticket.status);
                           const sla = getTicketSlaDisplay(ticket, {
                             clients: client ? [client] : [],
@@ -4195,41 +4843,45 @@ export default function ClientDetailPage({
                             </table>
                           </div>
                         </div>
-                      </section>
-
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityBlockProLock} badgePosition="none">
-                        <section className={styles.panel}>
-                          <div className={styles.panelHeader}>
-                            <div className={styles.panelHeaderMain}>
-                              <h2 className={styles.panelTitle}>
-                                <Icon icon="mdi:briefcase-outline" className={styles.panelTitleIcon} aria-hidden />
-                                {copy.prestationsTitle}
-                                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                              </h2>
                             </div>
-                            <span className={styles.activityBlockCount}>
-                              {interpolate(copy.prestationsCount, {
-                          count: (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length
-                        })}
-                            </span>
+                            {renderActivityPagination({
+                              section: "support",
+                              total: pagedSupportTickets.total,
+                              page: pagedSupportTickets.page,
+                              totalPages: pagedSupportTickets.totalPages,
+                              safePageSize: pagedSupportTickets.safePageSize
+                            })}
                           </div>
-                          <div className={styles.panelBody}>
-                            <div className={styles.dataTableWrapper}>
+                        </div>
+                      </section>
+                      ) : null}
+
+                      {activitySection === "prestations" ? (
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityUnifiedProLock} badgePosition="none">
+                        <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="prestations">
+                          <div className={styles.activityUnifiedBody}>
+                            {renderActivityToolbar(prestationSearchQuery, setPrestationSearchQuery, prestationStatusFilter, setPrestationStatusFilter)}
+                            <div className={styles.activityTableStack}>
+                              <div className={equipStyles.tableScrollShell}>
+                                <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
+                                  <div className={equipStyles.tableCardSurface}>
                               <table className={styles.dataTable}>
                                 <thead>
                                   <tr>
-                                    <th>{copy.table.number}</th>
-                                    <th>{copy.table.type}</th>
-                                    <th>{copy.table.status}</th>
-                                    <th>{copy.table.created}</th>
+                                          {renderActivitySortableTh("prestations", "number", copy.table.number)}
+                                          {renderActivitySortableTh("prestations", "type", copy.table.type)}
+                                          {renderActivitySortableTh("prestations", "status", copy.table.status)}
+                                          {renderActivitySortableTh("prestations", "created", copy.table.created)}
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                        {pagedPrestationTickets.total === 0 ? <tr className={styles.dataTableEmptyRow}>
                                       <td colSpan={4} className={styles.dataTableEmptyCell}>
-                                        {copy.emptyPrestationTickets}
+                                              {prestationSearchQuery.trim() && prestationTicketsSource.length > 0
+                                                ? (copy.emptyActivitySearch || copy.emptyPrestationTickets)
+                                                : copy.emptyPrestationTickets}
                                       </td>
-                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).map(ticket => {
+                                          </tr> : pagedPrestationTickets.pagedList.map(ticket => {
                             const status = normalizeTicketStatus(ticket.status);
                             return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
                               if (e.button === 1) {
@@ -4251,54 +4903,61 @@ export default function ClientDetailPage({
                           })}
                                 </tbody>
                               </table>
+                                  </div>
+                                </div>
+                              </div>
+                              {renderActivityPagination({
+                                section: "prestations",
+                                total: pagedPrestationTickets.total,
+                                page: pagedPrestationTickets.page,
+                                totalPages: pagedPrestationTickets.totalPages,
+                                safePageSize: pagedPrestationTickets.safePageSize
+                              })}
                             </div>
                           </div>
                         </section>
                       </ProFeatureLock>
-                    </div>
+                      ) : null}
 
-                    <div className={styles.activityCampaignsRow}>
-                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.campaigns} featureKey="cyberCampaigns" className={styles.activityBlockProLock} badgePosition="none">
-                      <section className={styles.panel}>
-                        <div className={styles.panelHeader}>
-                          <div className={styles.panelHeaderMain}>
-                            <h2 className={styles.panelTitle}>
-                              <Icon icon="mdi:bullhorn-outline" className={styles.panelTitleIcon} aria-hidden />
-                              {copy.campaignsTitle}
-                              {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                            </h2>
-                          </div>
-                          <div className={styles.panelToolbar}>
-                            <span className={styles.activityBlockCount}>
-                              {interpolate(copy.campaignsOngoing, {
-                          count: ongoingCampaigns.length
-                        })}
-                            </span>
-                            {!isCommunity && canManageCampaigns && client?.id ? <SmartTooltip as="span" content={copy.addCampaign}>
+                      {activitySection === "campaigns" ? (
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.campaigns} featureKey="cyberCampaigns" className={styles.activityUnifiedProLock} badgePosition="none">
+                        <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="campaigns">
+                          <div className={styles.activityUnifiedBody}>
+                            {renderActivityToolbar(
+                              campaignSearchQuery,
+                              setCampaignSearchQuery,
+                              campaignStatusFilter,
+                              setCampaignStatusFilter,
+                              !isCommunity && canManageCampaigns && client?.id ? (
+                                <SmartTooltip as="span" content={copy.addCampaign}>
                                 <button type="button" className={styles.addEquipmentButton} onClick={handleOpenCreateCampaign} aria-label={copy.addCampaign}>
                                   <FaPlus />
                                 </button>
-                              </SmartTooltip> : null}
-                          </div>
-                        </div>
-                        <div className={styles.panelBody}>
-                          <div className={styles.dataTableWrapper}>
+                                </SmartTooltip>
+                              ) : null
+                            )}
+                            <div className={styles.activityTableStack}>
+                              <div className={equipStyles.tableScrollShell}>
+                                <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
+                                  <div className={equipStyles.tableCardSurface}>
                             <table className={styles.dataTable}>
                               <thead>
                                 <tr>
-                                  <th>{copy.table.name}</th>
-                                  <th>{copy.table.type}</th>
-                                  <th>{copy.table.status}</th>
-                                  <th>{copy.table.progress}</th>
-                                  <th>{copy.table.start}</th>
+                                          {renderActivitySortableTh("campaigns", "name", copy.table.name)}
+                                          {renderActivitySortableTh("campaigns", "type", copy.table.type)}
+                                          {renderActivitySortableTh("campaigns", "status", copy.table.status)}
+                                          {renderActivitySortableTh("campaigns", "progress", copy.table.progress)}
+                                          {renderActivitySortableTh("campaigns", "start", copy.table.start)}
                                 </tr>
                               </thead>
                               <tbody>
-                                {ongoingCampaigns.length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                        {pagedOngoingCampaigns.total === 0 ? <tr className={styles.dataTableEmptyRow}>
                                     <td colSpan={5} className={styles.dataTableEmptyCell}>
-                                      {copy.emptyCampaigns}
+                                              {campaignSearchQuery.trim() && campaignSourceList.length > 0
+                                                ? (copy.emptyActivitySearch || copy.emptyCampaigns)
+                                                : copy.emptyCampaigns}
                                     </td>
-                                  </tr> : ongoingCampaigns.map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
+                                          </tr> : pagedOngoingCampaigns.pagedList.map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
                                     <td className={styles.activityTitleCell} title={campaign.name || undefined}>{campaign.name || "-"}</td>
                                     <td>{getCampaignTypeLabel(campaign.type, locale)}</td>
                                     <td>
@@ -4313,10 +4972,21 @@ export default function ClientDetailPage({
                                   </tr>)}
                               </tbody>
                             </table>
+                                  </div>
+                                </div>
+                              </div>
+                              {renderActivityPagination({
+                                section: "campaigns",
+                                total: pagedOngoingCampaigns.total,
+                                page: pagedOngoingCampaigns.page,
+                                totalPages: pagedOngoingCampaigns.totalPages,
+                                safePageSize: pagedOngoingCampaigns.safePageSize
+                              })}
                           </div>
                         </div>
                       </section>
                     </ProFeatureLock>
+                      ) : null}
                     </div>
             </div>
             </div>
@@ -4331,7 +5001,15 @@ export default function ClientDetailPage({
             <div className={styles.vaultTabStack} data-guide="enterprise-vault-panel">
               <div className={styles.vaultTabLock}>
                 <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
-                  {client?.id ? <EnterpriseVaultPanel ref={vaultPanelRef} copy={vaultCopy} clientId={client.id} clientName={client.name} /> : null}
+                  {client?.id ? (
+                    <EnterpriseVaultPanel
+                      ref={vaultPanelRef}
+                      copy={vaultCopy}
+                      clientId={client.id}
+                      clientName={client.name}
+                      treeNavPortalTarget={overviewTab === "vault" ? vaultTreeNavPortalEl : null}
+                    />
+                  ) : null}
                 </ProFeatureLock>
               </div>
             </div>
@@ -4348,142 +5026,101 @@ export default function ClientDetailPage({
               {client?.id ? (
                 <ActivityJournalPanel
                   entityId={client.id}
+                  embedded
                   active={overviewTab === "logs"}
-                  fetchLogs={(page, options) => getClientLogs(client.id, page, options?.limit || 25, options)}
+                  fetchLogs={(page, options) => getClientLogs(client.id, page, options?.limit || 25, {
+                    signal: options?.signal,
+                    sortBy: options?.sortBy,
+                    sortDir: options?.sortDir
+                  })}
                   purgeLogs={() => purgeClientLogs(client.id)}
                 />
               ) : null}
             </div>
             ) : null}
             </div>
+              </div>
+            </div>
 
           </main>
 
-          <div className={styles.asideStack}>
-            <div className={styles.sidebarContractOptionsTop} data-guide="enterprise-sidebar-contracts">
-              <span className={styles.sidebarContractOptionsTopLabel}>
-                {copy.contractOptionsShort || copy.contractOptionsLabel}
-              </span>
-              {activeContractModules.length === 0 ? (
-                <span className={styles.sidebarContractOptionsTopEmpty}>{copy.noContractOptions}</span>
-              ) : (
-                <ul className={styles.sidebarContractIconRow}>
-                  {activeContractModules.map(mod => (
-                    <li key={mod.moduleKey}>
-                      <SmartTooltip content={mod.label}>
-                        <span className={styles.sidebarContractIconChip} aria-label={mod.label}>
-                          <Icon icon={mod.icon || "mdi:puzzle-outline"} aria-hidden />
-                        </span>
-                      </SmartTooltip>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <section className={styles.quickActionsCard} data-guide="enterprise-quick-actions" aria-label={quickActionsCopy.title || "Actions rapides"}>
-              <h3 className={styles.quickActionsTitle}>{quickActionsCopy.title || "Actions rapides"}</h3>
-              <ul className={styles.quickActionsList}>
-                {canCreateTicket ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={handleQuickCreateTicket}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:ticket-outline" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{quickActionsCopy.createTicket}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+          <aside className={`${styles.asideStack} ${styles.asidePanel}`} aria-label={copy.sidebarInfo || "Informations"}>
+            <div className={styles.rightSidebarContent}>
+            <section
+              className={`${styles.sidebarSection} ${styles.sidebarActionToolbarSection}`}
+              data-guide="enterprise-quick-actions"
+              aria-label={quickActionsCopy.title || "Actions rapides"}
+            >
+              <div className={styles.sidebarActionToolbar}>
+                {canEditClient ? (
+                  <SmartTooltip content={quickActionsCopy.editEnterprise || copy.editEnterprise}>
+                    <button
+                      type="button"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={openEnterpriseEditModal}
+                      aria-label={quickActionsCopy.editEnterprise || copy.editEnterprise}
+                    >
+                      <Icon icon="mdi:square-edit-outline" aria-hidden />
                     </button>
-                  </li>
+                        </SmartTooltip>
+                ) : null}
+                {canCreateTicket ? (
+                  <SmartTooltip content={quickActionsCopy.createTicket}>
+                    <button
+                      type="button"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={handleQuickCreateTicket}
+                      aria-label={quickActionsCopy.createTicket}
+                    >
+                      <Icon icon="mdi:ticket-outline" aria-hidden />
+                    </button>
+                  </SmartTooltip>
                 ) : null}
                 {canScheduleEvent ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={handleQuickScheduleIntervention}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:calendar-month-outline" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{quickActionsCopy.scheduleIntervention}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                  <SmartTooltip content={quickActionsCopy.scheduleIntervention}>
+                    <button
+                      type="button"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={handleQuickScheduleIntervention}
+                      aria-label={quickActionsCopy.scheduleIntervention}
+                    >
+                      <Icon icon="mdi:calendar-check-outline" aria-hidden />
                     </button>
-                  </li>
+                  </SmartTooltip>
                 ) : null}
-                {canManageDevices ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={handleQuickAddEquipment}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:desktop-classic" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{quickActionsCopy.addEquipment}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                    </button>
-                  </li>
-                ) : null}
-                <li>
-                  <button type="button" className={styles.quickActionItem} onClick={handleQuickSendEmail}>
-                    <span className={styles.quickActionIcon} aria-hidden>
-                      <Icon icon="mdi:email-outline" />
-                    </span>
-                    <span className={styles.quickActionLabel}>{quickActionsCopy.sendEmail}</span>
-                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                  </button>
-                </li>
-                {quickActionsExpanded ? (
-                  <>
-                    <li>
+                <SmartTooltip
+                  content={
+                    enterpriseSubscribed
+                      ? copy.subscribe?.unsubscribe || "Se désabonner"
+                      : copy.subscribe?.subscribe || "S’abonner aux notifications"
+                  }
+                >
                       <button
                         type="button"
-                        className={styles.quickActionItem}
+                    className={`${styles.sidebarActionIconBtn} ${enterpriseSubscribed ? styles.sidebarActionIconBtnActive : ""}`}
                         onClick={toggleEnterpriseSubscribe}
                         disabled={!client?.id || enterpriseSubscribeLoading || enterpriseSubscribeSaving}
                         aria-pressed={enterpriseSubscribed}
-                      >
-                        <span className={styles.quickActionIcon} aria-hidden>
-                          <Icon icon={enterpriseSubscribed ? "mdi:bell-ring" : "mdi:bell-outline"} />
-                        </span>
-                        <span className={styles.quickActionLabel}>
-                          {enterpriseSubscribed
+                    aria-label={
+                      enterpriseSubscribed
                             ? copy.subscribe?.unsubscribe || "Se désabonner"
-                            : copy.subscribe?.subscribe || "S’abonner aux notifications"}
-                        </span>
-                        <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                        : copy.subscribe?.subscribe || "S’abonner aux notifications"
+                    }
+                  >
+                    <Icon icon={enterpriseSubscribed ? "mdi:bell-ring-outline" : "mdi:bell-outline"} aria-hidden />
                       </button>
-                    </li>
-                    {canEditClient ? (
-                      <li>
-                        <button type="button" className={styles.quickActionItem} onClick={openEnterpriseEditModal}>
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:pencil-outline" />
-                          </span>
-                          <span className={styles.quickActionLabel}>{quickActionsCopy.editEnterprise || copy.editEnterprise}</span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ) : null}
-                    {canAddContact ? (
-                      <li>
-                        <button type="button" className={styles.quickActionItem} onClick={handleAddContact}>
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:account-plus-outline" />
-                          </span>
-                          <span className={styles.quickActionLabel}>{quickActionsCopy.addContact}</span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ) : null}
-                    {canManageSites ? (
-                      <li>
-                        <button type="button" className={styles.quickActionItem} onClick={() => setSitesModalOpen(true)}>
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:map-marker-outline" />
-                          </span>
-                          <span className={styles.quickActionLabel}>{quickActionsCopy.manageSites}</span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ) : null}
+                </SmartTooltip>
                     {canReversibility ? (
-                      <li>
+                  <SmartTooltip
+                    content={
+                      generatingReversibility && !isCommunity
+                        ? copy.generatingDossier || copy.generatingFolder
+                        : copy.reversibilityDossier || copy.reversibilityFolder
+                    }
+                  >
                         <button
                           type="button"
-                          className={styles.quickActionItem}
+                      className={styles.sidebarActionIconBtn}
                           onClick={() => {
                             if (isCommunity) {
                               notifyProFeature(copy.proFeatures.reversibility);
@@ -4492,38 +5129,90 @@ export default function ClientDetailPage({
                             handleExportReversibility();
                           }}
                           disabled={!isCommunity && generatingReversibility}
-                        >
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            {generatingReversibility && !isCommunity
-                              ? <Icon icon="mdi:loading" className={styles.spinning} />
-                              : <Icon icon="mdi:folder-download-outline" />}
-                          </span>
-                          <span className={styles.quickActionLabel}>
-                            {generatingReversibility && !isCommunity
-                              ? copy.generatingDossier || copy.generatingFolder
-                              : copy.reversibilityDossier || copy.reversibilityFolder}
-                            {isCommunity ? <ProFeatureBadge variant="inline" /> : null}
-                          </span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
+                      aria-label={copy.reversibilityDossier || copy.reversibilityFolder}
+                    >
+                      {generatingReversibility && !isCommunity ? (
+                        <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
+                      ) : (
+                        <Icon icon="mdi:export-variant" aria-hidden />
+                      )}
                         </button>
-                      </li>
+                  </SmartTooltip>
                     ) : null}
-                  </>
-                ) : null}
-              </ul>
-              <button
-                type="button"
-                className={styles.quickActionsSeeAll}
-                onClick={() => setQuickActionsExpanded(prev => !prev)}
-              >
-                {quickActionsExpanded
-                  ? quickActionsCopy.seeLess || "Voir moins"
-                  : quickActionsCopy.seeAll}
-                <Icon icon={quickActionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
-              </button>
+              </div>
             </section>
-          <aside className={styles.asidePanel}>
-            <div className={styles.rightSidebarContent}>
+
+            <section className={`${styles.sidebarSection} ${styles.sidebarContractSection}`}>
+              <SidebarSectionHeader
+                title={copy.contractTitle || copy.heroFacts?.contract || "Contrat"}
+                icon="mdi:file-document-outline"
+                expanded={contractSectionExpanded}
+                onToggle={() => setContractSectionExpanded(prev => !prev)}
+                controlsId="enterprise-sidebar-contract"
+                panelStyles={styles}
+              />
+              {contractSectionExpanded ? (
+                <div className={styles.sidebarBody} id="enterprise-sidebar-contract">
+                  {!contractTypeLabel && !contractStartLabel && !contractEndLabel && !formData.contrat?.suspendu && activeContractModules.length === 0 ? (
+                    <div className={styles.emptyState}>
+                      <Icon icon="mdi:file-document-outline" className={styles.emptyIcon} aria-hidden />
+                      <h5>{copy.noContractInfo || "Aucune information de contrat"}</h5>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={styles.sidebarInfoFields}>
+                        <div className={styles.sidebarInfoFieldsRow}>
+                          <div className={styles.sidebarInfoField}>
+                            <span className={styles.sidebarInfoFieldLabel}>{copy.contractStatusLabel || copy.table?.status || "Statut"}</span>
+                            <span
+                              className={styles.sidebarInfoFieldValue}
+                          style={contractStatus?.color ? { color: contractStatus.color } : undefined}
+                        >
+                          {contractStatus?.label || "—"}
+                            </span>
+                      </div>
+                          <div className={styles.sidebarInfoField}>
+                            <span className={styles.sidebarInfoFieldLabel}>{copy.contractTypeLabel || copy.table?.type || "Type"}</span>
+                            <span className={styles.sidebarInfoFieldValue}>{contractTypeLabel || "—"}</span>
+                      </div>
+                        </div>
+                        <div className={styles.sidebarInfoField}>
+                          <span className={styles.sidebarInfoFieldLabel}>{copy.contractPeriodLabel || "Période"}</span>
+                          <span className={styles.sidebarInfoFieldValue}>
+                            <span className={styles.sidebarContractPeriod}>
+                              <span title={copy.startDateLabel || "Date de début"}>{contractStartLabel || "—"}</span>
+                              <span className={styles.sidebarContractPeriodSep} aria-hidden>→</span>
+                              <span title={copy.endDateLabel || copy.heroFacts?.nextDeadline || "Expiration"}>{contractEndLabel || "—"}</span>
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className={styles.sidebarContractOptionsBlock}>
+                        <span className={styles.sidebarInfoFieldLabel}>
+                          {copy.contractOptionsShort || copy.contractOptionsLabel}
+                        </span>
+                        {activeContractModules.length === 0 ? (
+                          <span className={styles.sidebarContractOptionsEmpty}>{copy.noContractOptions}</span>
+                        ) : (
+                          <ul className={styles.sidebarContractIconRow}>
+                            {activeContractModules.map(mod => (
+                              <li key={mod.moduleKey}>
+                                <SmartTooltip content={mod.label}>
+                                  <span className={styles.sidebarContractIconChip} aria-label={mod.label}>
+                                    <Icon icon={mod.icon || "mdi:puzzle-outline"} aria-hidden />
+                                  </span>
+                                </SmartTooltip>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </section>
+
             <section className={styles.sidebarSection}>
               <SidebarSectionHeader
                 title={copy.sitesTitle}
@@ -4548,17 +5237,35 @@ export default function ClientDetailPage({
                     <h5>{copy.noSites}</h5>
                   </div> : <>
                   <div className={styles.sidebarSearchToolbar}>
-                    <Icon icon="mdi:magnify" className={styles.sidebarSearchIcon} aria-hidden />
-                    <input type="text" inputMode="search" autoComplete="off" className={styles.sidebarSearchInput} value={sitesSearch} onChange={event => {
+                    <div className={equipStyles.embeddedSearchBox}>
+                      <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+                      <input
+                        type="text"
+                        inputMode="search"
+                        autoComplete="off"
+                        className={equipStyles.embeddedSearchInput}
+                        value={sitesSearch}
+                        onChange={event => {
                     setSitesSearch(event.target.value);
                     setSitesPage(1);
-                  }} placeholder={copy.searchSites} aria-label={copy.searchSitesAria} />
-                    {sitesSearch ? <button type="button" className={styles.sidebarSearchClear} onClick={() => {
+                        }}
+                        placeholder={copy.activitySearchPlaceholder || "Rechercher"}
+                        aria-label={copy.searchSitesAria}
+                      />
+                      {sitesSearch ? (
+                        <button
+                          type="button"
+                          className={equipStyles.embeddedSearchClear}
+                          onClick={() => {
                     setSitesSearch("");
                     setSitesPage(1);
-                  }} aria-label={common.close}>
-                        <Icon icon="mdi:close" aria-hidden />
-                      </button> : null}
+                          }}
+                          aria-label={common.close}
+                        >
+                          <FaTimes aria-hidden />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                   {filteredSites.length === 0 ? <div className={styles.emptyState}>
                       <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
@@ -4569,13 +5276,12 @@ export default function ClientDetailPage({
                     const address = buildSiteAddress(site);
                     const siteValue = getSiteLocationValue(site);
                     const isActive = activeSiteFilter === siteValue;
-                    return <button type="button" key={getSiteId(site)} className={`${styles.sitePreviewCard} ${styles.siteFilterButton} ${isActive ? styles.siteFilterButtonActive : ""}`} onClick={() => setActiveSiteFilter(isActive ? null : siteValue)} title={interpolate(copy.filterSiteTitle, {
+                    return <button type="button" key={getSiteId(site)} className={`${styles.sitePreviewCard} ${styles.siteFilterButton} ${isActive ? styles.siteFilterButtonActive : ""} ${site.isPrimary ? styles.sitePreviewCardPrimary : ""}`.trim()} aria-pressed={isActive} onClick={() => setActiveSiteFilter(isActive ? null : siteValue)} title={interpolate(copy.filterSiteTitle, {
                       name: getSiteDisplayName(site)
                     })}>
                               <div className={styles.sitePreviewMain}>
                                 <strong className={styles.sitePreviewName}>
                                   {getSiteDisplayName(site)}
-                                  {site.isPrimary ? <span className={styles.sitePreviewPrimary}>{copy.sitePrimary}</span> : null}
                                 </strong>
                                 {address ? <span className={styles.sitePreviewAddress}>{address}</span> : null}
                               </div>
@@ -4627,27 +5333,44 @@ export default function ClientDetailPage({
                   <h5>{copy.noContacts}</h5>
                 </div> : <>
                 <div className={styles.sidebarSearchToolbar}>
-                  <Icon icon="mdi:magnify" className={styles.sidebarSearchIcon} aria-hidden />
-                  <input type="text" inputMode="search" autoComplete="off" className={styles.sidebarSearchInput} value={contactsSearch} onChange={event => setContactsSearch(event.target.value)} placeholder={copy.searchContacts} aria-label={copy.searchContactsAria} />
-                  {contactsSearch ? <button type="button" className={styles.sidebarSearchClear} onClick={() => setContactsSearch("")} aria-label={common.close}>
-                      <Icon icon="mdi:close" aria-hidden />
-                    </button> : null}
+                  <div className={equipStyles.embeddedSearchBox}>
+                    <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+                    <input
+                      type="text"
+                      inputMode="search"
+                      autoComplete="off"
+                      className={equipStyles.embeddedSearchInput}
+                      value={contactsSearch}
+                      onChange={event => setContactsSearch(event.target.value)}
+                      placeholder={copy.activitySearchPlaceholder || "Rechercher"}
+                      aria-label={copy.searchContactsAria}
+                    />
+                    {contactsSearch ? (
+                      <button
+                        type="button"
+                        className={equipStyles.embeddedSearchClear}
+                        onClick={() => setContactsSearch("")}
+                        aria-label={common.close}
+                      >
+                        <FaTimes aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 {filteredContacts.length === 0 ? <div className={styles.emptyState}>
                     <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
                     <h5>{copy.noContactResults}</h5>
                   </div> : <>
                 <ul className={styles.sidebarContactsList}>
-                  {visibleContacts.map(contact => <SmartTooltip as="li" key={contact.id} className={styles.sidebarContactItem} onClick={() => {
+                  {visibleContacts.map(contact => {
+                    const isPrimaryContact = isContactPrimaryForClient(contact, client?.id);
+                    return <SmartTooltip as="li" key={contact.id} className={`${styles.sidebarContactItem} ${isPrimaryContact ? styles.sidebarContactItemPrimary : ""}`.trim()} onClick={() => {
                       if (onNavigate) {
                         onNavigate("ContactDetail", {
                           contactId: contact.id
                         });
                       }
                     }} content={copy.viewContactDetails}>
-                      <div className={styles.sidebarContactAvatar} aria-hidden>
-                        {getContactInitials(contact)}
-                      </div>
                       <div className={styles.sidebarContactBody}>
                         <div className={styles.sidebarContactTop}>
                           <div className={styles.sidebarContactIdentity}>
@@ -4655,7 +5378,6 @@ export default function ClientDetailPage({
                               <span className={styles.sidebarContactName}>
                                 {contact.nom} {contact.prenom}
                               </span>
-                              {isContactPrimaryForClient(contact, client?.id) ? <span className={styles.sitePreviewPrimary}>{copy.contactPrimary}</span> : null}
                             </span>
                             {contact.poste && <span className={styles.sidebarContactRole}>
                                 {contact.poste}
@@ -4683,10 +5405,9 @@ export default function ClientDetailPage({
                                   {[...linkedSiteIds].map(siteId => {
                                 const site = siteById.get(siteId);
                                 const label = site ? getSiteDisplayName(site) : siteId;
-                                return <span key={siteId} className={styles.sidebarContactSiteChip} title={label}>
+                                return <span key={siteId} className={`${styles.sidebarContactSiteChip} ${primarySiteIds.has(siteId) ? styles.sidebarContactSiteChipPrimary : ""}`.trim()} title={label}>
                                       <Icon icon="mdi:map-marker-outline" aria-hidden />
                                       <span>{label}</span>
-                                      {primarySiteIds.has(siteId) ? <span className={styles.sitePreviewPrimary}>{copy.siteContactPrimary}</span> : null}
                                     </span>;
                               })}
                                 </div>;
@@ -4719,14 +5440,17 @@ export default function ClientDetailPage({
                                 label: typeDef.label
                               }) : typeDef.label} onClick={href ? e => e.stopPropagation() : undefined}>
                                     <Icon icon={typeDef.icon} className={styles.sidebarContactMetaIcon} aria-hidden />
-                                    <span>{entry.value}</span>
+                                    <span className={styles.sidebarContactMetaValue}>{entry.value}</span>
+                                    <span className={styles.sidebarContactMetaStarSlot}>
                                     {entry.isPrimary ? <Icon icon="mdi:star" className={styles.sidebarContactFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
+                                    </span>
                                   </RowTag>;
                             })}
                             </div>;
                         })()}
                       </div>
-                    </SmartTooltip>)}
+                    </SmartTooltip>;
+                  })}
                 </ul>
                 </>}
                 </>}
@@ -4757,11 +5481,29 @@ export default function ClientDetailPage({
                   <h5>{copy.noProviders}</h5>
                 </div> : <>
                 <div className={styles.sidebarSearchToolbar}>
-                  <Icon icon="mdi:magnify" className={styles.sidebarSearchIcon} aria-hidden />
-                  <input type="text" inputMode="search" autoComplete="off" className={styles.sidebarSearchInput} value={prestatairesSearch} onChange={event => setPrestatairesSearch(event.target.value)} placeholder={copy.searchProviders} aria-label={copy.searchProvidersAria} />
-                  {prestatairesSearch ? <button type="button" className={styles.sidebarSearchClear} onClick={() => setPrestatairesSearch("")} aria-label={common.close}>
-                      <Icon icon="mdi:close" aria-hidden />
-                    </button> : null}
+                  <div className={equipStyles.embeddedSearchBox}>
+                    <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+                    <input
+                      type="text"
+                      inputMode="search"
+                      autoComplete="off"
+                      className={equipStyles.embeddedSearchInput}
+                      value={prestatairesSearch}
+                      onChange={event => setPrestatairesSearch(event.target.value)}
+                      placeholder={copy.activitySearchPlaceholder || "Rechercher"}
+                      aria-label={copy.searchProvidersAria}
+                    />
+                    {prestatairesSearch ? (
+                      <button
+                        type="button"
+                        className={equipStyles.embeddedSearchClear}
+                        onClick={() => setPrestatairesSearch("")}
+                        aria-label={common.close}
+                      >
+                        <FaTimes aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
                 {filteredPrestataires.length === 0 ? <div className={styles.emptyState}>
                     <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
@@ -4776,9 +5518,6 @@ export default function ClientDetailPage({
                         });
                       }
                     }} content={copy.viewProviderDetails}>
-                      <div className={styles.sidebarContactAvatar} aria-hidden>
-                        {(prestataire.nom || "PR").slice(0, 2).toUpperCase()}
-                      </div>
                       <div className={styles.sidebarContactBody}>
                         <div className={styles.sidebarContactTop}>
                           <div className={styles.sidebarContactIdentity}>
@@ -4817,8 +5556,71 @@ export default function ClientDetailPage({
                 </ul>
                 </>}
                 </>}
-              </div>}
+                </div>}
             </section>
+
+            {(isCommunity || supportCreditBalance !== null) && <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection}`}>
+                <SidebarSectionHeader
+                  title={copy.creditsTitle}
+                  icon="mdi:ticket-confirmation-outline"
+                  count={!isCommunity && supportCreditBalance != null ? Number(supportCreditBalance) || 0 : null}
+                  badge={isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                  expanded={creditsExpanded}
+                  locked={isCommunity}
+                  onToggle={() => {
+                    if (isCommunity) {
+                      notifyProFeature(copy.proFeatures.creditPacks, "credits");
+                      return;
+                    }
+                    setCreditsExpanded(prev => !prev);
+                  }}
+                  controlsId="enterprise-sidebar-credits"
+                  panelStyles={styles}
+                  actions={!isCommunity && canAddCredits ? <SmartTooltip content={copy.addCreditPack}>
+                          <button type="button" className={styles.editInfoButton} onClick={e => {
+                    e.stopPropagation();
+                    setSupportCreditModalOpen(true);
+                  }} aria-label={copy.addCreditPack}>
+                            <FaPlus />
+                          </button>
+                        </SmartTooltip> : null}
+                />
+                {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
+                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.creditPacks} featureKey="credits" badgePosition="none" softLocked={isCommunity}>
+                      {visibleSupportPacks.length > 0 && !isCommunity ? <ul className={styles.activityCreditList}>
+                          {visibleSupportPacks.map(pack => {
+                      const remaining = Number(pack.remaining_amount) || 0;
+                      const initial = Number(pack.initial_amount) || 0;
+                      const until = pack.valid_until ? new Date(pack.valid_until).toLocaleDateString("en-GB") : null;
+                      const status = String(pack.status || "active");
+                      return <li key={pack.id} className={`${styles.activityCreditCard} ${status === "depleted" || status === "expired" ? styles.activityCreditCardMuted : ""}`.trim()}>
+                                <div className={styles.activityCreditBody}>
+                                  <div className={styles.activityCreditTop}>
+                                    <span className={styles.activityCreditLabel}>
+                                      {pack.label || copy.creditPackDefault}
+                                    </span>
+                                    <span className={`${styles.activityCreditValue} ${remaining <= 0 ? styles.activityCreditValueEmpty : ""}`}>
+                                      {remaining}/{initial}
+                                    </span>
+                                  </div>
+                                  <div className={styles.activityCreditMeta}>
+                                    <Icon icon="mdi:calendar-end" className={styles.activityCreditMetaIcon} aria-hidden />
+                                    <span>
+                                      {until ? interpolate(copy.creditValidUntil, {
+                                date: until
+                              }) : copy.creditNoExpiry}
+                                    </span>
+                                  </div>
+                                </div>
+                              </li>;
+                    })}
+                        </ul> : <div className={styles.emptyState}>
+                          <Icon icon="mdi:ticket-confirmation-outline" className={styles.emptyIcon} aria-hidden />
+                          <h5>{copy.noCreditPack}</h5>
+                        </div>}
+                    </ProFeatureLock>
+                  </div>}
+              </section>}
 
             <section className={`${styles.sidebarSection} ${styles.sidebarSlaSection}`}>
               <SidebarSectionHeader
@@ -4861,76 +5663,6 @@ export default function ClientDetailPage({
                   </ProFeatureLock>
                 </div>}
             </section>
-
-            {(isCommunity || supportCreditBalance !== null) && <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection}`}>
-                <SidebarSectionHeader
-                  title={copy.creditsTitle}
-                  icon="mdi:ticket-confirmation-outline"
-                  badge={<>
-                      {!isCommunity && supportCreditBalance != null ? <span className={styles.sidebarCreditsBadge} title={copy.creditsTitle}>
-                          {Number(supportCreditBalance) || 0}
-                        </span> : null}
-                      {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                    </>}
-                  expanded={creditsExpanded}
-                  locked={isCommunity}
-                  onToggle={() => {
-                    if (isCommunity) {
-                      notifyProFeature(copy.proFeatures.creditPacks, "credits");
-                      return;
-                    }
-                    setCreditsExpanded(prev => !prev);
-                  }}
-                  controlsId="enterprise-sidebar-credits"
-                  panelStyles={styles}
-                  actions={!isCommunity && canAddCredits ? <SmartTooltip content={copy.addCreditPack}>
-                          <button type="button" className={styles.editInfoButton} onClick={e => {
-                    e.stopPropagation();
-                    setSupportCreditModalOpen(true);
-                  }} aria-label={copy.addCreditPack}>
-                            <FaPlus />
-                          </button>
-                        </SmartTooltip> : null}
-                />
-                {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
-                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.creditPacks} featureKey="credits" badgePosition="none" softLocked={isCommunity}>
-                      {visibleSupportPacks.length > 0 && !isCommunity ? <ul className={styles.activityCreditList}>
-                          {visibleSupportPacks.map(pack => {
-                      const remaining = Number(pack.remaining_amount) || 0;
-                      const initial = Number(pack.initial_amount) || 0;
-                      const until = pack.valid_until ? new Date(pack.valid_until).toLocaleDateString("en-GB") : null;
-                      const status = String(pack.status || "active");
-                      return <li key={pack.id} className={`${styles.activityCreditCard} ${status === "depleted" || status === "expired" ? styles.activityCreditCardMuted : ""}`.trim()}>
-                                <div className={styles.activityCreditIcon} aria-hidden>
-                                  <Icon icon="mdi:ticket-confirmation-outline" />
-                                </div>
-                                <div className={styles.activityCreditBody}>
-                                  <div className={styles.activityCreditTop}>
-                                    <span className={styles.activityCreditLabel}>
-                                      {pack.label || copy.creditPackDefault}
-                                    </span>
-                                    <span className={`${styles.activityCreditValue} ${remaining <= 0 ? styles.activityCreditValueEmpty : ""}`}>
-                                      {remaining}/{initial}
-                                    </span>
-                                  </div>
-                                  <div className={styles.activityCreditMeta}>
-                                    <Icon icon="mdi:calendar-end" className={styles.activityCreditMetaIcon} aria-hidden />
-                                    <span>
-                                      {until ? interpolate(copy.creditValidUntil, {
-                                date: until
-                              }) : copy.creditNoExpiry}
-                                    </span>
-                                  </div>
-                                </div>
-                              </li>;
-                    })}
-                        </ul> : <div className={styles.emptyState}>
-                          <Icon icon="mdi:ticket-confirmation-outline" className={styles.emptyIcon} aria-hidden />
-                          <h5>{copy.noCreditPack}</h5>
-                        </div>}
-                    </ProFeatureLock>
-                  </div>}
-              </section>}
 
             <section className={`${styles.sidebarSection} ${styles.sidebarNotesSection}`} data-guide="enterprise-sidebar-notes">
               <SidebarSectionHeader
@@ -4987,8 +5719,7 @@ export default function ClientDetailPage({
               </div>}
             </section>
           </div>
-        </aside>
-          </div>
+          </aside>
         </div>
       </div>
 

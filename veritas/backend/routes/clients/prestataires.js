@@ -299,6 +299,13 @@ router.get("/:id/logs", requirePermission("prestataires.view"), async (req, res)
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
   const offset = (page - 1) * limit;
+  const logSortColumns = {
+    action: "l.action",
+    user: "COALESCE(u.username, u.email)",
+    date: "l.created_at"
+  };
+  const sortColumn = logSortColumns[String(req.query.sortBy || "date").trim().toLowerCase()] || logSortColumns.date;
+  const sortDir = String(req.query.sortDir || "desc").trim().toLowerCase() === "asc" ? "ASC" : "DESC";
   try {
     const existing = await pool.query(`SELECT id FROM v_b_prestataires WHERE id = $1`, [id]);
     if (!existing.rows[0]) return res.status(404).json({ error: "Provider not found" });
@@ -314,7 +321,7 @@ router.get("/:id/logs", requirePermission("prestataires.view"), async (req, res)
        FROM v_b_prestataires_logs l
        LEFT JOIN v_b_users u ON l.user_id::text = u.id::text
        WHERE l.prestataire_id = $1
-       ORDER BY l.created_at DESC
+       ORDER BY ${sortColumn} ${sortDir} NULLS LAST, l.id DESC
        LIMIT $2 OFFSET $3`,
       [id, limit, offset]
     );

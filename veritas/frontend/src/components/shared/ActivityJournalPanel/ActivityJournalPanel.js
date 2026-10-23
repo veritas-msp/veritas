@@ -1,42 +1,86 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import enterpriseDetailStyles from "../../EnterprisesPage/EnterpriseDetailPage.module.css";
+import equipStyles from "../../EquipementPage/EquipmentPage.module.css";
 import { ConfirmModal } from "../../AdminPage/AdminUi";
 import EquipmentLogDetailModal from "../../EquipementPage/EquipmentLogDetailModal";
 import { getLogActionDetails } from "../../EquipementPage/equipmentLogUtils";
+import TicketColumnsModal from "../../TicketPage/TicketColumnsModal";
+import SortIcon from "../../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
 import { useAppLocale } from "../../../hooks/useAppGeneralSettings";
+import { useDefaultPageSize } from "../../../hooks/useDefaultPageSize";
+import { usePermissions } from "../../../contexts/PermissionsContext";
 import { getLocaleTag } from "../../../i18n/locales";
 import { createTrackedAbortController } from "../../../utils/pageLoadAbort";
+import { fetchTicketTableColumns } from "../../../api/tickets";
+import {
+  DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS,
+  normalizeTicketTableColumns
+} from "../../../utils/ticketTableColumns";
 import { getActivityJournalCopy, interpolate } from "./activityJournalI18n";
 import styles from "./ActivityJournalPanel.module.css";
 
-const DEFAULT_LIMIT = 25;
+const LOGS_PAGE_SCOPE = "enterprise_logs";
+const LOGS_COLUMN_HEADERS = {
+  action: "action",
+  user: "user",
+  date: "date"
+};
+const LOGS_SORT_DEFAULT = { key: "date", direction: "desc" };
+
+function sanitizeLogsTableColumns(columns) {
+  const list = normalizeTicketTableColumns(columns, {
+    fallback: DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS,
+    pageScope: LOGS_PAGE_SCOPE
+  });
+  if (!list.includes("action")) list.unshift("action");
+  return list;
+}
 
 export default function ActivityJournalPanel({
   entityId,
   fetchLogs,
   purgeLogs = null,
   active = true,
-  pageSize = DEFAULT_LIMIT,
+  embedded = false,
   copy: copyOverride = null
 }) {
   const locale = useAppLocale();
+  const { can } = usePermissions();
+  const canPublicViews = can("clients.public_views");
+  const [pageSize, setPageSize] = useDefaultPageSize();
   const copy = useMemo(
     () => ({ ...getActivityJournalCopy(locale), ...(copyOverride || {}) }),
     [locale, copyOverride]
   );
+  const copyRef = useRef(copy);
+  copyRef.current = copy;
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [sortBy, setSortBy] = useState(LOGS_SORT_DEFAULT.key);
+  const [sortDirection, setSortDirection] = useState(LOGS_SORT_DEFAULT.direction);
   const [searchDraft, setSearchDraft] = useState("");
   const [search, setSearch] = useState("");
   const [selectedLog, setSelectedLog] = useState(null);
   const [purgeOpen, setPurgeOpen] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [columnsModalOpen, setColumnsModalOpen] = useState(false);
+  const [publicTableColumns, setPublicTableColumns] = useState(() => sanitizeLogsTableColumns(DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS));
+  const [privateTableColumns, setPrivateTableColumns] = useState(null);
+  const [visibleTableColumns, setVisibleTableColumns] = useState(() => sanitizeLogsTableColumns(DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS));
+  const tableColumns = visibleTableColumns;
   const controllerRef = useRef(null);
   const mountedRef = useRef(true);
+  const fetchLogsRef = useRef(fetchLogs);
+  fetchLogsRef.current = fetchLogs;
+  const purgeLogsRef = useRef(purgeLogs);
+  purgeLogsRef.current = purgeLogs;
+  const hasRowsRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -51,22 +95,65 @@ export default function ActivityJournalPanel({
     return () => clearTimeout(timer);
   }, [searchDraft]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchTicketTableColumns(LOGS_PAGE_SCOPE);
+        if (cancelled) return;
+        setPublicTableColumns(sanitizeLogsTableColumns(Array.isArray(data?.public) ? data.public : DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS));
+        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? sanitizeLogsTableColumns(data.private) : null);
+        setVisibleTableColumns(sanitizeLogsTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS));
+      } catch {
+        if (!cancelled) toast.error(copyRef.current.toasts?.loadColumns || "Error loading columns");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleColumnsSaved = useCallback(result => {
+    if (Array.isArray(result?.public)) setPublicTableColumns(sanitizeLogsTableColumns(result.public));
+    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? sanitizeLogsTableColumns(result.private) : null);
+    setVisibleTableColumns(sanitizeLogsTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS));
+  }, []);
+
+  const handleSort = useCallback(column => {
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: LOGS_SORT_DEFAULT.key,
+      defaultSortDirection: LOGS_SORT_DEFAULT.direction,
+      firstDirection: column === "date" ? "desc" : "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
+    setPage(1);
+  }, [sortBy, sortDirection]);
+
   const load = useCallback(
     async (nextPage = 1) => {
-      if (!entityId || typeof fetchLogs !== "function") {
+      const fetchFn = fetchLogsRef.current;
+      if (!entityId || typeof fetchFn !== "function") {
         setLogs([]);
         setTotal(0);
+        hasRowsRef.current = false;
         return;
       }
       controllerRef.current?.abort();
       const controller = createTrackedAbortController();
       controllerRef.current = controller;
-      setLoading(true);
+      // Ne pas flash-loader si on a déjà des lignes (re-render parent / hover onglets).
+      if (!hasRowsRef.current) setLoading(true);
       try {
-        const data = await fetchLogs(nextPage, {
+        const data = await fetchFn(nextPage, {
           signal: controller.signal,
-          limit: pageSize,
-          search
+          limit: Math.max(1, Number(pageSize) || 25),
+          search,
+          sortBy,
+          sortDir: sortDirection
         });
         if (controller.signal.aborted || !mountedRef.current) return;
         const rows = Array.isArray(data?.logs) ? data.logs : [];
@@ -87,20 +174,26 @@ export default function ActivityJournalPanel({
         setLogs(filtered);
         setTotal(Number(data?.total) || filtered.length || 0);
         setPage(nextPage);
+        hasRowsRef.current = filtered.length > 0 || Number(data?.total) > 0;
       } catch (error) {
         if (error?.name === "AbortError") return;
         console.error("Error loading activity journal:", error);
         if (mountedRef.current) {
           setLogs([]);
           setTotal(0);
-          toast.error(copy.loadError);
+          hasRowsRef.current = false;
+          toast.error(copyRef.current.loadError);
         }
       } finally {
         if (mountedRef.current) setLoading(false);
       }
     },
-    [entityId, fetchLogs, pageSize, search, copy.loadError]
+    [entityId, pageSize, search, sortBy, sortDirection]
   );
+
+  useEffect(() => {
+    hasRowsRef.current = false;
+  }, [entityId]);
 
   useEffect(() => {
     if (!active) {
@@ -109,13 +202,14 @@ export default function ActivityJournalPanel({
     }
     load(1);
     return undefined;
-  }, [active, entityId, search, load]);
+  }, [active, entityId, search, sortBy, sortDirection, pageSize, load]);
 
   const handlePurge = async () => {
-    if (typeof purgeLogs !== "function") return;
+    const purgeFn = purgeLogsRef.current;
+    if (typeof purgeFn !== "function") return;
     setPurging(true);
     try {
-      const result = await purgeLogs();
+      const result = await purgeFn();
       const deleted = result?.logs_deleted ?? result?.deleted ?? total;
       toast.success(
         deleted > 0
@@ -123,6 +217,7 @@ export default function ActivityJournalPanel({
           : copy.purgeNone
       );
       setPurgeOpen(false);
+      hasRowsRef.current = false;
       await load(1);
     } catch (error) {
       toast.error(error?.message || copy.purgeError);
@@ -132,22 +227,71 @@ export default function ActivityJournalPanel({
   };
 
   const filtersActive = Boolean(search);
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePageSize = Math.max(1, Number(pageSize) || 25);
+  const totalPages = Math.max(1, Math.ceil(total / safePageSize));
+  const rangeStart = total === 0 ? 0 : (page - 1) * safePageSize + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(page * safePageSize, total);
+  const searchPlaceholder = embedded
+    ? (copy.searchPlaceholderShort || copy.searchPlaceholder || "Rechercher")
+    : copy.searchPlaceholder;
 
-  return (
-    <section className={`${enterpriseDetailStyles.panel} ${styles.logsPanel}`.trim()}>
-      <header className={enterpriseDetailStyles.panelHeader}>
-        <div className={enterpriseDetailStyles.panelHeaderMain}>
-          <h2 className={enterpriseDetailStyles.panelTitle}>
-            <Icon icon="mdi:history" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-            {copy.title}
-          </h2>
-          <p className={styles.subtitle}>{copy.subtitle}</p>
+  const toolbar = (
+    <div
+      className={
+        embedded
+          ? `${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.embeddedToolbar}`
+          : styles.toolbar
+      }
+    >
+      {embedded ? (
+        <div className={equipStyles.embeddedSearchWrap}>
+          <div className={equipStyles.embeddedSearchBox}>
+            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+            <input
+              type="text"
+              className={equipStyles.embeddedSearchInput}
+              value={searchDraft}
+              onChange={event => setSearchDraft(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={copy.searchAria}
+            />
+            {searchDraft ? (
+              <button
+                type="button"
+                className={equipStyles.embeddedSearchClear}
+                onClick={() => setSearchDraft("")}
+                aria-label={copy.clearSearch}
+              >
+                <FaTimes aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <div className={`${equipStyles.embeddedSearchActions} ${styles.embeddedToolbarActions}`}>
+            <button
+              type="button"
+              className={styles.columnsPillBtn}
+              onClick={() => setColumnsModalOpen(true)}
+              aria-label={copy.columnsSettings || "Colonnes"}
+              title={copy.columnsSettings || "Colonnes"}
+            >
+              <Icon icon="mdi:table-cog" aria-hidden />
+            </button>
+            {typeof purgeLogs === "function" ? (
+              <button
+                type="button"
+                className={styles.purgeBtn}
+                onClick={() => setPurgeOpen(true)}
+                disabled={loading || purging || total === 0}
+                title={copy.purgeTitle || copy.purge}
+                aria-label={copy.purgeTitle || copy.purge}
+              >
+                <Icon icon="mdi:delete-sweep" aria-hidden />
+              </button>
+            ) : null}
+          </div>
         </div>
-      </header>
-
-      <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
-        <div className={styles.toolbar}>
+      ) : (
+        <>
           <div className={styles.searchWrap}>
             <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
             <input
@@ -155,7 +299,7 @@ export default function ActivityJournalPanel({
               className={styles.searchInput}
               value={searchDraft}
               onChange={event => setSearchDraft(event.target.value)}
-              placeholder={copy.searchPlaceholder}
+              placeholder={searchPlaceholder}
               aria-label={copy.searchAria}
             />
             {searchDraft ? (
@@ -169,111 +313,205 @@ export default function ActivityJournalPanel({
               </button>
             ) : null}
           </div>
-          {typeof purgeLogs === "function" ? (
+          <div className={styles.toolbarActions}>
             <button
               type="button"
-              className={styles.purgeBtn}
-              onClick={() => setPurgeOpen(true)}
-              disabled={loading || purging || total === 0}
-              title={copy.purgeTitle}
+              className={styles.columnsPillBtn}
+              onClick={() => setColumnsModalOpen(true)}
+              aria-label={copy.columnsSettings || "Colonnes"}
+              title={copy.columnsSettings || "Colonnes"}
             >
-              <Icon icon="mdi:delete-sweep" aria-hidden />
-              {copy.purge}
+              <Icon icon="mdi:table-cog" aria-hidden />
             </button>
-          ) : null}
-        </div>
-
-        <div className={styles.tableFill}>
-          {loading ? (
-            <div className={styles.loadingState}>{copy.loading}</div>
-          ) : logs.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Icon icon="mdi:history" className={styles.emptyIcon} aria-hidden />
-              <h5>{filtersActive ? copy.emptyFiltered : copy.empty}</h5>
-              <p className={styles.emptyHint}>
-                {filtersActive ? copy.emptyFilteredHint : copy.emptyHint}
-              </p>
-            </div>
-          ) : (
-            <div className={`${enterpriseDetailStyles.dataTableWrapper} ${styles.tableWrapper}`.trim()}>
-              <table className={`${enterpriseDetailStyles.dataTable} ${styles.table}`.trim()}>
-                <thead>
-                  <tr>
-                    <th>{copy.colAction}</th>
-                    <th>{copy.colUser}</th>
-                    <th>{copy.colDate}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log, index) => {
-                    const meta = getLogActionDetails(log);
-                    const userLabel = log.user_name || log.user || copy.systemUser;
-                    const when = log.created_at || log.timestamp;
-                    return (
-                      <tr
-                        key={log.id || `${when}-${index}`}
-                        className={enterpriseDetailStyles.dataTableRowClickable}
-                        onClick={() => setSelectedLog(log)}
-                        title={copy.detailTitle}
-                      >
-                        <td>
-                          <span className={styles.actionInline} style={{ color: meta.color }}>
-                            <Icon icon={meta.icon} aria-hidden />
-                            {log.action || meta.label}
-                          </span>
-                        </td>
-                        <td>{userLabel}</td>
-                        <td className={styles.dateCell}>
-                          {when
-                            ? new Date(when).toLocaleString(getLocaleTag(locale), {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit"
-                              })
-                            : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {total > pageSize ? (
-          <div className={styles.pagination}>
-            <button
-              type="button"
-              className={styles.paginationButton}
-              onClick={() => load(page - 1)}
-              disabled={page <= 1 || loading}
-              aria-label={copy.prevPage}
-            >
-              <Icon icon="mdi:chevron-left" aria-hidden />
-            </button>
-            <span className={styles.paginationInfo}>
-              {interpolate(copy.pagination, {
-                page,
-                pages: totalPages,
-                total
-              })}
-            </span>
-            <button
-              type="button"
-              className={styles.paginationButton}
-              onClick={() => load(page + 1)}
-              disabled={page >= totalPages || loading}
-              aria-label={copy.nextPage}
-            >
-              <Icon icon="mdi:chevron-right" aria-hidden />
-            </button>
+            {typeof purgeLogs === "function" ? (
+              <button
+                type="button"
+                className={styles.purgeBtn}
+                onClick={() => setPurgeOpen(true)}
+                disabled={loading || purging || total === 0}
+                title={copy.purgeTitle || copy.purge}
+                aria-label={copy.purgeTitle || copy.purge}
+              >
+                <Icon icon="mdi:delete-sweep" aria-hidden />
+              </button>
+            ) : null}
           </div>
-        ) : null}
-      </div>
+        </>
+      )}
+    </div>
+  );
 
+  const tableInner = loading ? (
+    <div className={styles.loadingState}>{copy.loading}</div>
+  ) : logs.length === 0 ? (
+    <div className={styles.emptyState}>
+      <Icon icon="mdi:history" className={styles.emptyIcon} aria-hidden />
+      <h5>{filtersActive ? copy.emptyFiltered : copy.empty}</h5>
+      <p className={styles.emptyHint}>
+        {filtersActive ? copy.emptyFilteredHint : copy.emptyHint}
+      </p>
+    </div>
+  ) : (
+    <div
+      className={`${enterpriseDetailStyles.dataTableWrapper} ${styles.tableWrapper} ${
+        embedded ? styles.tableWrapperEmbedded : ""
+      }`.trim()}
+    >
+      <table className={`${enterpriseDetailStyles.dataTable} ${styles.table}`.trim()}>
+        <thead>
+          <tr>
+            {tableColumns.map(columnId => {
+              const labelKey = LOGS_COLUMN_HEADERS[columnId] || columnId;
+              const label = copy.table?.[labelKey] || columnId;
+              const isSorted = sortBy === columnId;
+              return (
+                <th
+                  key={columnId}
+                  className={styles.sortableTh}
+                  onClick={() => handleSort(columnId)}
+                  aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                >
+                  <span className={styles.thContent}>
+                    {label}
+                    {isSorted ? (
+                      <SortIcon active direction={sortDirection || "asc"} className={styles.sortIndicator} />
+                    ) : null}
+                  </span>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((log, index) => {
+            const meta = getLogActionDetails(log);
+            const userLabel = log.user_name || log.user || copy.systemUser;
+            const when = log.created_at || log.timestamp;
+            const dateLabel = when
+              ? new Date(when).toLocaleString(getLocaleTag(locale), {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })
+              : "—";
+            return (
+              <tr
+                key={log.id || `${when}-${index}`}
+                className={enterpriseDetailStyles.dataTableRowClickable}
+                onClick={() => setSelectedLog(log)}
+                title={copy.detailTitle}
+              >
+                {tableColumns.map(columnId => {
+                  if (columnId === "action") {
+                    return (
+                      <td key={columnId}>
+                        <span className={styles.actionInline} style={{ color: meta.color }}>
+                          <Icon icon={meta.icon} aria-hidden />
+                          {log.action || meta.label}
+                        </span>
+                      </td>
+                    );
+                  }
+                  if (columnId === "user") {
+                    return <td key={columnId}>{userLabel}</td>;
+                  }
+                  if (columnId === "date") {
+                    return (
+                      <td key={columnId} className={styles.dateCell}>
+                        {dateLabel}
+                      </td>
+                    );
+                  }
+                  return null;
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const tableBlock = embedded ? (
+    <div className={styles.tableStack}>
+      <div className={equipStyles.tableScrollShell}>
+        <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
+          <div className={equipStyles.tableCardSurface}>
+            {tableInner}
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className={styles.tableFill}>
+      {tableInner}
+    </div>
+  );
+
+  const pagination = (
+    <div
+      className={`${equipStyles.pagination} ${equipStyles.paginationEmbedded} ${styles.paginationBar} ${
+        embedded ? styles.paginationEmbedded : ""
+      }`.trim()}
+    >
+      <div className={equipStyles.paginationLeft}>
+        <span className={equipStyles.paginationLabel}>{copy.perPage || "Par page"}</span>
+        <select
+          className={equipStyles.paginationSelect}
+          value={safePageSize}
+          onChange={event => {
+            setPageSize(Number(event.target.value));
+            setPage(1);
+          }}
+          disabled={loading}
+          aria-label={copy.perPage || "Par page"}
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+        <span className={equipStyles.paginationInfo}>
+          {interpolate(copy.rangeInfo || "{start}–{end} sur {total}", {
+            start: String(rangeStart),
+            end: String(rangeEnd),
+            total: String(total)
+          })}
+        </span>
+      </div>
+      <div className={equipStyles.paginationRight}>
+        <button
+          type="button"
+          className={equipStyles.pageBtn}
+          onClick={() => load(page - 1)}
+          disabled={page <= 1 || loading || total === 0}
+          aria-label={copy.prevPage}
+        >
+          <FaChevronLeft aria-hidden />
+        </button>
+        <span className={equipStyles.paginationInfo}>
+          {interpolate(copy.pageInfo || "Page {current} / {total}", {
+            current: String(total === 0 ? 0 : page),
+            total: String(total === 0 ? 0 : totalPages)
+          })}
+        </span>
+        <button
+          type="button"
+          className={equipStyles.pageBtn}
+          onClick={() => load(page + 1)}
+          disabled={page >= totalPages || loading || total === 0}
+          aria-label={copy.nextPage}
+        >
+          <FaChevronRight aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
+
+  const modals = (
+    <>
       {selectedLog ? (
         <EquipmentLogDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} />
       ) : null}
@@ -291,6 +529,54 @@ export default function ActivityJournalPanel({
           if (!purging) setPurgeOpen(false);
         }}
       />
+
+      <TicketColumnsModal
+        open={columnsModalOpen}
+        onClose={() => setColumnsModalOpen(false)}
+        onSaved={handleColumnsSaved}
+        isAdmin={canPublicViews}
+        pageScope={LOGS_PAGE_SCOPE}
+        initialPublic={publicTableColumns}
+        initialPrivate={privateTableColumns}
+        initialEffective={visibleTableColumns}
+        columnLabelKeys={LOGS_COLUMN_HEADERS}
+        copy={copy}
+      />
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <section className={`${styles.logsPanel} ${styles.logsPanelEmbedded}`.trim()}>
+        <div className={styles.logsPanelBodyEmbedded}>
+          {toolbar}
+          {tableBlock}
+          {pagination}
+        </div>
+        {modals}
+      </section>
+    );
+  }
+
+  return (
+    <section className={`${enterpriseDetailStyles.panel} ${styles.logsPanel}`.trim()}>
+      <header className={enterpriseDetailStyles.panelHeader}>
+        <div className={enterpriseDetailStyles.panelHeaderMain}>
+          <h2 className={enterpriseDetailStyles.panelTitle}>
+            <Icon icon="mdi:history" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
+            {copy.title}
+          </h2>
+          <p className={styles.subtitle}>{copy.subtitle}</p>
+        </div>
+      </header>
+
+      <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
+        {toolbar}
+        {tableBlock}
+        {pagination}
+      </div>
+
+      {modals}
     </section>
   );
 }

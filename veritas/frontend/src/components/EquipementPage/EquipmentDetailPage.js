@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
 import { FaTimes, FaPlus, FaCamera } from "react-icons/fa";
@@ -264,6 +264,12 @@ export default function EquipmentDetailPage({
   const lastRmmRefreshSnapshotRef = useRef(null);
   const pageRootRef = useRef(null);
   const mainContentRef = useRef(null);
+  const heroTabsRef = useRef(null);
+  const activitySwitchRef = useRef(null);
+  const supervisionSwitchRef = useRef(null);
+  const [heroTabIndicator, setHeroTabIndicator] = useState({ left: 0, width: 0, ready: false });
+  const [activitySwitchIndicator, setActivitySwitchIndicator] = useState({ left: 0, width: 0, ready: false });
+  const [supervisionSwitchIndicator, setSupervisionSwitchIndicator] = useState({ left: 0, width: 0, ready: false });
   const equipmentUiIdRef = useRef(resolvedEquipmentId);
   const skipEquipmentUiPersistRef = useRef(false);
   const getEquipmentDbIdLocal = () => resolveEquipmentDbId(equipment);
@@ -1202,6 +1208,88 @@ export default function EquipmentDetailPage({
     checkmkControllerRef.current?.abort();
     availabilityControllerRef.current?.abort();
   }, [rightPanelTab]);
+
+  const measureSlidingTabIndicator = useCallback((root, setIndicator) => {
+    if (!root) return;
+    const active = root.querySelector('[role="tab"][aria-selected="true"]');
+    if (!active) {
+      setIndicator(prev => (prev.ready ? { ...prev, ready: false } : prev));
+      return;
+    }
+    const rootRect = root.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const next = {
+      left: activeRect.left - rootRect.left + root.scrollLeft,
+      width: activeRect.width,
+      ready: true
+    };
+    setIndicator(prev => (
+      prev.ready
+      && Math.abs(prev.left - next.left) < 0.5
+      && Math.abs(prev.width - next.width) < 0.5
+        ? prev
+        : next
+    ));
+  }, []);
+
+  useLayoutEffect(() => {
+    const root = heroTabsRef.current;
+    if (!root) return undefined;
+    const update = () => measureSlidingTabIndicator(root, setHeroTabIndicator);
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(root);
+    root.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      ro?.disconnect();
+      root.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [
+    measureSlidingTabIndicator,
+    rightPanelTab,
+    showRmmTabGroup,
+    showSupervisionTabGroup,
+    showSyntheseTab,
+    showRmmOperationsTab,
+    showRmmPeripheralsTab
+  ]);
+
+  useLayoutEffect(() => {
+    const root = activitySwitchRef.current;
+    if (!root) {
+      setActivitySwitchIndicator(prev => (prev.ready ? { left: 0, width: 0, ready: false } : prev));
+      return undefined;
+    }
+    const update = () => measureSlidingTabIndicator(root, setActivitySwitchIndicator);
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(root);
+    window.addEventListener("resize", update);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [measureSlidingTabIndicator, activityPane, rightPanelTab, showRmmMetricsTab]);
+
+  useLayoutEffect(() => {
+    const root = supervisionSwitchRef.current;
+    if (!root) {
+      setSupervisionSwitchIndicator(prev => (prev.ready ? { left: 0, width: 0, ready: false } : prev));
+      return undefined;
+    }
+    const update = () => measureSlidingTabIndicator(root, setSupervisionSwitchIndicator);
+    update();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(root);
+    window.addEventListener("resize", update);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [measureSlidingTabIndicator, supervisionPane, rightPanelTab, showSupervisionTab]);
+
   useEffect(() => {
     return () => {
       abortAllPendingFetches();
@@ -2171,7 +2259,22 @@ export default function EquipmentDetailPage({
       <div className={`${enterpriseDetailStyles.pageBody} ${enterpriseDetailStyles.pageBodyFill} ${styles.shell}`.trim()}>
         <div className={`${enterpriseDetailStyles.pageGrid} ${styles.pageGridEquip}`.trim()}>
         <div className={`${enterpriseDetailStyles.mainColumn} ${enterpriseDetailStyles.mainColumnEquipmentFill} ${styles.mainColumnEquip}`.trim()}>
-        <nav className={`${enterpriseDetailStyles.heroTabBar} ${styles.heroTabBarGrouped}`.trim()} role="tablist" aria-label={copy.tabs.aria}>
+        <nav
+          ref={heroTabsRef}
+          className={`${enterpriseDetailStyles.heroTabBar} ${styles.heroTabBarGrouped} ${styles.heroTabBarAnimated}`.trim()}
+          data-indicator-ready={heroTabIndicator.ready ? "true" : "false"}
+          role="tablist"
+          aria-label={copy.tabs.aria}
+        >
+          <span
+            className={styles.heroTabIndicator}
+            style={{
+              transform: `translateX(${heroTabIndicator.left}px)`,
+              width: heroTabIndicator.width,
+              opacity: heroTabIndicator.ready ? 1 : 0
+            }}
+            aria-hidden
+          />
           <div className={styles.heroTabGroup} role="presentation">
             <button type="button" role="tab" aria-selected={rightPanelTab === "fiche"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "fiche" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("fiche")}>
               <Icon icon="mdi:clipboard-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
@@ -2233,7 +2336,7 @@ export default function EquipmentDetailPage({
 
         <div ref={mainContentRef} className={styles.mainContent}>
           {rightPanelTab === "synthese" && showSyntheseTab ? (
-              <div className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo}`.trim()}>
+              <div key="synthese" className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}>
                 <div className={styles.dashboardMain}>
                   <EquipmentOverviewDashboard
                     equipment={equipmentWithRmmLive || equipment}
@@ -2251,7 +2354,7 @@ export default function EquipmentDetailPage({
             ) : null}
 
           {rightPanelTab === "fiche" ? (
-              <div className={styles.ficheLayout}>
+              <div key="fiche" className={`${styles.ficheLayout} ${styles.contentFadeUp}`.trim()}>
                 <div
                   className={`${styles.ficheMainRow} ${showRmmHeroStatus && rmmDeviceHealth ? styles.ficheMainRowWithScore : ""}`.trim()}
                 >
@@ -2310,8 +2413,23 @@ export default function EquipmentDetailPage({
               </div>
             ) : null}
 
-          {rightPanelTab === "supervision" && showSupervisionTab ? <div className={styles.supervisionStack}>
-              <div className={styles.activitySwitch} role="tablist" aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}>
+          {rightPanelTab === "supervision" && showSupervisionTab ? <div key="supervision" className={`${styles.supervisionStack} ${styles.contentFadeUp}`.trim()}>
+              <div
+                ref={supervisionSwitchRef}
+                className={`${styles.activitySwitch} ${styles.activitySwitchAnimated}`.trim()}
+                data-indicator-ready={supervisionSwitchIndicator.ready ? "true" : "false"}
+                role="tablist"
+                aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}
+              >
+                <span
+                  className={styles.activitySwitchIndicator}
+                  style={{
+                    transform: `translateX(${supervisionSwitchIndicator.left}px)`,
+                    width: supervisionSwitchIndicator.width,
+                    opacity: supervisionSwitchIndicator.ready ? 1 : 0
+                  }}
+                  aria-hidden
+                />
                 <button type="button" role="tab" aria-selected={supervisionPane === "main"} className={`${styles.activitySwitchBtn} ${supervisionPane === "main" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setSupervisionPane("main")}>
                   <Icon icon="mdi:radar" aria-hidden />
                   {copy.supervisionPane?.main || "Main"}
@@ -2322,7 +2440,7 @@ export default function EquipmentDetailPage({
                 </button>
               </div>
 
-              {supervisionPane === "main" ? <section className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel}`.trim()}>
+              {supervisionPane === "main" ? <section key="supervision-main" className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel} ${styles.contentFadeUp}`.trim()}>
                   <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
                     <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} lastSyncedAt={checkmkLastSyncedAt} layout="tab" onAvailabilityPeriodChange={period => {
                 setCheckmkAvailabilityPeriod(period);
@@ -2330,7 +2448,7 @@ export default function EquipmentDetailPage({
               }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
                   </div>
                 </section> : (
-                <div className={styles.historyTabLayout}>
+                <div key="supervision-history" className={`${styles.historyTabLayout} ${styles.contentFadeUp}`.trim()}>
                   <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
                   {equipmentDbId ? (
                     <EquipmentMaintenanceHistoryPanel
@@ -2351,8 +2469,23 @@ export default function EquipmentDetailPage({
               )}
             </div> : null}
 
-          {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>
-              {showRmmMetricsTab ? <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
+          {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div key="activity" className={`${styles.activityStack} ${styles.contentFadeUp}`.trim()}>
+              {showRmmMetricsTab ? <div
+                ref={activitySwitchRef}
+                className={`${styles.activitySwitch} ${styles.activitySwitchAnimated}`.trim()}
+                data-indicator-ready={activitySwitchIndicator.ready ? "true" : "false"}
+                role="tablist"
+                aria-label={copy.activityPane?.aria || copy.tabs.activity}
+              >
+                  <span
+                    className={styles.activitySwitchIndicator}
+                    style={{
+                      transform: `translateX(${activitySwitchIndicator.left}px)`,
+                      width: activitySwitchIndicator.width,
+                      opacity: activitySwitchIndicator.ready ? 1 : 0
+                    }}
+                    aria-hidden
+                  />
                   <button type="button" role="tab" aria-selected={activityPane === "metrics"} className={`${styles.activitySwitchBtn} ${activityPane === "metrics" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("metrics")}>
                     <Icon icon="mdi:chart-areaspline" aria-hidden />
                     {copy.activityPane?.metrics || copy.tabs.metrics}
@@ -2363,21 +2496,26 @@ export default function EquipmentDetailPage({
                   </button>
                 </div> : null}
 
-              {showRmmMetricsTab && activityPane === "metrics" ? rmmMetricsAgent ? <RmmMetricHistoryPanel agent={rmmMetricsAgent} active={rightPanelTab === "activity" || rightPanelTab === "metrics"} embedded /> : (
+              {showRmmMetricsTab && activityPane === "metrics" ? rmmMetricsAgent ? (
+                <div key="activity-metrics" className={styles.contentFadeUp}>
+                  <RmmMetricHistoryPanel agent={rmmMetricsAgent} active={rightPanelTab === "activity" || rightPanelTab === "metrics"} embedded />
+                </div>
+              ) : (
                 <EquipmentEmptyState
+                  key="activity-metrics-empty"
                   icon="mdi:chart-timeline-variant"
                   message={copy.metrics.unavailableTitle || copy.metrics.unavailableHint}
-                  className={styles.supervisionEmptyFill}
+                  className={`${styles.supervisionEmptyFill} ${styles.contentFadeUp}`.trim()}
                 />
               ) : (
-                  <div className={styles.activityVeritasLayout}>
+                  <div key="activity-veritas" className={`${styles.activityVeritasLayout} ${styles.contentFadeUp}`.trim()}>
                     <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
                     <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} hideDateFilter />
                   </div>
                 )}
             </div>}
 
-          {rightPanelTab === 'documents' && <section className={enterpriseDetailStyles.panel}>
+          {rightPanelTab === 'documents' && <section key="documents" className={`${enterpriseDetailStyles.panel} ${styles.contentFadeUp}`.trim()}>
               <header className={enterpriseDetailStyles.panelHeader}>
                 <div>
                   <h2 className={enterpriseDetailStyles.panelTitle}>
@@ -2391,9 +2529,13 @@ export default function EquipmentDetailPage({
               </div>
             </section>}
 
-          {rightPanelTab === "peripherals" && showRmmPeripheralsTab ? <RmmMonitoringPanel equipment={equipment} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="peripherals" agentStatusInHero={showRmmHeroStatus} /> : null}
+          {rightPanelTab === "peripherals" && showRmmPeripheralsTab ? (
+            <div key="peripherals" className={styles.contentFadeUp}>
+              <RmmMonitoringPanel equipment={equipment} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="peripherals" agentStatusInHero={showRmmHeroStatus} />
+            </div>
+          ) : null}
 
-          {rightPanelTab === "operations" && showRmmOperationsTab ? <div className={styles.dashboardSplit}>
+          {rightPanelTab === "operations" && showRmmOperationsTab ? <div key="operations" className={`${styles.dashboardSplit} ${styles.contentFadeUp}`.trim()}>
               <div className={styles.dashboardMain}>
                 <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="operations" agentStatusInHero={showRmmHeroStatus} />
               </div>
@@ -2416,7 +2558,7 @@ export default function EquipmentDetailPage({
               </div>
             </div> : null}
 
-          {rightPanelTab === "logs" ? <section className={`${enterpriseDetailStyles.panel} ${styles.logsPanel}`.trim()}>
+          {rightPanelTab === "logs" ? <section key="logs" className={`${enterpriseDetailStyles.panel} ${styles.logsPanel} ${styles.contentFadeUp}`.trim()}>
               <header className={enterpriseDetailStyles.panelHeader}>
                 <div className={enterpriseDetailStyles.panelHeaderMain}>
                   <h2 className={enterpriseDetailStyles.panelTitle}>

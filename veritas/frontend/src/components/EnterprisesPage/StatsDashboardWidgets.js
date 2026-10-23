@@ -113,17 +113,18 @@ export function KpiCard({
   label,
   value,
   sub,
-  tone = "neutral"
+  tone = "neutral",
+  className = ""
 }) {
-  return <div className={`${styles.kpiCard} ${styles[`kpi_${tone}`] || ""}`}>
-      <div className={styles.kpiIconWrap}>
-        <Icon icon={icon} className={styles.kpiIcon} />
-      </div>
-      <div className={styles.kpiBody}>
+  return <div className={`${styles.kpiCard} ${styles[`kpi_${tone}`] || ""} ${className}`.trim()}>
+      <div className={styles.kpiHead}>
+        <div className={styles.kpiIconWrap}>
+          <Icon icon={icon} className={styles.kpiIcon} />
+        </div>
         <span className={styles.kpiLabel}>{label}</span>
-        <span className={styles.kpiValue}>{value}</span>
-        {sub ? <span className={styles.kpiSub}>{sub}</span> : null}
       </div>
+      <span className={styles.kpiValue}>{value}</span>
+      {sub ? <span className={styles.kpiSub}>{sub}</span> : null}
     </div>;
 }
 

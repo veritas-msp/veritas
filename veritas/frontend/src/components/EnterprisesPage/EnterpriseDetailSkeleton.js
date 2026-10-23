@@ -9,7 +9,7 @@ export default function EnterpriseDetailSkeleton({ loadingAria, titleHint }) {
       showTitleIcon
       showMidSlot
       tabCount={4}
-      body="overview"
+      body="panels"
       showAside
       asideSections={7}
     />

@@ -2,7 +2,7 @@ import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const HOME_COPY = {
   fr: {
     heroTitle: "Tableau de bord MSP",
-    heroGreeting: "Bonjour, {name} 👋",
+    heroGreeting: "Bonjour, {name}",
     heroSubtitle: "Tout ce qu'il vous faut, au même endroit.",
     loading: "Chargement du tableau de bord…",
     errorLoad: "Impossible de charger le tableau de bord.",
@@ -69,6 +69,8 @@ const HOME_COPY = {
         pagerAria: "Pagination des événements",
         stripAria: "Événements des 7 prochains jours",
         today: "Auj.",
+        nextWeek: "S+1",
+        nextWeekAria: "Afficher la semaine suivante",
         dayCount: "{count}",
         dayAria: "{day} : {count} événement(s)",
         noneHint: "Aucun événement sur les 7 prochains jours"
@@ -158,10 +160,22 @@ const HOME_COPY = {
     },
     ticketsTable: {
       number: "N°",
+      title: "Titre",
       priority: "Priorité",
-      description: "Descriptif",
+      description: "Titre",
       company: "Entreprise",
-      modified: "Modifié"
+      status: "Statut",
+      sla: "SLA",
+      category: "Catégorie",
+      created: "Créé",
+      modified: "Modifié",
+      statusNew: "Nouveau",
+      statusOpen: "Ouvert",
+      statusPending: "En attente",
+      statusInProgress: "En cours",
+      statusToValidate: "À valider",
+      statusResolved: "Résolu",
+      statusClosed: "Clos"
     },
     eventsTable: {
       type: "Type",
@@ -270,7 +284,7 @@ const HOME_COPY = {
         },
         tickets: {
           title: "Mes tickets",
-          content: "Deux blocs distincts : tickets support et tickets services qui vous sont assignés, avec les compteurs Nouveau / En attente / En cours / À valider / Total."
+          content: "Deux grands blocs : tickets support et tickets services qui vous sont assignés. Les compteurs (total, en cours, en attente, à valider) sont alignés sur le titre de chaque carte."
         },
         surveillance: {
           title: "Surveillance",
@@ -278,11 +292,11 @@ const HOME_COPY = {
         },
         events: {
           title: "Mes événements",
-          content: "Consultez vos prochaines interventions et rendez-vous planifiés, avec le type d'événement et les dates. Le lien ouvre le planning complet."
+          content: "La frise des 7 prochains jours est intégrée au bandeau d'accueil. Cliquez pour ouvrir le planning complet."
         },
         supervision: {
           title: "Centre de supervision",
-          content: "Retrouvez vos tickets, vos événements et les alertes récentes. Ouvrez le centre de supervision depuis « Voir tout » sur les alertes."
+          content: "Page d'accueil : frise d'événements dans le bandeau, puis vos tickets support et services en grand format."
         },
         todo: {
           title: "À traiter",
@@ -297,7 +311,7 @@ const HOME_COPY = {
   },
   en: {
     heroTitle: "MSP dashboard",
-    heroGreeting: "Hello, {name} 👋",
+    heroGreeting: "Hello, {name}",
     heroSubtitle: "Everything you need, in one place.",
     loading: "Loading dashboard…",
     errorLoad: "Unable to load the dashboard.",
@@ -364,6 +378,8 @@ const HOME_COPY = {
         pagerAria: "Events pagination",
         stripAria: "Events over the next 7 days",
         today: "Today",
+        nextWeek: "W+1",
+        nextWeekAria: "Show next week",
         dayCount: "{count}",
         dayAria: "{day}: {count} event(s)",
         noneHint: "No events in the next 7 days"
@@ -453,10 +469,22 @@ const HOME_COPY = {
     },
     ticketsTable: {
       number: "No.",
+      title: "Title",
       priority: "Priority",
-      description: "Description",
+      description: "Title",
       company: "Company",
-      modified: "Updated"
+      status: "Status",
+      sla: "SLA",
+      category: "Category",
+      created: "Created",
+      modified: "Updated",
+      statusNew: "New",
+      statusOpen: "Open",
+      statusPending: "Pending",
+      statusInProgress: "In progress",
+      statusToValidate: "To validate",
+      statusResolved: "Resolved",
+      statusClosed: "Closed"
     },
     eventsTable: {
       type: "Type",
@@ -565,7 +593,7 @@ const HOME_COPY = {
         },
         tickets: {
           title: "My tickets",
-          content: "Two separate blocks: support tickets and services tickets assigned to you, with New / Pending / In progress / To validate / Total counts."
+          content: "Two large blocks: support and services tickets assigned to you. Counters (total, in progress, pending, to validate) sit on each card title row."
         },
         surveillance: {
           title: "Monitoring",
@@ -573,11 +601,11 @@ const HOME_COPY = {
         },
         events: {
           title: "My events",
-          content: "Review your upcoming interventions and appointments with event type and dates. Use the link to open the full schedule."
+          content: "The next-7-days strip sits in the welcome banner. Click it to open the full schedule."
         },
         supervision: {
           title: "Supervision center",
-          content: "Find your tickets, events and recent alerts. Open the supervision center from “See all” on the alerts."
+          content: "Home layout: events strip in the banner, then your support and services tickets in large cards."
         },
         todo: {
           title: "To do",
@@ -592,7 +620,7 @@ const HOME_COPY = {
   },
   de: {
     heroTitle: "MSP-Dashboard",
-    heroGreeting: "Guten Tag, {name} 👋",
+    heroGreeting: "Guten Tag, {name}",
     heroSubtitle: "Alles, was Sie brauchen · an einem Ort.",
     loading: "Dashboard wird geladen…",
     errorLoad: "Dashboard konnte nicht geladen werden.",
@@ -659,6 +687,8 @@ const HOME_COPY = {
         pagerAria: "Termin-Seiten",
         stripAria: "Termine der nächsten 7 Tage",
         today: "Heute",
+        nextWeek: "W+1",
+        nextWeekAria: "Nächste Woche anzeigen",
         dayCount: "{count}",
         dayAria: "{day}: {count} Termin(e)",
         noneHint: "Keine Termine in den nächsten 7 Tagen"
@@ -708,10 +738,22 @@ const HOME_COPY = {
     },
     ticketsTable: {
       number: "Nr.",
+      title: "Titel",
       priority: "Priorität",
-      description: "Beschreibung",
+      description: "Titel",
       company: "Unternehmen",
-      modified: "Geändert"
+      status: "Status",
+      sla: "SLA",
+      category: "Kategorie",
+      created: "Erstellt",
+      modified: "Geändert",
+      statusNew: "Neu",
+      statusOpen: "Offen",
+      statusPending: "Wartend",
+      statusInProgress: "In Bearbeitung",
+      statusToValidate: "Zu prüfen",
+      statusResolved: "Gelöst",
+      statusClosed: "Geschlossen"
     },
     eventsTable: {
       type: "Typ",
@@ -847,7 +889,7 @@ const HOME_COPY = {
   },
   it: {
     heroTitle: "Dashboard MSP",
-    heroGreeting: "Buongiorno, {name} 👋",
+    heroGreeting: "Buongiorno, {name}",
     heroSubtitle: "Tutto ciò che serve, in un solo posto.",
     loading: "Caricamento dashboard…",
     errorLoad: "Impossibile caricare la dashboard.",
@@ -914,6 +956,8 @@ const HOME_COPY = {
         pagerAria: "Paginazione eventi",
         stripAria: "Eventi dei prossimi 7 giorni",
         today: "Oggi",
+        nextWeek: "S+1",
+        nextWeekAria: "Mostra la settimana successiva",
         dayCount: "{count}",
         dayAria: "{day}: {count} evento/i",
         noneHint: "Nessun evento nei prossimi 7 giorni"
@@ -963,10 +1007,22 @@ const HOME_COPY = {
     },
     ticketsTable: {
       number: "N°",
+      title: "Titolo",
       priority: "Priorità",
-      description: "Descrizione",
+      description: "Titolo",
       company: "Azienda",
-      modified: "Modificato"
+      status: "Stato",
+      sla: "SLA",
+      category: "Categoria",
+      created: "Creato",
+      modified: "Modificato",
+      statusNew: "Nuovo",
+      statusOpen: "Aperto",
+      statusPending: "In attesa",
+      statusInProgress: "In corso",
+      statusToValidate: "Da validare",
+      statusResolved: "Risolto",
+      statusClosed: "Chiuso"
     },
     eventsTable: {
       type: "Tipo",
@@ -1102,7 +1158,7 @@ const HOME_COPY = {
   },
   es: {
     heroTitle: "Panel MSP",
-    heroGreeting: "Hola, {name} 👋",
+    heroGreeting: "Hola, {name}",
     heroSubtitle: "Todo lo que necesitas, en un solo lugar.",
     loading: "Cargando panel…",
     errorLoad: "No se pudo cargar el panel.",
@@ -1169,6 +1225,8 @@ const HOME_COPY = {
         pagerAria: "Paginación de eventos",
         stripAria: "Eventos de los próximos 7 días",
         today: "Hoy",
+        nextWeek: "S+1",
+        nextWeekAria: "Mostrar la semana siguiente",
         dayCount: "{count}",
         dayAria: "{day}: {count} evento(s)",
         noneHint: "Ningún evento en los próximos 7 días"
@@ -1218,10 +1276,22 @@ const HOME_COPY = {
     },
     ticketsTable: {
       number: "N.º",
+      title: "Título",
       priority: "Prioridad",
-      description: "Descripción",
+      description: "Título",
       company: "Empresa",
-      modified: "Modificado"
+      status: "Estado",
+      sla: "SLA",
+      category: "Categoría",
+      created: "Creado",
+      modified: "Modificado",
+      statusNew: "Nuevo",
+      statusOpen: "Abierto",
+      statusPending: "En espera",
+      statusInProgress: "En curso",
+      statusToValidate: "Por validar",
+      statusResolved: "Resuelto",
+      statusClosed: "Cerrado"
     },
     eventsTable: {
       type: "Tipo",

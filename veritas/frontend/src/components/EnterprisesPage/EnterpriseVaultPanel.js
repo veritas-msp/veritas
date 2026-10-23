@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
+import { Fragment, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaSearch, FaTimes } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
   DndContext,
@@ -30,16 +30,85 @@ import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
+import SortIcon from "../Misc/SortableHeader/SortIcon";
+import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import { repairFilenameEncoding } from "../../utils/repairFilenameEncoding";
-import pageLayout from "./EnterprisesPage.module.css";
+import { fetchTicketTableColumns } from "../../api/tickets";
+import {
+  DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS,
+  normalizeTicketTableColumns
+} from "../../utils/ticketTableColumns";
+import { usePermissions } from "../../contexts/PermissionsContext";
 import formStyles from "./EnterpriseFormModal.module.css";
+import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import styles from "./EnterpriseVaultPanel.module.css";
+
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const DEFAULT_CATEGORY = "Autre";
+const VAULT_PAGE_SCOPE = "enterprise_vault";
+const VAULT_COLUMN_HEADERS = {
+  name: "name",
+  description: "description",
+  visibility: "visibility",
+  size: "size",
+  date: "date"
+};
+const VAULT_SORT_DEFAULT = { key: null, direction: "asc" };
+
+function sanitizeVaultTableColumns(columns) {
+  const list = normalizeTicketTableColumns(columns, {
+    fallback: DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS,
+    pageScope: VAULT_PAGE_SCOPE
+  });
+  if (!list.includes("name")) list.unshift("name");
+  return list;
+}
+
+function vaultColumnClass(columnId) {
+  const map = {
+    description: styles.colDescription,
+    visibility: styles.colVisibility,
+    size: styles.colSize
+  };
+  return map[columnId] || undefined;
+}
 function displayFileName(file) {
   return repairFilenameEncoding(file?.file_name);
+}
+function compareVaultSortValues(a, b, direction) {
+  const mul = direction === "desc" ? -1 : 1;
+  if (a == null && b == null) return 0;
+  if (a == null || a === "") return 1;
+  if (b == null || b === "") return -1;
+  if (typeof a === "number" && typeof b === "number") return (a - b) * mul;
+  if (typeof a === "boolean" && typeof b === "boolean") return ((a ? 1 : 0) - (b ? 1 : 0)) * mul;
+  return String(a).localeCompare(String(b), undefined, { sensitivity: "base", numeric: true }) * mul;
+}
+function getVaultFolderSortValue(folder, columnId) {
+  if (columnId === "name") return folder?.name || "";
+  if (columnId === "description") return "";
+  if (columnId === "visibility") return Boolean(folder?.visibleToClient);
+  if (columnId === "size") return -1;
+  if (columnId === "date") {
+    const raw = folder?.updatedAt || folder?.createdAt;
+    const time = raw ? new Date(raw).getTime() : NaN;
+    return Number.isFinite(time) ? time : null;
+  }
+  return null;
+}
+function getVaultFileSortValue(file, columnId) {
+  if (columnId === "name") return displayFileName(file) || "";
+  if (columnId === "description") return String(file?.description || "").trim();
+  if (columnId === "visibility") return Boolean(file?.visible_to_client);
+  if (columnId === "size") return Number(file?.size_bytes) || 0;
+  if (columnId === "date") {
+    const time = file?.created_at ? new Date(file.created_at).getTime() : NaN;
+    return Number.isFinite(time) ? time : null;
+  }
+  return null;
 }
 function combineRefs(...refs) {
   return node => {
@@ -84,15 +153,21 @@ function vaultCacheKey(clientId, folderId) {
 export default forwardRef(function EnterpriseVaultPanel({
   clientId,
   clientName,
-  copy: copyProp
+  copy: copyProp,
+  /** DOM node: rendu de l’arborescence dans la colonne Finder (comme les familles matériel). */
+  treeNavPortalTarget = null
 }, ref) {
   const locale = useAppLocale();
   const {
     isCommunity,
     loaded: editionLoaded
   } = useVeritasEdition();
+  const { can } = usePermissions();
+  const canPublicViews = can("clients.public_views");
   const internalCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const copy = copyProp ?? internalCopy;
+  const copyRef = useRef(copy);
+  copyRef.current = copy;
   const common = useCommonCopy();
   const initialVaultCache = clientId
     ? vaultListingCache.get(vaultCacheKey(clientId, "root"))
@@ -104,6 +179,17 @@ export default forwardRef(function EnterpriseVaultPanel({
   const [loading, setLoading] = useState(() => !initialVaultCache);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [categoryMenuCoords, setCategoryMenuCoords] = useState(null);
+  const categoryMenuRef = useRef(null);
+  const categoryTriggerRef = useRef(null);
+  const [columnsModalOpen, setColumnsModalOpen] = useState(false);
+  const [publicTableColumns, setPublicTableColumns] = useState(() => sanitizeVaultTableColumns(DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
+  const [privateTableColumns, setPrivateTableColumns] = useState(null);
+  const [visibleTableColumns, setVisibleTableColumns] = useState(() => sanitizeVaultTableColumns(DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
+  const tableColumns = visibleTableColumns;
+  const [sortBy, setSortBy] = useState(null);
+  const [sortDirection, setSortDirection] = useState("asc");
   const [previewFile, setPreviewFile] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [pendingUploadFile, setPendingUploadFile] = useState(null);
@@ -185,12 +271,12 @@ export default forwardRef(function EnterpriseVaultPanel({
         hasVaultContentRef.current = false;
       }
       if (err?.code !== "PRO_FEATURE_REQUIRED") {
-        toast.error(copy.toast.loadError);
+        toast.error(copyRef.current.toast.loadError);
       }
     } finally {
       setLoading(false);
     }
-  }, [clientId, copy.toast.loadError, currentFolderId, editionLoaded, isCommunity]);
+  }, [clientId, currentFolderId, editionLoaded, isCommunity]);
   useEffect(() => {
     load();
   }, [load]);
@@ -209,11 +295,46 @@ export default forwardRef(function EnterpriseVaultPanel({
     setSearch("");
     setCategoryFilter("all");
   }, [clientId]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await fetchTicketTableColumns(VAULT_PAGE_SCOPE);
+        if (cancelled) return;
+        setPublicTableColumns(sanitizeVaultTableColumns(Array.isArray(data?.public) ? data.public : DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
+        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? sanitizeVaultTableColumns(data.private) : null);
+        setVisibleTableColumns(sanitizeVaultTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
+      } catch {
+        if (!cancelled) toast.error(copyRef.current.toasts?.loadColumns || "Error loading columns");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const handleColumnsSaved = useCallback(result => {
+    if (Array.isArray(result?.public)) setPublicTableColumns(sanitizeVaultTableColumns(result.public));
+    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? sanitizeVaultTableColumns(result.private) : null);
+    setVisibleTableColumns(sanitizeVaultTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
+  }, []);
+  const handleSort = useCallback(column => {
+    const next = cycleSortState({
+      column,
+      sortBy,
+      sortDirection,
+      defaultSortBy: VAULT_SORT_DEFAULT.key,
+      defaultSortDirection: VAULT_SORT_DEFAULT.direction,
+      firstDirection: column === "date" || column === "size" ? "desc" : "asc"
+    });
+    setSortBy(next.sortBy);
+    setSortDirection(next.sortDirection);
+  }, [sortBy, sortDirection]);
   useImperativeHandle(ref, () => ({
     openUploadModal: (file = null) => {
       setPendingUploadFile(file || null);
       setShowUploadModal(true);
-    }
+    },
+    openCreateFolder: () => setShowFolderModal(true)
   }), []);
   const hasExternalFiles = useCallback(dataTransfer => {
     if (!dataTransfer) return false;
@@ -277,17 +398,75 @@ export default forwardRef(function EnterpriseVaultPanel({
   }, [hasExternalFiles, openUploadWithFile]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return files.filter(file => {
+    const list = files.filter(file => {
       if (categoryFilter !== "all" && file.category !== categoryFilter) return false;
       if (!q) return true;
       return displayFileName(file).toLowerCase().includes(q) || String(file.category || "").toLowerCase().includes(q) || String(file.description || "").toLowerCase().includes(q);
     });
-  }, [files, search, categoryFilter]);
+    if (!sortBy) return list;
+    return [...list].sort((left, right) =>
+      compareVaultSortValues(getVaultFileSortValue(left, sortBy), getVaultFileSortValue(right, sortBy), sortDirection || "asc")
+    );
+  }, [files, search, categoryFilter, sortBy, sortDirection]);
   const filteredFolders = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return folders;
-    return folders.filter(folder => String(folder.name || "").toLowerCase().includes(q));
-  }, [folders, search]);
+    const list = !q
+      ? folders
+      : folders.filter(folder => String(folder.name || "").toLowerCase().includes(q));
+    if (!sortBy) return list;
+    return [...list].sort((left, right) =>
+      compareVaultSortValues(getVaultFolderSortValue(left, sortBy), getVaultFolderSortValue(right, sortBy), sortDirection || "asc")
+    );
+  }, [folders, search, sortBy, sortDirection]);
+  const categoryOptions = useMemo(
+    () => [
+      { value: "all", label: copy.panel.allTypes },
+      ...(copy.categoryKeys || []).map(cat => ({
+        value: cat,
+        label: copy.getCategoryLabel(cat)
+      }))
+    ],
+    [copy]
+  );
+  const categoryFilterLabel = useMemo(() => {
+    const match = categoryOptions.find(opt => opt.value === categoryFilter);
+    return match?.label || copy.panel.allTypes;
+  }, [categoryOptions, categoryFilter, copy.panel.allTypes]);
+  useEffect(() => {
+    if (!categoryMenuOpen) {
+      setCategoryMenuCoords(null);
+      return undefined;
+    }
+    const updateCoords = () => {
+      const trigger = categoryTriggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setCategoryMenuCoords({
+        top: rect.bottom + 6,
+        left: rect.left,
+        minWidth: Math.max(rect.width, 180)
+      });
+    };
+    updateCoords();
+    const onPointerDown = event => {
+      const inTrigger = categoryTriggerRef.current?.contains(event.target);
+      const inMenu = categoryMenuRef.current?.contains(event.target);
+      if (!inTrigger && !inMenu) setCategoryMenuOpen(false);
+    };
+    const onKeyDown = event => {
+      if (event.key === "Escape") setCategoryMenuOpen(false);
+    };
+    window.addEventListener("resize", updateCoords);
+    window.addEventListener("scroll", updateCoords, true);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("resize", updateCoords);
+      window.removeEventListener("scroll", updateCoords, true);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [categoryMenuOpen]);
   const navigateToFolder = useCallback((folderId) => {
     if (!folderId) {
       setFolderPath([]);
@@ -439,6 +618,60 @@ export default forwardRef(function EnterpriseVaultPanel({
     }
   }, [copy.panel.moveError, copy.toast.updateError, moveItemToFolder, movingItem]);
   const isEmpty = !loading && filteredFolders.length === 0 && filtered.length === 0;
+  const treePane = (
+    <aside
+      className={`${styles.treePane} ${treeNavPortalTarget ? styles.treePanePortaled : ""}`.trim()}
+      aria-label={copy.panel.treeTitle}
+      onContextMenu={e => {
+        if (e.target === e.currentTarget || e.target?.closest?.(`.${styles.treePaneHeader}`)) {
+          openContextMenu(e, { kind: "blank", folderId: null });
+        }
+      }}
+    >
+      {!treeNavPortalTarget ? (
+        <div className={styles.treePaneHeader}>
+          <span className={styles.treePaneHeaderTitle}>
+            <span>{copy.panel.treeTitle}</span>
+          </span>
+          <button
+            type="button"
+            className={styles.treeAddFolderBtn}
+            onClick={() => setShowFolderModal(true)}
+            title={copy.panel.newFolder}
+            aria-label={copy.panel.newFolder}
+          >
+            <Icon icon="mdi:plus" aria-hidden />
+          </button>
+        </div>
+      ) : null}
+      <VaultDropTarget
+        id="drop-root"
+        data={{ kind: "root", id: null }}
+        className={`${styles.treeItem} ${!currentFolderId ? styles.treeItemActive : ""}`}
+        activeClassName={styles.treeItemDropTarget}
+      >
+        <button
+          type="button"
+          className={styles.treeItemBtn}
+          onClick={() => navigateToFolder(null)}
+          onContextMenu={e => openContextMenu(e, { kind: "blank", folderId: null })}
+        >
+          <Icon icon="mdi:safe-square-outline" aria-hidden />
+          <span className={styles.treeItemLabel}>{copy.panel.treeRoot}</span>
+        </button>
+      </VaultDropTarget>
+      <VaultFolderTree
+        parentId={null}
+        depth={0}
+        childrenMap={childrenMap}
+        currentFolderId={currentFolderId}
+        onSelect={navigateToFolder}
+        onContextMenu={openContextMenu}
+        dragLabel={copy.panel.dragHandleAria}
+        copy={copy}
+      />
+    </aside>
+  );
   return <div
       className={`${styles.panelRoot} ${fileDropActive ? styles.panelRootFileDrop : ""}`.trim()}
       onDragEnter={handlePanelDragEnter}
@@ -452,57 +685,10 @@ export default forwardRef(function EnterpriseVaultPanel({
         </div> : null}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
-      <div className={styles.vaultLayout}>
-        <aside
-          className={styles.treePane}
-          aria-label={copy.panel.treeTitle}
-          onContextMenu={e => {
-            if (e.target === e.currentTarget || e.target?.closest?.(`.${styles.treePaneHeader}`)) {
-              openContextMenu(e, { kind: "blank", folderId: null });
-            }
-          }}
-        >
-          <div className={styles.treePaneHeader}>
-            <span className={styles.treePaneHeaderTitle}>
-              <Icon icon="mdi:file-tree-outline" aria-hidden />
-              <span>{copy.panel.treeTitle}</span>
-            </span>
-            <button
-              type="button"
-              className={styles.treeAddFolderBtn}
-              onClick={() => setShowFolderModal(true)}
-              title={copy.panel.newFolder}
-              aria-label={copy.panel.newFolder}
-            >
-              <Icon icon="mdi:plus" aria-hidden />
-            </button>
-          </div>
-          <VaultDropTarget
-            id="drop-root"
-            data={{ kind: "root", id: null }}
-            className={`${styles.treeItem} ${!currentFolderId ? styles.treeItemActive : ""}`}
-            activeClassName={styles.treeItemDropTarget}
-          >
-            <button
-              type="button"
-              className={styles.treeItemBtn}
-              onClick={() => navigateToFolder(null)}
-              onContextMenu={e => openContextMenu(e, { kind: "blank", folderId: null })}
-            >
-              <Icon icon="mdi:safe-square-outline" aria-hidden />
-              <span className={styles.treeItemLabel}>{copy.panel.treeRoot}</span>
-            </button>
-          </VaultDropTarget>
-          <VaultFolderTree
-            parentId={null}
-            depth={0}
-            childrenMap={childrenMap}
-            currentFolderId={currentFolderId}
-            onSelect={navigateToFolder}
-            onContextMenu={openContextMenu}
-            dragLabel={copy.panel.dragHandleAria}
-          />
-        </aside>
+      <div className={`${styles.vaultLayout} ${treeNavPortalTarget ? styles.vaultLayoutPortalTree : ""}`.trim()}>
+        {treeNavPortalTarget && typeof document !== "undefined"
+          ? createPortal(treePane, treeNavPortalTarget)
+          : treePane}
 
         <div
           className={styles.contentPane}
@@ -510,41 +696,115 @@ export default forwardRef(function EnterpriseVaultPanel({
             if (e.target === e.currentTarget) openContextMenu(e, { kind: "blank", folderId: currentFolderId });
           }}
         >
-          {folderPath.length > 0 ? <div className={styles.vaultNavRow}>
-            <nav className={styles.breadcrumb} aria-label={copy.panel.rootBreadcrumb || "Vault"}>
-              <button type="button" className={styles.breadcrumbItem} onClick={() => goToBreadcrumb(-1)}>
-                <Icon icon="mdi:safe-square-outline" aria-hidden />
-                {copy.panel.rootBreadcrumb || "Coffre-fort"}
-              </button>
-              {folderPath.map((crumb, index) => (
-                <span key={crumb.id} className={styles.breadcrumbSeg}>
-                  <Icon icon="mdi:chevron-right" className={styles.breadcrumbSep} aria-hidden />
+          <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.vaultToolbar}`}>
+            <div className={equipStyles.embeddedSearchWrap}>
+              <div className={equipStyles.embeddedSearchBox}>
+                <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+                <input
+                  type="text"
+                  className={equipStyles.embeddedSearchInput}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder={copy.panel.searchPlaceholder}
+                  aria-label={copy.panel.searchPlaceholder}
+                />
+                {search ? (
                   <button
                     type="button"
-                    className={`${styles.breadcrumbItem} ${index === folderPath.length - 1 ? styles.breadcrumbCurrent : ""}`}
-                    onClick={() => goToBreadcrumb(index)}
+                    className={equipStyles.embeddedSearchClear}
+                    onClick={() => setSearch("")}
+                    aria-label={copy.panel.clearSearchAria}
                   >
-                    {crumb.name}
+                    <FaTimes aria-hidden />
                   </button>
-                </span>
-              ))}
-            </nav>
-          </div> : null}
-
-          <div className={styles.filters}>
-            <div className={`${pageLayout.searchWrap} ${styles.searchWrap}`}>
-              <FaSearch className={pageLayout.searchIcon} aria-hidden />
-              <input className={pageLayout.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder={copy.panel.searchPlaceholder} />
-              {search ? <button type="button" className={pageLayout.clearButton} onClick={() => setSearch("")} aria-label={copy.panel.clearSearchAria}>
-                  <FaTimes />
-                </button> : null}
+                ) : null}
+              </div>
+              <div className={`${equipStyles.embeddedSearchActions} ${styles.vaultToolbarActions}`}>
+                {folderPath.length > 0 ? (
+                  <div className={styles.macosPathPill} aria-label={copy.panel.rootBreadcrumb || "Vault"}>
+                    <button type="button" className={styles.macosPathBtn} onClick={() => goToBreadcrumb(-1)} title={copy.panel.rootBreadcrumb || "Coffre-fort"}>
+                      <Icon icon="mdi:safe-square-outline" aria-hidden />
+                    </button>
+                    {folderPath.map((crumb, index) => (
+                      <Fragment key={crumb.id}>
+                        <span className={styles.macosPathSep} aria-hidden>
+                          <Icon icon="mdi:chevron-right" />
+                        </span>
+                        <button
+                          type="button"
+                          className={`${styles.macosPathBtn} ${index === folderPath.length - 1 ? styles.macosPathBtnCurrent : ""}`}
+                          onClick={() => goToBreadcrumb(index)}
+                        >
+                          <Icon icon="mdi:folder-outline" aria-hidden />
+                          <span>{crumb.name}</span>
+                        </button>
+                      </Fragment>
+                    ))}
+                  </div>
+                ) : null}
+                <div className={styles.macosPillSelectWrap}>
+                  <button
+                    type="button"
+                    ref={categoryTriggerRef}
+                    className={styles.macosPillSelectTrigger}
+                    onClick={() => setCategoryMenuOpen(open => !open)}
+                    aria-label={copy.panel.allTypes}
+                    aria-haspopup="listbox"
+                    aria-expanded={categoryMenuOpen}
+                  >
+                    <Icon icon="mdi:filter-variant" className={styles.macosPillSelectIcon} aria-hidden />
+                    <span className={styles.macosPillSelectValue}>{categoryFilterLabel}</span>
+                    <Icon
+                      icon="mdi:chevron-down"
+                      className={`${styles.macosPillSelectChevron} ${categoryMenuOpen ? styles.macosPillSelectChevronOpen : ""}`.trim()}
+                      aria-hidden
+                    />
+                  </button>
+                  {categoryMenuOpen && categoryMenuCoords && typeof document !== "undefined"
+                    ? createPortal(
+                        <ul
+                          ref={categoryMenuRef}
+                          className={styles.macosPillSelectMenu}
+                          role="listbox"
+                          aria-label={copy.panel.allTypes}
+                          style={{
+                            top: categoryMenuCoords.top,
+                            left: categoryMenuCoords.left,
+                            minWidth: categoryMenuCoords.minWidth
+                          }}
+                        >
+                          {categoryOptions.map(option => (
+                            <li key={option.value} role="none">
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={categoryFilter === option.value}
+                                className={`${styles.macosPillSelectOption} ${categoryFilter === option.value ? styles.macosPillSelectOptionActive : ""}`.trim()}
+                                onClick={() => {
+                                  setCategoryFilter(option.value);
+                                  setCategoryMenuOpen(false);
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>,
+                        document.body
+                      )
+                    : null}
+                </div>
+                <button
+                  type="button"
+                  className={styles.columnsPillBtn}
+                  onClick={() => setColumnsModalOpen(true)}
+                  aria-label={copy.columnsSettings || "Colonnes"}
+                  title={copy.columnsSettings || "Colonnes"}
+                >
+                  <Icon icon="mdi:table-cog" aria-hidden />
+                </button>
+              </div>
             </div>
-            <select className={`${pageLayout.sortSelect} ${styles.filterSelect}`} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-              <option value="all">{copy.panel.allTypes}</option>
-              {copy.categoryKeys.map(cat => <option key={cat} value={cat}>
-                  {copy.getCategoryLabel(cat)}
-                </option>)}
-            </select>
           </div>
 
           {isEmpty ? <VaultDropTarget
@@ -557,55 +817,75 @@ export default forwardRef(function EnterpriseVaultPanel({
               <Icon icon={currentFolderId ? "mdi:folder-open-outline" : "mdi:safe-square-outline"} className={styles.emptyIcon} aria-hidden />
               <p>{currentFolderId ? (copy.panel.emptyFolder || copy.panel.empty) : copy.panel.empty}</p>
               <p className={styles.emptyDropHint}>{copy.panel.fileDropHint || copy.panel.dragHint}</p>
-            </VaultDropTarget> : <div
-              className={styles.tableWrap}
-              onContextMenu={e => {
-                if (e.target === e.currentTarget || e.target?.tagName === "TABLE" || e.target?.tagName === "TBODY") {
-                  openContextMenu(e, { kind: "blank", folderId: currentFolderId });
-                }
-              }}
-            >
-              <table className={styles.vaultTable}>
-                <thead>
-                  <tr>
-                    <th className={styles.colDrag} aria-hidden />
-                    <th>{copy.panel.colName}</th>
-                    <th className={styles.colDescription}>{copy.panel.colDescription}</th>
-                    <th className={styles.colVisibility}>{copy.panel.colVisibility}</th>
-                    <th className={styles.colSize}>{copy.panel.colSize}</th>
-                    <th>{copy.panel.colDate}</th>
-                    <th className={styles.colActions}>{copy.panel.colActions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFolders.map(folder => (
-                    <VaultFolderRow
-                      key={`folder-${folder.id}`}
-                      folder={folder}
-                      copy={copy}
-                      dragLabel={copy.panel.dragHandleAria}
-                      onOpen={openFolder}
-                      onToggleVisibility={toggleFolderVisibility}
-                      onRename={setRenameTarget}
-                      onDelete={requestDeleteFolder}
-                      onContextMenu={openContextMenu}
-                    />
-                  ))}
-                  {filtered.map(file => (
-                    <VaultFileRow
-                      key={`file-${file.id}`}
-                      file={file}
-                      copy={copy}
-                      dragLabel={copy.panel.dragHandleAria}
-                      onPreview={setPreviewFile}
-                      onToggleVisibility={toggleFileVisibility}
-                      onEdit={setEditingFile}
-                      onDelete={requestDeleteFile}
-                      onContextMenu={openContextMenu}
-                    />
-                  ))}
-                </tbody>
-              </table>
+            </VaultDropTarget> : <div className={styles.tableScrollShell}>
+              <div
+                className={styles.tableWrap}
+                onContextMenu={e => {
+                  if (e.target === e.currentTarget || e.target?.tagName === "TABLE" || e.target?.tagName === "TBODY") {
+                    openContextMenu(e, { kind: "blank", folderId: currentFolderId });
+                  }
+                }}
+              >
+                <table className={styles.vaultTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.colDrag} aria-hidden />
+                      {tableColumns.map(columnId => {
+                        const labelKey = VAULT_COLUMN_HEADERS[columnId] || columnId;
+                        const label = copy.table?.[labelKey] || columnId;
+                        const isSorted = sortBy === columnId;
+                        const columnClass = [vaultColumnClass(columnId), styles.sortableTh].filter(Boolean).join(" ");
+                        return (
+                          <th
+                            key={columnId}
+                            className={columnClass}
+                            onClick={() => handleSort(columnId)}
+                            aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                          >
+                            <span className={styles.thContent}>
+                              {label}
+                              {isSorted ? (
+                                <SortIcon active direction={sortDirection || "asc"} className={styles.sortIndicator} />
+                              ) : null}
+                            </span>
+                          </th>
+                        );
+                      })}
+                      <th className={styles.colActions}>{copy.panel.colActions}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFolders.map(folder => (
+                      <VaultFolderRow
+                        key={`folder-${folder.id}`}
+                        folder={folder}
+                        copy={copy}
+                        visibleColumns={tableColumns}
+                        dragLabel={copy.panel.dragHandleAria}
+                        onOpen={openFolder}
+                        onToggleVisibility={toggleFolderVisibility}
+                        onRename={setRenameTarget}
+                        onDelete={requestDeleteFolder}
+                        onContextMenu={openContextMenu}
+                      />
+                    ))}
+                    {filtered.map(file => (
+                      <VaultFileRow
+                        key={`file-${file.id}`}
+                        file={file}
+                        copy={copy}
+                        visibleColumns={tableColumns}
+                        dragLabel={copy.panel.dragHandleAria}
+                        onPreview={setPreviewFile}
+                        onToggleVisibility={toggleFileVisibility}
+                        onEdit={setEditingFile}
+                        onDelete={requestDeleteFile}
+                        onContextMenu={openContextMenu}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>}
         </div>
       </div>
@@ -736,6 +1016,19 @@ export default forwardRef(function EnterpriseVaultPanel({
         onClose={closeDeleteConfirm}
         onConfirm={confirmDelete}
       />
+
+      <TicketColumnsModal
+        open={columnsModalOpen}
+        onClose={() => setColumnsModalOpen(false)}
+        onSaved={handleColumnsSaved}
+        isAdmin={canPublicViews}
+        pageScope={VAULT_PAGE_SCOPE}
+        initialPublic={publicTableColumns}
+        initialPrivate={privateTableColumns}
+        initialEffective={visibleTableColumns}
+        columnLabelKeys={VAULT_COLUMN_HEADERS}
+        copy={copy}
+      />
     </div>;
 });
 
@@ -753,7 +1046,7 @@ function VaultDropTarget({
     </div>;
 }
 
-function VaultFolderTree({ parentId, depth, childrenMap, currentFolderId, onSelect, onContextMenu, dragLabel }) {
+function VaultFolderTree({ parentId, depth, childrenMap, currentFolderId, onSelect, onContextMenu, dragLabel, copy }) {
   const kids = childrenMap.get(parentId || "root") || [];
   if (!kids.length) return null;
   return kids.map(folder => (
@@ -766,11 +1059,12 @@ function VaultFolderTree({ parentId, depth, childrenMap, currentFolderId, onSele
       onSelect={onSelect}
       onContextMenu={onContextMenu}
       dragLabel={dragLabel}
+      copy={copy}
     />
   ));
 }
 
-function VaultTreeFolderItem({ folder, depth, childrenMap, currentFolderId, onSelect, onContextMenu, dragLabel }) {
+function VaultTreeFolderItem({ folder, depth, childrenMap, currentFolderId, onSelect, onContextMenu, dragLabel, copy }) {
   const drag = useDraggable({
     id: `drag-tree-folder-${folder.id}`,
     data: {
@@ -787,6 +1081,7 @@ function VaultTreeFolderItem({ folder, depth, childrenMap, currentFolderId, onSe
       id: folder.id
     }
   });
+  const fileCount = Number(folder.fileCount) || 0;
   return <div className={styles.treeBranch}>
       <div
         ref={combineRefs(drag.setNodeRef, drop.setNodeRef)}
@@ -800,7 +1095,13 @@ function VaultTreeFolderItem({ folder, depth, childrenMap, currentFolderId, onSe
         <button type="button" className={styles.treeItemBtn} onClick={() => onSelect(folder.id)}>
           <Icon icon={folder.visibleToClient ? "mdi:folder" : "mdi:folder-lock-outline"} aria-hidden />
           <span className={styles.treeItemLabel}>{folder.name}</span>
-          {!folder.visibleToClient ? <Icon icon="mdi:eye-off-outline" className={styles.treeHiddenIcon} aria-hidden /> : null}
+          <span
+            className={styles.folderDocCount}
+            title={interpolate(copy?.panel?.filesCount || "{count}", { count: String(fileCount) })}
+          >
+            {fileCount}
+          </span>
+          {!folder.visibleToClient ? <Icon icon="mdi:eye-off-outline" className={styles.treeHiddenIcon} aria-hidden /> : <span className={styles.treeHiddenIconSpacer} aria-hidden />}
         </button>
       </div>
       <VaultFolderTree
@@ -811,6 +1112,7 @@ function VaultTreeFolderItem({ folder, depth, childrenMap, currentFolderId, onSe
         onSelect={onSelect}
         onContextMenu={onContextMenu}
         dragLabel={dragLabel}
+        copy={copy}
       />
     </div>;
 }
@@ -818,6 +1120,7 @@ function VaultTreeFolderItem({ folder, depth, childrenMap, currentFolderId, onSe
 function VaultFolderRow({
   folder,
   copy,
+  visibleColumns = DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS,
   dragLabel,
   onOpen,
   onToggleVisibility,
@@ -853,33 +1156,50 @@ function VaultFolderRow({
           <Icon icon="mdi:drag-vertical" aria-hidden />
         </button>
       </td>
-      <td>
-        <button type="button" className={styles.rowNameBtn} onClick={() => onOpen(folder)}>
-          <Icon icon="mdi:folder" className={styles.rowFolderIcon} aria-hidden />
-          <span className={styles.rowName}>{folder.name}</span>
-          <span
-            className={styles.folderDocCount}
-            title={interpolate(copy.panel.filesCount, { count: String(fileCount) })}
-          >
-            {fileCount}
-          </span>
-        </button>
-      </td>
-      <td className={`${styles.mutedCell} ${styles.colDescription}`}>—</td>
-      <td className={styles.colVisibility}>
-        <button
-          type="button"
-          className={`${styles.visibilityIconBtn} ${folder.visibleToClient ? styles.visibilityIconOn : styles.visibilityIconOff}`}
-          onClick={() => onToggleVisibility(folder)}
-          title={`${copy.panel.toggleFolderVisibility} — ${visibilityLabel}`}
-          aria-label={`${copy.panel.toggleFolderVisibility}: ${visibilityLabel}`}
-          aria-pressed={folder.visibleToClient}
-        >
-          <Icon icon={folder.visibleToClient ? "mdi:eye-outline" : "mdi:eye-off-outline"} aria-hidden />
-        </button>
-      </td>
-      <td className={`${styles.mutedCell} ${styles.colSize}`}>—</td>
-      <td className={styles.mutedCell}>{copy.formatDate(folder.updatedAt || folder.createdAt)}</td>
+      {visibleColumns.map(columnId => {
+        if (columnId === "name") {
+          return (
+            <td key={columnId}>
+              <button type="button" className={styles.rowNameBtn} onClick={() => onOpen(folder)}>
+                <Icon icon="mdi:folder" className={styles.rowFolderIcon} aria-hidden />
+                <span className={styles.rowName}>{folder.name}</span>
+                <span
+                  className={styles.folderDocCount}
+                  title={interpolate(copy.panel.filesCount, { count: String(fileCount) })}
+                >
+                  {fileCount}
+                </span>
+              </button>
+            </td>
+          );
+        }
+        if (columnId === "description") {
+          return <td key={columnId} className={`${styles.mutedCell} ${styles.colDescription}`}>—</td>;
+        }
+        if (columnId === "visibility") {
+          return (
+            <td key={columnId} className={styles.colVisibility}>
+              <button
+                type="button"
+                className={`${styles.visibilityIconBtn} ${folder.visibleToClient ? styles.visibilityIconOn : styles.visibilityIconOff}`}
+                onClick={() => onToggleVisibility(folder)}
+                title={`${copy.panel.toggleFolderVisibility} — ${visibilityLabel}`}
+                aria-label={`${copy.panel.toggleFolderVisibility}: ${visibilityLabel}`}
+                aria-pressed={folder.visibleToClient}
+              >
+                <Icon icon={folder.visibleToClient ? "mdi:eye-outline" : "mdi:eye-off-outline"} aria-hidden />
+              </button>
+            </td>
+          );
+        }
+        if (columnId === "size") {
+          return <td key={columnId} className={`${styles.mutedCell} ${styles.colSize}`}>—</td>;
+        }
+        if (columnId === "date") {
+          return <td key={columnId} className={styles.mutedCell}>{copy.formatDate(folder.updatedAt || folder.createdAt)}</td>;
+        }
+        return null;
+      })}
       <td className={styles.colActions}>
         <div className={styles.rowActions}>
           <button type="button" className={styles.actionBtn} onClick={() => onRename(folder)} title={copy.panel.renameFolder}><Icon icon="mdi:pencil-outline" aria-hidden /></button>
@@ -892,6 +1212,7 @@ function VaultFolderRow({
 function VaultFileRow({
   file,
   copy,
+  visibleColumns = DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS,
   dragLabel,
   onPreview,
   onToggleVisibility,
@@ -903,6 +1224,7 @@ function VaultFileRow({
   const isPdf = file.mime_type === "application/pdf";
   const isImage = IMAGE_MIMES.has(file.mime_type);
   const visibilityLabel = file.visible_to_client ? copy.panel.visibilityOn : copy.panel.visibilityOff;
+  const description = String(file.description || "").trim();
   const drag = useDraggable({
     id: `drag-file-${file.id}`,
     data: {
@@ -922,39 +1244,53 @@ function VaultFileRow({
           <Icon icon="mdi:drag-vertical" aria-hidden />
         </button>
       </td>
-      <td>
-        <button type="button" className={styles.rowNameBtn} onClick={() => onPreview(file)} title={copy.card.previewTitle}>
-          <Icon icon={isImage ? "mdi:file-image-outline" : isPdf ? "mdi:file-pdf-box" : "mdi:file-document-outline"} className={styles.rowFileIcon} aria-hidden />
-          <span className={styles.rowName}>{fileName}</span>
-        </button>
-      </td>
-      <td className={`${styles.mutedCell} ${styles.colDescription}`}>
-        {(() => {
-          const description = String(file.description || "").trim();
+      {visibleColumns.map(columnId => {
+        if (columnId === "name") {
           return (
-            <span
-              className={`${styles.descriptionCell} ${description ? "" : styles.descriptionEmpty}`.trim()}
-              title={description || undefined}
-            >
-              {description || "—"}
-            </span>
+            <td key={columnId}>
+              <button type="button" className={styles.rowNameBtn} onClick={() => onPreview(file)} title={copy.card.previewTitle}>
+                <Icon icon={isImage ? "mdi:file-image-outline" : isPdf ? "mdi:file-pdf-box" : "mdi:file-document-outline"} className={styles.rowFileIcon} aria-hidden />
+                <span className={styles.rowName}>{fileName}</span>
+              </button>
+            </td>
           );
-        })()}
-      </td>
-      <td className={styles.colVisibility}>
-        <button
-          type="button"
-          className={`${styles.visibilityIconBtn} ${file.visible_to_client ? styles.visibilityIconOn : styles.visibilityIconOff}`}
-          onClick={() => onToggleVisibility(file)}
-          title={`${copy.panel.toggleFileVisibility} — ${visibilityLabel}`}
-          aria-label={`${copy.panel.toggleFileVisibility}: ${visibilityLabel}`}
-          aria-pressed={Boolean(file.visible_to_client)}
-        >
-          <Icon icon={file.visible_to_client ? "mdi:eye-outline" : "mdi:eye-off-outline"} aria-hidden />
-        </button>
-      </td>
-      <td className={`${styles.mutedCell} ${styles.colSize}`}>{copy.formatSize(file.size_bytes)}</td>
-      <td className={styles.mutedCell}>{copy.formatDate(file.created_at)}</td>
+        }
+        if (columnId === "description") {
+          return (
+            <td key={columnId} className={`${styles.mutedCell} ${styles.colDescription}`}>
+              <span
+                className={`${styles.descriptionCell} ${description ? "" : styles.descriptionEmpty}`.trim()}
+                title={description || undefined}
+              >
+                {description || "—"}
+              </span>
+            </td>
+          );
+        }
+        if (columnId === "visibility") {
+          return (
+            <td key={columnId} className={styles.colVisibility}>
+              <button
+                type="button"
+                className={`${styles.visibilityIconBtn} ${file.visible_to_client ? styles.visibilityIconOn : styles.visibilityIconOff}`}
+                onClick={() => onToggleVisibility(file)}
+                title={`${copy.panel.toggleFileVisibility} — ${visibilityLabel}`}
+                aria-label={`${copy.panel.toggleFileVisibility}: ${visibilityLabel}`}
+                aria-pressed={Boolean(file.visible_to_client)}
+              >
+                <Icon icon={file.visible_to_client ? "mdi:eye-outline" : "mdi:eye-off-outline"} aria-hidden />
+              </button>
+            </td>
+          );
+        }
+        if (columnId === "size") {
+          return <td key={columnId} className={`${styles.mutedCell} ${styles.colSize}`}>{copy.formatSize(file.size_bytes)}</td>;
+        }
+        if (columnId === "date") {
+          return <td key={columnId} className={styles.mutedCell}>{copy.formatDate(file.created_at)}</td>;
+        }
+        return null;
+      })}
       <td className={styles.colActions}>
         <div className={styles.rowActions}>
           <a href={getDownloadUrl(file.id)} download={fileName} className={styles.actionBtn} title={copy.card.downloadTitle}><Icon icon="mdi:download-outline" aria-hidden /></a>

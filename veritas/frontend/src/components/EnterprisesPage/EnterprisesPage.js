@@ -5,7 +5,7 @@ import API_BASE_URL from "../../config";
 import CrmListTableSkeleton from "../Misc/Skeleton/CrmListTableSkeleton";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import styles from "./EnterprisesPage.module.css";
-import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
+import { UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as kit } from "../UiKit";
 import { Icon } from "@iconify/react";
 import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
@@ -125,11 +125,13 @@ export default function EnterprisesPage({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useDefaultPageSize();
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [publicTableColumns, setPublicTableColumns] = useState(() => sanitizeEnterprisesTableColumns(DEFAULT_ENTERPRISES_TABLE_COLUMNS));
   const [privateTableColumns, setPrivateTableColumns] = useState(null);
   const [visibleTableColumns, setVisibleTableColumns] = useState(() => sanitizeEnterprisesTableColumns(DEFAULT_ENTERPRISES_TABLE_COLUMNS));
   const tableColumns = visibleTableColumns;
   const listControllerRef = useRef(null);
+  const moreMenuRef = useRef(null);
   const isMountedRef = useRef(true);
   useEffect(() => {
     if (!pageParams?.openCreateModal) return;
@@ -181,6 +183,21 @@ export default function EnterprisesPage({
     if (!isCompact) return;
     setSelectedIds(new Set());
   }, [isCompact]);
+  useEffect(() => {
+    if (!moreMenuOpen) return undefined;
+    const onPointerDown = event => {
+      if (!moreMenuRef.current?.contains(event.target)) setMoreMenuOpen(false);
+    };
+    const onKeyDown = event => {
+      if (event.key === "Escape") setMoreMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [moreMenuOpen]);
   const defaultModules = useMemo(() => buildEmptyModulesMap(contractModules), [contractModules]);
   useEffect(() => {
     isMountedRef.current = true;
@@ -627,10 +644,7 @@ export default function EnterprisesPage({
   const renderCompanyStatus = client => {
     const status = copy.getCompanyStatus(client.statut);
     const isActive = status.key === "active";
-    return <span className={`${styles.statusPill} ${isActive ? styles.statusPillActive : styles.statusPillInactive}`}>
-        <StatusDot active={isActive} label="" aria-hidden />
-        <span>{status.label}</span>
-      </span>;
+    return <StatusDot active={isActive} label={status.label} className={styles.statusDotOnly} />;
   };
   const ThSort = ({
     label,
@@ -646,68 +660,147 @@ export default function EnterprisesPage({
       buttonClassName={styles.thBtn}
     />
   );
-  const tableToolbar = <>
-      <div className={`${styles.searchWrap} ${styles.searchWrapInCard}`}>
-        <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
-        <input type="text" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.searchInput} aria-label={copy.searchAria} />
-        {searchQuery ? <SmartTooltip content={copy.clearSearch}>
-            <button type="button" onClick={() => setSearchQuery("")} className={styles.clearButton} aria-label={copy.clearSearch}>
-              <FaTimes />
+  const tableToolbar = <div className={styles.tableSearchBar}>
+        <header className={styles.cardHead}>
+          <span className={styles.cardHeadIcon} aria-hidden>
+            <Icon icon="mdi:office-building-outline" />
+          </span>
+          <h1 className={styles.cardTitle}>{copy.pageTitle}</h1>
+        </header>
+        <div className={kit.searchBox}>
+          <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+          <input
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            placeholder={copy.searchPlaceholder}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className={kit.searchInput}
+            aria-label={copy.searchAria}
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              className={kit.searchClear}
+              onClick={() => setSearchQuery("")}
+              aria-label={copy.clearSearch}
+            >
+              <Icon icon="mdi:close" aria-hidden />
             </button>
-          </SmartTooltip> : null}
-      </div>
-      <div className={styles.statusChips} role="group">
-        {copy.companyStatusFilterItems.map(item => {
-        const count = companyStatusCounts[item.key] || 0;
-        const active = companyStatusFilters.has(item.key);
-        return <button key={`company-${item.key}`} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleCompanyStatusFilter(item.key)} disabled={loading || error || count === 0}>
-              <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
-                <Icon icon={item.icon} />
-              </span>
-              <span className={styles.statusChipLabel}>{item.label}</span>
-              <span className={styles.statusChipCount}>{count}</span>
-            </button>;
-      })}
-        <span className={styles.statusChipSeparator} aria-hidden />
-        {copy.statusFilterItems.map(item => {
-        const count = statusCounts[item.key] || 0;
-        const active = statusFilters.has(item.key);
-        return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
-              <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
-                <Icon icon={item.icon} />
-              </span>
-              <span className={styles.statusChipLabel}>{item.label}</span>
-              <span className={styles.statusChipCount}>{count}</span>
-            </button>;
-      })}
-      </div>
-      <div className={styles.toolbarActions}>
-        <SmartTooltip content={copy.columnsSettings}>
-          <button type="button" className={styles.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={copy.columnsSettingsAria}>
-            <Icon icon="mdi:table-cog" />
-          </button>
-        </SmartTooltip>
-        {canExportEnterprises ? <SmartTooltip content={copy.exportCsv}>
-            <button type="button" className={styles.iconBtn} onClick={handleExportCsv} aria-label={copy.exportCsvAria}>
-              <Icon icon="mdi:download-outline" />
-            </button>
-          </SmartTooltip> : null}
-        {canCreateEnterprise ? <SmartTooltip content={copy.newEnterprise}>
-            <button type="button" className={`${styles.primaryBtn} ${styles.primaryBtnIconOnly}`} onClick={() => {
-          setClientModalInitial(null);
-          setShowClientModal(true);
-        }} aria-label={copy.newEnterprise}>
-              <FaPlus />
-            </button>
-          </SmartTooltip> : null}
-      </div>
-    </>;
+          ) : null}
+        </div>
+        <div className={styles.toolbarActions}>
+          <div className={styles.statusChips} role="group" aria-label={copy.filterByContract}>
+            {copy.companyStatusFilterItems.map(item => {
+              const count = companyStatusCounts[item.key] || 0;
+              const active = companyStatusFilters.has(item.key);
+              return (
+                <button
+                  key={`company-${item.key}`}
+                  type="button"
+                  className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`}
+                  onClick={() => toggleCompanyStatusFilter(item.key)}
+                  disabled={loading || error || count === 0}
+                >
+                  <span className={styles.statusChipIcon}>
+                    <Icon icon={item.icon} aria-hidden />
+                  </span>
+                  <span className={styles.statusChipLabel}>{item.label}</span>
+                  <span className={styles.statusChipCount}>{count}</span>
+                </button>
+              );
+            })}
+            <span className={styles.statusChipSeparator} aria-hidden />
+            {copy.statusFilterItems.map(item => {
+              const count = statusCounts[item.key] || 0;
+              const active = statusFilters.has(item.key);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`}
+                  onClick={() => toggleStatusFilter(item.key)}
+                  disabled={loading || error || count === 0}
+                >
+                  <span className={styles.statusChipIcon}>
+                    <Icon icon={item.icon} aria-hidden />
+                  </span>
+                  <span className={styles.statusChipLabel}>{item.label}</span>
+                  <span className={styles.statusChipCount}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className={styles.toolbarGroupedActions}>
+            <div className={styles.exportMenuWrap} ref={moreMenuRef}>
+              <SmartTooltip content={copy.moreActions || "Plus d'actions"}>
+                <button
+                  type="button"
+                  className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                  onClick={() => setMoreMenuOpen(open => !open)}
+                  aria-expanded={moreMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label={copy.moreActions || "Plus d'actions"}
+                >
+                  <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
+                </button>
+              </SmartTooltip>
+              {moreMenuOpen ? (
+                <div className={styles.exportMenu} role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={styles.exportMenuItem}
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      setColumnsModalOpen(true);
+                    }}
+                  >
+                    <Icon icon="mdi:table-cog" className={styles.exportMenuItemIcon} aria-hidden />
+                    {copy.columnsSettings}
+                  </button>
+                  {canExportEnterprises ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.exportMenuItem}
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        handleExportCsv();
+                      }}
+                    >
+                      <Icon icon="mdi:download-outline" className={styles.exportMenuItemIcon} aria-hidden />
+                      {copy.exportCsv}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            {canCreateEnterprise ? (
+              <SmartTooltip content={copy.newEnterprise}>
+                <button
+                  type="button"
+                  className={`${kit.btnSquare} ${kit.btnSquarePrimary}`}
+                  onClick={() => {
+                    setClientModalInitial(null);
+                    setShowClientModal(true);
+                  }}
+                  aria-label={copy.newEnterprise}
+                >
+                  <Icon icon="mdi:plus" aria-hidden />
+                </button>
+              </SmartTooltip>
+            ) : null}
+          </div>
+        </div>
+    </div>;
   const showSkeleton = Boolean(loading);
   return <div className={`${mspStyles.mspPage} ${styles.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${styles.contentNoHero}`}>
-            <h1 className={styles.srOnly}>{copy.pageTitle}</h1>
             <div className={`${styles.shell} ${styles.shellWide} ${styles.shellFull}`}>
         {error && !showSkeleton ? <div className={`${styles.stateBox} ${styles.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />
@@ -715,14 +808,10 @@ export default function EnterprisesPage({
           </div> : <div className={styles.listBody}>
             <div className={styles.listArea}>
               <div className={styles.panelCard}>
-                <div className={styles.tableSearchBar}>
-                  {tableToolbar}
-                </div>
+                {tableToolbar}
 
                 {!showSkeleton && paginatedClients.length === 0 ? <div className={styles.emptyStateInCard}>
-                    <Icon icon="mdi:office-building-outline" className={styles.emptyStateIcon} />
-                    <p className={styles.emptyStateTitle}>{copy.emptyTitle}</p>
-                    <p className={styles.emptyStateHint}>{copy.emptyHint}</p>
+                    <UiKitEmptyState bare icon="mdi:office-building-outline" title={copy.emptyTitle} text={copy.emptyHint} />
                     {canCreateEnterprise ? <button type="button" className={styles.primaryBtn} onClick={() => {
                 setClientModalInitial(null);
                 setShowClientModal(true);
@@ -731,8 +820,10 @@ export default function EnterprisesPage({
                         {copy.newEnterprise}
                       </button> : null}
                   </div> : <>
-                    <div className={styles.dataTableWrap}>
-                    <div className={styles.dataTableScroll}>
+                    <UiKitScrollFadeShell
+                      className={styles.dataTableWrap}
+                      deps={[paginatedClients.length, pageSize, searchQuery, tableColumns.join("|"), showSkeleton]}
+                    >
                       <table className={styles.dataTable} aria-busy={showSkeleton || undefined} aria-label={showSkeleton ? copy.loading : undefined}>
                         <thead>
                           <tr>
@@ -886,8 +977,7 @@ export default function EnterprisesPage({
                   })}
                         </tbody>
                       </table>
-                    </div>
-                    </div>
+                    </UiKitScrollFadeShell>
 
                     <div className={`${styles.pagination} ${styles.paginationEmbedded}`}>
                       <div className={styles.paginationLeft}>
@@ -907,7 +997,7 @@ export default function EnterprisesPage({
                       <div className={styles.paginationRight}>
                         <SmartTooltip content={copy.prevPage}>
                           <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={showSkeleton || currentPage <= 1} aria-label={copy.prevPage}>
-                            <FaChevronLeft />
+                            <Icon icon="mdi:chevron-left" aria-hidden />
                           </button>
                         </SmartTooltip>
                         <span className={styles.paginationInfo}>
@@ -915,7 +1005,7 @@ export default function EnterprisesPage({
                         </span>
                         <SmartTooltip content={copy.nextPage}>
                           <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={showSkeleton || currentPage >= totalPages} aria-label={copy.nextPage}>
-                            <FaChevronRight />
+                            <Icon icon="mdi:chevron-right" aria-hidden />
                           </button>
                         </SmartTooltip>
                       </div>

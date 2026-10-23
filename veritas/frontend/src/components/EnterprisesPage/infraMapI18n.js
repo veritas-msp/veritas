@@ -1,7 +1,7 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 import { getInfraStatusMeta, toInfraDisplayStatus } from "./infraMapUtils";
 const HONEYCOMB_TYPE_KEYS = ["Internet", "Firewalls", "Serveurs", "Stockage", "Switch", "BorneWifi", "Routeur", "Alimentation", "TOIP", "Ordinateurs"];
-const BRICK_GROUP_KEYS = ["cybersecurity", "services", "licensing", "campaign"];
+const BRICK_GROUP_KEYS = ["cybersecurity", "services", "licensing"];
 const BRICK_TYPE_KEYS = ["Antivirus", "Antispam", "Sauvegarde", "TenantMicrosoft", "GoogleWorkspace", "NDD", "CertificatsSSL", "LicensesAbonnements", "Campagne"];
 const STATUS_KEYS = ["disabled", "clear", "attention"];
 const INFRA_MAP_COPY = {
@@ -45,8 +45,7 @@ const INFRA_MAP_COPY = {
     brickGroups: {
       cybersecurity: "Cybersécurité",
       services: "Services",
-      licensing: "Licences & abonnements",
-      campaign: "Campagnes"
+      licensing: "Licences & abonnements"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -74,6 +73,21 @@ const INFRA_MAP_COPY = {
         TenantMicrosoft: "Tenant Microsoft",
         GoogleWorkspace: "Google Workspace"
       }
+    },
+    preview: {
+      panelAria: "Aperçu du service",
+      selectTitle: "Sélectionnez un service",
+      selectHint: "Choisissez un module à gauche pour visualiser sa configuration ou en ajouter une.",
+      open: "Ouvrir",
+      add: "Ajouter",
+      configure: "Configurer",
+      comingSoon: "Bientôt",
+      comingSoonHint: "Bientôt disponible",
+      proRequired: "Veritas Pro",
+      proHint: "Disponible avec Veritas Pro",
+      configuredHint: "Solution configurée",
+      emptyHint: "Aucune solution configurée",
+      emptyBody: "Ajoutez une solution pour ce client afin de commencer le suivi."
     }
   },
   en: {
@@ -116,8 +130,7 @@ const INFRA_MAP_COPY = {
     brickGroups: {
       cybersecurity: "Cybersecurity",
       services: "Services",
-      licensing: "Licenses & subscriptions",
-      campaign: "Campaigns"
+      licensing: "Licenses & subscriptions"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -144,6 +157,21 @@ const INFRA_MAP_COPY = {
         TenantMicrosoft: "Microsoft tenant",
         GoogleWorkspace: "Google Workspace"
       }
+    },
+    preview: {
+      panelAria: "Service preview",
+      selectTitle: "Select a service",
+      selectHint: "Pick a module on the left to preview its setup or add a solution.",
+      open: "Open",
+      add: "Add",
+      configure: "Configure",
+      comingSoon: "Soon",
+      comingSoonHint: "Coming soon",
+      proRequired: "Veritas Pro",
+      proHint: "Available with Veritas Pro",
+      configuredHint: "Solution configured",
+      emptyHint: "No solution configured",
+      emptyBody: "Add a solution for this client to start tracking it."
     }
   },
   de: {
@@ -187,7 +215,6 @@ const INFRA_MAP_COPY = {
       cybersecurity: "Cybersicherheit",
       services: "Services",
       licensing: "Lizenzen & Abonnements",
-      campaign: "Kampagne"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -214,6 +241,21 @@ const INFRA_MAP_COPY = {
         TenantMicrosoft: "Microsoft-Tenant",
         GoogleWorkspace: "Google Workspace"
       }
+    },
+    preview: {
+      panelAria: "Servicevorschau",
+      selectTitle: "Service auswählen",
+      selectHint: "Wählen Sie links ein Modul, um die Konfiguration anzuzeigen oder eine Lösung hinzuzufügen.",
+      open: "Öffnen",
+      add: "Hinzufügen",
+      configure: "Konfigurieren",
+      comingSoon: "Demnächst",
+      comingSoonHint: "Demnächst verfügbar",
+      proRequired: "Veritas Pro",
+      proHint: "Mit Veritas Pro verfügbar",
+      configuredHint: "Lösung konfiguriert",
+      emptyHint: "Keine Lösung konfiguriert",
+      emptyBody: "Fügen Sie eine Lösung für diesen Kunden hinzu, um die Überwachung zu starten."
     }
   },
   it: {
@@ -257,7 +299,6 @@ const INFRA_MAP_COPY = {
       cybersecurity: "Cybersicurezza",
       services: "Servizi",
       licensing: "Licenze e abbonamenti",
-      campaign: "Campagna"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -284,6 +325,21 @@ const INFRA_MAP_COPY = {
         TenantMicrosoft: "Tenant Microsoft",
         GoogleWorkspace: "Google Workspace"
       }
+    },
+    preview: {
+      panelAria: "Anteprima servizio",
+      selectTitle: "Seleziona un servizio",
+      selectHint: "Scegli un modulo a sinistra per visualizzare la configurazione o aggiungerne una.",
+      open: "Apri",
+      add: "Aggiungi",
+      configure: "Configura",
+      comingSoon: "Presto",
+      comingSoonHint: "Presto disponibile",
+      proRequired: "Veritas Pro",
+      proHint: "Disponibile con Veritas Pro",
+      configuredHint: "Soluzione configurata",
+      emptyHint: "Nessuna soluzione configurata",
+      emptyBody: "Aggiungi una soluzione per questo cliente per iniziare il monitoraggio."
     }
   },
   es: {
@@ -327,7 +383,6 @@ const INFRA_MAP_COPY = {
       cybersecurity: "Ciberseguridad",
       services: "Servicios",
       licensing: "Licencias y suscripciones",
-      campaign: "Campaña"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -354,6 +409,21 @@ const INFRA_MAP_COPY = {
         TenantMicrosoft: "Tenant Microsoft",
         GoogleWorkspace: "Google Workspace"
       }
+    },
+    preview: {
+      panelAria: "Vista previa del servicio",
+      selectTitle: "Seleccione un servicio",
+      selectHint: "Elija un módulo a la izquierda para ver su configuración o añadir una solución.",
+      open: "Abrir",
+      add: "Añadir",
+      configure: "Configurar",
+      comingSoon: "Pronto",
+      comingSoonHint: "Próximamente",
+      proRequired: "Veritas Pro",
+      proHint: "Disponible con Veritas Pro",
+      configuredHint: "Solución configurada",
+      emptyHint: "Ninguna solución configurada",
+      emptyBody: "Añada una solución para este cliente para empezar el seguimiento."
     }
   }
 };

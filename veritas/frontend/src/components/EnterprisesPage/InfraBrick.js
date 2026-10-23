@@ -10,6 +10,7 @@ export default function InfraBrick({
   brick,
   placeholder = false,
   onClick,
+  onContextMenu,
   active = false,
   isCommunity = false,
   copy
@@ -30,38 +31,65 @@ export default function InfraBrick({
   const statusTooltip = isEmptyVisual || isClear ? null : copy.getStatusLabel(brick.status);
   const tooltipLines = [brick.label, isComingSoon ? copy.brick.comingSoonTooltip : null, isProLocked ? copy.brick.proTooltip : null, !isComingSoon ? brick.subtitle || statusTooltip : null, !isComingSoon && brick.countLabel ? brick.countLabel : !isComingSoon && brick.count > 0 ? copy.formatElementCount(brick.count) : null, !isComingSoon && isAlwaysClickable && brick.count === 0 ? copy.brick.clickToConfigure : null].filter(Boolean);
   const handleClick = event => {
-    const featureKey = INFRA_BRICK_PRO_FEATURE_KEYS[brick.type];
-    if (isComingSoon || isProLocked) {
-      notifyProFeature(copy.getProFeatureLabel(brick.type, brick.label), featureKey);
-      return;
-    }
+    // Toujours sélectionner pour le panneau preview ; le toast Pro / bientôt
+    // reste géré par les actions du panneau (ou ici en secours sans callback parent).
     onClick?.(brick, event);
+    if ((isComingSoon || isProLocked) && typeof onClick !== "function") {
+      const featureKey = INFRA_BRICK_PRO_FEATURE_KEYS[brick.type];
+      notifyProFeature(copy.getProFeatureLabel(brick.type, brick.label), featureKey);
+    }
   };
   const content = <>
-      <Icon icon={icon} className={styles.brickIcon} aria-hidden />
-      <span className={styles.brickName}>{displayName}</span>
-      {isComingSoon ? <span className={styles.brickComingSoonBadge}>{copy.brick.comingSoon}</span> : null}
-      {isProLocked ? <ProFeatureBadge variant="inline" className={styles.brickProBadge} /> : null}
-      {hasData && !isComingSoon && <span className={styles.infraItemCount} aria-hidden>
-          {brick.countLabel || brick.count}
-        </span>}
+      <span className={styles.brickGlyph} aria-hidden>
+        <Icon icon={icon} className={styles.brickIcon} />
+        {isComingSoon ? <span className={styles.brickComingSoonBadge}>{copy.brick.comingSoon}</span> : null}
+        {isProLocked ? <ProFeatureBadge variant="inline" className={styles.brickProBadge} /> : null}
+      </span>
+      <span className={styles.brickCaption}>
+        <span className={styles.brickName}>{displayName}</span>
+      </span>
     </>;
-  const brickClassName = [styles.brickNode, isEmptyTemplate && styles.brickNodePlaceholder, isEmptyVisual && styles.brickNodeDisabled, isComingSoon && styles.brickNodeComingSoon, isProLocked && styles.brickNodeProLocked, isClear ? styles.brickNodeClear : "", isAttention ? styles.brickNodeAttention : "", active && styles.brickNodeActive].filter(Boolean).join(" ");
+  const brickClassName = [
+    styles.brickNode,
+    isEmptyTemplate && styles.brickNodePlaceholder,
+    isEmptyVisual && styles.brickNodeDisabled,
+    isComingSoon && styles.brickNodeComingSoon,
+    isProLocked && styles.brickNodeProLocked,
+    isClear ? styles.brickNodeClear : "",
+    isAttention ? styles.brickNodeAttention : "",
+    active && styles.brickNodeActive
+  ].filter(Boolean).join(" ");
+  const brickStyle = {
+    "--brick-accent": meta.color,
+    "--brick-soft": meta.soft
+  };
   if (interactive) {
     return <SmartTooltip content={tooltipLines.join(" · ")} as="span">
-        <button type="button" className={brickClassName} style={{
-        "--brick-accent": meta.color,
-        "--brick-soft": meta.soft
-      }} onClick={handleClick} aria-label={`${displayName}${isComingSoon ? copy.brick.comingSoonAria : isProLocked ? copy.brick.proAria : statusTooltip ? `, ${statusTooltip}` : ""}${brick.countLabel ? `, ${brick.countLabel}` : brick.count > 0 && !isComingSoon ? `, ${copy.formatElementCount(brick.count)}` : ""}`} aria-pressed={active || undefined}>
+        <button
+          type="button"
+          className={brickClassName}
+          data-brick-type={brick.type || ""}
+          style={brickStyle}
+          onClick={handleClick}
+          onContextMenu={event => {
+            if (typeof onContextMenu !== "function") return;
+            event.preventDefault();
+            onContextMenu(brick, event);
+          }}
+          aria-label={`${displayName}${isComingSoon ? copy.brick.comingSoonAria : isProLocked ? copy.brick.proAria : statusTooltip ? `, ${statusTooltip}` : ""}${brick.countLabel ? `, ${brick.countLabel}` : brick.count > 0 && !isComingSoon ? `, ${copy.formatElementCount(brick.count)}` : ""}`}
+          aria-pressed={active || undefined}
+        >
           <span className={styles.brickInner}>{content}</span>
         </button>
       </SmartTooltip>;
   }
   return <SmartTooltip content={isEmptyTemplate ? undefined : tooltipLines.join(" · ")} as="span">
-      <div className={brickClassName} style={{
-      "--brick-accent": meta.color,
-      "--brick-soft": meta.soft
-    }} aria-hidden={isEmptyTemplate}>
+      <div
+        className={brickClassName}
+        data-brick-type={brick.type || ""}
+        style={brickStyle}
+        aria-hidden={isEmptyTemplate}
+      >
         <span className={styles.brickInner}>{content}</span>
       </div>
     </SmartTooltip>;

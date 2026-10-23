@@ -579,6 +579,13 @@ router.get('/:id/logs', verifyJWT, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    const logSortColumns = {
+      action: "l.action",
+      user: "COALESCE(u.username, u.email)",
+      date: "l.created_at"
+    };
+    const sortColumn = logSortColumns[String(req.query.sortBy || "date").trim().toLowerCase()] || logSortColumns.date;
+    const sortDir = String(req.query.sortDir || "desc").trim().toLowerCase() === "asc" ? "ASC" : "DESC";
     const result = await pool.query(`SELECT
         l.id,
         l.contact_id,
@@ -591,7 +598,7 @@ router.get('/:id/logs', verifyJWT, async (req, res) => {
        FROM v_b_contacts_logs l
        LEFT JOIN v_b_users u ON l.user_id::text = u.id::text
        WHERE l.contact_id = $1
-       ORDER BY l.created_at DESC
+       ORDER BY ${sortColumn} ${sortDir} NULLS LAST, l.id DESC
        LIMIT $2 OFFSET $3`, [parseInt(id), limit, offset]);
     const countResult = await pool.query(`SELECT COUNT(*) as total
        FROM v_b_contacts_logs

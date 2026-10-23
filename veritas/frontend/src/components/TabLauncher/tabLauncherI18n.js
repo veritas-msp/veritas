@@ -8,7 +8,8 @@ const TAB_LAUNCHER_COPY = {
       exploitation: "Exploitation",
       managed: "Services managés",
       pilotage: "Pilotage",
-      account: "Compte"
+      account: "Compte",
+      dev: "Développement"
     },
     items: {
       enterprises: "Entreprises",
@@ -48,7 +49,9 @@ const TAB_LAUNCHER_COPY = {
       admin: "Administration",
       adminDesc: "Paramètres et configuration",
       home: "Accueil",
-      homeDesc: "Tableau de bord"
+      homeDesc: "Tableau de bord",
+      uiKit: "UI Kit",
+      uiKitDesc: "Modèles d’interface (couleurs, boutons, tables, finder…)"
     },
     tabBadge: "Onglet",
     proBadge: "Pro"
@@ -61,7 +64,8 @@ const TAB_LAUNCHER_COPY = {
       exploitation: "Operations",
       managed: "Managed services",
       pilotage: "Management",
-      account: "Account"
+      account: "Account",
+      dev: "Development"
     },
     items: {
       enterprises: "Companies",
@@ -101,7 +105,9 @@ const TAB_LAUNCHER_COPY = {
       admin: "Administration",
       adminDesc: "Settings and configuration",
       home: "Home",
-      homeDesc: "Dashboard"
+      homeDesc: "Dashboard",
+      uiKit: "UI Kit",
+      uiKitDesc: "UI templates (colors, buttons, tables, finder…)"
     },
     tabBadge: "Tab",
     proBadge: "Pro"
@@ -114,7 +120,8 @@ const TAB_LAUNCHER_COPY = {
       exploitation: "Betrieb",
       managed: "Managed Services",
       pilotage: "Steuerung",
-      account: "Konto"
+      account: "Konto",
+      dev: "Entwicklung"
     },
     items: {
       enterprises: "Unternehmen",
@@ -154,7 +161,9 @@ const TAB_LAUNCHER_COPY = {
       admin: "Administration",
       adminDesc: "Einstellungen und Konfiguration",
       home: "Startseite",
-      homeDesc: "Dashboard"
+      homeDesc: "Dashboard",
+      uiKit: "UI Kit",
+      uiKitDesc: "UI-Vorlagen (Farben, Buttons, Tabellen, Finder…)"
     },
     tabBadge: "Tab",
     proBadge: "Pro"
@@ -167,7 +176,8 @@ const TAB_LAUNCHER_COPY = {
       exploitation: "Operazioni",
       managed: "Servizi gestiti",
       pilotage: "Pilotaggio",
-      account: "Account"
+      account: "Account",
+      dev: "Sviluppo"
     },
     items: {
       enterprises: "Aziende",
@@ -207,7 +217,9 @@ const TAB_LAUNCHER_COPY = {
       admin: "Amministrazione",
       adminDesc: "Impostazioni e configurazione",
       home: "Home",
-      homeDesc: "Dashboard"
+      homeDesc: "Dashboard",
+      uiKit: "UI Kit",
+      uiKitDesc: "Modelli UI (colori, pulsanti, tabelle, finder…)"
     },
     tabBadge: "Scheda",
     proBadge: "Pro"
@@ -220,7 +232,8 @@ const TAB_LAUNCHER_COPY = {
       exploitation: "Operaciones",
       managed: "Servicios gestionados",
       pilotage: "Gestión",
-      account: "Cuenta"
+      account: "Cuenta",
+      dev: "Desarrollo"
     },
     items: {
       enterprises: "Empresas",
@@ -260,7 +273,9 @@ const TAB_LAUNCHER_COPY = {
       admin: "Administración",
       adminDesc: "Ajustes y configuración",
       home: "Inicio",
-      homeDesc: "Panel de control"
+      homeDesc: "Panel de control",
+      uiKit: "UI Kit",
+      uiKitDesc: "Plantillas UI (colores, botones, tablas, finder…)"
     },
     tabBadge: "Pestaña",
     proBadge: "Pro"
@@ -381,5 +396,14 @@ export const TAB_LAUNCHER_SECTIONS = [{
     labelKey: "admin",
     descKey: "adminDesc",
     adminOnly: true
+  }]
+}, {
+  sectionKey: "dev",
+  items: [{
+    docType: "UiKit",
+    icon: "mdi:palette-swatch-outline",
+    labelKey: "uiKit",
+    descKey: "uiKitDesc",
+    devOnly: true
   }]
 }];

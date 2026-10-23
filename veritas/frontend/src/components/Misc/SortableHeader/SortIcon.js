@@ -2,7 +2,7 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import styles from "./SortableHeader.module.css";
 
-/** Icône de tri DocumentsHub : double chevron inactif, flèche unique actif. */
+/** Icône de tri : double chevron inactif, chevron unique quand la colonne est triée. */
 export default function SortIcon({
   active = false,
   direction = "asc",
@@ -10,8 +10,8 @@ export default function SortIcon({
 }) {
   const icon = active
     ? direction === "asc"
-      ? "mdi:arrow-up"
-      : "mdi:arrow-down"
+      ? "mdi:chevron-up"
+      : "mdi:chevron-down"
     : "mdi:unfold-more-horizontal";
   return (
     <Icon

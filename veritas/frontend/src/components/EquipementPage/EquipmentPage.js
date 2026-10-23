@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { getAllHardwareEquipment, getClientHardwareEquipment, getEquipmentMonitoringSummaries, mapClientHardwareEquipment, syncEquipmentCheckMKMonitoring, equipmentTypeToFamily, fetchEquipmentTagsBatch } from "../../api/equipment";
 import CheckMKMonitoringStatusBadge, { isCheckMKMappableType } from "./CheckMKMonitoringStatusBadge";
 import styles from "./EquipmentPage.module.css";
@@ -8,6 +9,11 @@ import { toast } from "react-toastify";
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
+import {
+  UiKitTable,
+  uiKitTableStyles as tableKit,
+  uiKitLayoutsStyles as layoutKit
+} from "../UiKit";
 import EquipmentDetailPage from "./EquipmentDetailPage";
 import EquipmentAddFlowModal from "./EquipmentAddFlowModal";
 import EquipmentMappingModal from "./EquipmentMappingModal";
@@ -895,10 +901,64 @@ const EMBEDDED_TYPE_COLUMNS = {
   Backup: ["name", "server", "version", "jobsCount", "mappedJobsCount"]
 };
 function getEmbeddedCellClassName(colKey, styles) {
-  if (colKey === "brandIcon") return styles.embeddedColBrand;
-  if (colKey === "checkmkMapping" || colKey === "mapping") return styles.embeddedColActions;
-  if (colKey === "ha") return styles.embeddedColHa;
-  return undefined;
+  switch (colKey) {
+    case "brandIcon":
+      return styles.embeddedColBrand;
+    case "name":
+    case "server":
+      return styles.embeddedColName;
+    case "activeStatus":
+    case "agentStatus":
+      return styles.embeddedColDot;
+    case "monitoring":
+      return styles.embeddedColSupervision;
+    case "ha":
+    case "categorie":
+      return styles.embeddedColHa;
+    case "location":
+      return styles.embeddedColSite;
+    case "ip":
+      return styles.embeddedColIp;
+    case "serial":
+    case "mac":
+      return styles.embeddedColSerial;
+    case "systeme":
+      return styles.embeddedColOs;
+    case "model":
+      return styles.embeddedColModel;
+    case "role":
+      return styles.embeddedColRole;
+    case "fournisseur":
+      return styles.embeddedColVendor;
+    case "debit":
+      return styles.embeddedColDebit;
+    case "version":
+    case "agentVersion":
+    case "firmware":
+      return styles.embeddedColVersion;
+    case "ssidCount":
+    case "jobsCount":
+    case "mappedJobsCount":
+    case "nbDisques":
+    case "nbDisquesActuels":
+    case "nbDisquesMax":
+      return styles.embeddedColCount;
+    case "disksUsage":
+    case "capacite":
+    case "raid":
+    case "powerRating":
+    case "vlan":
+      return styles.embeddedColMetric;
+    case "domaine":
+    case "computerType":
+    case "internetType":
+      return styles.embeddedColSite;
+    case "checkmkMapping":
+    case "mapping":
+      return styles.embeddedColActions;
+    default:
+      return styles.embeddedColFlex;
+  }
 }
 const EMBEDDED_DEFAULT_TYPE = "Internet";
 const MK_CRITICAL_STATUSES = new Set(["critical", "down", "offline"]);
@@ -961,7 +1021,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   equipmentRevision = 0,
   /** When true, skip embedded skeleton (parent shows a unified map-tab skeleton). */
   hideEmbeddedSkeleton = false,
-  onLoadingChange
+  onLoadingChange,
+  /** Optional actions rendered on the same row as the embedded search field (e.g. export / add). */
+  embeddedToolbarEnd = null,
+  /** Embedded type navigation: "bar" (default pills), "sidebar" (vertical menu), or "portal" (render into typeNavPortalTarget). */
+  embeddedTypeNav = "bar",
+  /** DOM node for portal type nav when embeddedTypeNav="portal". */
+  typeNavPortalTarget = null
 }, ref) {
   const {
     userRole
@@ -1084,10 +1150,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     onLabel = "Actif",
     offLabel = "Inactif",
     warn = false,
-    warnLabel = null
+    warnLabel = null,
+    activeColor = "#6fbf94"
   } = {}) => {
     const label = warn ? warnLabel || offLabel : active ? onLabel : offLabel;
-    const color = warn ? "#f59e0b" : active ? "#22c55e" : "#94a3b8";
+    const color = warn ? "#e0ad5c" : active ? activeColor : "#94a3b8";
     return <SmartTooltip content={label}>
       <Icon icon="mdi:circle" width={12} height={12} style={{
       color
@@ -1107,7 +1174,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const level = getEquipmentMkAlertLevel(getEquipmentMkSummary(equipment));
     if (level === "critical") {
       return <SmartTooltip content="Supervision : critique">
-        <Icon icon="mdi:circle" width={12} height={12} style={{ color: "#dc2626" }} aria-label="Supervision : critique" />
+        <Icon icon="mdi:circle" width={12} height={12} style={{ color: "#e07b7b" }} aria-label="Supervision : critique" />
       </SmartTooltip>;
     }
     if (level === "warning") {
@@ -1687,17 +1754,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     return withEquipment || embeddedTypeOrder[0] || EMBEDDED_DEFAULT_TYPE;
   }, [embedded, selectedTypes, embeddedTypeOrder, embeddedTypeCounts, mkStatusFilter]);
   const showAllMkFamilies = Boolean(embedded && mkStatusFilter && !embeddedActiveType);
-  /** En vue entreprise : n'afficher que les familles présentes (évite le scroll horizontal des filtres). */
-  const visibleEmbeddedTypes = useMemo(() => {
-    if (!embedded) return embeddedTypeOrder;
-    const counts = mkStatusFilter ? mkFilteredTypeCounts : embeddedTypeCounts;
-    const withItems = embeddedTypeOrder.filter(type => (counts?.[type] || 0) > 0);
-    if (!withItems.length) return embeddedTypeOrder;
-    if (embeddedActiveType && !withItems.includes(embeddedActiveType)) {
-      return [...withItems, embeddedActiveType];
-    }
-    return withItems;
-  }, [embedded, embeddedTypeOrder, embeddedTypeCounts, mkFilteredTypeCounts, mkStatusFilter, embeddedActiveType]);
+  /** Toutes les familles ; celles à 0 sont grisées / disabled dans le rendu. */
+  const visibleEmbeddedTypes = useMemo(() => embeddedTypeOrder, [embeddedTypeOrder]);
   const activeCustomFamily = useMemo(() => {
     if (!embeddedActiveType?.startsWith("Custom:")) return null;
     const familyKey = embeddedActiveType.slice("Custom:".length);
@@ -2778,12 +2836,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         onClick: () => openEditEquipmentModal(equipment, displayType)
       });
     }
-    items.push({
-      id: "open",
-      icon: "mdi:open-in-new",
-      label: actions.openSheet,
-      onClick: () => handleEquipmentOpen(equipment)
-    });
     if (checkmkIntegrationEnabled) {
       items.push({
         id: "checkmk",
@@ -2803,51 +2855,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         onClick: () => setUnifiApiModalEquipment(equipment)
       });
     }
-    if (canShowQuickConnectButton(equipment, displayType)) {
-      const configured = hasSynologyQuickConnectConfigured(equipment);
-      const quickConnectValue = getSynologyQuickConnectValue(equipment);
+    if (items.length) {
       items.push({
-        id: "quickconnect",
-        icon: EQUIPMENT_REMOTE_ACTION_ICON,
-        label: configured ? interpolate(actions.quickConnectWithValue, {
-          value: quickConnectValue
-        }) : actions.quickConnectNotConfigured,
-        disabled: !configured,
-        active: configured,
-        onClick: () => openQuickConnectUrl(equipment)
+        type: "divider"
       });
     }
-    if (canShowRemoteAccessButton(equipment) && hasServerRemoteAccessConfigured(equipment)) {
-      const {
-        id
-      } = readServerRemoteAccess(equipment);
-      items.push({
-        id: "server-remote",
-        icon: EQUIPMENT_REMOTE_ACTION_ICON,
-        label: interpolate(actions.serverRemoteWithId, {
-          label: actions.serverRemote,
-          id
-        }),
-        active: true,
-        onClick: () => openServerRemoteAccess(equipment)
-      });
-    } else if (supportsRemoteAccess(equipment) && hasEquipmentRemoteAccessConfigured(equipment)) {
-      const accessUrl = getRemoteAccessUrl(equipment);
-      const accessLabel = getEquipmentRemoteAccessLabel(locale, true);
-      items.push({
-        id: "remote-access",
-        icon: EQUIPMENT_REMOTE_ACTION_ICON,
-        label: interpolate(actions.remoteAccessWithUrl, {
-          label: accessLabel,
-          url: accessUrl
-        }),
-        active: true,
-        onClick: () => openRemoteAccess(equipment)
-      });
-    }
-    items.push({
-      type: "divider"
-    });
     items.push({
       id: "copy",
       icon: "mdi:content-copy",
@@ -2856,11 +2868,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         const payload = buildEquipmentSharePayload(equipment, clientDisplay);
         copyToClipboard(payload.text, actions.copySheetToast);
       }
-    }, {
-      id: "share",
-      icon: "mdi:share-variant",
-      label: actions.shareSheet,
-      onClick: () => shareEquipment(equipment, clientDisplay)
     });
     if (userRole === "admin" && isRmmEnrolledOrdinateur(equipment, displayType)) {
       items.push({
@@ -2888,15 +2895,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         onClick: () => onCustomFamilyManage(family, item)
       });
     }
-    items.push({
-      id: "open",
-      icon: "mdi:open-in-new",
-      label: actions.openSheet,
-      onClick: () => handleEquipmentOpen(equipment)
-    });
-    items.push({
-      type: "divider"
-    });
+    if (items.length) {
+      items.push({
+        type: "divider"
+      });
+    }
     items.push({
       id: "copy",
       icon: "mdi:content-copy",
@@ -2905,11 +2908,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         const payload = buildEquipmentSharePayload(equipment, clientDisplay);
         copyToClipboard(payload.text, actions.copySheetToast);
       }
-    }, {
-      id: "share",
-      icon: "mdi:share-variant",
-      label: actions.shareSheet,
-      onClick: () => shareEquipment(equipment, clientDisplay)
     });
     return items;
   };
@@ -3372,16 +3370,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const page = Math.min(getTablePage(pageKey), totalPages);
     const rangeStart = (page - 1) * safePageSize + 1;
     const rangeEnd = Math.min(page * safePageSize, total);
-    return <div className={`${styles.pagination} ${embedded ? styles.paginationEmbedded : ""}`}>
-        <div className={styles.paginationLeft}>
-          <span className={styles.paginationLabel}>{embeddedCopy.perPage}</span>
-          <select className={styles.paginationSelect} value={safePageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={embeddedCopy.perPage}>
+    const pagStyles = embedded ? layoutKit : styles;
+    return <div className={pagStyles.pagination}>
+        <div className={pagStyles.paginationLeft}>
+          <span className={pagStyles.paginationLabel}>{embeddedCopy.perPage}</span>
+          <select className={pagStyles.paginationSelect} value={safePageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={embeddedCopy.perPage}>
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
-          <span className={styles.paginationInfo}>
+          <span className={pagStyles.paginationInfo}>
             {interpolate(embeddedCopy.rangeInfo || "{start}–{end} / {total}", {
               start: String(rangeStart),
               end: String(rangeEnd),
@@ -3389,20 +3388,20 @@ const EquipmentPage = forwardRef(function EquipmentPage({
             })}
           </span>
         </div>
-        <div className={styles.paginationRight}>
+        <div className={pagStyles.paginationRight}>
           <SmartTooltip content={embeddedCopy.prevPage}>
-            <button type="button" className={styles.pageBtn} onClick={() => setTablePage(pageKey, page - 1)} disabled={page <= 1} aria-label={embeddedCopy.prevPage}>
+            <button type="button" className={pagStyles.pageBtn} onClick={() => setTablePage(pageKey, page - 1)} disabled={page <= 1} aria-label={embeddedCopy.prevPage}>
               <FaChevronLeft />
             </button>
           </SmartTooltip>
-          <span className={styles.paginationInfo}>
+          <span className={pagStyles.paginationInfo}>
             {interpolate(embeddedCopy.pageInfo, {
               current: String(page),
               total: String(totalPages)
             })}
           </span>
           <SmartTooltip content={embeddedCopy.nextPage}>
-            <button type="button" className={styles.pageBtn} onClick={() => setTablePage(pageKey, page + 1)} disabled={page >= totalPages} aria-label={embeddedCopy.nextPage}>
+            <button type="button" className={pagStyles.pageBtn} onClick={() => setTablePage(pageKey, page + 1)} disabled={page >= totalPages} aria-label={embeddedCopy.nextPage}>
               <FaChevronRight />
             </button>
           </SmartTooltip>
@@ -3448,91 +3447,184 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       </div>
     </div>;
   const showEmbeddedInitialSkeleton = loading && !hasLoadedOnceRef.current;
+  const useEmbeddedTypeSidebar = embedded && embeddedTypeNav === "sidebar";
+  const useEmbeddedTypePortal = embedded && embeddedTypeNav === "portal" && typeNavPortalTarget;
+  /** Portal / sidebar : toolbar search alone (no type pills in content). */
+  const useEmbeddedTypeExternalNav = useEmbeddedTypeSidebar || useEmbeddedTypePortal;
+  const renderEmbeddedTypeButtons = (variant = "bar") => visibleEmbeddedTypes.map(type => {
+    const mkCount = mkStatusFilter ? mkFilteredTypeCounts?.[type] || 0 : null;
+    const count = mkStatusFilter ? mkCount : embeddedTypeCounts[type] || 0;
+    const alertLevel = typeMkAlertLevel[type] || null;
+    const label = getEmbeddedTypeLabel(type);
+    const isActive = showAllMkFamilies ? false : embeddedActiveType === type;
+    const isDimmed = count === 0;
+    const tooltip = mkStatusFilter
+      ? interpolate(embeddedCopy.typeTooltipMk || embeddedCopy.typeTooltip, {
+          label,
+          count: String(mkCount || 0),
+          status: mkStatusFilter === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
+        })
+      : alertLevel
+        ? interpolate(embeddedCopy.typeTooltipAlert || "{label} · {count} · {status}", {
+            label,
+            count: String(count),
+            status: alertLevel === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
+          })
+      : interpolate(embeddedCopy.typeTooltip, {
+          label,
+          count: String(count)
+        });
+    const tabAria = interpolate(count > 1 ? embeddedCopy.typeTabAriaMany : embeddedCopy.typeTabAriaOne, {
+      label,
+      count: String(count)
+    });
+    const isSidebar = variant === "sidebar";
+    const typeBtn = (
+      <button
+        type="button"
+        role="tab"
+        aria-selected={isActive}
+        aria-label={isSidebar ? undefined : tabAria}
+        disabled={isDimmed}
+        className={isSidebar
+          ? `${layoutKit.finderSecItem} ${isActive ? layoutKit.finderSecItemActive : ""} ${isDimmed ? layoutKit.finderSecItemDimmed : ""}`.trim()
+          : `${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${alertLevel || mkCount > 0 ? styles.embeddedTypeIconBtnHasAlerts : ""}`}
+        onClick={() => !isDimmed && handleTypeCardClick(type)}
+      >
+        <Icon icon={getEmbeddedTypeIcon(type)} className={isSidebar ? layoutKit.finderSecItemIcon : styles.embeddedTypeIconGlyph} aria-hidden />
+        <span className={isSidebar ? layoutKit.finderSecItemLabel : styles.embeddedTypeIconLabel}>{label}</span>
+        {isSidebar ? (
+          <span className={layoutKit.finderSecMeta}>
+            {!mkStatusFilter && alertLevel ? (
+              <span className={styles.embeddedTypeSidebarAlertSlot} aria-hidden>
+                <span className={`${styles.embeddedTypeSidebarBadge} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>
+                  <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} aria-hidden />
+                </span>
+              </span>
+            ) : null}
+            <span className={layoutKit.finderSecCount}>{count}</span>
+          </span>
+        ) : count > 0 ? (
+          <span className={styles.embeddedTypeIconCount}>{count}</span>
+        ) : null}
+        {!isSidebar && mkStatusFilter && mkCount > 0 ? (
+          <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>
+            {mkCount > 9 ? "9+" : mkCount}
+          </span>
+        ) : null}
+        {!isSidebar && !mkStatusFilter && alertLevel ? (
+          <span className={`${styles.embeddedTypeIconBadge} ${styles.embeddedTypeIconBadgeIcon} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`} aria-hidden>
+            <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} />
+          </span>
+        ) : null}
+      </button>
+    );
+    // Pas de tooltip sur la nav Familles (sidebar) — le label est déjà visible
+    if (isSidebar) return <React.Fragment key={type}>{typeBtn}</React.Fragment>;
+    return (
+      <SmartTooltip key={type} content={tooltip}>
+        {typeBtn}
+      </SmartTooltip>
+    );
+  });
+  const renderEmbeddedMonitorAndSearch = () => (
+    <>
+      {checkmkIntegrationEnabled && mkAlertStats.mapped > 0 ? (
+        <>
+          {!useEmbeddedTypeExternalNav ? <span className={styles.embeddedFilterDivider} aria-hidden /> : null}
+          <div className={styles.embeddedMonitorInline}>
+            <span className={styles.embeddedMonitorMapped} title={embeddedCopy.mkMappedTitle}>
+              <Icon icon="simple-icons:checkmk" className={styles.embeddedMonitorIcon} aria-hidden />
+              {mkAlertStats.mapped}
+            </span>
+            <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillCritical} ${mkStatusFilter === "critical" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("critical")} disabled={mkAlertStats.critical === 0} title={embeddedCopy.mkCriticalTitle}>
+              {embeddedCopy.mkCriticalLabel} {mkAlertStats.critical}
+            </button>
+            <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillWarning} ${mkStatusFilter === "warning" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("warning")} disabled={mkAlertStats.warning === 0} title={embeddedCopy.mkWarningTitle}>
+              {embeddedCopy.mkWarningLabel} {mkAlertStats.warning}
+            </button>
+            {mkStatusFilter ? (
+              <button type="button" className={styles.embeddedMonitorClear} onClick={() => setMkStatusFilter(null)} title={embeddedCopy.mkClearFilterTitle}>
+                <FaTimes aria-hidden />
+              </button>
+            ) : null}
+            <button type="button" className={styles.embeddedMonitorSync} onClick={handleBulkMkSync} disabled={mkBulkSyncing} title={embeddedCopy.mkSyncTitle}>
+              <FaSync className={mkBulkSyncing ? styles.mkAlertSyncSpin : undefined} aria-hidden />
+              {mkBulkSyncing ? `${mkBulkSyncProgress.done}/${mkBulkSyncProgress.total}` : embeddedCopy.mkSyncLabel}
+            </button>
+          </div>
+        </>
+      ) : null}
+      <div className={`${layoutKit.inputsToolbar} ${styles.embeddedSearchWrap}`}>
+        <div className={`${layoutKit.searchBox} ${layoutKit.searchBoxFluid}`}>
+          <Icon icon="mdi:magnify" className={layoutKit.searchIcon} aria-hidden />
+          <input type="text" className={layoutKit.searchInput} placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={event => setSearchQuery(event.target.value)} aria-label={pageCopy.searchPlaceholder} />
+          {searchQuery ? (
+            <button type="button" className={layoutKit.searchClear} onClick={() => setSearchQuery("")} aria-label={embeddedCopy.clearSearchAria}>
+              <FaTimes aria-hidden />
+            </button>
+          ) : null}
+        </div>
+        {embeddedToolbarEnd ? <div className={layoutKit.searchActions}>{embeddedToolbarEnd}</div> : null}
+      </div>
+    </>
+  );
+  const typeNavPortal = useEmbeddedTypePortal
+    ? createPortal(
+        <nav className={layoutKit.finderSecNav} role="tablist" aria-label={embeddedCopy.typeBarAria}>
+          {renderEmbeddedTypeButtons("sidebar")}
+          {showAllMkFamilies ? (
+            <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
+              {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
+                count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
+              })}
+            </span>
+          ) : null}
+        </nav>,
+        typeNavPortalTarget
+      )
+    : null;
+
   return <>
-    {embedded ? <div className={`${styles.hardwarePageEmbedded} ${styles.hardwarePageEmbeddedFill}`}>
+    {typeNavPortal}
+    {embedded ? <div className={`${styles.hardwarePageEmbedded} ${styles.hardwarePageEmbeddedFill} ${useEmbeddedTypeSidebar ? styles.hardwarePageEmbeddedSidebar : ""}`}>
       <div className={styles.mainContent}>
         <>
-        {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={embedded ? undefined : scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ''} ${embedded ? styles.tablesContainerEmbedded : ''}`}>
-            {embedded ? <div className={styles.embeddedFilterBar}>
-                <div className={styles.embeddedTypeIconBar} role="tablist" aria-label={embeddedCopy.typeBarAria}>
-                  {visibleEmbeddedTypes.map(type => {
-                  const mkCount = mkStatusFilter ? mkFilteredTypeCounts?.[type] || 0 : null;
-                  const count = mkStatusFilter ? mkCount : embeddedTypeCounts[type] || 0;
-                  const alertLevel = typeMkAlertLevel[type] || null;
-                  const label = getEmbeddedTypeLabel(type);
-                  const isActive = showAllMkFamilies ? false : embeddedActiveType === type;
-                  const isDimmed = Boolean(mkStatusFilter && mkCount === 0);
-                  const tooltip = mkStatusFilter
-                    ? interpolate(embeddedCopy.typeTooltipMk || embeddedCopy.typeTooltip, {
-                        label,
-                        count: String(mkCount || 0),
-                        status: mkStatusFilter === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
-                      })
-                    : alertLevel
-                      ? interpolate(embeddedCopy.typeTooltipAlert || "{label} · {count} · {status}", {
-                          label,
-                          count: String(count),
-                          status: alertLevel === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
-                        })
-                    : interpolate(embeddedCopy.typeTooltip, {
-                        label,
-                        count: String(count)
-                      });
-                  const tabAria = interpolate(count > 1 ? embeddedCopy.typeTabAriaMany : embeddedCopy.typeTabAriaOne, {
-                    label,
-                    count: String(count)
-                  });
-                  return <SmartTooltip key={type} content={tooltip}>
-                        <button type="button" role="tab" aria-selected={isActive} aria-label={tabAria} disabled={isDimmed} className={`${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${alertLevel || mkCount > 0 ? styles.embeddedTypeIconBtnHasAlerts : ""}`} onClick={() => !isDimmed && handleTypeCardClick(type)}>
-                          <Icon icon={getEmbeddedTypeIcon(type)} className={styles.embeddedTypeIconGlyph} aria-hidden />
-                          <span className={styles.embeddedTypeIconLabel}>{label}</span>
-                          {count > 0 ? <span className={styles.embeddedTypeIconCount}>{count}</span> : null}
-                          {mkStatusFilter && mkCount > 0 ? <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>{mkCount > 9 ? "9+" : mkCount}</span> : alertLevel ? <span className={`${styles.embeddedTypeIconBadge} ${styles.embeddedTypeIconBadgeIcon} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`} aria-hidden>
-                                <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} />
-                              </span> : null}
-                        </button>
-                      </SmartTooltip>;
-                })}
-                {showAllMkFamilies ? <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
+        {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={embedded ? undefined : scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ""} ${embedded ? styles.tablesContainerEmbedded : ""} ${useEmbeddedTypeSidebar ? styles.tablesContainerEmbeddedSidebar : ""}`}>
+            {useEmbeddedTypeSidebar ? (
+              <nav className={layoutKit.finderSecNav} role="tablist" aria-label={embeddedCopy.typeBarAria}>
+                {renderEmbeddedTypeButtons("sidebar")}
+                {showAllMkFamilies ? (
+                  <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
                     {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
-                  count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
-                })}
-                  </span> : null}
+                      count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
+                    })}
+                  </span>
+                ) : null}
+              </nav>
+            ) : null}
+            <div className={useEmbeddedTypeSidebar ? styles.embeddedSidebarMain : styles.embeddedMainPassthrough}>
+            {embedded ? (
+              useEmbeddedTypeExternalNav ? (
+                <div className={`${styles.embeddedFilterBar} ${styles.embeddedFilterBarToolbar}`}>
+                  {renderEmbeddedMonitorAndSearch()}
                 </div>
-
-                {checkmkIntegrationEnabled && mkAlertStats.mapped > 0 && <>
-                    <span className={styles.embeddedFilterDivider} aria-hidden />
-                    <div className={styles.embeddedMonitorInline}>
-                      <span className={styles.embeddedMonitorMapped} title={embeddedCopy.mkMappedTitle}>
-                        <Icon icon="simple-icons:checkmk" className={styles.embeddedMonitorIcon} aria-hidden />
-                        {mkAlertStats.mapped}
-                      </span>
-                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillCritical} ${mkStatusFilter === "critical" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("critical")} disabled={mkAlertStats.critical === 0} title={embeddedCopy.mkCriticalTitle}>
-                        {embeddedCopy.mkCriticalLabel} {mkAlertStats.critical}
-                      </button>
-                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillWarning} ${mkStatusFilter === "warning" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("warning")} disabled={mkAlertStats.warning === 0} title={embeddedCopy.mkWarningTitle}>
-                        {embeddedCopy.mkWarningLabel} {mkAlertStats.warning}
-                      </button>
-                      {mkStatusFilter && <button type="button" className={styles.embeddedMonitorClear} onClick={() => setMkStatusFilter(null)} title={embeddedCopy.mkClearFilterTitle}>
-                          <FaTimes aria-hidden />
-                        </button>}
-                      <button type="button" className={styles.embeddedMonitorSync} onClick={handleBulkMkSync} disabled={mkBulkSyncing} title={embeddedCopy.mkSyncTitle}>
-                        <FaSync className={mkBulkSyncing ? styles.mkAlertSyncSpin : undefined} aria-hidden />
-                        {mkBulkSyncing ? `${mkBulkSyncProgress.done}/${mkBulkSyncProgress.total}` : embeddedCopy.mkSyncLabel}
-                      </button>
-                    </div>
-                  </>}
-
-                <div className={styles.embeddedSearchWrap}>
-                  <div className={styles.embeddedSearchBox}>
-                    <Icon icon="mdi:magnify" className={styles.embeddedSearchIcon} aria-hidden />
-                    <input type="text" className={styles.embeddedSearchInput} placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={event => setSearchQuery(event.target.value)} aria-label={pageCopy.searchPlaceholder} />
-                    {searchQuery ? <button type="button" className={styles.embeddedSearchClear} onClick={() => setSearchQuery("")} aria-label={embeddedCopy.clearSearchAria}>
-                        <FaTimes aria-hidden />
-                      </button> : null}
-                  </div>
+              ) : (
+              <div className={styles.embeddedFilterBar}>
+                <div className={styles.embeddedTypeIconBar} role="tablist" aria-label={embeddedCopy.typeBarAria}>
+                  {renderEmbeddedTypeButtons("bar")}
+                  {showAllMkFamilies ? (
+                    <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
+                      {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
+                        count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
+                      })}
+                    </span>
+                  ) : null}
                 </div>
-              </div> : <>
+                {renderEmbeddedMonitorAndSearch()}
+              </div>
+              )
+            ) : <>
             {mkAlertStats.mapped > 0 && <div className={`${styles.mkAlertBar} ${mkAlertStats.issues > 0 ? styles.mkAlertBarHasIssues : ''}`}>
                 <div className={styles.mkAlertBarLabel}>
                   <Icon icon="simple-icons:checkmk" className={styles.mkAlertBarIcon} />
@@ -3650,25 +3742,35 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                         </SmartTooltip>
                       </div> : null}
                     </div>}
-                  {(viewMode[type] || 'table') === 'table' ? <div ref={embedded ? scrollContainerRef : undefined} className={`${styles.tableWrapper} ${embedded ? `${styles.tableWrapperEmbedded} ${styles.tableWrapperEmbeddedScroll}` : ''}`}>
-                      <table className={embedded ? styles.equipmentTableEmbedded : styles.equipmentTable}>
+                  {(viewMode[type] || 'table') === 'table' ? (
+                    <UiKitTable
+                      fill
+                      className={styles.equipmentUiKitTable}
+                      deps={[visibleList.length, tableSort[type]?.key, tableSort[type]?.direction, getTablePage(type), pageSize]}
+                    >
+                      <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
+                      <colgroup>
+                        {columns.map(col => (
+                          <col key={col.key} className={getEmbeddedCellClassName(col.key, styles)} />
+                        ))}
+                      </colgroup>
                       <thead>
                         <tr>
                           {columns.map(col => {
                           const sortState = tableSort[type];
                           const isSorted = sortState?.key === col.key;
                           const isSortable = isColumnSortable(col.key);
-                          const embeddedCellClass = embedded ? getEmbeddedCellClassName(col.key, styles) : undefined;
-                          return <th key={col.key} className={[isSortable ? styles.sortableTh : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
-                                <span className={styles.thContent}>
+                          const embeddedCellClass = getEmbeddedCellClassName(col.key, styles);
+                          return <th key={col.key} className={[isSortable ? `${styles.sortableTh} ${tableKit.tableThSortable}` : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
+                                <span className={`${styles.thContent} ${tableKit.tableThContent}`}>
                                   {col.label}
-                                  {isSortable && (
+                                  {isSortable && isSorted ? (
                                     <SortIcon
-                                      active={isSorted}
+                                      active
                                       direction={sortState?.direction || "asc"}
-                                      className={styles.sortIndicator}
+                                      className={`${styles.sortIndicator} ${tableKit.tableSortIcon} ${tableKit.tableSortIconActive}`}
                                     />
-                                  )}
+                                  ) : null}
                                 </span>
                               </th>;
                         })}
@@ -3705,42 +3807,42 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key}>{formatDate(value)}</td>;
                             } else if (col.key === 'nbDisques') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
-                              return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
+                              return <td key={col.key} className={[isStorage ? styles.internetCellBold : undefined, embedded ? styles.embeddedColCount : undefined].filter(Boolean).join(" ") || undefined}>
                                       {formatNbDisques(equipment)}
                                     </td>;
                             } else if (col.key === "activeStatus") {
-                              return <td key={col.key}>{renderActiveStatusIcon(equipment)}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColDot : undefined}>{renderActiveStatusIcon(equipment)}</td>;
                             } else if (col.key === "ssidCount") {
                               const ssids = Array.isArray(equipment.ssids) ? equipment.ssids : Array.isArray(equipment.rawData?.ssids) ? equipment.rawData.ssids : [];
-                              return <td key={col.key}>{ssids.length}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColCount : undefined}>{ssids.length}</td>;
                             } else if (col.key === "disksUsage") {
-                              return <td key={col.key}>{formatNbDisques(equipment)}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColMetric : undefined}>{formatNbDisques(equipment)}</td>;
                             } else if (col.key === "powerRating") {
                               const va = equipment.capaciteVA || equipment.rawData?.capaciteVA || "-";
                               const w = equipment.capaciteW || equipment.rawData?.capaciteW || "-";
-                              return <td key={col.key}>{`${va} / ${w}`}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColMetric : undefined}>{`${va} / ${w}`}</td>;
                             } else if (col.key === 'raid') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
-                              return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
+                              return <td key={col.key} className={[isStorage ? styles.internetCellBold : undefined, embedded ? styles.embeddedColMetric : undefined].filter(Boolean).join(" ") || undefined}>
                                       {getStorageRaid(equipment) || '-'}
                                     </td>;
                             } else if (col.key === 'nbDisquesActuels') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
-                              return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
+                              return <td key={col.key} className={[isStorage ? styles.internetCellBold : undefined, embedded ? styles.embeddedColCount : undefined].filter(Boolean).join(" ") || undefined}>
                                       {getNbDisquesActuels(equipment) || '-'}
                                     </td>;
                             } else if (col.key === 'nbDisquesMax') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
-                              return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
+                              return <td key={col.key} className={[isStorage ? styles.internetCellBold : undefined, embedded ? styles.embeddedColCount : undefined].filter(Boolean).join(" ") || undefined}>
                                       {getNbDisquesMax(equipment) || '-'}
                                     </td>;
                             } else if (col.key === 'capacite') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
-                              return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
+                              return <td key={col.key} className={[isStorage ? styles.internetCellBold : undefined, embedded ? styles.embeddedColMetric : undefined].filter(Boolean).join(" ") || undefined}>
                                       {formatCapacite(equipment.capacite)}
                                     </td>;
                             } else if (col.key === 'monitoring') {
-                              return <td key={col.key}>
+                              return <td key={col.key} className={embedded ? styles.embeddedColSupervision : undefined}>
                                       <div className={styles.monitoringStatusCell}>
                                         {embedded ? renderSupervisionDot(equipment) : renderMonitoringStatus(equipment)}
                                       </div>
@@ -3751,7 +3853,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                     </td>;
                             } else if (col.key === 'name') {
                               if (embedded) {
-                                return <td key={col.key}>
+                                return <td key={col.key} className={styles.embeddedColName}>
                                         <div className={styles.nameCell}>
                                           {renderMaintenanceCone(equipment)}
                                           <span className={equipment.type === "Firewalls" || equipment.type === "Servers" || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined}>
@@ -3821,7 +3923,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                       </div>
                                     </td>;
                             } else if (col.key === 'fournisseur' && equipment.type === 'Internet') {
-                              return <td key={col.key} className={styles.internetCellBold}>{formatValue(value)}</td>;
+                              return <td key={col.key} className={[styles.internetCellBold, embedded ? styles.embeddedColVendor : undefined].filter(Boolean).join(" ") || undefined}>{formatValue(value)}</td>;
                             } else if (col.key === 'checkmkMapping') {
                               if (embedded) {
                                 const rowMenuKey = `${equipment.id}::${type}`;
@@ -3878,26 +3980,26 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               const domainLabel = formatValue(equipment.domaine || equipment.rawData?.domaine || value);
                               return <td key={col.key}>{domainLabel && domainLabel !== '-' ? domainLabel : '-'}</td>;
                             } else if (col.key === 'agentStatus') {
-                              return <td key={col.key}>{renderAgentDot(equipment)}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColDot : undefined}>{renderAgentDot(equipment)}</td>;
                             } else if (col.key === 'agentVersion') {
                               const version = getRmmAgentVersion(equipment) || "-";
-                              return <td key={col.key} className={styles.monospace} title={version !== "-" ? version : undefined}>{version}</td>;
+                              return <td key={col.key} className={[styles.monospace, embedded ? styles.embeddedColVersion : undefined].filter(Boolean).join(" ") || undefined} title={version !== "-" ? version : undefined}>{version}</td>;
                             } else if (col.key === 'computerType') {
                               const computerTypeLabel = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
-                              return <td key={col.key}>{computerTypeLabel || '-'}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColSite : undefined}>{computerTypeLabel || '-'}</td>;
                             } else if (col.key === 'systeme') {
                               const osLabel = formatOsValue(equipment.systeme || equipment.rawData?.systeme || value);
                               const osIconName = getOsIconName(osLabel, {
                                 withFallback: true
                               });
-                              return <td key={col.key}>
+                              return <td key={col.key} className={embedded ? styles.embeddedColOs : undefined}>
                                       {osLabel && osLabel !== '-' ? <div className={styles.osNameCell}>
                                           {osIconName ? <Icon icon={osIconName} width={18} height={18} className={styles.osNameIcon} aria-hidden="true" /> : null}
                                           <span className={styles.osNameText}>{osLabel}</span>
                                         </div> : '-'}
                                     </td>;
                             } else if (col.key === 'role') {
-                              return <td key={col.key}>{formatRoles(equipment.role || value) || '-'}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColRole : undefined}>{formatRoles(equipment.role || value) || '-'}</td>;
                             } else if (col.key === 'processeur' || col.key === 'memoire' || col.key === 'stockage') {
                               let displayValue = formatValue(value);
                               if (col.key === 'memoire' && value) {
@@ -3907,10 +4009,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               }
                               return <td key={col.key}>{displayValue}</td>;
                             } else if (col.key === 'ip') {
-                              return <td key={col.key} className={styles.monospace}>{formatIpDisplay(equipment, value)}</td>;
+                              return <td key={col.key} className={[styles.monospace, embedded ? styles.embeddedColIp : undefined].filter(Boolean).join(" ") || undefined}>{formatIpDisplay(equipment, value)}</td>;
                             } else if (col.key === 'mac' || col.key === 'serial') {
                               const display = col.key === 'serial' ? getEquipmentSerial(equipment) || value : value;
-                              return <td key={col.key} className={styles.monospace}>{formatValue(display)}</td>;
+                              return <td key={col.key} className={[styles.monospace, embedded ? styles.embeddedColSerial : undefined].filter(Boolean).join(" ") || undefined}>{formatValue(display)}</td>;
                             } else if (col.key === 'clientName') {
                               return <td key={col.key}>
                                       {equipment.clientId ? <button type="button" className={styles.enterpriseLinkText} onClick={e => {
@@ -3927,21 +4029,21 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                     </td>;
                             } else if (equipment.type === "Internet" && col.key === "debit") {
                               const debitLabel = formatInternetDebitDisplay(equipment.rawData || equipment) || formatValue(value);
-                              return <td key={col.key}>{debitLabel}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColDebit : undefined}>{debitLabel}</td>;
                             } else if (equipment.type === 'Internet' && col.key === 'categorie') {
                               return <td key={col.key} className={embedded ? styles.embeddedColHa : undefined}>
                                       <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} pairColors={haPairColors} />
                                     </td>;
                             } else if (equipment.type === 'Internet' && col.key === 'internetType') {
-                              return <td key={col.key} className={styles.internetCellBold}>{formatValue(value)}</td>;
+                              return <td key={col.key} className={[styles.internetCellBold, embedded ? styles.embeddedColSite : undefined].filter(Boolean).join(" ") || undefined}>{formatValue(value)}</td>;
                             } else if (col.key === 'vlan') {
-                              return <td key={col.key}>{formatValue(equipment.vlan || equipment.rawData?.vlan || value)}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColMetric : undefined}>{formatValue(equipment.vlan || equipment.rawData?.vlan || value)}</td>;
                             } else if (col.key === 'firmware') {
-                              return <td key={col.key} className={equipment.type === 'Firewalls' || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined}>
+                              return <td key={col.key} className={[equipment.type === 'Firewalls' || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined, embedded ? styles.embeddedColVersion : undefined].filter(Boolean).join(" ") || undefined}>
                                       {formatValue(equipment.firmware || equipment.version || value)}
                                     </td>;
                             } else if (col.key === 'mac') {
-                              return <td key={col.key}>{formatValue(getEquipmentMac(equipment) || value) || '-'}</td>;
+                              return <td key={col.key} className={embedded ? styles.embeddedColSerial : undefined}>{formatValue(getEquipmentMac(equipment) || value) || '-'}</td>;
                             } else if (col.key === 'expirationGarantie') {
                               const serverType = normalizeServerType(equipment.typeServer || equipment.rawData?.type || "");
                               const isVirtualServer = serverType === "virtuel";
@@ -3960,18 +4062,20 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                       {equipment.type === 'Firewalls' ? renderExpirationDateCell(getFirewallMaintenanceLicenseRawDate(equipment), label) : label}
                                     </td>;
                             } else if ((equipment.type === 'Firewalls' || NETWORK_EDGE_TYPES.has(equipment.type)) && col.key === 'model') {
-                              return <td key={col.key} className={styles.internetCellBold}>{formatValue(value)}</td>;
+                              return <td key={col.key} className={[styles.internetCellBold, embedded ? styles.embeddedColModel : undefined].filter(Boolean).join(" ") || undefined}>{formatValue(value)}</td>;
                             } else if ((equipment.type === 'NAS' || equipment.type === 'Storage') && col.key === 'model') {
-                              return <td key={col.key} className={styles.internetCellBold}>{formatValue(value)}</td>;
+                              return <td key={col.key} className={[styles.internetCellBold, embedded ? styles.embeddedColModel : undefined].filter(Boolean).join(" ") || undefined}>{formatValue(value)}</td>;
                             } else {
-                              return <td key={col.key}>{formatValue(value)}</td>;
+                              const embeddedCellClass = embedded ? getEmbeddedCellClassName(col.key, styles) : undefined;
+                              return <td key={col.key} className={embeddedCellClass}>{formatValue(value)}</td>;
                             }
                           })}
                             </tr>;
                       })}
                       </tbody>
                     </table>
-                  </div> : <div className={styles.gridWrapper}>
+                    </UiKitTable>
+                  ) : <div className={styles.gridWrapper}>
                       {sortedList.length === 0 ? <div className={styles.equipmentEmptyCell}>
                           {resolveEmptyMessage(type, embedded)}
                         </div> : <div className={styles.equipmentGrid}>
@@ -4159,24 +4263,36 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                 return <th key={colKey} className={[isSortable ? styles.sortableTh : undefined, extraClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(sectionKey, colKey)} title={isSortable ? "Trier par " + label : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
                     <span className={styles.thContent}>
                       {label}
-                      {isSortable && (
+                      {isSortable && isSorted ? (
                         <SortIcon
-                          active={isSorted}
+                          active
                           direction={sortState?.direction || "asc"}
                           className={styles.sortIndicator}
                         />
-                      )}
+                      ) : null}
                     </span>
                   </th>;
               };
               return <div key={sectionKey} className={`${styles.equipmentTableSection} ${styles.equipmentTableSectionEmbedded}`}>
-                  <div ref={scrollContainerRef} className={`${styles.tableWrapper} ${styles.tableWrapperEmbedded} ${styles.tableWrapperEmbeddedScroll}`}>
-                    <table className={styles.equipmentTableEmbedded}>
+                  <UiKitTable
+                    fill
+                    className={styles.equipmentUiKitTable}
+                    deps={[pagedList.length, tableSort[sectionKey]?.key, tableSort[sectionKey]?.direction, getTablePage(sectionKey), pageSize]}
+                  >
+                    <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
+                      <colgroup>
+                        <col className={styles.embeddedColName} />
+                        <col className={styles.embeddedColDot} />
+                        {fields.map(field => (
+                          <col key={field.fieldKey} className={styles.embeddedColFlex} />
+                        ))}
+                        <col className={styles.embeddedColActions} />
+                      </colgroup>
                       <thead>
                         <tr>
-                          {renderCustomSortableTh("name", pageCopy.columns?.name || "Nom")}
-                          {renderCustomSortableTh("activeStatus", pageCopy.columns?.activeStatus || "Actif")}
-                          {fields.map(field => renderCustomSortableTh(field.fieldKey, field.label))}
+                          {renderCustomSortableTh("name", pageCopy.columns?.name || "Nom", styles.embeddedColName)}
+                          {renderCustomSortableTh("activeStatus", pageCopy.columns?.activeStatus || "Actif", styles.embeddedColDot)}
+                          {fields.map(field => renderCustomSortableTh(field.fieldKey, field.label, styles.embeddedColFlex))}
                           {renderCustomSortableTh("mapping", pageCopy.actionsColumn, styles.embeddedColActions)}
                         </tr>
                       </thead>
@@ -4185,12 +4301,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             <td colSpan={fields.length + 3} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
-                          </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded} onClick={() => handleEquipmentOpen(item)} style={{
+                          </tr> : pagedList.map(item => <tr key={item.id} className={`${styles.equipmentRowEmbedded} ${tableKit.tableRowClickable}`} onClick={() => handleEquipmentOpen(item)} style={{
                       cursor: "pointer"
                     }}>
-                              <td>{item.name || "-"}</td>
-                              <td>{renderActiveStatusIcon(item)}</td>
-                              {fields.map(field => <td key={field.fieldKey}>
+                              <td className={styles.embeddedColName}>{item.name || "-"}</td>
+                              <td className={styles.embeddedColDot}>{renderActiveStatusIcon(item)}</td>
+                              {fields.map(field => <td key={field.fieldKey} className={styles.embeddedColFlex}>
                                   {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey] ?? readCustomFieldRaw(item, field.fieldKey), pageCopy)}
                                 </td>)}
                               <td className={styles.embeddedColActions} onClick={event => event.stopPropagation()}>
@@ -4201,13 +4317,14 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             </tr>)}
                       </tbody>
                     </table>
-                  </div>
+                  </UiKitTable>
                   {renderEquipmentPagination(sectionKey, total)}
                 </div>;
             })()}
             {Object.keys(equipmentByType).length === 0 && filteredBackupRows.length === 0 && customFamiliesForUi.length === 0 && !(embedded && embeddedActiveType) && <div className={styles.noData}>
                 No equipment found
               </div>}
+            </div>
           </div>}
         </>
       </div>

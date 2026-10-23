@@ -1,103 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { fetchSupervisionAlertsActive } from "../../api/supervisionAlerts";
 import { getLocaleTag } from "../../i18n/locales";
 import { interpolate } from "../../i18n/translate";
-import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-import { buildQueueItemsFromSupervisionAlerts } from "../EquipementPage/supervisionQueueUtils";
 import { isSalesTicket } from "../../utils/salesTicketUtils";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import homeStyles from "./HomePage.module.css";
-import styles from "./HomeSupervisionSection.module.css";
+import {
+  UiKitDataTable,
+  UiKitEventsWeek,
+  UiKitHomeBoard,
+  UiKitKpiStrip,
+  UiKitStackBlock,
+  uiKitDataTableStyles as tableStyles,
+  uiKitHomeStyles as homeStyles
+} from "../UiKit";
+/* Accueil = composition UI Kit uniquement */
 
-const ALERTS_LIMIT = 10;
-const TICKET_TABLE_LIMIT = 5;
-const HOME_EVENTS_STRIP_DAYS = 7;
-
-function formatNumber(value) {
-  if (value == null || Number.isNaN(Number(value))) return "-";
-  return String(Math.round(Number(value)));
-}
-
-function formatTime(ms, localeTag) {
-  if (!Number.isFinite(ms)) return "—";
-  try {
-    return new Date(ms).toLocaleTimeString(localeTag || undefined, {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  } catch {
-    return "—";
-  }
-}
-
-function deviceName(item) {
-  return (
-    item?.equipment?.name ||
-    item?.alertState?.meta?.equipmentName ||
-    item?.hostName ||
-    item?.title ||
-    "—"
-  );
-}
-
-function alertDescription(item) {
-  return (
-    item?.subtitle ||
-    item?.alertState?.meta?.serviceName ||
-    item?.alertState?.meta?.pluginOutput ||
-    item?.title ||
-    "—"
-  );
-}
-
-function severityBadgeClass(severity) {
-  const s = String(severity || "").toLowerCase();
-  if (s === "critical") return styles.badgeCritical;
-  if (s === "warning") return styles.badgeWarning;
-  return styles.badgeInfo;
-}
-
-function startOfLocalDay(date = new Date()) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function eventOverlapsLocalDay(event, dayStart) {
-  if (!event?.start) return false;
-  const start = new Date(event.start);
-  if (Number.isNaN(start.getTime())) return false;
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayEnd.getDate() + 1);
-  let end = event.end ? new Date(event.end) : start;
-  if (Number.isNaN(end.getTime())) end = start;
-  if (end.getTime() === start.getTime()) {
-    return start >= dayStart && start < dayEnd;
-  }
-  return start < dayEnd && end > dayStart;
-}
-
-function buildEventsWeekStrip(events, locale, days = HOME_EVENTS_STRIP_DAYS) {
-  const localeTag = getLocaleTag(locale);
-  const list = Array.isArray(events) ? events : [];
-  const today = startOfLocalDay();
-  const daysOut = [];
-  for (let i = 0; i < days; i += 1) {
-    const day = new Date(today);
-    day.setDate(today.getDate() + i);
-    const count = list.reduce((acc, event) => (eventOverlapsLocalDay(event, day) ? acc + 1 : acc), 0);
-    daysOut.push({
-      key: `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`,
-      date: day,
-      isToday: i === 0,
-      count,
-      weekday: day.toLocaleDateString(localeTag || undefined, { weekday: "short" }),
-      dayNum: day.toLocaleDateString(localeTag || undefined, { day: "2-digit" })
-    });
-  }
-  return daysOut;
-}
+const TICKET_TABLE_LIMIT = 12;
 
 function getAssignedTicketKpis(stats) {
   const source = stats || {};
@@ -123,7 +40,6 @@ function buildTicketKpiCards(stats, labels) {
       value: kpis.total,
       label: labels.kpiTotal,
       icon: "mdi:ticket-account",
-      tone: "purple",
       viewId: "__builtin_mine__"
     },
     {
@@ -131,7 +47,6 @@ function buildTicketKpiCards(stats, labels) {
       value: kpis.inProgress,
       label: labels.kpiInProgress,
       icon: "mdi:progress-clock",
-      tone: "teal",
       viewId: "__builtin_in_progress__"
     },
     {
@@ -139,7 +54,6 @@ function buildTicketKpiCards(stats, labels) {
       value: kpis.pending,
       label: labels.kpiPending,
       icon: "mdi:timer-sand",
-      tone: "amber",
       viewId: "__builtin_pending__"
     },
     {
@@ -147,24 +61,9 @@ function buildTicketKpiCards(stats, labels) {
       value: kpis.toValidate,
       label: labels.kpiToValidate,
       icon: "mdi:clipboard-check-outline",
-      tone: "orange",
       viewId: "__builtin_to_validate__"
     }
   ];
-}
-
-function PanelHeader({ title, titleMeta = null, action = null }) {
-  return (
-    <div className={homeStyles.panelHeader}>
-      <div className={homeStyles.panelHeaderMain}>
-        <div className={homeStyles.panelEyebrowRow}>
-          <h2 className={homeStyles.panelEyebrow}>{title}</h2>
-          {titleMeta}
-        </div>
-        {action}
-      </div>
-    </div>
-  );
 }
 
 function truncateText(value, max = 72) {
@@ -190,152 +89,247 @@ function formatTicketDate(value, localeTag) {
   }
 }
 
-function priorityTone(ticket) {
-  if (ticket?.isMajorIncident) return "major";
-  const p = String(ticket?.priority || "normal").toLowerCase();
-  if (p === "urgent" || p === "high") return "high";
-  if (p === "low") return "low";
-  return "normal";
+function ticketStatusText(ticket, cols) {
+  const key = String(ticket?.status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const labels = {
+    open: cols.statusOpen,
+    new: cols.statusNew,
+    pending: cols.statusPending,
+    in_progress: cols.statusInProgress,
+    inprogress: cols.statusInProgress,
+    to_validate: cols.statusToValidate,
+    tovalidate: cols.statusToValidate,
+    resolved: cols.statusResolved,
+    closed: cols.statusClosed
+  };
+  return labels[key] || ticket?.statusLabel || "—";
 }
 
-function priorityLabel(ticket, copy) {
-  if (ticket?.isMajorIncident) return copy?.priorities?.majorIncident || "Incident majeur";
-  const p = String(ticket?.priority || "normal").toLowerCase();
-  if (p === "urgent") return copy?.priorities?.urgent || "Urgente";
-  if (p === "high") return copy?.priorities?.high || "Haute";
-  if (p === "low") return copy?.priorities?.low || "Basse";
-  return copy?.priorities?.normal || "Normale";
+function ticketPriorityMark(ticket, priorities) {
+  const key = String(ticket?.priority || "normal").trim().toLowerCase();
+  if (key === "urgent" || key === "critical") {
+    return { icon: "mdi:chevron-double-up", label: priorities?.urgent || "Urgente", tone: "urgent" };
+  }
+  if (key === "high") {
+    return { icon: "mdi:arrow-up", label: priorities?.high || "Haute", tone: "high" };
+  }
+  if (key === "low") {
+    return { icon: "mdi:arrow-down", label: priorities?.low || "Basse", tone: "low" };
+  }
+  return { icon: "mdi:equal", label: priorities?.normal || "Normale", tone: "normal" };
 }
 
-function HomeEmptyState({ icon, label }) {
-  return (
-    <div className={styles.emptyState}>
-      <Icon icon={icon} className={styles.emptyStateIcon} aria-hidden />
-      <p className={styles.emptyStateText}>{label}</p>
-    </div>
-  );
+function formatCategory(value) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  const words = text.replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function ticketSortValue(ticket, key) {
+  switch (key) {
+    case "number":
+      return Number(ticket?.ticketNumber) || Number(ticket?.id) || 0;
+    case "title":
+      return String(ticket?.title || "").trim().toLowerCase();
+    case "company":
+      return String(ticket?.clientName || "").trim().toLowerCase();
+    case "status":
+      return String(ticket?.status || "").trim().toLowerCase();
+    case "priority":
+      return String(ticket?.priority || "").trim().toLowerCase();
+    case "sla":
+      return String(ticket?.slaLabel || "").trim().toLowerCase();
+    case "category":
+      return String(ticket?.category || "").trim().toLowerCase();
+    case "created": {
+      const ms = ticket?.createdAt ? new Date(ticket.createdAt).getTime() : 0;
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    case "modified": {
+      const ms = ticket?.updatedAt ? new Date(ticket.updatedAt).getTime() : 0;
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    default:
+      return "";
+  }
 }
 
 function HomeTicketsTable({ tickets, localeTag, copy, onOpenTicket, family }) {
   const cols = copy?.ticketsTable || {};
-  const emptyLabel = copy?.empty?.tickets || "Aucun ticket ne vous est assigné";
-  const rows = Array.isArray(tickets) ? tickets : [];
+  const pinMajor = useCallback(
+    ticket => family === "support" && Boolean(ticket?.isMajorIncident),
+    [family]
+  );
+  const columns = useMemo(() => {
+    const number = { key: "number", label: cols.number || "N°", defaultDirection: "desc", className: `${tableStyles.tableColNum} ${homeStyles.colNum}` };
+    const title = { key: "title", label: cols.title || cols.description || "Titre", defaultDirection: "asc", className: homeStyles.colTitle };
+    const company = { key: "company", label: cols.company || "Entreprise", defaultDirection: "asc", className: homeStyles.colCompany };
+    const status = { key: "status", label: cols.status || "Statut", defaultDirection: "asc", className: homeStyles.colStatus };
+    const created = { key: "created", label: cols.created || "Créé", defaultDirection: "desc", className: `${homeStyles.colDate} ${homeStyles.colCreated}` };
+    const modified = { key: "modified", label: cols.modified || "Modifié", defaultDirection: "desc", className: homeStyles.colDate };
+    if (family === "sales") {
+      return [
+        number,
+        title,
+        company,
+        status,
+        { key: "category", label: cols.category || "Catégorie", defaultDirection: "asc", className: homeStyles.colCategory },
+        created,
+        modified
+      ];
+    }
+    return [
+      number,
+      title,
+      company,
+      status,
+      { key: "priority", label: cols.priority || "Priorité", defaultDirection: "asc", className: homeStyles.colPriority },
+      { key: "sla", label: cols.sla || "SLA", defaultDirection: "asc", className: homeStyles.colSla },
+      created,
+      modified
+    ];
+  }, [cols, family]);
 
   return (
-    <div className={`${homeStyles.homeTableWrap} ${styles.ticketTableInPanel}`}>
-      <div className={`${homeStyles.homeTableScroll} ${styles.ticketTableScroll}`}>
-        <table className={homeStyles.homeTable}>
-          <thead>
-            <tr>
-              <th scope="col">{cols.number || "N°"}</th>
-              <th scope="col">{cols.priority || "Priorité"}</th>
-              <th scope="col">{cols.description || "Descriptif"}</th>
-              <th scope="col">{cols.company || "Entreprise"}</th>
-              <th scope="col">{cols.modified || "Modifié"}</th>
-            </tr>
-          </thead>
-          {rows.length ? (
-            <tbody>
-              {rows.map(ticket => {
-                const title = truncateText(ticket.title || copy?.noTitle || "Sans titre", 64);
-                const fullTitle = String(ticket.title || "").trim() || copy?.noTitle || "Sans titre";
-                const client = ticket.clientName || copy?.noClient || "—";
-                const tone = priorityTone(ticket);
-                return (
-                  <tr
-                    key={ticket.id}
-                    className={`${homeStyles.homeTableRow} ${
-                      ticket.isMajorIncident || tone === "high" ? homeStyles.homeTableRowAlert : ""
-                    }`}
-                    title={`${fullTitle} · ${client}`}
-                    onClick={() => onOpenTicket?.(ticket, family)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onOpenTicket?.(ticket, family);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="link"
-                  >
-                    <td className={homeStyles.colNum}>
-                      {ticket.ticketNumber ? `#${ticket.ticketNumber}` : `#${ticket.id}`}
-                    </td>
-                    <td>
-                      <span className={`${homeStyles.priorityBadge} ${homeStyles[`priorityBadge_${tone}`] || ""}`}>
-                        {priorityLabel(ticket, copy)}
-                      </span>
-                    </td>
-                    <td className={homeStyles.colMain}>{title}</td>
-                    <td className={homeStyles.colMuted}>{client}</td>
-                    <td className={homeStyles.colDate}>{formatTicketDate(ticket.updatedAt, localeTag)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          ) : null}
-        </table>
-        {!rows.length ? (
-          <HomeEmptyState icon="mdi:ticket-outline" label={emptyLabel} />
-        ) : null}
-      </div>
-    </div>
+    <UiKitDataTable
+      columns={columns}
+      rows={tickets}
+      getSortValue={ticketSortValue}
+      pinFirst={pinMajor}
+      initialSort={{ key: "modified", direction: "desc" }}
+      sortByLabel={copy?.tableSort?.sortBy || "Trier par {column}"}
+      emptyIcon="mdi:ticket-outline"
+      emptyLabel={copy?.empty?.tickets || "Aucun ticket ne vous est assigné"}
+      renderRow={ticket => {
+        const title = truncateText(ticket.title || copy?.noTitle || "Sans titre", 72);
+        const client = ticket.clientName || copy?.noClient || "—";
+        const major = family === "support" && Boolean(ticket.isMajorIncident);
+        const priority = ticketPriorityMark(ticket, copy?.priorities);
+        const open = () => onOpenTicket?.(ticket, family);
+        const numberCell = (
+          <td key="num" className={`${tableStyles.tableColNum} ${homeStyles.colNum}`}>
+            <span className={homeStyles.ticketIdCell}>
+              {major ? (
+                <Icon
+                  icon="mdi:alert-octagon"
+                  className={homeStyles.majorIncidentIcon}
+                  aria-label={copy?.priorities?.majorIncident || "Incident majeur"}
+                />
+              ) : null}
+              {ticket.ticketNumber ? `#${ticket.ticketNumber}` : `#${ticket.id}`}
+            </span>
+          </td>
+        );
+        const titleCell = <td key="title" className={homeStyles.colTitle}>{title}</td>;
+        const companyCell = (
+          <td key="company" className={homeStyles.colCompany}>{client}</td>
+        );
+        const statusCell = (
+          <td key="status" className={homeStyles.colStatus}>{ticketStatusText(ticket, cols)}</td>
+        );
+        const createdCell = (
+          <td key="created" className={`${homeStyles.colDate} ${homeStyles.colCreated}`}>
+            {formatTicketDate(ticket.createdAt, localeTag)}
+          </td>
+        );
+        const dateCell = (
+          <td key="date" className={homeStyles.colDate}>
+            {formatTicketDate(ticket.updatedAt, localeTag)}
+          </td>
+        );
+        const cells = family === "sales"
+          ? [
+            numberCell,
+            titleCell,
+            companyCell,
+            statusCell,
+            <td key="category" className={homeStyles.colCategory}>{formatCategory(ticket.category)}</td>,
+            createdCell,
+            dateCell
+          ]
+          : [
+            numberCell,
+            titleCell,
+            companyCell,
+            statusCell,
+            <td key="priority" className={homeStyles.colPriority}>
+              <span
+                className={`${homeStyles.priorityMark} ${homeStyles[`priority_${priority.tone}`] || ""}`}
+                title={priority.label}
+                aria-label={priority.label}
+              >
+                <Icon icon={priority.icon} aria-hidden />
+              </span>
+            </td>,
+            <td key="sla" className={`${homeStyles.colSla} ${ticket.slaTone ? homeStyles[`sla_${ticket.slaTone}`] || "" : ""}`}>
+              {ticket.slaLabel || "—"}
+            </td>,
+            createdCell,
+            dateCell
+          ];
+        return {
+          key: ticket.id,
+          alert: major,
+          onClick: open,
+          onKeyDown: e => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              open();
+            }
+          },
+          cells
+        };
+      }}
+    />
   );
 }
 
-function HomeEventsWeekStrip({ events, locale, copy, onOpen }) {
-  const labels = copy?.panels?.events || {};
-  const days = useMemo(
-    () => buildEventsWeekStrip(events, locale, HOME_EVENTS_STRIP_DAYS),
-    [events, locale]
-  );
+function TicketBlock({
+  title,
+  icon,
+  cards,
+  ariaLabel,
+  tickets,
+  localeTag,
+  copy,
+  family,
+  navigateDoc,
+  onOpenTicket,
+  sectionKey,
+  actions = null,
+  motionClass = ""
+}) {
   return (
-    <div className={homeStyles.eventsStrip}>
-      <div
-        className={homeStyles.eventsStripTrack}
-        role="list"
-        aria-label={labels.stripAria || labels.title}
-      >
-        <span className={homeStyles.eventsStripLine} aria-hidden />
-        {days.map(day => {
-          const weekday = day.isToday ? labels.today || day.weekday : day.weekday;
-          const dayLabel = `${weekday} ${day.dayNum}`;
-          const countLabel = interpolate(labels.dayCount || "{count}", { count: day.count });
-          const aria = interpolate(labels.dayAria || "{day}: {count}", {
-            day: dayLabel,
-            count: day.count
-          });
-          return (
-            <button
-              key={day.key}
-              type="button"
-              role="listitem"
-              className={`${homeStyles.eventsDayCell} ${day.isToday ? homeStyles.eventsDayToday : ""} ${
-                day.count > 0 ? homeStyles.eventsDayHasEvents : ""
-              }`}
-              onClick={onOpen}
-              aria-label={aria}
-              title={aria}
-            >
-              <span className={homeStyles.eventsDayDate}>
-                <span className={homeStyles.eventsDayWeekday}>{weekday}</span>
-                <span className={homeStyles.eventsDayNum}>{day.dayNum}</span>
-              </span>
-              <span className={homeStyles.eventsDayCircle}>
-                <span className={homeStyles.eventsDayCount}>{countLabel}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <UiKitStackBlock
+      data-home-section={sectionKey}
+      title={title}
+      icon={icon}
+      actions={actions}
+      className={motionClass}
+      kpi={
+        <UiKitKpiStrip
+          variant="pills"
+          cards={cards}
+          ariaLabel={ariaLabel}
+          onNavigate={params => navigateDoc?.(params)}
+        />
+      }
+    >
+      <HomeTicketsTable
+        tickets={tickets}
+        localeTag={localeTag}
+        copy={copy}
+        family={family}
+        onOpenTicket={onOpenTicket}
+      />
+    </UiKitStackBlock>
   );
 }
 
 export default function HomeSupervisionSection({
   copy,
   locale = "fr",
-  onOpenCenter,
   onNavigate,
   assignedTicketStats = null,
   recentTickets = [],
@@ -348,37 +342,7 @@ export default function HomeSupervisionSection({
   const localeTag = getLocaleTag(locale);
   const labels = copy?.panels?.supervision || {};
   const ticketLabels = copy?.panels?.tickets || {};
-  const [loading, setLoading] = useState(true);
-  const [queue, setQueue] = useState([]);
-
-  const load = useCallback(async signal => {
-    setLoading(true);
-    try {
-      const active = await fetchSupervisionAlertsActive({ signal }).catch(() => []);
-      if (signal?.aborted) return;
-      setQueue(buildQueueItemsFromSupervisionAlerts(active, { noName: "—" }));
-    } catch (err) {
-      if (err?.name === "AbortError") return;
-      setQueue([]);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = createTrackedAbortController("home-supervision");
-    load(controller.signal);
-    return () => controller.abort();
-  }, [load]);
-
-  const latestAlerts = useMemo(
-    () =>
-      [...queue]
-        .filter(item => !item?.muted)
-        .sort((a, b) => (b.sortTime || 0) - (a.sortTime || 0))
-        .slice(0, ALERTS_LIMIT),
-    [queue]
-  );
+  const eventsLabels = copy?.panels?.events || {};
 
   const supportTicketKpiCards = useMemo(
     () => buildTicketKpiCards(assignedTicketStats?.support, ticketLabels),
@@ -389,13 +353,11 @@ export default function HomeSupervisionSection({
     [assignedTicketStats?.sales, ticketLabels]
   );
 
-  const supportTickets = useMemo(
-    () =>
-      (Array.isArray(recentTickets) ? recentTickets : [])
-        .filter(ticket => !isSalesTicket(ticket))
-        .slice(0, TICKET_TABLE_LIMIT),
-    [recentTickets]
-  );
+  const supportTickets = useMemo(() => {
+    const list = (Array.isArray(recentTickets) ? recentTickets : []).filter(ticket => !isSalesTicket(ticket));
+    list.sort((a, b) => Number(Boolean(b.isMajorIncident)) - Number(Boolean(a.isMajorIncident)));
+    return list.slice(0, TICKET_TABLE_LIMIT);
+  }, [recentTickets]);
   const salesTickets = useMemo(
     () =>
       (Array.isArray(recentTickets) ? recentTickets : [])
@@ -404,7 +366,6 @@ export default function HomeSupervisionSection({
     [recentTickets]
   );
 
-  const openCenter = () => onOpenCenter?.();
   const openTicket = (ticket, family = "support") => {
     if (ticket?.id && onNavigate) {
       onNavigate(family === "sales" ? "TicketSalesDetail" : "TicketDetail", {
@@ -418,210 +379,101 @@ export default function HomeSupervisionSection({
     }
     onNavigate?.(family === "sales" ? "TicketSales" : "Ticket");
   };
-  const openAlert = item => {
-    if (item?.equipment && onNavigate) onNavigate("EquipmentDetail", item.equipment);
-    else openCenter();
-  };
 
-  const sevLabel = sev => {
-    const s = String(sev || "").toLowerCase();
-    if (s === "critical") return labels.severityCritical || "Critique";
-    if (s === "warning") return labels.severityWarning || "Warning";
-    return labels.severityInfo || "Info";
-  };
-
-  const seeAll = labels.seeAll || "Voir tout";
   const greeting = userName
     ? typeof copy?.heroGreeting === "function"
       ? copy.heroGreeting(userName)
-      : interpolate(String(copy?.heroGreeting || "Bonjour, {name} 👋"), { name: userName })
+      : interpolate(String(copy?.heroGreeting || "Bonjour, {name}"), { name: userName })
     : copy?.heroTitle || "Tableau de bord";
 
   const showTicketPanels = showSupportTickets || showSalesTickets;
+  const canToggleFamilies = showSupportTickets && showSalesTickets;
+  const [ticketFamily, setTicketFamily] = useState(showSupportTickets ? "support" : "sales");
+  const [ticketMotion, setTicketMotion] = useState(null);
+  const activeFamily = canToggleFamilies
+    ? ticketFamily
+    : showSupportTickets
+      ? "support"
+      : "sales";
+  const activeCards = activeFamily === "sales" ? salesTicketKpiCards : supportTicketKpiCards;
+  const activeTickets = activeFamily === "sales" ? salesTickets : supportTickets;
+  const activeTitle = activeFamily === "sales"
+    ? ticketLabels.salesTitle || "Mes tickets services"
+    : ticketLabels.supportTitle || "Mes tickets support";
+  const activeIcon = activeFamily === "sales" ? "mdi:hexagon-multiple-outline" : "mdi:ticket-outline";
+  const activeAria = activeFamily === "sales" ? ticketLabels.salesKpiAriaLabel : ticketLabels.supportKpiAriaLabel;
+  const activePage = activeFamily === "sales" ? "TicketSales" : "Ticket";
 
   return (
-    <section className={styles.root} data-guide="home-supervision" data-home-section="supervision" aria-busy={loading}>
-      <MspPageHero
-        className={styles.hero}
-        stackOnMobile
-        guideId="home-hero"
-        icon="mdi:view-dashboard-outline"
-        brandMarkClassName={styles.heroBrand}
-        title={greeting}
-        subtitle={
-          labels.heroSubtitle ||
-          copy?.heroSubtitle ||
-          "Tout ce qu'il vous faut, au même endroit."
-        }
-      />
-
-      <div className={styles.mainStack}>
-        {showTicketPanels ? (
-          <div
-            className={`${homeStyles.ticketPanelsRow} ${styles.ticketPanelsGrow} ${
-              showSupportTickets && showSalesTickets ? "" : homeStyles.ticketPanelsRowSingle
-            }`.trim()}
-            data-guide="home-tickets"
-          >
-            {showSupportTickets ? (
-              <section className={`${homeStyles.panel} ${homeStyles.panelFull} ${styles.ticketPanel}`} data-home-section="support">
-                <PanelHeader title={ticketLabels.supportTitle || "Mes tickets support"} />
-                <div className={`${homeStyles.panelBody} ${homeStyles.panelBodyFlush} ${styles.ticketPanelBody}`}>
-                  <div
-                    className={`${homeStyles.ticketKpiRow} ${styles.ticketPanelKpis}`}
-                    role="list"
-                    aria-label={ticketLabels.supportKpiAriaLabel}
-                  >
-                    {supportTicketKpiCards.map(card => (
-                      <button
-                        key={card.key}
-                        type="button"
-                        role="listitem"
-                        className={`${homeStyles.ticketKpiCard} ${homeStyles[`kpiTone_${card.tone}`]} ${
-                          Number(card.value) > 0 ? homeStyles.kpiLive : ""
-                        }`}
-                        onClick={() => onNavigate?.("Ticket", card.viewId ? { viewId: card.viewId } : null)}
-                        title={card.label}
-                        aria-label={`${card.label}: ${formatNumber(card.value)}`}
-                      >
-                        <span className={homeStyles.kpiIconWrap} aria-hidden>
-                          <Icon icon={card.icon} />
-                        </span>
-                        <span className={homeStyles.kpiValue}>{formatNumber(card.value)}</span>
-                        <span className={homeStyles.kpiLabel}>{card.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <HomeTicketsTable
-                    tickets={supportTickets}
-                    localeTag={localeTag}
-                    copy={copy}
-                    family="support"
-                    onOpenTicket={openTicket}
-                  />
-                </div>
-              </section>
-            ) : null}
-
-            {showSalesTickets ? (
-              <section className={`${homeStyles.panel} ${homeStyles.panelFull} ${styles.ticketPanel}`} data-home-section="sales">
-                <PanelHeader title={ticketLabels.salesTitle || "Mes tickets services"} />
-                <div className={`${homeStyles.panelBody} ${homeStyles.panelBodyFlush} ${styles.ticketPanelBody}`}>
-                  <div
-                    className={`${homeStyles.ticketKpiRow} ${styles.ticketPanelKpis}`}
-                    role="list"
-                    aria-label={ticketLabels.salesKpiAriaLabel}
-                  >
-                    {salesTicketKpiCards.map(card => (
-                      <button
-                        key={card.key}
-                        type="button"
-                        role="listitem"
-                        className={`${homeStyles.ticketKpiCard} ${homeStyles[`kpiTone_${card.tone}`]} ${
-                          Number(card.value) > 0 ? homeStyles.kpiLive : ""
-                        }`}
-                        onClick={() =>
-                          onNavigate?.("TicketSales", card.viewId ? { viewId: card.viewId } : null)
-                        }
-                        title={card.label}
-                        aria-label={`${card.label}: ${formatNumber(card.value)}`}
-                      >
-                        <span className={homeStyles.kpiIconWrap} aria-hidden>
-                          <Icon icon={card.icon} />
-                        </span>
-                        <span className={homeStyles.kpiValue}>{formatNumber(card.value)}</span>
-                        <span className={homeStyles.kpiLabel}>{card.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <HomeTicketsTable
-                    tickets={salesTickets}
-                    localeTag={localeTag}
-                    copy={copy}
-                    family="sales"
-                    onOpenTicket={openTicket}
-                  />
-                </div>
-              </section>
-            ) : null}
-          </div>
-        ) : null}
-
-        {showEvents ? (
-          <section
-            className={`${homeStyles.panel} ${homeStyles.panelFull} ${homeStyles.eventsPanel} ${styles.eventsPanel}`}
-            data-guide="home-events"
-            data-home-section="events"
-          >
-            <PanelHeader
-              title={copy?.panels?.events?.title || "Mes événements"}
-              titleMeta={
-                <span className={homeStyles.panelTitleMeta}>
-                  {copy?.panels?.events?.weekHint || "7 prochains jours"}
-                </span>
-              }
-            />
-            <div className={`${homeStyles.panelBody} ${homeStyles.eventsPanelBody}`}>
-              <HomeEventsWeekStrip
-                events={upcomingEvents}
-                locale={locale}
-                copy={copy}
-                onOpen={() => onNavigate?.("Planning")}
-              />
-            </div>
-          </section>
-        ) : null}
-
-        <section className={`${homeStyles.panel} ${homeStyles.panelFull} ${styles.alertsCard}`}>
-          <PanelHeader
-            title={labels.latestTitle || "Alertes récentes"}
-            action={
-              <button type="button" className={styles.seeAll} onClick={openCenter}>
-                {seeAll}
-                <Icon icon="mdi:arrow-right" aria-hidden />
-              </button>
+    <UiKitHomeBoard
+      title={greeting}
+      titleMark={userName ? true : null}
+      subtitle={
+        labels.heroSubtitle ||
+        copy?.heroSubtitle ||
+        "Tout ce qu'il vous faut, au même endroit."
+      }
+      events={
+        showEvents ? (
+          <UiKitEventsWeek
+            events={upcomingEvents}
+            locale={locale}
+            copy={copy}
+            title={eventsLabels.title || "Mes événements"}
+            icon="mdi:calendar-month-outline"
+            showHint
+            selectable
+            onOpen={() => onNavigate?.("Planning")}
+          />
+        ) : null
+      }
+      tickets={
+        showTicketPanels ? (
+          <TicketBlock
+            key={activeFamily}
+            sectionKey={activeFamily}
+            title={activeTitle}
+            icon={activeIcon}
+            cards={activeCards}
+            ariaLabel={activeAria}
+            tickets={activeTickets}
+            localeTag={localeTag}
+            copy={copy}
+            family={activeFamily}
+            motionClass={
+              ticketMotion
+                ? `${homeStyles.ticketSwap}${ticketMotion === "prev" ? ` ${homeStyles.ticketSwapPrev}` : ""}`
+                : ""
+            }
+            navigateDoc={params => onNavigate?.(activePage, params)}
+            onOpenTicket={openTicket}
+            actions={
+              canToggleFamilies ? (
+                <button
+                  type="button"
+                  className={homeStyles.familyToggle}
+                  data-family={activeFamily}
+                  aria-pressed={activeFamily === "sales"}
+                  aria-label={activeFamily === "sales" ? "Services. Afficher le support" : "Support. Afficher les services"}
+                  onClick={() => {
+                    const next = activeFamily === "support" ? "sales" : "support";
+                    setTicketMotion(next === "sales" ? "next" : "prev");
+                    setTicketFamily(next);
+                  }}
+                >
+                  <span className={homeStyles.familyToggleThumb} aria-hidden />
+                  <span className={`${homeStyles.familyToggleOption}${activeFamily === "support" ? ` ${homeStyles.familyToggleOptionOn}` : ""}`}>
+                    Support
+                  </span>
+                  <span className={`${homeStyles.familyToggleOption}${activeFamily === "sales" ? ` ${homeStyles.familyToggleOptionOn}` : ""}`}>
+                    Services
+                  </span>
+                </button>
+              ) : null
             }
           />
-          <div className={`${homeStyles.panelBody} ${styles.alertsBody}`}>
-            {latestAlerts.length === 0 ? (
-              <HomeEmptyState
-                icon="mdi:bell-outline"
-                label={labels.emptyAlerts || "Aucune alerte récente"}
-              />
-            ) : (
-              <ul className={styles.latestList}>
-                {latestAlerts.map(item => (
-                  <li key={item.id || item.queueItemId}>
-                    <button type="button" className={styles.latestItem} onClick={() => openAlert(item)}>
-                      <span className={`${styles.latestIcon} ${severityBadgeClass(item.severity)}`} aria-hidden>
-                        <Icon
-                          icon={
-                            String(item.severity).toLowerCase() === "critical"
-                              ? "mdi:alert-octagon"
-                              : String(item.severity).toLowerCase() === "warning"
-                                ? "mdi:alert"
-                                : "mdi:information-outline"
-                          }
-                        />
-                      </span>
-                      <span className={styles.latestCopy}>
-                        <strong>{deviceName(item)}</strong>
-                        <span>{alertDescription(item)}</span>
-                      </span>
-                      <span className={styles.latestMeta}>
-                        <time>{formatTime(item.sortTime, localeTag)}</time>
-                        <span className={`${styles.pill} ${severityBadgeClass(item.severity)}`}>
-                          {sevLabel(item.severity)}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-      </div>
-    </section>
+        ) : null
+      }
+    />
   );
 }

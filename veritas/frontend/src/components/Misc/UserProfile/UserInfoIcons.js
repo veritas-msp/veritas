@@ -8,7 +8,7 @@ import classes from "./UserInfoIcons.module.css";
 
 const accountTheme = createTheme({
   primaryColor: "blue",
-  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  fontFamily: '"SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   defaultRadius: "md"
 });
 

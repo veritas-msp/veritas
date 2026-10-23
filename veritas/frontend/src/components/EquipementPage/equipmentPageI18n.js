@@ -1,7 +1,7 @@
 import { createLocaleGetter, interpolate } from "../../i18n/translate";
 const PAGE_COPY = {
   fr: {
-    searchPlaceholder: "Rechercher un équipement, IP, SN…",
+    searchPlaceholder: "Rechercher",
     maintenance: {
       badge: "En maintenance",
       until: "Jusqu’au {date}",
@@ -239,7 +239,7 @@ const PAGE_COPY = {
     }
   },
   en: {
-    searchPlaceholder: "Search equipment, IP, SN…",
+    searchPlaceholder: "Search",
     maintenance: {
       badge: "In maintenance",
       until: "Until {date}",
@@ -471,7 +471,7 @@ const PAGE_COPY = {
     }
   },
   de: {
-    searchPlaceholder: "Gerät, IP, SN suchen…",
+    searchPlaceholder: "Suchen",
     embedded: {
       typeBarAria: "Gerätetypen",
       typeTooltip: "{label} ({count})",
@@ -694,7 +694,7 @@ const PAGE_COPY = {
     }
   },
   it: {
-    searchPlaceholder: "Cerca dispositivo, IP, SN…",
+    searchPlaceholder: "Cerca",
     embedded: {
       typeBarAria: "Tipi di periferica",
       typeTooltip: "{label} ({count})",
@@ -917,7 +917,7 @@ const PAGE_COPY = {
     }
   },
   es: {
-    searchPlaceholder: "Buscar equipo, IP, SN…",
+    searchPlaceholder: "Buscar",
     embedded: {
       typeBarAria: "Tipos de periférico",
       typeTooltip: "{label} ({count})",

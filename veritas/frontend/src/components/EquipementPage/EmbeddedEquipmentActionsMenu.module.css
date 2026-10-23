@@ -8,14 +8,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--msp-surface, #ffffff);
   color: var(--msp-muted, #5c6b82);
-  font-size: 1.15rem;
+  font-size: 0.85rem;
+  line-height: 0;
+  flex-shrink: 0;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }

@@ -4,7 +4,7 @@
   min-height: 0;
   background: var(--msp-page-bg);
   color: var(--msp-text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   overflow: hidden;
 }
 

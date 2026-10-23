@@ -1,7 +1,7 @@
 
 .pageWrapper {
   position: relative;
-  background: var(--msp-page-bg);
+  background: #e6edf6;
   color: var(--msp-text);
   height: 100%;
   min-height: 0;
@@ -9,7 +9,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   scrollbar-gutter: stable;
 }
 
@@ -42,6 +42,7 @@
 
 :global(html.dark) .pageWrapper,
 :global(body.dark) .pageWrapper {
+  background: var(--msp-page-bg, #02050a);
   scrollbar-color: #3a4f6e transparent;
 }
 
@@ -85,6 +86,15 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* Accueil maquette : pleine hauteur — board haut + news bas full width */
+.pageLayoutStack {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(11rem, 38%);
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+}
+
 .dashboardMain {
   min-width: 0;
   min-height: 0;
@@ -93,6 +103,12 @@
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.pageLayoutStack .dashboardMain {
+  overflow: hidden;
+  min-height: 0;
+  height: auto;
 }
 
 .newsAside {
@@ -107,6 +123,24 @@
   overflow: hidden;
 }
 
+.newsBottom {
+  position: relative;
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.newsBottom > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
 
 .homeHeroWrap {
   position: relative;
@@ -114,9 +148,130 @@
   flex-shrink: 0;
 }
 
+.homeHeroWithKpis,
+.homeHeroWithEvents {
+  margin: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.homeHeroWithKpis > *:first-child,
+.homeHeroWithEvents > *:first-child {
+  flex: 0 1 auto;
+  max-width: 32%;
+  min-width: 11rem;
+}
+
+.homeHeroWithKpis > *:last-child,
+.homeHeroWithEvents > *:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.heroEvents {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: min(100%, 34rem);
+  min-width: 0;
+}
+
 .homeHero {
-  margin: 0 !important;
-  padding-right: 12.5rem !important;
+  margin: 0;
+}
+
+.errorBannerKit {
+  margin-bottom: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* KPI sur la même ligne que le titre — compact, aligné à droite */
+.heroKpiStrip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  width: auto;
+  margin-left: auto;
+  min-width: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border-top: none;
+}
+
+.heroKpiStripInline {
+  width: auto;
+  max-width: 100%;
+}
+
+.heroKpiGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.heroKpiGroupLabel {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light);
+  padding: 0 0.1rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.heroKpiGroupRow {
+  display: grid;
+  /* Colonnes égales : même emprise pour chaque KPI, indépendamment du libellé */
+  grid-template-columns: repeat(4, 5.5rem);
+  gap: 0 0.45rem;
+  min-width: 0;
+}
+
+.heroKpiDivider {
+  width: 1px;
+  align-self: stretch;
+  margin: 0.35rem 0.65rem;
+  background: var(--msp-border-light, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.heroKpiCard {
+  border-right: none !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  width: 100%;
+  padding: 0.15rem 0.15rem !important;
+  border-radius: 6px !important;
+  gap: 0.05rem !important;
+  align-items: center !important;
+  text-align: center;
+}
+
+.heroKpiCard .kpiIconWrap {
+  display: none;
+}
+
+.heroKpiCard .kpiValue {
+  font-size: 1.15rem !important;
+  line-height: 1.1;
+}
+
+.heroKpiCard .kpiLabel {
+  font-size: 0.58rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .heroAside {
@@ -394,6 +549,7 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--msp-text);
 }
 
 .kpiLabel {
@@ -435,22 +591,29 @@
   font-size: 1.55rem;
 }
 
-.kpiTone_blue .kpiValue { color: #2563eb; }
-.kpiTone_blue .kpiIconWrap { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
-.kpiTone_amber .kpiValue { color: #d97706; }
-.kpiTone_amber .kpiIconWrap { background: rgba(217, 119, 6, 0.1); color: #d97706; }
-.kpiTone_red .kpiValue { color: #dc2626; }
-.kpiTone_red .kpiIconWrap { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
-.kpiTone_teal .kpiValue { color: #0d9488; }
-.kpiTone_teal .kpiIconWrap { background: rgba(13, 148, 136, 0.1); color: #0d9488; }
-.kpiTone_purple .kpiValue { color: #7c3aed; }
-.kpiTone_purple .kpiIconWrap { background: rgba(124, 58, 237, 0.1); color: #7c3aed; }
-.kpiTone_orange .kpiValue { color: #ea580c; }
-.kpiTone_orange .kpiIconWrap { background: rgba(234, 88, 12, 0.1); color: #ea580c; }
-.kpiTone_green .kpiValue { color: #16a34a; }
-.kpiTone_green .kpiIconWrap { background: rgba(22, 163, 74, 0.1); color: #16a34a; }
-.kpiTone_rose .kpiValue { color: #e11d48; }
-.kpiTone_rose .kpiIconWrap { background: rgba(225, 29, 72, 0.1); color: #e11d48; }
+/* Une seule accent : bleu Veritas (toutes les tones KPI) */
+.kpiTone_brand .kpiValue,
+.kpiTone_blue .kpiValue,
+.kpiTone_amber .kpiValue,
+.kpiTone_red .kpiValue,
+.kpiTone_teal .kpiValue,
+.kpiTone_purple .kpiValue,
+.kpiTone_orange .kpiValue,
+.kpiTone_green .kpiValue,
+.kpiTone_rose .kpiValue { color: var(--msp-accent, #2b5fab); }
+
+.kpiTone_brand .kpiIconWrap,
+.kpiTone_blue .kpiIconWrap,
+.kpiTone_amber .kpiIconWrap,
+.kpiTone_red .kpiIconWrap,
+.kpiTone_teal .kpiIconWrap,
+.kpiTone_purple .kpiIconWrap,
+.kpiTone_orange .kpiIconWrap,
+.kpiTone_green .kpiIconWrap,
+.kpiTone_rose .kpiIconWrap {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+}
 
 .secondaryKpiRow {
   display: flex;
@@ -509,7 +672,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--home-card-gap, 1rem);
   min-width: 0;
-  flex-shrink: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-items: stretch;
 }
 
 .ticketPanelsRowSingle {
@@ -571,6 +736,63 @@
   min-width: 0;
   padding: 0.15rem 0.85rem;
   box-sizing: border-box;
+}
+
+.panelHeaderKpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(3.75rem, 1fr));
+  gap: 0 0.3rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 22rem;
+  margin-left: auto;
+}
+
+.panelHeaderKpiCard {
+  border-right: none !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  width: 100%;
+  padding: 0.1rem 0.2rem !important;
+  border-radius: 6px !important;
+  gap: 0.05rem !important;
+  align-items: center !important;
+  text-align: center;
+  background: transparent;
+}
+
+.panelHeaderKpiCard .kpiValue {
+  font-size: 1.05rem !important;
+  line-height: 1.1;
+}
+
+.panelHeaderKpiCard .kpiLabel {
+  font-size: 0.56rem;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.eventsStripHero {
+  width: 100%;
+}
+
+.eventsStripHero .eventsStripTrack {
+  --events-date-h: 1rem;
+  --events-gap: 0.35rem;
+  --events-circle: 1.85rem;
+  --events-pad-top: 0.05rem;
+  padding: var(--events-pad-top) 0.15rem 0.15rem;
+}
+
+.eventsStripHero .eventsDayDate {
+  font-size: 0.68rem;
+}
+
+.eventsStripHero .eventsDayCount {
+  font-size: 0.74rem;
 }
 
 .ticketKpiCard {
@@ -767,15 +989,19 @@
 }
 
 .homeTableRowAlert {
-  background: rgba(220, 38, 38, 0.04);
+  background: rgba(220, 38, 38, 0.06);
 }
 
 .homeTableRowAlert:hover,
 .homeTableRowAlert:focus-visible {
-  background: rgba(220, 38, 38, 0.08);
+  background: rgba(220, 38, 38, 0.1);
 }
 
 .homeTableRow_bad {
+  box-shadow: inset 3px 0 0 #dc2626;
+}
+
+.homeTableRowAlert.homeTableRow_bad {
   box-shadow: inset 3px 0 0 #dc2626;
 }
 
@@ -1479,21 +1705,28 @@
 }
 
 .eventsStripTrack {
+  --events-date-h: 1.1rem;
+  --events-gap: 0.4rem;
+  --events-circle: 2.15rem;
+  --events-pad-top: 0.2rem;
   position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   align-items: start;
   column-gap: 0;
   min-width: 0;
-  padding: 0.2rem 0.35rem 0.35rem;
+  padding: var(--events-pad-top) 0.35rem 0.35rem;
 }
 
 .eventsStripLine {
   position: absolute;
   left: calc(100% / 14);
   right: calc(100% / 14);
-  top: calc(1.55rem + 0.4rem + 1.075rem);
+  top: calc(
+    var(--events-pad-top) + var(--events-date-h) + var(--events-gap) + (var(--events-circle) / 2)
+  );
   height: 2px;
+  transform: translateY(-50%);
   background-image: radial-gradient(
     circle,
     var(--msp-border, #9aabc0) 1.1px,
@@ -1513,7 +1746,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.4rem;
+  gap: var(--events-gap);
   width: 100%;
   min-width: 0;
   margin: 0;
@@ -1527,7 +1760,7 @@
 
 .eventsDayCell:hover .eventsDayCircle {
   border-color: var(--msp-accent);
-  background: var(--msp-accent-soft);
+  background: color-mix(in srgb, var(--msp-accent) 14%, var(--msp-surface, #fff));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent) 18%, transparent);
 }
 
@@ -1542,37 +1775,27 @@
 
 .eventsDayDate {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.05rem;
-  height: 1.55rem;
-  line-height: 1.05;
-  text-align: center;
-}
-
-.eventsDayWeekday {
-  font-size: 0.66rem;
+  height: var(--events-date-h);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--msp-muted);
+  letter-spacing: 0.01em;
+  color: var(--msp-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
   white-space: nowrap;
 }
 
-.eventsDayNum {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--msp-text);
-  font-variant-numeric: tabular-nums;
-}
-
 .eventsDayCircle {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.15rem;
-  height: 2.15rem;
+  width: var(--events-circle);
+  height: var(--events-circle);
   border-radius: 50%;
   border: 2px solid var(--msp-border, #9aabc0);
   background: var(--msp-surface, #fff);
@@ -1580,6 +1803,8 @@
 }
 
 .eventsDayCount {
+  position: relative;
+  z-index: 1;
   font-size: 0.82rem;
   font-weight: 800;
   color: var(--msp-muted);
@@ -1587,14 +1812,13 @@
   line-height: 1;
 }
 
-.eventsDayToday .eventsDayWeekday,
-.eventsDayToday .eventsDayNum {
+.eventsDayToday .eventsDayDate {
   color: var(--msp-accent);
 }
 
 .eventsDayToday .eventsDayCircle {
   border-color: var(--msp-accent);
-  background: var(--msp-accent-soft);
+  background: color-mix(in srgb, var(--msp-accent) 14%, var(--msp-surface, #fff));
 }
 
 .eventsDayHasEvents .eventsDayCircle {
@@ -1609,6 +1833,11 @@
 :global(html.dark) .eventsDayCircle {
   background: var(--msp-surface-2, #162338);
   border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .eventsDayCell:hover .eventsDayCircle,
+:global(html.dark) .eventsDayToday .eventsDayCircle {
+  background: color-mix(in srgb, var(--msp-accent) 22%, var(--msp-surface-2, #162338));
 }
 
 :global(html.dark) .eventsStripLine {
@@ -1669,6 +1898,11 @@
     grid-template-columns: minmax(0, 1fr) 380px;
     padding: 1.35rem 1.5rem 1.5rem;
   }
+
+  .pageLayoutStack {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(11rem, 38%);
+  }
 }
 
 @media (min-width: 1024px) {
@@ -1702,8 +1936,16 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .panelHeaderKpis {
+    max-width: 26rem;
+  }
+
   .pageLayout {
     grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .pageLayoutStack {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1726,6 +1968,18 @@
     padding: 1.1rem 1rem 5.5rem;
     gap: var(--home-card-gap);
     overflow: visible;
+  }
+
+  .pageLayoutStack {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .newsBottom {
+    height: auto;
+    min-height: 18rem;
   }
 
   .dashboardMain {
@@ -1767,8 +2021,46 @@
     padding-right: 0.75rem;
   }
 
-  .homeTable thead th:nth-child(4),
-  .homeTable tbody td:nth-child(4) {
+  .homeHeroWithKpis,
+  .homeHeroWithEvents {
+    flex-wrap: wrap;
+  }
+
+  .homeHeroWithKpis > *:first-child,
+  .homeHeroWithEvents > *:first-child {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .homeHeroWithKpis > *:last-child,
+  .homeHeroWithEvents > *:last-child {
+    width: 100%;
+  }
+
+  .heroEvents {
+    width: 100%;
+  }
+
+  .heroKpiStrip,
+  .heroKpiStripInline {
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .heroKpiGroup {
+    flex: 1 1 0;
+  }
+
+  .heroKpiGroupRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0 0.2rem;
+  }
+
+  /* Tickets accueil : masquer Entreprise sur tablette */
+  .homeTable thead th:nth-child(3),
+  .homeTable tbody td:nth-child(3) {
     display: none;
   }
 
@@ -1909,33 +2201,18 @@
     padding: 0.45rem 0.5rem 0.55rem;
   }
 
-  .eventsDayCircle {
-    width: 1.9rem;
-    height: 1.9rem;
-  }
-
-  .eventsStripLine {
-    top: calc(1.45rem + 0.35rem + 0.95rem);
+  .eventsStripTrack {
+    --events-date-h: 1rem;
+    --events-gap: 0.35rem;
+    --events-circle: 1.9rem;
   }
 
   .eventsDayDate {
-    height: 1.45rem;
-  }
-
-  .eventsDayCell {
-    gap: 0.35rem;
+    font-size: 0.66rem;
   }
 
   .eventsDayCount {
     font-size: 0.74rem;
-  }
-
-  .eventsDayWeekday {
-    font-size: 0.6rem;
-  }
-
-  .eventsDayNum {
-    font-size: 0.7rem;
   }
 
   .ticketKpiRow {
@@ -1943,6 +2220,15 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-left: 0.55rem;
     padding-right: 0.55rem;
+  }
+
+  .heroKpiGroupRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    min-width: 16rem;
+  }
+
+  .heroKpiCard {
+    min-height: 0 !important;
   }
 
   .ticketKpiCard {
@@ -1955,6 +2241,11 @@
     min-height: 0;
     padding: 0.55rem 0.55rem;
     border-bottom: 1px solid var(--msp-border-light);
+  }
+
+  .heroKpiCard.ticketKpiCard {
+    display: flex;
+    border-bottom: none;
   }
 
   .ticketKpiCard:nth-child(2n) {
@@ -2015,10 +2306,9 @@
     font-size: 1.25rem;
   }
 
-  .homeTable thead th:nth-child(2),
-  .homeTable tbody td:nth-child(2),
-  .homeTable thead th:nth-child(4),
-  .homeTable tbody td:nth-child(4) {
+  /* Tickets accueil mobile : N° + Titre + Modifié */
+  .homeTable thead th:nth-child(3),
+  .homeTable tbody td:nth-child(3) {
     display: none;
   }
 
@@ -2097,44 +2387,17 @@
   box-shadow: none;
 }
 
-:global(html.dark) .kpiTone_blue .kpiIconWrap {
-  background: rgba(37, 99, 235, 0.18);
-  color: #60a5fa;
-}
-
-:global(html.dark) .kpiTone_amber .kpiIconWrap {
-  background: rgba(217, 119, 6, 0.18);
-  color: #fbbf24;
-}
-
-:global(html.dark) .kpiTone_red .kpiIconWrap {
-  background: rgba(220, 38, 38, 0.18);
-  color: #f87171;
-}
-
-:global(html.dark) .kpiTone_teal .kpiIconWrap {
-  background: rgba(13, 148, 136, 0.18);
-  color: #2dd4bf;
-}
-
-:global(html.dark) .kpiTone_purple .kpiIconWrap {
-  background: rgba(124, 58, 237, 0.18);
-  color: #a78bfa;
-}
-
-:global(html.dark) .kpiTone_orange .kpiIconWrap {
-  background: rgba(234, 88, 12, 0.18);
-  color: #fb923c;
-}
-
-:global(html.dark) .kpiTone_green .kpiIconWrap {
-  background: rgba(22, 163, 74, 0.18);
-  color: #4ade80;
-}
-
+:global(html.dark) .kpiTone_brand .kpiIconWrap,
+:global(html.dark) .kpiTone_blue .kpiIconWrap,
+:global(html.dark) .kpiTone_amber .kpiIconWrap,
+:global(html.dark) .kpiTone_red .kpiIconWrap,
+:global(html.dark) .kpiTone_teal .kpiIconWrap,
+:global(html.dark) .kpiTone_purple .kpiIconWrap,
+:global(html.dark) .kpiTone_orange .kpiIconWrap,
+:global(html.dark) .kpiTone_green .kpiIconWrap,
 :global(html.dark) .kpiTone_rose .kpiIconWrap {
-  background: rgba(225, 29, 72, 0.18);
-  color: #fb7185;
+  background: rgba(43, 95, 171, 0.22);
+  color: #93c5fd;
 }
 
 :global(html.dark) .ticketRowMajor {
@@ -2147,4 +2410,15 @@
 
 :global(html.dark) .todayItemWarn {
   background: rgba(217, 119, 6, 0.12);
+}
+
+/* Tablette et téléphone : la page défile, le shell n’est plus coupé. */
+@media (max-width: 1100px) {
+  .pageWrapper,
+  :global(.contentWrapper) > .pageWrapper {
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
 }

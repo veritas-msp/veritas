@@ -1,0 +1,674 @@
+/* UI Kit — Layouts (finder, toolbar recherche, pagination) — source de vérité app */
+
+@keyframes uikitNavIconPop {
+  from {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes uikitNavLabelIn {
+  from {
+    opacity: 0.55;
+    transform: translateX(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes uikitSearchFocusIn {
+  0% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 1px 2px rgba(15, 28, 46, 0.04);
+  }
+  55% {
+    box-shadow:
+      0 0 0 5px color-mix(in srgb, var(--msp-accent-soft) 70%, transparent),
+      0 4px 14px color-mix(in srgb, var(--msp-accent) 16%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 3px var(--msp-accent-soft),
+      0 4px 14px color-mix(in srgb, var(--msp-accent) 16%, transparent);
+  }
+}
+
+/* —— Finder layout —— */
+.finderLayout {
+  display: grid;
+  grid-template-columns: minmax(13.5rem, 15rem) minmax(0, 1fr);
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--msp-border-light);
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface);
+  box-shadow: none;
+}
+
+.finderSidebar {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--msp-border-light);
+  background: color-mix(in srgb, var(--msp-surface-2) 88%, var(--msp-surface));
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.finderPrimary {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.55rem 0.55rem;
+}
+
+.finderItem {
+  appearance: none;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.55rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: var(--msp-radius-btn);
+  background: transparent;
+  color: var(--msp-text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease),
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration-fast) var(--msp-ease);
+}
+
+.finderItem:hover {
+  background: color-mix(in srgb, var(--msp-surface) 70%, transparent);
+}
+
+.finderItem:active {
+  transform: scale(0.98);
+}
+
+.finderItemActive,
+.finderItemActive:hover {
+  background: color-mix(in srgb, var(--msp-accent) 12%, var(--msp-surface));
+  color: var(--msp-accent);
+}
+
+.finderItemIcon {
+  font-size: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  opacity: 0.85;
+  transition:
+    color var(--msp-duration-fast) var(--msp-ease),
+    opacity var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration) var(--msp-ease-spring);
+}
+
+.finderItemActive .finderItemIcon {
+  opacity: 1;
+  color: var(--msp-accent);
+  animation: uikitNavIconPop var(--msp-duration) var(--msp-ease-spring) both;
+}
+
+.finderItemLabel {
+  min-width: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finderItemActive .finderItemLabel {
+  animation: uikitNavLabelIn var(--msp-duration-fast) var(--msp-ease) both;
+}
+
+.finderSecondaryShell {
+  --fade-surface: color-mix(in srgb, var(--msp-surface-2) 88%, var(--msp-surface));
+  --fade-radius: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--msp-border-light);
+}
+
+.finderSecondary {
+  position: relative;
+  padding: 0.75rem 0.55rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.finderSecTitle {
+  margin: 0 0 0.55rem;
+  padding: 0 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+  box-sizing: border-box;
+}
+
+.finderSecTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin: 0 0 0.55rem;
+  padding: 0 0.65rem;
+  box-sizing: border-box;
+}
+
+.finderSecTitleRow .finderSecTitle {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.finderSecNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.finderSecGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.finderSecGroup + .finderSecGroup {
+  margin-top: 0.55rem;
+}
+
+.finderSecGroupTitle {
+  margin: 0;
+  padding: 0.15rem 0.65rem 0.05rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light);
+}
+
+.finderSecItem {
+  appearance: none;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.4rem 0.65rem;
+  min-height: var(--msp-btn-h);
+  border: 1px solid transparent;
+  border-radius: var(--msp-radius-btn);
+  background: transparent;
+  color: var(--msp-muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease);
+}
+
+.finderSecItem:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--msp-surface) 80%, transparent);
+  color: var(--msp-text);
+}
+
+.finderSecItemActive,
+.finderSecItemActive:hover:not(:disabled) {
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.finderSecItemIcon {
+  font-size: 1.05rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  opacity: 0.85;
+  transition:
+    color var(--msp-duration-fast) var(--msp-ease),
+    opacity var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration) var(--msp-ease-spring);
+}
+
+.finderSecItemActive .finderSecItemIcon {
+  opacity: 1;
+  color: var(--msp-accent);
+  animation: uikitNavIconPop var(--msp-duration) var(--msp-ease-spring) both;
+}
+
+.finderSecItemLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finderSecItemActive .finderSecItemLabel {
+  animation: uikitNavLabelIn var(--msp-duration-fast) var(--msp-ease) both;
+}
+
+.finderSecMeta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.finderSecCount {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: var(--msp-radius-sm);
+  font-size: 0.65rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  opacity: 0.9;
+}
+
+.finderSecItemActive .finderSecCount {
+  background: color-mix(in srgb, var(--msp-accent) 16%, transparent);
+  opacity: 1;
+}
+
+.finderSecSoon {
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--msp-muted-light);
+  white-space: nowrap;
+}
+
+.finderSecItemDimmed,
+.finderSecItemDimmed:hover {
+  cursor: not-allowed;
+  color: var(--msp-muted-light);
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.55;
+  filter: grayscale(0.25);
+}
+
+.finderSecItemDimmed .finderSecItemIcon,
+.finderSecItemDimmed .finderSecItemLabel,
+.finderSecItemDimmed .finderSecCount {
+  color: var(--msp-muted-light);
+}
+
+.finderContent {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-surface);
+}
+
+.finderTypeNavHost {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.finderTypeNavHost > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.finderVaultAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--msp-radius-sm);
+  background: transparent;
+  color: var(--msp-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.finderVaultAddBtn:hover {
+  background: var(--msp-accent-soft);
+}
+
+/* —— Toolbar recherche —— */
+.inputsToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 200px;
+  max-width: 280px;
+  width: min(280px, 36vw);
+  min-height: var(--msp-btn-h);
+  padding: 0 0.85rem;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-pill);
+  background: var(--msp-surface);
+  box-shadow: var(--msp-shadow-sm);
+  transform-origin: center;
+  transition:
+    border-color var(--msp-duration) var(--msp-ease),
+    box-shadow var(--msp-duration) var(--msp-ease),
+    transform var(--msp-duration) var(--msp-ease-spring),
+    background var(--msp-duration) var(--msp-ease);
+}
+
+.searchBoxFluid {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+.searchBox:hover {
+  border-color: color-mix(in srgb, var(--msp-accent) 55%, var(--msp-border));
+}
+
+.searchBox:focus-within {
+  border-color: var(--msp-accent);
+  background: var(--msp-surface);
+  transform: scale(1.02);
+  box-shadow:
+    0 0 0 3px var(--msp-accent-soft),
+    0 4px 14px color-mix(in srgb, var(--msp-accent) 16%, transparent);
+  animation: uikitSearchFocusIn var(--msp-duration-slow) var(--msp-ease-spring) both;
+}
+
+.searchIcon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--msp-muted-light);
+  transition:
+    color var(--msp-duration) var(--msp-ease),
+    transform var(--msp-duration) var(--msp-ease-spring);
+}
+
+.searchBox:focus-within .searchIcon {
+  color: var(--msp-accent);
+  transform: scale(1.08);
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--msp-text);
+  font-size: 0.78rem;
+  font-family: inherit;
+  padding: 0.25rem 0;
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--msp-muted-light);
+  transition: opacity var(--msp-duration-fast) var(--msp-ease);
+}
+
+.searchInput::-webkit-search-decoration,
+.searchInput::-webkit-search-cancel-button,
+.searchInput::-webkit-search-results-button,
+.searchInput::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+
+.searchInput::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.searchBox:focus-within .searchInput::placeholder {
+  opacity: 0.55;
+}
+
+.searchClear {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--msp-radius-pill);
+  background: transparent;
+  color: var(--msp-muted-light);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.searchClear:hover {
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.searchActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+/* —— Boutons carrés toolbar —— */
+.btnSquare {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--msp-btn-square);
+  height: var(--msp-btn-square);
+  min-width: var(--msp-btn-square);
+  min-height: var(--msp-btn-square);
+  padding: 0;
+  border-radius: var(--msp-radius-btn);
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  line-height: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration-fast) var(--msp-ease-spring),
+    box-shadow var(--msp-duration-fast) var(--msp-ease);
+}
+
+.btnSquare:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.btnSquareSecondary {
+  background: var(--msp-surface);
+  border-color: var(--msp-border);
+  color: var(--msp-muted);
+}
+
+.btnSquareSecondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent) 45%, var(--msp-border));
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.btnSquarePrimary {
+  background: var(--msp-accent);
+  border-color: var(--msp-accent);
+  color: #fff;
+}
+
+.btnSquarePrimary:hover:not(:disabled) {
+  background: var(--msp-accent-dark);
+  border-color: var(--msp-accent-dark);
+}
+
+.btnSquare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSquare:focus-visible {
+  outline: 2px solid var(--msp-accent);
+  outline-offset: 2px;
+}
+
+/* —— Pagination —— */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.15rem 0.15rem 0;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  background: transparent;
+  border: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--msp-scrollbar-thumb) var(--msp-scrollbar-track);
+}
+
+.paginationLeft,
+.paginationRight {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.paginationLabel,
+.paginationInfo {
+  font-size: 0.8125rem;
+  color: var(--msp-muted);
+  white-space: nowrap;
+}
+
+.paginationSelect {
+  flex-shrink: 0;
+  height: var(--msp-btn-h);
+  max-width: 240px;
+  padding: 0 1.4rem 0 0.55rem;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-btn);
+  background: var(--msp-surface);
+  color: var(--msp-muted);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    background var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease);
+}
+
+.paginationSelect:hover {
+  border-color: color-mix(in srgb, var(--msp-accent) 45%, var(--msp-border));
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.paginationSelect:focus {
+  outline: none;
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft);
+}
+
+.pageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--msp-btn-square);
+  height: var(--msp-btn-square);
+  min-width: var(--msp-btn-square);
+  min-height: var(--msp-btn-square);
+  padding: 0;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-btn);
+  background: var(--msp-surface);
+  color: var(--msp-muted);
+  font-size: 0.95rem;
+  line-height: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration-fast) var(--msp-ease-spring);
+}
+
+.pageBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent) 45%, var(--msp-border));
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.pageBtn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.pageBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pageBtn:focus-visible {
+  outline: 2px solid var(--msp-accent);
+  outline-offset: 2px;
+}

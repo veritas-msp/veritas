@@ -1,15 +1,38 @@
 {
-  "short_name": "Veritas MSP",
+  "short_name": "Veritas",
   "name": "Veritas MSP",
+  "description": "Veritas MSP · plateforme de supervision, gestion clients et suivi opérationnel.",
   "icons": [
     {
       "src": "favicon.svg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/svg+xml"
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable-icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
   "start_url": ".",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "theme_color": "#2b5fab",
-  "background_color": "#0f1c2e"
+  "background_color": "#0f1c2e",
+  "categories": ["business", "productivity"]
 }

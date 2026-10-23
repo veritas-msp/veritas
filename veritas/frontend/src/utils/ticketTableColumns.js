@@ -3,6 +3,8 @@ export const TICKET_SALES_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "ticket_sales_tabl
 export const ENTERPRISES_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "enterprises_table_columns_private";
 export const CONTACTS_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "contacts_table_columns_private";
 export const PRESTATAIRES_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "prestataires_table_columns_private";
+export const ENTERPRISE_VAULT_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "enterprise_vault_table_columns_private";
+export const ENTERPRISE_LOGS_TABLE_COLUMNS_PRIVATE_SETTING_KEY = "enterprise_logs_table_columns_private";
 
 export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   ticket: Object.freeze([
@@ -66,6 +68,18 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "email",
     "phone",
     "enterprises"
+  ]),
+  enterprise_vault: Object.freeze([
+    "name",
+    "description",
+    "visibility",
+    "size",
+    "date"
+  ]),
+  enterprise_logs: Object.freeze([
+    "action",
+    "user",
+    "date"
   ])
 });
 
@@ -87,7 +101,9 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
     "phone",
     "portal"
   ]),
-  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires])
+  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires]),
+  enterprise_vault: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_vault]),
+  enterprise_logs: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_logs])
 });
 
 export const DEFAULT_TICKET_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.ticket;
@@ -95,6 +111,8 @@ export const DEFAULT_TICKET_SALES_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_B
 export const DEFAULT_ENTERPRISES_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.enterprises;
 export const DEFAULT_CONTACTS_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.contacts;
 export const DEFAULT_PRESTATAIRES_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.prestataires;
+export const DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.enterprise_vault;
+export const DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.enterprise_logs;
 
 export function normalizeTicketTableColumnsPageScope(raw) {
   const value = String(raw || "ticket").trim().toLowerCase();
@@ -102,6 +120,8 @@ export function normalizeTicketTableColumnsPageScope(raw) {
   if (value === "enterprises" || value === "companies" || value === "clients") return "enterprises";
   if (value === "contacts" || value === "contact") return "contacts";
   if (value === "prestataires" || value === "prestataire" || value === "providers" || value === "provider") return "prestataires";
+  if (value === "enterprise_vault" || value === "vault" || value === "coffre" || value === "files") return "enterprise_vault";
+  if (value === "enterprise_logs" || value === "logs" || value === "activity_journal" || value === "journal") return "enterprise_logs";
   return "ticket";
 }
 

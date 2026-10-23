@@ -36,6 +36,7 @@ import AdminPanel from "../components/AdminPage/AdminPanel";
 import ReportBugForm from "../components/Misc/ReportBugForm/ReportBugForm";
 import UserProfile from "../components/Misc/UserProfile/UserProfile";
 import PatchNotesPage from "../components/PatchNotesPage/PatchNotesPage";
+import UiKitPage from "../components/UiKit/UiKitPage";
 import ComingSoonPage from "../components/Misc/ComingSoonPage/ComingSoonPage";
 import DashboardPage from "../components/DashboardPage/DashboardPage";
 import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
@@ -1297,6 +1298,9 @@ export default function MainApp() {
         return <UserProfile user={user} onNavigate={handleDocSelect} />;
       case "PatchNotes":
         return <PatchNotesPage />;
+      case "UiKit":
+        if (process.env.NODE_ENV === "production") return null;
+        return <UiKitPage />;
       case "TabLauncher":
         return <TabLauncherPage onNavigate={handleDocSelect} access={access} isCommunity={isCommunity} userRole={userRole} />;
       default:

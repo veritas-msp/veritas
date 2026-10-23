@@ -562,7 +562,10 @@ export const LEGACY_PERMISSION_MAP = {
   "tickets.manage": ["tickets.trash", "tickets.manage_views", "tickets.all_customer_feedback", "tickets.random_mode", "tickets.manage"],
   "sales.edit": ["sales_detail.public_reply", "sales_detail.edit_messages", "sales_detail.request_validation", "sales_detail.tasks", "sales_detail.report", "sales_detail.delete_attachments"],
   "sales.delete": ["sales_detail.delete"],
-  "vault.manage": ["vault.manage", "clients_detail.vault"]
+  "vault.manage": ["vault.manage", "clients_detail.vault"],
+  // Menu Administration → RMM · Agents satisfies API checks for the hidden adminOnly rmm.* keys
+  "rmm.manage": ["admin_panel.rmm"],
+  "rmm.view": ["admin_panel.rmm"]
 };
 
 /**

@@ -127,18 +127,37 @@ export default function CrmDetailPageSkeleton({
       <div className={layout.pageBody}>
         {showAside ? (
           <div className={layout.pageGrid}>
-            <main className={layout.mainColumn}>
+            <main className={`${layout.mainColumn} ${layout.mainColumnFinder}`.trim()}>
               {tabs > 0 ? (
-                <nav className={layout.heroTabBar} aria-hidden>
-                  {Array.from({ length: tabs }, (_, i) => (
-                    <span
-                      key={i}
-                      className={`${sk.bone} ${sk.tab} ${i === tabs - 1 ? sk.tabShort : ""}`}
-                    />
-                  ))}
-                </nav>
-              ) : null}
-              {renderBody()}
+                <div className={layout.enterpriseFinderLayout} aria-hidden>
+                  <aside className={layout.enterpriseFinderSidebar}>
+                    <nav className={layout.finderPrimaryNav}>
+                      {Array.from({ length: tabs }, (_, i) => (
+                        <span
+                          key={i}
+                          className={`${sk.bone} ${sk.tab}`}
+                          style={{ display: "block", width: "100%", height: "1.85rem", borderRadius: 8 }}
+                        />
+                      ))}
+                    </nav>
+                    <div className={layout.finderSecondary}>
+                      <span className={`${sk.bone} ${sk.tabShort}`} style={{ display: "block", width: "4rem", height: "0.65rem", margin: "0.4rem 0.35rem" }} />
+                      {[0, 1, 2, 3].map(i => (
+                        <span
+                          key={i}
+                          className={`${sk.bone} ${sk.tab}`}
+                          style={{ display: "block", width: "100%", height: "1.6rem", borderRadius: 7, marginTop: 4 }}
+                        />
+                      ))}
+                    </div>
+                  </aside>
+                  <div className={layout.enterpriseFinderContent}>
+                    {renderBody()}
+                  </div>
+                </div>
+              ) : (
+                renderBody()
+              )}
             </main>
             <aside className={layout.asidePanel} aria-hidden>
               <div className={`${layout.rightSidebarContent} ${sk.asideInner}`}>

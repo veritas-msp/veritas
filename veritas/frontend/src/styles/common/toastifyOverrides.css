@@ -24,11 +24,89 @@
   border: 1px solid var(--msp-border, #e5e7eb);
   border-radius: 10px;
   font-size: 0.875rem;
-  font-family: "Segoe UI", sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   box-shadow: 0 10px 28px rgba(10, 22, 40, 0.2);
   z-index: var(--toast-z-index, 15000000) !important;
   min-height: 52px;
   padding-inline: 0.85rem;
+}
+
+/* UiKit dark mode (portail hors .page) */
+html[data-uikit-theme="dark"] .Toastify__toast {
+  --msp-surface: #1a2438;
+  --msp-text: #f0f4fa;
+  --msp-border: #3d5478;
+  --msp-muted: #9bb0c9;
+  --msp-accent: #5a9de0;
+  --msp-muted-light: #7a93b0;
+  background-color: var(--msp-surface);
+  color: var(--msp-text);
+  border-color: var(--msp-border);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+html[data-uikit-theme="dark"] .Toastify__close-button {
+  color: var(--msp-muted, #9bb0c9);
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--success {
+  border-left-color: #6fbf94;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--success .Toastify__toast-icon,
+html[data-uikit-theme="dark"] .Toastify__toast--success .Toastify__toast-icon > svg {
+  color: #6fbf94 !important;
+  fill: #6fbf94 !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--success .Toastify__progress-bar,
+html[data-uikit-theme="dark"] .Toastify__progress-bar--success {
+  background: #6fbf94 !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--error {
+  border-left-color: #e07b7b;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--error .Toastify__toast-icon,
+html[data-uikit-theme="dark"] .Toastify__toast--error .Toastify__toast-icon > svg {
+  color: #e07b7b !important;
+  fill: #e07b7b !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--error .Toastify__progress-bar,
+html[data-uikit-theme="dark"] .Toastify__progress-bar--error {
+  background: #e07b7b !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--warning {
+  border-left-color: #e0ad5c;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--warning .Toastify__toast-icon,
+html[data-uikit-theme="dark"] .Toastify__toast--warning .Toastify__toast-icon > svg {
+  color: #e0ad5c !important;
+  fill: #e0ad5c !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--warning .Toastify__progress-bar,
+html[data-uikit-theme="dark"] .Toastify__progress-bar--warning {
+  background: #e0ad5c !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--info {
+  border-left-color: #5a9de0;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--info .Toastify__toast-icon,
+html[data-uikit-theme="dark"] .Toastify__toast--info .Toastify__toast-icon > svg {
+  color: #5a9de0 !important;
+  fill: #5a9de0 !important;
+}
+
+html[data-uikit-theme="dark"] .Toastify__toast--info .Toastify__progress-bar,
+html[data-uikit-theme="dark"] .Toastify__progress-bar--info {
+  background: #5a9de0 !important;
 }
 
 .Toastify__toast-body {

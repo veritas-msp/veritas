@@ -1,0 +1,270 @@
+/* UI Kit — primitives (boutons, empty, alertes) */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: var(--msp-btn-h);
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--msp-radius-btn);
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration-fast) var(--msp-ease-spring),
+    box-shadow var(--msp-duration-fast) var(--msp-ease);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--msp-accent);
+  outline-offset: 2px;
+}
+
+.btnPrimary {
+  background: var(--msp-accent);
+  border-color: var(--msp-accent);
+  color: #fff;
+  box-shadow: var(--msp-shadow-sm);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: var(--msp-accent-dark);
+  border-color: var(--msp-accent-dark);
+}
+
+.btnSecondary {
+  background: var(--msp-surface);
+  border-color: var(--msp-border);
+  color: var(--msp-muted);
+}
+
+.btnSecondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent) 45%, var(--msp-border));
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.btnGhost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--msp-muted);
+}
+
+.btnGhost:hover:not(:disabled) {
+  background: var(--msp-surface-2);
+  color: var(--msp-accent);
+}
+
+.btnDanger {
+  background: var(--msp-surface);
+  border-color: color-mix(in srgb, var(--msp-danger) 28%, var(--msp-border));
+  color: var(--msp-danger);
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: var(--msp-danger-soft);
+  border-color: color-mix(in srgb, var(--msp-danger) 45%, var(--msp-border));
+}
+
+.btnSquare {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--msp-btn-square);
+  height: var(--msp-btn-square);
+  min-width: var(--msp-btn-square);
+  min-height: var(--msp-btn-square);
+  padding: 0;
+  border-radius: var(--msp-radius-btn);
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  line-height: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease),
+    transform var(--msp-duration-fast) var(--msp-ease-spring),
+    box-shadow var(--msp-duration-fast) var(--msp-ease);
+}
+
+.btnSquare:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.btnSquarePrimary {
+  background: var(--msp-accent);
+  border-color: var(--msp-accent);
+  color: #fff;
+}
+
+.btnSquarePrimary:hover:not(:disabled) {
+  background: var(--msp-accent-dark);
+  border-color: var(--msp-accent-dark);
+}
+
+.btnSquareSecondary {
+  background: var(--msp-surface);
+  border-color: var(--msp-border);
+  color: var(--msp-muted);
+}
+
+.btnSquareSecondary:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent) 45%, var(--msp-border));
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.btnSquare:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnSquare:focus-visible {
+  outline: 2px solid var(--msp-accent);
+  outline-offset: 2px;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  text-align: center;
+  padding: 1.75rem 1.25rem;
+  border: 1px dashed var(--msp-border);
+  border-radius: var(--msp-radius);
+  background: color-mix(in srgb, var(--msp-surface-2) 55%, var(--msp-surface));
+}
+
+/* Sans cadre — intégré dans une carte parent (ex. tickets Accueil) */
+.emptyStateBare {
+  flex-direction: row;
+  gap: 0.65rem;
+  padding: 1.75rem 1rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.emptyIcon {
+  font-size: 1.75rem;
+  color: var(--msp-muted-light);
+  flex-shrink: 0;
+}
+
+.emptyStateBare .emptyIcon {
+  font-size: 1.5rem;
+  color: var(--msp-accent);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--msp-text);
+}
+
+.emptyText {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--msp-muted);
+  max-width: 22rem;
+  line-height: 1.4;
+}
+
+.emptyStateBare .emptyText {
+  font-size: 14px;
+  color: var(--msp-text);
+  max-width: none;
+}
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--msp-radius-sm);
+  border: 1px solid var(--msp-border-light);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.alertIcon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.alertBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.alertText {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--msp-text);
+}
+
+.alertInfo {
+  background: var(--msp-accent-soft);
+  border-color: color-mix(in srgb, var(--msp-accent) 28%, var(--msp-border));
+}
+
+.alertInfo .alertIcon {
+  color: var(--msp-accent);
+}
+
+.alertSuccess {
+  background: var(--msp-success-soft);
+  border-color: color-mix(in srgb, var(--msp-success) 32%, var(--msp-border));
+}
+
+.alertSuccess .alertIcon {
+  color: var(--msp-success);
+}
+
+.alertWarn {
+  background: var(--msp-warn-soft);
+  border-color: color-mix(in srgb, var(--msp-warn) 35%, var(--msp-border));
+}
+
+.alertWarn .alertIcon {
+  color: var(--msp-warn);
+}
+
+.alertDanger {
+  background: var(--msp-danger-soft);
+  border-color: color-mix(in srgb, var(--msp-danger) 32%, var(--msp-border));
+}
+
+.alertDanger .alertIcon {
+  color: var(--msp-danger);
+}

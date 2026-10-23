@@ -1,7 +1,7 @@
 import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requirePermission } from "../../middleware/permissions.js";
+import { requireAnyPermission } from "../../middleware/permissions.js";
 import { rmmEnrollRateLimit } from "../../middleware/rateLimit.js";
 import { generateRmmToken, hashRmmSecret, encryptRmmToken, mapEnrollmentTokenRow } from "../../utils/rmmCrypto.js";
 import { fetchRmmSettings, fetchRmmSettingsForAgent, fetchGlobalRmmSettings, saveRmmSettings, listTokenRmmSettings, fetchTokenRmmOverrides, saveTokenRmmSettings, deleteTokenRmmSettings, mergeRmmSettings, isAgentOnline, effectiveOfflineThresholdMinutes, requestFullSyncForAgents } from "../../utils/rmmSettings.js";
@@ -16,8 +16,9 @@ import { estimateRmmMetricsStorage, fetchRmmMetricsStorageStats } from "../../ut
 import { maybeLogRmmAgentVersionChange, logRmmHeartbeatActivity, logRmmAgentEquipmentActivity } from "../../utils/rmmEquipmentLog.js";
 import { findUnlinkedManualEquipment, getAgentEquipmentFamily, normalizeEquipmentFamily } from "../../utils/rmmEquipmentMatch.js";
 const router = express.Router();
+/** Menu Administration → RMM · Agents (`admin_panel.rmm`) must unlock the same APIs as legacy `rmm.manage`. */
 function requireAdmin(req, res, next) {
-  return requirePermission("rmm.manage")(req, res, next);
+  return requireAnyPermission("rmm.manage", "admin_panel.rmm")(req, res, next);
 }
 function parseEnrollmentExpiresAt(value, {
   requireFuture = false

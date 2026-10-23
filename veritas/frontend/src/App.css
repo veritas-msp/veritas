@@ -19,9 +19,7 @@ body,
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--msp-font, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-primary);
@@ -104,6 +102,9 @@ html[data-agent-impersonation="1"] .contentWrapper.withTabs {
   overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
+  /* Réserve la gouttière : sinon Windows montre/cache la scrollbar au passage
+     barre d’onglets → contenu et fait « sauter » les en-têtes de tableau. */
+  scrollbar-gutter: stable;
 }
 
 .contentWrapper.sidebarCollapsed {

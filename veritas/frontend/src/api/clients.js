@@ -530,7 +530,12 @@ export async function fetchClientDeletionCheck(id, options = {}) {
 }
 export async function getClientLogs(clientId, page = 1, limit = 10, options = {}) {
   try {
-    const response = await fetch(`${BASE_URL}/${clientId}/logs?page=${page}&limit=${limit}`, {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    if (options.sortBy) params.set("sortBy", String(options.sortBy));
+    if (options.sortDir) params.set("sortDir", String(options.sortDir));
+    const response = await fetch(`${BASE_URL}/${clientId}/logs?${params}`, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1543,6 +1548,8 @@ export async function fetchContactLogs(contactId, options = {}) {
   const page = options.page ?? 1;
   params.set("limit", String(limit));
   params.set("page", String(page));
+  if (options.sortBy) params.set("sortBy", String(options.sortBy));
+  if (options.sortDir) params.set("sortDir", String(options.sortDir));
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/logs?${params}`, {
     credentials: "include",
     signal: options.signal

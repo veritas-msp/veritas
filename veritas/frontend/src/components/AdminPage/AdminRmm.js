@@ -237,18 +237,33 @@ export default function AdminRmm({
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [settingsData, activeTokensData, trashedTokensData, agentsData, clientsData, installerData, storageData] = await Promise.all([fetchRmmSettings(), fetchRmmEnrollmentTokens(undefined, {
+      const results = await Promise.allSettled([fetchRmmSettings(), fetchRmmEnrollmentTokens(undefined, {
         status: "active"
       }), fetchRmmEnrollmentTokens(undefined, {
         status: "revoked"
-      }), fetchRmmAgents(), fetchClientsList(), fetchRmmInstallerInfo().catch(() => null), fetchRmmMetricsStorage().catch(() => null)]);
+      }), fetchRmmAgents(), fetchClientsList(), fetchRmmInstallerInfo(), fetchRmmMetricsStorage()]);
+      const valueOr = (index, fallback) => {
+        const result = results[index];
+        return result.status === "fulfilled" ? result.value : fallback;
+      };
+      const settingsData = valueOr(0, null);
+      const activeTokensData = valueOr(1, []);
+      const trashedTokensData = valueOr(2, []);
+      const agentsData = valueOr(3, []);
+      const clientsData = valueOr(4, []);
+      const installerData = valueOr(5, null);
+      const storageData = valueOr(6, null);
+      const firstError = results.find(r => r.status === "rejected")?.reason;
       setSettings(settingsData);
-      setMetricsStorage(storageData);
       setActiveTokens(Array.isArray(activeTokensData) ? activeTokensData : []);
       setTrashedTokens(Array.isArray(trashedTokensData) ? trashedTokensData : []);
       setAgents(Array.isArray(agentsData) ? agentsData : []);
       setClients(Array.isArray(clientsData) ? clientsData : []);
       setInstallerInfo(installerData);
+      setMetricsStorage(storageData);
+      if (firstError) {
+        toast.error(firstError.message || copy.toast.loadError);
+      }
     } catch (err) {
       toast.error(err.message || copy.toast.loadError);
     } finally {

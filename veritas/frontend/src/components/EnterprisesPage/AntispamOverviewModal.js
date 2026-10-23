@@ -470,7 +470,7 @@ export function AntispamOverviewPanel({
     const serversTotal = sections.servers?.total ?? 0;
     const sendersTotal = sections.senders?.total ?? 0;
     const spoolsTotal = sections.spools?.total ?? 0;
-    if (asPage || embedded) {
+    if (asPage || embedded || embed) {
       const volumeDistribution = buildDistributionItems([{
         name: "Users",
         count: usersTotal

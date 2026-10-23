@@ -1,10 +1,9 @@
 import React from "react";
-import { getEquipmentHaPairColor, getEquipmentHaState } from "./equipmentHaUtils";
+import { getEquipmentHaState } from "./equipmentHaUtils";
 import styles from "./EquipmentPage.module.css";
 export default function EquipmentHaCell({
   equipment,
-  copy = {},
-  pairColors
+  copy = {}
 }) {
   const state = getEquipmentHaState(equipment);
   if (!state.active) {
@@ -12,13 +11,10 @@ export default function EquipmentHaCell({
         —
       </span>;
   }
-  const pairColor = getEquipmentHaPairColor(equipment, pairColors) || "#64748b";
   const letter = state.isSecondary ? "B" : "A";
   const roleLabel = state.isSecondary ? copy.secondary || "Secondary" : copy.primary || "Primary";
   const title = state.partnerName ? `${roleLabel} · ${state.partnerName}` : roleLabel;
-  return <span className={styles.haBadge} style={{
-    "--ha-pair-color": pairColor
-  }} title={title} aria-label={title}>
+  return <span className={styles.haBadge} title={title} aria-label={title}>
       {letter}
     </span>;
 }

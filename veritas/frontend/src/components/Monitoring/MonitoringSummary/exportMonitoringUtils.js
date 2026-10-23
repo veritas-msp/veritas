@@ -122,7 +122,7 @@ async function generateReportHTML(ref, config, reportType) {
       letter-spacing: -0.03em !important;
       line-height: 1.1 !important;
       margin: 0 !important;
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif !important;
+      font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
       color: ${reportColorForTitle} !important;
     `;
   }
@@ -325,7 +325,7 @@ async function generateReportHTML(ref, config, reportType) {
         body {
           background-color: #ffffff !important;
           color: #111827 !important;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+          font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
           line-height: 1.6 !important;
           margin: 0 !important;
           padding: 0 !important;
@@ -561,7 +561,7 @@ export async function exportMonitoringAsHTML(ref, config) {
         body {
           background-color: #ffffff !important;
           color: #111827 !important;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+          font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
           line-height: 1.6 !important;
           margin: 0 !important;
           padding: 0 !important;

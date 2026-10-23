@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useMemo, useCallback } from "react";
-import { applyThemeToRoot } from "../styles/themeVariables";
+import { applyThemeToRoot, THEME_VARIABLES } from "../styles/themeVariables";
 import { applyAdminDefaultThemeIfAllowed, markUserThemeChoice, readStoredTheme, resolveEffectiveTheme, THEME_STORAGE_KEY } from "../utils/themePreferences";
 export const ThemeContext = createContext();
 export function ThemeProvider({
@@ -22,7 +22,7 @@ export function ThemeProvider({
         localStorage.setItem(THEME_STORAGE_KEY, theme);
       } catch {}
     }
-  }, [theme]);
+  }, [theme, THEME_VARIABLES]);
   useEffect(() => {
     const onSettingsUpdated = event => {
       applyAdminDefaultThemeIfAllowed(event.detail?.app_default_theme || "light");

@@ -194,7 +194,7 @@
   letter-spacing: -0.02em;
   line-height: 1.1;
   margin-bottom: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   background: linear-gradient(135deg, currentColor 0%, currentColor 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -237,7 +237,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   
   margin: calc(var(--section-title-margin-top) - 0.5rem) 0 var(--section-title-margin-bottom) 0;
   max-width: 1400px;
@@ -320,7 +320,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   
   margin: 0rem 0 0 0;
   padding: 0;
@@ -378,7 +378,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   
   margin: 0;
   padding: 0;
@@ -410,7 +410,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   
   margin: 0;
   padding: 0;
@@ -470,7 +470,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   
   margin: 0;
   padding: 0;
@@ -502,7 +502,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   
   margin: 0;
   padding: 0;
@@ -568,7 +568,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -599,7 +599,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -663,7 +663,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -694,7 +694,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -801,7 +801,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -832,7 +832,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -908,7 +908,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0 0 0.5rem 0;
   padding: 0;
 }
@@ -924,7 +924,7 @@
   line-height: 1.2;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
 }
@@ -1344,7 +1344,7 @@
   text-transform: uppercase;
   letter-spacing: 0.15em;
   white-space: nowrap;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   background: linear-gradient(135deg, currentColor 0%, currentColor 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1661,7 +1661,7 @@
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
 }
 
 .reportPill:hover {
@@ -1745,7 +1745,7 @@
   letter-spacing: -0.03em;
   line-height: 1.1;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
 }
 
 .reportHeroTitleInfra {
@@ -3319,7 +3319,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -3380,7 +3380,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -3447,7 +3447,7 @@
   text-transform: uppercase;
   color: #111827;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;
@@ -3466,7 +3466,7 @@
   line-height: 1.3;
   color: #6b7280;
   text-align: left;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   margin: 0;
   padding: 0;
   width: 100%;

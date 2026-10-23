@@ -8,7 +8,7 @@
 }
 
 .active {
-  background: #16a34a;
+  background: #6fbf94;
 }
 
 .inactive {
@@ -16,7 +16,7 @@
 }
 
 :global(html.dark) .active {
-  background: #4ade80;
+  background: #6fbf94;
 }
 
 :global(html.dark) .inactive {

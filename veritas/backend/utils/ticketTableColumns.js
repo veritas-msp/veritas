@@ -3,7 +3,7 @@ import { decryptSetting } from "./settingsHelper.js";
 
 export const TICKET_TABLE_COLUMNS_SECTION = "tickets";
 export const DIRECTORY_TABLE_COLUMNS_SECTION = "clients";
-export const TICKET_TABLE_COLUMNS_PAGE_SCOPES = Object.freeze(["ticket", "ticket_sales", "enterprises", "contacts", "prestataires"]);
+export const TICKET_TABLE_COLUMNS_PAGE_SCOPES = Object.freeze(["ticket", "ticket_sales", "enterprises", "contacts", "prestataires", "enterprise_vault", "enterprise_logs"]);
 
 export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   ticket: Object.freeze([
@@ -67,6 +67,18 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "email",
     "phone",
     "enterprises"
+  ]),
+  enterprise_vault: Object.freeze([
+    "name",
+    "description",
+    "visibility",
+    "size",
+    "date"
+  ]),
+  enterprise_logs: Object.freeze([
+    "action",
+    "user",
+    "date"
   ])
 });
 
@@ -84,7 +96,9 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
     "phone",
     "portal"
   ]),
-  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires])
+  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires]),
+  enterprise_vault: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_vault]),
+  enterprise_logs: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_logs])
 });
 
 export const TICKET_TABLE_COLUMNS_PUBLIC_KEYS = Object.freeze({
@@ -92,7 +106,9 @@ export const TICKET_TABLE_COLUMNS_PUBLIC_KEYS = Object.freeze({
   ticket_sales: "ticket_sales_table_columns_public",
   enterprises: "enterprises_table_columns_public",
   contacts: "contacts_table_columns_public",
-  prestataires: "prestataires_table_columns_public"
+  prestataires: "prestataires_table_columns_public",
+  enterprise_vault: "enterprise_vault_table_columns_public",
+  enterprise_logs: "enterprise_logs_table_columns_public"
 });
 
 export const TICKET_TABLE_COLUMNS_PRIVATE_KEYS = Object.freeze({
@@ -100,7 +116,9 @@ export const TICKET_TABLE_COLUMNS_PRIVATE_KEYS = Object.freeze({
   ticket_sales: "ticket_sales_table_columns_private",
   enterprises: "enterprises_table_columns_private",
   contacts: "contacts_table_columns_private",
-  prestataires: "prestataires_table_columns_private"
+  prestataires: "prestataires_table_columns_private",
+  enterprise_vault: "enterprise_vault_table_columns_private",
+  enterprise_logs: "enterprise_logs_table_columns_private"
 });
 
 const TABLE_COLUMNS_SECTION_BY_SCOPE = Object.freeze({
@@ -108,7 +126,9 @@ const TABLE_COLUMNS_SECTION_BY_SCOPE = Object.freeze({
   ticket_sales: TICKET_TABLE_COLUMNS_SECTION,
   enterprises: DIRECTORY_TABLE_COLUMNS_SECTION,
   contacts: DIRECTORY_TABLE_COLUMNS_SECTION,
-  prestataires: DIRECTORY_TABLE_COLUMNS_SECTION
+  prestataires: DIRECTORY_TABLE_COLUMNS_SECTION,
+  enterprise_vault: DIRECTORY_TABLE_COLUMNS_SECTION,
+  enterprise_logs: DIRECTORY_TABLE_COLUMNS_SECTION
 });
 
 const TABLE_COLUMNS_PUBLIC_LABEL_BY_SCOPE = Object.freeze({
@@ -116,7 +136,9 @@ const TABLE_COLUMNS_PUBLIC_LABEL_BY_SCOPE = Object.freeze({
   ticket_sales: "Sales ticket table public columns",
   enterprises: "Enterprises table public columns",
   contacts: "Contacts table public columns",
-  prestataires: "Providers table public columns"
+  prestataires: "Providers table public columns",
+  enterprise_vault: "Enterprise vault table public columns",
+  enterprise_logs: "Enterprise logs table public columns"
 });
 
 /** @deprecated Prefer scope-aware helpers. */
@@ -134,6 +156,8 @@ export function normalizeTicketTableColumnsPageScope(raw) {
   if (value === "enterprises" || value === "companies" || value === "clients") return "enterprises";
   if (value === "contacts" || value === "contact") return "contacts";
   if (value === "prestataires" || value === "prestataire" || value === "providers" || value === "provider") return "prestataires";
+  if (value === "enterprise_vault" || value === "vault" || value === "coffre" || value === "files") return "enterprise_vault";
+  if (value === "enterprise_logs" || value === "logs" || value === "activity_journal" || value === "journal") return "enterprise_logs";
   return "ticket";
 }
 

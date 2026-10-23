@@ -8,13 +8,12 @@ html {
   transition: background-color 0.3s ease;
   height: 100%;
   overflow-x: hidden;
+  font-family: var(--msp-font, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif);
 }
 
 body {
   margin: 0;
-  font-family: 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: inherit;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-primary);
@@ -22,6 +21,16 @@ body {
   height: 100%;
   overflow-x: hidden;
   color: var(--text-primary);
+}
+
+button,
+input,
+select,
+textarea,
+table,
+th,
+td {
+  font-family: inherit;
 }
 
 code {
@@ -61,6 +70,99 @@ body.dark,
   background-color: #0f0f23 !important;
 }
 
+
+/*
+ * Scrollbar type macOS / Finder : pastille flottante, track invisible, sans flèches.
+ * Classe globale (hors CSS modules) pour fiabiliser les pseudo-éléments webkit.
+ */
+.msp-scrollbar-macos {
+  scrollbar-width: auto;
+  scrollbar-color: rgba(0, 0, 0, 0.32) transparent;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+  background: transparent;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar-button,
+.msp-scrollbar-macos::-webkit-scrollbar-button:start,
+.msp-scrollbar-macos::-webkit-scrollbar-button:end,
+.msp-scrollbar-macos::-webkit-scrollbar-button:single-button,
+.msp-scrollbar-macos::-webkit-scrollbar-button:double-button,
+.msp-scrollbar-macos::-webkit-scrollbar-button:vertical,
+.msp-scrollbar-macos::-webkit-scrollbar-button:horizontal,
+.msp-scrollbar-macos::-webkit-scrollbar-button:vertical:start:decrement,
+.msp-scrollbar-macos::-webkit-scrollbar-button:vertical:end:increment,
+.msp-scrollbar-macos::-webkit-scrollbar-button:vertical:start:increment,
+.msp-scrollbar-macos::-webkit-scrollbar-button:vertical:end:decrement,
+.msp-scrollbar-macos::-webkit-scrollbar-button:horizontal:start:decrement,
+.msp-scrollbar-macos::-webkit-scrollbar-button:horizontal:end:increment,
+.msp-scrollbar-macos::-webkit-scrollbar-button:increment,
+.msp-scrollbar-macos::-webkit-scrollbar-button:decrement {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar-track,
+.msp-scrollbar-macos::-webkit-scrollbar-track-piece {
+  background: transparent !important;
+  margin: 6px 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.32);
+  border-radius: 999px;
+  /* pastille inset type Finder — plus épaisse */
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 48px;
+  box-shadow: none;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.msp-scrollbar-macos::-webkit-scrollbar-thumb:active {
+  background-color: rgba(0, 0, 0, 0.55);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+html.dark .msp-scrollbar-macos,
+body.dark .msp-scrollbar-macos {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+html.dark .msp-scrollbar-macos::-webkit-scrollbar-thumb,
+body.dark .msp-scrollbar-macos::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+html.dark .msp-scrollbar-macos::-webkit-scrollbar-thumb:hover,
+body.dark .msp-scrollbar-macos::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.42);
+}
+
+html.dark .msp-scrollbar-macos::-webkit-scrollbar-thumb:active,
+body.dark .msp-scrollbar-macos::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.52);
+}
 
 html.dark::-webkit-scrollbar {
   width: 12px;

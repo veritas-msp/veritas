@@ -6,414 +6,305 @@
   overflow: hidden;
 }
 
-.main {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding: 1rem 1.25rem;
-  background: var(--msp-surface, #fff);
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 14px;
-  box-shadow:
-    0 1px 2px rgba(15, 28, 46, 0.06),
-    0 6px 18px -12px rgba(15, 28, 46, 0.1);
-}
-
-.heroMain {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  min-width: 0;
-}
-
-.heroBrand {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 12px;
-  flex-shrink: 0;
-}
-
-.heroCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 0;
+.root :global([class*="bone"]) {
+  background: linear-gradient(90deg, #d7e2f0 25%, #f4f7fb 50%, #d7e2f0 75%);
+  background-size: 200% 100%;
 }
 
 .heroTitle {
-  width: min(16rem, 55vw);
-  height: 1.25rem;
-  border-radius: 7px;
-}
-
-.heroSubtitle {
-  width: min(22rem, 70vw);
-  height: 0.8rem;
-  border-radius: 6px;
-}
-
-.kpiGrid {
-  width: 100%;
-}
-
-.kpiCard {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.35rem;
-  min-height: 6.75rem;
-  padding: 0.9rem 0.95rem 0.8rem;
-  border-radius: 14px;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow-soft, 0 1px 3px rgba(15, 28, 46, 0.04));
-}
-
-.toneRed,
-.toneCoral,
-.toneYellow,
-.toneViolet,
-.toneRose,
-.toneAmber,
-.toneBlue,
-.toneGreen {
-  background: var(--msp-surface, #fff);
-  border-color: var(--msp-border, #e2e8f0);
-}
-
-.kpiTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  margin-bottom: 0.2rem;
-}
-
-.kpiIcon {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 10px;
-}
-
-.kpiChevron {
-  width: 1rem;
-  height: 1rem;
-  border-radius: 4px;
-}
-
-.kpiValue {
-  width: 3.2rem;
-  height: 1.7rem;
+  width: min(16rem, 70%);
+  height: 1.55rem;
   border-radius: 8px;
 }
 
-.kpiLabel {
-  width: 72%;
-  height: 0.7rem;
-  border-radius: 5px;
-  margin-bottom: auto;
+.heroSubtitle {
+  width: min(18rem, 80%);
+  height: 0.8rem;
+  border-radius: 6px;
+  margin-top: 0.15rem;
 }
 
-.mainStack {
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.opsPanelsRow {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.85rem;
-  min-height: 0;
-}
-
-.opsPanel {
+.eventsCard,
+.ticketCard {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0.9rem 1rem 1rem;
-  border: 1px solid var(--msp-border, #e2e8f0);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0.95rem 1.05rem 0;
   border-radius: 14px;
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow-soft, 0 1px 3px rgba(15, 28, 46, 0.04));
+  background: #fdfdff;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.opsPanelTitle {
-  width: 10rem;
-  height: 0.8rem;
+.eventsCard {
+  gap: 0.85rem;
+  padding-bottom: 1.05rem;
+  border: 2px solid #ffffff;
+}
+
+.eventsHead,
+.ticketHeading,
+.newsHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.eventsIcon,
+.ticketIcon {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.eventsTitle,
+.ticketTitle {
+  width: 8.5rem;
+  height: 0.85rem;
   border-radius: 5px;
 }
 
-.opsKpiRow {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.opsKpi {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.65rem 0.7rem;
-  border-radius: 12px;
-  border: 1px solid var(--msp-border-light, #e8edf5);
-  background: color-mix(in srgb, var(--msp-surface-2, #f8fafc) 80%, transparent);
-}
-
-.opsKpiIcon {
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 7px;
-}
-
-.opsKpiValue {
-  width: 2rem;
-  height: 1.15rem;
-  border-radius: 6px;
-}
-
-.opsKpiLabel {
-  width: 70%;
-  height: 0.55rem;
-  border-radius: 4px;
-}
-
-.eventsStrip {
+.eventsWeek {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 0.45rem;
-  padding-top: 0.25rem;
+  gap: 0.25rem;
 }
 
 .eventsDay {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
 }
 
 .eventsDayLabel {
-  width: 2.2rem;
+  width: 1.6rem;
+  height: 0.45rem;
+  border-radius: 4px;
+}
+
+.eventsDayNum {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 50%;
+}
+
+.eventsBody {
+  flex: 1 1 auto;
+  min-height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.eventsEmpty {
+  width: 6.5rem;
+  height: 0.7rem;
+  border-radius: 5px;
+}
+
+.ticketHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.1rem;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.18rem;
+  border-radius: 999px;
+  background: #eef3fa;
+  flex-shrink: 0;
+}
+
+.toggleBtn {
+  width: 4.4rem;
+  height: 1.5rem;
+  border-radius: 999px;
+}
+
+.toggleBtnOn {
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  padding-bottom: 0.15rem;
+}
+
+.kpiPill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  background: #eef3fa;
+}
+
+.kpiValue {
+  width: 1.35rem;
+  height: 1.15rem;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.kpiLabel {
+  width: 58%;
   height: 0.55rem;
   border-radius: 4px;
 }
 
-.eventsDayCircle {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 50%;
-}
-
-.card {
+.ticketTable {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 16px;
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow-soft, 0 1px 3px rgba(15, 28, 46, 0.04));
-  overflow: hidden;
-}
-
-.cardTall {
-  min-height: 18rem;
-}
-
-.cardHead {
-  display: flex;
-  align-items: center;
   gap: 0.55rem;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
-}
-
-.cardIcon {
-  width: 1.15rem;
-  height: 1.15rem;
-  border-radius: 5px;
-  flex-shrink: 0;
-}
-
-.cardTitle {
-  width: 9rem;
-  height: 0.8rem;
-  border-radius: 5px;
-  flex: 1 1 auto;
-  max-width: 12rem;
-}
-
-.cardAction {
-  width: 4rem;
-  height: 0.7rem;
-  border-radius: 5px;
-  margin-left: auto;
-}
-
-.cardBody {
-  padding: 0.9rem 1rem 1rem;
-  flex: 1 1 auto;
-}
-
-.donutLayout,
-.pieLayout {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.85rem;
-  align-items: center;
-}
-
-.donut,
-.pie {
-  width: 7.5rem;
-  height: 7.5rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.pie {
-  width: 6.5rem;
-  height: 6.5rem;
-}
-
-.legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.legendRow {
-  display: grid;
-  grid-template-columns: 0.7rem minmax(0, 1fr) 1.6rem;
-  gap: 0.45rem;
-  align-items: center;
-}
-
-.legendDot {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 50%;
-}
-
-.legendLabel {
-  height: 0.65rem;
-  border-radius: 4px;
-  width: 85%;
-}
-
-.legendValue {
-  height: 0.65rem;
-  border-radius: 4px;
-  width: 100%;
-}
-
-.table {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+  container-type: inline-size;
+  container-name: ticket-table;
+  margin: 0 -1.05rem;
+  padding: 0.75rem 1.05rem 1rem;
+  background: #ffffff;
+  border-top: 1px solid var(--msp-border-light, #e8edf5);
 }
 
 .tableHead,
 .tableRow {
   display: grid;
-  gap: 0.65rem;
+  grid-template-columns: 5.4rem 28rem minmax(0, 1fr) 6.35rem 5.4rem 4.6rem 6.15rem 6.15rem;
+  gap: 0.4rem;
   align-items: center;
 }
 
-.tableTh {
-  height: 0.6rem;
-  border-radius: 4px;
-  width: 70%;
+@container ticket-table (max-width: 72rem) {
+  .colCreated {
+    display: none;
+  }
+
+  .tableHead,
+  .tableRow {
+    grid-template-columns: 5.4rem 22rem minmax(0, 1fr) 6.35rem 5.4rem 4.6rem 6.15rem;
+  }
 }
 
-.tableCell {
-  height: 0.75rem;
-  border-radius: 5px;
-  width: 80%;
+@container ticket-table (max-width: 60rem) {
+  .colSla,
+  .colCreated {
+    display: none;
+  }
+
+  .tableHead,
+  .tableRow {
+    grid-template-columns: 5.4rem 16rem minmax(0, 1fr) 6.35rem 5.4rem 6.15rem;
+  }
 }
 
-.tableCellPrimary {
-  height: 0.8rem;
-  border-radius: 5px;
-  width: 92%;
+@container ticket-table (max-width: 48rem) {
+  .colPriority,
+  .colSla,
+  .colCreated {
+    display: none;
+  }
+
+  .tableHead,
+  .tableRow {
+    grid-template-columns: 5.4rem 12rem minmax(0, 1fr) 6.35rem 6.15rem;
+  }
 }
 
-.tableRow {
-  padding: 0.35rem 0;
-  border-top: 1px solid var(--msp-border-light, #eef2f7);
+@container ticket-table (max-width: 36rem) {
+  .colCompany,
+  .colPriority,
+  .colSla,
+  .colCreated {
+    display: none;
+  }
+
+  .tableHead,
+  .tableRow {
+    grid-template-columns: 5.4rem minmax(0, 1fr) 6.35rem 6.15rem;
+  }
 }
 
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
+.tableHead {
+  padding-bottom: 0.15rem;
 }
 
-.listRow {
-  display: grid;
-  grid-template-columns: 1.7rem minmax(0, 1fr) 3.2rem;
-  gap: 0.55rem;
-  align-items: center;
-  padding: 0.2rem 0;
-}
-
-.listAvatar {
-  width: 1.7rem;
-  height: 1.7rem;
-  border-radius: 8px;
-}
-
-.listCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
-  min-width: 0;
-}
-
-.listTitle {
-  width: 80%;
+.colNum,
+.colTitle,
+.colCompany,
+.colStatus,
+.colPriority,
+.colSla,
+.colDate {
   height: 0.7rem;
   border-radius: 4px;
 }
 
-.listMeta {
-  width: 55%;
-  height: 0.55rem;
-  border-radius: 4px;
+.colNum {
+  width: 2.2rem;
 }
 
-.listPill {
-  width: 100%;
-  height: 1.15rem;
-  border-radius: 999px;
+.colTitle {
+  width: 78%;
 }
 
-.newsAside {
-  min-height: 0;
+.colCompany {
+  width: 70%;
+}
+
+.colStatus {
+  width: 72%;
+}
+
+.colPriority {
+  width: 68%;
+}
+
+.colSla {
+  width: 64%;
+}
+
+.colDate {
+  width: 4.2rem;
+}
+
+.tableRow .colNum,
+.tableRow .colTitle,
+.tableRow .colCompany,
+.tableRow .colStatus,
+.tableRow .colPriority,
+.tableRow .colSla,
+.tableRow .colDate {
+  height: 0.65rem;
 }
 
 .newsCard {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 22rem;
-  background: var(--msp-surface, #fff);
-  border: 1px solid var(--msp-border, #e2e8f0);
+  min-height: 0;
+  background: #f9fafd;
+  border: 2px solid #ffffff;
   border-radius: 14px;
-  box-shadow: 0 4px 20px rgba(16, 35, 60, 0.05);
+  box-shadow: var(--msp-shadow-sm, 0 1px 2px rgba(15, 28, 46, 0.04));
   overflow: hidden;
 }
 
@@ -421,28 +312,33 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.9rem 1.1rem;
-  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
+  gap: 0.65rem;
+  padding: 0.95rem 1.05rem 0.35rem;
 }
 
 .newsHeadText {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.55rem;
-  flex-wrap: wrap;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
   min-width: 0;
 }
 
+.newsIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .newsTitle {
-  width: 10rem;
-  height: 0.72rem;
-  border-radius: 4px;
+  width: 5.5rem;
+  height: 0.8rem;
+  border-radius: 5px;
 }
 
 .newsSubtitle {
-  width: 8rem;
-  height: 0.65rem;
+  width: 9rem;
+  height: 0.6rem;
   border-radius: 4px;
 }
 
@@ -454,31 +350,42 @@
 }
 
 .newsFeed {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
-  padding: 0.9rem 1rem 1rem;
+  padding: 0.55rem 1rem 1rem;
+  align-content: start;
   overflow: hidden;
 }
 
 .newsItem {
   display: grid;
-  grid-template-columns: 4.5rem minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.7rem;
-  align-items: start;
+  align-items: flex-start;
+  padding: 0.9rem 0.95rem;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04), 0 6px 16px rgba(15, 28, 46, 0.05);
 }
 
-.newsThumb {
-  width: 4.5rem;
-  height: 3.4rem;
+.newsBadge {
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 10px;
 }
 
 .newsCopy {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.32rem;
   min-width: 0;
+}
+
+.newsItemMeta {
+  width: 42%;
+  height: 0.5rem;
+  border-radius: 4px;
 }
 
 .newsItemTitle {
@@ -487,59 +394,85 @@
   border-radius: 4px;
 }
 
-.newsItemMeta {
-  width: 55%;
-  height: 0.55rem;
-  border-radius: 4px;
-}
-
 .newsItemLine {
-  width: 78%;
+  width: 70%;
   height: 0.55rem;
   border-radius: 4px;
 }
 
-@media (max-width: 1200px) {
-  .opsPanelsRow {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .opsKpiRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .eventsStrip {
+@media (min-width: 1600px) {
+  .newsFeed {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1100px) {
+  .root {
+    height: auto;
+    overflow: visible;
+  }
+
+  .eventsCard,
+  .ticketCard,
   .newsCard {
+    height: auto;
     min-height: 16rem;
   }
-}
 
-@media (max-width: 720px) {
-  .donutLayout,
-  .pieLayout {
-    grid-template-columns: 1fr;
-    justify-items: center;
+  .newsFeed {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-:global(html.dark) .hero,
-:global(html.dark) .card,
-:global(html.dark) .kpiCard,
-:global(html.dark) .opsPanel,
+@media (max-width: 700px) {
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .newsFeed {
+    grid-template-columns: 1fr;
+  }
+}
+
+:global(html.dark) .eventsCard,
+:global(html.dark) .ticketCard,
 :global(html.dark) .newsCard,
-:global(body.dark) .hero,
-:global(body.dark) .card,
-:global(body.dark) .kpiCard,
-:global(body.dark) .opsPanel,
+:global(body.dark) .eventsCard,
+:global(body.dark) .ticketCard,
 :global(body.dark) .newsCard {
-  background: var(--msp-surface);
-  border-color: var(--msp-border);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  background: var(--msp-surface, #1f2d4a);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+:global(html.dark) .eventsBody,
+:global(html.dark) .ticketTable,
+:global(body.dark) .eventsBody,
+:global(body.dark) .ticketTable {
+  background: var(--msp-surface-2, #162338);
+  border-top-color: var(--msp-border-light, #2c3d5a);
+}
+
+:global(html.dark) .newsItem,
+:global(body.dark) .newsItem {
+  background: var(--msp-surface-3, #283858);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+:global(html.dark) .kpiPill,
+:global(html.dark) .toggle,
+:global(body.dark) .kpiPill,
+:global(body.dark) .toggle {
+  background: var(--msp-surface-2, #162338);
+}
+
+:global(html.dark) .toggleBtnOn,
+:global(body.dark) .toggleBtnOn {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .root :global([class*="bone"]),
+:global(body.dark) .root :global([class*="bone"]) {
+  background: linear-gradient(90deg, #2a4066 25%, #456088 50%, #2a4066 75%);
+  background-size: 200% 100%;
 }

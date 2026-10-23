@@ -1321,7 +1321,9 @@ export default function ContactDetailPage({
                     fetchContactLogs(contact.id, {
                       page,
                       limit: options?.limit || 25,
-                      signal: options?.signal
+                      signal: options?.signal,
+                      sortBy: options?.sortBy,
+                      sortDir: options?.sortDir
                     })
                   }
                   purgeLogs={() => purgeContactLogs(contact.id)}

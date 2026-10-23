@@ -232,6 +232,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return "/account";
     case "PatchNotes":
       return "/patch-notes";
+    case "UiKit":
+      return process.env.NODE_ENV === "production" ? null : "/ui-kit";
     case "TabLauncher":
       return "/open";
     default:
@@ -580,7 +582,14 @@ export function parseAgentPath(pathname, search = "") {
       data: null,
       adminTab: null
     })
-  }, {
+  }, ...(process.env.NODE_ENV !== "production" ? [{
+    re: /^\/ui-kit$/,
+    run: () => ({
+      docType: "UiKit",
+      data: null,
+      adminTab: null
+    })
+  }] : []), {
     re: /^\/open$/,
     run: () => ({
       docType: "TabLauncher",

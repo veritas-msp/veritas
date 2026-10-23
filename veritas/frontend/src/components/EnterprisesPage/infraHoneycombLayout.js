@@ -477,7 +477,7 @@ export const INFRA_BRICK_GROUPS = [{
   id: "cybersecurity",
   label: "Cybersecurity",
   icon: "mdi:shield-lock-outline",
-  types: ["Antivirus", "Antispam"]
+  types: ["Antivirus", "Antispam", "Campagne"]
 }, {
   id: "services",
   label: "Services",
@@ -488,11 +488,6 @@ export const INFRA_BRICK_GROUPS = [{
   label: "Licenses & abonnements",
   icon: "mdi:certificate-outline",
   types: ["NDD", "CertificatsSSL", "LicensesAbonnements"]
-}, {
-  id: "campaign",
-  label: "Campagnes",
-  icon: "mdi:bullhorn-outline",
-  types: ["Campagne"]
 }];
 
 export const INFRA_BRICK_GROUP_ICONS = Object.fromEntries(

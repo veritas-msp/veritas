@@ -8,12 +8,15 @@ import { getTabLauncherCopy, TAB_LAUNCHER_SECTIONS } from "./tabLauncherI18n";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { canAccessAdminPanel } from "../../utils/adminPanelPermissions";
 import styles from "./TabLauncherPage.module.css";
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 function isItemVisible(item, {
   access,
   isCommunity,
   userRole,
   canAccessAdmin
 }) {
+  if (item.devOnly && !IS_DEV) return false;
   if (item.adminOnly && !canAccessAdmin) return false;
   if (item.accessKey && access[item.accessKey] === false) return false;
   if (item.proOnly && isCommunity && isProOnlyDocType(item.docType)) return false;

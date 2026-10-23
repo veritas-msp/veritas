@@ -1,0 +1,315 @@
+/* UI Kit — Table (+ shell scroll / fade) — source de vérité */
+
+.uikitScroll,
+.scrollViewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--msp-scrollbar-thumb) var(--msp-scrollbar-track);
+}
+
+.uikitScroll::-webkit-scrollbar,
+.scrollViewport::-webkit-scrollbar {
+  width: var(--msp-scrollbar-size);
+  height: var(--msp-scrollbar-size);
+}
+
+.uikitScroll::-webkit-scrollbar-track,
+.scrollViewport::-webkit-scrollbar-track {
+  background: var(--msp-scrollbar-track);
+}
+
+.uikitScroll::-webkit-scrollbar-thumb,
+.scrollViewport::-webkit-scrollbar-thumb {
+  background: var(--msp-scrollbar-thumb);
+  border-radius: var(--msp-radius-pill);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.uikitScroll::-webkit-scrollbar-thumb:hover,
+.scrollViewport::-webkit-scrollbar-thumb:hover {
+  background: var(--msp-scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
+.uikitScroll::-webkit-scrollbar-corner,
+.scrollViewport::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.scrollShell {
+  --fade-surface: var(--msp-surface);
+  --fade-radius: var(--msp-radius-sm);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scrollViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.scrollFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 0 0 calc(var(--fade-radius) - 1px) calc(var(--fade-radius) - 1px);
+  background: linear-gradient(
+    to top,
+    var(--fade-surface) 5%,
+    color-mix(in srgb, var(--fade-surface) 78%, transparent) 48%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.scrollFadeTop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: calc(var(--fade-radius) - 1px) calc(var(--fade-radius) - 1px) 0 0;
+  background: linear-gradient(
+    to bottom,
+    var(--fade-surface) 5%,
+    color-mix(in srgb, var(--fade-surface) 78%, transparent) 48%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.scrollFadeVisible {
+  opacity: 1;
+}
+
+.tableBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tableBlockFill {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.tableShell {
+  --fade-radius: var(--msp-radius-sm);
+  --fade-surface: var(--msp-surface);
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-sm);
+  background: var(--msp-surface);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  max-height: 14.5rem;
+}
+
+.tableShellFill {
+  max-height: none;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Table intégrée dans une carte parent (Accueil) — garde fade / scroll kit */
+.tableShellInset {
+  --fade-surface: #ffffff;
+  --fade-radius: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--msp-font, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", sans-serif);
+  font-size: 14px;
+  color: var(--msp-text);
+}
+
+.table th,
+.table td {
+  font-family: inherit;
+}
+
+.table thead {
+  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table th {
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--msp-muted);
+  border-bottom: 1px solid var(--msp-border-light);
+  white-space: nowrap;
+  background: transparent;
+}
+
+.tableThSortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.tableThSortable:hover,
+.tableThSortable:focus-visible {
+  color: var(--msp-accent);
+  outline: none;
+}
+
+.tableThContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.tableSortIcon {
+  font-size: 0.85rem;
+  opacity: 0.55;
+  color: var(--msp-muted);
+}
+
+.tableSortIconActive {
+  opacity: 1;
+  color: var(--msp-accent);
+}
+
+.table td {
+  padding: 0.5rem 0.75rem;
+  font-size: 13px;
+  font-weight: 400;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light) 75%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: color-mix(in srgb, var(--msp-accent-soft) 55%, var(--msp-surface));
+}
+
+.tableRowClickable {
+  cursor: pointer;
+}
+
+.tableRowClickable:focus-visible td {
+  background: color-mix(in srgb, var(--msp-accent-soft) 55%, var(--msp-surface));
+  outline: none;
+}
+
+.tableRowAlert td {
+  background: #fdecec;
+}
+
+.tableRowAlert td:first-child {
+  box-shadow: inset 3px 0 0 #e8a0a0;
+}
+
+.tableRowAlert:hover td,
+.tableRowAlert:focus-visible td {
+  background: #fbe4e4;
+}
+
+.tableColNum {
+  width: 4.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--msp-muted);
+}
+
+.tableColTitle {
+  width: 34%;
+}
+
+.tableColCompany {
+  width: 32%;
+}
+
+.tableColMuted {
+  color: var(--msp-muted);
+}
+
+.tableColDate {
+  width: 8.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-muted);
+}
+
+.tableEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-height: 6rem;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+}
+
+.tableActionsHead,
+.tableActionsCell {
+  width: 5.5rem;
+  text-align: right;
+  overflow: visible;
+}
+
+.tableActionsHead {
+  padding-right: 0.75rem;
+}
+
+.tableActionsCell {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+  padding-right: 0.55rem;
+}
+
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: var(--msp-radius-pill);
+  vertical-align: middle;
+}
+
+.statusOn {
+  background: color-mix(in srgb, var(--msp-success) 70%, #a8dfc4);
+}
+
+.statusOff {
+  background: color-mix(in srgb, var(--msp-muted-light) 65%, var(--msp-border));
+}

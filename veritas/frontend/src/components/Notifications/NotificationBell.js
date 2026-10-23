@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
+import { BellIcon } from "../Misc/Sidebar/lucideAnimated";
 import { useNotifications } from "../../hooks/useNotifications";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { groupNotificationsByPriority, groupArchivedNotifications } from "../../utils/notificationGroups";
@@ -232,10 +233,11 @@ export default function NotificationBell({
       setArchivingAll(false);
     }
   };
-  const button = <button type="button" ref={triggerRef} className={`${triggerClassName || styles.trigger} ${open ? styles.triggerOpen : ""} ${!triggerClassName && (!isCollapsed || isMobile) ? styles.triggerExpanded : ""}`} onClick={() => setOpen(value => !value)} aria-expanded={open} aria-haspopup="menu" aria-label={unreadCount > 0 ? interpolate(unreadCount > 1 ? copy.triggerUnreadAriaPlural : copy.triggerUnreadAria, {
+  const bellIconRef = useRef(null);
+  const button = <button type="button" ref={triggerRef} className={`${triggerClassName || styles.trigger} ${open ? styles.triggerOpen : ""} ${!triggerClassName && (!isCollapsed || isMobile) ? styles.triggerExpanded : ""}`} onClick={() => setOpen(value => !value)} onMouseEnter={() => bellIconRef.current?.startAnimation?.()} onMouseLeave={() => bellIconRef.current?.stopAnimation?.()} aria-expanded={open} aria-haspopup="menu" aria-label={unreadCount > 0 ? interpolate(unreadCount > 1 ? copy.triggerUnreadAriaPlural : copy.triggerUnreadAria, {
     count: unreadCount
   }) : copy.triggerAria}>
-      <Icon icon="mdi:bell-outline" className={triggerIconClassName || styles.triggerIcon} aria-hidden />
+      <BellIcon ref={bellIconRef} className={triggerIconClassName || styles.triggerIcon} size={20} />
       {unreadCount > 0 ? <span className={styles.badge}>{unreadCount > 99 ? "99+" : unreadCount}</span> : null}
     </button>;
   return <div className={`${styles.root} ${rootClassName || ""}`.trim()}>

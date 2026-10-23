@@ -111,6 +111,292 @@
   overflow: hidden;
 }
 
+.hardwarePageEmbeddedFill .tablesContainerEmbeddedSidebar {
+  grid-template-columns: minmax(10.5rem, 12.5rem) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+/* Mode sidebar : scrollbar collée au bord (pas de gouttière / padding blanc) */
+.hardwarePageEmbeddedSidebar .tableWrapper,
+.hardwarePageEmbeddedSidebar .tableWrapperEmbedded {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: auto;
+  padding-right: 0;
+  scrollbar-gutter: auto;
+}
+
+.embeddedTypeSidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.2rem 0.25rem 0.55rem;
+  border-right: 1px solid var(--eq-border-light, var(--msp-border-light, #e8edf5));
+  box-sizing: border-box;
+}
+
+/* Une ligne : icône · label · alerte · compteur — aéré */
+.embeddedTypeSidebarBtn {
+  appearance: none;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 2.35rem;
+  margin: 0;
+  padding: 0.58rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--eq-text, var(--msp-text, #1e2d42));
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, opacity 0.12s ease;
+}
+
+.embeddedTypeSidebarBtn:hover:not(:disabled) {
+  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  color: var(--eq-accent, var(--msp-accent, #2b5fab));
+}
+
+.embeddedTypeSidebarBtnActive,
+.embeddedTypeSidebarBtnActive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--eq-accent, var(--msp-accent, #2b5fab)) 10%, transparent);
+  border-color: color-mix(in srgb, var(--eq-accent, var(--msp-accent, #2b5fab)) 22%, transparent);
+  color: var(--eq-accent, var(--msp-accent, #2b5fab));
+}
+
+.embeddedTypeSidebarBtnDimmed,
+.embeddedTypeSidebarBtnDimmed:hover {
+  cursor: not-allowed;
+  color: #c0c8d4;
+  background: transparent;
+  border-color: transparent;
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarGlyph {
+  opacity: 0.5;
+  color: #c5ceda;
+}
+
+.embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarLabel {
+  color: #c5ceda;
+  font-weight: 400;
+}
+
+.embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarCount {
+  background: color-mix(in srgb, #c5ceda 18%, transparent);
+  color: #c5ceda;
+  opacity: 0.85;
+}
+
+.embeddedTypeSidebarGlyph {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 1.15rem;
+  color: inherit;
+  opacity: 0.88;
+}
+
+.embeddedTypeSidebarBtnActive .embeddedTypeSidebarGlyph,
+.embeddedTypeSidebarBtn:hover:not(:disabled) .embeddedTypeSidebarGlyph {
+  opacity: 1;
+}
+
+.embeddedTypeSidebarLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.embeddedTypeSidebarMeta {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.embeddedTypeSidebarCount {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 1.5rem;
+  padding: 0;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  opacity: 0.9;
+}
+
+.embeddedTypeSidebarBtnActive .embeddedTypeSidebarCount {
+  background: color-mix(in srgb, var(--eq-accent, var(--msp-accent, #2b5fab)) 16%, transparent);
+  opacity: 1;
+}
+
+.embeddedTypeSidebarAlertSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 0;
+  margin-right: 0.3rem;
+}
+
+.embeddedTypeSidebarBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent !important;
+  box-shadow: none;
+  color: inherit;
+  line-height: 0;
+}
+
+.embeddedTypeSidebarBadge svg,
+.embeddedTypeSidebarBadge :global(svg) {
+  display: block;
+  width: 1rem !important;
+  height: 1rem !important;
+  font-size: 1rem !important;
+}
+
+.embeddedTypeSidebarBadge.embeddedTypeIconBadgeCritical {
+  color: #e07b7b;
+  background: transparent !important;
+}
+
+.embeddedTypeSidebarBadge.embeddedTypeIconBadgeWarning {
+  color: #e0ad5c;
+  background: transparent !important;
+}
+
+.embeddedSidebarMain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 0 0 0 0.85rem;
+  gap: 0.35rem;
+}
+
+.embeddedSidebarMain > .equipmentTableSectionEmbedded {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.embeddedMainPassthrough {
+  display: contents;
+}
+
+.embeddedFilterBarToolbar {
+  width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+/* Recherche + compteur à gauche, actions à droite */
+.embeddedFilterBarToolbar .embeddedSearchWrap {
+  margin-left: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.embeddedFilterBarToolbar .embeddedSearchActions {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.embeddedTypeSidebar > * {
+  width: 100%;
+  min-width: 0;
+}
+
+:global(html.dark) .embeddedTypeSidebar,
+:global(body.dark) .embeddedTypeSidebar {
+  border-right-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .embeddedTypeSidebarBtn,
+:global(body.dark) .embeddedTypeSidebarBtn {
+  color: var(--msp-text, #d7e0ec);
+}
+
+:global(html.dark) .embeddedTypeSidebarBtn:hover:not(:disabled),
+:global(body.dark) .embeddedTypeSidebarBtn:hover:not(:disabled) {
+  background: var(--msp-surface-2, #162338);
+  color: var(--msp-accent, #5b8fd4);
+}
+
+:global(html.dark) .embeddedTypeSidebarBtnActive,
+:global(html.dark) .embeddedTypeSidebarBtnActive:hover:not(:disabled),
+:global(body.dark) .embeddedTypeSidebarBtnActive,
+:global(body.dark) .embeddedTypeSidebarBtnActive:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--msp-accent, #5b8fd4) 16%, transparent);
+  border-color: color-mix(in srgb, var(--msp-accent, #5b8fd4) 28%, transparent);
+  color: var(--msp-accent, #5b8fd4);
+}
+
+:global(html.dark) .embeddedTypeSidebarBtnDimmed,
+:global(html.dark) .embeddedTypeSidebarBtnDimmed:hover,
+:global(body.dark) .embeddedTypeSidebarBtnDimmed,
+:global(body.dark) .embeddedTypeSidebarBtnDimmed:hover {
+  color: #4a5a70;
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
+:global(html.dark) .embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarLabel,
+:global(html.dark) .embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarGlyph,
+:global(html.dark) .embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarCount,
+:global(body.dark) .embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarLabel,
+:global(body.dark) .embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarGlyph,
+:global(body.dark) .embeddedTypeSidebarBtnDimmed .embeddedTypeSidebarCount {
+  color: #4a5a70;
+}
+
 .hardwarePageEmbeddedFill .equipmentTableSectionEmbedded {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
@@ -119,7 +405,82 @@
   overflow: hidden;
 }
 
+/* Shell table UI Kit (fiche entreprise / embedded) */
+.equipmentUiKitTable {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.equipmentUiKitTable :global([class*="tableShell"]) {
+  height: 100%;
+  max-height: none;
+}
+
+/*
+ * Table iOS-like : UN seul conteneur arrondi qui clippe tout.
+ * Scroll interne + sticky thead OK. Scrollbar overlay fine. Fondu fixé en bas.
+ */
+.tableScrollShell {
+  --table-radius: 16px;
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--table-radius);
+  background: var(--eq-surface, var(--msp-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--eq-border-light, var(--msp-border-light, #d7e0ec)) 70%, transparent);
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 10px 28px -14px rgba(15, 28, 46, 0.14);
+}
+
+.tableScrollShellPassthrough,
+.tableCardSurfacePassthrough {
+  display: contents;
+}
+
+/* Surface plate : le shell porte le chrome visuel */
+.tableCardSurface {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  min-width: min-content;
+  width: 100%;
+}
+
+/* Fondu bas — indique la suite sans scrollbar visible */
+.tableScrollFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 0 0 calc(var(--table-radius, 16px) - 1px) calc(var(--table-radius, 16px) - 1px);
+  background: linear-gradient(
+    to top,
+    var(--eq-surface, var(--msp-surface, #ffffff)) 5%,
+    color-mix(in srgb, var(--eq-surface, var(--msp-surface, #ffffff)) 78%, transparent) 48%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.tableScrollFadeVisible {
+  opacity: 1;
+}
+
+/* Scroll possible, scrollbar masquée — le fondu signale le contenu restant */
 .tableWrapperEmbeddedScroll {
+  flex: 1 1 auto;
   min-height: 0 !important;
   height: 100% !important;
   max-height: 100% !important;
@@ -127,14 +488,16 @@
   overflow-y: auto !important;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 .tableWrapperEmbeddedScroll::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  background: transparent !important;
 }
 
 
@@ -145,7 +508,7 @@
   flex-wrap: wrap;
   row-gap: 0.45rem;
   overflow: visible;
-  padding: 0.45rem 0.45rem 0.2rem 0.15rem;
+  padding: 0;
 }
 
 .embeddedTypeIconBar {
@@ -225,8 +588,17 @@
 }
 
 .embeddedTypeIconBtnDimmed {
-  opacity: 0.35;
+  opacity: 1;
   cursor: not-allowed;
+  color: var(--eq-muted-light, var(--msp-muted-light, #9aa8bc));
+  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  border-color: var(--eq-border-light, var(--msp-border-light, #e8edf5));
+}
+
+.embeddedTypeIconBtnDimmed .embeddedTypeIconGlyph,
+.embeddedTypeIconBtnDimmed .embeddedTypeIconLabel,
+.embeddedTypeIconBtnDimmed .embeddedTypeIconCount {
+  opacity: 0.55;
 }
 
 .embeddedTypeIconBtnHasAlerts {
@@ -269,11 +641,11 @@
 }
 
 .embeddedTypeIconBadgeCritical {
-  background: #dc2626;
+  background: #e07b7b;
 }
 
 .embeddedTypeIconBadgeWarning {
-  background: #d97706;
+  background: #e0ad5c;
 }
 
 .embeddedMkAllHint {
@@ -290,8 +662,16 @@
 .embeddedSearchWrap {
   display: flex;
   align-items: center;
+  gap: 0.45rem;
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.embeddedSearchActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 
 .embeddedSearchBox {
@@ -302,10 +682,11 @@
   max-width: 280px;
   width: min(280px, 36vw);
   min-height: 34px;
-  padding: 0 0.55rem;
+  padding: 0 0.85rem;
   border: 1px solid var(--eq-border, var(--msp-border, #dde3ed));
-  border-radius: 8px;
-  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  border-radius: 999px;
+  background: var(--eq-surface, var(--msp-surface, #fff));
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   color-scheme: normal;
   transition: border-color 0.12s, box-shadow 0.12s, background-color 0.12s;
 }
@@ -589,19 +970,19 @@
 }
 
 .equipmentTableEmbedded thead {
-  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  background: color-mix(in srgb, var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 92%, #fff);
 }
 
 .equipmentTableEmbedded th {
-  padding: 0.5rem 0.55rem;
+  padding: 0.55rem 0.5rem;
   text-align: left;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 650;
   font-family: inherit;
-  letter-spacing: normal;
+  letter-spacing: 0.02em;
   text-transform: none;
   color: var(--eq-muted, var(--msp-muted, #5c6b82));
-  border-bottom: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
+  border-bottom: 1px solid color-mix(in srgb, var(--eq-border-light, var(--msp-border-light, #e8edf5)) 85%, transparent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -609,14 +990,14 @@
 }
 
 .equipmentTableEmbedded td {
-  padding: 0.5rem 0.55rem;
+  padding: 0.55rem 0.5rem;
   font-size: 0.8125rem;
   font-weight: 400;
   font-family: inherit;
   letter-spacing: normal;
   text-transform: none;
   color: var(--eq-text, var(--msp-text, #0f1c2e));
-  border-bottom: 1px solid var(--eq-border-light, var(--msp-border-light, #eef2f7));
+  border-bottom: 1px solid color-mix(in srgb, var(--eq-border-light, var(--msp-border-light, #eef2f7)) 70%, transparent);
   vertical-align: middle;
   white-space: nowrap;
   overflow: hidden;
@@ -1614,8 +1995,9 @@
 }
 
 .sortIndicator {
-  font-size: 0.7rem;
-  opacity: 0.8;
+  font-size: 0.95rem;
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
 .equipmentTable td {
@@ -1665,19 +2047,36 @@
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  background: var(--eq-surface, var(--msp-surface, #ffffff));
-  border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
-  border-radius: var(--eq-radius, var(--msp-radius-sm, 10px));
-  box-shadow: var(--eq-shadow, var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04)));
+  scroll-behavior: smooth;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.hardwarePageEmbedded .tableWrapper::-webkit-scrollbar,
-.hardwarePageEmbedded .tableWrapperEmbedded::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+/* Scroll masqué — fondu bas via .tableScrollFade */
+
+.hardwarePageEmbeddedFill .equipmentTableSectionEmbedded > .tableScrollShell {
+  min-height: 0;
+}
+
+:global(html.dark) .tableScrollShell,
+:global(body.dark) .tableScrollShell {
+  background: var(--eq-surface, var(--msp-surface, #1a2540));
+  border-color: color-mix(in srgb, var(--eq-border, var(--msp-border, #2f4260)) 80%, transparent);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 28px -14px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .tableScrollFade,
+:global(body.dark) .tableScrollFade {
+  background: linear-gradient(
+    to top,
+    var(--msp-surface, #1a2540) 5%,
+    color-mix(in srgb, var(--msp-surface, #1a2540) 78%, transparent) 48%,
+    transparent 100%
+  );
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded {
@@ -1690,14 +2089,14 @@
   position: sticky;
   top: 0;
   z-index: 12;
-  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  background: color-mix(in srgb, var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 92%, #fff);
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded thead th {
   position: sticky;
   top: 0;
   z-index: 12;
-  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
+  background: color-mix(in srgb, var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 92%, #fff);
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded th,
@@ -1710,26 +2109,26 @@
 }
 
 .hardwarePageEmbedded .sortIndicator {
-  opacity: 0.7;
-  font-size: 0.75rem;
+  opacity: 0.85;
+  font-size: 0.95rem;
+  color: var(--eq-muted, var(--msp-muted, #5c6b82));
 }
 
-.hardwarePageEmbedded .sortableTh:hover .sortIndicator,
 .hardwarePageEmbedded .sortableTh[aria-sort="ascending"] .sortIndicator,
 .hardwarePageEmbedded .sortableTh[aria-sort="descending"] .sortIndicator {
   opacity: 1;
-  color: var(--eq-accent, var(--msp-accent, #2b5fab));
+  color: var(--eq-text, var(--msp-text, #0f1c2e));
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions {
   position: sticky;
   right: 0;
   z-index: 1;
-  width: 6.5rem;
-  min-width: 6.5rem;
-  max-width: 6.5rem;
-  padding-left: 0.5rem;
-  padding-right: 0.65rem;
+  width: 5.75rem;
+  min-width: 5.75rem;
+  max-width: 5.75rem;
+  padding-left: 0.4rem;
+  padding-right: 0.45rem;
   text-align: right;
   overflow: visible;
   background: var(--eq-surface, var(--msp-surface, #ffffff));
@@ -1751,22 +2150,27 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .embeddedQuickActionButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--eq-surface, var(--msp-surface, #ffffff));
   color: var(--eq-muted, var(--msp-muted, #5c6b82));
   cursor: pointer;
   flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 0;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
@@ -1793,14 +2197,15 @@
 }
 
 .embeddedQuickActionButtonRemoteActive {
-  border-color: rgba(43, 95, 171, 0.45);
-  color: var(--eq-accent, var(--msp-accent, #2b5fab));
+  border-color: var(--eq-border, var(--msp-border, #e2e8f0));
+  color: var(--eq-muted, var(--msp-muted, #5c6b82));
+  background: var(--eq-surface, var(--msp-surface, #ffffff));
 }
 
 .embeddedQuickActionButtonRemoteActive:hover:not(:disabled) {
-  border-color: var(--eq-accent, var(--msp-accent, #2b5fab));
-  color: var(--eq-accent, var(--msp-accent, #2b5fab));
-  background: var(--eq-accent-soft, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)));
+  border-color: var(--eq-border, var(--msp-border, #cfd8e6));
+  color: var(--eq-text, var(--msp-text, #1e2d42));
+  background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColActions {
@@ -1808,11 +2213,11 @@
   top: 0;
   right: 0;
   z-index: 24;
-  width: 6.5rem;
-  min-width: 6.5rem;
-  max-width: 6.5rem;
-  padding-left: 0.5rem;
-  padding-right: 0.65rem;
+  width: 5.75rem;
+  min-width: 5.75rem;
+  max-width: 5.75rem;
+  padding-left: 0.4rem;
+  padding-right: 0.45rem;
   text-align: right;
   background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
   box-shadow: -6px 0 10px rgba(15, 28, 46, 0.06);
@@ -1826,19 +2231,56 @@
   z-index: 0;
 }
 
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .embeddedQuickActionButton,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .mappingActionButton,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions button {
+  box-sizing: border-box;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  font-size: 0.85rem !important;
+  line-height: 0 !important;
+  flex-shrink: 0;
+}
+
 .osNameCell {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .osNameIcon {
   flex-shrink: 0;
+  color: var(--msp-muted, #8b9bb5);
+  opacity: 0.92;
+}
+
+.nameCell > svg {
+  color: var(--msp-muted, #8b9bb5);
+  opacity: 0.92;
+  flex-shrink: 0;
+}
+
+:global(html.dark) .osNameIcon,
+:global(html.dark) .nameCell > svg,
+:global(body.dark) .osNameIcon,
+:global(body.dark) .nameCell > svg {
+  color: var(--msp-muted-light, #6a88a8);
+  opacity: 0.95;
+}
+
+.osNameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .hardwarePageEmbedded .monitoringStatusCell {
   min-width: 0;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .hardwarePageEmbedded .equipmentTable tbody tr.equipmentRow,
@@ -1914,9 +2356,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 4.5rem;
+  min-width: 0;
 }
 
+.hardwarePageEmbedded .equipmentTableEmbedded .monitoringStatusCell,
+.equipmentTableEmbedded .monitoringStatusCell {
+  min-width: 0;
+  width: 100%;
+  justify-content: center;
+}
 
 .internetCellBold {
   font-weight: bold;
@@ -1930,28 +2378,183 @@
 }
 
 .embeddedColBrand {
-  width: 2.25rem;
-  min-width: 2.25rem;
-  max-width: 2.25rem;
-  padding-left: 0.65rem !important;
-  padding-right: 0.35rem !important;
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding-left: 0.5rem !important;
+  padding-right: 0.25rem !important;
   text-align: center;
 }
 
+.embeddedColName {
+  width: 12%;
+  min-width: 7rem;
+}
+
+.embeddedColDot,
+.embeddedColSupervision,
+.embeddedColHa,
+.embeddedColCount {
+  text-align: center !important;
+}
+
+.equipmentTableEmbedded th.embeddedColDot,
+.equipmentTableEmbedded th.embeddedColSupervision,
+.equipmentTableEmbedded th.embeddedColHa,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColDot,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColSupervision,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColHa {
+  text-align: center !important;
+}
+
+.equipmentTableEmbedded th.embeddedColDot .thContent,
+.equipmentTableEmbedded th.embeddedColSupervision .thContent,
+.equipmentTableEmbedded th.embeddedColHa .thContent,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColDot .thContent,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColSupervision .thContent,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColHa .thContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
+.equipmentTableEmbedded td.embeddedColDot,
+.equipmentTableEmbedded td.embeddedColSupervision,
+.equipmentTableEmbedded td.embeddedColHa,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColDot,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColSupervision,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColHa {
+  text-align: center !important;
+}
+
+.equipmentTableEmbedded td.embeddedColDot > *,
+.equipmentTableEmbedded td.embeddedColSupervision > *,
+.equipmentTableEmbedded td.embeddedColHa > *,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColDot > *,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColSupervision > *,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColHa > * {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.embeddedColDot {
+  width: 3rem;
+  min-width: 2.75rem;
+  max-width: 3.25rem;
+  padding-left: 0.3rem !important;
+  padding-right: 0.3rem !important;
+}
+
+.embeddedColSupervision {
+  width: 4.75rem;
+  min-width: 4.25rem;
+  max-width: 5rem;
+  padding-left: 0.3rem !important;
+  padding-right: 0.3rem !important;
+}
+
 .embeddedColHa {
-  width: 3.25rem;
-  min-width: 3.25rem;
-  max-width: 3.5rem;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.75rem;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
+.embeddedColSite {
+  width: 5rem;
+  min-width: 4.25rem;
+  max-width: 6rem;
+}
+
+.embeddedColIp {
+  width: 7rem;
+  min-width: 6.25rem;
+  max-width: 7.75rem;
+}
+
+.embeddedColSerial {
+  width: 6.25rem;
+  min-width: 5.25rem;
+  max-width: 7.5rem;
+}
+
+.embeddedColOs {
+  width: 15%;
+  min-width: 9.5rem;
+}
+
+.embeddedColModel {
+  width: 10%;
+  min-width: 6rem;
+  max-width: 11rem;
+}
+
+.embeddedColRole {
+  width: 8%;
+  min-width: 5rem;
+  max-width: 9rem;
+}
+
+.embeddedColVendor {
+  width: 7rem;
+  min-width: 5.5rem;
+  max-width: 9rem;
+}
+
+.embeddedColDebit {
+  width: 6.5rem;
+  min-width: 5rem;
+  max-width: 8rem;
+}
+
+.embeddedColVersion {
+  width: 5.5rem;
+  min-width: 4.5rem;
+  max-width: 7rem;
+}
+
+.embeddedColCount {
+  width: 4.5rem;
+  min-width: 3.75rem;
+  max-width: 5.5rem;
+  text-align: center;
+  padding-left: 0.35rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.embeddedColMetric {
+  width: 5.5rem;
+  min-width: 4.5rem;
+  max-width: 7rem;
+}
+
+.embeddedColFlex {
+  width: 7%;
+  min-width: 4.5rem;
+  max-width: 9rem;
+}
+
+.equipmentTableEmbedded th.embeddedColCount .thContent,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColCount .thContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   text-align: center;
 }
 
 .equipmentTableEmbedded th.embeddedColBrand,
-.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColBrand {
-  width: 2.25rem;
-  min-width: 2.25rem;
-  max-width: 2.25rem;
-  padding-left: 0.65rem;
-  padding-right: 0.35rem;
+.equipmentTableEmbedded td.embeddedColBrand,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColBrand,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColBrand {
+  width: 2rem;
+  min-width: 2rem;
+  max-width: 2rem;
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
 }
 
 .embeddedColBrand .typeBrandIconSmall,
@@ -2040,13 +2643,13 @@
 .mappingActions {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 
 .mappingActionsGroup {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 
 .mappingActionsEdit {
@@ -2067,15 +2670,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
-  border: 1px solid var(--border-primary, #2a2a4a);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted, #9ca3af);
+  border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
+  border-radius: 7px;
+  background: var(--eq-surface, var(--msp-surface, #ffffff));
+  color: var(--eq-muted, var(--msp-muted, #5c6b82));
   cursor: pointer;
   flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
 .mappingActionButton:hover {
@@ -2097,15 +2706,15 @@
 }
 
 .mappingActionButtonRemoteActive {
-  color: var(--eq-accent, #2b5fab);
-  border-color: var(--eq-accent, #2b5fab);
-  background-color: rgba(43, 95, 171, 0.1);
+  color: var(--eq-muted, var(--msp-muted, #5c6b82));
+  border-color: var(--eq-border, var(--msp-border, #e2e8f0));
+  background-color: var(--eq-surface, var(--msp-surface, #ffffff));
 }
 
 .mappingActionButtonRemoteActive:hover {
-  color: #ffffff;
-  border-color: var(--eq-accent, #2b5fab);
-  background-color: var(--eq-accent, #2b5fab);
+  color: var(--eq-text, var(--msp-text, #1e2d42));
+  border-color: var(--eq-border, var(--msp-border, #cfd8e6));
+  background-color: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
 }
 
 .mappingActionButton:disabled {
@@ -2172,25 +2781,34 @@
 }
 
 .haBadge {
-  --ha-pair-color: #64748b;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 999px;
-  background: var(--ha-pair-color);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 800;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.6rem;
+  font-weight: 650;
   letter-spacing: 0.02em;
   line-height: 1;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ha-pair-color) 28%, transparent);
+  box-shadow: none;
 }
 
 .haEmpty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   color: var(--text-muted, #94a3b8);
   font-size: 0.85rem;
+}
+
+.equipmentTableEmbedded td.embeddedColHa .haBadge,
+.equipmentTableEmbedded td.embeddedColHa .haEmpty {
+  display: inline-flex;
+  vertical-align: middle;
 }
 
 .equipmentEmptyCell {
@@ -2217,11 +2835,11 @@
 }
 
 .paginationEmbedded {
-  padding: 0.65rem 0.2rem 0.1rem;
-  border-top: 1px solid var(--eq-border-light, var(--msp-border-light, #eef2f7));
-  margin-top: 0.45rem;
+  padding: 0.55rem 0.2rem 0.1rem;
+  border-top: none;
+  margin-top: 0.25rem;
   background: transparent;
-  border-radius: 0 0 10px 10px;
+  border-radius: 0;
 }
 
 .paginationLeft,
@@ -2627,25 +3245,22 @@
 }
 
 
-.sidebar::-webkit-scrollbar,
-.tableWrapper::-webkit-scrollbar {
+/* Sidebar uniquement */
+.sidebar::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.sidebar::-webkit-scrollbar-track,
-.tableWrapper::-webkit-scrollbar-track {
+.sidebar::-webkit-scrollbar-track {
   background: var(--bg-primary, #0f0f23);
 }
 
-.sidebar::-webkit-scrollbar-thumb,
-.tableWrapper::-webkit-scrollbar-thumb {
+.sidebar::-webkit-scrollbar-thumb {
   background: var(--border-secondary, #3a3a5a);
   border-radius: 4px;
 }
 
-.sidebar::-webkit-scrollbar-thumb:hover,
-.tableWrapper::-webkit-scrollbar-thumb:hover {
+.sidebar::-webkit-scrollbar-thumb:hover {
   background: #15D1A0;
 }
 

@@ -19,21 +19,21 @@
 }
 
 .badgeOk {
-  border-color: rgba(19, 186, 142, 0.45);
-  background: rgba(19, 186, 142, 0.1);
-  color: #13BA8E;
+  border-color: rgba(111, 191, 148, 0.45);
+  background: rgba(111, 191, 148, 0.12);
+  color: #6fbf94;
 }
 
 .badgeWarning {
-  border-color: rgba(245, 158, 11, 0.55);
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  border-color: rgba(224, 173, 92, 0.5);
+  background: rgba(224, 173, 92, 0.14);
+  color: #e0ad5c;
 }
 
 .badgeCritical {
-  border-color: rgba(239, 68, 68, 0.6);
-  background: rgba(239, 68, 68, 0.14);
-  color: #ef4444;
+  border-color: rgba(224, 123, 123, 0.55);
+  background: rgba(224, 123, 123, 0.14);
+  color: #e07b7b;
   animation: pulseCrit 2s ease-in-out infinite;
 }
 
@@ -60,8 +60,8 @@
 }
 
 @keyframes pulseCrit {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
-  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(224, 123, 123, 0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(224, 123, 123, 0); }
 }
 
 .cellWrap {

@@ -1,12 +1,13 @@
 const KEY_PREFIX = "veritas_enterprise_peripherals_ui_v1_";
-const OVERVIEW_TABS = new Set(["overview", "map", "activity", "vault", "logs"]);
+const OVERVIEW_TABS = new Set(["map", "cyber", "activity", "vault", "logs"]);
 
 function storageKey(clientId) {
   return `${KEY_PREFIX}${clientId}`;
 }
 
 export function normalizeEnterpriseOverviewTab(tab) {
-  // Première visite : cartographie. Sinon le dernier onglet persisté prime.
+  // Première visite / ancien onglet Dashboard : cartographie. Sinon le dernier onglet persisté prime.
+  if (tab === "overview") return "map";
   return OVERVIEW_TABS.has(tab) ? tab : "map";
 }
 

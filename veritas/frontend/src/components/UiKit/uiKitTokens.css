@@ -1,0 +1,93 @@
+/**
+ * Veritas UI Kit — tokens MSP (référence canonique)
+ * Palette douce, cohérente avec UiKitPage (.page).
+ *
+ * Usage : déclarer sur le conteneur racine de page, puis consommer via var(--msp-*).
+ */
+
+:root,
+.uiKitTokens {
+  /* Accent bleu (doux) */
+  --msp-accent: #2b5fab;
+  --msp-accent-dark: #234f91;
+  --msp-accent-soft: rgba(43, 95, 171, 0.1);
+
+  /* Fonds */
+  --msp-bg: #e8f1fa;
+  --msp-page-bg: #e8f1fa;
+  --msp-surface: #ffffff;
+  --msp-surface-2: #f4f7fb;
+  --msp-surface-3: #e8eef5;
+
+  /* Bordures */
+  --msp-border: #d0dae8;
+  --msp-border-light: #e2e8f0;
+
+  /* Typo */
+  --msp-font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+
+  /* Texte */
+  --msp-text: #0f172a;
+  --msp-muted: #5c6b82;
+  --msp-muted-light: #7a8aa3;
+
+  /* Statuts (teintes adoucies) */
+  --msp-success: #3d8f6a;
+  --msp-success-soft: color-mix(in srgb, #8fd4b0 18%, var(--msp-surface));
+  --msp-warn: #c47a2b;
+  --msp-warn-soft: color-mix(in srgb, #f0c48a 20%, var(--msp-surface));
+  --msp-danger: #c45a5a;
+  --msp-danger-soft: color-mix(in srgb, #f0b4b4 18%, var(--msp-surface));
+
+  /* Scrollbar */
+  --msp-scrollbar-size: 6px;
+  --msp-scrollbar-thumb: color-mix(in srgb, var(--msp-muted-light) 55%, var(--msp-border));
+  --msp-scrollbar-thumb-hover: color-mix(in srgb, var(--msp-accent) 50%, var(--msp-muted-light));
+  --msp-scrollbar-track: transparent;
+
+  /* Forme */
+  --msp-radius: 14px;
+  --msp-radius-sm: 10px;
+  --msp-radius-md: 12px;
+  --msp-radius-btn: 8px;
+  --msp-radius-pill: 999px;
+  --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.04), 0 6px 18px rgba(15, 28, 46, 0.06);
+  --msp-shadow-sm: 0 1px 2px rgba(15, 28, 46, 0.04);
+  --msp-shadow-lg: 0 4px 6px rgba(15, 28, 46, 0.04), 0 14px 28px rgba(15, 28, 46, 0.12);
+
+  /* Bouton carré icône */
+  --msp-btn-square: 28px;
+  --msp-btn-h: 2.15rem;
+
+  /* Motion */
+  --msp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --msp-ease-spring: cubic-bezier(0.34, 1.2, 0.64, 1);
+  --msp-duration-fast: 160ms;
+  --msp-duration: 240ms;
+  --msp-duration-slow: 320ms;
+
+  /* Inputs — tailles (XL = formulaire actuel) */
+  --msp-input-s-h: 1.85rem;
+  --msp-input-s-px: 0.5rem;
+  --msp-input-s-py: 0.28rem;
+  --msp-input-s-fs: 0.75rem;
+  --msp-input-s-radius: 7px;
+
+  --msp-input-m-h: 2.15rem;
+  --msp-input-m-px: 0.65rem;
+  --msp-input-m-py: 0.4rem;
+  --msp-input-m-fs: 0.8125rem;
+  --msp-input-m-radius: 8px;
+
+  --msp-input-l-h: 2.45rem;
+  --msp-input-l-px: 0.75rem;
+  --msp-input-l-py: 0.5rem;
+  --msp-input-l-fs: 0.875rem;
+  --msp-input-l-radius: 9px;
+
+  --msp-input-xl-h: 2.75rem;
+  --msp-input-xl-px: 0.8rem;
+  --msp-input-xl-py: 0.62rem;
+  --msp-input-xl-fs: 0.875rem;
+  --msp-input-xl-radius: 10px;
+}

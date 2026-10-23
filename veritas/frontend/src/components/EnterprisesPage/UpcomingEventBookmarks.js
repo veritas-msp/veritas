@@ -54,17 +54,19 @@ const DEFAULT_EVENT_BOOKMARK_LABELS = {
   summaryEmpty: "No events",
   summaryProLocked: "Veritas Pro"
 };
+/* Accent MSP ou gris — plus de couleurs vives par type */
 const EVENT_TYPE_ACCENTS = {
-  intervention: "#e11d48",
-  presentation: "#7c3aed",
-  maintenance: "#d97706",
-  maintenance_preventive: "#ca8a04",
-  mise_a_jour: "#2563eb",
-  integration_monitoring: "#0891b2",
-  campagne: "#7c3aed",
-  conge: "#0d9488",
+  intervention: "var(--msp-accent, #2b5fab)",
+  presentation: "var(--msp-accent, #2b5fab)",
+  maintenance: "#64748b",
+  maintenance_preventive: "#64748b",
+  mise_a_jour: "var(--msp-accent, #2b5fab)",
+  integration_monitoring: "#64748b",
+  campagne: "var(--msp-accent, #2b5fab)",
+  conge: "#94a3b8",
   other: "#64748b"
 };
+const EVENT_ACCENT_PAST = "#8b95a8";
 function getLocaleTag(locale) {
   return LOCALE_BCP47[locale] || LOCALE_BCP47.fr;
 }
@@ -353,7 +355,9 @@ function EventBookmark({
   const timeLine = formatEventTimeLine(startRaw, endRaw, locale);
   const typeLabel = typeLabels[event.type] || event.type || labels.defaultEventType;
   const typeIcon = getPlanningEventTypeIcon(event);
-  const accent = EVENT_TYPE_ACCENTS[event.type] || EVENT_TYPE_ACCENTS.other;
+  const accent = isRecent
+    ? EVENT_ACCENT_PAST
+    : EVENT_TYPE_ACCENTS[event.type] || EVENT_TYPE_ACCENTS.other;
   const eventTitle = event.title || labels.untitledEvent;
   const {
     display: titleDisplay,
@@ -632,12 +636,12 @@ export default function UpcomingEventBookmarks({
                 <Icon icon="mdi:calendar-blank-outline" aria-hidden />
                 <span>{labels.empty}</span>
               </div> : showSections ? <>
-                <SectionLabel icon="mdi:history" title={labels.sectionRecent} count={proLocked ? null : recent.length} variant="recent" />
+                <SectionLabel icon="mdi:history" title={labels.sectionRecent} count={heroFrise || proLocked ? null : recent.length} variant="recent" />
                 {recent.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneRecent30Days}</span> : recent.map(event => <EventBookmark key={`recent-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="recent" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} heroCompact={heroFrise} />)}
 
                 <div className={styles.sectionDivider} aria-hidden />
 
-                <SectionLabel icon="mdi:bookmark-multiple-outline" title={labels.sectionUpcoming} count={proLocked ? null : upcoming.length} />
+                <SectionLabel icon="mdi:bookmark-multiple-outline" title={labels.sectionUpcoming} count={heroFrise || proLocked ? null : upcoming.length} />
                 {upcoming.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneUpcoming}</span> : upcoming.map(event => <EventBookmark key={`upcoming-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="upcoming" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} heroCompact={heroFrise} />)}
               </> : null}
           </div>

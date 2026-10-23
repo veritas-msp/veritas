@@ -746,7 +746,7 @@ router.get('/', requirePermission('clients.view'), async (req, res) => {
     });
   }
 });
-router.get('/list', requirePermission('clients.view'), async (req, res) => {
+router.get('/list', requireAnyPermission('clients.view', 'admin_panel.rmm', 'rmm.manage', 'admin_panel.injection'), async (req, res) => {
   try {
     const result = await queryClientsListBaseRows();
     const payload = result.rows.map(mapClientsListRow);
@@ -1372,6 +1372,13 @@ router.get('/:id/logs', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    const logSortColumns = {
+      action: "l.action",
+      user: "COALESCE(u.username, u.email)",
+      date: "l.created_at"
+    };
+    const sortColumn = logSortColumns[String(req.query.sortBy || "date").trim().toLowerCase()] || logSortColumns.date;
+    const sortDir = String(req.query.sortDir || "desc").trim().toLowerCase() === "asc" ? "ASC" : "DESC";
     let clientId = id;
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(id)) {
@@ -1401,7 +1408,7 @@ router.get('/:id/logs', async (req, res) => {
        FROM v_b_clients_logs l
        LEFT JOIN v_b_users u ON l.user_id::text = u.id::text
        WHERE l.client_id = $1
-       ORDER BY l.created_at DESC
+       ORDER BY ${sortColumn} ${sortDir} NULLS LAST, l.id DESC
        LIMIT $2 OFFSET $3`, [clientId, limit, offset]);
     const countResult = await pool.query(`SELECT COUNT(*) as total
        FROM v_b_clients_logs

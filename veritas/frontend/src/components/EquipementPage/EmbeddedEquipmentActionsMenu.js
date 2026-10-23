@@ -55,14 +55,15 @@ export default function EmbeddedEquipmentActionsMenu({
   }, [isOpen, items.length]);
   useEffect(() => {
     if (!isOpen) return undefined;
-    const handleReposition = () => updateMenuPosition();
-    window.addEventListener("resize", handleReposition);
-    window.addEventListener("scroll", handleReposition, true);
+    const handleCloseOnMove = () => onOpenChange(null);
+    window.addEventListener("resize", handleCloseOnMove);
+    // Capture: ferme aussi quand un conteneur interne (table) scroll
+    window.addEventListener("scroll", handleCloseOnMove, true);
     return () => {
-      window.removeEventListener("resize", handleReposition);
-      window.removeEventListener("scroll", handleReposition, true);
+      window.removeEventListener("resize", handleCloseOnMove);
+      window.removeEventListener("scroll", handleCloseOnMove, true);
     };
-  }, [isOpen]);
+  }, [isOpen, onOpenChange]);
   useEffect(() => {
     if (!isOpen) return undefined;
     const handleClickOutside = event => {
@@ -108,7 +109,7 @@ export default function EmbeddedEquipmentActionsMenu({
       event.stopPropagation();
       onOpenChange(isOpen ? null : menuKey);
     }}>
-        <Icon icon="mdi:dots-horizontal" aria-hidden />
+        <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
       </button>
       {menuContent && typeof document !== "undefined" ? createPortal(menuContent, document.body) : null}
     </div>;

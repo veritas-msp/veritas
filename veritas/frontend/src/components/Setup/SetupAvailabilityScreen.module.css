@@ -4,7 +4,7 @@
   flex-direction: column;
   background: #0f1c2e;
   color: #e8edf5;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
 }
 
 .shell[data-wizard-theme="dark"] {

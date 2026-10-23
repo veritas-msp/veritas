@@ -13,7 +13,7 @@ export const THEME_VARIABLES = {
     "--accent-primary": "#4f46e5",
     "--accent-secondary": "#6366f1",
     "--shadow-color": "rgba(0, 0, 0, 0.12)",
-    "--msp-page-bg": "#b7c3d4",
+    "--msp-page-bg": "#e8f1fa",
     "--msp-surface": "#ffffff",
     "--msp-surface-2": "#eef3f8",
     "--msp-surface-3": "#e6edf5",
@@ -64,6 +64,6 @@ export function applyThemeToRoot(theme) {
   });
   const metaThemeColor = document.querySelector('meta[name="theme-color"]');
   if (metaThemeColor) {
-    metaThemeColor.setAttribute("content", effective === "dark" ? "#02050a" : "#b7c3d4");
+    metaThemeColor.setAttribute("content", effective === "dark" ? "#02050a" : "#e8f1fa");
   }
 }

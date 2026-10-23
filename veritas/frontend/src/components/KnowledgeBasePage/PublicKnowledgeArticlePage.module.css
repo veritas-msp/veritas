@@ -2,7 +2,7 @@
   min-height: 100vh;
   box-sizing: border-box;
   padding: 2rem 1.25rem 4rem;
-  background: var(--msp-page-bg, #b7c3d4);
+  background: var(--msp-page-bg, #e8f1fa);
   color: var(--msp-text, #0a1422);
 }
 

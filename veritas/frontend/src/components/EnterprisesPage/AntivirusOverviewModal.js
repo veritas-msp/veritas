@@ -386,7 +386,7 @@ export function AntivirusOverviewPanel({
     const endpoints = sections.endpoints;
     const licenseUsagePct = license?.used != null && license?.total ? Math.round(license.used / license.total * 100) : null;
     const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
-    if (asPage || embedded) {
+    if (asPage || embedded || embed) {
       return <StatsDashboardBody>
           <StatsPanel title={companyName} icon="simple-icons:bitdefender">
             <p className={dashStyles.panelDesc}>

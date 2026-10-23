@@ -1,5 +1,9 @@
 
 :root {
+  /* system-ui en tête = même glyphes partout (SF sur Apple, Segoe sur Windows) */
+  --msp-font: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --app-font: var(--msp-font);
+
   /* Keep numeric values in sync with src/layout/breakpoints.js */
   --bp-phone: 768px;
   --bp-tablet: 1024px;
@@ -36,8 +40,8 @@ html.light {
   --calendar-picker-filter: none;
 
   
-  /* Darker canvas so white cards / panels stand out */
-  --msp-page-bg: #b7c3d4;
+  /* Canvas clair (bleu très pâle) — contraste doux avec les surfaces blanches */
+  --msp-page-bg: #e8f1fa;
   --msp-surface: #ffffff;
   --msp-surface-2: #eef3f8;
   --msp-surface-3: #e6edf5;

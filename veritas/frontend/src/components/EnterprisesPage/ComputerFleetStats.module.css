@@ -41,41 +41,62 @@
 
 .kpiCard {
   display: flex;
-  gap: 0.65rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 10px;
-  border: 1px solid var(--msp-border-light);
-  background: var(--msp-surface);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  padding: 0.65rem 0.75rem 0.6rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--msp-surface, #fff);
   min-width: 0;
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 6px 16px rgba(15, 28, 46, 0.06);
 }
 
 .kpi_good {
-  border-color: color-mix(in srgb, var(--fleet-metric-good) 28%, var(--msp-border-light));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fleet-metric-good) 22%, transparent),
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 6px 16px rgba(15, 28, 46, 0.06);
 }
 
 .kpi_warn {
-  border-color: color-mix(in srgb, var(--fleet-metric-warn) 28%, var(--msp-border-light));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fleet-metric-warn) 22%, transparent),
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 6px 16px rgba(15, 28, 46, 0.06);
 }
 
 .kpi_bad {
-  border-color: color-mix(in srgb, var(--fleet-metric-bad) 28%, var(--msp-border-light));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fleet-metric-bad) 22%, transparent),
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 6px 16px rgba(15, 28, 46, 0.06);
+}
+
+.kpiHead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  width: 100%;
 }
 
 .kpiIconWrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 8px;
-  background: var(--msp-accent-soft);
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 7px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
   flex-shrink: 0;
 }
 
 .kpiIcon {
-  font-size: 1.05rem;
-  color: var(--msp-accent);
+  font-size: 0.88rem;
+  color: var(--msp-accent, #2b5fab);
 }
 
 .kpiBody {
@@ -85,21 +106,29 @@
 }
 
 .kpiLabel {
-  font-size: 0.7rem;
-  color: var(--msp-muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .kpiValue {
-  font-size: 1.05rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  line-height: 1.2;
-  color: var(--msp-text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text, #0f1c2e);
 }
 
 .kpiSub {
-  margin-top: 0.1rem;
-  font-size: 0.68rem;
-  color: var(--msp-muted);
+  margin-top: 0;
+  font-size: 0.64rem;
+  color: var(--msp-muted, #5c6b82);
   line-height: 1.3;
 }
 

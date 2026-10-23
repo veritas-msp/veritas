@@ -163,7 +163,7 @@ function buildSyntheseHtml({
   <meta charset="utf-8" />
   <title>Reversibility pack · ${escapeHtml(client?.name || "Client")}</title>
   <style>
-    body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: #eef2f8; color: #0f1c2e; }
+    body { font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; margin: 0; background: #eef2f8; color: #0f1c2e; }
     .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
     .hero { background: linear-gradient(135deg, #1a3d75, #2b5fab); color: #fff; border-radius: 16px; padding: 1.75rem; margin-bottom: 1.25rem; }
     .hero h1 { margin: 0 0 0.35rem; font-size: 1.65rem; }

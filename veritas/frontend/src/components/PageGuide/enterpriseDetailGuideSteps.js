@@ -10,20 +10,12 @@ const STEP_CONFIG = [{
   target: '[data-guide="enterprise-sidebar-contacts"]',
   handler: "expandContacts"
 }, {
-  key: "overview",
-  target: '[data-guide="enterprise-overview"]',
-  handler: "showOverview"
-}, {
   key: "infraMap",
   target: '[data-guide="enterprise-infra-map"]',
   handler: "showInfraMap"
 }, {
   key: "equipment",
   target: '[data-guide="enterprise-equipment"]'
-}, {
-  key: "equipmentStats",
-  target: '[data-guide="enterprise-equipment-stats"]',
-  handler: "focusEquipmentStats"
 }, {
   key: "activity",
   target: '[data-guide="enterprise-activity"]',
@@ -44,8 +36,6 @@ export function getEnterpriseDetailGuideSteps(handlers = {}, locale = "fr") {
   const {
     expandContacts = () => {},
     expandNotes = () => {},
-    focusEquipmentStats = () => {},
-    showOverview = () => {},
     showInfraMap = () => {},
     showActivity = () => {},
     showVault = () => {}
@@ -53,8 +43,6 @@ export function getEnterpriseDetailGuideSteps(handlers = {}, locale = "fr") {
   const handlerMap = {
     expandContacts,
     expandNotes,
-    focusEquipmentStats,
-    showOverview,
     showInfraMap,
     showActivity,
     showVault

@@ -105,18 +105,18 @@ export function wrapVeritasEmailPreview({ title = "Notification", content = "" }
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;">
           <tr>
             <td align="center" style="background:linear-gradient(160deg,#0f1c2e 0%,#162641 60%,#1a3060 100%);border-radius:12px 12px 0 0;padding:24px 28px;">
-              <div style="width:38px;height:38px;line-height:38px;background-color:#2b5fab;border-radius:8px;font-size:18px;font-weight:800;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0 auto;">V</div>
-              <div style="padding-top:10px;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#e8edf5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">Veritas</div>
+              <div style="width:38px;height:38px;line-height:38px;background-color:#2b5fab;border-radius:8px;font-size:18px;font-weight:800;color:#fff;font-family:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0 auto;">V</div>
+              <div style="padding-top:10px;font-size:15px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#e8edf5;font-family:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">Veritas</div>
             </td>
           </tr>
           <tr>
-            <td style="background:#fff;border:1px solid #dde3ed;border-top:none;border-radius:0 0 12px 12px;padding:28px 24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+            <td style="background:#fff;border:1px solid #dde3ed;border-top:none;border-radius:0 0 12px 12px;padding:28px 24px;font-family:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
               <h1 style="margin:0 0 16px;font-size:17px;font-weight:700;color:#10233c;line-height:1.35;">${safeTitle.replace(/</g, "&lt;")}</h1>
               <div style="font-size:14px;color:#374a5e;line-height:1.6;">${body}</div>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:16px 12px 0;font-size:11px;color:#6b7a90;line-height:1.5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+            <td align="center" style="padding:16px 12px 0;font-size:11px;color:#6b7a90;line-height:1.5;font-family:'SF Pro Text','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
               Aperçu — cet e-mail est envoyé automatiquement depuis Veritas.
             </td>
           </tr>

@@ -4,7 +4,7 @@
   --msp-accent: #2b5fab;
   --msp-accent-dark: #1a3d75;
   --msp-accent-soft: rgba(43, 95, 171, 0.12);
-  --msp-bg: var(--msp-page-bg, #e8eef6);
+  --msp-bg: var(--msp-page-bg, #e8f1fa);
   --msp-surface: #ffffff;
   --msp-surface-2: #f4f7fb;
   --msp-surface-3: #e8eef5;
@@ -23,10 +23,17 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   background: var(--msp-bg);
   color: var(--msp-text);
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   box-sizing: border-box;
+}
+
+:global(.contentWrapper) > .contratDetailPage {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 
@@ -45,6 +52,22 @@
   background-color: var(--msp-surface);
   border-bottom: 1px solid var(--msp-border);
   box-shadow: 0 1px 0 rgba(15, 28, 46, 0.04);
+  /* Couvre la gouttière scrollbar-gutter:stable (sinon bande --msp-bg à droite) */
+  width: 100%;
+  max-width: none;
+}
+
+.enterpriseDetailPage .pageHero::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: -1px;
+  width: 1.25rem;
+  transform: translateX(100%);
+  background: color-mix(in srgb, var(--msp-surface) 88%, transparent);
+  border-bottom: 1px solid var(--msp-border);
+  pointer-events: none;
 }
 
 .pageHeroProTeaser {
@@ -268,9 +291,10 @@
 }
 
 .heroTitleStatus {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.55rem;
+  height: 0.55rem;
   flex-shrink: 0;
+  margin-right: 0.15rem;
 }
 
 .heroTitleIcon {
@@ -587,54 +611,39 @@
   margin: 0;
 }
 
-/* Enterprise hero: identity/KPIs (cover art) · planning/actions · underline tabs */
+/* Enterprise hero — barre sticky alignée UI Kit (tokens --msp-*) */
 .enterpriseDetailPage .pageHero {
   padding: 0;
-  background: var(--msp-surface);
-  border-bottom: 1px solid var(--msp-border-light);
-  box-shadow: 0 1px 0 rgba(15, 28, 46, 0.03);
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+  box-sizing: border-box;
+  overflow: visible;
+  background: color-mix(in srgb, var(--msp-surface) 88%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--msp-border);
+  box-shadow: none;
 }
 
-/* Cover art full-bleed in identity block (above planning), fades upward */
 .enterpriseDetailPage .heroIdentityBlock {
-  --hero-identity-row-h: 6rem;
+  /* Assez haut pour vignette + pastille blason + padding égal */
+  --hero-identity-row-h: 3.35rem;
   position: relative;
   isolation: isolate;
   min-width: 0;
   width: 100%;
+  max-width: none;
 }
 
+/* Cover décoratif désactivé (look toolbar, pas hero marketing) */
 .enterpriseDetailPage .heroCover {
-  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%232b5fab' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
-  --hero-cover-cross-opacity: 0.14;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: auto;
-  z-index: 0;
-  width: 100%;
-  /* Aligné sur la rangée identité (pas le fact strip) pour le même rendu partout */
-  height: var(--hero-identity-row-h);
-  overflow: hidden;
-  pointer-events: none;
-  background: transparent;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.35) 45%, #000 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.35) 45%, #000 100%);
+  display: none;
 }
 
-.enterpriseDetailPage .heroCover::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: var(--hero-cover-cross-opacity);
-  background-image: var(--hero-cover-cross);
-  background-size: 16px 16px;
-  background-repeat: repeat;
-  pointer-events: none;
-}
-
+.enterpriseDetailPage .heroCover::before,
 .enterpriseDetailPage .heroCover::after {
+  content: none;
   display: none;
 }
 
@@ -643,6 +652,7 @@
   flex-direction: column;
   gap: 0;
   width: 100%;
+  max-width: none;
   min-width: 0;
   padding: 0;
   box-sizing: border-box;
@@ -656,24 +666,25 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(14rem, 0.9fr) minmax(0, 1.8fr);
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 1.6fr);
   align-items: center;
-  column-gap: 1.35rem;
-  row-gap: 0.65rem;
+  column-gap: 0.75rem;
+  row-gap: 0.35rem;
   width: 100%;
   min-width: 0;
   height: var(--hero-identity-row-h);
   min-height: var(--hero-identity-row-h);
   max-height: var(--hero-identity-row-h);
-  padding: 0.75rem 1.5rem;
+  padding: 0.22rem 0.85rem 0.22rem 0.75rem;
   box-sizing: border-box;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .enterpriseDetailPage .heroMain {
   display: flex;
   align-items: center;
-  gap: 0.95rem;
+  justify-content: flex-start;
+  gap: 0.55rem;
   min-width: 0;
   width: 100%;
   max-width: none;
@@ -689,7 +700,9 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  align-self: stretch;
+  align-self: center;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   align-items: center;
   padding-bottom: 0;
@@ -700,6 +713,8 @@
 .enterpriseDetailPage .heroPlanningFrise > * {
   width: 100%;
   min-width: 0;
+  height: 100%;
+  max-height: 100%;
   overflow: visible;
 }
 
@@ -755,15 +770,7 @@
 }
 
 .enterpriseDetailPage .heroFactIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  flex-shrink: 0;
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1.05rem;
-  opacity: 0.9;
+  display: none;
 }
 
 .enterpriseDetailPage .heroFactText {
@@ -782,13 +789,18 @@
 }
 
 .enterpriseDetailPage .heroFactValue {
-  font-size: 0.84rem;
-  font-weight: 500;
-  color: var(--msp-muted, #475569);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.2;
+}
+
+.enterpriseDetailPage .heroFactValueAccent {
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 700;
 }
 
 .enterpriseDetailPage .heroFactOptionIcons {
@@ -838,23 +850,170 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: 14px;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 6px;
   background: var(--msp-accent, #2b5fab);
   color: #fff;
-  box-shadow: none;
+  box-shadow:
+    0 0.5px 0.5px rgba(0, 0, 0, 0.12),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.22);
+}
+
+.enterpriseDetailPage .heroBrandIconButton {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.enterpriseDetailPage .heroBrandIconButton:hover,
+.enterpriseDetailPage .heroBrandIconButtonOpen {
+  transform: scale(1.06);
+  filter: brightness(1.05);
+}
+
+.enterpriseDetailPage .heroBrandIconButton:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+.heroBrandIconEditHint {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #6e6e73;
+  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.enterpriseDetailPage .heroBrandIconButton:hover .heroBrandIconEditHint,
+.enterpriseDetailPage .heroBrandIconButtonOpen .heroBrandIconEditHint {
+  opacity: 1;
 }
 
 .enterpriseDetailPage .heroBrandIcon svg {
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 1rem;
+  height: 1rem;
+}
+
+.heroIconPopover {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: calc(100vw - 24px);
+  padding: 0.85rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.16);
+  box-sizing: border-box;
+}
+
+.heroIconPopoverSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.heroIconPopoverLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.heroIconColorPicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.heroIconColorSwatch {
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--swatch-color);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(15, 28, 46, 0.12);
+}
+
+.heroIconColorSwatch:hover {
+  transform: scale(1.08);
+}
+
+.heroIconColorSwatchActive {
+  box-shadow: 0 0 0 2px var(--msp-surface, #fff), 0 0 0 4px var(--swatch-color);
+}
+
+.heroIconColorCustom {
+  position: relative;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px dashed var(--msp-border, #d0d7e2);
+  cursor: pointer;
+}
+
+.heroIconColorInput {
+  position: absolute;
+  inset: -0.35rem;
+  width: calc(100% + 0.7rem);
+  height: calc(100% + 0.7rem);
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.heroIconPickerHost :global([class*="preview"]) {
+  display: none !important;
+}
+
+.heroIconPickerHost :global([class*="wrap"]) {
+  display: block;
+  width: 100%;
+  margin: 0;
+  gap: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.heroIconPickerHost :global([class*="pickerColumn"]) {
+  width: 100%;
+}
+
+.heroIconPickerHost :global([class*="grid"]) {
+  max-height: 220px;
 }
 
 .enterpriseDetailPage .heroText {
   display: flex;
-  flex-direction: column;
-  gap: 0.28rem;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
   min-width: 0;
   flex: 1 1 auto;
   max-height: 100%;
@@ -865,34 +1024,41 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.5rem 0.65rem;
+  justify-content: flex-start;
+  gap: 0.35rem;
   margin: 0;
-  font-size: clamp(1.25rem, 2vw, 1.55rem);
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  color: var(--msp-text, #1e293b);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--msp-text);
   min-width: 0;
 }
 
 .enterpriseDetailPage .heroTitleName {
+  display: inline-flex;
+  align-items: center;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1;
 }
 
 .enterpriseDetailPage .heroTitleCode {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font-weight: inherit;
-  font-size: inherit;
-  letter-spacing: inherit;
+  justify-content: center;
+  padding: 0.1rem 0.35rem;
+  border-radius: var(--msp-radius-sm);
+  background: color-mix(in srgb, var(--msp-muted) 12%, transparent);
+  color: var(--msp-muted);
+  font-weight: 550;
+  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
@@ -901,16 +1067,26 @@
   font-weight: 500;
 }
 
+.enterpriseDetailPage .heroTitleStatus {
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0;
+}
+
 .enterpriseDetailPage .heroMeta {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0.35rem 0.65rem;
+  gap: 0.3rem;
   margin-top: 0;
   min-width: 0;
   flex: 0 1 auto;
-  max-width: 100%;
+  max-width: 42%;
   overflow: hidden;
+}
+
+.enterpriseDetailPage .heroOnboardingHint {
+  display: none;
 }
 
 .enterpriseDetailPage .heroStatusBadge {
@@ -944,14 +1120,30 @@
 /* Client inactif : signal fort dans le hero */
 .enterpriseDetailPage.heroInactive .heroCover,
 .enterpriseDetailPage .heroCoverInactive {
-  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%23c2410c' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
-  --hero-cover-cross-opacity: 0.2;
-  background: linear-gradient(
-    180deg,
-    rgba(194, 65, 12, 0.14) 0%,
-    rgba(194, 65, 12, 0.05) 55%,
-    transparent 100%
-  );
+  --hero-cover-tint: rgba(194, 65, 12, 0.18);
+  --hero-cover-tint-soft: rgba(194, 65, 12, 0.08);
+  background:
+    radial-gradient(90% 130% at 0% 110%, var(--hero-cover-tint) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(194, 65, 12, 0.12) 0%, rgba(194, 65, 12, 0.04) 55%, transparent 100%);
+}
+
+.enterpriseDetailPage.heroInactive .heroCover::before,
+.enterpriseDetailPage .heroCoverInactive::before {
+  background-image:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 38%,
+      rgba(194, 65, 12, 0.12) 50%,
+      transparent 62%,
+      transparent 100%
+    );
+}
+
+.enterpriseDetailPage.heroInactive .heroCover::after,
+.enterpriseDetailPage .heroCoverInactive::after {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(194, 65, 12, 0.35) 0.85px, transparent 1.1px);
 }
 
 .enterpriseDetailPage.heroInactive .heroBrandIcon,
@@ -963,14 +1155,30 @@
 /* Client onboarding — même logique visuelle que maintenance périphérique */
 .enterpriseDetailPage.heroInOnboarding .heroCover,
 .enterpriseDetailPage .heroCoverOnboarding {
-  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%23b45309' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
-  --hero-cover-cross-opacity: 0.22;
-  background: linear-gradient(
-    180deg,
-    rgba(180, 83, 9, 0.16) 0%,
-    rgba(180, 83, 9, 0.07) 55%,
-    transparent 100%
-  );
+  --hero-cover-tint: rgba(180, 83, 9, 0.2);
+  --hero-cover-tint-soft: rgba(180, 83, 9, 0.09);
+  background:
+    radial-gradient(90% 130% at 0% 110%, var(--hero-cover-tint) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(180, 83, 9, 0.14) 0%, rgba(180, 83, 9, 0.05) 55%, transparent 100%);
+}
+
+.enterpriseDetailPage.heroInOnboarding .heroCover::before,
+.enterpriseDetailPage .heroCoverOnboarding::before {
+  background-image:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 38%,
+      rgba(180, 83, 9, 0.14) 50%,
+      transparent 62%,
+      transparent 100%
+    );
+}
+
+.enterpriseDetailPage.heroInOnboarding .heroCover::after,
+.enterpriseDetailPage .heroCoverOnboarding::after {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(180, 83, 9, 0.38) 0.85px, transparent 1.1px);
 }
 
 .enterpriseDetailPage.heroInOnboarding .heroBrandIcon,
@@ -983,15 +1191,15 @@
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 0.25rem;
-  padding: 0.12rem 0.4rem;
-  border-radius: 5px;
-  border: 1px solid rgba(180, 83, 9, 0.45);
-  background: rgba(180, 83, 9, 0.12);
+  gap: 0.2rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  background: rgba(180, 83, 9, 0.1);
   color: #b45309;
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   line-height: 1.25;
   white-space: nowrap;
   text-transform: uppercase;
@@ -1261,6 +1469,609 @@
   flex-shrink: 0;
 }
 
+/* —— Finder sidebar (onglets + options contextuelles) —— */
+.mainColumnFinder {
+  gap: 0 !important;
+}
+
+.enterpriseFinderLayout {
+  display: grid;
+  grid-template-columns: minmax(13.5rem, 15rem) minmax(0, 1fr);
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--msp-border-light, #e8edf5);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: none;
+}
+
+.enterpriseFinderSidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border-right: 1px solid var(--msp-border-light, #e8edf5);
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 88%, #fff);
+}
+
+.finderPrimaryNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.45rem 0.45rem;
+  flex: 0 0 auto;
+}
+
+.finderPrimaryItem {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 1.1rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.45rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.42rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-text, #1e2d42);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.finderPrimaryItem:hover {
+  background: color-mix(in srgb, var(--msp-surface, #fff) 70%, transparent);
+}
+
+.finderPrimaryItemActive,
+.finderPrimaryItemActive:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, #fff);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.finderPrimaryIcon {
+  width: 1.05rem;
+  height: 1.05rem;
+  font-size: 1.05rem;
+  opacity: 0.85;
+}
+
+.finderPrimaryItemActive .finderPrimaryIcon {
+  opacity: 1;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.finderPrimaryLabel {
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  padding-bottom: 0.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finderSecondaryShell {
+  /* Nav secondaire Finder : familles / tickets / coffre — taille unique */
+  --finder-nav-min-h: 1.9rem;
+  --finder-nav-pad-y: 0.28rem;
+  --finder-nav-pad-x: 0.5rem;
+  --finder-nav-radius: 8px;
+  --finder-nav-gap: 0.4rem;
+  --finder-nav-icon: 0.95rem;
+  --finder-nav-label: 0.78rem;
+  --finder-nav-label-weight: 500;
+  --finder-nav-list-gap: 0.12rem;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top: 1px solid var(--msp-border-light, #e8edf5);
+}
+
+.finderSecondary {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  /* Même inset L/R pour Familles, Services, Tickets, Arborescence */
+  padding: 0.65rem 0.5rem 1.35rem;
+  /* Scrollbar masquée — le fondu bas signale la suite (comme familles / table iOS) */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.finderSecondary::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
+.finderSecondaryFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff) 0%,
+    color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 88%, #fff) 18%,
+    color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 55%, transparent) 55%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.finderSecondaryFadeVisible {
+  opacity: 1;
+}
+
+:global(html.dark) .finderSecondaryFade,
+:global(body.dark) .finderSecondaryFade {
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--msp-surface-2, #152035) 90%, #0f172a) 8%,
+    color-mix(in srgb, var(--msp-surface-2, #152035) 55%, transparent) 52%,
+    transparent 100%
+  );
+}
+
+.finderSecondaryTitle {
+  margin: 0 0 0.55rem;
+  padding: 0 var(--finder-nav-pad-x);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+  box-sizing: border-box;
+}
+
+.finderSecondaryTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin: 0 0 0.55rem;
+  padding: 0 var(--finder-nav-pad-x);
+  box-sizing: border-box;
+}
+
+.finderSecondaryTitleRow .finderSecondaryTitle {
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.finderVaultAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.finderVaultAddBtn:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.finderSecondaryNav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finder-nav-list-gap);
+}
+
+.finderSecondaryItem {
+  appearance: none;
+  display: grid;
+  grid-template-columns: var(--finder-nav-icon) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--finder-nav-gap);
+  width: 100%;
+  min-height: var(--finder-nav-min-h);
+  margin: 0;
+  padding: var(--finder-nav-pad-y) var(--finder-nav-pad-x);
+  border: 1px solid transparent;
+  border-radius: var(--finder-nav-radius);
+  background: transparent;
+  color: var(--msp-text, #1e2d42);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.finderSecondaryItem:hover {
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 78%, transparent);
+}
+
+.finderSecondaryItemActive,
+.finderSecondaryItemActive:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, #fff);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.finderSecondaryItemActive .finderSecondaryIcon {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.finderSecondaryIcon {
+  width: var(--finder-nav-icon);
+  height: var(--finder-nav-icon);
+  font-size: var(--finder-nav-icon);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.finderSecondaryLabel {
+  min-width: 0;
+  font-size: var(--finder-nav-label);
+  font-weight: var(--finder-nav-label-weight);
+  line-height: 1.4;
+  padding-bottom: 0.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finderSecondaryGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--finder-nav-list-gap);
+  min-width: 0;
+}
+
+.finderSecondaryGroup + .finderSecondaryGroup {
+  margin-top: 0.55rem;
+}
+
+.finderSecondaryGroupTitle {
+  margin: 0;
+  padding: 0.15rem var(--finder-nav-pad-x) 0.05rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.finderSecondaryItemWithCount {
+  grid-template-columns: var(--finder-nav-icon) minmax(0, 1fr) auto;
+}
+
+.finderSecondaryCount {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  padding: 0;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  font-size: 0.6rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  /* Même style que embeddedTypeSidebarCount (familles équipements) */
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  opacity: 0.9;
+}
+
+.finderSecondaryItemActive .finderSecondaryCount {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
+  opacity: 1;
+}
+
+.finderSecondarySoon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 4.2rem;
+  padding: 0.12rem 0.3rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, #b45309 14%, transparent);
+  color: #b45309;
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finderTypeNavHost {
+  min-height: 0;
+}
+
+.finderVaultTreeHost {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+  gap: var(--finder-nav-list-gap);
+}
+
+.finderVaultTreeHost :global([class*="treePanePortaled"]) {
+  width: 100%;
+  gap: var(--finder-nav-list-gap);
+}
+
+/* Ne cibler que la ligne (pas treeItemBtn / Label / Active via substring) */
+.finderVaultTreeHost :global([class*="treeBranch"] > [class*="treeItem"]),
+.finderVaultTreeHost :global([class*="treePane"] > [class*="treeItem"]),
+.finderVaultTreeHost :global([class*="treePanePortaled"] > [class*="treeItem"]) {
+  min-height: var(--finder-nav-min-h);
+  padding-top: 0.05rem;
+  padding-bottom: 0.05rem;
+  padding-left: var(--finder-nav-pad-x);
+  padding-right: var(--finder-nav-pad-x);
+  border-radius: var(--finder-nav-radius);
+  font-size: var(--finder-nav-label);
+  font-weight: var(--finder-nav-label-weight);
+  align-items: center;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.finderVaultTreeHost :global([class*="treeItemBtn"]) {
+  min-height: calc(var(--finder-nav-min-h) - 0.1rem);
+  padding: var(--finder-nav-pad-y) 0;
+  gap: var(--finder-nav-gap);
+  border-radius: var(--finder-nav-radius);
+  box-sizing: border-box;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.finderVaultTreeHost :global([class*="treeItemBtn"] > svg),
+.finderVaultTreeHost :global([class*="treeItemBtn"] svg) {
+  width: var(--finder-nav-icon);
+  height: var(--finder-nav-icon);
+  font-size: var(--finder-nav-icon);
+  flex-shrink: 0;
+  display: block;
+}
+
+.finderVaultTreeHost :global([class*="dragHandle"]) {
+  width: var(--finder-nav-icon);
+  height: var(--finder-nav-icon);
+  min-width: var(--finder-nav-icon);
+  min-height: var(--finder-nav-icon);
+  align-self: center;
+  line-height: 0;
+}
+
+.finderVaultTreeHost :global([class*="dragHandle"] > svg),
+.finderVaultTreeHost :global([class*="dragHandle"] svg) {
+  width: var(--finder-nav-icon);
+  height: var(--finder-nav-icon);
+  font-size: var(--finder-nav-icon);
+  display: block;
+}
+
+.finderVaultTreeHost :global([class*="treeItemLabel"]) {
+  font-size: var(--finder-nav-label);
+  font-weight: var(--finder-nav-label-weight);
+  line-height: 1.25;
+  display: block;
+}
+
+.finderVaultTreeHost :global([class*="treeHiddenIcon"]) {
+  width: var(--finder-nav-icon) !important;
+  height: var(--finder-nav-icon) !important;
+  font-size: var(--finder-nav-icon) !important;
+  display: block;
+  flex-shrink: 0;
+}
+
+.finderVaultTreeHost :global([class*="treeBranch"] > [class*="treeItem"]:not([class*="Active"]):hover),
+.finderVaultTreeHost :global([class*="treePane"] > [class*="treeItem"]:not([class*="Active"]):hover),
+.finderVaultTreeHost :global([class*="treePanePortaled"] > [class*="treeItem"]:not([class*="Active"]):hover),
+.finderVaultTreeHost :global([class*="treeItemBtn"]:hover) {
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 78%, transparent);
+}
+
+.finderTypeNavHost :global([class*="embeddedTypeSidebar"]) {
+  height: auto;
+  max-height: none;
+  border-right: none;
+  padding: 0;
+  gap: var(--finder-nav-list-gap);
+  overflow: visible;
+}
+
+.finderTypeNavHost :global([class*="embeddedTypeSidebarBtn"]) {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  min-height: var(--finder-nav-min-h);
+  padding: var(--finder-nav-pad-y) var(--finder-nav-pad-x);
+  gap: var(--finder-nav-gap);
+  border-radius: var(--finder-nav-radius);
+  box-sizing: border-box;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.finderTypeNavHost :global([class*="embeddedTypeSidebarGlyph"]) {
+  width: var(--finder-nav-icon);
+  height: var(--finder-nav-icon);
+  font-size: var(--finder-nav-icon);
+}
+
+.finderTypeNavHost :global([class*="embeddedTypeSidebarLabel"]) {
+  font-size: var(--finder-nav-label);
+  font-weight: var(--finder-nav-label-weight);
+  line-height: 1.25;
+}
+
+.finderTypeNavHost :global([class*="embeddedTypeSidebarCount"]) {
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  font-size: 0.6rem;
+  border-radius: 5px;
+}
+
+/* Même hover que les onglets hero (Cyber & Cloud, Tickets, …) */
+.finderTypeNavHost :global([class*="embeddedTypeSidebarBtn"]:not([class*="Active"]):not([class*="Dimmed"])):hover:not(:disabled) {
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 78%, transparent);
+}
+
+:global(html.dark) .finderTypeNavHost :global([class*="embeddedTypeSidebarBtn"]:not([class*="Active"]):not([class*="Dimmed"])):hover:not(:disabled),
+:global(body.dark) .finderTypeNavHost :global([class*="embeddedTypeSidebarBtn"]:not([class*="Active"]):not([class*="Dimmed"])):hover:not(:disabled) {
+  color: var(--msp-accent, #5a9de0);
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 80%, transparent);
+}
+
+.enterpriseFinderContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+  border: none;
+  box-shadow: none;
+}
+
+.enterpriseFinderContent .mainCommunityPanels {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  background: transparent;
+}
+
+.enterpriseFinderContent .overviewTabPanel {
+  padding-top: 0;
+  gap: 0;
+}
+
+.enterpriseFinderContent .panel.mapUnifiedCard,
+.enterpriseFinderContent .cyberServicesCard {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100%;
+  min-height: 0;
+  background: transparent;
+}
+
+.enterpriseFinderContent [class*="panelRoot"],
+.enterpriseFinderContent [class*="vaultLayout"],
+.enterpriseFinderContent [class*="contentPane"] {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+:global(html.dark) .enterpriseFinderLayout,
+:global(body.dark) .enterpriseFinderLayout {
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .enterpriseFinderSidebar,
+:global(body.dark) .enterpriseFinderSidebar {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 90%, #0f172a);
+  border-right-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .finderPrimaryItemActive,
+:global(html.dark) .finderPrimaryItemActive:hover,
+:global(body.dark) .finderPrimaryItemActive,
+:global(body.dark) .finderPrimaryItemActive:hover,
+:global(html.dark) .finderSecondaryItemActive,
+:global(html.dark) .finderSecondaryItemActive:hover,
+:global(body.dark) .finderSecondaryItemActive,
+:global(body.dark) .finderSecondaryItemActive:hover {
+  background: color-mix(in srgb, var(--msp-accent, #5b8fd4) 18%, transparent);
+  color: var(--msp-accent, #5b8fd4);
+}
+
+:global(html.dark) .finderSecondaryItemActive .finderSecondaryIcon,
+:global(body.dark) .finderSecondaryItemActive .finderSecondaryIcon {
+  color: var(--msp-accent, #5b8fd4);
+}
+
+:global(html.dark) .finderSecondaryGroupTitle,
+:global(body.dark) .finderSecondaryGroupTitle {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .finderSecondaryCount,
+:global(body.dark) .finderSecondaryCount {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+  opacity: 0.9;
+}
+
+:global(html.dark) .finderSecondaryItemActive .finderSecondaryCount,
+:global(body.dark) .finderSecondaryItemActive .finderSecondaryCount {
+  background: color-mix(in srgb, var(--msp-accent, #5b8fd4) 16%, transparent);
+  opacity: 1;
+}
+
+:global(html.dark) .finderSecondarySoon,
+:global(body.dark) .finderSecondarySoon {
+  background: color-mix(in srgb, #fb923c 16%, transparent);
+  color: #fb923c;
+}
+
+:global(html.dark) .finderSecondaryItem:hover:not(.finderSecondaryItemActive),
+:global(body.dark) .finderSecondaryItem:hover:not(.finderSecondaryItemActive) {
+  color: var(--msp-accent, #5a9de0);
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 80%, transparent);
+}
+
+:global(html.dark) .finderVaultTreeHost :global([class*="treeBranch"] > [class*="treeItem"]:not([class*="Active"]):hover),
+:global(html.dark) .finderVaultTreeHost :global([class*="treePane"] > [class*="treeItem"]:not([class*="Active"]):hover),
+:global(html.dark) .finderVaultTreeHost :global([class*="treePanePortaled"] > [class*="treeItem"]:not([class*="Active"]):hover),
+:global(html.dark) .finderVaultTreeHost :global([class*="treeItemBtn"]:hover),
+:global(body.dark) .finderVaultTreeHost :global([class*="treeBranch"] > [class*="treeItem"]:not([class*="Active"]):hover),
+:global(body.dark) .finderVaultTreeHost :global([class*="treePane"] > [class*="treeItem"]:not([class*="Active"]):hover),
+:global(body.dark) .finderVaultTreeHost :global([class*="treePanePortaled"] > [class*="treeItem"]:not([class*="Active"]):hover),
+:global(body.dark) .finderVaultTreeHost :global([class*="treeItemBtn"]:hover) {
+  color: var(--msp-accent, #5a9de0);
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 80%, transparent);
+}
+
 .enterpriseDetailPage .heroTabBar {
   display: flex;
   align-items: center;
@@ -1268,10 +2079,10 @@
   width: 100%;
   margin: 0;
   padding: 0.3rem;
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 22%, transparent);
   border-radius: 14px;
   box-shadow: none;
-  background: color-mix(in srgb, var(--msp-surface-2, #eef3f8) 88%, var(--msp-border-light, #d7e0ea));
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, var(--msp-surface, #fff));
   overflow-x: auto;
   scrollbar-width: none;
   box-sizing: border-box;
@@ -1297,7 +2108,7 @@
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  color: var(--msp-muted, #64748b);
+  color: color-mix(in srgb, var(--msp-accent, #2b5fab) 72%, var(--msp-muted, #64748b));
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1317,23 +2128,23 @@
 }
 
 .enterpriseDetailPage .heroTab:hover {
-  color: var(--msp-text, #1e293b);
-  background: color-mix(in srgb, var(--msp-surface, #fff) 72%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 78%, transparent);
 }
 
 .enterpriseDetailPage .heroTabActive {
-  color: var(--msp-text, #1e293b);
-  background: var(--msp-surface, #fff);
-  border-color: color-mix(in srgb, var(--msp-border, #d0dae8) 70%, transparent);
-  font-weight: 550;
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 4px 12px rgba(15, 28, 46, 0.04);
+  color: #fff;
+  background: var(--msp-accent, #2b5fab);
+  border-color: transparent;
+  font-weight: 600;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
 }
 
 .enterpriseDetailPage .heroTabActive:hover {
-  color: var(--msp-text, #1e293b);
-  background: var(--msp-surface, #fff);
-  border-color: color-mix(in srgb, var(--msp-border, #d0dae8) 70%, transparent);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 4px 12px rgba(15, 28, 46, 0.04);
+  color: #fff;
+  background: var(--msp-accent-dark, #1a3d75);
+  border-color: transparent;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
 }
 
 .enterpriseDetailPage .heroTabActive::after {
@@ -1341,15 +2152,11 @@
 }
 
 .enterpriseDetailPage .heroTabIcon {
-  font-size: 1.05rem;
-  flex-shrink: 0;
-  opacity: 0.75;
-  color: inherit;
+  display: none;
 }
 
 .enterpriseDetailPage .heroTabActive .heroTabIcon {
-  opacity: 0.95;
-  color: var(--msp-accent, #2b5fab);
+  display: none;
 }
 
 .enterpriseDetailPage .heroTabLabel {
@@ -1365,8 +2172,8 @@
 .enterpriseDetailPage .heroTitleStatus,
 .contactDetailPage .heroTitleStatus,
 .prestataireDetailPage .heroTitleStatus {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.55rem;
+  height: 0.55rem;
 }
 
 .heroMetaClientCode,
@@ -1395,15 +2202,21 @@
 
 .enterpriseDetailPage .heroMetaItem,
 .contactDetailPage .heroMetaItem {
-  font-size: 0.72rem;
-  gap: 0.22rem;
+  font-size: 0.6875rem;
+  gap: 0.2rem;
+  color: var(--msp-muted);
+  font-weight: 500;
 }
 
 .enterpriseDetailPage .heroMetaItem svg,
 .enterpriseDetailPage .heroMetaItem :global(svg),
 .contactDetailPage .heroMetaItem svg,
 .contactDetailPage .heroMetaItem :global(svg) {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
+}
+
+:global(html.dark) .enterpriseDetailPage .heroMetaItem {
+  color: var(--msp-muted);
 }
 
 .enterpriseDetailPage .contractBadge,
@@ -1414,8 +2227,10 @@
 
 .enterpriseDetailPage .heroTagChip,
 .contactDetailPage .heroTagChip {
-  padding: 0.1rem 0.38rem;
-  font-size: 0.64rem;
+  padding: 0.08rem 0.4rem;
+  font-size: 0.625rem;
+  border-radius: 999px;
+  font-weight: 550;
 }
 
 .enterpriseDetailPage .heroTagAddTrigger,
@@ -1541,7 +2356,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 1.25rem;
   align-items: start;
 }
@@ -1576,13 +2391,15 @@
   display: contents;
 }
 
+/* Colonne droite unique (mode SaaS) */
+.asideStack.asidePanel,
 .asideStack {
   position: sticky;
   top: calc(10.5rem + 0.75rem);
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0;
   min-width: 0;
   max-height: calc(100vh - 11.5rem);
   overflow: hidden;
@@ -1598,13 +2415,18 @@
   flex: 1 1 auto;
   max-height: none;
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: var(--msp-radius);
+  border-radius: 16px;
   background-color: var(--msp-surface);
-  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04), 0 10px 28px rgba(15, 28, 46, 0.05);
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--msp-border) transparent;
+}
+
+.asideStack.asidePanel {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .asidePanel::-webkit-scrollbar {
@@ -1663,10 +2485,7 @@
 }
 
 .panelTitleIcon {
-  font-size: 1rem;
-  flex-shrink: 0;
-  opacity: 0.9;
-  color: var(--msp-accent);
+  display: none;
 }
 
 .panelHeaderMain {
@@ -1828,7 +2647,7 @@
 .panelToolbar {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.3rem;
   flex-wrap: wrap;
   margin-left: auto;
 }
@@ -1958,6 +2777,15 @@
   font-size: 0.8125rem;
   color: var(--msp-muted);
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.equipmentToolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .exportMenuWrap {
@@ -1969,16 +2797,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius-sm);
+  border-radius: 7px;
   background: var(--msp-surface);
   color: var(--msp-muted);
   cursor: pointer;
-  font-size: 0.95rem;
-  transition: border-color 0.15s, color 0.15s;
+  font-size: 0.85rem;
+  line-height: 0;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
 }
 
 .exportHeaderButton:hover,
@@ -1988,13 +2821,19 @@
 }
 
 .addEquipmentButton {
-  background: linear-gradient(135deg, var(--msp-accent) 0%, var(--msp-accent-dark) 100%);
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  background: var(--msp-accent);
   border: none;
   color: #fff;
+  font-size: 0.85rem;
 }
 
 .addEquipmentButton:hover {
-  filter: brightness(1.06);
+  background: var(--msp-accent-dark);
+  filter: none;
   color: #fff;
 }
 
@@ -2002,30 +2841,44 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  min-width: 160px;
-  padding: 0.35rem;
+  min-width: 200px;
+  padding: 0.3rem;
   border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius-sm);
+  border-radius: 10px;
   background: var(--msp-surface);
   box-shadow: var(--msp-shadow);
   z-index: 30;
 }
 
 .exportMenuItem {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
-  padding: 0.5rem 0.65rem;
+  padding: 0.42rem 0.55rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 7px;
   background: transparent;
   color: var(--msp-text);
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
   text-align: left;
   cursor: pointer;
 }
 
+.exportMenuItemIcon {
+  flex-shrink: 0;
+  width: 0.95rem;
+  height: 0.95rem;
+  font-size: 0.95rem;
+  color: var(--msp-muted);
+}
+
 .exportMenuItem:hover {
   background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.exportMenuItem:hover .exportMenuItemIcon {
   color: var(--msp-accent);
 }
 
@@ -2243,13 +3096,92 @@
 .mapTabStack {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0;
   min-width: 0;
+}
+
+.mapUnifiedCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
 }
 
 .mapModulesBlock {
   min-width: 0;
   flex: 0 0 auto;
+}
+
+.mapEquipmentSection {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  border-top: none;
+  margin-top: 0;
+}
+
+.mapEquipmentBody {
+  /* Aligné sur activity / vault / logs : 0.55rem 0.75rem 0.75rem */
+  padding: 0.55rem 0.75rem 0.75rem !important;
+  height: 100%;
+  border-top: none;
+  box-shadow: none;
+}
+
+.cyberServicesCard {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.cyberServicesCard > :global([class*="map"]) {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.mainColumnCyber {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: transparent;
+}
+
+.mainColumnCyber > .heroTabBar {
+  flex: 0 0 auto;
+}
+
+.mainColumnCyber .enterpriseFinderLayout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mainColumnCyber .mainCommunityPanels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.mainColumnCyber .overviewTabPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
 }
 
 /* Vue d'ensemble: grille 2×3 sur toute la hauteur disponible */
@@ -2290,6 +3222,46 @@
   height: 100%;
 }
 
+/* Logs: même fill / chrome que Infrastructure */
+.mainColumnLogs {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: transparent;
+}
+
+.mainColumnLogs .enterpriseFinderLayout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mainColumnLogs .mainCommunityPanels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.mainColumnLogs .overviewTabPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mainColumnLogs .overviewTabPanel > * {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
 /* Cartographie: fill viewport height; scroll inside equipment table */
 .mainColumnMap {
   min-height: 0;
@@ -2297,12 +3269,17 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  background: var(--msp-bg);
+  gap: 0;
+  background: transparent;
 }
 
 .mainColumnMap > .heroTabBar {
   flex: 0 0 auto;
+}
+
+.mainColumnMap .enterpriseFinderLayout {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .mainColumnMap .mainCommunityPanels {
@@ -2310,7 +3287,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--msp-bg);
+  background: transparent;
 }
 
 .mainColumnMap .overviewTabPanel {
@@ -2327,7 +3304,29 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
-  gap: 0.85rem;
+  gap: 0;
+}
+
+.mainColumnMap .mapUnifiedCard {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mainColumnMap .mapEquipmentSection {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnMap .mapEquipmentSection .panelBody {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .mainColumnMap .panel[data-guide="enterprise-equipment"] {
@@ -2615,12 +3614,17 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
   background: var(--msp-bg);
 }
 
 .mainColumnVault > .heroTabBar {
   flex: 0 0 auto;
+}
+
+.mainColumnVault .enterpriseFinderLayout {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .mainColumnVault .overviewTabsWrap {
@@ -2638,7 +3642,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--msp-bg);
+  background: transparent;
 }
 
 .mainColumnVault .overviewTabPanel {
@@ -2657,7 +3661,7 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--msp-bg);
+  background: transparent;
   overflow: hidden;
 }
 
@@ -2684,6 +3688,13 @@
 .equipmentDetailPage:has(.pageBodyFill),
 .contratDetailPage:has(.pageBodyFill) {
   overflow: hidden;
+  /* Pas de scroll page → pas de gouttière (sinon le hero s’arrête avant le bord droit) */
+  scrollbar-gutter: auto;
+}
+
+:global(.contentWrapper) > .contratDetailPage:has(.pageBodyFill) {
+  overflow: hidden;
+  scrollbar-gutter: auto;
 }
 
 .enterpriseDetailPage:has(.pageBodyFill) > .pageHero,
@@ -2692,6 +3703,11 @@
 .equipmentDetailPage:has(.pageBodyFill) > .pageHero,
 .contratDetailPage:has(.pageBodyFill) > .pageHero {
   flex: 0 0 auto;
+}
+
+.enterpriseDetailPage:has(.pageBodyFill) > .pageHero {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 }
 
 .enterpriseDetailPage .pageBody {
@@ -2733,15 +3749,17 @@
   flex-direction: column;
 }
 
-.pageBodyFill .asideStack {
+.pageBodyFill .asideStack,
+.pageBodyFill .asideStack.asidePanel {
   height: auto;
   max-height: 100%;
   position: sticky;
   top: 0;
   align-self: start;
+  overflow-y: auto;
 }
 
-.pageBodyFill .asidePanel {
+.pageBodyFill .asidePanel:not(.asideStack) {
   height: auto;
   max-height: none;
   position: relative;
@@ -2760,16 +3778,84 @@
 .activityLayout {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.65rem;
   min-width: 0;
   min-height: 0;
+}
+
+.activityUnifiedCard {
+  --activity-card-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--activity-card-radius);
+  background: var(--msp-surface, #fff);
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent);
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 10px 28px -14px rgba(15, 28, 46, 0.14);
+  overflow: hidden;
+}
+
+.activityUnifiedSection {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+}
+
+.activityUnifiedSectionLast,
+.activityUnifiedCard > .activityUnifiedProLock:last-child .activityUnifiedSection,
+.activityUnifiedCard > .activityUnifiedSection:last-child {
+  border-bottom: none;
+}
+
+.activityUnifiedProLock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.activityUnifiedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 1rem;
+  background: color-mix(in srgb, var(--msp-surface-2, #f3f6fa) 88%, var(--msp-surface, #fff));
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.activityUnifiedHeader .panelTitle {
+  color: var(--msp-text, #1e2d42);
+  letter-spacing: 0.04em;
+}
+
+.activityUnifiedHeader .panelTitleIcon {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.activityUnifiedBody {
+  padding: 0;
+  min-width: 0;
+  background: var(--msp-surface, #fff);
 }
 
 .activityKpiRow {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1.25rem;
+  gap: 0.65rem;
   flex: 0 0 auto;
+}
+
+.activityKpiRowPair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* Activité: occupe toute la hauteur sous les onglets */
@@ -2779,12 +3865,17 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  background: var(--msp-bg);
+  gap: 0;
+  background: transparent;
 }
 
 .mainColumnActivity > .heroTabBar {
   flex: 0 0 auto;
+}
+
+.mainColumnActivity .enterpriseFinderLayout {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .mainColumnActivity .mainCommunityPanels {
@@ -2792,7 +3883,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--msp-bg);
+  background: transparent;
 }
 
 .mainColumnActivity .overviewTabPanel {
@@ -2817,77 +3908,161 @@
   min-height: 0;
   max-height: 100%;
   overflow: hidden;
-  gap: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
 }
 
-.mainColumnActivity .activityGridSplit {
-  flex: 1.35 1 0;
-  min-height: 0;
-}
-
-/* Contact activité: pas de rangée campagnes → la grille prend tout le reste */
-.mainColumnActivity .activityLayout > .activityGridSplit:last-child {
-  flex: 1 1 0;
-}
-
-.mainColumnActivity .activityCampaignsRow {
+.mainColumnActivity .activityUnifiedCard {
+  --activity-card-radius: 0;
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
 
-.mainColumnActivity .activityGridSplit > .panel,
-.mainColumnActivity .activityGridSplit > .activityBlockProLock,
-.mainColumnActivity .activityCampaignsRow > .activityBlockProLock,
-.mainColumnActivity .activityCampaignsRow > .panel {
+.mainColumnActivity .activityUnifiedSection,
+.mainColumnActivity .activityUnifiedProLock {
+  min-height: 0;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnActivity .activityUnifiedProLock > * {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mainColumnActivity .activityUnifiedSectionSolo {
+  border-bottom: none;
+  flex: 1 1 0;
   min-height: 0;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
 }
 
-.mainColumnActivity .activityBlockProLock {
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.mainColumnActivity .activityBlockProLock > .panel,
-.mainColumnActivity .activityBlockProLock > * {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.mainColumnActivity .activityLayout .panel .panelBody {
+.mainColumnActivity .activityUnifiedBody {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 0.55rem 0.75rem 0.75rem;
+  box-sizing: border-box;
+  gap: 0.65rem;
+  background: transparent;
 }
 
-.mainColumnActivity .activityLayout .dataTableWrapper {
+.activityToolbar {
+  flex: 0 0 auto;
+  padding: 0 !important;
+  width: 100%;
+}
+
+.activityTableStack {
   flex: 1 1 0;
   min-height: 0;
-  max-height: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
 }
 
-.mainColumnActivity .activityLayout .panel .panelBody > ul {
+.activityTableStack :global([class*="tableScrollShell"]) {
   flex: 1 1 0;
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
 }
 
-.mainColumnActivity .activityLayout .dataTable thead th {
+.activityTableStack :global([class*="tableWrapperEmbedded"]),
+.activityTableStack :global([class*="tableWrapper"]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.activityTableStack :global([class*="tableCardSurface"]) {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.activityPagination {
+  flex: 0 0 auto;
+}
+
+.activityToolbarActions {
+  margin-left: auto;
+  flex: 0 0 auto !important;
+}
+
+.macosSegmented {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--msp-surface-2, #eef2f7) 85%, #d5dbe6);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent);
+}
+
+.macosSegment {
+  appearance: none;
+  margin: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-text, #1e2d42);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.28rem 0.7rem;
+  min-height: 1.55rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.macosSegment:hover {
+  background: color-mix(in srgb, var(--msp-surface, #fff) 55%, transparent);
+}
+
+.macosSegmentActive,
+.macosSegmentActive:hover {
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #1e2d42);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.1);
+}
+
+
+:global(html.dark) .macosSegmented,
+:global(body.dark) .macosSegmented {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, #0b1220);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-border, #2a3a55) 70%, transparent);
+}
+
+:global(html.dark) .macosSegmentActive,
+:global(html.dark) .macosSegmentActive:hover,
+:global(body.dark) .macosSegmentActive,
+:global(body.dark) .macosSegmentActive:hover {
+  background: var(--msp-surface, #1a2540);
+  color: var(--msp-text);
+}
+
+.mainColumnActivity .activityLayout .activityTableStack .dataTable thead th {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -3095,7 +4270,8 @@
 }
 
 @media (max-width: 900px) {
-  .activityKpiRow {
+  .activityKpiRow,
+  .activityKpiRowPair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -3119,19 +4295,55 @@
 
 .activityLayout .dataTable th,
 .activityLayout .dataTable td {
-  padding: 0.55rem 0.85rem;
-  font-size: 0.8125rem;
+  padding: 0.55rem 0.5rem;
   vertical-align: middle;
   white-space: nowrap;
 }
 
 .activityLayout .dataTable th {
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 650;
   font-family: inherit;
-  letter-spacing: normal;
+  letter-spacing: 0.02em;
   text-transform: none;
-  color: var(--msp-muted);
-  border-bottom: 1px solid var(--msp-border);
+  color: var(--msp-muted, #5c6b82);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
+}
+
+.activityLayout .dataTable td {
+  font-size: 0.8125rem;
+}
+
+.activityLayout .dataTable th.sortableTh {
+  cursor: pointer;
+  user-select: none;
+}
+
+.activityLayout .dataTable th.sortableTh:hover,
+.activityLayout .dataTable th.sortableTh[aria-sort="ascending"],
+.activityLayout .dataTable th.sortableTh[aria-sort="descending"] {
+  color: var(--msp-accent);
+}
+
+.activityThContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.activitySortIndicator {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  opacity: 0.55;
+}
+
+.activityLayout .dataTable th.sortableTh[aria-sort="ascending"] .activitySortIndicator,
+.activityLayout .dataTable th.sortableTh[aria-sort="descending"] .activitySortIndicator {
+  opacity: 1;
 }
 
 .activityLayout .dataTable td {
@@ -3161,17 +4373,34 @@
   min-width: 0;
   min-height: 0;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  border: 1px solid var(--msp-border-light);
-  border-radius: 10px;
-  background: var(--msp-surface);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
 }
 
 .activityLayout .panelBody {
   background-color: var(--msp-surface);
+}
+
+.mainColumnActivity .activityLayout .activityUnifiedBody {
+  background: transparent;
+}
+
+.activityLayout .activityBlockCount {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .activityLayout .dataTableEmptyCell {
@@ -3244,9 +4473,11 @@
   .mainColumnOverview .overviewTabPanel,
   .mainColumnOverview .overviewTabPanel > *,
   .mainColumnActivity .activityLayout,
-  .mainColumnActivity .activityGridSplit,
-  .mainColumnActivity .activityCampaignsRow,
-  .mainColumnActivity .activityLayout .dataTableWrapper,
+  .mainColumnActivity .activityUnifiedCard,
+  .mainColumnActivity .activityUnifiedSection,
+  .mainColumnActivity .activityTableStack,
+  .mainColumnActivity .activityTableStack :global([class*="tableScrollShell"]),
+  .mainColumnActivity .activityTableStack :global([class*="tableWrapper"]),
   .mainColumnContactTab > .contactFillPanel,
   .mainColumnContactTab > .panel,
   .mainColumnContactTab .overviewTabPanel {
@@ -3297,7 +4528,7 @@
 }
 
 .activityBlockCount {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--msp-muted);
   white-space: nowrap;
@@ -3407,11 +4638,12 @@
 }
 
 .activityGrid .dataTable th {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: normal;
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-family: inherit;
+  letter-spacing: 0.02em;
   text-transform: none;
-  color: var(--msp-muted);
+  color: var(--msp-muted, #5c6b82);
 }
 
 .activitySlaCard {
@@ -3452,51 +4684,35 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .activityCreditCard {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.9rem 0.95rem;
-  border: 1px solid var(--msp-border, #dde3ed);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+  gap: 0.7rem;
+  padding: var(--sidebar-mail-card-pad, 0.85rem 0.9rem);
+  border: none;
+  border-radius: var(--sidebar-mail-card-radius, 14px);
+  background: var(--sidebar-mail-card-bg, #e8ebf0);
+  box-shadow: none;
 }
 
 .activityCreditCardMuted {
   opacity: 0.72;
 }
 
-.sidebarCreditsBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.35rem;
-  height: 1.35rem;
-  margin-left: 0.45rem;
-  padding: 0 0.4rem;
-  border-radius: 999px;
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
-  color: var(--msp-accent, #2b5fab);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  vertical-align: middle;
-}
-
 .activityCreditIcon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: linear-gradient(145deg, var(--msp-accent-soft, rgba(43, 95, 171, 0.12)) 0%, rgba(43, 95, 171, 0.06) 100%);
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1rem;
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.95rem;
 }
 
 .activityCreditBody {
@@ -3513,8 +4729,8 @@
 }
 
 .activityCreditLabel {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--msp-text, #0f1c2e);
   line-height: 1.25;
   overflow: hidden;
@@ -3524,9 +4740,9 @@
 
 .activityCreditValue {
   flex-shrink: 0;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--msp-muted, #6b7a90);
   font-variant-numeric: tabular-nums;
   line-height: 1.25;
 }
@@ -3539,10 +4755,10 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin-top: 0.55rem;
+  margin-top: 0.35rem;
   min-width: 0;
   font-size: 0.72rem;
-  color: var(--msp-muted, #5c6b82);
+  color: var(--msp-muted-light, #8b9bb0);
   line-height: 1.35;
 }
 
@@ -3637,116 +4853,65 @@
 
 
 .rightSidebarContent {
+  --sidebar-mail-card-bg: #e8ebf0;
+  --sidebar-mail-card-radius: 14px;
+  --sidebar-mail-card-pad: 0.85rem 0.9rem;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
-.quickActionsCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem 1rem 0.85rem;
-  border: 1px solid var(--msp-border-light);
-  border-radius: 14px;
-  background: var(--msp-surface);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04), 0 8px 20px rgba(15, 28, 46, 0.04);
+/* Barre d'actions rapides — icônes horizontales épurées */
+.sidebarActionToolbarSection {
   flex: 0 0 auto;
 }
 
-.quickActionsTitle {
-  margin: 0;
-  font-size: 0.98rem;
-  font-weight: 700;
-  color: var(--msp-text);
-  letter-spacing: 0.01em;
-}
-
-.quickActionsList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.sidebarActionToolbar {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.quickActionItem {
-  display: grid;
-  grid-template-columns: 2.1rem minmax(0, 1fr) 1rem;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.7rem;
-  width: 100%;
-  margin: 0;
-  padding: 0.65rem 0.75rem;
-  border: 0;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 7%, var(--msp-surface-2, #f3f6fb));
-  color: var(--msp-text);
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.12s ease;
+  justify-content: space-evenly;
+  gap: 0.15rem;
+  padding: 0.65rem 0.55rem;
   box-sizing: border-box;
-  font: inherit;
 }
 
-a.quickActionItem:visited {
-  color: var(--msp-text);
-}
-
-.quickActionItem:hover {
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, var(--msp-surface-2, #eef3fa));
-}
-
-.quickActionItem:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
-  outline-offset: 1px;
-}
-
-.quickActionIcon {
+.sidebarActionIconBtn {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 2.1rem;
   height: 2.1rem;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, #fff);
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1.15rem;
-}
-
-.quickActionLabel {
-  min-width: 0;
-  font-size: 0.86rem;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.quickActionChevron {
-  justify-self: end;
-  font-size: 1.05rem;
-  color: var(--msp-muted-light);
-}
-
-.quickActionsSeeAll {
-  appearance: none;
-  align-self: flex-end;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  margin: 0.1rem 0 0;
-  padding: 0.15rem 0.1rem;
+  margin: 0;
+  padding: 0;
   border: 0;
+  border-radius: 8px;
   background: transparent;
-  color: var(--msp-accent, #2b5fab);
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
+  color: #808890;
+  font-size: 1.15rem;
   cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.quickActionsSeeAll:hover {
-  text-decoration: underline;
+.sidebarActionIconBtn:hover:not(:disabled) {
+  background: var(--msp-surface-2, #f1f4f8);
+  color: var(--msp-text, #1e293b);
+}
+
+.sidebarActionIconBtn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.sidebarActionIconBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sidebarActionIconBtnActive {
+  color: var(--msp-accent, #2b5fab);
 }
 
 .sidebarSection {
@@ -3760,24 +4925,25 @@ a.quickActionItem:visited {
 }
 
 .sidebarBody {
-  padding: 0 1rem 1rem;
+  padding: 0.45rem 1rem 1rem;
 }
 
 .sidebarSectionCount {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.05rem;
-  height: 1.05rem;
-  padding: 0 0.28rem;
-  border-radius: 999px;
-  background: var(--msp-accent-soft);
-  color: var(--msp-accent);
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  padding: 0;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
   font-size: 0.6rem;
-  font-weight: 700;
+  font-weight: 650;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  box-sizing: border-box;
   flex-shrink: 0;
 }
 
@@ -3794,9 +4960,11 @@ a.quickActionItem:visited {
 }
 
 .sidebarInfoTitle {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) 1.25rem auto;
   align-items: center;
-  gap: 0.35rem;
+  column-gap: 0.45rem;
+  width: 100%;
   min-width: 0;
   flex: 1;
   font-size: 0.7rem;
@@ -3989,83 +5157,69 @@ a.quickActionItem:visited {
 .sitesDisplayCards {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
   width: 100%;
 }
 
 .sitesToolbar,
 .sidebarSearchToolbar {
-  position: relative;
   display: flex;
   align-items: center;
-  margin: 0.7rem 0 0.55rem;
-}
-
-.sitesSearchIcon,
-.sidebarSearchIcon {
-  position: absolute;
-  left: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--msp-muted-light, #94a3b8);
-  pointer-events: none;
-}
-
-.sitesSearchInput,
-.sidebarSearchInput {
   width: 100%;
-  height: 32px;
-  padding: 0.3rem 1.75rem 0.3rem 1.75rem;
-  border: 1px solid var(--msp-border-light, #eef2f7);
-  border-radius: 8px;
-  background: var(--msp-surface, #fff);
-  color: var(--msp-text, #0f1c2e);
-  font-size: 0.74rem;
-  -webkit-appearance: none;
-  appearance: none;
+  margin: 0 0 0.55rem;
 }
 
-.sitesSearchInput::-webkit-search-decoration,
-.sitesSearchInput::-webkit-search-cancel-button,
-.sitesSearchInput::-webkit-search-results-button,
-.sitesSearchInput::-webkit-search-results-decoration,
-.sidebarSearchInput::-webkit-search-decoration,
-.sidebarSearchInput::-webkit-search-cancel-button,
-.sidebarSearchInput::-webkit-search-results-button,
-.sidebarSearchInput::-webkit-search-results-decoration {
-  display: none;
-  -webkit-appearance: none;
+.sidebarSearchToolbar [class*="embeddedSearchBox"] {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
-.sitesSearchInput:focus,
-.sitesSearchInput:focus-visible,
-.sidebarSearchInput:focus,
-.sidebarSearchInput:focus-visible {
-  outline: none;
-  border-color: var(--msp-accent, #2b5fab);
-  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+.sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]),
+.sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):hover,
+.sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus,
+.sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
-.sitesSearchClear,
-.sidebarSearchClear {
-  position: absolute;
-  right: 0.25rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchBox"] {
+  background: var(--msp-surface-2);
+  border-color: var(--msp-border);
+}
+
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchBox"]:hover,
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchBox"]:focus-within {
+  border-color: var(--msp-accent);
+}
+
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchBox"]:focus-within {
+  box-shadow: 0 0 0 2px rgba(74, 143, 212, 0.15);
+}
+
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):hover,
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--msp-text) !important;
+}
+
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchIcon"],
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchClear"] {
   background: transparent;
-  color: var(--msp-muted, #5c6b82);
-  cursor: pointer;
+  color: var(--msp-muted-light);
 }
 
-.sitesSearchClear:hover,
-.sidebarSearchClear:hover {
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
-  color: var(--msp-text, #0f1c2e);
+:global(html.dark) .sidebarSearchToolbar [class*="embeddedSearchInput"]::placeholder {
+  color: var(--msp-muted-light);
 }
 
 .sitesPager {
@@ -4144,35 +5298,57 @@ a.quickActionItem:visited {
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .siteFilterButton:hover {
-  border-color: rgba(43, 95, 171, 0.28);
+  background: color-mix(in srgb, var(--sidebar-mail-card-bg, #e8ebf0) 82%, #fff);
 }
 
-.siteFilterButtonActive {
-  border-color: var(--msp-accent, #2b5fab);
-  box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.12);
-  background: rgba(43, 95, 171, 0.04);
+.sitePreviewCardPrimary:hover,
+.sitePreviewCardPrimary.siteFilterButton:hover {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 55%, transparent);
+}
+
+.sitePreviewCardPrimary.siteFilterButtonActive:hover {
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 55%, transparent),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--msp-text, #1e2d42) 32%, transparent);
 }
 
 .sitePreviewCard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 108px;
-  gap: 0.55rem;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 0.65rem;
   align-items: center;
-  min-height: 88px;
-  padding: 0.55rem;
-  border-radius: 10px;
-  border: 1px solid var(--msp-border-light, #eef2f7);
-  background: var(--msp-surface, #fff);
+  min-height: 0;
+  padding: var(--sidebar-mail-card-pad, 0.85rem 0.9rem);
+  border-radius: var(--sidebar-mail-card-radius, 14px);
+  border: none;
+  background: var(--sidebar-mail-card-bg, #e8ebf0);
+  box-shadow: none;
+}
+
+.sitePreviewCardPrimary {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 55%, transparent);
+}
+
+.sitePreviewCard.siteFilterButtonActive,
+.siteFilterButton.siteFilterButtonActive {
+  background: color-mix(in srgb, var(--msp-text, #1e2d42) 9%, var(--sidebar-mail-card-bg, #e8ebf0));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--msp-text, #1e2d42) 32%, transparent);
+}
+
+.sitePreviewCardPrimary.siteFilterButtonActive {
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 55%, transparent),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--msp-text, #1e2d42) 32%, transparent);
 }
 
 .sitePreviewMain {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.28rem;
   min-width: 0;
 }
 
@@ -4181,31 +5357,31 @@ a.quickActionItem:visited {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.35rem;
-  font-size: 0.78rem;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--msp-text, #0f1c2e);
+  line-height: 1.25;
 }
 
 .sitePreviewPrimary {
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
-  background: rgba(13, 148, 136, 0.12);
-  color: #0f766e;
-  font-size: 0.58rem;
-  font-weight: 700;
-  text-transform: uppercase;
+  display: none;
 }
 
 .sitePreviewAddress {
-  font-size: 0.7rem;
-  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  color: var(--msp-muted-light, #8b9bb0);
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .sitePreviewMap {
-  width: 108px;
-  height: 72px;
+  width: 96px;
+  height: 64px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -4392,59 +5568,68 @@ a.quickActionItem:visited {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.55rem;
 }
 
 .clientNoteItem {
-  padding: 0.38rem 0.45rem;
-  border-radius: 6px;
-  background: var(--msp-surface-2);
-  border: 1px solid var(--msp-border);
+  padding: var(--sidebar-mail-card-pad, 0.85rem 0.9rem);
+  border-radius: var(--sidebar-mail-card-radius, 14px);
+  background: var(--sidebar-mail-card-bg, #e8ebf0);
+  border: none;
+  box-shadow: none;
 }
 
 .clientNoteHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.3rem;
-  margin-bottom: 0.15rem;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
 }
 
 .clientNoteMeta {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.15rem 0.35rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
   min-width: 0;
   flex: 1;
 }
 
 .clientNoteAuthor {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--msp-text);
-  line-height: 1.2;
+  line-height: 1.25;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .clientNoteDate {
-  font-size: 0.64rem;
-  color: var(--msp-muted);
-  line-height: 1.2;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--msp-muted-light, #8b9bb0);
+  line-height: 1.25;
 }
 
 .clientNoteDate::before {
-  content: "·";
-  margin-right: 0.35rem;
-  opacity: 0.45;
+  content: none;
 }
 
 .clientNoteContent {
   margin: 0;
-  font-size: 0.76rem;
-  line-height: 1.35;
-  color: var(--msp-text);
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #6b7a90);
   white-space: pre-wrap;
   word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .clientNoteActions {
@@ -4510,55 +5695,55 @@ a.quickActionItem:visited {
 }
 
 .sidebarSectionTitleIcon {
-  font-size: 0.95rem;
-  width: 0.95rem;
-  height: 0.95rem;
-  flex-shrink: 0;
-  color: var(--msp-muted-light, #94a3b8);
+  display: none;
 }
 
 .sidebarSectionTitleText {
+  grid-column: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sidebarContractOptionsTop {
+.sidebarSectionCountSlot {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 1.25rem;
+  min-width: 1.25rem;
+}
+
+.sidebarSectionBadgeSlot {
+  grid-column: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  min-width: 0;
+}
+
+.sidebarContractOptionsBlock {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  gap: 0.4rem;
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--msp-border-light, #e8eef5);
 }
 
-.sidebarContractOptionsTopLabel {
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.01em;
-  color: var(--msp-muted-light, #64748b);
-  line-height: 1.2;
-}
-
-.sidebarContractOptionsTopEmpty {
+.sidebarContractOptionsEmpty {
   font-size: 0.82rem;
   font-weight: 500;
   color: var(--msp-muted, #64748b);
-}
-
-.sidebarContractOptionsTop .sidebarContractIconRow {
-  margin: 0;
 }
 
 .sidebarContractIconRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem;
-  margin: 0.35rem 0 0.65rem;
+  gap: 0.35rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -4567,17 +5752,22 @@ a.quickActionItem:visited {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 999px;
-  background: var(--msp-accent, #2b5fab);
-  color: #fff;
-  font-size: 1.05rem;
-  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.22);
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border-radius: 8px;
+  background: var(--msp-surface-2, #f1f4f8);
+  color: #808890;
+  font-size: 1rem;
+  box-shadow: none;
+}
+
+.sidebarContractIconChip svg {
+  display: block;
 }
 
 .sidebarContractIconChipOff {
-  background: var(--msp-surface-2, #eef3f8);
+  background: var(--msp-surface-2, #f1f4f8);
   color: var(--msp-muted-light, #94a3b8);
   box-shadow: none;
   border: 1px solid var(--msp-border-light);
@@ -4587,7 +5777,14 @@ a.quickActionItem:visited {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  margin-top: 0.35rem;
+  margin-top: 0;
+}
+
+.sidebarInfoFieldsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem 0.75rem;
+  min-width: 0;
 }
 
 .sidebarInfoField {
@@ -4595,6 +5792,20 @@ a.quickActionItem:visited {
   flex-direction: column;
   gap: 0.15rem;
   min-width: 0;
+}
+
+.sidebarContractPeriod {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebarContractPeriodSep {
+  color: var(--msp-muted-light, #8b9bb0);
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
 .sidebarInfoFieldLabel {
@@ -4868,13 +6079,6 @@ button.sidebarOptionIcon:hover {
   padding-bottom: 0.35rem;
 }
 
-.sidebarCreditsSection .sidebarBody {
-  padding-top: 0.55rem;
-}
-
-.sidebarNotesSection .sidebarBody {
-  padding-top: 0.65rem;
-}
 
 .sidebarCollapseHeader {
   display: flex;
@@ -4995,9 +6199,6 @@ button.sidebarOptionIcon:hover {
   align-items: center;
 }
 
-.sidebarSlaSection .sidebarBody {
-  padding-top: 0;
-}
 
 .sidebarSlaTable {
   width: 100%;
@@ -5045,40 +6246,58 @@ button.sidebarOptionIcon:hover {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
 .sidebarContactItem {
   display: flex;
   align-items: flex-start;
-  gap: 0.65rem;
-  padding: 0.7rem 0.75rem;
-  border: 1px solid var(--msp-border);
-  border-radius: 12px;
-  background: var(--msp-surface);
+  gap: 0.7rem;
+  padding: var(--sidebar-mail-card-pad, 0.85rem 0.9rem);
+  border: none;
+  border-radius: var(--sidebar-mail-card-radius, 14px);
+  background: var(--sidebar-mail-card-bg, #e8ebf0);
+  box-shadow: none;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  transition: background-color 0.15s ease;
 }
 
 .sidebarContactItem:hover {
-  border-color: rgba(43, 95, 171, 0.28);
-  box-shadow: 0 4px 14px rgba(15, 28, 46, 0.06);
-  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--sidebar-mail-card-bg, #e8ebf0) 82%, #fff);
+  transform: none;
+  border-color: transparent;
+}
+
+.sidebarContactItem:hover:not(.sidebarContactItemPrimary) {
+  box-shadow: none;
+}
+
+.sidebarContactItemPrimary {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 55%, transparent);
+}
+
+.sidebarContactItemPrimary:hover {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 55%, transparent);
 }
 
 .sidebarContactAvatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: linear-gradient(145deg, var(--msp-accent-soft) 0%, rgba(43, 95, 171, 0.06) 100%);
-  color: var(--msp-accent);
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+}
+
+.sidebarContactAvatarPrimary {
+  background: color-mix(in srgb, var(--msp-text, #1e2d42) 12%, transparent);
+  color: var(--msp-text, #1e2d42);
 }
 
 .sidebarContactBody {
@@ -5106,20 +6325,21 @@ button.sidebarOptionIcon:hover {
 
 .sidebarContactName {
   display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.84rem;
+  font-weight: 700;
   color: var(--msp-text);
   line-height: 1.25;
 }
 
 .sidebarContactRole {
   display: block;
-  margin-top: 0.12rem;
-  font-size: 0.65rem;
+  margin-top: 0.18rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--msp-muted-light);
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--msp-text, #0f1c2e);
+  opacity: 0.82;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5139,12 +6359,17 @@ button.sidebarOptionIcon:hover {
   max-width: 100%;
   padding: 0.18rem 0.45rem;
   border-radius: 999px;
-  border: 1px solid var(--msp-border, #dde3ed);
-  background: var(--msp-surface-2, #f8fafc);
+  border: none;
+  background: color-mix(in srgb, #fff 55%, transparent);
   font-size: 0.68rem;
   font-weight: 500;
   color: var(--msp-text, #0f1c2e);
   line-height: 1.2;
+}
+
+.sidebarContactSiteChipPrimary {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--msp-text, #1e2d42) 45%, transparent);
+  background: color-mix(in srgb, var(--msp-text, #1e2d42) 6%, #fff);
 }
 
 .sidebarContactSiteChip > span:first-of-type {
@@ -5156,25 +6381,35 @@ button.sidebarOptionIcon:hover {
 .sidebarContactMeta {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  margin-top: 0.45rem;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
 }
 
 .sidebarContactMetaRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr) 0.85rem;
   align-items: center;
-  gap: 0.35rem;
+  column-gap: 0.35rem;
   min-width: 0;
   font-size: 0.72rem;
-  color: var(--msp-muted);
+  color: var(--msp-muted-light, #8b9bb0);
   text-decoration: none;
   transition: color 0.12s;
 }
 
-.sidebarContactMetaRow span {
+.sidebarContactMetaValue {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebarContactMetaStarSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .sidebarContactMetaRow:hover {
@@ -5193,9 +6428,9 @@ button.sidebarOptionIcon:hover {
 
 .sidebarContactFavoriteStar {
   flex-shrink: 0;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: #fbbf24;
-  margin-left: 0.1rem;
+  margin: 0;
 }
 
 .sidebarContactActions {
@@ -5487,11 +6722,25 @@ button.sidebarOptionIcon:hover {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius-sm);
-  background: var(--msp-surface);
-  box-shadow: var(--msp-shadow);
+}
+
+/* Infrastructure : le shell iOS (EquipmentPage) gère chrome / clip / fade */
+.mainColumnMap .equipmentSection [class*="tableWrapperEmbedded"],
+.mainColumnMap .equipmentSection [class*="tableWrapper"] {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-right: 0 !important;
+  scrollbar-gutter: auto !important;
+}
+
+.mainColumnMap .equipmentSection [class*="tableCardSurface"] {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] {
@@ -5503,12 +6752,12 @@ button.sidebarOptionIcon:hover {
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] thead {
-  background: var(--msp-surface-2);
+  background: color-mix(in srgb, var(--msp-surface-2) 92%, #fff);
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] th,
 .equipmentSection [class*="equipmentTableEmbedded"] td {
-  padding: 0.5rem 0.55rem;
+  padding: 0.55rem 0.5rem;
   font-size: 0.8125rem;
   vertical-align: middle;
   white-space: nowrap;
@@ -5517,12 +6766,13 @@ button.sidebarOptionIcon:hover {
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] th {
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 650;
   font-family: inherit;
-  letter-spacing: normal;
+  letter-spacing: 0.02em;
   text-transform: none;
   color: var(--msp-muted);
-  border-bottom: 1px solid var(--msp-border);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"] {
@@ -5545,7 +6795,7 @@ button.sidebarOptionIcon:hover {
   letter-spacing: normal;
   text-transform: none;
   color: var(--msp-text);
-  border-bottom: 1px solid var(--msp-border-light);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] [class*="internetCellBold"],
@@ -5575,20 +6825,53 @@ button.sidebarOptionIcon:hover {
   background: var(--msp-accent-soft);
 }
 
+.equipmentSection [class*="embeddedColDot"],
+.equipmentSection [class*="embeddedColSupervision"],
+.equipmentSection [class*="embeddedColHa"],
+.equipmentSection [class*="embeddedColCount"] {
+  text-align: center !important;
+}
+
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="embeddedColDot"] [class*="thContent"],
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="embeddedColSupervision"] [class*="thContent"],
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="embeddedColHa"] [class*="thContent"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
+.equipmentSection [class*="equipmentTableEmbedded"] td[class*="embeddedColDot"] > *,
+.equipmentSection [class*="equipmentTableEmbedded"] td[class*="embeddedColSupervision"] > *,
+.equipmentSection [class*="equipmentTableEmbedded"] td[class*="embeddedColHa"] > * {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .equipmentSection [class*="embeddedColActions"] {
   position: sticky;
   right: 0;
   z-index: 2;
-  width: 6.5rem;
-  min-width: 6.5rem;
-  max-width: 6.5rem;
+  width: 5.75rem;
+  min-width: 5.75rem;
+  max-width: 5.75rem;
   text-align: right;
   overflow: visible;
+  padding-right: 0.45rem;
+}
+
+.equipmentSection [class*="embeddedColActions"] button {
+  box-sizing: border-box;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] th[class*="embeddedColActions"] {
   z-index: 3;
-  background: var(--msp-surface-2);
+  background: color-mix(in srgb, var(--msp-surface-2) 92%, #fff);
 }
 
 .domainName {
@@ -5759,17 +7042,32 @@ button.sidebarOptionIcon:hover {
   }
 
   .enterpriseDetailPage .heroIdentityBlock {
-    --hero-identity-row-h: 4.5rem;
+    --hero-identity-row-h: auto;
+  }
+
+  .enterpriseDetailPage .heroIdentityRow {
+    height: auto;
+    max-height: none;
+    min-height: 3.25rem;
   }
 
   .enterpriseDetailPage .heroCover {
-    height: var(--hero-identity-row-h);
+    display: none;
   }
 
   .enterpriseDetailPage .heroBrandIcon {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 12px;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 6px;
+  }
+
+  .enterpriseDetailPage .heroText {
+    flex-wrap: wrap;
+    row-gap: 0.2rem;
+  }
+
+  .enterpriseDetailPage .heroMeta {
+    max-width: 100%;
   }
 
   .enterpriseDetailPage .heroToolbarRow {
@@ -5884,15 +7182,27 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .enterpriseDetailPage .pageHero {
-  background: var(--msp-surface);
+  background: color-mix(in srgb, var(--msp-surface) 88%, transparent);
   border-bottom-color: var(--msp-border);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: none;
+}
+
+:global(html.dark) .enterpriseDetailPage .pageHero::after {
+  background: color-mix(in srgb, var(--msp-surface) 88%, transparent);
+  border-bottom-color: var(--msp-border);
+}
+
+:global(html.dark) .enterpriseDetailPage .heroTitle {
+  color: var(--msp-text);
+}
+
+:global(html.dark) .enterpriseDetailPage .heroTitleCode {
+  background: color-mix(in srgb, var(--msp-surface-2) 80%, transparent);
+  color: var(--msp-muted);
 }
 
 :global(html.dark) .enterpriseDetailPage .heroCover {
-  --hero-cover-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 6.4l3.2 3.2M9.6 6.4l-3.2 3.2' stroke='%2393c5fd' stroke-width='0.85' stroke-linecap='round' fill='none'/%3E%3C/svg%3E");
-  --hero-cover-cross-opacity: 0.12;
-  background: transparent;
+  display: none;
 }
 
 :global(html.dark) .enterpriseDetailPage .heroFactStrip {
@@ -5924,7 +7234,9 @@ button.sidebarOptionIcon:hover {
 
 :global(html.dark) .sidebarContractIconChip,
 :global(html.dark) .enterpriseDetailPage .heroFactOptionChip {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
+  background: var(--msp-surface-2);
+  color: #9aa3b2;
 }
 
 :global(html.dark) .pageHeroProTeaser {
@@ -5940,24 +7252,17 @@ button.sidebarOptionIcon:hover {
     inset 0 -1px 0 rgba(255, 255, 255, 0.04);
 }
 
-:global(html.dark) .sidebarContractOptionsTop,
-:global(html.dark) .quickActionsCard {
-  background: var(--msp-surface, #121a2b);
-  border-color: var(--msp-border, #2a3a55);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 24px rgba(0, 0, 0, 0.2);
+:global(html.dark) .sidebarActionIconBtn {
+  color: #9aa3b2;
 }
 
-:global(html.dark) .quickActionItem {
-  background: rgba(110, 168, 255, 0.08);
+:global(html.dark) .sidebarActionIconBtn:hover:not(:disabled) {
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
 }
 
-:global(html.dark) .quickActionItem:hover {
-  background: rgba(110, 168, 255, 0.14);
-}
-
-:global(html.dark) .quickActionIcon {
-  background: rgba(110, 168, 255, 0.16);
-  color: var(--msp-accent, #6ea8ff);
+:global(html.dark) .sidebarActionIconBtnActive {
+  color: var(--msp-accent, #6b9ef5);
 }
 
 :global(html.dark) .panel,
@@ -6025,31 +7330,31 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabBar {
-  background: color-mix(in srgb, var(--msp-surface-2, #152035) 90%, #000);
-  border: none;
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 18%, var(--msp-surface-2, #152035));
+  border-color: color-mix(in srgb, var(--msp-accent, #5a9de0) 28%, transparent);
   box-shadow: none;
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTab {
-  color: var(--msp-muted, #8fa8c4);
+  color: color-mix(in srgb, var(--msp-accent, #5a9de0) 65%, var(--msp-muted, #8fa8c4));
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTab:hover {
-  color: var(--msp-text, #e8edf5);
+  color: var(--msp-accent, #5a9de0);
   background: color-mix(in srgb, var(--msp-surface, #1a2540) 80%, transparent);
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive {
-  color: var(--msp-text, #e8edf5);
-  background: var(--msp-surface, #1a2540);
-  border-color: var(--msp-border, #2a3a55);
+  color: #fff;
+  background: var(--msp-accent, #5a9de0);
+  border-color: transparent;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive:hover {
-  color: var(--msp-text, #e8edf5);
-  background: var(--msp-surface, #1a2540);
-  border-color: var(--msp-border, #2a3a55);
+  color: #fff;
+  background: var(--msp-accent-dark, #2b5fab);
+  border-color: transparent;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
 }
 
@@ -6058,7 +7363,7 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .enterpriseDetailPage .heroTabActive .heroTabIcon {
-  color: var(--msp-accent, #6ea8ff);
+  color: #fff;
 }
 
 :global(html.dark) .equipmentDetailPage [class*="CheckMKMonitoringPanel_panel"] {
@@ -6074,6 +7379,11 @@ button.sidebarOptionIcon:hover {
 :global(html.dark) .panelTitle,
 :global(html.dark) .sidebarInfoTitle {
   color: var(--msp-muted);
+}
+
+:global(html.dark) .sidebarSectionCount {
+  background: color-mix(in srgb, var(--msp-muted, #8fa8c4) 16%, transparent);
+  color: var(--msp-muted, #8fa8c4);
 }
 
 :global(html.dark) .activityBlockLoading {
@@ -6119,14 +7429,38 @@ button.sidebarOptionIcon:hover {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
 }
 
+:global(html.dark) .activityUnifiedCard {
+  background: var(--msp-surface, #1a2540);
+  border-color: color-mix(in srgb, var(--msp-border, #2f4260) 80%, transparent);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 28px -14px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .mainColumnActivity .activityUnifiedCard {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+:global(html.dark) .activityUnifiedHeader {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, var(--msp-surface, #1a2540));
+  border-bottom-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .activityLayout .activityBlockCount {
+  background: color-mix(in srgb, var(--msp-accent, #5b8fd4) 16%, transparent);
+  color: var(--msp-accent, #5b8fd4);
+}
+
 :global(html.dark) .activityLayout .dataTableWrapper {
-  background: var(--msp-surface);
-  border-color: var(--msp-border);
+  background: transparent;
+  border: none;
 }
 
 :global(html.dark) .activityLayout .dataTable th {
-  color: var(--msp-muted);
-  border-bottom-color: var(--msp-border);
+  color: var(--msp-muted-light, #6a88a8);
+  border-bottom-color: var(--msp-border, #2a3a55);
 }
 
 :global(html.dark) .activityLayout .dataTable td {
@@ -6213,7 +7547,7 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] thead {
-  background: var(--msp-surface-2);
+  background: color-mix(in srgb, var(--msp-surface-2) 92%, var(--msp-surface));
 }
 
 :global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] th {
@@ -6259,24 +7593,49 @@ button.sidebarOptionIcon:hover {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
 }
 
-:global(html.dark) .sidebarContactItem {
-  background: var(--msp-surface-2);
-  border-color: var(--msp-border);
+:global(html.dark) .rightSidebarContent {
+  --sidebar-mail-card-bg: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, #0b1220);
 }
 
-:global(html.dark) .activityCreditCard {
-  background: var(--msp-surface-2);
-  border-color: var(--msp-border);
+:global(html.dark) .sidebarContactItem,
+:global(html.dark) .activityCreditCard,
+:global(html.dark) .clientNoteItem,
+:global(html.dark) .sitePreviewCard {
+  background: var(--sidebar-mail-card-bg);
+  border: none;
+  box-shadow: none;
 }
 
-:global(html.dark) .sidebarContactItem:hover {
-  border-color: rgba(74, 143, 212, 0.35);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+:global(html.dark) .sidebarContactItem:hover,
+:global(html.dark) .siteFilterButton:hover:not(.siteFilterButtonActive) {
+  background: color-mix(in srgb, var(--sidebar-mail-card-bg) 78%, #fff);
+  border-color: transparent;
 }
 
-:global(html.dark) .clientNoteItem {
-  background: var(--msp-surface-2);
-  border-color: var(--msp-border);
+:global(html.dark) .sidebarContactItem:hover:not(.sidebarContactItemPrimary),
+:global(html.dark) .siteFilterButton:hover:not(.siteFilterButtonActive):not(.sitePreviewCardPrimary) {
+  box-shadow: none;
+}
+
+:global(html.dark) .sidebarContactItemPrimary,
+:global(html.dark) .sidebarContactItemPrimary:hover,
+:global(html.dark) .sitePreviewCardPrimary,
+:global(html.dark) .sitePreviewCardPrimary:hover,
+:global(html.dark) .sitePreviewCardPrimary.siteFilterButton:hover {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--msp-text, #e8edf5) 55%, transparent);
+}
+
+:global(html.dark) .sitePreviewCard.siteFilterButtonActive,
+:global(html.dark) .siteFilterButton.siteFilterButtonActive {
+  background: color-mix(in srgb, var(--msp-text, #e8edf5) 12%, var(--sidebar-mail-card-bg));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--msp-text, #e8edf5) 35%, transparent);
+}
+
+:global(html.dark) .sitePreviewCardPrimary.siteFilterButtonActive,
+:global(html.dark) .sitePreviewCardPrimary.siteFilterButtonActive:hover {
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--msp-text, #e8edf5) 55%, transparent),
+    inset 0 0 0 1.5px color-mix(in srgb, var(--msp-text, #e8edf5) 35%, transparent);
 }
 
 :global(html.dark) .contractBadge_unknown {
@@ -6346,28 +7705,6 @@ button.sidebarOptionIcon:hover {
   border: none !important;
   box-shadow: none !important;
   color: var(--msp-text) !important;
-}
-
-:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]),
-:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):hover,
-:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]),
-:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]):hover {
-  background: var(--msp-surface-2) !important;
-  background-color: var(--msp-surface-2) !important;
-  border-color: var(--msp-border) !important;
-  color: var(--msp-text) !important;
-  box-shadow: none !important;
-}
-
-:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
-:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible,
-:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
-:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
-  background: var(--msp-surface-2) !important;
-  background-color: var(--msp-surface-2) !important;
-  border-color: var(--msp-accent) !important;
-  color: var(--msp-text) !important;
-  box-shadow: 0 0 0 3px var(--msp-accent-soft) !important;
 }
 
 :global(html.dark) .heroClientMenu {

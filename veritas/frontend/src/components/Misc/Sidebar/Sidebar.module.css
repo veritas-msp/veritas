@@ -12,8 +12,8 @@
   --sb-item: var(--msp-muted, #4a5a70);
   --sb-item-hover: var(--msp-text, #0a1422);
   --sb-hover-bg: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
-  --sb-active-bg: var(--msp-accent, #2b5fab);
-  --sb-active-text: #ffffff;
+  --sb-active-bg: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
+  --sb-active-text: var(--msp-accent, #2b5fab);
   --sb-separator: var(--msp-border-light, #b0bfd0);
   --sb-btn-bg: var(--msp-surface-2, #eef3f8);
   --sb-btn-border: var(--msp-border, #9aabc0);
@@ -30,6 +30,7 @@
   --sb-active-btn-color: var(--msp-accent, #2b5fab);
   --sb-active-btn-shadow: 0 2px 8px rgba(43, 95, 171, 0.16);
   --sb-badge-ring: var(--msp-surface, #ffffff);
+  --sb-icon-accent: var(--msp-accent, #2b5fab);
 
   display: flex;
   flex-direction: column;
@@ -47,7 +48,7 @@
   z-index: 1000;
   overflow: hidden;
   transition: width 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--msp-font, "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   /* Rythme vertical des pages — déplié plus compact */
   --sb-nav-item-pad-y: 6px;
   --sb-nav-item-pad-x: 10px;
@@ -442,7 +443,7 @@
   overflow: visible;
 }
 
-.navList li {
+.navList > * {
   flex-shrink: 0;
 }
 
@@ -464,6 +465,7 @@
   height: var(--sb-nav-icon-size, 22px);
   flex-shrink: 0;
   line-height: 1;
+  overflow: visible;
 }
 
 .navList .navItem:last-child {
@@ -524,6 +526,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
+}
+
+.itemIcon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .sidebarCollapsed .itemIcon {
@@ -534,26 +543,21 @@
 }
 
 
-.itemIconInfra {
-  color: #2563eb;
-}
-
-.itemIconCyber {
-  color: #dc2626;
-}
-
-.itemIconService {
-  color: #7c3aed;
-}
-
+/* Groupe métier : uniquement la couleur d’accent (light / dark via --sb-icon-accent) */
+.itemIconInfra,
+.itemIconCyber,
+.itemIconService,
 .itemIconInventory {
-  color: #0d9488;
+  color: var(--sb-icon-accent);
 }
 
 .navItem:hover .itemIconInfra,
 .navItem:hover .itemIconCyber,
 .navItem:hover .itemIconService,
-.navItem:hover .itemIconInventory,
+.navItem:hover .itemIconInventory {
+  color: var(--sb-icon-accent);
+}
+
 .navItem.active .itemIconInfra,
 .navItem.active .itemIconCyber,
 .navItem.active .itemIconService,
@@ -569,7 +573,7 @@
 .navItem.active {
   background: var(--sb-active-bg);
   color: var(--sb-active-text);
-  box-shadow: 0 4px 12px rgba(43, 95, 171, 0.35);
+  box-shadow: none;
 }
 
 .sidebarCollapsed .navItem.active,
@@ -704,8 +708,22 @@
 }
 
 .squareBtnIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
   font-size: 1.15rem;
+  line-height: 0;
   flex-shrink: 0;
+  overflow: visible;
+  color: inherit;
+}
+
+.squareBtnIcon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .helpBtnLabel {
@@ -857,10 +875,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible;
   padding: 0;
   margin: 0;
   transition: filter 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.userAvatarIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  line-height: 0;
+}
+
+.userAvatarIcon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  overflow: visible;
 }
 
 /* Pas de cercle imbriqué : l’avatar remplit le bouton carré */
@@ -975,9 +1007,22 @@
 }
 
 .userMenuItemIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
   font-size: 1.125rem;
+  line-height: 0;
   flex-shrink: 0;
+  overflow: visible;
   color: #6b7280;
+}
+
+.userMenuItemIcon svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
 .userMenuItemLabel {
@@ -1395,8 +1440,8 @@
   --sb-item: #a8bdd4;
   --sb-item-hover: #f0f4fa;
   --sb-hover-bg: rgba(43, 95, 171, 0.22);
-  --sb-active-bg: #2b5fab;
-  --sb-active-text: #ffffff;
+  --sb-active-bg: color-mix(in srgb, var(--msp-accent, #5b8fd4) 22%, transparent);
+  --sb-active-text: var(--msp-accent, #5b8fd4);
   --sb-separator: rgba(255, 255, 255, 0.1);
   --sb-btn-bg: rgba(255, 255, 255, 0.05);
   --sb-btn-border: rgba(255, 255, 255, 0.14);
@@ -1413,6 +1458,7 @@
   --sb-active-btn-color: #ffffff;
   --sb-active-btn-shadow: 0 2px 8px rgba(43, 95, 171, 0.25);
   --sb-badge-ring: #101c30;
+  --sb-icon-accent: var(--msp-accent, #5b8fd4);
 }
 
 :global(html.dark) .burgerButton {

@@ -676,7 +676,11 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                   entityId={prestataire.id}
                   active={overviewTab === "logs"}
                   fetchLogs={(page, options) =>
-                    getPrestataireLogs(prestataire.id, page, options?.limit || 25, options)
+                    getPrestataireLogs(prestataire.id, page, options?.limit || 25, {
+                      signal: options?.signal,
+                      sortBy: options?.sortBy,
+                      sortDir: options?.sortDir
+                    })
                   }
                   purgeLogs={() => purgePrestataireLogs(prestataire.id)}
                 />
