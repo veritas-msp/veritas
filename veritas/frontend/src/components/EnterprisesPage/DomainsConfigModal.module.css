@@ -4,18 +4,32 @@
 }
 
 .choiceShell {
-  width: min(560px, 100%);
-  height: auto;
-  max-height: min(90vh, 420px);
+  width: min(740px, calc(100% - 2rem));
+  height: min(440px, 90vh);
+  max-height: min(440px, 90vh);
 }
 
 .choiceBody {
-  padding-top: 0.25rem;
-  padding-bottom: 1.25rem;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.5rem 0 1.5rem;
+  min-height: 0;
+  overflow: auto;
 }
 
 .choiceGrid {
-  margin-bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+  width: 100%;
+}
+
+.choiceGrid > button {
+  min-height: 11.5rem;
+  height: 100%;
 }
 
 .configShell {
@@ -243,6 +257,10 @@
 
   .choiceGrid {
     grid-template-columns: 1fr;
+  }
+
+  .choiceShell {
+    width: min(100%, 520px);
   }
 }
 

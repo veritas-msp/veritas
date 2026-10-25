@@ -50,7 +50,7 @@ export default function DomainAddChoiceModal({ open, copy, onClose, onChooseManu
         </header>
 
         <div className={`${layout.content} ${styles.choiceBody}`}>
-          <div className={`${kit.contentFadeUp} ${avStyles.modeGrid} ${styles.choiceGrid}`}>
+          <div className={`${kit.contentFadeUp} ${styles.choiceGrid}`}>
             <button type="button" className={avStyles.modeCard} onClick={onChooseManual}>
               <span className={avStyles.modeCardIcon} aria-hidden>
                 <Icon icon="mdi:form-textbox" />
