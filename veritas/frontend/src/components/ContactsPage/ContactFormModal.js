@@ -1,13 +1,19 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { addContact, updateContact } from "../../api/clients";
 import { showError, showSuccess } from "../../utils/toast";
 import { buildContactFormFromInitial, cloneContactFormSnapshot, contactFormsEqual } from "./contactFormConfig";
 import { getContactFormSections, getContactFormModalCopy, getContactCivilityCards, validateContactCommunicationsLocalized, interpolate } from "./contactFormModalI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
+import {
+  UiKitButton,
+  UiKitField,
+  UiKitInput,
+  uiKitLayoutsStyles as kit,
+  useFinderNavIndicator
+} from "../UiKit";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 import { enforcePrimaryCommunications, syncLegacyContactFields, hasIncompleteCommunications, normalizeContactCommunications, getPrimaryCommunicationValue, createCommunicationEntry } from "../../utils/contactCommunications";
@@ -201,6 +207,7 @@ export default function ContactFormModal({
     forcePrimary: draftMode
   })));
   const [activeSection, setActiveSection] = useState("identity");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   const [saving, setSaving] = useState(false);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
@@ -319,10 +326,10 @@ export default function ContactFormModal({
       window.removeEventListener("scroll", onReposition, true);
     };
   }, [enterpriseDropdownOpen, updateEnterpriseDropdownPosition]);
-  const visibleSections = useMemo(() => {
-    const sections = isEditing ? formSections : formSections.filter(section => section.id !== "status");
-    return sections;
-  }, [isEditing, formSections]);
+  const visibleSections = useMemo(
+    () => formSections.filter(section => section.id !== "status"),
+    [formSections]
+  );
   useEffect(() => {
     if (!visibleSections.some(section => section.id === activeSection)) {
       setActiveSection(visibleSections[0]?.id || "identity");
@@ -367,7 +374,7 @@ export default function ContactFormModal({
         client_id: client.id,
         name: getClientLabel(client, copy),
         poste: "",
-        is_primary: false,
+        is_primary: prev.length === 0,
         sites: []
       }];
     });
@@ -379,14 +386,20 @@ export default function ContactFormModal({
   }, [copy, form.client_id, patchForm]);
   const removeMembership = useCallback(clientId => {
     if (lockedClientId && String(clientId) === String(lockedClientId)) return;
-    setMemberships(prev => prev.filter(m => String(m.client_id) !== String(clientId)));
+    setMemberships(prev => {
+      const next = prev.filter(m => String(m.client_id) !== String(clientId));
+      if (next.length > 0 && !next.some(m => m.is_primary)) {
+        next[0] = { ...next[0], is_primary: true };
+      }
+      return next;
+    });
   }, [lockedClientId]);
   const toggleMembershipPrimary = useCallback(clientId => {
     if (!clientId) return;
     setMemberships(prev => {
       if (!prev.some(m => String(m.client_id) === String(clientId))) {
         const listed = clientList.find(c => String(c.id) === String(clientId));
-        return [...prev, {
+        return [...prev.map(m => ({ ...m, is_primary: false })), {
           client_id: clientId,
           name: listed?.name || "",
           poste: form.poste || "",
@@ -394,10 +407,10 @@ export default function ContactFormModal({
           sites: []
         }];
       }
-      return prev.map(m => String(m.client_id) === String(clientId) ? {
+      return prev.map(m => ({
         ...m,
-        is_primary: !m.is_primary
-      } : m);
+        is_primary: String(m.client_id) === String(clientId)
+      }));
     });
   }, [clientList, form.poste]);
   const toggleMembershipSitesExpand = useCallback(clientId => {
@@ -564,171 +577,123 @@ export default function ContactFormModal({
   };
   if (!open) return null;
   const modalTitle = draftMode ? copy.draftPrimaryTitle : copy.modalTitle(isEditing);
-  const modalSubtitle = draftMode ? copy.draftPrimarySubtitle : copy.modalSubtitle(isEditing);
   const formValid = Boolean(form.nom?.trim()) && (draftMode || hasEnterprise) && !hasEmptyCommunicationDrafts;
   const submitDisabled = saving || !formValid || isEditing && !hasChanges && !draftMode;
   const renderSectionContent = () => {
     const section = visibleSections.find(s => s.id === activeSection);
     switch (activeSection) {
       case "identity":
-        return <>
-            <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+            <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
-            <div className={styles.fieldGrid2}>
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <span className={styles.label} id="contact-form-sexe-label">
-                  {copy.civility}
-                </span>
-                <div className={styles.modulesGrid} role="group" aria-labelledby="contact-form-sexe-label">
-                  {civilityCards.map(option => {
-                  const isActive = form.sexe === option.value;
-                  return <button key={option.value} type="button" className={`${styles.moduleTile} ${isActive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-                    sexe: isActive ? "" : option.value
-                  })} aria-pressed={isActive}>
-                        {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                        <Icon icon={option.icon} className={styles.moduleTileIcon} aria-hidden />
-                        <span className={styles.moduleTileLabel}>{option.label}</span>
-                      </button>;
-                })}
+            <div className={styles.sectionScroll}>
+              <div className={styles.fieldGrid2}>
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <span className={styles.label} id="contact-form-sexe-label">
+                    {copy.civility}
+                  </span>
+                  <div className={styles.modulesGrid} role="group" aria-labelledby="contact-form-sexe-label">
+                    {civilityCards.map(option => {
+                    const isActive = form.sexe === option.value;
+                    return <button key={option.value} type="button" className={`${styles.moduleTile} ${isActive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+                      sexe: isActive ? "" : option.value
+                    })} aria-pressed={isActive}>
+                          {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                          <Icon icon={option.icon} className={styles.moduleTileIcon} aria-hidden />
+                          <span className={styles.moduleTileLabel}>{option.label}</span>
+                        </button>;
+                  })}
+                  </div>
                 </div>
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="contact-form-prenom">
-                  {copy.firstName}
-                </label>
-                <input id="contact-form-prenom" type="text" className={styles.input} value={form.prenom || ""} onChange={e => patchForm({
-                prenom: e.target.value
-              })} placeholder={copy.firstNamePlaceholder} autoFocus={!isEditing} />
-              </div>
-              <div className={styles.field}>
-                <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="contact-form-nom">
-                  {copy.lastName}
-                </label>
-                <input id="contact-form-nom" type="text" className={styles.input} value={form.nom || ""} onChange={e => patchForm({
-                nom: e.target.value
-              })} placeholder={copy.lastNamePlaceholder} autoFocus={isEditing} required />
+                <UiKitField label={copy.firstName} htmlFor="contact-form-prenom">
+                  <UiKitInput id="contact-form-prenom" type="text" value={form.prenom || ""} onChange={e => patchForm({ prenom: e.target.value })} placeholder={copy.firstNamePlaceholder} autoFocus={!isEditing} />
+                </UiKitField>
+                <UiKitField label={copy.lastName} htmlFor="contact-form-nom" required>
+                  <UiKitInput id="contact-form-nom" type="text" value={form.nom || ""} onChange={e => patchForm({ nom: e.target.value })} placeholder={copy.lastNamePlaceholder} autoFocus={isEditing} required />
+                </UiKitField>
               </div>
             </div>
-          </>;
+          </div>;
       case "coordinates":
-        return <>
-            <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+            <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
             <ContactCommunicationsEditor communications={form.communications || []} onChange={communications => patchForm({
             communications
           })} />
-          </>;
+          </div>;
       case "enterprise":
-        return <>
-            <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+            <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
-            {isEnterpriseLocked ? <p className={styles.hint}>{copy.enterpriseLockedHint}</p> : <p className={styles.hint}>{copy.enterpriseHint}</p>}
-            <div className={styles.fieldStack}>
-              {isEnterpriseLocked ? <div className={styles.field}>
-                  <label className={styles.label}>{copy.companiesLabel || copy.enterpriseLabel}</label>
-                  <div className={styles.membershipList}>
-                    <div className={styles.membershipRow}>
-                      <div className={styles.membershipRowMain}>
-                        <span className={styles.membershipRowName}>{lockedClientId ? getClientLabel(lockedClient, copy) || copy.currentClient : lockedEnterpriseLabel || copy.enterprisePendingName}</span>
-                        {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <button type="button" className={`${styles.membershipPrimaryBtn} ${Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary) ? styles.membershipPrimaryBtnActive : ""}`} onClick={() => toggleMembershipPrimary(lockedClientId || memberships[0]?.client_id)} aria-pressed={Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary)} title={copy.primaryForCompany}>
+            <div className={styles.sectionPinned}>
+              {isEnterpriseLocked ? null : <>
+                <UiKitField label={copy.addCompany || copy.selectCompany || copy.enterpriseLabel} htmlFor="contact-form-enterprise" required={memberships.length === 0}>
+                  <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
+                    <UiKitInput id="contact-form-enterprise" type="text" placeholder={copy.searchEnterprise} value={enterpriseSearch} onChange={e => {
+                  setEnterpriseSearch(e.target.value);
+                  setEnterpriseDropdownOpen(true);
+                }} onFocus={() => setEnterpriseDropdownOpen(true)} autoComplete="off" />
+                  </div>
+                </UiKitField>
+                {enterpriseDropdownOpen ? createPortal(<div ref={enterpriseDropdownRef} className={styles.dropdownPortal} style={enterpriseDropdownStyle || {
+                position: "fixed",
+                top: 0,
+                left: 0,
+                width: 280,
+                visibility: "hidden",
+                pointerEvents: "none",
+                zIndex: getModalDropdownZIndex()
+              }} role="listbox">
+                        {filteredClients.length === 0 ? <div className={styles.dropdownEmpty}>
+                            {copy.noEnterprise}
+                          </div> : filteredClients.map(client => <button key={client.id} type="button" className={styles.dropdownOption} onMouseDown={e => e.preventDefault()} onClick={() => addMembership(client)}>
+                              {getClientLabel(client, copy)}
+                            </button>)}
+                      </div>, document.body) : null}
+              </>}
+              <UiKitField label={copy.posteLabel} htmlFor="contact-form-poste">
+                <UiKitInput id="contact-form-poste" type="text" value={form.poste || ""} onChange={e => patchForm({ poste: e.target.value })} placeholder={copy.postePlaceholder} />
+              </UiKitField>
+            </div>
+            <div className={styles.sectionScroll}>
+              {isEnterpriseLocked ? <div className={styles.membershipList}>
+                  <div className={styles.membershipRow}>
+                    <div className={styles.membershipRowMain}>
+                      <span className={styles.membershipRowName}>{lockedClientId ? getClientLabel(lockedClient, copy) || copy.currentClient : lockedEnterpriseLabel || copy.enterprisePendingName}</span>
+                      {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <button type="button" className={`${styles.membershipPrimaryBtn} ${Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary) ? styles.membershipPrimaryBtnActive : ""}`} onClick={() => toggleMembershipPrimary(lockedClientId || memberships[0]?.client_id)} aria-pressed={Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary)} title={copy.primaryForCompany}>
+                          <Icon icon="mdi:star" aria-hidden />
+                          {copy.primaryShort || copy.primaryForCompany}
+                        </button> : null}
+                    </div>
+                    {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <MembershipSitesPicker clientId={lockedClientId || memberships[0]?.client_id} clientList={clientList} selectedSites={(memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.sites || []} copy={copy} expanded={expandedMembershipSites.has(String(lockedClientId || memberships[0]?.client_id))} onToggleExpand={() => toggleMembershipSitesExpand(lockedClientId || memberships[0]?.client_id)} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} /> : null}
+                  </div>
+                </div> : memberships.length > 0 ? <div className={styles.membershipList}>
+                  {memberships.map(membership => {
+              const label = membership.name || copy.getClientLabel(membership.client_id);
+              const clientKey = String(membership.client_id);
+              return <div key={membership.client_id} className={styles.membershipRow}>
+                        <div className={styles.membershipRowMain}>
+                          <span className={styles.membershipRowName} title={label}>{label}</span>
+                          <button type="button" className={`${styles.membershipPrimaryBtn} ${membership.is_primary ? styles.membershipPrimaryBtnActive : ""}`} onClick={() => toggleMembershipPrimary(membership.client_id)} aria-pressed={Boolean(membership.is_primary)} title={copy.primaryForCompany}>
                             <Icon icon="mdi:star" aria-hidden />
                             {copy.primaryShort || copy.primaryForCompany}
-                          </button> : null}
-                      </div>
-                      {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <MembershipSitesPicker clientId={lockedClientId || memberships[0]?.client_id} clientList={clientList} selectedSites={(memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.sites || []} copy={copy} expanded={expandedMembershipSites.has(String(lockedClientId || memberships[0]?.client_id))} onToggleExpand={() => toggleMembershipSitesExpand(lockedClientId || memberships[0]?.client_id)} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} /> : null}
-                    </div>
-                  </div>
-                </div> : <>
-                  {memberships.length > 0 && <div className={styles.field}>
-                      <label className={styles.label}>{copy.companiesLabel || copy.enterpriseLabel}</label>
-                      <div className={styles.membershipList}>
-                        {memberships.map(membership => {
-                    const label = membership.name || copy.getClientLabel(membership.client_id);
-                    const clientKey = String(membership.client_id);
-                    return <div key={membership.client_id} className={styles.membershipRow}>
-                              <div className={styles.membershipRowMain}>
-                                <span className={styles.membershipRowName} title={label}>{label}</span>
-                                <button type="button" className={`${styles.membershipPrimaryBtn} ${membership.is_primary ? styles.membershipPrimaryBtnActive : ""}`} onClick={() => toggleMembershipPrimary(membership.client_id)} aria-pressed={Boolean(membership.is_primary)} title={copy.primaryForCompany}>
-                                  <Icon icon="mdi:star" aria-hidden />
-                                  {copy.primaryShort || copy.primaryForCompany}
-                                </button>
-                                <button type="button" className={styles.membershipRemoveBtn} onClick={() => removeMembership(membership.client_id)} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
-                          name: label
-                        })}>
-                                  <FaTimes aria-hidden />
-                                </button>
-                              </div>
-                              <MembershipSitesPicker clientId={membership.client_id} clientList={clientList} selectedSites={membership.sites || []} copy={copy} expanded={expandedMembershipSites.has(clientKey)} onToggleExpand={() => toggleMembershipSitesExpand(membership.client_id)} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} />
-                            </div>;
-                  })}
-                      </div>
-                    </div>}
-                  <div className={styles.field}>
-                    <label className={`${styles.label} ${memberships.length === 0 ? styles.labelRequired : ""}`} htmlFor="contact-form-enterprise">
-                      {copy.addCompany || copy.selectCompany || copy.enterpriseLabel}
-                    </label>
-                    <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
-                      <input id="contact-form-enterprise" type="text" className={styles.input} placeholder={copy.searchEnterprise} value={enterpriseSearch} onChange={e => {
-                    setEnterpriseSearch(e.target.value);
-                    setEnterpriseDropdownOpen(true);
-                  }} onFocus={() => setEnterpriseDropdownOpen(true)} autoComplete="off" />
-                    </div>
-                    {enterpriseDropdownOpen ? createPortal(<div ref={enterpriseDropdownRef} className={styles.dropdownPortal} style={enterpriseDropdownStyle || {
-                  position: "fixed",
-                  top: 0,
-                  left: 0,
-                  width: 280,
-                  visibility: "hidden",
-                  pointerEvents: "none",
-                  zIndex: getModalDropdownZIndex()
-                }} role="listbox">
-                          {filteredClients.length === 0 ? <div className={styles.dropdownEmpty}>
-                              {copy.noEnterprise}
-                            </div> : filteredClients.map(client => <button key={client.id} type="button" className={styles.dropdownOption} onMouseDown={e => e.preventDefault()} onClick={() => addMembership(client)}>
-                                {getClientLabel(client, copy)}
-                              </button>)}
-                        </div>, document.body) : null}
-                  </div>
-                </>}
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="contact-form-poste">
-                  {copy.posteLabel}
-                </label>
-                <input id="contact-form-poste" type="text" className={styles.input} value={form.poste || ""} onChange={e => patchForm({
-                poste: e.target.value
-              })} placeholder={copy.postePlaceholder} />
-              </div>
+                          </button>
+                          <button type="button" className={styles.membershipRemoveBtn} onClick={() => removeMembership(membership.client_id)} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
+                    name: label
+                  })}>
+                            <Icon icon="mdi:close" aria-hidden />
+                          </button>
+                        </div>
+                        <MembershipSitesPicker clientId={membership.client_id} clientList={clientList} selectedSites={membership.sites || []} copy={copy} expanded={expandedMembershipSites.has(clientKey)} onToggleExpand={() => toggleMembershipSitesExpand(membership.client_id)} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} />
+                      </div>;
+            })}
+                </div> : <p className={styles.hint}>{copy.noEnterprise}</p>}
             </div>
-          </>;
-      case "status":
-        return <>
-            <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
-            </div>
-            <div className={styles.modulesGrid}>
-              <button type="button" className={`${styles.moduleTile} ${form.statut === "actif" ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-              statut: "actif"
-            })} aria-pressed={form.statut === "actif"}>
-                {form.statut === "actif" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
-              </button>
-              <button type="button" className={`${styles.moduleTile} ${form.statut === "inactif" || form.statut === "inactive" ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-              statut: "inactive"
-            })} aria-pressed={form.statut === "inactive" || form.statut === "inactif"}>
-                {(form.statut === "inactive" || form.statut === "inactif") && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
-              </button>
-            </div>
-          </>;
+          </div>;
       default:
         return null;
     }
@@ -746,30 +711,86 @@ export default function ContactFormModal({
               <h2 className={styles.title} id="contact-form-modal-title">
                 {modalTitle}
               </h2>
-              <p className={styles.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} disabled={saving || Boolean(portalEmailConfirm)} aria-label={copy.close}>
-            <FaTimes />
-          </button>
+          <div className={styles.headerTrailing}>
+            <label className={styles.headerStatusToggle}>
+              <span className={styles.headerStatusLabel}>
+                {form.statut === "inactive" || form.statut === "inactif"
+                  ? copy.statutInactive
+                  : copy.statutActive}
+              </span>
+              <span className={styles.switchWrap}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={!(form.statut === "inactive" || form.statut === "inactif")}
+                  onChange={e => patchForm({
+                    statut: e.target.checked ? "actif" : "inactive"
+                  })}
+                  role="switch"
+                  aria-checked={!(form.statut === "inactive" || form.statut === "inactif")}
+                  disabled={saving || Boolean(portalEmailConfirm)}
+                />
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </span>
+            </label>
+            <UiKitButton
+              type="button"
+              square
+              variant="secondary"
+              className={styles.closeBtn}
+              onClick={onClose}
+              disabled={saving || Boolean(portalEmailConfirm)}
+              aria-label={copy.close}
+              icon="mdi:close"
+            />
+          </div>
         </header>
 
         <div className={styles.body}>
-          <nav className={styles.nav} aria-label={copy.navAria}>
-            {visibleSections.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
-                <span className={styles.navItemText}>
-                  <span className={`${styles.navItemLabel} ${isSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
-                    {section.label}
-                  </span>
-                  <span className={styles.navItemHint}>{section.description}</span>
-                </span>
-                {section.id === "identity" && sectionMeta.identity && <span className={styles.navBadge}>✓</span>}
-                {section.id === "enterprise" && sectionMeta.enterprise && <span className={styles.navBadge}>✓</span>}
-              </button>)}
-          </nav>
+          <aside className={`${kit.finderSidebar} ${styles.modalNav}`} aria-label={copy.navAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack}`}
+            >
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {visibleSections.map(section => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={`${kit.finderItem} ${active ? kit.finderItemActive : ""}`}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                    <span className={`${kit.finderItemLabel} ${isSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
+                      {section.label}
+                    </span>
+                    {section.id === "identity" && sectionMeta.identity ? <span className={styles.navBadge}>✓</span> : null}
+                    {section.id === "enterprise" && sectionMeta.enterprise ? <span className={styles.navBadge}>✓</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-          <div className={styles.content}>{renderSectionContent()}</div>
+          <div className={styles.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={styles.footer}>
@@ -777,24 +798,29 @@ export default function ContactFormModal({
             {isEditing && (hasChanges ? copy.footerUnsaved : copy.footerNoChanges)}
           </span>
           <div className={styles.footerActions}>
-            <button type="button" className={styles.ghostBtn} onClick={onClose} disabled={saving}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
               {commonCopy.cancel}
-            </button>
-            <button type="button" className={styles.primaryBtn} onClick={handleSubmit} disabled={submitDisabled}>
-              {saving ? <>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={submitDisabled}
+              icon={saving ? undefined : isEditing ? "mdi:content-save-outline" : "mdi:check"}
+            >
+              {saving ? (
+                <>
                   <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                   {commonCopy.saving}
-                </> : isEditing ? <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {commonCopy.save}
-                </> : draftMode ? <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {copy.validateContact}
-                </> : <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {copy.createContact}
-                </>}
-            </button>
+                </>
+              ) : isEditing ? (
+                commonCopy.save
+              ) : draftMode ? (
+                copy.validateContact
+              ) : (
+                copy.createContact
+              )}
+            </UiKitButton>
           </div>
         </footer>
         <ContactPortalEmailChangeModal embedded open={Boolean(portalEmailConfirm)} previousEmail={portalEmailConfirm?.previousPrimaryEmail || ""} nextEmail={portalEmailConfirm?.nextPrimaryEmail || ""} saving={saving} onClose={() => {

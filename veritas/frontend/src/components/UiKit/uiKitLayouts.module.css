@@ -22,6 +22,15 @@
   }
 }
 
+@keyframes uikitFinderSecReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes uikitSearchFocusIn {
   0% {
     box-shadow:
@@ -38,6 +47,22 @@
       0 0 0 3px var(--msp-accent-soft),
       0 4px 14px color-mix(in srgb, var(--msp-accent) 16%, transparent);
   }
+}
+
+@keyframes uikitFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade contenu au changement de section / vue */
+.contentFadeUp {
+  animation: uikitFadeSlideIn var(--msp-duration) var(--msp-ease) both;
 }
 
 /* —— Finder layout —— */
@@ -71,6 +96,70 @@
   flex-direction: column;
   gap: 0.2rem;
   padding: 0.7rem 0.55rem 0.55rem;
+}
+
+.finderPrimaryAnimated {
+  position: relative;
+}
+
+/* Groupes de sections (modales longues) : titre + séparateur */
+.finderNavGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.finderNavGroup + .finderNavGroup {
+  margin-top: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--msp-border-light);
+}
+
+.finderNavGroupTitle {
+  margin: 0 0 0.1rem;
+  padding: 0 0.7rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+  line-height: 1.3;
+}
+
+.finderNavIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  border-radius: var(--msp-radius-btn);
+  background: var(--msp-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent) 14%, transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    transform var(--msp-duration) var(--msp-ease-spring),
+    height var(--msp-duration) var(--msp-ease);
+  will-change: transform, height;
+}
+
+/* Primaire : aligne l’indicateur sur la largeur des items (padding du track) */
+.finderPrimaryAnimated > .finderNavIndicator {
+  left: 0.55rem;
+  right: 0.55rem;
+}
+
+/* Secondaire : même largeur que le hover des items */
+.finderSecNavAnimated > .finderNavIndicator,
+.finderSecondaryAnimated > .finderNavIndicator {
+  left: 0;
+  right: 0;
+  border-radius: var(--finder-nav-radius, 8px);
+}
+
+.finderPrimaryAnimated .finderItemActive,
+.finderPrimaryAnimated .finderItemActive:hover {
+  background: transparent;
 }
 
 .finderItem {
@@ -144,6 +233,16 @@
 }
 
 .finderSecondaryShell {
+  --finder-nav-min-h: 2.35rem;
+  --finder-nav-pad-y: 0.5rem;
+  --finder-nav-pad-x: 0.7rem;
+  --finder-nav-radius: 8px;
+  --finder-nav-gap: 0.55rem;
+  --finder-nav-icon: 1.1rem;
+  --finder-nav-label: 0.82rem;
+  --finder-nav-label-weight: 500;
+  --finder-nav-list-gap: 0.2rem;
+  --finder-nav-shell-pad-x: 0.55rem;
   --fade-surface: color-mix(in srgb, var(--msp-surface-2) 88%, var(--msp-surface));
   --fade-radius: 0;
   flex: 1 1 auto;
@@ -153,15 +252,15 @@
 
 .finderSecondary {
   position: relative;
-  padding: 0.75rem 0.55rem 1.5rem;
+  padding: 0.65rem var(--finder-nav-shell-pad-x, 0.55rem) 1.35rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--finder-nav-list-gap, 0.2rem);
 }
 
 .finderSecTitle {
   margin: 0 0 0.55rem;
-  padding: 0 0.65rem;
+  padding: 0 var(--finder-nav-pad-x, 0.5rem);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -176,7 +275,7 @@
   justify-content: space-between;
   gap: 0.35rem;
   margin: 0 0 0.55rem;
-  padding: 0 0.65rem;
+  padding: 0 var(--finder-nav-pad-x, 0.5rem);
   box-sizing: border-box;
 }
 
@@ -189,13 +288,58 @@
 .finderSecNav {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--finder-nav-list-gap, 0.12rem);
+}
+
+.finderSecondaryShellHidden {
+  display: none !important;
+}
+
+.finderSecReveal {
+  opacity: 0;
+}
+
+.finderSecRevealActive {
+  /* Opacity seule : un translate GPU laissait le texte flou (Windows / sous-pixels) */
+  animation: uikitFinderSecReveal var(--msp-duration-slow, 320ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.finderSecPanel {
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finderSecReveal {
+    opacity: 1;
+  }
+
+  .finderSecRevealActive {
+    animation: none;
+  }
+}
+
+.finderSecondaryAnimated {
+  position: relative;
+}
+
+.finderSecondaryAnimated .finderSecItemActive,
+.finderSecondaryAnimated .finderSecItemActive:hover:not(:disabled) {
+  background: transparent;
+}
+
+.finderSecNavAnimated {
+  position: relative;
+}
+
+.finderSecNavAnimated .finderSecItemActive,
+.finderSecNavAnimated .finderSecItemActive:hover:not(:disabled) {
+  background: transparent;
 }
 
 .finderSecGroup {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--finder-nav-list-gap, 0.12rem);
   min-width: 0;
 }
 
@@ -205,7 +349,7 @@
 
 .finderSecGroupTitle {
   margin: 0;
-  padding: 0.15rem 0.65rem 0.05rem;
+  padding: 0.15rem var(--finder-nav-pad-x, 0.5rem) 0.05rem;
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -219,18 +363,18 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--finder-nav-gap, 0.55rem);
   width: 100%;
   margin: 0;
-  padding: 0.4rem 0.65rem;
-  min-height: var(--msp-btn-h);
+  padding: var(--finder-nav-pad-y, 0.5rem) var(--finder-nav-pad-x, 0.7rem);
+  min-height: var(--finder-nav-min-h, 2.35rem);
   border: 1px solid transparent;
-  border-radius: var(--msp-radius-btn);
+  border-radius: var(--finder-nav-radius, 8px);
   background: transparent;
   color: var(--msp-muted);
   font: inherit;
-  font-size: 0.84rem;
-  font-weight: 500;
+  font-size: var(--finder-nav-label, 0.82rem);
+  font-weight: var(--finder-nav-label-weight, 500);
   text-align: left;
   cursor: pointer;
   box-sizing: border-box;
@@ -251,9 +395,10 @@
 }
 
 .finderSecItemIcon {
-  font-size: 1.05rem;
-  width: 1.05rem;
-  height: 1.05rem;
+  font-size: var(--finder-nav-icon, 1.1rem);
+  width: var(--finder-nav-icon, 1.1rem);
+  height: var(--finder-nav-icon, 1.1rem);
+  display: block;
   flex-shrink: 0;
   opacity: 0.85;
   transition:
@@ -265,27 +410,22 @@
 .finderSecItemActive .finderSecItemIcon {
   opacity: 1;
   color: var(--msp-accent);
-  animation: uikitNavIconPop var(--msp-duration) var(--msp-ease-spring) both;
 }
 
 .finderSecItemLabel {
   flex: 1 1 auto;
   min-width: 0;
-  line-height: 1.35;
+  line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.finderSecItemActive .finderSecItemLabel {
-  animation: uikitNavLabelIn var(--msp-duration-fast) var(--msp-ease) both;
 }
 
 .finderSecMeta {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   margin-left: auto;
 }
 
@@ -294,11 +434,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5rem;
-  height: 1.5rem;
-  padding: 0 0.35rem;
-  border-radius: var(--msp-radius-sm);
-  font-size: 0.65rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  padding: 0;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  font-size: 0.6rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -366,7 +508,7 @@
   height: 1.5rem;
   padding: 0;
   border: 0;
-  border-radius: var(--msp-radius-sm);
+  border-radius: 999px;
   background: transparent;
   color: var(--msp-accent);
   cursor: pointer;
@@ -394,6 +536,8 @@
   max-width: 280px;
   width: min(280px, 36vw);
   min-height: var(--msp-btn-h);
+  height: var(--msp-btn-h);
+  box-sizing: border-box;
   padding: 0 0.85rem;
   border: 1px solid var(--msp-border);
   border-radius: var(--msp-radius-pill);
@@ -516,7 +660,7 @@
   min-width: var(--msp-btn-square);
   min-height: var(--msp-btn-square);
   padding: 0;
-  border-radius: var(--msp-radius-btn);
+  border-radius: 999px;
   border: 1px solid transparent;
   font-size: 0.95rem;
   line-height: 0;
@@ -671,4 +815,222 @@
 .pageBtn:focus-visible {
   outline: 2px solid var(--msp-accent);
   outline-offset: 2px;
+}
+
+/* —— Finder riche + pages réglages (Mon compte, etc.) —— */
+.finderItemStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.finderItemDesc {
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--msp-muted);
+  white-space: normal;
+}
+
+.finderItemActive .finderItemDesc {
+  color: color-mix(in srgb, var(--msp-accent) 75%, var(--msp-muted));
+}
+
+.finderItemRich {
+  align-items: flex-start;
+}
+
+.finderItemRich .finderItemIcon {
+  margin-top: 0.15rem;
+}
+
+.finderItemRich .finderItemLabel {
+  white-space: normal;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.35rem 1.5rem;
+  align-items: start;
+}
+
+/* Blocs plats dans la carte globale — pas de cartes imbriquées */
+.settingsGrid > section {
+  height: auto;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  animation: settingsBlockIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.settingsGrid > section:nth-child(1) { animation-delay: 0ms; }
+.settingsGrid > section:nth-child(2) { animation-delay: 45ms; }
+.settingsGrid > section:nth-child(3) { animation-delay: 90ms; }
+.settingsGrid > section:nth-child(4) { animation-delay: 135ms; }
+.settingsGrid > section:nth-child(5) { animation-delay: 180ms; }
+.settingsGrid > section:nth-child(n + 6) { animation-delay: 210ms; }
+
+@keyframes settingsBlockIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settingsPanelFull {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settingsPage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--msp-page-bg, #e6edf6);
+}
+
+/* Même inset que l’accueil (.pageLayout) / shell MSP */
+.settingsPageBody {
+  flex: 1;
+  min-height: 0;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.settingsAlertWrap {
+  padding: 1rem 1.25rem 0;
+}
+
+/* Pad contenu aligné sur le padding de la nav finder (colonne gauche) */
+.settingsContentPad {
+  padding: 0.7rem 0.85rem 0.85rem;
+  box-sizing: border-box;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Évite la scrollbar page (comme .mspPage / accueil) */
+:global(.contentWrapper) > .settingsPage {
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+
+@media (max-width: 900px) {
+  .finderLayout.settingsFinder {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .settingsFinder .finderSidebar {
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light);
+  }
+
+  .settingsFinder .finderItemDesc {
+    display: none;
+  }
+}
+
+/* Une seule carte globale — mêmes fonds que EnterpriseDetailPage (sidebar / contenu) */
+.settingsFinder {
+  grid-template-columns: minmax(15rem, 17.5rem) minmax(0, 1fr);
+  border-color: var(--msp-border-light);
+  background: var(--msp-surface);
+  box-shadow: none;
+}
+
+/* Colonne gauche : surface-2 (comme enterpriseFinderSidebar) */
+.settingsSidebar {
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 88%, #fff);
+  border-right: 1px solid var(--msp-border-light);
+}
+
+/* Zone droite : surface (comme enterpriseFinderContent) */
+.settingsFinder .finderContent {
+  background: var(--msp-surface, #fff);
+}
+
+.settingsScroll {
+  --fade-surface: var(--msp-surface, #fff);
+  --fade-radius: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+:global(html.dark) .settingsFinder,
+:global(body.dark) .settingsFinder {
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .settingsSidebar,
+:global(body.dark) .settingsSidebar {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 90%, #0f172a);
+  border-right-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .settingsFinder .finderContent,
+:global(body.dark) .settingsFinder .finderContent {
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .settingsScroll,
+:global(body.dark) .settingsScroll {
+  --fade-surface: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .settingsGrid > section,
+:global(body.dark) .settingsGrid > section {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.settingsHeroWrap {
+  flex-shrink: 0;
+  padding: 1.25rem 1.25rem 1rem;
+}
+
+.settingsHeroWrap :global(header) {
+  background: var(--msp-surface);
+  border-color: var(--msp-border-light);
+  color: var(--msp-text);
+}
+
+.settingsStateBody {
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentFadeUp,
+  .settingsGrid > section,
+  .finderItemActive .finderItemIcon,
+  .finderItemActive .finderItemLabel,
+  .finderNavIndicator,
+  .searchBox,
+  .searchBox:focus-within,
+  .searchIcon {
+    animation: none !important;
+    transition: none !important;
+  }
 }

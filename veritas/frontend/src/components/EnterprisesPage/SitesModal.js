@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { interpolate } from "../../i18n/translate";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -15,8 +14,13 @@ import SitesCsvImportModal from "./SitesCsvImportModal";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getCommunitySitesLimit } from "../../config/edition";
 import { buildSiteAddress, buildSiteGeocodeQuery, canGeocodeSite, createEmptySite, geocodeSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites, enforceSinglePrimarySite, sortClientSites, assignClientSitesOrder, siteHasCoordinates, siteMatchesQuery } from "../../utils/clientSites";
+import { UiKitField, UiKitInput, UiKitButton } from "../UiKit";
+import { CloudUploadIcon, PlusIcon, RefreshCCWIcon } from "../Misc/Sidebar/lucideAnimated";
 import styles from "./SitesModal.module.css";
 const LIST_PAGE_SIZE = 12;
+const EDITOR_PANEL_MS = 380;
+const REFRESH_SYNC_MS = 2400;
+const REFRESH_REVEAL_MS = 130;
 function SitesPager({
   page,
   totalPages,
@@ -51,54 +55,68 @@ function SiteEditor({
   const editor = copy.editor;
   return <div className={styles.editorForm}>
       <div className={styles.fieldGrid}>
-        <div className={`${styles.field} ${styles.fieldFull}`}>
-          <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="site-name">
-            {editor.nameLabel}
-          </label>
-          <input id="site-name" type="text" className={styles.input} value={site.name} onChange={e => patch({
-          name: e.target.value
-        })} placeholder={editor.namePlaceholder} required />
-        </div>
-        <div className={`${styles.field} ${styles.fieldFull}`}>
-          <label className={styles.label} htmlFor="site-street">
-            {editor.addressLabel}
-          </label>
-          <input id="site-street" type="text" className={styles.input} value={site.addressStreet} onChange={e => patch({
-          addressStreet: e.target.value,
-          latitude: null,
-          longitude: null
-        })} placeholder={editor.addressPlaceholder} />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="site-postal">
-            {editor.postalCodeLabel}
-          </label>
-          <input id="site-postal" type="text" className={styles.input} value={site.addressPostalCode} onChange={e => patch({
-          addressPostalCode: e.target.value,
-          latitude: null,
-          longitude: null
-        })} placeholder={editor.postalCodePlaceholder} />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="site-city">
-            {editor.cityLabel}
-          </label>
-          <input id="site-city" type="text" className={styles.input} value={site.addressCity} onChange={e => patch({
-          addressCity: e.target.value,
-          latitude: null,
-          longitude: null
-        })} placeholder={editor.cityPlaceholder} />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="site-country">
-            {editor.countryLabel}
-          </label>
-          <input id="site-country" type="text" className={styles.input} value={site.addressCountry} onChange={e => patch({
-          addressCountry: e.target.value,
-          latitude: null,
-          longitude: null
-        })} placeholder={editor.countryPlaceholder} />
-        </div>
+        <UiKitField label={editor.nameLabel} htmlFor="site-name" required full className={styles.fieldFull}>
+          <UiKitInput
+            id="site-name"
+            type="text"
+            value={site.name}
+            onChange={e => patch({ name: e.target.value })}
+            placeholder={editor.namePlaceholder}
+            required
+          />
+        </UiKitField>
+        <UiKitField label={editor.addressLabel} htmlFor="site-street" full className={styles.fieldFull}>
+          <UiKitInput
+            id="site-street"
+            type="text"
+            value={site.addressStreet}
+            onChange={e => patch({
+              addressStreet: e.target.value,
+              latitude: null,
+              longitude: null
+            })}
+            placeholder={editor.addressPlaceholder}
+          />
+        </UiKitField>
+        <UiKitField label={editor.postalCodeLabel} htmlFor="site-postal">
+          <UiKitInput
+            id="site-postal"
+            type="text"
+            value={site.addressPostalCode}
+            onChange={e => patch({
+              addressPostalCode: e.target.value,
+              latitude: null,
+              longitude: null
+            })}
+            placeholder={editor.postalCodePlaceholder}
+          />
+        </UiKitField>
+        <UiKitField label={editor.cityLabel} htmlFor="site-city">
+          <UiKitInput
+            id="site-city"
+            type="text"
+            value={site.addressCity}
+            onChange={e => patch({
+              addressCity: e.target.value,
+              latitude: null,
+              longitude: null
+            })}
+            placeholder={editor.cityPlaceholder}
+          />
+        </UiKitField>
+        <UiKitField label={editor.countryLabel} htmlFor="site-country">
+          <UiKitInput
+            id="site-country"
+            type="text"
+            value={site.addressCountry}
+            onChange={e => patch({
+              addressCountry: e.target.value,
+              latitude: null,
+              longitude: null
+            })}
+            placeholder={editor.countryPlaceholder}
+          />
+        </UiKitField>
         <div className={`${styles.field} ${styles.fieldSwitch}`}>
           <label className={styles.primaryToggle} htmlFor="site-primary">
             <span className={styles.primaryToggleLabel}>{editor.primaryLabel}</span>
@@ -122,7 +140,17 @@ function SiteEditor({
             {locating ? editor.locating : editor.refreshPosition}
           </button>
         </div>
-        <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={getSiteDisplayName(site)} address={buildSiteAddress(site)} onLocate={onLocate} locating={locating} className={styles.mapPreviewCondensed} />
+        <div className={styles.mapPreviewGrow}>
+          <SiteMapPreview
+            latitude={site.latitude}
+            longitude={site.longitude}
+            label={getSiteDisplayName(site)}
+            address={buildSiteAddress(site)}
+            onLocate={onLocate}
+            locating={locating}
+            className={styles.mapPreviewFill}
+          />
+        </div>
       </div>
     </div>;
 }
@@ -167,6 +195,7 @@ function SortableSiteRow({
   canReorder,
   onEdit,
   syncing = false,
+  reveal = false,
   copy
 }) {
   const siteId = site.id;
@@ -183,9 +212,9 @@ function SortableSiteRow({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition
+    transition: reveal ? undefined : transition
   };
-  return <li ref={setNodeRef} style={style} className={[styles.siteListItem, isDragging ? styles.siteListItemDragging : "", isActive ? styles.siteListItemActive : ""].filter(Boolean).join(" ")}>
+  return <li ref={setNodeRef} style={style} className={[styles.siteListItem, reveal ? styles.siteListItemReveal : "", isDragging ? styles.siteListItemDragging : "", isActive ? styles.siteListItemActive : ""].filter(Boolean).join(" ")}>
       <SiteListCard site={site} isActive={isActive} onEdit={onEdit} syncing={syncing} dragHandleDisabled={!canReorder} dragHandleProps={{
       ...attributes,
       ...listeners
@@ -214,9 +243,14 @@ export default function SitesModal({
   const [activeDragId, setActiveDragId] = useState(null);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [refreshingPositions, setRefreshingPositions] = useState(false);
+  const [refreshPhase, setRefreshPhase] = useState(null);
+  const [revealedCount, setRevealedCount] = useState(0);
   const [refreshProgress, setRefreshProgress] = useState(null);
   const [listSearch, setListSearch] = useState("");
   const [listPage, setListPage] = useState(1);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [displayedDraft, setDisplayedDraft] = useState(null);
+  const [displayedCreating, setDisplayedCreating] = useState(false);
   const geocodeAbortRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
@@ -226,6 +260,8 @@ export default function SitesModal({
     coordinateGetter: sortableKeyboardCoordinates
   }));
   const isCreating = selectedId === "__new__";
+  const editorSite = draft || displayedDraft;
+  const editorIsCreating = draft ? isCreating : displayedCreating;
   const activeSite = draft;
   const committedSites = useMemo(() => {
     if (!isCreating || !draft?.id) return currentSites;
@@ -237,9 +273,30 @@ export default function SitesModal({
     toast.warn(copy.formatLimitWarn(maxSites));
   };
   useEffect(() => {
+    if (draft) {
+      setDisplayedDraft(draft);
+      setDisplayedCreating(selectedId === "__new__");
+      const frame = requestAnimationFrame(() => setEditorOpen(true));
+      return () => cancelAnimationFrame(frame);
+    }
+    setEditorOpen(false);
+    const timer = setTimeout(() => {
+      setDisplayedDraft(null);
+      setDisplayedCreating(false);
+    }, EDITOR_PANEL_MS);
+    return () => clearTimeout(timer);
+  }, [draft, selectedId]);
+  useEffect(() => {
     setCurrentSites(normalizeClientSites(sites));
     setSelectedId(null);
     setDraft(null);
+    setEditorOpen(false);
+    setDisplayedDraft(null);
+    setDisplayedCreating(false);
+    setRefreshingPositions(false);
+    setRefreshPhase(null);
+    setRevealedCount(0);
+    setRefreshProgress(null);
     setSitesSnapshot(null);
     setListSearch("");
     setListPage(1);
@@ -262,28 +319,29 @@ export default function SitesModal({
     const start = (safeListPage - 1) * LIST_PAGE_SIZE;
     return filteredSites.slice(start, start + LIST_PAGE_SIZE);
   }, [filteredSites, safeListPage]);
+  const revealingSites = useMemo(() => {
+    if (refreshPhase !== "revealing") return null;
+    return filteredSites.slice(0, revealedCount);
+  }, [refreshPhase, filteredSites, revealedCount]);
+  const visibleSites = revealingSites || pagedSites;
   const listRangeStart = filteredSites.length === 0 ? 0 : (safeListPage - 1) * LIST_PAGE_SIZE + 1;
   const listRangeEnd = Math.min(safeListPage * LIST_PAGE_SIZE, filteredSites.length);
-  const sortableSiteIds = useMemo(() => pagedSites.map(site => site.id), [pagedSites]);
-  const activeDragSite = useMemo(() => pagedSites.find(site => site.id === activeDragId) || null, [pagedSites, activeDragId]);
+  const sortableSiteIds = useMemo(() => visibleSites.map(site => site.id), [visibleSites]);
+  const activeDragSite = useMemo(() => visibleSites.find(site => site.id === activeDragId) || null, [visibleSites, activeDragId]);
   const canReorder = !draft && !refreshingPositions && !listSearch.trim() && listTotalPages <= 1;
+  const isSyncingRefresh = refreshPhase === "syncing";
+  const isRevealingRefresh = refreshPhase === "revealing";
   useEffect(() => {
     setListPage(page => Math.min(page, listTotalPages));
   }, [listTotalPages]);
-  useEffect(() => {
-    const siteId = refreshProgress?.siteId;
-    if (!siteId) return;
-    const index = filteredSites.findIndex(site => site.id === siteId);
-    if (index < 0) return;
-    setListPage(Math.floor(index / LIST_PAGE_SIZE) + 1);
-  }, [refreshProgress?.siteId, filteredSites]);
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const refreshSitePositions = async (sourceSites, {
     onlyMissing = false,
     onlyIds = null
   } = {}) => {
     const idSet = onlyIds instanceof Set ? onlyIds : Array.isArray(onlyIds) ? new Set(onlyIds) : null;
-    const targets = (Array.isArray(sourceSites) ? sourceSites : []).filter(site => {
+    const sourceList = Array.isArray(sourceSites) ? sourceSites : [];
+    const targets = sourceList.filter(site => {
       if (idSet && !idSet.has(site.id)) return false;
       return canGeocodeSite(site, {
         onlyMissing
@@ -293,17 +351,22 @@ export default function SitesModal({
       if (!onlyMissing) toast.info(copy.toasts.positionsRefreshNone);
       return;
     }
+    geocodeAbortRef.current = false;
     setRefreshingPositions(true);
+    setRefreshPhase("syncing");
+    setRevealedCount(0);
+    setListPage(1);
+    setListSearch("");
     setRefreshProgress({
       current: 0,
       total: targets.length,
       siteId: null,
       name: ""
     });
-    let nextSites = assignClientSitesOrder(Array.isArray(sourceSites) ? sourceSites : []);
-    let ok = 0;
-    let failed = 0;
-    try {
+    const geocodeWork = async () => {
+      let nextSites = assignClientSitesOrder(sourceList);
+      let ok = 0;
+      let failed = 0;
       for (let index = 0; index < targets.length; index += 1) {
         if (geocodeAbortRef.current) break;
         const site = targets[index];
@@ -320,11 +383,33 @@ export default function SitesModal({
             ...item,
             ...coords
           } : item));
-          setCurrentSites(nextSites);
         } catch {
           failed += 1;
         }
         if (index < targets.length - 1) await wait(1100);
+      }
+      return {
+        nextSites,
+        ok,
+        failed
+      };
+    };
+    try {
+      const geocodePromise = geocodeWork();
+      await wait(REFRESH_SYNC_MS);
+      const {
+        nextSites,
+        ok,
+        failed
+      } = await geocodePromise;
+      if (geocodeAbortRef.current) return;
+      setCurrentSites(nextSites);
+      setRefreshPhase("revealing");
+      const ordered = sortClientSites(nextSites);
+      for (let index = 0; index < ordered.length; index += 1) {
+        if (geocodeAbortRef.current) break;
+        setRevealedCount(index + 1);
+        if (index < ordered.length - 1) await wait(REFRESH_REVEAL_MS);
       }
       if (geocodeAbortRef.current) return;
       if (ok > 0) {
@@ -346,6 +431,8 @@ export default function SitesModal({
       else toast.error(copy.toasts.positionsRefreshFailed);
     } finally {
       setRefreshingPositions(false);
+      setRefreshPhase(null);
+      setRevealedCount(0);
       setRefreshProgress(null);
     }
   };
@@ -519,7 +606,7 @@ export default function SitesModal({
   };
   return createPortal(<>
     <div className={styles.overlay} onClick={saving || refreshingPositions ? undefined : onClose}>
-      <div className={styles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="sites-modal-title">
+      <div className={`${styles.shell}${editorOpen ? ` ${styles.shellEditorOpen}` : ""}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="sites-modal-title">
         <div className={styles.accentBar} />
         <header className={styles.header}>
           <div className={styles.headerMain}>
@@ -530,123 +617,177 @@ export default function SitesModal({
               <h2 id="sites-modal-title" className={styles.title}>
                 {copy.title}
               </h2>
-              <p className={styles.subtitle}>
-                {copy.subtitle}
-              </p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={common.close} disabled={saving || refreshingPositions}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label={common.close}
+            disabled={saving || refreshingPositions}
+            icon="mdi:close"
+          />
         </header>
 
         <div className={styles.body}>
-          <div className={styles.layout}>
+          <div className={`${styles.layout}${editorOpen ? ` ${styles.layoutEditorOpen}` : ""}`}>
             <div className={styles.listPanel}>
               <div className={styles.listHead}>
                 <span className={styles.listTitle}>
                   {copy.formatSiteCount(orderedSites.length, maxSites)}
                 </span>
                 <div className={styles.listHeadActions}>
-                  <button type="button" className={styles.addBtn} onClick={() => setCsvImportOpen(true)} title={copy.csvImport.title} aria-label={copy.csvImport.title} disabled={refreshingPositions || Boolean(draft)}>
-                    <Icon icon="mdi:file-delimited-outline" aria-hidden />
-                    CSV
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={() => setCsvImportOpen(true)}
+                    title={copy.csvImport.title}
+                    aria-label={copy.csvImport.title}
+                    disabled={refreshingPositions || Boolean(draft)}
+                  >
+                    <CloudUploadIcon className={styles.iconBtnGlyph} size={18} aria-hidden />
                   </button>
-                  <button type="button" className={styles.addBtn} onClick={handleRefreshAllPositions} title={copy.refreshAllTitle} aria-label={refreshingPositions && refreshProgress ? copy.formatRefreshingAria(refreshProgress.current, refreshProgress.total, refreshProgress.name) : copy.refreshAllTitle} disabled={refreshingPositions || Boolean(draft) || orderedSites.length === 0}>
-                    <Icon icon={refreshingPositions ? "mdi:loading" : "mdi:crosshairs-gps"} className={refreshingPositions ? styles.spinning : undefined} aria-hidden />
-                    {refreshingPositions && refreshProgress ? copy.formatRefreshingProgress(refreshProgress.current, refreshProgress.total) : refreshingPositions ? copy.refreshingAll : copy.refreshAll}
+                  <button
+                    type="button"
+                    className={`${styles.iconBtn}${refreshingPositions ? ` ${styles.iconBtnBusy}` : ""}`}
+                    onClick={handleRefreshAllPositions}
+                    title={
+                      refreshingPositions && refreshProgress
+                        ? copy.formatRefreshingAria(refreshProgress.current, refreshProgress.total, refreshProgress.name)
+                        : copy.refreshAllTitle
+                    }
+                    aria-label={
+                      refreshingPositions && refreshProgress
+                        ? copy.formatRefreshingAria(refreshProgress.current, refreshProgress.total, refreshProgress.name)
+                        : copy.refreshAllTitle
+                    }
+                    disabled={refreshingPositions || Boolean(draft) || orderedSites.length === 0}
+                  >
+                    <RefreshCCWIcon
+                      className={`${styles.iconBtnGlyph}${refreshingPositions ? ` ${styles.iconBtnGlyphSpin}` : ""}`}
+                      size={18}
+                      aria-hidden
+                    />
+                    {refreshingPositions ? (
+                      <span className={styles.refreshBadge} aria-hidden>
+                        {isRevealingRefresh
+                          ? `${revealedCount}/${filteredSites.length}`
+                          : refreshProgress
+                            ? `${refreshProgress.current}/${refreshProgress.total}`
+                            : "…"}
+                      </span>
+                    ) : null}
                   </button>
-                  <button type="button" className={styles.addBtn} onClick={startCreate} disabled={!canAddSite || refreshingPositions} title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : undefined}>
-                    <Icon icon="mdi:plus" aria-hidden />
-                    {copy.add}
+                  <button
+                    type="button"
+                    className={styles.iconBtn}
+                    onClick={startCreate}
+                    disabled={!canAddSite || refreshingPositions}
+                    title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : copy.add}
+                    aria-label={atSiteLimit ? copy.formatLimitTooltip(maxSites) : copy.add}
+                  >
+                    <PlusIcon className={styles.iconBtnGlyph} size={18} aria-hidden />
                   </button>
                 </div>
               </div>
 
-              {refreshingPositions && refreshProgress ? <div className={styles.refreshProgress} role="status" aria-live="polite">
-                  <div className={styles.refreshProgressMeta}>
-                    <span className={styles.refreshProgressTitle}>{copy.refreshingAll}</span>
-                    <span className={styles.refreshProgressCount}>{copy.formatRefreshingProgress(refreshProgress.current, refreshProgress.total)}</span>
-                  </div>
-                  <div className={styles.refreshProgressTrack} aria-hidden>
-                    <div className={styles.refreshProgressFill} style={{
-                  width: `${Math.max(4, Math.round(refreshProgress.current / Math.max(refreshProgress.total, 1) * 100))}%`
-                }} />
-                  </div>
-                  {refreshProgress.name ? <p className={styles.refreshProgressName}>{copy.formatRefreshingCurrent(refreshProgress.name)}</p> : null}
-                </div> : null}
+              {refreshingPositions ? (
+                <span className={styles.srOnly} role="status" aria-live="polite">
+                  {isSyncingRefresh
+                    ? copy.refreshingAll
+                    : copy.formatRefreshingProgress(revealedCount, filteredSites.length)}
+                </span>
+              ) : null}
 
-              {orderedSites.length > 0 ? <div className={styles.searchWrap}>
-                  <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
-                  <input type="search" className={styles.searchInput} value={listSearch} onChange={event => {
-                setListSearch(event.target.value);
-                setListPage(1);
-              }} placeholder={copy.searchPlaceholder} aria-label={copy.searchAria} />
-                  {listSearch ? <button type="button" className={styles.searchClear} onClick={() => {
-                setListSearch("");
-                setListPage(1);
-              }} aria-label={common.close}>
-                      <Icon icon="mdi:close" aria-hidden />
-                    </button> : null}
-                </div> : null}
-
-              {atSiteLimit ? <div className={styles.sitesLimitHint} role="note">
-                  <span className={styles.sitesLimitProBadge}>Pro</span>
-                  <p className={styles.sitesLimitHintText}>
-                    {copy.formatLimitReached(maxSites)}
-                  </p>
-                </div> : null}
-
-              {orderedSites.length === 0 ? <div className={styles.emptyState}>
-                  <Icon icon="mdi:map-marker-off-outline" className={styles.emptyIcon} aria-hidden />
-                  <p>{copy.emptyState}</p>
-                </div> : filteredSites.length === 0 ? <div className={styles.emptyState}>
-                  <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
-                  <p>{copy.noSearchResults}</p>
-                </div> : <>
-                  <div className={styles.listScroll}>
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
-                      <SortableContext items={sortableSiteIds} strategy={verticalListSortingStrategy}>
-                        <ul className={styles.siteList}>
-                          {pagedSites.map(site => <SortableSiteRow key={getSiteId(site)} site={site} isActive={selectedId === site.id} canReorder={canReorder} onEdit={refreshingPositions ? undefined : startEdit} syncing={refreshProgress?.siteId === site.id} copy={copy} />)}
-                        </ul>
-                      </SortableContext>
-                      <DragOverlay dropAnimation={{
-                    duration: 180,
-                    easing: "ease-out"
-                  }}>
-                        {activeDragSite ? <div className={styles.siteDragOverlay}>
-                            <div className={styles.siteListItem}>
-                              <SiteListCard site={activeDragSite} isActive={false} copy={copy} />
-                            </div>
-                          </div> : null}
-                      </DragOverlay>
-                    </DndContext>
+              {isSyncingRefresh ? (
+                <div className={styles.syncPanel} aria-hidden>
+                  <div className={styles.syncOrb}>
+                    <RefreshCCWIcon className={styles.syncOrbIcon} size={28} aria-hidden />
                   </div>
-                  <SitesPager page={safeListPage} totalPages={listTotalPages} rangeLabel={copy.formatRange(listRangeStart, listRangeEnd, filteredSites.length)} prevLabel={common.prevPage} nextLabel={common.nextPage} onPageChange={setListPage} disabled={refreshingPositions} />
-                </>}
+                  <p className={styles.syncTitle}>{copy.refreshingAll}</p>
+                  <div className={styles.syncTrack}>
+                    <div
+                      className={styles.syncFill}
+                      style={{ animationDuration: `${REFRESH_SYNC_MS}ms` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {orderedSites.length > 0 && !isRevealingRefresh ? <div className={styles.searchWrap}>
+                      <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
+                      <input type="search" className={styles.searchInput} value={listSearch} onChange={event => {
+                    setListSearch(event.target.value);
+                    setListPage(1);
+                  }} placeholder={copy.searchPlaceholder} aria-label={copy.searchAria} />
+                      {listSearch ? <button type="button" className={styles.searchClear} onClick={() => {
+                    setListSearch("");
+                    setListPage(1);
+                  }} aria-label={common.close}>
+                          <Icon icon="mdi:close" aria-hidden />
+                        </button> : null}
+                    </div> : null}
+
+                  {atSiteLimit && !refreshingPositions ? <div className={styles.sitesLimitHint} role="note">
+                      <span className={styles.sitesLimitProBadge}>Pro</span>
+                      <p className={styles.sitesLimitHintText}>
+                        {copy.formatLimitReached(maxSites)}
+                      </p>
+                    </div> : null}
+
+                  {orderedSites.length === 0 ? <div className={styles.emptyState}>
+                      <Icon icon="mdi:map-marker-off-outline" className={styles.emptyIcon} aria-hidden />
+                      <p>{copy.emptyState}</p>
+                    </div> : filteredSites.length === 0 ? <div className={styles.emptyState}>
+                      <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
+                      <p>{copy.noSearchResults}</p>
+                    </div> : <>
+                      <div className={styles.listScroll}>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+                          <SortableContext items={sortableSiteIds} strategy={verticalListSortingStrategy}>
+                            <ul className={styles.siteList}>
+                              {visibleSites.map((site, index) => <SortableSiteRow key={getSiteId(site)} site={site} isActive={selectedId === site.id} canReorder={canReorder} onEdit={refreshingPositions ? undefined : startEdit} reveal={isRevealingRefresh && index === visibleSites.length - 1} copy={copy} />)}
+                            </ul>
+                          </SortableContext>
+                          <DragOverlay dropAnimation={{
+                        duration: 180,
+                        easing: "ease-out"
+                      }}>
+                            {activeDragSite ? <div className={styles.siteDragOverlay}>
+                                <div className={styles.siteListItem}>
+                                  <SiteListCard site={activeDragSite} isActive={false} copy={copy} />
+                                </div>
+                              </div> : null}
+                          </DragOverlay>
+                        </DndContext>
+                      </div>
+                      {!isRevealingRefresh ? <SitesPager page={safeListPage} totalPages={listTotalPages} rangeLabel={copy.formatRange(listRangeStart, listRangeEnd, filteredSites.length)} prevLabel={common.prevPage} nextLabel={common.nextPage} onPageChange={setListPage} disabled={refreshingPositions} /> : null}
+                    </>}
+                </>
+              )}
             </div>
 
-            {draft ? <div className={styles.editorPanel}>
-                <div className={styles.editorHead}>
-                  <h3>{isCreating ? copy.newSite : copy.editSite}</h3>
-                  <button type="button" className={styles.ghostBtn} onClick={cancelEdit}>
-                    {common.cancel}
-                  </button>
-                </div>
-                <SiteEditor site={draft} onChange={handleDraftChange} onLocate={handleLocate} locating={locating} copy={copy} />
-                <div className={styles.editorActions}>
-                  {!isCreating ? <button type="button" className={styles.deleteSiteBtn} onClick={() => removeSite(draft.id)}>
-                      {common.delete}
-                    </button> : null}
-                  <button type="button" className={styles.primaryBtn} onClick={upsertDraft}>
-                    {isCreating ? copy.addSite : copy.applyChanges}
-                  </button>
-                </div>
-              </div> : <div className={styles.editorPlaceholder}>
-                <Icon icon="mdi:map-search-outline" className={styles.editorPlaceholderIcon} aria-hidden />
-                <p>{copy.placeholder}</p>
-              </div>}
+            <div className={styles.editorSlot} aria-hidden={!editorOpen}>
+              {editorSite ? <div className={styles.editorPanel}>
+                  <div className={styles.editorHead}>
+                    <h3>{editorIsCreating ? copy.newSite : copy.editSite}</h3>
+                    <button type="button" className={styles.ghostBtn} onClick={cancelEdit} disabled={!draft}>
+                      {common.cancel}
+                    </button>
+                  </div>
+                  <SiteEditor site={editorSite} onChange={draft ? handleDraftChange : () => {}} onLocate={draft ? handleLocate : () => {}} locating={locating} copy={copy} />
+                  <div className={styles.editorActions}>
+                    {!editorIsCreating ? <button type="button" className={styles.deleteSiteBtn} onClick={() => removeSite(editorSite.id)} disabled={!draft}>
+                        {common.delete}
+                      </button> : null}
+                    <button type="button" className={styles.primaryBtn} onClick={upsertDraft} disabled={!draft}>
+                      {editorIsCreating ? copy.addSite : copy.applyChanges}
+                    </button>
+                  </div>
+                </div> : null}
+            </div>
           </div>
         </div>
 

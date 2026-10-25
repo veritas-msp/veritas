@@ -14,7 +14,10 @@ export default function MultiSuggestPicker({
   emptyResultsHint = "No results",
   inputId,
   singleSelect = false,
-  maxResults = 50
+  maxResults = 50,
+  inputClassName = "",
+  hideSearchIcon = false,
+  className = ""
 }) {
   const rootRef = useRef(null);
   const anchorRef = useRef(null);
@@ -121,32 +124,50 @@ export default function MultiSuggestPicker({
             {option.hint ? <span className={s.contactOptionMeta}>{option.hint}</span> : null}
           </button>)}
     </div> : null;
-  return <div className={s.equipmentField}>
+  return <div className={`${s.equipmentField}${className ? ` ${className}` : ""}`}>
       {label && <label className={s.equipmentFieldLabel} id={inputLabelId}>
           {label}
         </label>}
       <div className={s.contactPicker} ref={rootRef}>
-        <div ref={anchorRef} className={`${s.contactInputWrap} ${open ? s.contactInputWrapOpen : ""}`}>
-          <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
-          <input id={inputId} type="text" className={s.contactInput} value={search} placeholder={placeholder} autoComplete="off" aria-labelledby={inputLabelId} aria-expanded={open} aria-haspopup="listbox" aria-autocomplete="list" onChange={e => {
-          setSearch(e.target.value);
-          setOpen(true);
-        }} onFocus={() => setOpen(true)} onKeyDown={e => {
-          if (!open || filteredOptions.length === 0) return;
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            setHighlight(current => Math.min(current + 1, filteredOptions.length - 1));
-          } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            setHighlight(current => Math.max(current - 1, 0));
-          } else if (e.key === "Enter") {
-            e.preventDefault();
-            const picked = filteredOptions[highlight];
-            if (picked) addOption(picked.id);
-          } else if (e.key === "Escape") {
-            setOpen(false);
-          }
-        }} />
+        <div
+          ref={anchorRef}
+          className={hideSearchIcon ? undefined : `${s.contactInputWrap} ${open ? s.contactInputWrapOpen : ""}`}
+          style={hideSearchIcon ? { width: "100%" } : undefined}
+        >
+          {hideSearchIcon ? null : <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />}
+          <input
+            id={inputId}
+            type="text"
+            className={inputClassName || s.contactInput}
+            value={search}
+            placeholder={placeholder}
+            autoComplete="off"
+            aria-labelledby={inputLabelId}
+            aria-expanded={open}
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            onChange={e => {
+              setSearch(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={e => {
+              if (!open || filteredOptions.length === 0) return;
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setHighlight(current => Math.min(current + 1, filteredOptions.length - 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setHighlight(current => Math.max(current - 1, 0));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                const picked = filteredOptions[highlight];
+                if (picked) addOption(picked.id);
+              } else if (e.key === "Escape") {
+                setOpen(false);
+              }
+            }}
+          />
         </div>
       </div>
       {dropdownNode ? createPortal(dropdownNode, document.body) : null}

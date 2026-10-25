@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import SmartTooltip from "../SmartTooltip";
 import { fetchClientFiles, deleteClientFile, getPreviewUrl, getDownloadUrl, bulkUpdateClientFiles, bulkDeleteClientFiles } from "../../api/clientFiles";
@@ -22,6 +21,7 @@ import SuggestionAutocomplete from "../shared/SuggestionAutocomplete/SuggestionA
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import styles from "./DocumentsHubPage.module.css";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -259,62 +259,64 @@ export default function DocumentsHubPage() {
               <div className={layout.listBody}>
                 <div className={layout.listArea}>
                   <div className={layout.panelCard}>
-                    <div className={`${layout.tableSearchBar} ${styles.toolbarInCard}`} data-guide="docs-toolbar">
-                      <div className={`${layout.searchWrap} ${layout.searchWrapInCard} ${styles.toolbarSearch}`}>
-                        <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                        <input
-                          type="search"
-                          inputMode="search"
-                          enterKeyHint="search"
-                          className={layout.searchInput}
-                          value={search}
-                          onChange={e => setSearch(e.target.value)}
-                          placeholder={copy.searchPlaceholder}
-                          aria-label={copy.searchPlaceholder}
-                        />
-                        {search ? (
-                          <SmartTooltip content={copy.clearSearch}>
-                            <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={copy.clearSearch}>
-                              <FaTimes />
-                            </button>
-                          </SmartTooltip>
-                        ) : null}
-                      </div>
-                      <SuggestionAutocomplete
-                        id="documents-hub-company-filter"
-                        className={styles.companySuggest}
-                        variant="toolbar"
-                        placeholder={copy.filterCompanyPlaceholder || copy.filterCompany}
-                        value={companyFilter}
-                        options={companies}
-                        onChange={setCompanyFilter}
-                        minQueryLength={1}
-                        hintMessage={copy.filterCompanyHint}
-                        emptyMessage={copy.filterCompanyEmpty || copy.emptyFiltered}
-                        clearLabel={copy.clearSearch}
-                      />
-                      <select className={layout.sortSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} aria-label={copy.filterCategory}>
-                        <option value="all">{copy.filterCategory}</option>
-                        {CATEGORY_KEYS.map(cat => (
-                          <option key={cat} value={cat}>
-                            {categoryLabel(cat)}
-                          </option>
-                        ))}
-                      </select>
+                    <div data-guide="docs-toolbar">
+                    <UiKitCrmListToolbar
+                      className={styles.toolbarInCard}
+                      title={copy.pageTitle}
+                      titleIcon="mdi:folder-open-outline"
+                      searchValue={search}
+                      onSearchChange={setSearch}
+                      onSearchClear={() => setSearch("")}
+                      searchPlaceholder={copy.searchPlaceholder}
+                      searchAriaLabel={copy.searchPlaceholder}
+                      clearSearchLabel={copy.clearSearch}
+                      filters={
+                        <>
+                          <SuggestionAutocomplete
+                            id="documents-hub-company-filter"
+                            className={styles.companySuggest}
+                            variant="toolbar"
+                            placeholder={copy.filterCompanyPlaceholder || copy.filterCompany}
+                            value={companyFilter}
+                            options={companies}
+                            onChange={setCompanyFilter}
+                            minQueryLength={1}
+                            hintMessage={copy.filterCompanyHint}
+                            emptyMessage={copy.filterCompanyEmpty || copy.emptyFiltered}
+                            clearLabel={copy.clearSearch}
+                          />
+                          <select className={layout.sortSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} aria-label={copy.filterCategory}>
+                            <option value="all">{copy.filterCategory}</option>
+                            {CATEGORY_KEYS.map(cat => (
+                              <option key={cat} value={cat}>
+                                {categoryLabel(cat)}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      }
+                      filtersAriaLabel={copy.filterCategory}
+                    />
                     </div>
 
                     {loading ? (
                       <PageSkeleton variant="list" rows={8} label={copy.loading} />
                     ) : filtered.length === 0 ? (
                       <div className={layout.emptyStateInCard} data-guide="docs-table">
-                        <Icon icon="mdi:folder-open-outline" className={layout.emptyStateIcon} />
-                        <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
-                        <p className={layout.emptyStateHint}>{files.length === 0 ? copy.emptyHint : copy.emptyFiltered}</p>
+                        <UiKitEmptyState
+                          bare
+                          icon="mdi:folder-open-outline"
+                          title={copy.emptyTitle}
+                          text={files.length === 0 ? copy.emptyHint : copy.emptyFiltered}
+                        />
                       </div>
                     ) : (
                       <>
-                        <div className={layout.dataTableWrap} data-guide="docs-table">
-                          <div className={layout.dataTableScroll}>
+                        <div data-guide="docs-table">
+                        <UiKitScrollFadeShell
+                          className={layout.dataTableWrap}
+                          deps={[sorted.length, sortBy, sortDirection, search, companyFilter, categoryFilter]}
+                        >
                             <table className={styles.table}>
                               <thead>
                                 <tr>
@@ -411,7 +413,7 @@ export default function DocumentsHubPage() {
                                 })}
                               </tbody>
                             </table>
-                          </div>
+                        </UiKitScrollFadeShell>
                         </div>
                         {canBulkSelect && selectedCount > 0 ? (
                           <div className={styles.bulkBarWrap}>

@@ -1,0 +1,141 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.trigger {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.triggerMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.triggerIcon {
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerPlaceholder {
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--msp-muted, #5c6b82);
+  opacity: 0.85;
+}
+
+.dropdown {
+  /* Pas de padding-top : sinon les .groupLabel sticky laissent un jour et on voit défiler derrière */
+  padding: 0 0 0.25rem;
+  max-height: inherit;
+}
+
+.group + .group {
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+:global(html.dark) .group + .group {
+  border-top-color: rgba(90, 143, 212, 0.25);
+}
+
+.groupLabel {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light, #8b9bb5);
+  background: var(--msp-surface, #fff);
+  /* Couvre le 1px de sous-défilement / anti-aliasing */
+  box-shadow: 0 1px 0 var(--msp-surface, #fff);
+}
+
+:global(html.dark) .groupLabel {
+  background: var(--msp-surface, #1a2740);
+  color: #9eb6d4;
+  box-shadow: 0 1px 0 var(--msp-surface, #1a2740);
+}
+
+.groupIcon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 2.15rem;
+  padding: 0.45rem 0.85rem 0.45rem 0.95rem;
+  border: none;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.optionSelected {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+}
+
+:global(html.dark) .option:hover,
+:global(html.dark) .optionSelected {
+  background: rgba(90, 143, 212, 0.22);
+  color: #d6e6ff;
+}
+
+.optionIcon {
+  flex-shrink: 0;
+}
+
+.optionIconSpacer {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.optionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

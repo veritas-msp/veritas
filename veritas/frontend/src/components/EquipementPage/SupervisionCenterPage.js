@@ -39,6 +39,7 @@ import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationE
 import { Icon } from "@iconify/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SmartTooltip from "../SmartTooltip";
+import { uiKitLayoutsStyles as kit } from "../UiKit";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
@@ -841,7 +842,7 @@ export default function MonitoringCenterPage({
             <SmartTooltip content={pageCopy.fleetSync?.expandTitle || "Afficher la synchronisation"}>
               <button
                 type="button"
-                className={`${layout.iconBtn} ${styles.fleetSyncToolbarBtn}`}
+                className={`${kit.btnSquare} ${kit.btnSquareSecondary} ${styles.fleetSyncToolbarBtn}`}
                 onClick={() => setFleetSyncExpanded(true)}
                 aria-label={pageCopy.fleetSync?.expandAria || "Afficher la synchronisation"}
               >
@@ -864,7 +865,7 @@ export default function MonitoringCenterPage({
               <SmartTooltip content={pageCopy.fleetSync?.cancel || "Arrêter"}>
                 <button
                   type="button"
-                  className={layout.iconBtn}
+                  className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
                   onClick={stopFleetSync}
                   disabled={fleetSyncCancelling}
                   aria-label={pageCopy.fleetSync?.cancelAria || "Arrêter la synchronisation"}
@@ -880,7 +881,7 @@ export default function MonitoringCenterPage({
               <SmartTooltip content={pageCopy.fleetSync?.close || "Fermer"}>
                 <button
                   type="button"
-                  className={layout.iconBtn}
+                  className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
                   onClick={dismissFleetSync}
                   aria-label={pageCopy.fleetSync?.closeAria || "Fermer"}
                 >
@@ -893,7 +894,7 @@ export default function MonitoringCenterPage({
           <SmartTooltip content={pageCopy.fleetSync?.buttonTitle || "Synchroniser"}>
             <button
               type="button"
-              className={layout.iconBtn}
+              className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
               aria-label={pageCopy.fleetSync?.buttonAria || pageCopy.fleetSync?.buttonTitle || "Synchroniser"}
               onClick={startFleetSync}
               disabled={fleetSyncActive}

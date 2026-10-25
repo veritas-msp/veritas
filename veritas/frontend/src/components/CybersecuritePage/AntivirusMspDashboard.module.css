@@ -394,7 +394,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
 }
 
 .table thead th {
@@ -402,15 +402,33 @@
   top: 0;
   z-index: 1;
   text-align: left;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: none;
+  letter-spacing: 0.02em;
   color: var(--msp-muted, #5c6b82);
-  padding: 0.55rem 0.65rem;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface-2, #f8fafc);
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
   white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
+  vertical-align: middle;
+  color: var(--msp-text, #0f1c2e);
+  background: var(--msp-surface, #fff);
+  transition: background 0.12s;
+}
+
+.table tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.table tbody tr:hover td,
+.table tbody tr:nth-child(even):hover td {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
 }
 
 .thBtn {
@@ -423,12 +441,12 @@
   color: inherit;
   cursor: pointer;
   padding: 0;
-  text-transform: inherit;
+  text-transform: none;
   letter-spacing: inherit;
 }
 
 .thBtn:hover {
-  color: var(--msp-text, #0f1c2e);
+  color: var(--msp-accent, #2b5fab);
 }
 
 .sortableTh {
@@ -437,14 +455,7 @@
 }
 
 .sortableTh:hover {
-  color: var(--msp-text, #0f1c2e);
-}
-
-.table tbody td {
-  padding: 0.55rem 0.65rem;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  vertical-align: middle;
-  color: var(--msp-text, #0f1c2e);
+  color: var(--msp-accent, #2b5fab);
 }
 
 .checkboxCell {
@@ -462,34 +473,28 @@
   cursor: pointer;
 }
 
-.selectedRow {
-  background: rgba(43, 95, 171, 0.08);
-}
-
 .table thead th.checkboxCell {
   cursor: default;
 }
 
-.table tbody tr:last-child td {
-  border-bottom: none;
-}
-
 .tableRow {
   cursor: pointer;
-  transition: background 0.12s;
 }
 
-.tableRow:hover,
+.tableRow.selectedRow td,
+.tableRow.selectedRow:nth-child(even) td {
+  background: rgba(43, 95, 171, 0.1);
+}
+
+.tableRow.selectedRow:hover td,
+.tableRow.selectedRow:nth-child(even):hover td {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
+}
+
 .tableRow:focus-visible {
-  background: var(--msp-surface-2, #f8fafc);
   outline: none;
 }
 
-.selectedRow,
-.tableRow.selectedRow:hover,
-.tableRow.selectedRow:focus-visible {
-  background: rgba(43, 95, 171, 0.08);
-}
 
 .segmentRow td {
   padding: 0 !important;

@@ -164,7 +164,7 @@
   width: 1.7rem;
   height: 1.7rem;
   border: 0;
-  border-radius: 7px;
+  border-radius: 999px;
   background: transparent;
   color: var(--msp-accent, #2b5fab);
   cursor: pointer;
@@ -284,7 +284,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--crm-section-toolbar-gap, 0.65rem);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -292,7 +292,7 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  padding: 0.55rem 0.75rem 0.75rem;
+  padding: var(--crm-section-content-pad, 0.55rem 0.75rem 0.75rem);
   box-sizing: border-box;
 }
 
@@ -300,6 +300,8 @@
   flex: 0 0 auto;
   padding: 0 !important;
   width: 100%;
+  min-height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
 }
 
 .vaultToolbarActions {
@@ -372,20 +374,28 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
+  width: var(--msp-btn-square, 28px);
+  height: var(--msp-btn-square, 28px);
+  min-width: var(--msp-btn-square, 28px);
+  min-height: var(--msp-btn-square, 28px);
   padding: 0;
   border: 1px solid var(--msp-border, #dde3ed);
-  border-radius: 7px;
+  border-radius: 999px;
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
   font-size: 0.85rem;
   line-height: 0;
   flex-shrink: 0;
-  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  transition:
+    border-color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    background-color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    transform var(--msp-duration-fast, 0.15s) var(--msp-ease-spring, ease);
+}
+
+.columnsPillBtn:active:not(:disabled) {
+  transform: scale(0.9);
 }
 
 .columnsPillBtn:hover {
@@ -1550,6 +1560,10 @@
   text-align: center;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dropZoneTall {
+  min-height: 11rem;
 }
 
 .dropZone:hover,

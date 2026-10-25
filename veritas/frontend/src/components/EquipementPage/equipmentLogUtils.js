@@ -169,6 +169,61 @@ function detailRow(label, value, options = {}) {
 function humanizeKey(key) {
   return String(key).replace(/([A-Z])/g, " $1").replace(/_/g, " ").replace(/^./, char => char.toUpperCase()).trim();
 }
+function formatReadableValue(value) {
+  if (value == null || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Oui" : "Non";
+  if (Array.isArray(value)) {
+    if (!value.length) return "—";
+    return value.map(item => formatReadableValue(item)).join(", ");
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value).filter(([, v]) => v != null && v !== "");
+    if (!entries.length) return "—";
+    // Pair old/new classique
+    if (("old" in value || "oldValue" in value || "before" in value) && ("new" in value || "newValue" in value || "after" in value)) {
+      const oldVal = value.old ?? value.oldValue ?? value.before;
+      const newVal = value.new ?? value.newValue ?? value.after;
+      return `${formatReadableValue(oldVal)} → ${formatReadableValue(newVal)}`;
+    }
+    return entries.map(([k, v]) => `${humanizeKey(k)} : ${formatReadableValue(v)}`).join(" · ");
+  }
+  const text = String(value).trim();
+  if ((text.startsWith("{") && text.endsWith("}")) || (text.startsWith("[") && text.endsWith("]"))) {
+    try {
+      return formatReadableValue(JSON.parse(text));
+    } catch {
+      /* keep plain text */
+    }
+  }
+  return text.replace(/\s+/g, " ");
+}
+function flattenObjectRows(obj, prefix = "", skipKeys = new Set(["kind"])) {
+  if (obj == null) return [];
+  if (typeof obj !== "object" || Array.isArray(obj)) {
+    const label = prefix || "Valeur";
+    return [detailRow(label, formatReadableValue(obj))].filter(Boolean);
+  }
+  const rows = [];
+  for (const [key, value] of Object.entries(obj)) {
+    if (skipKeys.has(key) || value == null || value === "") continue;
+    const label = prefix ? `${prefix} · ${humanizeKey(key)}` : humanizeKey(key);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      if (("old" in value || "oldValue" in value || "before" in value) && ("new" in value || "newValue" in value || "after" in value)) {
+        rows.push(detailRow(label, formatReadableValue(value), { fullWidth: true }));
+        continue;
+      }
+      const nested = flattenObjectRows(value, label, skipKeys);
+      if (nested.length) {
+        rows.push(...nested);
+        continue;
+      }
+    }
+    rows.push(detailRow(label, formatReadableValue(value), {
+      fullWidth: String(formatReadableValue(value)).length > 48
+    }));
+  }
+  return rows.filter(Boolean);
+}
 export function buildLogDetailRows(parsed, rawDetails) {
   if (!parsed) {
     if (rawDetails == null || rawDetails === "") return [];
@@ -178,27 +233,16 @@ export function buildLogDetailRows(parsed, rawDetails) {
     kind
   } = parsed;
   if (kind === "field_update" || kind === "field_set") {
-    const formatValue = value => {
-      if (value == null || value === "") return "—";
-      if (typeof value === "boolean") return value ? "Oui" : "Non";
-      if (typeof value === "object") return JSON.stringify(value, null, 2);
-      return String(value);
-    };
-    return [detailRow("Champ", parsed.fieldLabel || parsed.field), detailRow("Ancienne valeur", formatValue(parsed.oldValue), {
+    return [detailRow("Champ", parsed.fieldLabel || parsed.field), detailRow("Ancienne valeur", formatReadableValue(parsed.oldValue), {
       fullWidth: true
-    }), detailRow("Nouvelle valeur", formatValue(parsed.newValue), {
+    }), detailRow("Nouvelle valeur", formatReadableValue(parsed.newValue), {
       fullWidth: true
     })].filter(Boolean);
   }
   if (kind === "equipment_created") {
-    const fields = parsed.fields && typeof parsed.fields === "object" ? Object.entries(parsed.fields) : [];
-    if (!fields.length) return [detailRow("Événement", "Équipement créé")].filter(Boolean);
-    return fields.map(([key, value]) => {
-      const displayValue = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
-      return detailRow(humanizeKey(key), displayValue, {
-        fullWidth: typeof value === "object"
-      });
-    }).filter(Boolean);
+    const fields = parsed.fields && typeof parsed.fields === "object" ? parsed.fields : null;
+    if (!fields || !Object.keys(fields).length) return [detailRow("Événement", "Équipement créé")].filter(Boolean);
+    return flattenObjectRows(fields);
   }
   if (kind === "equipment_deleted") {
     return [detailRow("Événement", "Équipement supprimé")].filter(Boolean);
@@ -206,11 +250,11 @@ export function buildLogDetailRows(parsed, rawDetails) {
   if (kind === "remote_access" || kind === "quick_connect") {
     return [detailRow("Solution", parsed.solutionLabel), detailRow("Identifiant", parsed.targetId), detailRow("URL", parsed.url, {
       fullWidth: true
-    }), detailRow("Result", parsed.outcomeLabel)].filter(Boolean);
+    }), detailRow("Résultat", parsed.outcomeLabel)].filter(Boolean);
   }
   if (kind === "rmm_agent_update" || kind === "rmm_agent_update_request" || kind === "rmm_agent_update_cancel") {
-    const eventLabel = parsed.event === "install" ? "Installation" : parsed.event === "re_enroll" ? "Re-enrollment" : parsed.event === "request" ? "Update requested" : parsed.event === "cancel" ? "Update cancelled" : parsed.event === "update" ? "Update" : parsed.event;
-    return [detailRow("Previous version", parsed.previousVersion), detailRow("Target / new version", parsed.newVersion), detailRow("Event", eventLabel), detailRow("Source", parsed.source), detailRow("Poste", parsed.hostname), detailRow("Requested at", parsed.requestedAt ? formatLogDateTime(parsed.requestedAt) : null)].filter(Boolean);
+    const eventLabel = parsed.event === "install" ? "Installation" : parsed.event === "re_enroll" ? "Ré-enrôlement" : parsed.event === "request" ? "Mise à jour demandée" : parsed.event === "cancel" ? "Mise à jour annulée" : parsed.event === "update" ? "Mise à jour" : parsed.event;
+    return [detailRow("Version précédente", parsed.previousVersion), detailRow("Nouvelle version", parsed.newVersion), detailRow("Événement", eventLabel), detailRow("Source", parsed.source), detailRow("Poste", parsed.hostname), detailRow("Demandé le", parsed.requestedAt ? formatLogDateTime(parsed.requestedAt) : null)].filter(Boolean);
   }
   if (kind === "rmm_heartbeat" || kind === "rmm_full_sync") {
     const rows = [];
@@ -221,50 +265,86 @@ export function buildLogDetailRows(parsed, rawDetails) {
       rows.push(detailRow("Dernier signal", formatLogDateTime(parsed.lastHeartbeatAt)));
     }
     if (parsed.mode) {
-      rows.push(detailRow("Mode", parsed.mode === "full" ? "Sync complet" : "Lightweight heartbeat"));
+      rows.push(detailRow("Mode", parsed.mode === "full" ? "Sync complet" : "Heartbeat léger"));
     }
     if (parsed.agentVersion) rows.push(detailRow("Version agent", parsed.agentVersion));
     if (parsed.collectedAt) {
       rows.push(detailRow("Collecte", formatLogDateTime(parsed.collectedAt)));
     }
-    if (parsed.syncRequested) rows.push(detailRow("Triggered by the server", "Yes"));
+    if (parsed.syncRequested) rows.push(detailRow("Déclenché par le serveur", "Oui"));
     if (parsed.cpuUsagePct != null) rows.push(detailRow("CPU", `${parsed.cpuUsagePct}%`));
     if (parsed.ramUsagePct != null) rows.push(detailRow("RAM", `${parsed.ramUsagePct}%`));
-    if (parsed.loggedUser) rows.push(detailRow("User session", parsed.loggedUser));
-    if (parsed.osEdition) rows.push(detailRow("Windows edition", parsed.osEdition));
+    if (parsed.loggedUser) rows.push(detailRow("Session utilisateur", parsed.loggedUser));
+    if (parsed.osEdition) rows.push(detailRow("Édition Windows", parsed.osEdition));
     if (parsed.osDisplayVersion) rows.push(detailRow("Version Windows", parsed.osDisplayVersion));
     if (parsed.osBuild) rows.push(detailRow("Build", parsed.osBuild));
     if (parsed.licenseActivated != null) {
-      rows.push(detailRow("License activated", parsed.licenseActivated ? "Yes" : "No"));
+      rows.push(detailRow("Licence activée", parsed.licenseActivated ? "Oui" : "Non"));
     }
     if (kind === "rmm_full_sync" && parsed.pendingCount != null) {
-      rows.push(detailRow("Pending updates", parsed.pendingCount));
+      rows.push(detailRow("Mises à jour en attente", parsed.pendingCount));
     }
-    if (parsed.rebootRequired) rows.push(detailRow("Restart required", "Yes"));
+    if (parsed.rebootRequired) rows.push(detailRow("Redémarrage requis", "Oui"));
     return rows.filter(Boolean);
   }
   if (typeof parsed === "object" && !Array.isArray(parsed)) {
-    const skipKeys = new Set(["kind"]);
-    const entries = Object.entries(parsed).filter(([key, value]) => !skipKeys.has(key) && value != null && value !== "");
-    if (entries.length > 0) {
-      return entries.map(([key, value]) => {
-        const displayValue = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
-        return detailRow(humanizeKey(key), displayValue, {
-          fullWidth: displayValue.length > 48
-        });
-      }).filter(Boolean);
-    }
+    const rows = flattenObjectRows(parsed);
+    if (rows.length > 0) return rows;
   }
   return null;
 }
+/** Libellé du champ / modification pour affichage tableau. */
+export function getLogModificationField(log) {
+  const parsed = parseLogDetails(log);
+  if (!parsed || typeof parsed !== "object") {
+    const action = String(log?.action || "").trim();
+    return action || "";
+  }
+  if (parsed.fieldLabel) return String(parsed.fieldLabel);
+  if (parsed.field) return humanizeKey(parsed.field);
+
+  if (Array.isArray(parsed.modifiedFields) && parsed.modifiedFields.length) {
+    return parsed.modifiedFields.map(humanizeKey).join(", ");
+  }
+
+  if (Array.isArray(parsed.changes) && parsed.changes.length) {
+    const labels = parsed.changes
+      .map(change => change?.label || change?.fieldLabel || (change?.field ? humanizeKey(change.field) : ""))
+      .filter(Boolean);
+    if (labels.length) return labels.join(", ");
+  }
+
+  if (parsed.changes && typeof parsed.changes === "object" && !Array.isArray(parsed.changes)) {
+    const keys = Object.keys(parsed.changes).filter(Boolean);
+    if (keys.length) return keys.map(humanizeKey).join(", ");
+  }
+
+  // Fallback : premiers champs utiles hors métadonnées
+  const skip = new Set(["kind", "success", "source", "event", "mode"]);
+  const keys = Object.keys(parsed).filter(key => !skip.has(key) && parsed[key] != null && parsed[key] !== "");
+  if (keys.length === 1 && (keys[0] === "description" || keys[0] === "message")) {
+    return formatReadableValue(parsed[keys[0]]);
+  }
+  if (keys.length && keys.length <= 4) {
+    return keys.map(humanizeKey).join(", ");
+  }
+  return "";
+}
+
 export function getLogDetailsFallbackText(rawDetails) {
   if (rawDetails == null || rawDetails === "") return "";
+  let parsed = rawDetails;
   if (typeof rawDetails === "string") {
     try {
-      return JSON.stringify(JSON.parse(rawDetails), null, 2);
+      parsed = JSON.parse(rawDetails);
     } catch {
       return rawDetails;
     }
   }
-  return JSON.stringify(rawDetails, null, 2);
+  if (parsed && typeof parsed === "object") {
+    return flattenObjectRows(parsed)
+      .map(row => `${row.label} : ${row.value}`)
+      .join("\n");
+  }
+  return String(parsed);
 }

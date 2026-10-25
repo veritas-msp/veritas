@@ -70,7 +70,9 @@ const ANTISPAM_MODAL_COPY = {
     overview: {
       title: "Solution enregistrée",
       description: "Solutions enregistrées pour ce client.",
-      empty: "Aucune solution configurée pour le moment."
+      empty: "Aucune solution configurée pour le moment.",
+      emptyHint: "Paramétrez un fournisseur ou une saisie manuelle pour démarrer le suivi antispam.",
+      emptyAddCta: "Ajouter la première solution"
     },
     actions: {
       viewData: "Voir les données",
@@ -248,7 +250,9 @@ const ANTISPAM_MODAL_COPY = {
     overview: {
       title: "Registered solution",
       description: "Solutions registered for this client.",
-      empty: "No solution configured yet."
+      empty: "No solution configured yet.",
+      emptyHint: "Set up a provider or a manual entry to start antispam tracking.",
+      emptyAddCta: "Add the first solution"
     },
     actions: {
       viewData: "View data",

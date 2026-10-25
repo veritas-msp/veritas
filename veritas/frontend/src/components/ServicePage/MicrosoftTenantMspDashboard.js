@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import SmartTooltip from "../SmartTooltip";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as kit } from "../UiKit";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import { buildMicrosoftTenantFleetStats, formatMicrosoftGlobalScore, isMicrosoftTenantIssue, microsoftScoreTone } from "./microsoftTenantMspUtils";
@@ -187,21 +188,20 @@ export default function MicrosoftTenantMspDashboard({
                 <KpiCard icon="mdi:account-group-outline" label={copy.kpi.users} value={stats.userTotal} tone="neutral" />
               </div>
 
-              <div className={layout.tableSearchBar}>
-                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={copy.searchPlaceholder} />
-                  {search ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
-                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
-                        <FaTimes />
-                      </button>
-                    </SmartTooltip> : null}
-                </div>
-                {onSync ? <div className={layout.toolbarActions} data-guide="service-sync">
+              <UiKitCrmListToolbar
+                searchValue={search}
+                onSearchChange={setSearch}
+                onSearchClear={() => setSearch("")}
+                searchPlaceholder={copy.searchPlaceholder}
+                searchAriaLabel={copy.searchPlaceholder}
+                clearSearchLabel={copy.clearSearch || "Effacer"}
+                extraActions={
+                  onSync ? (
                     <SmartTooltip content={copy.syncTenants}>
                       <button
                         type="button"
-                        className={layout.iconBtn}
+                        className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                        data-guide="service-sync"
                         aria-label={copy.syncTenants}
                         onClick={onSync}
                         disabled={syncing || tenants.length === 0}
@@ -209,19 +209,25 @@ export default function MicrosoftTenantMspDashboard({
                         <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
                       </button>
                     </SmartTooltip>
-                  </div> : null}
-              </div>
+                  ) : null
+                }
+              />
 
               {filteredRows.length === 0 ? (
                 <div className={layout.emptyStateInCard}>
-                  <Icon icon="mdi:microsoft-azure" className={layout.emptyStateIcon} aria-hidden />
-                  <p className={layout.emptyStateTitle}>{tenants.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch}</p>
-                  <p className={layout.emptyStateHint}>{tenants.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch}</p>
+                  <UiKitEmptyState
+                    bare
+                    icon="mdi:microsoft-azure"
+                    title={tenants.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch}
+                    text={tenants.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch}
+                  />
                 </div>
               ) : (
                 <>
-                  <div className={layout.dataTableWrap}>
-                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                  <UiKitScrollFadeShell
+                    className={`${layout.dataTableWrap} ${styles.tableScroll}`}
+                    deps={[paginatedRows.length, pageSize, search, statusFilter, sortBy, sortDirection]}
+                  >
                       <table className={styles.table}>
                         <thead>
                           <tr>
@@ -243,8 +249,7 @@ export default function MicrosoftTenantMspDashboard({
                       }} />)}
                         </tbody>
                       </table>
-                    </div>
-                  </div>
+                  </UiKitScrollFadeShell>
                   <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                     <div className={layout.paginationLeft}>
                       <span className={layout.paginationLabel}>{copy.rowsPerPage}</span>

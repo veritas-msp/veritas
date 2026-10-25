@@ -189,7 +189,7 @@ export default function ReportSummaryBackup({
 
   const instances = useMemo(() => listBackupInstances(client), [client]);
   const standardInstances = useMemo(
-    () => instances.filter(inst => inst.logiciel !== "Active Backup for Microsoft 365" && inst.logiciel !== "HyperBackup"),
+    () => instances.filter(inst => Boolean(String(inst?.logiciel || "").trim())),
     [instances]
   );
 

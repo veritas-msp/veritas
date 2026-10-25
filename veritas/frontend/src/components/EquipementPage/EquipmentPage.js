@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef, useImperativeHandle, forwardRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { getAllHardwareEquipment, getClientHardwareEquipment, getEquipmentMonitoringSummaries, mapClientHardwareEquipment, syncEquipmentCheckMKMonitoring, equipmentTypeToFamily, fetchEquipmentTagsBatch } from "../../api/equipment";
 import CheckMKMonitoringStatusBadge, { isCheckMKMappableType } from "./CheckMKMonitoringStatusBadge";
@@ -12,7 +12,8 @@ import SmartTooltip from "../SmartTooltip";
 import {
   UiKitTable,
   uiKitTableStyles as tableKit,
-  uiKitLayoutsStyles as layoutKit
+  uiKitLayoutsStyles as layoutKit,
+  useFinderNavIndicator
 } from "../UiKit";
 import EquipmentDetailPage from "./EquipmentDetailPage";
 import EquipmentAddFlowModal from "./EquipmentAddFlowModal";
@@ -51,6 +52,7 @@ import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { getEquipmentPageCopy, getEquipmentColumnLabel, getEquipmentEmptyMessage, getEquipmentRemoteAccessLabel, formatEquipmentRemoteAccessTooltip } from "./equipmentPageI18n";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
+import { EnterpriseFamilyTypeIcon, useFamilyIconHover } from "../EnterprisesPage/EnterpriseFinderTabIcon";
 import { getInfraMapCopy } from "../EnterprisesPage/infraMapI18n";
 import { mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { filterBySite } from "../../utils/siteFilterUtils";
@@ -168,6 +170,18 @@ function getEquipmentLocationSortValue(equipment) {
 }
 function isColumnSortable(colKey) {
   return !UNSORTABLE_COLUMN_KEYS.has(colKey);
+}
+
+/** Affiche vCPU / RAM / Stockage tels que stockés (déjà formatés, ex. « 4 vCPU », « 64 Go »). */
+function formatServerSpecCell(colKey, value) {
+  const raw = value == null ? "" : String(value).trim();
+  if (!raw) return "-";
+  // Anciennes valeurs numériques nues → unité par défaut
+  if (/^\d+([.,]\d+)?$/.test(raw)) {
+    if (colKey === "processeur") return `${raw} vCPU`;
+    if (colKey === "memoire" || colKey === "stockage") return `${raw} Go`;
+  }
+  return raw;
 }
 function filterItemsBySearch(items, searchQuery, getSearchableText) {
   const query = searchQuery.trim().toLowerCase();
@@ -647,7 +661,7 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       key: "location"
     },
     activeStatus: {
-      label: "Actif",
+      label: label("activeStatus") || pageCopy.columns?.activeStatus || "Statut",
       key: "activeStatus"
     },
     processeur: {
@@ -836,6 +850,48 @@ const TYPE_ICON_MAP = {
   TOIP: 'mdi:phone-voip',
   'Security camera': 'mdi:cctv'
 };
+
+/** Bouton famille (sidebar / barre) avec icône Lucide animée au hover. */
+function EmbeddedFamilyTypeButton({
+  type,
+  iconify,
+  label,
+  isActive,
+  isDimmed,
+  isSidebar,
+  hasAlerts = false,
+  tabAria,
+  onSelect,
+  meta,
+}) {
+  const { animRef, onMouseEnter, onMouseLeave } = useFamilyIconHover(type);
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      aria-current={isSidebar && isActive ? "page" : undefined}
+      aria-label={isSidebar ? undefined : tabAria}
+      disabled={isDimmed}
+      className={isSidebar
+        ? `${layoutKit.finderSecItem} ${isActive ? layoutKit.finderSecItemActive : ""} ${isDimmed ? layoutKit.finderSecItemDimmed : ""}`.trim()
+        : `${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${hasAlerts ? styles.embeddedTypeIconBtnHasAlerts : ""}`}
+      onClick={() => !isDimmed && onSelect?.(type)}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <EnterpriseFamilyTypeIcon
+        typeId={type}
+        iconify={iconify}
+        className={isSidebar ? layoutKit.finderSecItemIcon : styles.embeddedTypeIconGlyph}
+        size={isSidebar ? 16 : 18}
+        animRef={animRef}
+      />
+      <span className={isSidebar ? layoutKit.finderSecItemLabel : styles.embeddedTypeIconLabel}>{label}</span>
+      {meta}
+    </button>
+  );
+}
 const FIREWALL_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'vlan', 'ha', 'manufacturer', 'model', 'serial', 'firmware', 'expirationGarantie', 'maintenanceLicense', 'mapping'];
 const FIREWALL_COLUMN_LABELS = {
   manufacturer: 'Brand',
@@ -859,7 +915,7 @@ const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'role', 
 const SERVER_COLUMN_LABELS = {
   vlan: 'VLAN',
   systeme: 'OS',
-  processeur: 'Proc.',
+  processeur: 'vCPU',
   memoire: 'RAM',
   stockage: 'Storage',
   role: 'Roles'
@@ -888,16 +944,16 @@ const BORNE_WIFI_COLUMN_LABELS = {
 };
 const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
-  Internet: ["name", "activeStatus", "location", "fournisseur", "ip", "debit", "ha", "mapping"],
-  Firewalls: ["name", "activeStatus", "location", "model", "serial", "ip", "ha", "monitoring", "mapping"],
-  Routeur: ["name", "activeStatus", "location", "model", "serial", "ip", "monitoring", "mapping"],
-  Servers: ["name", "activeStatus", "location", "role", "model", "serial", "ip", "systeme", "ha", "monitoring", "mapping"],
-  Storage: ["name", "activeStatus", "location", "model", "serial", "ip", "disksUsage", "capacite", "raid", "ha", "monitoring", "mapping"],
-  Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "agentStatus", "agentVersion", "mapping"],
-  Switch: ["name", "activeStatus", "location", "model", "serial", "mac", "ha", "monitoring", "mapping"],
-  BorneWifi: ["name", "activeStatus", "location", "model", "serial", "mac", "ssidCount", "monitoring", "mapping"],
-  TOIP: ["name", "activeStatus", "location", "model", "version", "ip", "mapping"],
-  Alimentation: ["name", "activeStatus", "location", "model", "serial", "powerRating", "ip", "monitoring", "mapping"],
+  Internet: ["activeStatus", "name", "location", "fournisseur", "ip", "debit", "ha", "mapping"],
+  Firewalls: ["activeStatus", "name", "location", "model", "serial", "ip", "ha", "monitoring", "mapping"],
+  Routeur: ["activeStatus", "name", "location", "model", "serial", "ip", "monitoring", "mapping"],
+  Servers: ["activeStatus", "name", "role", "ip", "systeme", "processeur", "memoire", "stockage", "monitoring", "mapping"],
+  Storage: ["activeStatus", "name", "location", "model", "serial", "ip", "disksUsage", "capacite", "raid", "ha", "monitoring", "mapping"],
+  Ordinateurs: ["activeStatus", "name", "location", "model", "serial", "systeme", "agentStatus", "agentVersion", "mapping"],
+  Switch: ["activeStatus", "name", "location", "model", "serial", "mac", "ha", "monitoring", "mapping"],
+  BorneWifi: ["activeStatus", "name", "location", "model", "serial", "mac", "ssidCount", "monitoring", "mapping"],
+  TOIP: ["activeStatus", "name", "location", "model", "version", "ip", "mapping"],
+  Alimentation: ["activeStatus", "name", "location", "model", "serial", "powerRating", "ip", "monitoring", "mapping"],
   Backup: ["name", "server", "version", "jobsCount", "mappedJobsCount"]
 };
 function getEmbeddedCellClassName(colKey, styles) {
@@ -948,6 +1004,9 @@ function getEmbeddedCellClassName(colKey, styles) {
     case "raid":
     case "powerRating":
     case "vlan":
+    case "processeur":
+    case "memoire":
+    case "stockage":
       return styles.embeddedColMetric;
     case "domaine":
     case "computerType":
@@ -1147,8 +1206,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     return <CheckMKMonitoringStatusBadge summary={summary} isMapped compact={compact} />;
   };
   const renderStateIcon = (active, {
-    onLabel = "Actif",
-    offLabel = "Inactif",
+    onLabel = pageCopy.statusActive || "Actif",
+    offLabel = pageCopy.statusInactive || "Inactif",
     warn = false,
     warnLabel = null,
     activeColor = "#6fbf94"
@@ -1161,7 +1220,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }} aria-label={label} />
     </SmartTooltip>;
   };
-  const renderActiveStatusIcon = equipment => renderStateIcon(readEquipmentIsActive(equipment));
   const renderSupervisionDot = equipment => {
     if (!isCheckMKMappableType(equipment?.type)) return renderStateIcon(false, {
       onLabel: "Supervision active",
@@ -1325,9 +1383,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (!id) return null;
     return maintenanceByEquipmentId[id] || null;
   }, [maintenanceByEquipmentId]);
-  const renderMaintenanceCone = equipment => {
-    const maint = getEquipmentMaintenance(equipment);
-    if (!maint) return null;
+  const buildMaintenanceTooltip = maint => {
+    if (!maint) return pageCopy.maintenance?.badge || "En maintenance";
     const m = pageCopy.maintenance || {};
     let untilPart = m.indefinite || "Durée indéterminée";
     if (maint.until) {
@@ -1341,18 +1398,32 @@ const EquipmentPage = forwardRef(function EquipmentPage({
             hour: "2-digit",
             minute: "2-digit"
           });
-          untilPart = interpolate(m.until || "Jusqu’au {date}", { date });
+          untilPart = interpolate(m.until || "Jusqu'au {date}", { date });
         } catch {
-          untilPart = interpolate(m.until || "Jusqu’au {date}", { date: new Date(ms).toLocaleString() });
+          untilPart = interpolate(m.until || "Jusqu'au {date}", { date: new Date(ms).toLocaleString() });
         }
       }
     }
-    const tooltip = [m.badge || "En maintenance", untilPart, maint.reason || null].filter(Boolean).join(" · ");
-    return <SmartTooltip content={tooltip}>
-        <span className={styles.maintenanceIcon} aria-label={m.badge || "En maintenance"}>
-          <Icon icon="mdi:traffic-cone" width={15} height={15} aria-hidden />
-        </span>
-      </SmartTooltip>;
+    return [m.badge || "En maintenance", untilPart, maint.reason || null].filter(Boolean).join(" · ");
+  };
+  const renderActiveStatusIcon = equipment => {
+    const maint = getEquipmentMaintenance(equipment);
+    if (maint) {
+      const tooltip = buildMaintenanceTooltip(maint);
+      const label = pageCopy.maintenance?.badge || "En maintenance";
+      return (
+        <SmartTooltip content={tooltip}>
+          <span className={styles.statusMaintenance} aria-label={label}>
+            <Icon icon="mdi:circle" width={12} height={12} className={styles.statusMaintenanceDot} aria-hidden />
+            <Icon icon="mdi:traffic-cone" width={14} height={14} className={styles.statusMaintenanceCone} aria-hidden />
+          </span>
+        </SmartTooltip>
+      );
+    }
+    return renderStateIcon(readEquipmentIsActive(equipment), {
+      onLabel: pageCopy.statusActive || "Actif",
+      offLabel: pageCopy.statusInactive || "Inactif"
+    });
   };
   const renderAlertSuspendedBadge = equipment => {
     if (!isEquipmentAlertsSuspended(equipment)) return null;
@@ -1913,7 +1984,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         visibleCols = [...visibleCols, "mapping"];
       }
     }
-    if (type !== "Backup" && !visibleCols.includes("location")) {
+    // Serveurs : pas de Site par défaut (vCPU / RAM / Stockage à la place de marque / modèle / SN / HA)
+    if (type !== "Backup" && type !== "Servers" && !visibleCols.includes("location")) {
       const ipIndex = visibleCols.indexOf("ip");
       const insertAt = ipIndex >= 0 ? ipIndex + 1 : Math.min(1, visibleCols.length);
       visibleCols = [...visibleCols.slice(0, insertAt), "location", ...visibleCols.slice(insertAt)];
@@ -1939,10 +2011,19 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       ? [...columns.slice(0, mappingIndex), ...extraColumns, ...columns.slice(mappingIndex)]
       : [...columns, ...extraColumns];
     if (embedded) {
-      return [{
-        label: "",
-        key: "brandIcon"
-      }, ...withExtra];
+      // Serveurs : pas de colonne marque (logo) — focus specs runtime
+      if (type === "Servers") return withExtra;
+      const brandCol = { label: "", key: "brandIcon" };
+      // Statut d'abord, puis logo marque, puis le reste
+      const statusIdx = withExtra.findIndex(col => col.key === "activeStatus");
+      if (statusIdx >= 0) {
+        return [
+          ...withExtra.slice(0, statusIdx + 1),
+          brandCol,
+          ...withExtra.slice(statusIdx + 1)
+        ];
+      }
+      return [brandCol, ...withExtra];
     }
     return withExtra;
   };
@@ -2097,7 +2178,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         return toSortScalar(equipment?.name || equipment?.fields?.name || equipment?.data?.name);
       }
       if (colKey === "activeStatus") {
-        return readEquipmentIsActive(equipment) ? 1 : 0;
+        if (getEquipmentMaintenance(equipment)) return 1;
+        return readEquipmentIsActive(equipment) ? 2 : 0;
       }
       if (colKey === "location" || colKey === "site") {
         return getEquipmentLocationSortValue(equipment) || toSortScalar(readCustomFieldRaw(equipment, colKey));
@@ -2142,7 +2224,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return getEquipmentLocationSortValue(equipment);
     }
     if (colKey === "activeStatus") {
-      return readEquipmentIsActive(equipment) ? 1 : 0;
+      if (getEquipmentMaintenance(equipment)) return 1;
+      return readEquipmentIsActive(equipment) ? 2 : 0;
     }
     if (colKey === "monitoring") {
       if (!isCheckMKMappableType(equipment?.type)) return 0;
@@ -3079,11 +3162,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       } else if (col.key === 'agentVersion') {
         value = getRmmAgentVersion(equipment) || "-";
       } else if (col.key === 'activeStatus') {
-        value = readEquipmentIsActive(equipment) ? "Active" : "Inactive";
-      } else if (col.key === 'memoire' && value) {
-        value = `${value} GB`;
-      } else if (col.key === 'stockage' && value) {
-        value = `${value} GB`;
+        value = getEquipmentMaintenance(equipment)
+          ? (pageCopy.maintenance?.badge || "En maintenance")
+          : readEquipmentIsActive(equipment)
+            ? (pageCopy.statusActive || "Actif")
+            : (pageCopy.statusInactive || "Inactif");
+      } else if (col.key === 'processeur' || col.key === 'memoire' || col.key === 'stockage') {
+        value = formatServerSpecCell(col.key, value);
       } else if (col.key === 'nbDisques') {
         value = formatNbDisques(equipment);
       } else if (col.key === 'nbDisquesActuels') {
@@ -3480,44 +3565,45 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     const isSidebar = variant === "sidebar";
     const typeBtn = (
-      <button
-        type="button"
-        role="tab"
-        aria-selected={isActive}
-        aria-label={isSidebar ? undefined : tabAria}
-        disabled={isDimmed}
-        className={isSidebar
-          ? `${layoutKit.finderSecItem} ${isActive ? layoutKit.finderSecItemActive : ""} ${isDimmed ? layoutKit.finderSecItemDimmed : ""}`.trim()
-          : `${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${alertLevel || mkCount > 0 ? styles.embeddedTypeIconBtnHasAlerts : ""}`}
-        onClick={() => !isDimmed && handleTypeCardClick(type)}
-      >
-        <Icon icon={getEmbeddedTypeIcon(type)} className={isSidebar ? layoutKit.finderSecItemIcon : styles.embeddedTypeIconGlyph} aria-hidden />
-        <span className={isSidebar ? layoutKit.finderSecItemLabel : styles.embeddedTypeIconLabel}>{label}</span>
-        {isSidebar ? (
-          <span className={layoutKit.finderSecMeta}>
-            {!mkStatusFilter && alertLevel ? (
-              <span className={styles.embeddedTypeSidebarAlertSlot} aria-hidden>
-                <span className={`${styles.embeddedTypeSidebarBadge} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>
-                  <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} aria-hidden />
-                </span>
+      <EmbeddedFamilyTypeButton
+        type={type}
+        iconify={getEmbeddedTypeIcon(type)}
+        label={label}
+        isActive={isActive}
+        isDimmed={isDimmed}
+        isSidebar={isSidebar}
+        hasAlerts={Boolean(alertLevel || mkCount > 0)}
+        tabAria={tabAria}
+        onSelect={handleTypeCardClick}
+        meta={
+          <>
+            {isSidebar ? (
+              <span className={layoutKit.finderSecMeta}>
+                {!mkStatusFilter && alertLevel ? (
+                  <span className={styles.embeddedTypeSidebarAlertSlot} aria-hidden>
+                    <span className={`${styles.embeddedTypeSidebarBadge} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>
+                      <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} aria-hidden />
+                    </span>
+                  </span>
+                ) : null}
+                <span className={layoutKit.finderSecCount}>{count}</span>
+              </span>
+            ) : count > 0 ? (
+              <span className={styles.embeddedTypeIconCount}>{count}</span>
+            ) : null}
+            {!isSidebar && mkStatusFilter && mkCount > 0 ? (
+              <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>
+                {mkCount > 9 ? "9+" : mkCount}
               </span>
             ) : null}
-            <span className={layoutKit.finderSecCount}>{count}</span>
-          </span>
-        ) : count > 0 ? (
-          <span className={styles.embeddedTypeIconCount}>{count}</span>
-        ) : null}
-        {!isSidebar && mkStatusFilter && mkCount > 0 ? (
-          <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>
-            {mkCount > 9 ? "9+" : mkCount}
-          </span>
-        ) : null}
-        {!isSidebar && !mkStatusFilter && alertLevel ? (
-          <span className={`${styles.embeddedTypeIconBadge} ${styles.embeddedTypeIconBadgeIcon} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`} aria-hidden>
-            <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} />
-          </span>
-        ) : null}
-      </button>
+            {!isSidebar && !mkStatusFilter && alertLevel ? (
+              <span className={`${styles.embeddedTypeIconBadge} ${styles.embeddedTypeIconBadgeIcon} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`} aria-hidden>
+                <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} />
+              </span>
+            ) : null}
+          </>
+        }
+      />
     );
     // Pas de tooltip sur la nav Familles (sidebar) — le label est déjà visible
     if (isSidebar) return <React.Fragment key={type}>{typeBtn}</React.Fragment>;
@@ -3555,34 +3641,67 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           </div>
         </>
       ) : null}
-      <div className={`${layoutKit.inputsToolbar} ${styles.embeddedSearchWrap}`}>
-        <div className={`${layoutKit.searchBox} ${layoutKit.searchBoxFluid}`}>
-          <Icon icon="mdi:magnify" className={layoutKit.searchIcon} aria-hidden />
-          <input type="text" className={layoutKit.searchInput} placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={event => setSearchQuery(event.target.value)} aria-label={pageCopy.searchPlaceholder} />
+      <div className={styles.embeddedSearchWrap}>
+        <div className={styles.embeddedSearchBox}>
+          <Icon icon="mdi:magnify" className={styles.embeddedSearchIcon} aria-hidden />
+          <input
+            type="text"
+            className={styles.embeddedSearchInput}
+            placeholder={pageCopy.searchPlaceholder}
+            value={searchQuery}
+            onChange={event => setSearchQuery(event.target.value)}
+            aria-label={pageCopy.searchPlaceholder}
+          />
           {searchQuery ? (
-            <button type="button" className={layoutKit.searchClear} onClick={() => setSearchQuery("")} aria-label={embeddedCopy.clearSearchAria}>
+            <button
+              type="button"
+              className={styles.embeddedSearchClear}
+              onClick={() => setSearchQuery("")}
+              aria-label={embeddedCopy.clearSearchAria}
+            >
               <FaTimes aria-hidden />
             </button>
           ) : null}
         </div>
-        {embeddedToolbarEnd ? <div className={layoutKit.searchActions}>{embeddedToolbarEnd}</div> : null}
+        {embeddedToolbarEnd ? <div className={styles.embeddedSearchActions}>{embeddedToolbarEnd}</div> : null}
       </div>
     </>
   );
+  const { trackRef: finderFamiliesTrackRef, indicator: finderFamiliesIndicator } = useFinderNavIndicator([
+    embeddedActiveType,
+    showAllMkFamilies,
+    visibleEmbeddedTypes.length,
+    typeNavPortalTarget
+  ]);
+  const renderEmbeddedTypeSidebarNav = () => (
+    <nav
+      ref={useEmbeddedTypePortal || useEmbeddedTypeSidebar ? finderFamiliesTrackRef : undefined}
+      className={`${layoutKit.finderSecNav} ${layoutKit.finderSecNavAnimated}`}
+      role="tablist"
+      aria-label={embeddedCopy.typeBarAria}
+    >
+      {finderFamiliesIndicator.ready ? (
+        <div
+          className={layoutKit.finderNavIndicator}
+          style={{
+            transform: `translate3d(0, ${finderFamiliesIndicator.top}px, 0)`,
+            height: finderFamiliesIndicator.height
+          }}
+          aria-hidden
+        />
+      ) : null}
+      {renderEmbeddedTypeButtons("sidebar")}
+      {showAllMkFamilies ? (
+        <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
+          {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
+            count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
+          })}
+        </span>
+      ) : null}
+    </nav>
+  );
   const typeNavPortal = useEmbeddedTypePortal
-    ? createPortal(
-        <nav className={layoutKit.finderSecNav} role="tablist" aria-label={embeddedCopy.typeBarAria}>
-          {renderEmbeddedTypeButtons("sidebar")}
-          {showAllMkFamilies ? (
-            <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
-              {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
-                count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
-              })}
-            </span>
-          ) : null}
-        </nav>,
-        typeNavPortalTarget
-      )
+    ? createPortal(renderEmbeddedTypeSidebarNav(), typeNavPortalTarget)
     : null;
 
   return <>
@@ -3591,18 +3710,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       <div className={styles.mainContent}>
         <>
         {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={embedded ? undefined : scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ""} ${embedded ? styles.tablesContainerEmbedded : ""} ${useEmbeddedTypeSidebar ? styles.tablesContainerEmbeddedSidebar : ""}`}>
-            {useEmbeddedTypeSidebar ? (
-              <nav className={layoutKit.finderSecNav} role="tablist" aria-label={embeddedCopy.typeBarAria}>
-                {renderEmbeddedTypeButtons("sidebar")}
-                {showAllMkFamilies ? (
-                  <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
-                    {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
-                      count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
-                    })}
-                  </span>
-                ) : null}
-              </nav>
-            ) : null}
+            {useEmbeddedTypeSidebar ? renderEmbeddedTypeSidebarNav() : null}
             <div className={useEmbeddedTypeSidebar ? styles.embeddedSidebarMain : styles.embeddedMainPassthrough}>
             {embedded ? (
               useEmbeddedTypeExternalNav ? (
@@ -3761,7 +3869,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                           const isSorted = sortState?.key === col.key;
                           const isSortable = isColumnSortable(col.key);
                           const embeddedCellClass = getEmbeddedCellClassName(col.key, styles);
-                          return <th key={col.key} className={[isSortable ? `${styles.sortableTh} ${tableKit.tableThSortable}` : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
+                          return <th key={col.key} className={[isSortable ? `${styles.sortableTh} ${tableKit.tableThSortable}` : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-label={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
                                 <span className={`${styles.thContent} ${tableKit.tableThContent}`}>
                                   {col.label}
                                   {isSortable && isSorted ? (
@@ -3798,7 +3906,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             const value = equipment[col.key];
                             if (col.key === "brandIcon") {
                               return <td key={col.key} className={styles.embeddedColBrand}>
-                                      <EquipmentBrandIcon equipment={equipment} equipmentType={type} className={`${styles.typeIconSmall} ${styles.typeBrandIconSmall}`} />
+                                      <span className={styles.embeddedBrandSlot}>
+                                        <EquipmentBrandIcon equipment={equipment} equipmentType={type} className={`${styles.typeIconSmall} ${styles.typeBrandIconSmall}`} />
+                                      </span>
                                     </td>;
                             }
                             if (col.key === 'uptime') {
@@ -3855,7 +3965,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (embedded) {
                                 return <td key={col.key} className={styles.embeddedColName}>
                                         <div className={styles.nameCell}>
-                                          {renderMaintenanceCone(equipment)}
                                           <span className={equipment.type === "Firewalls" || equipment.type === "Servers" || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined}>
                                             {formatValue(value)}
                                           </span>
@@ -3866,7 +3975,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (equipment.type === 'Firewalls') {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
-                                          {renderMaintenanceCone(equipment)}
                                           {renderFirewallBrandIcon(equipment)}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                           {renderAlertSuspendedBadge(equipment)}
@@ -3876,7 +3984,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (equipment.type === 'Routeur') {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
-                                          {renderMaintenanceCone(equipment)}
                                           {renderRouterBrandIcon(equipment)}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                           {renderAlertSuspendedBadge(equipment)}
@@ -3886,7 +3993,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               if (equipment.type === 'Servers') {
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
-                                          {renderMaintenanceCone(equipment)}
                                           {renderServerNameIcon(equipment)}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                           {renderAlertSuspendedBadge(equipment)}
@@ -3898,7 +4004,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                 const iconName = getStorageIcon(equipment);
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
-                                          {renderMaintenanceCone(equipment)}
                                           <Icon icon={iconName} className={styles.typeIconSmall} width={16} height={16} />
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                         </div>
@@ -3908,7 +4013,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                 const connectionIcon = getInternetConnectionIcon(equipment);
                                 return <td key={col.key}>
                                         <div className={styles.nameCell}>
-                                          {renderMaintenanceCone(equipment)}
                                           {connectionIcon}
                                           <span className={styles.internetCellBold}>{formatValue(value)}</span>
                                         </div>
@@ -3916,7 +4020,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               }
                               return <td key={col.key}>
                                       <div className={styles.nameCell}>
-                                        {renderMaintenanceCone(equipment)}
                                         <DisplayIcon className={styles.typeIconSmall} />
                                         <span className={equipment.type === 'Firewalls' || equipment.type === 'Servers' || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : undefined}>{formatValue(value)}</span>
                                         {renderAlertSuspendedBadge(equipment)}
@@ -4001,13 +4104,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (col.key === 'role') {
                               return <td key={col.key} className={embedded ? styles.embeddedColRole : undefined}>{formatRoles(equipment.role || value) || '-'}</td>;
                             } else if (col.key === 'processeur' || col.key === 'memoire' || col.key === 'stockage') {
-                              let displayValue = formatValue(value);
-                              if (col.key === 'memoire' && value) {
-                                displayValue = `${value} GB`;
-                              } else if (col.key === 'stockage' && value) {
-                                displayValue = `${value} GB`;
-                              }
-                              return <td key={col.key}>{displayValue}</td>;
+                              const rawSpec = equipment[col.key] ?? equipment.rawData?.[col.key] ?? value;
+                              return <td key={col.key} className={embedded ? styles.embeddedColMetric : undefined} title={rawSpec ? String(rawSpec) : undefined}>
+                                      {formatServerSpecCell(col.key, rawSpec)}
+                                    </td>;
                             } else if (col.key === 'ip') {
                               return <td key={col.key} className={[styles.monospace, embedded ? styles.embeddedColIp : undefined].filter(Boolean).join(" ") || undefined}>{formatIpDisplay(equipment, value)}</td>;
                             } else if (col.key === 'mac' || col.key === 'serial') {
@@ -4113,7 +4213,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                       }}>
                               <div className={styles.cardHeader}>
                                 {iconElement}
-                                {renderMaintenanceCone(equipment)}
                                 <h3 className={`${styles.cardTitle} ${equipment.type === 'Firewalls' || equipment.type === 'Servers' || equipment.type === 'NAS' || equipment.type === 'Storage' || NETWORK_EDGE_TYPES.has(equipment.type) ? styles.internetCellBold : ''}`}>{formatValue(equipment.name)}</h3>
                                 {renderMonitoringStatus(equipment, {
                             compact: true
@@ -4151,12 +4250,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (col.key === 'fournisseur' && equipment.type === 'Internet') {
                               displayValue = formatValue(value);
                             } else if (col.key === 'processeur' || col.key === 'memoire' || col.key === 'stockage') {
-                              displayValue = formatValue(value);
-                              if (col.key === 'memoire' && value) {
-                                displayValue = `${value} GB`;
-                              } else if (col.key === 'stockage' && value) {
-                                displayValue = `${value} GB`;
-                              }
+                              displayValue = formatServerSpecCell(col.key, equipment[col.key] ?? equipment.rawData?.[col.key] ?? value);
                             } else if (col.key === 'firmware') {
                               displayValue = formatValue(equipment.firmware || equipment.version || value);
                             } else if (col.key === 'vlan') {
@@ -4281,8 +4375,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   >
                     <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
                       <colgroup>
-                        <col className={styles.embeddedColName} />
                         <col className={styles.embeddedColDot} />
+                        <col className={styles.embeddedColBrand} />
+                        <col className={styles.embeddedColName} />
                         {fields.map(field => (
                           <col key={field.fieldKey} className={styles.embeddedColFlex} />
                         ))}
@@ -4290,22 +4385,38 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                       </colgroup>
                       <thead>
                         <tr>
+                          {renderCustomSortableTh("activeStatus", pageCopy.columns?.activeStatus || "Statut", styles.embeddedColDot)}
+                          <th className={styles.embeddedColBrand} aria-label={pageCopy.columns?.icon || "Icône"} />
                           {renderCustomSortableTh("name", pageCopy.columns?.name || "Nom", styles.embeddedColName)}
-                          {renderCustomSortableTh("activeStatus", pageCopy.columns?.activeStatus || "Actif", styles.embeddedColDot)}
                           {fields.map(field => renderCustomSortableTh(field.fieldKey, field.label, styles.embeddedColFlex))}
                           {renderCustomSortableTh("mapping", pageCopy.actionsColumn, styles.embeddedColActions)}
                         </tr>
                       </thead>
                       <tbody>
                         {mappedItems.length === 0 ? <tr>
-                            <td colSpan={fields.length + 3} className={styles.equipmentEmptyCell}>
+                            <td colSpan={fields.length + 4} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
                           </tr> : pagedList.map(item => <tr key={item.id} className={`${styles.equipmentRowEmbedded} ${tableKit.tableRowClickable}`} onClick={() => handleEquipmentOpen(item)} style={{
                       cursor: "pointer"
                     }}>
-                              <td className={styles.embeddedColName}>{item.name || "-"}</td>
                               <td className={styles.embeddedColDot}>{renderActiveStatusIcon(item)}</td>
+                              <td className={styles.embeddedColBrand}>
+                                <span className={styles.embeddedBrandSlot}>
+                                  <Icon
+                                    icon={family.icon || getEmbeddedTypeIcon(sectionKey) || "mdi:devices"}
+                                    className={`${styles.typeIconSmall} ${styles.typeBrandIconSmall}`}
+                                    width={16}
+                                    height={16}
+                                    aria-hidden
+                                  />
+                                </span>
+                              </td>
+                              <td className={styles.embeddedColName}>
+                                <div className={styles.nameCell}>
+                                  <span className={styles.internetCellBold}>{item.name || "-"}</span>
+                                </div>
+                              </td>
                               {fields.map(field => <td key={field.fieldKey} className={styles.embeddedColFlex}>
                                   {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey] ?? readCustomFieldRaw(item, field.fieldKey), pageCopy)}
                                 </td>)}

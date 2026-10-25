@@ -6,6 +6,9 @@ import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { Page, Card, Field, Textarea, Btn, Switch, FormGrid, Select, NumberStepper } from "./AdminUi";
 import ui from "./AdminUi.module.css";
 import s from "./AdminMaintenance.module.css";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const COLOR_KEYS = [{
   key: "blue",
@@ -37,7 +40,9 @@ function normalizeSpeed(value) {
 }
 
 export default function AdminMaintenance() {
+  const locale = useAppLocale();
   const copy = useAdminPageCopy("maintenance");
+  const heroCopy = getAdminPanelCopy(locale).items.maintenance;
   const adminCopy = useAdminCommonCopy();
   const commonCopy = useCommonCopy();
   const previewBannerRef = useRef(null);
@@ -131,6 +136,7 @@ export default function AdminMaintenance() {
   const safeSpeed = normalizeSpeed(speed);
 
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:bullhorn-outline" />
       <Card fill>
         <div className={ui.toolRow}>
           <div className={ui.toolLeft}>

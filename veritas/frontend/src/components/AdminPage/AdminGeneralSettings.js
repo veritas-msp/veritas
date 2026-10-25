@@ -12,8 +12,10 @@ import { requestOnboardingRelaunch } from "../Onboarding/onboardingStorage";
 import { getAdminGeneralSettingsCopy } from "./adminGeneralSettingsI18n";
 import AdminGeneralSettingsEmail from "./AdminGeneralSettingsEmail";
 import AdminGeneralSettingsDatabase from "./AdminGeneralSettingsDatabase";
-import { Page, Card, Field, Input, Select, Btn, FormGrid, ChoiceGroup, SubTabs } from "./AdminUi";
+import { Page, Field, Input, Select, Btn, FormGrid, ChoiceGroup, SubTabs } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
+import { UiKitPageHero, UiKitPanel } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 import s from "./AdminGeneralSettingsPlatform.module.css";
 const EMPTY = {
   app_default_locale: "fr",
@@ -83,6 +85,8 @@ export default function AdminGeneralSettings() {
         <p className={adminUi.adminMutedText}>{copy.loading}</p>
       </Page>;
   }
+  const heroCopy = getAdminPanelCopy(locale).items.general;
+  const hero = <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:cog-outline" />;
   const subTabs = [{
     key: "general",
     label: copy.tabs.general,
@@ -98,21 +102,24 @@ export default function AdminGeneralSettings() {
   }];
   if (activeTab === "email") {
     return <Page>
+        {hero}
         <SubTabs items={subTabs} active={activeTab} onChange={setActiveTab} fullWidth />
         <AdminGeneralSettingsEmail />
       </Page>;
   }
   if (activeTab === "database") {
     return <Page>
+        {hero}
         <SubTabs items={subTabs} active={activeTab} onChange={setActiveTab} fullWidth />
         <AdminGeneralSettingsDatabase />
       </Page>;
   }
   return <Page>
+      {hero}
       <SubTabs items={subTabs} active={activeTab} onChange={setActiveTab} fullWidth />
 
       <FormGrid cols={2} className={s.cardRow}>
-        <Card title={copy.localeRegion.title} description={copy.localeRegion.description}>
+        <UiKitPanel title={copy.localeRegion.title} description={copy.localeRegion.description}>
           <FormGrid cols={1}>
             <Field label={copy.localeRegion.localeLabel} hint={copy.localeRegion.localeHint}>
               <ChoiceGroup variant="locale" ariaLabel={copy.localeRegion.localeAria} value={form.app_default_locale} onChange={value => setField("app_default_locale", value)} options={APP_LOCALES.map(({
@@ -145,9 +152,9 @@ export default function AdminGeneralSettings() {
               <ChoiceGroup variant="pills" ariaLabel={copy.localeRegion.dateFormatAria} value={form.app_date_format} onChange={value => setField("app_date_format", value)} options={dateFormatChoices} />
             </Field>
           </FormGrid>
-        </Card>
+        </UiKitPanel>
 
-        <Card title={copy.appearance.title} description={copy.appearance.description}>
+        <UiKitPanel title={copy.appearance.title} description={copy.appearance.description}>
           <FormGrid cols={1}>
             <Field label={copy.appearance.themeLabel}>
               <ChoiceGroup variant="theme" ariaLabel={copy.appearance.themeAria} value={form.app_default_theme} onChange={value => setField("app_default_theme", value)} options={themeChoices} />
@@ -163,10 +170,10 @@ export default function AdminGeneralSettings() {
             }))} />
             </Field>
           </FormGrid>
-        </Card>
+        </UiKitPanel>
       </FormGrid>
 
-      <Card title={copy.organization.title} description={copy.organization.description}>
+      <UiKitPanel title={copy.organization.title} description={copy.organization.description}>
         <FormGrid cols={2}>
           <Field label={copy.organization.nameLabel}>
             <Input value={form.app_organization_name} onChange={e => setField("app_organization_name", e.target.value)} placeholder="Veritas" maxLength={120} />
@@ -200,9 +207,9 @@ export default function AdminGeneralSettings() {
             <Input type="url" value={form.app_organization_website} onChange={e => setField("app_organization_website", e.target.value)} placeholder="https://www.votre-msp.fr" maxLength={200} />
           </Field>
         </FormGrid>
-      </Card>
+      </UiKitPanel>
 
-      <Card title={copy.onboarding.title} description={copy.onboarding.description}>
+      <UiKitPanel title={copy.onboarding.title} description={copy.onboarding.description}>
         <p className={adminUi.adminMutedText} style={{
         margin: "0 0 16px"
       }}>
@@ -211,7 +218,7 @@ export default function AdminGeneralSettings() {
         <Btn variant="secondary" icon="mdi:book-open-page-variant-outline" onClick={relaunchOnboarding}>
           {copy.onboarding.relaunch}
         </Btn>
-      </Card>
+      </UiKitPanel>
 
       <div className={s.footerBar}>
         <Btn icon="mdi:content-save-outline" onClick={save} disabled={saving}>

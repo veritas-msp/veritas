@@ -9,6 +9,8 @@ import ProfilePermissionsEditor from "./ProfilePermissionsEditor";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { Btn, Card, Page } from "./AdminUi";
 import s from "./AdminPermissions.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 export default function AdminPermissions() {
   const locale = useAppLocale();
@@ -60,7 +62,9 @@ export default function AdminPermissions() {
     }
   };
 
+  const heroCopy = getAdminPanelCopy(locale).items.permissions;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:shield-key-outline" />
       <div className={s.pageFill} data-page-fill>
         <Card title={copy.pageTitle} description={isCommunity ? copy.pageDescriptionCommunity : copy.pageDescription} fill fillNoScroll action={!permissionsLocked && matrixReady ? <Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving || !dirty || !permissionsDraft}>
                 {saving ? copy.saving : adminCopy.save || copy.save}

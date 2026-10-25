@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getClientOffice365Credentials, unwrapOffice365CredentialsList } from "../../api/clientOffice365";
 import { formatMicrosoftTenantSummary, normalizeMicrosoftTenantCredentials } from "../EnterprisesPage/microsoftTenantSolutionUtils";
+import { UiKitButton, UiKitModalNavSectionButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import localStyles from "./CampaignFormModal.module.css";
 function getClientLabel(client) {
@@ -50,6 +50,11 @@ export default function CampaignFormModal({
   const commonCopy = useCommonCopy();
   const isEditing = Boolean(editingCampaign?.id);
   const [activeSection, setActiveSection] = useState("general");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
+  useEffect(() => {
+    if (!open) return;
+    setActiveSection("general");
+  }, [open]);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
   const [msCredentials, setMsCredentials] = useState(null);
@@ -62,17 +67,12 @@ export default function CampaignFormModal({
     id: "general",
     label: modalCopy.sections?.general?.navLabel || modalCopy.sectionTitle,
     description: modalCopy.sections?.general?.navHint || "",
-    icon: "mdi:shield-lock-outline"
+    icon: "mdi:text-box-outline"
   }, {
     id: "dates",
     label: modalCopy.sections?.dates?.navLabel || modalCopy.startDate,
     description: modalCopy.sections?.dates?.navHint || "",
     icon: "mdi:calendar-range"
-  }, {
-    id: "details",
-    label: modalCopy.sections?.details?.navLabel || modalCopy.specificity,
-    description: modalCopy.sections?.details?.navHint || "",
-    icon: "mdi:text-box-outline"
   }], [modalCopy]);
   const selectedClient = useMemo(() => {
     if (!formData?.client_id) return null;
@@ -236,18 +236,15 @@ export default function CampaignFormModal({
   const sectionMeta = useMemo(() => {
     const generalDone = Boolean(formData?.client_id && String(formData?.name || "").trim() && formData?.type && (isEditing || microsoftReady));
     const datesDone = Boolean(formData?.start_date || formData?.end_date);
-    const detailsDone = Boolean(String(formData?.description || "").trim());
     return {
       general: generalDone,
-      dates: datesDone,
-      details: detailsDone
+      dates: datesDone
     };
   }, [formData, isEditing, microsoftReady]);
   const formValid = Boolean(formData?.client_id && String(formData?.name || "").trim() && formData?.type && (isEditing || microsoftReady));
   if (!open) return null;
   const modalTitle = isEditing ? modalCopy.editTitle : modalCopy.createTitle;
   const modalSubtitle = isEditing ? modalCopy.editSubtitle : modalCopy.createSubtitle;
-  const typeLabel = getCampaignTypeLabel ? getCampaignTypeLabel(formData?.type || "microsoft_security") : formData?.type;
   const handleSubmit = e => {
     e?.preventDefault?.();
     if (!formValid) {
@@ -265,6 +262,255 @@ export default function CampaignFormModal({
     shortTenantId: `${String(formData.tenant_id).slice(0, 8)}…${String(formData.tenant_id).slice(-4)}`,
     providerName: "Microsoft Entra ID"
   } : null);
+  const renderSectionHead = sectionId => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return null;
+    const title =
+      sectionId === "general"
+        ? modalCopy.sections?.general?.title || modalCopy.sectionTitle
+        : modalCopy.sections?.dates?.title || modalCopy.startDate;
+    const desc =
+      sectionId === "general"
+        ? modalCopy.sections?.general?.desc || modalCopy.sectionDesc
+        : modalCopy.sections?.dates?.desc || "";
+    return (
+      <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
+        <h3 className={styles.sectionTitle}>{title}</h3>
+        <p className={styles.sectionDesc}>{desc}</p>
+      </div>
+    );
+  };
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case "dates":
+        return (
+          <div className={styles.sectionFill}>
+            {renderSectionHead("dates")}
+            <div className={styles.sectionScroll}>
+              <div className={styles.fieldGrid2}>
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="campaign-form-start">
+                    {modalCopy.startDate}
+                  </label>
+                  <input
+                    id="campaign-form-start"
+                    type="date"
+                    className={styles.input}
+                    value={formData.start_date || ""}
+                    onChange={e => patchForm({ start_date: e.target.value })}
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="campaign-form-end">
+                    {modalCopy.endDate}
+                  </label>
+                  <input
+                    id="campaign-form-end"
+                    type="date"
+                    className={styles.input}
+                    value={formData.end_date || ""}
+                    onChange={e => patchForm({ end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case "general":
+      default:
+        return (
+          <div className={styles.sectionFill}>
+            {renderSectionHead("general")}
+            <div className={styles.sectionScroll}>
+              <div className={styles.fieldStack}>
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="campaign-form-enterprise">
+                    {stripRequiredMark(modalCopy.enterprise)}
+                  </label>
+                  {lockClient ? (
+                    <input id="campaign-form-enterprise" type="text" className={styles.input} value={lockedClientLabel} readOnly disabled required />
+                  ) : (
+                    <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
+                      <input
+                        id="campaign-form-enterprise"
+                        type="text"
+                        className={styles.input}
+                        placeholder={modalCopy.enterpriseSearch}
+                        value={enterpriseSearch}
+                        onChange={e => {
+                          setEnterpriseSearch(e.target.value);
+                          patchForm({
+                            client_id: "",
+                            azure_credential_id: "",
+                            tenant_id: ""
+                          });
+                          setEnterpriseDropdownOpen(true);
+                        }}
+                        onFocus={() => setEnterpriseDropdownOpen(true)}
+                        autoComplete="off"
+                        required
+                      />
+                      {enterpriseDropdownOpen ? (
+                        <div className={styles.dropdown}>
+                          {filteredClients.length === 0 ? (
+                            <div className={styles.dropdownEmpty}>{modalCopy.noEnterprise}</div>
+                          ) : (
+                            filteredClients.map(client => (
+                              <button
+                                key={client.id}
+                                type="button"
+                                className={`${styles.dropdownOption} ${String(formData.client_id) === String(client.id) ? styles.dropdownOptionSelected : ""}`}
+                                onClick={() => selectClient(client)}
+                              >
+                                {getClientLabel(client)}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <span className={`${styles.label} ${styles.labelRequired}`}>
+                    {stripRequiredMark(modalCopy.provider || modalCopy.type || "Type")}
+                  </span>
+                  <div className={localStyles.providerList} role="listbox" aria-label={modalCopy.provider || modalCopy.type}>
+                    {CAMPAIGN_PROVIDERS.map(provider => {
+                      const isSelected = selectedProvider === provider.id;
+                      const isComingSoon = provider.status === "comingSoon";
+                      return (
+                        <button
+                          key={provider.id}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          className={`${localStyles.providerCard} ${isSelected ? localStyles.providerCardSelected : ""} ${isComingSoon || isEditing ? localStyles.providerCardDisabled : ""}`}
+                          onClick={() => handleSelectProvider(provider)}
+                          disabled={isComingSoon || isEditing}
+                          title={isComingSoon ? modalCopy.providerComingSoon : modalCopy[provider.labelKey] || provider.id}
+                        >
+                          <span className={localStyles.providerCardIcon} aria-hidden>
+                            <Icon icon={provider.icon} />
+                          </span>
+                          <span className={localStyles.providerCardLabel}>
+                            {modalCopy[provider.labelKey] || provider.id}
+                          </span>
+                          {isComingSoon ? (
+                            <span className={localStyles.providerBadgeSoon}>
+                              {modalCopy.badgeSoon || "Soon"}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {formData?.client_id && selectedProvider === "microsoft" ? (
+                  <div className={`${styles.field} ${styles.fieldFull}`}>
+                    <span className={`${styles.label} ${styles.labelRequired}`}>
+                      {stripRequiredMark(modalCopy.tenant || "Tenant *")}
+                    </span>
+                    {msCredentialsLoading ? (
+                      <p className={localStyles.tenantHint}>{modalCopy.tenantLoading}</p>
+                    ) : hasMicrosoftTenant && displayTenantSummary ? (
+                      <button
+                        type="button"
+                        className={`${localStyles.tenantCard} ${microsoftReady || isEditing ? localStyles.tenantCardSelected : ""}`}
+                        onClick={selectMicrosoftTenant}
+                        disabled={isEditing}
+                      >
+                        <span className={localStyles.tenantCardIcon} aria-hidden>
+                          <Icon icon="mdi:microsoft-azure" />
+                        </span>
+                        <span className={localStyles.tenantCardMain}>
+                          <p className={localStyles.tenantCardTitle}>{displayTenantSummary.label}</p>
+                          <p className={localStyles.tenantCardMeta}>
+                            {displayTenantSummary.providerName} · {displayTenantSummary.tenantId}
+                          </p>
+                        </span>
+                      </button>
+                    ) : (
+                      <p className={localStyles.tenantWarning}>
+                        {modalCopy.needMicrosoftTenant}
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="campaign-form-name">
+                    {stripRequiredMark(modalCopy.name)}
+                  </label>
+                  <input
+                    id="campaign-form-name"
+                    type="text"
+                    className={styles.input}
+                    value={formData.name || ""}
+                    onChange={e => patchForm({ name: e.target.value })}
+                    placeholder={modalCopy.namePlaceholder}
+                    required
+                  />
+                </div>
+
+                {isEditing && statusOptions?.length ? (
+                  <div className={styles.fieldGrid2}>
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor="campaign-form-status">
+                        {modalCopy.status}
+                      </label>
+                      <select
+                        id="campaign-form-status"
+                        className={styles.input}
+                        value={formData.status || ""}
+                        onChange={e => patchForm({ status: e.target.value })}
+                      >
+                        {statusOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={styles.field}>
+                      <label className={styles.label} htmlFor="campaign-form-goal">
+                        {modalCopy.adoptionGoal}
+                      </label>
+                      <input
+                        id="campaign-form-goal"
+                        type="number"
+                        min="0"
+                        max="100"
+                        className={styles.input}
+                        value={formData.objectif_adoption ?? ""}
+                        onChange={e => patchForm({ objectif_adoption: e.target.value })}
+                        placeholder={modalCopy.adoptionGoalPlaceholder}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className={`${styles.field} ${styles.fieldFull}`}>
+                  <label className={styles.label} htmlFor="campaign-form-description">
+                    {modalCopy.specificity}
+                  </label>
+                  <textarea
+                    id="campaign-form-description"
+                    className={`${styles.input} ${localStyles.textarea}`}
+                    rows={5}
+                    value={formData.description || ""}
+                    onChange={e => patchForm({ description: e.target.value })}
+                    placeholder={modalCopy.specificityPlaceholder}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
   return createPortal(<div className={styles.overlay} onClick={saving ? undefined : onClose} role="presentation">
       <div className={styles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="campaign-form-modal-title">
         <div className={styles.accentBar} aria-hidden />
@@ -281,223 +527,98 @@ export default function CampaignFormModal({
               <p className={styles.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} disabled={saving} aria-label={modalCopy.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={styles.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={modalCopy.close}
+            icon="mdi:close"
+          />
         </header>
 
         <form className={localStyles.form} onSubmit={handleSubmit}>
           <div className={styles.body}>
-            <nav className={styles.nav} aria-label={modalCopy.sectionsNavAria}>
-              {sections.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                  <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
-                  <span className={styles.navItemText}>
-                    <span className={styles.navItemLabel}>{section.label}</span>
-                    {section.description ? <span className={styles.navItemHint}>{section.description}</span> : null}
-                  </span>
-                  {sectionMeta[section.id] ? <span className={styles.navBadge}>✓</span> : null}
-                </button>)}
-            </nav>
+            <aside className={`${kit.finderSidebar} ${styles.modalNav}`} aria-label={modalCopy.sectionsNavAria}>
+              <nav
+                ref={navTrackRef}
+                className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack}`}
+              >
+                {navIndicator.ready ? (
+                  <div
+                    className={kit.finderNavIndicator}
+                    style={{
+                      transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                      height: navIndicator.height
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+                {sections.map(section => (
+                  <UiKitModalNavSectionButton
+                    key={section.id}
+                    section={section}
+                    active={activeSection === section.id}
+                    badge={sectionMeta[section.id] ? "✓" : null}
+                    onSelect={() => setActiveSection(section.id)}
+                    finderItemClass={kit.finderItem}
+                    finderItemActiveClass={kit.finderItemActive}
+                    finderItemIconClass={kit.finderItemIcon}
+                    finderItemLabelClass={kit.finderItemLabel}
+                    navBadgeClass={styles.navBadge}
+                    navBadgeSlotClass={styles.navBadgeSlot}
+                  />
+                ))}
+              </nav>
+            </aside>
 
             <div className={styles.content}>
-              {activeSection === "general" ? <>
-                  <div className={styles.sectionHead}>
-                    <h3 className={styles.sectionTitle}>
-                      {modalCopy.sections?.general?.title || modalCopy.sectionTitle}
-                    </h3>
-                    <p className={styles.sectionDesc}>
-                      {modalCopy.sections?.general?.desc || modalCopy.sectionDesc}
-                    </p>
-                  </div>
-
-                  <div className={styles.fieldStack}>
-                    <div className={`${styles.field} ${styles.fieldFull}`}>
-                      <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="campaign-form-enterprise">
-                        {stripRequiredMark(modalCopy.enterprise)}
-                      </label>
-                      {lockClient ? <input id="campaign-form-enterprise" type="text" className={styles.input} value={lockedClientLabel} readOnly disabled required /> : <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
-                          <input id="campaign-form-enterprise" type="text" className={styles.input} placeholder={modalCopy.enterpriseSearch} value={enterpriseSearch} onChange={e => {
-                      setEnterpriseSearch(e.target.value);
-                      patchForm({
-                        client_id: "",
-                        azure_credential_id: "",
-                        tenant_id: ""
-                      });
-                      setEnterpriseDropdownOpen(true);
-                    }} onFocus={() => setEnterpriseDropdownOpen(true)} autoComplete="off" required />
-                          {enterpriseDropdownOpen ? <div className={styles.dropdown}>
-                              {filteredClients.length === 0 ? <div className={styles.dropdownEmpty}>{modalCopy.noEnterprise}</div> : filteredClients.map(client => <button key={client.id} type="button" className={`${styles.dropdownOption} ${String(formData.client_id) === String(client.id) ? styles.dropdownOptionSelected : ""}`} onClick={() => selectClient(client)}>
-                                    {getClientLabel(client)}
-                                  </button>)}
-                            </div> : null}
-                        </div>}
-                    </div>
-
-                    <div className={`${styles.field} ${styles.fieldFull}`}>
-                      <span className={`${styles.label} ${styles.labelRequired}`}>
-                        {stripRequiredMark(modalCopy.provider || "Provider *")}
-                      </span>
-                      <div className={localStyles.providerList} role="listbox" aria-label={modalCopy.provider}>
-                        {CAMPAIGN_PROVIDERS.map(provider => {
-                      const isSelected = selectedProvider === provider.id;
-                      const isComingSoon = provider.status === "comingSoon";
-                      return <button key={provider.id} type="button" role="option" aria-selected={isSelected} className={`${localStyles.providerCard} ${isSelected ? localStyles.providerCardSelected : ""} ${isComingSoon || isEditing ? localStyles.providerCardDisabled : ""}`} onClick={() => handleSelectProvider(provider)} disabled={isComingSoon || isEditing} title={isComingSoon ? modalCopy.providerComingSoon : modalCopy[provider.labelKey] || provider.id}>
-                              <span className={localStyles.providerCardIcon} aria-hidden>
-                                <Icon icon={provider.icon} />
-                              </span>
-                              <span className={localStyles.providerCardLabel}>
-                                {modalCopy[provider.labelKey] || provider.id}
-                              </span>
-                              {isComingSoon ? <span className={localStyles.providerBadgeSoon}>
-                                  {modalCopy.badgeSoon || "Soon"}
-                                </span> : null}
-                            </button>;
-                    })}
-                      </div>
-                    </div>
-
-                    {formData?.client_id && selectedProvider === "microsoft" ? <div className={`${styles.field} ${styles.fieldFull}`}>
-                        <span className={`${styles.label} ${styles.labelRequired}`}>
-                          {stripRequiredMark(modalCopy.tenant || "Tenant *")}
-                        </span>
-                        {msCredentialsLoading ? <p className={localStyles.tenantHint}>{modalCopy.tenantLoading}</p> : hasMicrosoftTenant && displayTenantSummary ? <button type="button" className={`${localStyles.tenantCard} ${microsoftReady || isEditing ? localStyles.tenantCardSelected : ""}`} onClick={selectMicrosoftTenant} disabled={isEditing}>
-                            <span className={localStyles.tenantCardIcon} aria-hidden>
-                              <Icon icon="mdi:microsoft-azure" />
-                            </span>
-                            <span className={localStyles.tenantCardMain}>
-                              <p className={localStyles.tenantCardTitle}>{displayTenantSummary.label}</p>
-                              <p className={localStyles.tenantCardMeta}>
-                                {displayTenantSummary.providerName} · {displayTenantSummary.tenantId}
-                              </p>
-                            </span>
-                          </button> : <p className={localStyles.tenantWarning}>
-                            {modalCopy.needMicrosoftTenant}
-                          </p>}
-                      </div> : null}
-
-                    <div className={styles.fieldGrid2}>
-                      <div className={styles.field}>
-                        <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="campaign-form-name">
-                          {stripRequiredMark(modalCopy.name)}
-                        </label>
-                        <input id="campaign-form-name" type="text" className={styles.input} value={formData.name || ""} onChange={e => patchForm({
-                      name: e.target.value
-                    })} placeholder={modalCopy.namePlaceholder} required />
-                      </div>
-
-                      <div className={styles.field}>
-                        <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="campaign-form-type">
-                          {stripRequiredMark(modalCopy.type)}
-                        </label>
-                        <select id="campaign-form-type" className={styles.input} value={formData.type || "microsoft_security"} onChange={e => patchForm({
-                      type: e.target.value
-                    })} required disabled>
-                          <option value="microsoft_security">{typeLabel}</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </> : null}
-
-              {activeSection === "dates" ? <>
-                  <div className={styles.sectionHead}>
-                    <h3 className={styles.sectionTitle}>
-                      {modalCopy.sections?.dates?.title || modalCopy.startDate}
-                    </h3>
-                    <p className={styles.sectionDesc}>
-                      {modalCopy.sections?.dates?.desc || ""}
-                    </p>
-                  </div>
-                  <div className={styles.fieldGrid2}>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="campaign-form-start">
-                        {modalCopy.startDate}
-                      </label>
-                      <input id="campaign-form-start" type="date" className={styles.input} value={formData.start_date || ""} onChange={e => patchForm({
-                    start_date: e.target.value
-                  })} />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label} htmlFor="campaign-form-end">
-                        {modalCopy.endDate}
-                      </label>
-                      <input id="campaign-form-end" type="date" className={styles.input} value={formData.end_date || ""} onChange={e => patchForm({
-                    end_date: e.target.value
-                  })} />
-                    </div>
-                  </div>
-                </> : null}
-
-              {activeSection === "details" ? <>
-                  <div className={styles.sectionHead}>
-                    <h3 className={styles.sectionTitle}>
-                      {modalCopy.sections?.details?.title || modalCopy.specificity}
-                    </h3>
-                    <p className={styles.sectionDesc}>
-                      {modalCopy.sections?.details?.desc || ""}
-                    </p>
-                  </div>
-                  <div className={styles.fieldStack}>
-                    {isEditing && statusOptions?.length ? <div className={styles.fieldGrid2}>
-                        <div className={styles.field}>
-                          <label className={styles.label} htmlFor="campaign-form-status">
-                            {modalCopy.status}
-                          </label>
-                          <select id="campaign-form-status" className={styles.input} value={formData.status || ""} onChange={e => patchForm({
-                      status: e.target.value
-                    })}>
-                            {statusOptions.map(opt => <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </option>)}
-                          </select>
-                        </div>
-                        <div className={styles.field}>
-                          <label className={styles.label} htmlFor="campaign-form-goal">
-                            {modalCopy.adoptionGoal}
-                          </label>
-                          <input id="campaign-form-goal" type="number" min="0" max="100" className={styles.input} value={formData.objectif_adoption ?? ""} onChange={e => patchForm({
-                      objectif_adoption: e.target.value
-                    })} placeholder={modalCopy.adoptionGoalPlaceholder} />
-                        </div>
-                      </div> : null}
-                    <div className={`${styles.field} ${styles.fieldFull}`}>
-                      <label className={styles.label} htmlFor="campaign-form-description">
-                        {modalCopy.specificity}
-                      </label>
-                      <textarea id="campaign-form-description" className={`${styles.input} ${localStyles.textarea}`} rows={5} value={formData.description || ""} onChange={e => patchForm({
-                    description: e.target.value
-                  })} placeholder={modalCopy.specificityPlaceholder} />
-                    </div>
-                  </div>
-                </> : null}
+              <div className={kit.contentFadeUp} key={activeSection}>
+                {renderSectionContent()}
+              </div>
             </div>
           </div>
 
           <footer className={styles.footer}>
             <span className={styles.footerHint}>{modalCopy.footerHint}</span>
             <div className={styles.footerActions}>
-              {isEditing && onDeleteCampaign ? <button type="button" className={`${styles.ghostBtn} ${styles.footerDeleteBtn}`} onClick={onDeleteCampaign} disabled={saving || deleteLoading}>
-                  <Icon icon="mdi:delete-outline" aria-hidden />
+              {isEditing && onDeleteCampaign ? (
+                <UiKitButton
+                  type="button"
+                  variant="ghost"
+                  className={styles.footerDeleteBtn}
+                  onClick={onDeleteCampaign}
+                  disabled={saving || deleteLoading}
+                  icon="mdi:delete-outline"
+                >
                   {deleteLoading ? modalCopy.deleting || copy?.delete?.title || "…" : modalCopy.delete || copy?.delete?.title || "Delete"}
-                </button> : null}
-              <button type="button" className={styles.ghostBtn} onClick={onClose} disabled={saving || deleteLoading}>
+                </UiKitButton>
+              ) : null}
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving || deleteLoading}>
                 {commonCopy.cancel}
-              </button>
-              <button type="submit" className={styles.primaryBtn} disabled={saving || deleteLoading || !formValid}>
-                {saving ? <>
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={saving || deleteLoading || !formValid}
+                icon={saving ? undefined : isEditing ? "mdi:content-save-outline" : "mdi:check"}
+              >
+                {saving ? (
+                  <>
                     <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                     {commonCopy.saving}
-                  </> : isEditing ? <>
-                    <Icon icon="mdi:content-save-outline" aria-hidden />
-                    {modalCopy.saveEdit}
-                  </> : <>
-                    <Icon icon="mdi:check" aria-hidden />
-                    {modalCopy.saveCreate}
-                  </>}
-              </button>
+                  </>
+                ) : isEditing ? (
+                  modalCopy.saveEdit
+                ) : (
+                  modalCopy.saveCreate
+                )}
+              </UiKitButton>
             </div>
           </footer>
         </form>
       </div>
-    </div>, document.body);
+    </div>, document.getElementById("modal-root") || document.body);
 }

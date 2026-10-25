@@ -1,3 +1,4 @@
+import { Icon } from "@iconify/react";
 import styles from "../uiKitPrimitives.module.css";
 
 const VARIANT_CLASS = {
@@ -16,6 +17,7 @@ export default function UiKitButton({
   variant = "secondary",
   square = false,
   type = "button",
+  icon = null,
   className = "",
   children,
   ...rest
@@ -30,6 +32,7 @@ export default function UiKitButton({
       className={`${base} ${tone}${className ? ` ${className}` : ""}`}
       {...rest}
     >
+      {icon ? <Icon icon={icon} aria-hidden /> : null}
       {children}
     </button>
   );

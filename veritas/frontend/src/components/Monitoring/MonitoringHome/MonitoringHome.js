@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus } from "react-icons/fa";
+import { FaSearch, FaTimes } from "react-icons/fa";
 import { Icon as IconifyIcon } from "@iconify/react";
 import Icon from "@mdi/react";
 import { mdiWeb, mdiWallFire, mdiWifiMarker, mdiBug } from "@mdi/js";
@@ -8,6 +8,7 @@ import { FaEthernet } from "react-icons/fa";
 import { IoServerSharp } from "react-icons/io5";
 import { fetchMonitoringDocuments } from "../../../api/monitoringDocuments";
 import SharedSortIcon from "../../Misc/SortableHeader/SortIcon";
+import { UiKitCrmListToolbar } from "../../UiKit";
 import styles from "./MonitoringHome.module.css";
 import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
 export default function MonitoringPage({
@@ -377,36 +378,38 @@ export default function MonitoringPage({
 
       <div className={styles.MaynContent}>
         <div className={styles.tableHeader}>
-          <h1 className={styles.title}>
-            <IconifyIcon icon="mdi:monitor-dashboard" className={styles.titleIcon} />
-            Rapports de supervision
-          </h1>
-          <div className={styles.searchBarContainer}>
-            <div className={styles.headerSearchBox}>
-              <FaSearch className={styles.headerSearchIcon} />
-              <input type="text" placeholder="Search for a report..." value={searchTerm} onChange={e => {
-              setSearchTerm(e.target.value);
+          <UiKitCrmListToolbar
+            title="Rapports de supervision"
+            titleIcon="mdi:monitor-dashboard"
+            searchValue={searchTerm}
+            onSearchChange={value => {
+              setSearchTerm(value);
               setCurrentPage(1);
-            }} className={styles.headerSearchInput} />
-              {searchTerm && <button type="button" onClick={() => setSearchTerm("")} className={styles.headerClearButton}>
-                  <FaTimes />
-                </button>}
-            </div>
-          </div>
-          <div className={styles.tableActions}>
-            <span className={styles.resultCount}>
-              {filteredDocs.length} report{filteredDocs.length > 1 ? "s" : ""}
-            </span>
-            <button type="button" className={styles.addButton} onClick={() => {
-              if (typeof onNavigate === "function") {
-                onNavigate("Report");
-                return;
+            }}
+            onSearchClear={() => {
+              setSearchTerm("");
+              setCurrentPage(1);
+            }}
+            searchPlaceholder="Rechercher un rapport…"
+            searchAriaLabel="Rechercher un rapport"
+            clearSearchLabel="Effacer la recherche"
+            moreActionsLabel="Plus d'actions"
+            createAction={{
+              label: "Créer un rapport de supervision",
+              onClick: () => {
+                if (typeof onNavigate === "function") {
+                  onNavigate("Report");
+                  return;
+                }
+                setShowCreateModal(true);
               }
-              setShowCreateModal(true);
-            }} title="Créer un rapport de supervision">
-              <FaPlus /> <span style={{ marginLeft: 6, fontSize: "0.85rem" }}>Créer un rapport de supervision</span>
-            </button>
-          </div>
+            }}
+            extraActions={
+              <span className={styles.resultCount}>
+                {filteredDocs.length} rapport{filteredDocs.length > 1 ? "s" : ""}
+              </span>
+            }
+          />
         </div>
 
         {loading ? <div className={styles.loading}>Loading reports...</div> : recentDocs.length === 0 ? <div className={styles.emptyState}>

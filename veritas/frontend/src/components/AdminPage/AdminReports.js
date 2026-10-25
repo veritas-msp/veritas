@@ -12,6 +12,8 @@ import { createLocaleGetter } from "../../i18n/translate";
 import { resolveLoginAssetUrl } from "../../utils/loginBrandingUtils";
 import { Page, Card, Field, Input, Textarea, Btn, FormGrid, Switch, SubTabs, SegmentField } from "./AdminUi";
 import s from "./AdminReports.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const REPORT_SIZE_PRESETS = {
   report_brand_size: { sm: "0.62", md: "0.72", lg: "0.88" },
@@ -1016,9 +1018,15 @@ export default function AdminReports({ isCommunity = false }) {
     });
   };
 
+  const heroCopy = getAdminPanelCopy(locale).items.reports;
+  const hero = (
+    <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:file-document-outline" />
+  );
+
   if (isCommunity) {
     return (
       <Page>
+        {hero}
         <Card title={copy.title} description={copy.communityLocked}>
           <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--msp-muted, #5c6b82)" }}>{copy.communityHint}</p>
         </Card>
@@ -1036,6 +1044,7 @@ export default function AdminReports({ isCommunity = false }) {
 
   return (
     <Page>
+      {hero}
       <SubTabs items={tabItems} active={activeTab} onChange={setActiveTab} fullWidth action={saveBtn} />
 
       <div className={s.workspace} data-page-fill>

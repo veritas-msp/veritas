@@ -1,5 +1,6 @@
 import { createLocaleGetter, interpolate, pickLocaleMessages } from "../../i18n/translate";
-import { getEquipmentFormSections as getEquipmentFormSectionsBase, getServerFormProfile, getStorageFormProfile, normalizeFirewallType, normalizeRouteurType, normalizeServerType, normalizeStorageType, EQUIPMENT_MODULE_ICONS } from "./equipmentFormConfig";
+import { getEquipmentFormSections as getEquipmentFormSectionsBase, groupEquipmentFormSections, getServerFormProfile, getStorageFormProfile, normalizeFirewallType, normalizeRouteurType, normalizeServerType, normalizeStorageType, EQUIPMENT_MODULE_ICONS } from "./equipmentFormConfig";
+export { groupEquipmentFormSections };
 import { EQUIPMENT_FORM_FIELDS, getFormFields } from "./equipmentFormFieldsI18n";
 import { getEquipmentFormOptionsCopy } from "./equipmentFormOptionsI18n";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
@@ -71,6 +72,11 @@ const EQUIPMENT_MODALS = {
       unifiImportBanner: "Importer depuis UniFi (tenant global ou dédié)",
       unifiImportHint: "Préremplir via Site Manager ou Network API du client.",
       navAria: "Sections du formulaire",
+      navGroups: {
+        general: "Général",
+        technical: "Technique",
+        notes: "Notes"
+      },
       footerRequired: "Les champs marqués * sont obligatoires",
       footerUnsaved: "Modifications non enregistrées",
       footerNoChanges: "Aucune modification",
@@ -133,6 +139,14 @@ const EQUIPMENT_MODALS = {
       system: {
         label: "Système",
         description: "OS et ressources"
+      },
+      roles: {
+        label: "Rôles",
+        description: "Fonctions et charges de travail"
+      },
+      details: {
+        label: "Détails",
+        description: "Informations spécifiques"
       },
       storage: {
         label: "Stockage",
@@ -289,6 +303,11 @@ const EQUIPMENT_MODALS = {
       unifiImportBanner: "Import from UniFi (global or dedicated tenant)",
       unifiImportHint: "Prefill via Site Manager or the client's Network API.",
       navAria: "Form sections",
+      navGroups: {
+        general: "General",
+        technical: "Technical",
+        notes: "Notes"
+      },
       footerRequired: "Fields marked * are required",
       footerUnsaved: "Unsaved changes",
       footerNoChanges: "No changes",
@@ -351,6 +370,14 @@ const EQUIPMENT_MODALS = {
       system: {
         label: "System",
         description: "OS and resources"
+      },
+      roles: {
+        label: "Roles",
+        description: "Workloads and server functions"
+      },
+      details: {
+        label: "Details",
+        description: "Specific information"
       },
       storage: {
         label: "Storage",
@@ -505,6 +532,11 @@ const EQUIPMENT_MODALS = {
       editInternetSubtitle: "Internetverbindung · Felder pro Abschnitt aktualisieren.",
       editEquipmentSubtitle: "{module} · Felder pro Abschnitt aktualisieren.",
       navAria: "Formularabschnitte",
+      navGroups: {
+        general: "Allgemein",
+        technical: "Technik",
+        notes: "Notizen"
+      },
       footerRequired: "Mit * markierte Felder sind Pflicht",
       footerUnsaved: "Nicht gespeicherte Änderungen",
       footerNoChanges: "Keine Änderungen",
@@ -567,6 +599,14 @@ const EQUIPMENT_MODALS = {
       system: {
         label: "System",
         description: "OS und Ressourcen"
+      },
+      roles: {
+        label: "Rollen",
+        description: "Funktionen und Workloads"
+      },
+      details: {
+        label: "Details",
+        description: "Spezifische Informationen"
       },
       storage: {
         label: "Speicher",
@@ -721,6 +761,11 @@ const EQUIPMENT_MODALS = {
       editInternetSubtitle: "Connessione internet · Aggiorna per sezione.",
       editEquipmentSubtitle: "{module} · Aggiorna per sezione.",
       navAria: "Sezioni modulo",
+      navGroups: {
+        general: "Generale",
+        technical: "Tecnico",
+        notes: "Note"
+      },
       footerRequired: "I campi con * sono obbligatori",
       footerUnsaved: "Modifiche non salvate",
       footerNoChanges: "Nessuna modifica",
@@ -783,6 +828,14 @@ const EQUIPMENT_MODALS = {
       system: {
         label: "Sistema",
         description: "OS e risorse"
+      },
+      roles: {
+        label: "Ruoli",
+        description: "Funzioni e carichi di lavoro"
+      },
+      details: {
+        label: "Dettagli",
+        description: "Informazioni specifiche"
       },
       storage: {
         label: "Storage",
@@ -937,6 +990,11 @@ const EQUIPMENT_MODALS = {
       editInternetSubtitle: "Conexión internet · Actualice por sección.",
       editEquipmentSubtitle: "{module} · Actualice por sección.",
       navAria: "Secciones del formulario",
+      navGroups: {
+        general: "General",
+        technical: "Técnico",
+        notes: "Notas"
+      },
       footerRequired: "Los campos con * son obligatorios",
       footerUnsaved: "Cambios sin guardar",
       footerNoChanges: "Sin cambios",
@@ -999,6 +1057,14 @@ const EQUIPMENT_MODALS = {
       system: {
         label: "Sistema",
         description: "SO y recursos"
+      },
+      roles: {
+        label: "Roles",
+        description: "Funciones y cargas de trabajo"
+      },
+      details: {
+        label: "Detalles",
+        description: "Información específica"
       },
       storage: {
         label: "Almacenamiento",

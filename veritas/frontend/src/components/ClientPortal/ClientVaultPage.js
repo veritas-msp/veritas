@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
@@ -149,42 +150,61 @@ export default function ClientVaultPage() {
           </div> : null}
 
         <div className={tableStyles.mainColumn}>
-          {activeTab === "documents" ? <div className={`${layout.toolbar} ${tableStyles.toolbarGrow}`}>
-              <div className={`${layout.searchWrap} ${tableStyles.searchWrapFull}`}>
-                <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                <input type="text" inputMode="search" className={layout.searchInput} placeholder={t.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} aria-label={t.searchAria} />
-                {search ? <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={copy.ticket.list.clearSearchAria}>
-                    <FaTimes />
-                  </button> : null}
-              </div>
-              <select className={layout.sortSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} aria-label={t.filterAria}>
-                <option value="all">{t.allTypes}</option>
-                {(categoriesInList.length ? categoriesInList : VAULT_CATEGORIES).map(cat => <option key={cat} value={cat}>
-                    {copy.getVaultCategoryLabel(cat)}
-                  </option>)}
-              </select>
-              <span className={layout.toolbarMeta}>{countLabel}</span>
-            </div> : <div className={`${layout.toolbar} ${tableStyles.toolbarGrow}`}>
-              <span className={layout.toolbarMeta}>{countLabel}</span>
-            </div>}
+          {activeTab === "documents" ? (
+            <UiKitCrmListToolbar
+              className={tableStyles.toolbarGrow}
+              searchValue={search}
+              onSearchChange={setSearch}
+              onSearchClear={() => setSearch("")}
+              searchPlaceholder={t.searchPlaceholder}
+              searchAriaLabel={t.searchAria}
+              clearSearchLabel={copy.ticket.list.clearSearchAria}
+              searchPending={loading}
+              filters={
+                <select
+                  className={layout.sortSelect}
+                  value={categoryFilter}
+                  onChange={e => setCategoryFilter(e.target.value)}
+                  aria-label={t.filterAria}
+                >
+                  <option value="all">{t.allTypes}</option>
+                  {(categoriesInList.length ? categoriesInList : VAULT_CATEGORIES).map(cat => (
+                    <option key={cat} value={cat}>
+                      {copy.getVaultCategoryLabel(cat)}
+                    </option>
+                  ))}
+                </select>
+              }
+              extraActions={<span className={layout.toolbarMeta}>{countLabel}</span>}
+            />
+          ) : (
+            <UiKitCrmListToolbar
+              className={tableStyles.toolbarGrow}
+              extraActions={<span className={layout.toolbarMeta}>{countLabel}</span>}
+            />
+          )}
 
           {loading ? <div className={layout.stateBox}>
               <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
               <span>{t.loading}</span>
-            </div> : activeTab === "documents" ? files.length === 0 ? <div className={layout.emptyState}>
-                <Icon icon="mdi:file-document-outline" className={layout.emptyStateIcon} aria-hidden />
-                <p className={layout.emptyStateTitle}>{t.emptyDocumentsTitle}</p>
-                <p className={layout.emptyStateHint}>{t.emptyDocumentsHint}</p>
+            </div> : activeTab === "documents" ? files.length === 0 ? <div className={layout.emptyStateInCard}>
+                <UiKitEmptyState
+                  bare
+                  icon="mdi:file-document-outline"
+                  title={t.emptyDocumentsTitle}
+                  text={t.emptyDocumentsHint}
+                />
               </div> : <div className={tableStyles.tablePanel}>
-                <div className={`${pageStyles.panelContent} ${pageStyles.panelContentGrid}`}>
+                <UiKitScrollFadeShell
+                  className={`${pageStyles.panelContent} ${pageStyles.panelContentGrid}`}
+                  deps={[files.length, search, categoryFilter]}
+                >
                   {files.map(file => <ClientVaultFileCard key={file.id} file={file} copy={copy} onPreview={() => setPreviewFile(file)} />)}
-                </div>
-              </div> : secrets.length === 0 ? <div className={layout.emptyState}>
-              <Icon icon="mdi:key-variant" className={layout.emptyStateIcon} aria-hidden />
-              <p className={layout.emptyStateTitle}>{t.emptySecretsTitle}</p>
-              <p className={layout.emptyStateHint}>{t.emptySecretsHint}</p>
+                </UiKitScrollFadeShell>
+              </div> : secrets.length === 0 ? <div className={layout.emptyStateInCard}>
+              <UiKitEmptyState bare icon="mdi:key-variant" title={t.emptySecretsTitle} text={t.emptySecretsHint} />
             </div> : <div className={tableStyles.tablePanel}>
-              <div className={pageStyles.panelContent}>
+              <UiKitScrollFadeShell className={pageStyles.panelContent} deps={[secrets.length]}>
                 <div className={pageStyles.secretsList}>
                   {secrets.map(secret => <article key={secret.id} className={pageStyles.secretCard}>
                       <div className={pageStyles.secretCardIconWrap} aria-hidden>
@@ -217,7 +237,7 @@ export default function ClientVaultPage() {
                       </div>
                     </article>)}
                 </div>
-              </div>
+              </UiKitScrollFadeShell>
             </div>}
         </div>
       </div>

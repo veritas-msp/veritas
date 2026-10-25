@@ -27,6 +27,8 @@ import {
 import { Page, Card, Field, Select, Btn, FormGrid } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import styles from "./AdminSlaSettings.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 function cloneSettings(data) {
   return {
@@ -129,9 +131,15 @@ export default function AdminSlaSettings() {
     }
   };
 
+  const heroCopy = getAdminPanelCopy(locale).items.sla;
+  const hero = (
+    <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:timer-cog-outline" />
+  );
+
   if (loading) {
     return (
       <Page>
+        {hero}
         <p className={adminUi.adminMutedText}>{copy.loading}</p>
       </Page>
     );
@@ -139,6 +147,7 @@ export default function AdminSlaSettings() {
 
   return (
     <Page>
+      {hero}
       <Card title={copy.modeTitle} description={copy.modeDescription}>
         <FormGrid cols={2}>
           <Field label={copy.timeModeLabel}>

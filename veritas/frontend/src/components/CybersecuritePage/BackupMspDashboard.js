@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import SmartTooltip from "../SmartTooltip";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as kit } from "../UiKit";
 import { isBackupJobMapped } from "./backupJobStatusUtils";
 import { bulkRemoveBackupInstances, bulkSyncBackupJobs, isBackupJobSyncable } from "./backupBulkUtils";
 import CyberBulkBar from "./CyberBulkBar";
@@ -300,44 +301,49 @@ export default function BackupMspDashboard({
         <div className={layout.listBody}>
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
-              <div className={layout.tableSearchBar}>
-                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={searchPlaceholder} />
-                  {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
-                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
-                        <FaTimes />
+              <UiKitCrmListToolbar
+                searchValue={search}
+                onSearchChange={setSearch}
+                onSearchClear={() => setSearch("")}
+                searchPlaceholder={searchPlaceholder}
+                searchAriaLabel={searchPlaceholder}
+                clearSearchLabel={msp.clearSearch || "Effacer"}
+                extraActions={
+                  <>
+                    <span className={styles.toolbarMeta} title={lastSyncLabel}>
+                      {lastSyncLabel}
+                    </span>
+                    <SmartTooltip content={backup.syncJobs}>
+                      <button
+                        type="button"
+                        className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                        data-guide="cyber-sync"
+                        aria-label={backup.syncJobsAria || backup.syncJobs}
+                        onClick={handleSyncAll}
+                        disabled={syncAllDisabled}
+                      >
+                        <Icon icon={fleetSyncing ? "mdi:loading" : "mdi:sync"} className={fleetSyncing ? styles.spin : undefined} aria-hidden />
                       </button>
-                    </SmartTooltip> : null}
-                </div>
-                <span className={styles.toolbarMeta} title={lastSyncLabel}>
-                  {lastSyncLabel}
-                </span>
-                <div className={layout.toolbarActions} data-guide="cyber-sync">
-                  <SmartTooltip content={backup.syncJobs}>
-                    <button
-                      type="button"
-                      className={layout.iconBtn}
-                      aria-label={backup.syncJobsAria || backup.syncJobs}
-                      onClick={handleSyncAll}
-                      disabled={syncAllDisabled}
-                    >
-                      <Icon icon={fleetSyncing ? "mdi:loading" : "mdi:sync"} className={fleetSyncing ? styles.spin : undefined} aria-hidden />
-                    </button>
-                  </SmartTooltip>
-                </div>
-              </div>
+                    </SmartTooltip>
+                  </>
+                }
+              />
 
               {sortedRows.length === 0 ? (
                 <div className={layout.emptyStateInCard}>
-                  <Icon icon={instanceRows.length === 0 ? "mdi:backup-restore" : "mdi:magnify"} className={layout.emptyStateIcon} aria-hidden />
-                  <p className={layout.emptyStateTitle}>{emptyTitle}</p>
-                  <p className={layout.emptyStateHint}>{emptyText}</p>
+                  <UiKitEmptyState
+                    bare
+                    icon={instanceRows.length === 0 ? "mdi:backup-restore" : "mdi:magnify"}
+                    title={emptyTitle}
+                    text={emptyText}
+                  />
                 </div>
               ) : (
                 <>
-                  <div className={layout.dataTableWrap}>
-                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                  <UiKitScrollFadeShell
+                    className={`${layout.dataTableWrap} ${styles.tableScroll}`}
+                    deps={[paginatedRows.length, pageSize, search, sortBy, sortDirection]}
+                  >
                       <table className={styles.table}>
                         <thead>
                           <tr>
@@ -369,8 +375,7 @@ export default function BackupMspDashboard({
                           })}
                         </tbody>
                       </table>
-                    </div>
-                  </div>
+                  </UiKitScrollFadeShell>
                   <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                     <div className={layout.paginationLeft}>
                       <span className={layout.paginationLabel}>{msp.rowsPerPage}</span>

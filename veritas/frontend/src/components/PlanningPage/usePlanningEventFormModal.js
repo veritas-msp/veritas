@@ -31,7 +31,6 @@ function populateFormFromEvent(event, userId) {
   const parsedDescription = parseEventDescription(rawEvent.description || event.description || "");
   const parsedMeta = parsedDescription.meta || {};
   const linkedItemsMeta = Array.isArray(parsedMeta.linkedItems) ? parsedMeta.linkedItems : [];
-  const todosMeta = Array.isArray(parsedMeta.todos) ? parsedMeta.todos : [];
   const scheduleMeta = parsedMeta.schedule && typeof parsedMeta.schedule === "object" ? parsedMeta.schedule : null;
   const assignedUserIdsMeta = Array.isArray(parsedMeta.assignedUserIds) ? parsedMeta.assignedUserIds.map(id => String(id)).filter(Boolean) : [];
   const inferredAllDay = startMoment.format("HH:mm") === "00:00" && endMoment.format("HH:mm") === "23:59";
@@ -58,12 +57,6 @@ function populateFormFromEvent(event, userId) {
     },
     selectedAssignedUsers: assignedUserIdsMeta.length > 0 ? assignedUserIdsMeta : rawEvent.assigned_user_id || event.assignedUserId ? [String(rawEvent.assigned_user_id || event.assignedUserId)] : userId ? [String(userId)] : [],
     selectedLinkedItems: linkedItemsMeta.length > 0 ? linkedItemsMeta.map(item => String(item.id)).filter(Boolean) : linkedFallback,
-    todoItems: todosMeta.map(todo => ({
-      id: todo.id || `todo-${Date.now()}-${Math.random()}`,
-      text: todo.text || "",
-      done: !!todo.done,
-      color: todo.color || "#15d1a0"
-    })),
     selectedClient: clientId ? String(clientId) : ""
   };
 }
@@ -97,11 +90,6 @@ export function usePlanningEventFormModal({
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
   const assigneeSelectRef = useRef(null);
-  const [todoItems, setTodoItems] = useState([]);
-  const [todoDraft, setTodoDraft] = useState("");
-  const [todoDraftColor, setTodoDraftColor] = useState("#15d1a0");
-  const [draggingTodoId, setDraggingTodoId] = useState(null);
-  const [dragOverTodoId, setDragOverTodoId] = useState(null);
   const [equipmentMappings, setEquipmentMappings] = useState({});
   const [eventForm, setEventForm] = useState(() => createDefaultEventForm(currentUser?.id));
   const equipmentFetchedRef = useRef(new Set());
@@ -175,7 +163,6 @@ export function usePlanningEventFormModal({
       setEventForm(populated.eventForm);
       setSelectedAssignedUsers(populated.selectedAssignedUsers);
       setSelectedLinkedItems(populated.selectedLinkedItems);
-      setTodoItems(populated.todoItems);
       setSelectedClient(populated.selectedClient);
       const clientId = populated.eventForm.clientId;
       if (clientId) {
@@ -196,9 +183,6 @@ export function usePlanningEventFormModal({
       setEventForm(defaultForm);
       setSelectedAssignedUsers(currentUser?.id ? [String(currentUser.id)] : []);
       setSelectedLinkedItems([]);
-      setTodoItems([]);
-      setTodoDraft("");
-      setTodoDraftColor("#15d1a0");
       setLinkedSearch("");
       setLinkedTypeFilter("all");
       setAssigneeSearch("");
@@ -402,44 +386,18 @@ export function usePlanningEventFormModal({
       return [...prev, itemId];
     });
   }, []);
-  const addTodoItem = useCallback(() => {
-    const text = todoDraft.trim();
-    if (!text) return;
-    setTodoItems(prev => [...prev, {
-      id: `todo-${Date.now()}`,
-      text,
-      done: false,
-      color: todoDraftColor || "#15d1a0"
-    }]);
-    setTodoDraft("");
-  }, [todoDraft, todoDraftColor]);
-  const moveTodoItemById = useCallback((sourceId, targetId) => {
-    if (!sourceId || !targetId || sourceId === targetId) return;
-    setTodoItems(prev => {
-      const fromIndex = prev.findIndex(item => item.id === sourceId);
-      const toIndex = prev.findIndex(item => item.id === targetId);
-      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  }, []);
   const resetForm = useCallback(() => {
     setEventForm(createDefaultEventForm(currentUser?.id));
     setSelectedClient("");
     setSelectedAssignedUsers(currentUser?.id ? [String(currentUser.id)] : []);
     setSelectedLinkedItems([]);
-    setTodoItems([]);
-    setTodoDraft("");
-    setTodoDraftColor("#15d1a0");
     setClientSearch("");
-    setClientDropdownOpen(false);
-    setLinkedSearch("");
-    setLinkedTypeFilter("all");
-    setAssigneeSearch("");
-    setAssigneeDropdownOpen(false);
-    populateKeyRef.current = null;
+      setClientDropdownOpen(false);
+      setLinkedSearch("");
+      setLinkedTypeFilter("all");
+      setAssigneeSearch("");
+      setAssigneeDropdownOpen(false);
+      populateKeyRef.current = null;
   }, [currentUser?.id]);
   const handleClose = useCallback(() => {
     resetForm();
@@ -486,11 +444,9 @@ export function usePlanningEventFormModal({
           businessDaysOnly: !!eventForm.businessDaysOnly,
           durationDays: safeDurationDays
         },
-        todos: todoItems.map(todo => ({
-          ...todo,
-          text: (todo.text || "").trim(),
-          color: todo.color || "#15d1a0"
-        })).filter(todo => todo.text)
+        todosEnabled: false,
+        todosAssignEnabled: false,
+        todos: []
       });
       const eventData = {
         title: eventForm.title.trim(),
@@ -535,7 +491,7 @@ export function usePlanningEventFormModal({
     } finally {
       setSaving(false);
     }
-  }, [copy, eventForm, selectedAssignedUsers, selectedLinkedItems, linkableItems, todoItems, editingEvent, onSaved, onClose, resetForm]);
+  }, [copy, eventForm, selectedAssignedUsers, selectedLinkedItems, linkableItems, editingEvent, onSaved, onClose, resetForm]);
   const handleDelete = useCallback(async () => {
     if (!editingEvent || !copy) return;
     if (!window.confirm(copy.deleteEvent.confirm)) return;
@@ -587,18 +543,6 @@ export function usePlanningEventFormModal({
     setLinkedTypeFilter,
     linkedTypeButtons,
     loadingLinkedItems,
-    todoItems,
-    setTodoItems,
-    todoDraft,
-    setTodoDraft,
-    todoDraftColor,
-    setTodoDraftColor,
-    addTodoItem,
-    moveTodoItemById,
-    draggingTodoId,
-    setDraggingTodoId,
-    dragOverTodoId,
-    setDragOverTodoId,
     getBusinessEndDate,
     getCalendarEndDate,
     handleSubmit,

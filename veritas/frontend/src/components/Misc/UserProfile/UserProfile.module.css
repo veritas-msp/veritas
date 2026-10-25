@@ -1,15 +1,3 @@
-.alertBannerWrap {
-  margin: 1rem 1.25rem 0;
-}
-
-.heroWithUser {
-  align-items: center;
-}
-
-.heroWithUser :global(.veritas-account-userinfo) {
-  max-width: min(100%, 22rem);
-}
-
 .settingRow {
   display: flex;
   align-items: center;
@@ -63,29 +51,23 @@
   display: flex;
   align-items: flex-start;
   gap: 0.85rem;
-  padding: 0.9rem;
-  border-radius: var(--msp-radius-sm, 10px);
-  border: 1px solid var(--msp-border, #e2e8f0);
-  background: var(--msp-surface-2, #f8fafc);
+  padding: 0.35rem 0 0.15rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
-.mfaBanner_enabled {
-  border-color: rgba(21, 209, 160, 0.35);
-  background: rgba(21, 209, 160, 0.06);
-}
-
-.mfaBanner_pending {
-  border-color: rgba(217, 119, 6, 0.35);
-  background: rgba(217, 119, 6, 0.06);
-}
-
+.mfaBanner_enabled,
+.mfaBanner_pending,
 .mfaBanner_off {
-  border-color: var(--msp-border, #e2e8f0);
+  border: none;
+  background: transparent;
 }
 
 .mfaIcon {
   font-size: 1.45rem;
   flex-shrink: 0;
+  animation: userProfileIconPop var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)) both;
 }
 
 .mfaIcon_enabled { color: #0d8a6a; }
@@ -124,18 +106,6 @@
   gap: 0.75rem;
 }
 
-.helpdeskPreview {
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-  background: var(--msp-surface-2, #f8fafc);
-  border: 1px dashed var(--msp-border, #e2e8f0);
-  font-size: 0.8rem;
-  color: var(--msp-muted, #5c6b82);
-}
-
-.helpdeskPreview strong {
-  color: var(--msp-text, #0f1c2e);
-}
 
 .profileDesc {
   margin: 0 0 0.85rem;
@@ -247,6 +217,7 @@
   background: var(--msp-surface-2, #f8fafc);
   padding: 0.9rem;
   display: grid;
+  transition: gap var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .chatBubble {
@@ -298,6 +269,7 @@
 .chatMessage {
   line-height: 1.45;
   color: var(--msp-text, #0f1c2e);
+  transition: font-size var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .rangeField {
@@ -314,6 +286,7 @@
 .rangeInput {
   width: 100%;
   accent-color: var(--msp-accent, #2b5fab);
+  transition: accent-color var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .rangeHint {
@@ -324,30 +297,179 @@
 .notifPrefs {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 1rem;
 }
 
-.notifPrefs .notifMasterRow,
-.notifPrefs .notifEventRow {
-  padding: 12px 14px;
-  gap: 12px;
+.notifMaster {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
 }
 
-.notifEvents {
+.notifMasterMain {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.notifMasterIcon {
+  font-size: 1.15rem;
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.notifMasterText {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.notifMasterLabel {
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.notifMasterHint {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.3;
+}
+
+.notifGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  transition:
+    opacity var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.notifGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.notifGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 1px;
+}
+
+.notifGroupTitle {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light, #7a889c);
+}
+
+.notifGroupMeta {
+  font-size: 0.68rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.notifTiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+@media (min-width: 1100px) {
+  .notifTiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .notifTiles {
+    grid-template-columns: 1fr;
+  }
+}
+
+.notifTile {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 8px;
+  background: transparent;
+  transition:
+    border-color var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    background var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.notifTileOn {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 28%, var(--msp-border-light, #eef2f7));
+  background: color-mix(in srgb, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)) 55%, transparent);
+}
+
+:global(html.dark) .notifTile,
+:global(body.dark) .notifTile {
+  border-color: var(--msp-border, rgba(148, 163, 184, 0.22));
+}
+
+:global(html.dark) .notifTileOn,
+:global(body.dark) .notifTileOn {
+  border-color: color-mix(in srgb, var(--msp-accent, #6b9fff) 35%, var(--msp-border, #2a3a55));
+  background: color-mix(in srgb, var(--msp-accent, #6b9fff) 12%, transparent);
+}
+
+.notifTileLocked {
+  opacity: 0.55;
+}
+
+.notifTileIcon {
+  font-size: 0.95rem;
+  color: var(--msp-muted, #5c6b82);
+  flex-shrink: 0;
+}
+
+.notifTileOn .notifTileIcon {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.notifTileLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.76rem;
+  font-weight: 550;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notifTile :global(label) {
+  flex-shrink: 0;
+  transform: scale(0.88);
+  transform-origin: center right;
 }
 
 .notifEventsDisabled {
   opacity: 0.55;
   pointer-events: none;
+  filter: grayscale(0.15);
 }
 
 .notifHint {
-  margin: 4px 0 0;
-  padding-top: 4px;
-  font-size: 0.76rem;
+  margin: 0;
+  font-size: 0.72rem;
   color: var(--msp-muted, #5c6b82);
   line-height: 1.4;
 }
@@ -357,7 +479,6 @@
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
-  padding-top: 4px;
 }
 
 .subscriptionList {
@@ -375,10 +496,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--msp-border, #d5deea);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+  padding: 0.85rem 0;
+  border: none;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 0;
+  background: transparent;
+}
+
+.subscriptionList .subscriptionRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .subscriptionMain {
@@ -439,8 +566,8 @@
 }
 
 :global(html.dark) .subscriptionRow {
-  background: rgba(15, 23, 42, 0.55);
-  border-color: rgba(148, 163, 184, 0.22);
+  background: transparent;
+  border-bottom-color: var(--msp-border-light, rgba(148, 163, 184, 0.18));
 }
 
 .notifAdminBanner {
@@ -467,95 +594,6 @@
   line-height: 1.45;
 }
 
-.accountShell {
-  display: grid;
-  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
-  gap: 0;
-  min-height: 0;
-  flex: 1;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
-  overflow: hidden;
-}
-
-.nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.85rem 0.65rem;
-  border-right: 1px solid var(--msp-border, #eef2f7);
-  background: var(--msp-surface-2, #f8fafc);
-  overflow-y: auto;
-}
-
-.navItem {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  width: 100%;
-  padding: 0.6rem 0.65rem;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-}
-
-.navItem:hover {
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
-}
-
-.navItemActive {
-  background: var(--msp-surface, #fff);
-  border-color: rgba(43, 95, 171, 0.22);
-  box-shadow: 0 2px 8px rgba(15, 28, 46, 0.06);
-}
-
-.navItemIcon {
-  font-size: 1.05rem;
-  color: var(--msp-muted-light, #8b9bb5);
-  margin-top: 0.1rem;
-  flex-shrink: 0;
-}
-
-.navItemActive .navItemIcon {
-  color: var(--msp-accent, #2b5fab);
-}
-
-.navText {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.navLabel {
-  display: block;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--msp-text, #0f1c2e);
-  line-height: 1.3;
-}
-
-.navDesc {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--msp-muted-light, #8b9bb5);
-  line-height: 1.35;
-}
-
-.content {
-  min-width: 0;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 1rem;
-  scrollbar-width: thin;
-}
-
 .localeBlock {
   display: flex;
   flex-direction: column;
@@ -566,30 +604,6 @@
   font-size: 0.76rem;
   color: var(--msp-muted, #5c6b82);
 }
-
-@media (max-width: 900px) {
-  .accountShell {
-    grid-template-columns: 1fr;
-  }
-
-  .nav {
-    border-right: none;
-    border-bottom: 1px solid var(--msp-border, #eef2f7);
-    flex-direction: row;
-    flex-wrap: wrap;
-    overflow-x: auto;
-  }
-
-  .navItem {
-    flex: 1 1 auto;
-    min-width: 140px;
-  }
-
-  .navDesc {
-    display: none;
-  }
-}
-
 
 .layoutChoiceGrid {
   display: grid;
@@ -624,18 +638,28 @@
   appearance: none;
   -webkit-appearance: none;
   box-sizing: border-box;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition:
+    border-color var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    background var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--msp-duration-fast, 160ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1));
 }
 
 .layoutChoiceCard:hover:not(:disabled) {
   border-color: var(--msp-accent, #2b5fab);
   background: rgba(43, 95, 171, 0.06);
+  transform: translateY(-1px);
+}
+
+.layoutChoiceCard:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .layoutChoiceCardActive {
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.16);
   background: rgba(43, 95, 171, 0.08);
+  animation: userProfileChoicePop var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)) both;
 }
 
 .layoutChoiceCard:disabled {
@@ -648,6 +672,11 @@
   margin-top: 0.1rem;
   font-size: 1.35rem;
   color: var(--msp-accent, #2b5fab);
+  transition: transform var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1));
+}
+
+.layoutChoiceCardActive .layoutChoiceIcon {
+  animation: userProfileIconPop var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)) both;
 }
 
 .layoutChoiceText {
@@ -694,4 +723,70 @@
 
 :global(html.dark) .layoutChoiceDesc {
   color: #9aa8bc;
+}
+
+.settingAction :global(button) {
+  transition:
+    transform var(--msp-duration-fast, 160ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)),
+    background var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.settingAction :global(button:active:not(:disabled)) {
+  transform: scale(0.94);
+}
+
+.loadingState svg {
+  animation: userProfileSpin 0.8s linear infinite;
+  color: var(--msp-accent);
+}
+
+@keyframes userProfileSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes userProfileIconPop {
+  from {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes userProfileChoicePop {
+  from {
+    opacity: 0.75;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mfaBanner,
+  .mfaIcon,
+  .chatPreview,
+  .chatMessage,
+  .notifGroups,
+  .notifTile,
+  .subscriptionRow,
+  .layoutChoiceCard,
+  .layoutChoiceIcon,
+  .layoutChoiceCardActive,
+  .layoutChoiceCardActive .layoutChoiceIcon,
+  .rangeInput,
+  .settingAction :global(button) {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .layoutChoiceCard:hover:not(:disabled),
+  .layoutChoiceCard:active:not(:disabled),
+  .settingAction :global(button:active:not(:disabled)) {
+    transform: none;
+  }
 }

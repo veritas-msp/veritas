@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getInfraMapCopy } from "./infraMapI18n";
@@ -10,6 +10,8 @@ import { AntispamOverviewPanel } from "./AntispamOverviewModal";
 import { MicrosoftTenantOverviewPanel } from "./MicrosoftTenantOverviewPanel";
 import CyberBrickItemsTable, { isCyberBrickTableType } from "./CyberBrickItemsTable";
 import BackupOverviewPanel from "./BackupOverviewPanel";
+import EquipmentHoverIcon, { CYBER_BRICK_ANIMATED } from "../EquipementPage/EquipmentHoverIcon";
+import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import styles from "./InfrastructureMap.module.css";
 
 function getBrickItemTitle(brickType, item, index) {
@@ -68,8 +70,8 @@ function CyberIntegrationDashboard({
   active = true,
   copy,
   isCommunity = false,
-  onOpen,
   onConfigure,
+  onDelete,
   onSynced,
   onNavigate
 }) {
@@ -102,92 +104,143 @@ function CyberIntegrationDashboard({
   const icon = getInfraTypeIcon(brick.type, brick.icon);
   const isComingSoon = Boolean(brick.comingSoon);
   const isProLocked = Boolean(isCommunity && brick.proOnly);
-  const hasItems = items.length > 0 || Number(brick.count) > 0;
-  const countLabel = brick.countLabel
-    || (hasItems ? copy.formatElementCount(brick.count || items.length) : null);
+  const hasItems = items.length > 0;
+  const selectedTitle = selectedItem ? getBrickItemTitle(brick.type, selectedItem, selectedIndex) : "";
+  const selectedSubtitle = selectedItem ? getBrickItemSubtitle(brick.type, selectedItem) : "";
 
-  const primaryLabel = isComingSoon
-    ? (preview.comingSoon || copy.brick?.comingSoon || "Bientôt")
-    : isProLocked
-      ? (preview.proRequired || "Veritas Pro")
-      : hasItems
-        ? (preview.open || "Ouvrir")
-        : (preview.add || "Ajouter");
-
-  const handlePrimary = () => {
-    if (isComingSoon || isProLocked) {
-      onConfigure?.(brick);
-      return;
-    }
-    if (hasItems) onOpen?.(brick);
-    else onConfigure?.(brick);
+  const handleAdd = () => onConfigure?.(brick, null);
+  const handleEditCurrent = () => onConfigure?.(brick, selectedItem || null);
+  const handleDeleteCurrent = () => {
+    if (!selectedItem) return;
+    onDelete?.(brick, selectedItem);
   };
 
-  const actionButtons = (
+  const solutionPicker = items.length > 1 ? (
+    <label className={styles.detailSolutionPicker}>
+      <span className={styles.detailSolutionPickerLabel}>
+        {preview.solutionSelectPrompt || preview.solutionSelect || "Quelle solution afficher ?"}
+      </span>
+      <select
+        className={styles.detailSolutionSelectControl}
+        value={selectedKey}
+        onChange={event => setSelectedKey(event.target.value)}
+      >
+        {items.map((item, index) => (
+          <option key={solutionKey(item, index)} value={solutionKey(item, index)}>
+            {getBrickItemTitle(brick.type, item, index)}
+          </option>
+        ))}
+      </select>
+    </label>
+  ) : null;
+
+  const actionButtons = hasItems && !isComingSoon && !isProLocked ? (
     <>
-      {items.length > 1 ? (
-        <label className={styles.detailSolutionSelect}>
-          <span className={styles.srOnly}>{preview.solutionSelect || "Solution"}</span>
-          <select
-            value={selectedKey}
-            onChange={event => setSelectedKey(event.target.value)}
-          >
-            {items.map((item, index) => (
-              <option key={solutionKey(item, index)} value={solutionKey(item, index)}>
-                {getBrickItemTitle(brick.type, item, index)}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {hasItems && !isComingSoon && !isProLocked ? (
-        <button
-          type="button"
-          className={styles.detailSecondaryBtn}
-          onClick={() => onConfigure?.(brick)}
-          title={preview.configure || "Configurer"}
-          aria-label={preview.configure || "Configurer"}
-        >
-          <Icon icon="mdi:pencil-outline" aria-hidden />
-        </button>
-      ) : null}
       <button
         type="button"
-        className={styles.detailPrimaryBtn}
-        onClick={handlePrimary}
-        disabled={isComingSoon}
-        title={primaryLabel}
-        aria-label={primaryLabel}
+        className={styles.detailSecondaryBtn}
+        onClick={handleEditCurrent}
+        title={preview.editCurrent || preview.configure || "Éditer"}
+        aria-label={preview.editCurrent || preview.configure || "Éditer"}
       >
-        <Icon icon={hasItems && !isComingSoon && !isProLocked ? "mdi:open-in-new" : "mdi:plus"} aria-hidden />
+        <Icon icon="mdi:pencil-outline" aria-hidden />
+      </button>
+      <button
+        type="button"
+        className={`${styles.detailSecondaryBtn} ${styles.detailDangerBtn}`}
+        onClick={handleDeleteCurrent}
+        title={preview.deleteCurrent || "Supprimer"}
+        aria-label={preview.deleteCurrent || "Supprimer"}
+      >
+        <Icon icon="mdi:trash-can-outline" aria-hidden />
       </button>
     </>
-  );
+  ) : !isComingSoon && !isProLocked ? (
+    <button
+      type="button"
+      className={styles.detailPrimaryBtn}
+      onClick={handleAdd}
+      title={preview.add || "Ajouter"}
+      aria-label={preview.add || "Ajouter"}
+    >
+      <Icon icon="mdi:plus" aria-hidden />
+    </button>
+  ) : null;
+
+  const titleAnimRef = useRef(null);
+  const TitleAnimated = CYBER_BRICK_ANIMATED[brick?.type] || null;
+
+  const emptyCard = !isComingSoon && !isProLocked ? (
+    <div className={styles.detailEmptyCard}>
+      <Icon icon={icon} className={styles.detailEmptyCardIcon} aria-hidden />
+      <p className={styles.detailEmptyCardText}>
+        {preview.emptyBody || "Ajoutez une solution pour ce client afin de commencer le suivi."}
+      </p>
+      <button type="button" className={styles.detailEmptyCardBtn} onClick={handleAdd}>
+        <Icon icon="mdi:plus" aria-hidden />
+        {preview.emptyAddCta || preview.add || "Ajouter la première solution"}
+      </button>
+    </div>
+  ) : isComingSoon || isProLocked ? (
+    <div className={`${styles.detailEmptyCard} ${styles.detailPromoCard}`}>
+      <Icon
+        icon={isProLocked ? "mdi:crown-outline" : "mdi:rocket-launch-outline"}
+        className={styles.detailEmptyCardIcon}
+        aria-hidden
+      />
+      <p className={styles.detailPromoTitle}>
+        {isProLocked
+          ? (preview.proRequired || copy.brick?.proTooltip || "Veritas Pro")
+          : (preview.comingSoon || copy.brick?.comingSoon || "Bientôt")}
+      </p>
+      <p className={styles.detailEmptyCardText}>
+        {isProLocked
+          ? (preview.proHint || copy.brick?.proTooltip || "Disponible avec Veritas Pro")
+          : (preview.comingSoonBody || preview.comingSoonHint || copy.brick?.comingSoonTooltip || "Bientôt disponible")}
+      </p>
+    </div>
+  ) : null;
+
+  const selectedCard = selectedItem ? (
+    <div className={styles.detailSelectedCard}>
+      <span className={styles.detailListIcon} aria-hidden>
+        <Icon icon={icon} />
+      </span>
+      <span className={styles.detailListText}>
+        <span className={styles.detailListTitle}>{selectedTitle}</span>
+        {selectedSubtitle ? <span className={styles.detailListMeta}>{selectedSubtitle}</span> : null}
+      </span>
+    </div>
+  ) : null;
 
   return (
-    <div className={`${styles.detailPanel} ${styles.detailPanelMetrics} ${isMicrosoftTenant ? styles.detailPanelMetricsBare : ""}`.trim()}>
-      {!isMicrosoftTenant ? (
-        <header className={styles.detailHeader}>
-          <span className={styles.detailGlyph} aria-hidden>
-            <Icon icon={icon} className={styles.detailGlyphIcon} />
+    <div className={`${styles.detailPanel} ${styles.detailPanelMetrics} ${styles.detailPanelMetricsBare}`.trim()}>
+      <header className={styles.detailHeader}>
+        <div
+          className={styles.detailHeaderTitleRow}
+          onMouseEnter={() => titleAnimRef.current?.startAnimation?.()}
+          onMouseLeave={() => titleAnimRef.current?.stopAnimation?.()}
+        >
+          <span className={styles.detailTitleIcon} aria-hidden>
+            <EquipmentHoverIcon
+              Animated={TitleAnimated}
+              iconify={icon}
+              size={20}
+              animRef={titleAnimRef}
+            />
           </span>
-          <div className={styles.detailHeaderText}>
-            <h3 className={styles.detailTitle}>{brick.label}</h3>
-            <p className={styles.detailSubtitle}>
-              {isComingSoon
-                ? (preview.comingSoonHint || copy.brick?.comingSoonTooltip || "Bientôt disponible")
-                : isProLocked
-                  ? (preview.proHint || copy.brick?.proTooltip || "Disponible avec Veritas Pro")
-                  : hasItems
-                    ? (countLabel || preview.configuredHint || "Solution configurée")
-                    : (preview.emptyHint || "Aucune solution configurée")}
-            </p>
-          </div>
-          <div className={styles.detailHeaderActions}>{actionButtons}</div>
-        </header>
+          <h3 className={styles.detailTitle}>{brick.label}</h3>
+        </div>
+        <div className={styles.detailHeaderActions}>{actionButtons}</div>
+      </header>
+
+      {hasItems && !isComingSoon && !isProLocked && solutionPicker ? (
+        <div className={styles.detailSolutionPickerRow}>{solutionPicker}</div>
       ) : null}
 
-      {hasLiveIntegration && active ? (
+      {!hasItems || isComingSoon || isProLocked ? (
+        emptyCard
+      ) : hasLiveIntegration && active ? (
         <div className={styles.metricsBoard}>
           {isAntivirus ? (
             <AntivirusOverviewPanel
@@ -214,59 +267,13 @@ function CyberIntegrationDashboard({
               client={client}
               tenantItem={selectedItem}
               onSynced={onSynced}
-              toolbar={actionButtons}
+              toolbar={null}
             />
           )}
         </div>
-      ) : (
-        <>
-          {isMicrosoftTenant ? (
-            <div className={styles.metricsToolbarCard}>
-              <div className={styles.metricsToolbarMeta}>
-                <strong className={styles.metricsToolbarTitle}>
-                  {hasItems ? (countLabel || brick.label) : brick.label}
-                </strong>
-                <p className={styles.metricsToolbarDesc}>
-                  {isComingSoon
-                    ? (preview.comingSoonHint || copy.brick?.comingSoonTooltip || "Bientôt disponible")
-                    : isProLocked
-                      ? (preview.proHint || copy.brick?.proTooltip || "Disponible avec Veritas Pro")
-                      : hasItems
-                        ? (preview.configuredHint || "Solution configurée")
-                        : (preview.emptyHint || "Aucune solution configurée")}
-                </p>
-              </div>
-              <div className={styles.metricsToolbarActions}>{actionButtons}</div>
-            </div>
-          ) : null}
-          {hasItems && !isComingSoon ? (
-            <ul className={styles.detailList}>
-              {items.map((item, index) => {
-                const title = getBrickItemTitle(brick.type, item, index);
-                const subtitle = getBrickItemSubtitle(brick.type, item);
-                return (
-                  <li key={solutionKey(item, index)} className={styles.detailListItem}>
-                    <span className={styles.detailListIcon} aria-hidden>
-                      <Icon icon={icon} />
-                    </span>
-                    <span className={styles.detailListText}>
-                      <span className={styles.detailListTitle}>{title}</span>
-                      {subtitle ? <span className={styles.detailListMeta}>{subtitle}</span> : null}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : !isComingSoon && !isProLocked ? (
-            <div className={styles.detailEmptyCard}>
-              <Icon icon="mdi:plus-circle-outline" className={styles.detailEmptyCardIcon} aria-hidden />
-              <p className={styles.detailEmptyCardText}>
-                {preview.emptyBody || "Ajoutez une solution pour ce client afin de commencer le suivi."}
-              </p>
-            </div>
-          ) : null}
-        </>
-      )}
+      ) : !isComingSoon && !isProLocked ? (
+        selectedCard
+      ) : null}
     </div>
   );
 }
@@ -280,14 +287,20 @@ function CyberServiceDetailPanel({
   backupJobs = [],
   onOpen,
   onConfigure,
+  onDelete,
   onSynced,
   onNavigate
 }) {
   const preview = copy.preview || {};
+  const [tableSearch, setTableSearch] = useState("");
+
+  useEffect(() => {
+    setTableSearch("");
+  }, [brick?.type]);
+
   if (!brick) {
     return (
       <div className={styles.detailEmpty}>
-        <Icon icon="mdi:gesture-tap" className={styles.detailEmptyIcon} aria-hidden />
         <h3 className={styles.detailEmptyTitle}>{preview.selectTitle || "Sélectionnez un service"}</h3>
         <p className={styles.detailEmptyHint}>
           {preview.selectHint || "Choisissez un module à gauche pour visualiser sa configuration ou en ajouter une."}
@@ -304,8 +317,8 @@ function CyberServiceDetailPanel({
         active={active}
         copy={copy}
         isCommunity={isCommunity}
-        onOpen={onOpen}
         onConfigure={onConfigure}
+        onDelete={onDelete}
         onSynced={onSynced}
         onNavigate={onNavigate}
       />
@@ -316,118 +329,166 @@ function CyberServiceDetailPanel({
   const hasItems = items.length > 0 || Number(brick.count) > 0;
   const isComingSoon = Boolean(brick.comingSoon);
   const isProLocked = Boolean(isCommunity && brick.proOnly);
-  const icon = getInfraTypeIcon(brick.type, brick.icon);
-  const countLabel = brick.countLabel
-    || (hasItems ? copy.formatElementCount(brick.count || items.length) : null);
-  const useItemsTable = isCyberBrickTableType(brick.type) && hasItems && !isComingSoon && !isProLocked;
   const isBackup = brick.type === "Backup";
+  const isServiceTable = isCyberBrickTableType(brick.type) && !isBackup;
 
-  const primaryLabel = isComingSoon
-    ? (preview.comingSoon || copy.brick?.comingSoon || "Bientôt")
-    : isProLocked
-      ? (preview.proRequired || "Veritas Pro")
-      : hasItems
-        ? (preview.open || "Ouvrir")
-        : (preview.add || "Ajouter");
+  const handleConfigure = () => onConfigure?.(brick);
+  const handleAdd = () => onConfigure?.(brick, null);
 
-  const secondaryLabel = hasItems
-    ? (preview.configure || "Configurer")
-    : null;
-
-  const handlePrimary = () => {
-    if (isComingSoon || isProLocked) {
-      onConfigure?.(brick);
-      return;
-    }
-    if (hasItems) onOpen?.(brick);
-    else onConfigure?.(brick);
-  };
-
-  const actionButtons = (
-    <>
-      {secondaryLabel && !isComingSoon && !isProLocked ? (
-        <button
-          type="button"
-          className={styles.detailSecondaryBtn}
-          onClick={() => onConfigure?.(brick)}
-          title={secondaryLabel}
-          aria-label={secondaryLabel}
-        >
-          <Icon icon="mdi:pencil-outline" aria-hidden />
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className={styles.detailPrimaryBtn}
-        onClick={handlePrimary}
-        disabled={isComingSoon}
-        title={primaryLabel}
-        aria-label={primaryLabel}
-      >
-        <Icon icon={hasItems && !isComingSoon && !isProLocked ? "mdi:open-in-new" : "mdi:plus"} aria-hidden />
-      </button>
-    </>
-  );
-
-  if (isBackup && hasItems && !isComingSoon && !isProLocked) {
+  if (isBackup && !isComingSoon && !isProLocked) {
     return (
       <div className={`${styles.detailPanel} ${styles.detailPanelTable} ${styles.detailPanelMetricsBare}`.trim()}>
         <BackupOverviewPanel
           instances={items}
           jobs={backupJobs}
-          toolbar={actionButtons}
           searchPlaceholder={preview.searchPlaceholder || "Rechercher…"}
+          onAddInstance={() => onConfigure?.(brick, { backupAction: "add-instance" })}
+          onAddJob={() => onConfigure?.(brick, { backupAction: "add-job" })}
+          onEditInstance={instance => onConfigure?.(brick, { backupAction: "edit-instance", item: instance })}
+          onEditJob={job => onConfigure?.(brick, { backupAction: "edit-job", item: job })}
+          canAddJob={items.length > 0}
+          addInstanceLabel={preview.addInstance || "Ajouter une instance"}
+          addJobLabel={preview.addJob || "Ajouter un job"}
+          addJobDisabledHint={preview.addJobDisabledHint || "Ajoutez d’abord une instance"}
+          editLabel={preview.editCurrent || preview.configure || "Éditer"}
         />
       </div>
     );
   }
 
-  return (
-    <div className={`${styles.detailPanel} ${useItemsTable ? styles.detailPanelTable : ""}`.trim()}>
-      <header className={styles.detailHeader}>
-        <span className={styles.detailGlyph} aria-hidden>
-          <Icon icon={icon} className={styles.detailGlyphIcon} />
-        </span>
-        <div className={styles.detailHeaderText}>
-          <h3 className={styles.detailTitle}>{brick.label}</h3>
-          <p className={styles.detailSubtitle}>
-            {isComingSoon
-              ? (preview.comingSoonHint || copy.brick?.comingSoonTooltip || "Bientôt disponible")
-              : isProLocked
-                ? (preview.proHint || copy.brick?.proTooltip || "Disponible avec Veritas Pro")
-                : hasItems
-                  ? (countLabel || preview.configuredHint || "Solution configurée")
-                  : (preview.emptyHint || "Aucune solution configurée")}
-          </p>
+  if (isServiceTable && !isComingSoon && !isProLocked) {
+    const searchPlaceholder = preview.searchPlaceholder || "Rechercher…";
+    const emptyLabel = preview.emptyBody || "Ajoutez une solution pour ce client afin de commencer le suivi.";
+    const showTable = items.length > 0 || Boolean(tableSearch.trim());
+    return (
+      <div className={`${styles.detailPanel} ${styles.detailPanelTable} ${styles.detailPanelMetricsBare}`.trim()}>
+        <div className={styles.serviceTableToolbar}>
+          <div className={equipStyles.embeddedSearchBox}>
+            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+            <input
+              type="search"
+              className={equipStyles.embeddedSearchInput}
+              value={tableSearch}
+              onChange={event => setTableSearch(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+            />
+            {tableSearch ? (
+              <button
+                type="button"
+                className={equipStyles.embeddedSearchClear}
+                onClick={() => setTableSearch("")}
+                aria-label="Effacer la recherche"
+              >
+                <Icon icon="mdi:close" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className={styles.detailPrimaryBtn}
+            onClick={handleAdd}
+            title={preview.add || "Ajouter"}
+            aria-label={preview.add || "Ajouter"}
+          >
+            <Icon icon="mdi:plus" aria-hidden />
+          </button>
         </div>
-        {useItemsTable ? (
-          <div className={styles.detailHeaderActions}>{actionButtons}</div>
-        ) : null}
+        <div className={styles.detailTableHost}>
+          {showTable ? (
+            <CyberBrickItemsTable
+              brickType={brick.type}
+              items={items}
+              emptyLabel={tableSearch.trim() ? "Aucun résultat pour cette recherche" : emptyLabel}
+              hideSearchBar
+              search={tableSearch}
+              onSearchChange={setTableSearch}
+              sortable
+            />
+          ) : (
+            <div className={styles.serviceTableEmpty}>
+              <p className={styles.serviceTableEmptyText}>{emptyLabel}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const icon = getInfraTypeIcon(brick.type, brick.icon);
+  const titleAnimRef = useRef(null);
+  const TitleAnimated = CYBER_BRICK_ANIMATED[brick?.type] || null;
+
+  const actionButtons = !isComingSoon && !isProLocked ? (
+    hasItems ? (
+      <button
+        type="button"
+        className={styles.detailSecondaryBtn}
+        onClick={handleConfigure}
+        title={preview.editCurrent || preview.configure || "Éditer"}
+        aria-label={preview.editCurrent || preview.configure || "Éditer"}
+      >
+        <Icon icon="mdi:pencil-outline" aria-hidden />
+      </button>
+    ) : (
+      <button
+        type="button"
+        className={styles.detailPrimaryBtn}
+        onClick={handleAdd}
+        title={preview.add || "Ajouter"}
+        aria-label={preview.add || "Ajouter"}
+      >
+        <Icon icon="mdi:plus" aria-hidden />
+      </button>
+    )
+  ) : null;
+
+  return (
+    <div className={`${styles.detailPanel} ${styles.detailPanelMetrics} ${styles.detailPanelMetricsBare}`.trim()}>
+      <header className={styles.detailHeader}>
+        <div
+          className={styles.detailHeaderTitleRow}
+          onMouseEnter={() => titleAnimRef.current?.startAnimation?.()}
+          onMouseLeave={() => titleAnimRef.current?.stopAnimation?.()}
+        >
+          <span className={styles.detailTitleIcon} aria-hidden>
+            <EquipmentHoverIcon
+              Animated={TitleAnimated}
+              iconify={icon}
+              size={20}
+              animRef={titleAnimRef}
+            />
+          </span>
+          <h3 className={styles.detailTitle}>{brick.label}</h3>
+        </div>
+        <div className={styles.detailHeaderActions}>{actionButtons}</div>
       </header>
 
-      {!useItemsTable ? (
-        <div className={styles.detailActions}>{actionButtons}</div>
-      ) : null}
-
-      {useItemsTable ? (
-        <div className={styles.detailTableHost}>
-          <CyberBrickItemsTable
-            brickType={brick.type}
-            items={items}
-            emptyLabel={preview.emptyBody || "Aucune entrée"}
-            searchPlaceholder={preview.searchPlaceholder || "Rechercher…"}
+      {isComingSoon || isProLocked ? (
+        <div className={`${styles.detailEmptyCard} ${styles.detailPromoCard}`}>
+          <Icon
+            icon={isProLocked ? "mdi:crown-outline" : "mdi:rocket-launch-outline"}
+            className={styles.detailEmptyCardIcon}
+            aria-hidden
           />
+          <p className={styles.detailPromoTitle}>
+            {isProLocked
+              ? (preview.proRequired || copy.brick?.proTooltip || "Veritas Pro")
+              : (preview.comingSoon || copy.brick?.comingSoon || "Bientôt")}
+          </p>
+          <p className={styles.detailEmptyCardText}>
+            {isProLocked
+              ? (preview.proHint || copy.brick?.proTooltip || "Disponible avec Veritas Pro")
+              : (preview.comingSoonBody || preview.comingSoonHint || copy.brick?.comingSoonTooltip || "Bientôt disponible")}
+          </p>
         </div>
-      ) : hasItems && !isComingSoon ? (
+      ) : hasItems ? (
         <ul className={styles.detailList}>
           {items.map((item, index) => {
             const title = getBrickItemTitle(brick.type, item, index);
             const subtitle = getBrickItemSubtitle(brick.type, item);
             return (
               <li key={item?.id || item?.companyId || item?.customerId || `${brick.type}-${index}`} className={styles.detailListItem}>
-                <span className={styles.detailListIcon} aria-hidden>
-                  <Icon icon={icon} />
-                </span>
                 <span className={styles.detailListText}>
                   <span className={styles.detailListTitle}>{title}</span>
                   {subtitle ? <span className={styles.detailListMeta}>{subtitle}</span> : null}
@@ -436,14 +497,18 @@ function CyberServiceDetailPanel({
             );
           })}
         </ul>
-      ) : !isComingSoon && !isProLocked ? (
+      ) : (
         <div className={styles.detailEmptyCard}>
-          <Icon icon="mdi:plus-circle-outline" className={styles.detailEmptyCardIcon} aria-hidden />
+          <Icon icon={icon} className={styles.detailEmptyCardIcon} aria-hidden />
           <p className={styles.detailEmptyCardText}>
             {preview.emptyBody || "Ajoutez une solution pour ce client afin de commencer le suivi."}
           </p>
+          <button type="button" className={styles.detailEmptyCardBtn} onClick={handleAdd}>
+            <Icon icon="mdi:plus" aria-hidden />
+            {preview.emptyAddCta || preview.add || "Ajouter la première solution"}
+          </button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -468,6 +533,7 @@ export default function InfrastructureMap({
   selectedType = null,
   onBrickOpen,
   onBrickConfigure,
+  onBrickDelete,
   onSynced,
   onNavigate,
   isCommunity = false,
@@ -550,6 +616,7 @@ export default function InfrastructureMap({
             backupJobs={filteredBackupJobs}
             onOpen={onBrickOpen}
             onConfigure={onBrickConfigure}
+            onDelete={onBrickDelete}
             onSynced={onSynced}
             onNavigate={onNavigate}
           />

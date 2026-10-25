@@ -92,7 +92,7 @@
   min-width: var(--msp-btn-square);
   min-height: var(--msp-btn-square);
   padding: 0;
-  border-radius: var(--msp-radius-btn);
+  border-radius: 999px;
   border: 1px solid transparent;
   font-size: 0.95rem;
   line-height: 0;

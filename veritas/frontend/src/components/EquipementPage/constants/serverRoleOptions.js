@@ -37,6 +37,37 @@ export const SERVER_ROLE_VALUE_ALIASES = {
   "Base de data": "Base de données",
   "Bases de data": "Bases de données"
 };
+
+/** Suggestions rapides — rôles les plus courants (valeur = clé catalogue FR). */
+export const SERVER_ROLE_QUICK_PHYSICAL = [
+  { value: "Hyperviseur", icon: "mdi:cube-outline" },
+  { value: "Hôte", icon: "mdi:server" },
+  { value: "Contrôleur de domaine", icon: "mdi:shield-account" },
+  { value: "Active Directory", icon: "mdi:account-group" },
+  { value: "SQL Server", icon: "mdi:database" },
+  { value: "Partage de fichiers", icon: "mdi:folder-network" },
+  { value: "Backup", icon: "mdi:backup-restore" },
+  { value: "Jump server / Bastion", icon: "mdi:shield-key" },
+  { value: "Monitoring", icon: "mdi:monitor-eye" },
+  { value: "RDS", icon: "mdi:remote-desktop" },
+];
+
+export const SERVER_ROLE_QUICK_VIRTUAL = [
+  { value: "Active Directory", icon: "mdi:account-group" },
+  { value: "SQL Server", icon: "mdi:database" },
+  { value: "Web (IIS / Apache)", icon: "mdi:web" },
+  { value: "Application", icon: "mdi:application" },
+  { value: "RDS", icon: "mdi:remote-desktop" },
+  { value: "Exchange", icon: "mdi:email-outline" },
+  { value: "DNS", icon: "mdi:dns" },
+  { value: "DHCP", icon: "mdi:ip-network" },
+  { value: "Conteneurs / Kubernetes", icon: "mdi:kubernetes" },
+  { value: "Backup", icon: "mdi:backup-restore" },
+];
+
+export function getServerRoleQuickSuggestions(isVirtual = false) {
+  return isVirtual ? SERVER_ROLE_QUICK_VIRTUAL : SERVER_ROLE_QUICK_PHYSICAL;
+}
 export function canonicalizeServerRole(role) {
   const raw = String(role || "").trim();
   return SERVER_ROLE_VALUE_ALIASES[raw] || raw;

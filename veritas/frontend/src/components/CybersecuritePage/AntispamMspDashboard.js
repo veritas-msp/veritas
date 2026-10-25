@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import SmartTooltip from "../SmartTooltip";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as kit } from "../UiKit";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import { bulkRemoveAntispamSolutions, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -260,34 +261,31 @@ export default function AntispamMspDashboard({
         <div className={layout.listBody}>
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
-              <div className={layout.tableSearchBar}>
-                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={as.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={as.searchPlaceholder} />
-                  {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
-                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
-                        <FaTimes />
-                      </button>
-                    </SmartTooltip> : null}
-                </div>
-                <div className={layout.statusChips} role="group">
-                  {statusFilterItems.map(item => {
-                    const count = stats.statusCounts[item.id] || 0;
-                    const active = statusFilter === item.id;
-                    return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={count === 0}>
-                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                          <Icon icon={item.icon} />
-                        </span>
-                        <span className={layout.statusChipLabel}>{item.label}</span>
-                        <span className={layout.statusChipCount}>{count}</span>
-                      </button>;
-                  })}
-                </div>
-                {onSync ? <div className={layout.toolbarActions} data-guide="cyber-sync">
+              <UiKitCrmListToolbar
+                searchValue={search}
+                onSearchChange={setSearch}
+                onSearchClear={() => setSearch("")}
+                searchPlaceholder={as.searchPlaceholder}
+                searchAriaLabel={as.searchPlaceholder}
+                clearSearchLabel={msp.clearSearch || "Effacer"}
+                filters={statusFilterItems.map(item => {
+                  const count = stats.statusCounts[item.id] || 0;
+                  const active = statusFilter === item.id;
+                  return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={count === 0}>
+                      <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                        <Icon icon={item.icon} />
+                      </span>
+                      <span className={layout.statusChipLabel}>{item.label}</span>
+                      <span className={layout.statusChipCount}>{count}</span>
+                    </button>;
+                })}
+                extraActions={
+                  onSync ? (
                     <SmartTooltip content={copy.heroActions?.syncAntispam}>
                       <button
                         type="button"
-                        className={layout.iconBtn}
+                        className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                        data-guide="cyber-sync"
                         aria-label={copy.heroActions?.syncAntispamAria || copy.heroActions?.syncAntispam}
                         onClick={onSync}
                         disabled={syncing || fleetRows.length === 0}
@@ -295,19 +293,25 @@ export default function AntispamMspDashboard({
                         <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
                       </button>
                     </SmartTooltip>
-                  </div> : null}
-              </div>
+                  ) : null
+                }
+              />
 
               {filteredRows.length === 0 ? (
                 <div className={layout.emptyStateInCard}>
-                  <Icon icon="mdi:email-off-outline" className={layout.emptyStateIcon} aria-hidden />
-                  <p className={layout.emptyStateTitle}>{fleetRows.length === 0 ? as.emptyTitle : as.noResultsTitle}</p>
-                  <p className={layout.emptyStateHint}>{fleetRows.length === 0 ? as.emptyText : as.noResultsText}</p>
+                  <UiKitEmptyState
+                    bare
+                    icon="mdi:email-off-outline"
+                    title={fleetRows.length === 0 ? as.emptyTitle : as.noResultsTitle}
+                    text={fleetRows.length === 0 ? as.emptyText : as.noResultsText}
+                  />
                 </div>
               ) : (
                 <>
-                  <div className={layout.dataTableWrap}>
-                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                  <UiKitScrollFadeShell
+                    className={`${layout.dataTableWrap} ${styles.tableScroll}`}
+                    deps={[paginatedRows.length, pageSize, search, statusFilter, sortBy, sortDirection]}
+                  >
                       <table className={styles.table}>
                         <thead>
                           <tr>
@@ -333,8 +337,7 @@ export default function AntispamMspDashboard({
                       }} />)}
                         </tbody>
                       </table>
-                    </div>
-                  </div>
+                  </UiKitScrollFadeShell>
                   <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                     <div className={layout.paginationLeft}>
                       <span className={layout.paginationLabel}>{msp.rowsPerPage}</span>

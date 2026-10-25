@@ -23,6 +23,9 @@ import {
 import { Page, Card, Field, Input, Textarea, Btn, Switch, FormGrid, SubTabs, SegmentField } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import s from "./AdminLoginBranding.module.css";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const SIZE_ICONS = {
   sm: "mdi:format-font-size-decrease",
@@ -287,8 +290,11 @@ function LoginPreview({ side, form, copy, onCanvasPosChange }) {
 }
 
 export default function AdminLoginBranding({ isCommunity = false }) {
+  const locale = useAppLocale();
   const copy = useAdminPageCopy("loginBranding");
   const common = useCommonCopy();
+  const heroCopy = getAdminPanelCopy(locale).items["login-branding"];
+  const hero = <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:palette-outline" />;
   const [activeSide, setActiveSide] = useState("agent");
   const [activeSection, setActiveSection] = useState("content");
   const [forms, setForms] = useState({
@@ -464,17 +470,20 @@ export default function AdminLoginBranding({ isCommunity = false }) {
   };
   if (loading) {
     return <Page>
+        {hero}
         <p className={adminUi.adminMutedText}>{copy.loading}</p>
       </Page>;
   }
   if (isCommunity) {
     return <Page>
+        {hero}
         <Card title={copy.title} description={copy.communityLocked}>
           <p className={adminUi.adminMutedText}>{copy.communityHint}</p>
         </Card>
       </Page>;
   }
   return <Page>
+      {hero}
       <SubTabs items={sideTabs} active={activeSide} onChange={setActiveSide} fullWidth />
       <SubTabs
         items={sectionTabs}

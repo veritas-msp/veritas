@@ -97,19 +97,6 @@ export default function AgentFormModal({
               })} placeholder={modalCopy.usernamePlaceholder} />
               </div>
             </div>
-            {isEdit && <label className={layout.slaToggle} style={{
-            marginTop: "1rem"
-          }}>
-                <span className={layout.slaToggleLabel}>{modalCopy.accountActiveLabel}</span>
-                <span className={layout.switchWrap}>
-                  <input type="checkbox" className={layout.switchInput} checked={draft.is_active !== false} onChange={e => patchDraft({
-                is_active: e.target.checked
-              })} role="switch" aria-checked={draft.is_active !== false} />
-                  <span className={layout.switchTrack} aria-hidden="true">
-                    <span className={layout.switchThumb} />
-                  </span>
-                </span>
-              </label>}
           </>;
       case "security":
         return <>
@@ -251,9 +238,34 @@ export default function AgentFormModal({
               </p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={commonCopy.close}>
-            <FaTimes />
-          </button>
+          <div className={layout.headerTrailing}>
+            {isEdit ? (
+              <label className={layout.headerStatusToggle}>
+                <span className={layout.headerStatusLabel}>
+                  {draft.is_active !== false
+                    ? (adminCopy.activeShort || modalCopy.accountActiveLabel || "Actif")
+                    : (adminCopy.inactiveShort || "Inactif")}
+                </span>
+                <span className={layout.switchWrap}>
+                  <input
+                    type="checkbox"
+                    className={layout.switchInput}
+                    checked={draft.is_active !== false}
+                    onChange={e => patchDraft({ is_active: e.target.checked })}
+                    role="switch"
+                    aria-checked={draft.is_active !== false}
+                    disabled={saving}
+                  />
+                  <span className={layout.switchTrack} aria-hidden="true">
+                    <span className={layout.switchThumb} />
+                  </span>
+                </span>
+              </label>
+            ) : null}
+            <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={commonCopy.close}>
+              <FaTimes />
+            </button>
+          </div>
         </header>
 
         <div className={layout.body}>

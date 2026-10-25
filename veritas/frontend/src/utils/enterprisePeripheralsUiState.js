@@ -1,5 +1,5 @@
 const KEY_PREFIX = "veritas_enterprise_peripherals_ui_v1_";
-const OVERVIEW_TABS = new Set(["map", "cyber", "activity", "vault", "logs"]);
+const OVERVIEW_TABS = new Set(["map", "cyber", "backup", "activity", "events", "vault", "logs"]);
 
 function storageKey(clientId) {
   return `${KEY_PREFIX}${clientId}`;

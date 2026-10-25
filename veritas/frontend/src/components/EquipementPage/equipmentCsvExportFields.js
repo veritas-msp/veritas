@@ -219,7 +219,7 @@ const FIELD_LABEL_FALLBACKS = {
     monitoring: "Supervision",
     agentStatus: "Agent RMM",
     agentVersion: "Version agent",
-    activeStatus: "Actif",
+    activeStatus: "Statut",
     maintenanceLicense: "Date licence maintenance"
   },
   en: {
@@ -267,7 +267,7 @@ const FIELD_LABEL_FALLBACKS = {
     monitoring: "Supervision",
     agentStatus: "RMM agent",
     agentVersion: "Agent version",
-    activeStatus: "Active",
+    activeStatus: "Status",
     maintenanceLicense: "Maintenance license date"
   }
 };

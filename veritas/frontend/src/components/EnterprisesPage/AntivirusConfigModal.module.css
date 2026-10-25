@@ -164,12 +164,59 @@
 }
 
 .emptyState {
-  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1.75rem 1.15rem;
   text-align: center;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px dashed var(--msp-border, #dde3ed);
   color: var(--msp-muted, #5c6b82);
   font-size: 0.85rem;
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 85%, #fff);
+}
+
+.emptyStateIcon {
+  font-size: 1.75rem;
+  color: var(--msp-accent, #2b5fab);
+  opacity: 0.85;
+}
+
+.emptyStateText {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.emptyStateHint {
+  margin: 0;
+  max-width: 26rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.emptyStateBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  border-radius: 9px;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emptyStateBtn:hover {
+  filter: brightness(1.06);
 }
 
 .dropdownOptionCompany {

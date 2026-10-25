@@ -41,6 +41,7 @@ html.light {
 
   
   /* Canvas clair (bleu très pâle) — contraste doux avec les surfaces blanches */
+  --msp-bg: #e8f1fa;
   --msp-page-bg: #e8f1fa;
   --msp-surface: #ffffff;
   --msp-surface-2: #eef3f8;
@@ -83,6 +84,7 @@ html.dark {
 
   
   /* Deeper canvas + lifted surfaces for clearer hierarchy */
+  --msp-bg: #02050a;
   --msp-page-bg: #02050a;
   --msp-surface: #1f2d4a;
   --msp-surface-2: #162338;

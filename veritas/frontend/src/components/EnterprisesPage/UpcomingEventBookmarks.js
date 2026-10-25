@@ -599,6 +599,7 @@ export default function UpcomingEventBookmarks({
   const isEmpty = !proLocked && !loading && recent.length === 0 && upcoming.length === 0;
   const showLoading = !proLocked && loading;
   const showSections = proLocked || !showLoading && !isEmpty;
+  const panelEmpty = isEmpty && !heroFrise && !inPageHero;
   const {
     collapsed,
     toggle
@@ -619,11 +620,12 @@ export default function UpcomingEventBookmarks({
     inPageHero || heroFrise ? styles.barInPageHero : styles.bar,
     inPageHero || heroFrise ? styles.barInPageHeroShell : "",
     heroFrise ? styles.barHeroFrise : "",
+    panelEmpty ? styles.barPanelEmpty : "",
     proLocked && !inPageHero && !heroFrise ? styles.barInProPanel : ""
   ].filter(Boolean).join(" ")} aria-label={labels.barAria}>
       <div className={styles.barInner}>
         <div className={[styles.trackWrap, fade.left ? styles.trackFadeLeft : "", fade.right ? styles.trackFadeRight : ""].filter(Boolean).join(" ")}>
-          <div className={`${styles.track} ${cardStyles.eventBookmarksTrack}`} ref={trackRef}>
+          <div className={`${styles.track} ${cardStyles.eventBookmarksTrack} ${panelEmpty ? styles.trackPanelEmpty : ""}`} ref={trackRef}>
             {showLoading ? <>
                 <SectionLabel icon="mdi:history" title={labels.sectionRecent} variant="recent" />
                 <BookmarkSkeleton />
@@ -632,9 +634,13 @@ export default function UpcomingEventBookmarks({
                 <SectionLabel icon="mdi:bookmark-multiple-outline" title={labels.sectionUpcoming} />
                 <BookmarkSkeleton />
                 <BookmarkSkeleton />
-              </> : isEmpty ? <div className={styles.empty}>
-                <Icon icon="mdi:calendar-blank-outline" aria-hidden />
-                <span>{labels.empty}</span>
+              </> : isEmpty ? <div className={panelEmpty ? styles.emptyPanel : styles.empty}>
+                <Icon
+                  icon="mdi:calendar-blank-outline"
+                  className={panelEmpty ? styles.emptyPanelIcon : undefined}
+                  aria-hidden
+                />
+                {panelEmpty ? <p>{labels.empty}</p> : <span>{labels.empty}</span>}
               </div> : showSections ? <>
                 <SectionLabel icon="mdi:history" title={labels.sectionRecent} count={heroFrise || proLocked ? null : recent.length} variant="recent" />
                 {recent.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneRecent30Days}</span> : recent.map(event => <EventBookmark key={`recent-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="recent" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} heroCompact={heroFrise} />)}
@@ -661,7 +667,10 @@ export default function UpcomingEventBookmarks({
               {bar}
             </ProFeatureLock>
           </div>
-        </div> : <div className={proLocked ? styles.barProPanel : undefined}>
+        </div> : <div className={[
+          proLocked ? styles.barProPanel : "",
+          panelEmpty ? styles.panelEmptyShell : ""
+        ].filter(Boolean).join(" ") || undefined}>
           {proLocked ? <div className={styles.barProHeader}>
               <span className={styles.barProTitle}>{labels.planningPanelTitle}</span>
               <ProFeatureBadge variant="inline" />

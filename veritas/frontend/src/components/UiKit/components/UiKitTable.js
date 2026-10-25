@@ -12,7 +12,8 @@ export default function UiKitTable({
   inset = false,
   className = "",
   deps = [],
-  empty = null
+  empty = null,
+  fadeTop = true
 }) {
   const shellClass = [
     styles.tableShell,
@@ -23,7 +24,7 @@ export default function UiKitTable({
     .join(" ");
   return (
     <div className={`${styles.tableBlock}${fill ? ` ${styles.tableBlockFill}` : ""}${className ? ` ${className}` : ""}`}>
-      <UiKitScrollFadeShell className={shellClass} deps={deps}>
+      <UiKitScrollFadeShell className={shellClass} deps={deps} fadeTop={fadeTop}>
         {children}
         {empty}
       </UiKitScrollFadeShell>

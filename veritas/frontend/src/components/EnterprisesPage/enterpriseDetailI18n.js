@@ -13,6 +13,7 @@ const DETAIL_COPY = {
     backToEnterprises: "Retour aux entreprises",
     loadError: "Erreur lors du chargement des données",
     heroMetaAria: "Informations et étiquettes client",
+    enrollmentTokenTitle: "Token d'enrôlement",
     heroIconEditAria: "Changer l'icône et la couleur",
     heroIconLabel: "Icône",
     heroIconColorLabel: "Couleur",
@@ -89,7 +90,8 @@ const DETAIL_COPY = {
     serviceBrickMenu: {
       aria: "Actions du service",
       openPage: "Ouvrir la page",
-      edit: "Éditer"
+      edit: "Éditer",
+      delete: "Supprimer"
     },
     editEnterprise: "Éditer l'entreprise",
     reversibilityDossier: "Dossier de réversibilité",
@@ -98,7 +100,9 @@ const DETAIL_COPY = {
     overviewTabsAria: "Sections entreprise",
     overviewTabMap: "Infrastructure",
     overviewTabCyber: "Cyber & Cloud",
+    overviewTabBackup: "Sauvegarde",
     overviewTabActivity: "Tickets et Campagnes",
+    overviewTabEvents: "Événements",
     overviewTabVault: "Coffre-fort",
     overviewTabLogs: "Logs",
     navSectionEquipment: "Familles",
@@ -214,6 +218,7 @@ const DETAIL_COPY = {
     prestationsTitle: "Ticket de Prestations / Services",
     prestationsCount: "{count} ticket(s)",
     campaignsTitle: "Campagnes",
+    eventsTitle: "Événements",
     campaignsOngoing: "{count} en cours",
     addCampaign: "Créer une campagne",
     campaignPicker: {
@@ -322,7 +327,7 @@ const DETAIL_COPY = {
       sla: "SLA",
       updated: "Mis à jour",
       type: "Type",
-      created: "Créée le",
+      created: "Créé le",
       name: "Nom",
       progress: "Progression",
       start: "Début"
@@ -603,6 +608,7 @@ const DETAIL_COPY = {
     backToEnterprises: "Back to companies",
     loadError: "Error loading data",
     heroMetaAria: "Client information and tags",
+    enrollmentTokenTitle: "Enrollment token",
     heroIconEditAria: "Change icon and color",
     heroIconLabel: "Icon",
     heroIconColorLabel: "Color",
@@ -676,7 +682,8 @@ const DETAIL_COPY = {
     serviceBrickMenu: {
       aria: "Service actions",
       openPage: "Open page",
-      edit: "Edit"
+      edit: "Edit",
+      delete: "Delete"
     },
     editEnterprise: "Edit company",
     reversibilityDossier: "Reversibility dossier",
@@ -687,7 +694,9 @@ const DETAIL_COPY = {
     overviewTabsAria: "Company sections",
     overviewTabMap: "Infrastructure",
     overviewTabCyber: "Cyber & Cloud",
+    overviewTabBackup: "Backup",
     overviewTabActivity: "Tickets & Campaigns",
+    overviewTabEvents: "Events",
     overviewTabVault: "Vault",
     overviewTabLogs: "Logs",
     navSectionEquipment: "Families",
@@ -803,6 +812,7 @@ const DETAIL_COPY = {
     prestationsTitle: "Services / delivery tickets",
     prestationsCount: "{count} ticket(s)",
     campaignsTitle: "Campaigns",
+    eventsTitle: "Events",
     campaignsOngoing: "{count} ongoing",
     addCampaign: "Create a campaign",
     campaignPicker: {
@@ -1192,6 +1202,7 @@ const DETAIL_COPY = {
     backToEnterprises: "Zurück zu Unternehmen",
     loadError: "Fehler beim Laden der Daten",
     heroMetaAria: "Kundeninformationen und Tags",
+    enrollmentTokenTitle: "Enrollment-Token",
     heroIconEditAria: "Symbol und Farbe ändern",
     heroIconLabel: "Symbol",
     heroIconColorLabel: "Farbe",
@@ -1265,7 +1276,8 @@ const DETAIL_COPY = {
     serviceBrickMenu: {
       aria: "Service-Aktionen",
       openPage: "Seite öffnen",
-      edit: "Bearbeiten"
+      edit: "Bearbeiten",
+      delete: "Löschen"
     },
     editEnterprise: "Unternehmen bearbeiten",
     reversibilityDossier: "Reversibilitätsdossier",
@@ -1274,7 +1286,9 @@ const DETAIL_COPY = {
     overviewTabsAria: "Unternehmensbereiche",
     overviewTabMap: "Infrastruktur",
     overviewTabCyber: "Cyber & Cloud",
+    overviewTabBackup: "Backup",
     overviewTabActivity: "Tickets & Kampagnen",
+    overviewTabEvents: "Ereignisse",
     overviewTabVault: "Tresor",
     overviewTabLogs: "Logs",
     navSectionEquipment: "Familien",
@@ -1389,6 +1403,7 @@ const DETAIL_COPY = {
     prestationsTitle: "Leistungs-Tickets",
     prestationsCount: "{count} Ticket(s)",
     campaignsTitle: "Kampagnen",
+    eventsTitle: "Ereignisse",
     campaignsOngoing: "{count} laufend",
     addCampaign: "Kampagne erstellen",
     campaignPicker: {
@@ -1775,6 +1790,7 @@ const DETAIL_COPY = {
     backToEnterprises: "Torna alle aziende",
     loadError: "Errore nel caricamento dei dati",
     heroMetaAria: "Informazioni ed etichette cliente",
+    enrollmentTokenTitle: "Token di enrollment",
     heroIconEditAria: "Cambia icona e colore",
     heroIconLabel: "Icona",
     heroIconColorLabel: "Colore",
@@ -1848,7 +1864,8 @@ const DETAIL_COPY = {
     serviceBrickMenu: {
       aria: "Azioni del servizio",
       openPage: "Apri pagina",
-      edit: "Modifica"
+      edit: "Modifica",
+      delete: "Elimina"
     },
     editEnterprise: "Modifica azienda",
     reversibilityDossier: "Dossier di reversibilità",
@@ -1857,7 +1874,9 @@ const DETAIL_COPY = {
     overviewTabsAria: "Sezioni azienda",
     overviewTabMap: "Infrastruttura",
     overviewTabCyber: "Cyber & Cloud",
+    overviewTabBackup: "Backup",
     overviewTabActivity: "Ticket e Campagne",
+    overviewTabEvents: "Eventi",
     overviewTabVault: "Cassaforte",
     overviewTabLogs: "Log",
     navSectionEquipment: "Famiglie",
@@ -1972,6 +1991,7 @@ const DETAIL_COPY = {
     prestationsTitle: "Ticket Prestazioni / Servizi",
     prestationsCount: "{count} ticket",
     campaignsTitle: "Campagne",
+    eventsTitle: "Eventi",
     campaignsOngoing: "{count} in corso",
     addCampaign: "Crea campagna",
     campaignPicker: {
@@ -2358,6 +2378,7 @@ const DETAIL_COPY = {
     backToEnterprises: "Volver a empresas",
     loadError: "Error al cargar los datos",
     heroMetaAria: "Información y etiquetas del cliente",
+    enrollmentTokenTitle: "Token de enrollment",
     heroIconEditAria: "Cambiar icono y color",
     heroIconLabel: "Icono",
     heroIconColorLabel: "Color",
@@ -2431,7 +2452,8 @@ const DETAIL_COPY = {
     serviceBrickMenu: {
       aria: "Acciones del servicio",
       openPage: "Abrir página",
-      edit: "Editar"
+      edit: "Editar",
+      delete: "Eliminar"
     },
     editEnterprise: "Editar empresa",
     reversibilityDossier: "Dossier de reversibilidad",
@@ -2440,7 +2462,9 @@ const DETAIL_COPY = {
     overviewTabsAria: "Secciones de la empresa",
     overviewTabMap: "Infraestructura",
     overviewTabCyber: "Cyber & Cloud",
+    overviewTabBackup: "Copia de seguridad",
     overviewTabActivity: "Tickets y Campañas",
+    overviewTabEvents: "Eventos",
     overviewTabVault: "Caja fuerte",
     overviewTabLogs: "Logs",
     navSectionEquipment: "Familias",
@@ -2555,6 +2579,7 @@ const DETAIL_COPY = {
     prestationsTitle: "Tickets Prestaciones / Servicios",
     prestationsCount: "{count} ticket(s)",
     campaignsTitle: "Campañas",
+    eventsTitle: "Eventos",
     campaignsOngoing: "{count} en curso",
     addCampaign: "Crear campaña",
     campaignPicker: {

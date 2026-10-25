@@ -3,19 +3,23 @@ import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const DOMAINS_MODAL_COPY = {
   fr: {
     bcp47: "fr-FR",
-    eyebrow: "Licences & abonnements",
+    eyebrow: "Services · Domaines",
     title: "Noms de domaine",
     defaultClientName: "Entreprise",
     closeAria: "Fermer",
     navAria: "Sections configuration NDD",
     loading: "Chargement…",
     sections: {
+      inventory: {
+        label: "Domaines",
+        description: "Liste surveillée"
+      },
       overview: {
-        label: "Solution enregistrée",
+        label: "Domaines",
         description: "Pour ce client"
       },
       provider: {
-        label: "Solution paramétrable",
+        label: "Intégration",
         description: "Fournisseurs"
       },
       import: {
@@ -31,9 +35,30 @@ const DOMAINS_MODAL_COPY = {
         description: "Nom de domaine et expiration"
       }
     },
+    addChoice: {
+      title: "Ajouter un nom de domaine",
+      description: "Choisissez comment rattacher le domaine à cette entreprise.",
+      manualTitle: "Ajout manuel",
+      manualDesc: "Saisir le nom, le registrar et la date d'expiration.",
+      manualAction: "Continuer",
+      integrationTitle: "Via une intégration",
+      integrationDesc: "Importer depuis un registrar connecté (OVH…).",
+      integrationAction: "Continuer"
+    },
+    inventory: {
+      title: "Domaines surveillés",
+      description: "Noms de domaine rattachés à cette entreprise."
+    },
+    empty: {
+      addBtn: "Ajouter un domaine",
+      noneHint: "Ajoutez un domaine manuellement ou via une intégration."
+    },
+    meta: {
+      registrar: "Registrar"
+    },
     provider: {
-      title: "Solution paramétrable",
-      description: "Fournisseurs disponibles.",
+      title: "Choisir une intégration",
+      description: "Sélectionnez le registrar pour importer des domaines.",
       connectionTitle: "Connexion {provider}",
       globalDetected: "Compte registrar global détecté en administration. Importez les domaines à rattacher à ce client.",
       globalNotActive: "Le paramétrage global OVH n'est pas actif. Activez l'intégration en administration ou consultez le guide.",
@@ -53,25 +78,29 @@ const DOMAINS_MODAL_COPY = {
       alreadyLinked: "Déjà lié",
       selected: "Sélectionné",
       dnsZone: "Zone DNS",
-      available: "Disponible"
+      available: "Disponible",
+      manual: "Manuel"
     },
     overview: {
-      title: "Solution enregistrée",
+      title: "Domaines surveillés",
       description: "Noms de domaine rattachés à cette entreprise.",
       empty: "Aucun domaine configuré pour le moment.",
-      emptyHintPrefix: "Utilisez l'onglet",
-      emptyHintTab: "Importer depuis OVH",
-      emptyHintSuffix: "ou la saisie manuelle pour rattacher des domaines à cette entreprise.",
+      emptyHintPrefix: "Utilisez",
+      emptyHintTab: "Ajouter",
+      emptyHintSuffix: "pour rattacher des domaines à cette entreprise.",
       modeLabel: "Mode : {mode}",
       deleteAtExpiration: " · Suppression à expiration",
       removeAria: "Retirer {label}",
       removeTitle: "Retirer",
       editTitle: "Éditer",
-      editAria: "Éditer {label}"
+      editAria: "Éditer {label}",
+      addHostBtn: "Ajouter un domaine"
     },
     manual: {
-      title: "Autre registrar · saisie manuelle",
+      title: "Ajout manuel",
+      titleEdit: "Modifier le domaine",
       description: "Enregistrez un nom de domaine sans connecteur API.",
+      descriptionEdit: "Mettez à jour le nom, le registrar ou la date d'expiration.",
       domainName: "Nom de domaine",
       domainNamePlaceholder: "exemple.fr",
       registrar: "Registrar (optionnel)",
@@ -128,13 +157,15 @@ const DOMAINS_MODAL_COPY = {
       selectedMany: "{count} sélectionnés"
     },
     footer: {
-      registrar: "Registrar : {provider}"
+      registrar: "Registrar : {provider}",
+      hostRequired: "Le nom de domaine est obligatoire"
     },
     actions: {
       back: "Retour",
       attach: "Rattacher ({count})",
       attaching: "Import…",
-      saveManual: "Enregistrer le domaine"
+      saveManual: "Enregistrer le domaine",
+      updateManual: "Mettre à jour"
     },
     proFallback: "Cette intégration",
     comingSoon: "{provider} sera bientôt disponible dans Veritas.",
@@ -154,19 +185,23 @@ const DOMAINS_MODAL_COPY = {
   },
   en: {
     bcp47: "en-GB",
-    eyebrow: "Licenses & subscriptions",
+    eyebrow: "Services · Domains",
     title: "Domain names",
     defaultClientName: "Company",
     closeAria: "Close",
     navAria: "Domain configuration sections",
     loading: "Loading…",
     sections: {
+      inventory: {
+        label: "Domains",
+        description: "Monitored list"
+      },
       overview: {
-        label: "Saved solution",
+        label: "Domains",
         description: "For this client"
       },
       provider: {
-        label: "Configurable solution",
+        label: "Integration",
         description: "Providers"
       },
       import: {
@@ -182,9 +217,30 @@ const DOMAINS_MODAL_COPY = {
         description: "Domain name and expiration"
       }
     },
+    addChoice: {
+      title: "Add a domain name",
+      description: "Choose how to link the domain to this company.",
+      manualTitle: "Manual entry",
+      manualDesc: "Enter the name, registrar and expiration date.",
+      manualAction: "Continue",
+      integrationTitle: "Via an integration",
+      integrationDesc: "Import from a connected registrar (OVH…).",
+      integrationAction: "Continue"
+    },
+    inventory: {
+      title: "Monitored domains",
+      description: "Domain names linked to this company."
+    },
+    empty: {
+      addBtn: "Add a domain",
+      noneHint: "Add a domain manually or via an integration."
+    },
+    meta: {
+      registrar: "Registrar"
+    },
     provider: {
-      title: "Configurable solution",
-      description: "Available providers.",
+      title: "Choose an integration",
+      description: "Select the registrar to import domains from.",
       connectionTitle: "Connect {provider}",
       globalDetected: "Global registrar account detected in administration. Import domains to link to this client.",
       globalNotActive: "Global OVH setup is not active. Enable the integration in administration or read the guide.",
@@ -204,25 +260,29 @@ const DOMAINS_MODAL_COPY = {
       alreadyLinked: "Already linked",
       selected: "Selected",
       dnsZone: "DNS zone",
-      available: "Available"
+      available: "Available",
+      manual: "Manual"
     },
     overview: {
-      title: "Saved solution",
+      title: "Monitored domains",
       description: "Domain names linked to this company.",
       empty: "No domain configured yet.",
-      emptyHintPrefix: "Use the",
-      emptyHintTab: "Import from OVH",
-      emptyHintSuffix: "tab or manual entry to link domains to this company.",
+      emptyHintPrefix: "Use",
+      emptyHintTab: "Add",
+      emptyHintSuffix: "to link domains to this company.",
       modeLabel: "Mode: {mode}",
       deleteAtExpiration: " · Delete on expiration",
       removeAria: "Remove {label}",
       removeTitle: "Remove",
       editTitle: "Edit",
-      editAria: "Edit {label}"
+      editAria: "Edit {label}",
+      addHostBtn: "Add a domain"
     },
     manual: {
-      title: "Other registrar · manual entry",
+      title: "Manual entry",
+      titleEdit: "Edit domain",
       description: "Record a domain name without an API connector.",
+      descriptionEdit: "Update the name, registrar or expiration date.",
       domainName: "Domain name",
       domainNamePlaceholder: "example.com",
       registrar: "Registrar (optional)",
@@ -279,13 +339,15 @@ const DOMAINS_MODAL_COPY = {
       selectedMany: "{count} selected"
     },
     footer: {
-      registrar: "Registrar: {provider}"
+      registrar: "Registrar: {provider}",
+      hostRequired: "Domain name is required"
     },
     actions: {
       back: "Back",
       attach: "Link ({count})",
       attaching: "Importing…",
-      saveManual: "Save domain"
+      saveManual: "Save domain",
+      updateManual: "Update"
     },
     proFallback: "This integration",
     comingSoon: "{provider} will be available in Veritas soon.",
@@ -329,11 +391,36 @@ const DOMAINS_MODAL_COPY = {
       manual: {
         label: "Manuelle Eingabe",
         description: "Domainname und Ablauf"
+      },
+      inventory: {
+        label: "Domains",
+        description: "Überwachte Liste"
       }
     },
+    addChoice: {
+      title: "Domain hinzufügen",
+      description: "Wählen Sie, wie die Domain verknüpft werden soll.",
+      manualTitle: "Manuelle Eingabe",
+      manualDesc: "Name, Registrar und Ablaufdatum eingeben.",
+      manualAction: "Weiter",
+      integrationTitle: "Über eine Integration",
+      integrationDesc: "Aus einem verbundenen Registrar importieren (OVH…).",
+      integrationAction: "Weiter"
+    },
+    inventory: {
+      title: "Überwachte Domains",
+      description: "Mit diesem Unternehmen verknüpfte Domains."
+    },
+    empty: {
+      addBtn: "Domain hinzufügen",
+      noneHint: "Domain manuell oder über eine Integration hinzufügen."
+    },
+    meta: {
+      registrar: "Registrar"
+    },
     provider: {
-      title: "Konfigurierbare Lösung",
-      description: "Verfügbare Anbieter.",
+      title: "Integration wählen",
+      description: "Registrar zum Importieren von Domains auswählen.",
       connectionTitle: "Verbindung {provider}",
       globalDetected: "Globales Registrar-Konto in der Administration erkannt. Importieren Sie Domains zur Verknüpfung mit diesem Kunden.",
       globalNotActive: "Die globale OVH-Konfiguration ist nicht aktiv. Aktivieren Sie die Integration in der Administration oder lesen Sie die Anleitung.",
@@ -353,7 +440,8 @@ const DOMAINS_MODAL_COPY = {
       alreadyLinked: "Bereits verknüpft",
       selected: "Ausgewählt",
       dnsZone: "DNS-Zone",
-      available: "Verfügbar"
+      available: "Verfügbar",
+      manual: "Manuell"
     },
     overview: {
       title: "Gespeicherte Lösung",
@@ -370,8 +458,10 @@ const DOMAINS_MODAL_COPY = {
       editAria: "{label} bearbeiten"
     },
     manual: {
-      title: "Anderer Registrar · manuelle Eingabe",
+      title: "Manuelle Eingabe",
+      titleEdit: "Domain bearbeiten",
       description: "Domainname ohne API-Connector erfassen.",
+      descriptionEdit: "Name, Registrar oder Ablaufdatum aktualisieren.",
       domainName: "Domainname",
       domainNamePlaceholder: "beispiel.de",
       registrar: "Registrar (optional)",
@@ -434,7 +524,8 @@ const DOMAINS_MODAL_COPY = {
       back: "Zurück",
       attach: "Verknüpfen ({count})",
       attaching: "Import…",
-      saveManual: "Domain speichern"
+      saveManual: "Domain speichern",
+      updateManual: "Aktualisieren"
     },
     proFallback: "Diese Integration",
     comingSoon: "{provider} wird bald in Veritas verfügbar sein.",
@@ -478,11 +569,36 @@ const DOMAINS_MODAL_COPY = {
       manual: {
         label: "Inserimento manuale",
         description: "Nome di dominio e scadenza"
+      },
+      inventory: {
+        label: "Domini",
+        description: "Elenco monitorato"
       }
     },
+    addChoice: {
+      title: "Aggiungi un dominio",
+      description: "Scegli come collegare il dominio a questa azienda.",
+      manualTitle: "Inserimento manuale",
+      manualDesc: "Inserisci nome, registrar e data di scadenza.",
+      manualAction: "Continua",
+      integrationTitle: "Tramite integrazione",
+      integrationDesc: "Importa da un registrar collegato (OVH…).",
+      integrationAction: "Continua"
+    },
+    inventory: {
+      title: "Domini monitorati",
+      description: "Nomi di dominio collegati a questa azienda."
+    },
+    empty: {
+      addBtn: "Aggiungi dominio",
+      noneHint: "Aggiungi un dominio manualmente o tramite integrazione."
+    },
+    meta: {
+      registrar: "Registrar"
+    },
     provider: {
-      title: "Soluzione configurabile",
-      description: "Fornitori disponibili.",
+      title: "Scegli un'integrazione",
+      description: "Seleziona il registrar da cui importare i domini.",
       connectionTitle: "Connessione {provider}",
       globalDetected: "Account registrar globale rilevato in amministrazione. Importa i domini da collegare a questo cliente.",
       globalNotActive: "La configurazione globale OVH non è attiva. Attiva l'integrazione in amministrazione o consulta la guida.",
@@ -502,7 +618,8 @@ const DOMAINS_MODAL_COPY = {
       alreadyLinked: "Già collegato",
       selected: "Selezionato",
       dnsZone: "Zona DNS",
-      available: "Disponibile"
+      available: "Disponibile",
+      manual: "Manuale"
     },
     overview: {
       title: "Soluzione registrata",
@@ -519,8 +636,10 @@ const DOMAINS_MODAL_COPY = {
       editAria: "Modifica {label}"
     },
     manual: {
-      title: "Altro registrar · inserimento manuale",
+      title: "Inserimento manuale",
+      titleEdit: "Modifica dominio",
       description: "Registra un nome di dominio senza connettore API.",
+      descriptionEdit: "Aggiorna nome, registrar o data di scadenza.",
       domainName: "Nome di dominio",
       domainNamePlaceholder: "esempio.it",
       registrar: "Registrar (opzionale)",
@@ -583,7 +702,8 @@ const DOMAINS_MODAL_COPY = {
       back: "Indietro",
       attach: "Collega ({count})",
       attaching: "Importazione…",
-      saveManual: "Salva dominio"
+      saveManual: "Salva dominio",
+      updateManual: "Aggiorna"
     },
     proFallback: "Questa integrazione",
     comingSoon: "{provider} sarà presto disponibile in Veritas.",
@@ -627,11 +747,36 @@ const DOMAINS_MODAL_COPY = {
       manual: {
         label: "Entrada manual",
         description: "Nombre de dominio y vencimiento"
+      },
+      inventory: {
+        label: "Dominios",
+        description: "Lista supervisada"
       }
     },
+    addChoice: {
+      title: "Añadir un dominio",
+      description: "Elija cómo vincular el dominio a esta empresa.",
+      manualTitle: "Entrada manual",
+      manualDesc: "Introduzca el nombre, el registrador y la fecha de vencimiento.",
+      manualAction: "Continuar",
+      integrationTitle: "Mediante una integración",
+      integrationDesc: "Importar desde un registrador conectado (OVH…).",
+      integrationAction: "Continuar"
+    },
+    inventory: {
+      title: "Dominios supervisados",
+      description: "Nombres de dominio vinculados a esta empresa."
+    },
+    empty: {
+      addBtn: "Añadir dominio",
+      noneHint: "Añada un dominio manualmente o mediante una integración."
+    },
+    meta: {
+      registrar: "Registrador"
+    },
     provider: {
-      title: "Solución configurable",
-      description: "Proveedores disponibles.",
+      title: "Elegir una integración",
+      description: "Seleccione el registrador para importar dominios.",
       connectionTitle: "Conexión {provider}",
       globalDetected: "Cuenta registrar global detectada en administración. Importe dominios para vincularlos a este cliente.",
       globalNotActive: "La configuración global de OVH no está activa. Active la integración en administración o consulte la guía.",
@@ -651,7 +796,8 @@ const DOMAINS_MODAL_COPY = {
       alreadyLinked: "Ya vinculado",
       selected: "Seleccionado",
       dnsZone: "Zona DNS",
-      available: "Disponible"
+      available: "Disponible",
+      manual: "Manual"
     },
     overview: {
       title: "Solución registrada",
@@ -668,8 +814,10 @@ const DOMAINS_MODAL_COPY = {
       editAria: "Editar {label}"
     },
     manual: {
-      title: "Otro registrar · entrada manual",
+      title: "Entrada manual",
+      titleEdit: "Editar dominio",
       description: "Registre un nombre de dominio sin conector API.",
+      descriptionEdit: "Actualice el nombre, el registrador o la fecha de vencimiento.",
       domainName: "Nombre de dominio",
       domainNamePlaceholder: "ejemplo.es",
       registrar: "Registrar (opcional)",
@@ -732,7 +880,8 @@ const DOMAINS_MODAL_COPY = {
       back: "Volver",
       attach: "Vincular ({count})",
       attaching: "Importando…",
-      saveManual: "Guardar dominio"
+      saveManual: "Guardar dominio",
+      updateManual: "Actualizar"
     },
     proFallback: "Esta integración",
     comingSoon: "{provider} estará disponible pronto en Veritas.",

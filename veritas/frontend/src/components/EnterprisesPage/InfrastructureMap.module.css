@@ -43,6 +43,7 @@
 }
 
 .cyberDetail:has(.detailPanelTable),
+.cyberDetail:has(.detailPanelMetrics),
 .cyberDetail:has(.backupOverview) {
   overflow: hidden;
   display: flex;
@@ -62,16 +63,38 @@
 }
 
 .detailPanelMetrics {
-  /* Aligné sur activity / vault / logs */
-  gap: 0.65rem;
-  padding: 0.55rem 0.75rem 0.75rem;
+  gap: var(--crm-section-toolbar-gap, 0.65rem);
+  padding: var(--crm-section-content-pad, 0.55rem 0.75rem 0.75rem);
 }
 
 .detailPanelMetrics .detailHeader {
-  flex-wrap: wrap;
-  row-gap: 0.65rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0;
+  border-bottom: none;
+}
+
+.detailHeaderTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.detailTitleIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.detailHeaderHint {
+  margin: -0.15rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
 }
 
 .detailHeaderActions {
@@ -81,6 +104,7 @@
   justify-content: flex-end;
   gap: 0.45rem;
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .detailSolutionSelect {
@@ -89,8 +113,9 @@
   min-width: 0;
 }
 
-.detailSolutionSelect select {
-  max-width: 14rem;
+.detailSolutionSelect select,
+.detailSolutionSelectControl {
+  max-width: 18rem;
   min-height: 2.15rem;
   padding: 0.35rem 0.65rem;
   border: 1px solid var(--msp-border-light, #e2e8f0);
@@ -99,6 +124,39 @@
   color: var(--msp-text, #0f1c2e);
   font-size: 0.78rem;
   font-weight: 550;
+}
+
+.detailSolutionPickerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.55rem 0.85rem;
+  margin: 0.15rem 0 0.75rem;
+}
+
+.detailSolutionPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  min-width: min(100%, 16rem);
+}
+
+.detailSolutionPickerLabel {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.detailSelectedCard {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
 }
 
 .metricsBoard {
@@ -165,6 +223,44 @@
   flex: 0 0 auto;
 }
 
+.serviceTableToolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.serviceTableToolbar :global([class*="embeddedSearchBox"]) {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.serviceTableToolbar .backupTableAddBtn,
+.serviceTableToolbar .detailPrimaryBtn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.serviceTableEmpty {
+  flex: 1 1 auto;
+  min-height: 10rem;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+}
+
+.serviceTableEmptyText {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .backupOverview {
   display: flex;
   flex-direction: column;
@@ -190,12 +286,22 @@
   min-width: 0;
 }
 
+.backupTableHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .backupTableTitle {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   margin: 0;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -203,18 +309,57 @@
   color: var(--msp-muted, #5c6b82);
 }
 
+.backupTableAddBtn {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: var(--msp-btn-square, 28px);
+  height: var(--msp-btn-square, 28px);
+  min-width: var(--msp-btn-square, 28px);
+  min-height: var(--msp-btn-square, 28px);
+  flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  border-radius: 999px;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.backupTableAddBtn:hover:not(:disabled) {
+  background: var(--msp-accent-dark, #1a3d75);
+  border-color: var(--msp-accent-dark, #1a3d75);
+}
+
+.backupTableAddBtn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.backupTableAddBtn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .backupTableCount {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 1.25rem;
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
-  background: var(--msp-surface-2, #f4f7fb);
-  color: var(--msp-text, #0f1c2e);
-  font-size: 0.62rem;
-  font-weight: 700;
+  height: 1.25rem;
+  padding: 0 0.28rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.6rem;
+  font-weight: 650;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .backupTableHost {
@@ -535,26 +680,54 @@
   background: var(--msp-surface, #1a2540);
 }
 
-:global(html.dark) .detailSolutionSelect select {
+:global(html.dark) .detailSolutionSelect select,
+:global(html.dark) .detailSolutionSelectControl {
   background: var(--msp-surface, #1a2540);
   border-color: var(--msp-border, #3d5478);
   color: var(--msp-text, #e8edf5);
 }
 
-:global(html.dark) .detailPanelMetrics .detailHeader {
-  border-bottom-color: var(--msp-border, #3d5478);
+:global(html.dark) .detailSolutionPickerLabel {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .detailSelectedCard {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .backupTableCount {
+  background: color-mix(in srgb, var(--msp-muted, #8fa8c4) 16%, transparent);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .backupTableAddBtn {
+  background: var(--msp-accent, #5b8fd4);
+  border-color: var(--msp-accent, #5b8fd4);
+  color: #0b1220;
+}
+
+:global(html.dark) .backupTableAddBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--msp-accent, #5b8fd4) 85%, #fff);
+  border-color: color-mix(in srgb, var(--msp-accent, #5b8fd4) 85%, #fff);
 }
 
 :global(html.dark) .detailEmptyTitle,
 :global(html.dark) .detailTitle,
+:global(html.dark) .detailPromoTitle,
 :global(html.dark) .detailListTitle {
   color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .detailTitleIcon {
+  color: var(--msp-accent, #5b8fd4);
 }
 
 :global(html.dark) .detailEmptyHint,
 :global(html.dark) .detailSubtitle,
 :global(html.dark) .detailListMeta,
-:global(html.dark) .detailEmptyCardText {
+:global(html.dark) .detailEmptyCardText,
+:global(html.dark) .serviceTableEmptyText {
   color: var(--msp-muted, #8fa8c4);
 }
 
@@ -574,9 +747,23 @@
   color: var(--msp-text, #e8edf5);
 }
 
+:global(html.dark) .detailDangerBtn {
+  color: #f97066;
+  border-color: color-mix(in srgb, #f97066 35%, var(--msp-border, #3d5478));
+}
+
+:global(html.dark) .detailDangerBtn:hover {
+  color: #fda29b;
+  background: color-mix(in srgb, #f97066 12%, transparent);
+  border-color: color-mix(in srgb, #f97066 50%, var(--msp-border, #3d5478));
+}
+
 :global(html.dark) .detailEmptyCard {
-  background: var(--msp-surface-2, #152035);
-  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  border-color: color-mix(in srgb, var(--msp-border, #2f4260) 80%, transparent);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 28px -14px rgba(0, 0, 0, 0.45);
 }
 
 .brickRow {
@@ -814,12 +1001,15 @@ button.brickNode {
 /* Uniformise cyber & cloud sur activity / vault / logs */
 .detailPanel.detailPanelMetrics,
 .detailPanel.detailPanelTable {
-  gap: 0.65rem;
-  padding: 0.55rem 0.75rem 0.75rem;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  gap: var(--crm-section-toolbar-gap, 0.65rem);
+  padding: var(--crm-section-content-pad, 0.55rem 0.75rem 0.75rem);
 }
 
 .detailPanel.detailPanelMetricsBare {
-  padding-top: 0.55rem;
+  padding-top: 0.55rem; /* même top que --crm-section-content-pad */
 }
 
 .detailEmpty {
@@ -911,25 +1101,34 @@ button.brickNode {
   gap: 0.55rem;
 }
 
-/* Même chrome carré arrondi que exportHeaderButton / addEquipmentButton */
+/* Même chrome rond (pill) que btnSquare / addEquipmentButton */
 .detailPrimaryBtn,
 .detailSecondaryBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
+  width: var(--msp-btn-square, 28px);
+  height: var(--msp-btn-square, 28px);
+  min-width: var(--msp-btn-square, 28px);
+  min-height: var(--msp-btn-square, 28px);
   padding: 0;
-  border-radius: 7px;
+  border-radius: 999px;
   border: 1px solid transparent;
   font-size: 0.95rem;
   line-height: 0;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  transition:
+    background var(--msp-duration-fast, 0.14s) var(--msp-ease, ease),
+    border-color var(--msp-duration-fast, 0.14s) var(--msp-ease, ease),
+    color var(--msp-duration-fast, 0.14s) var(--msp-ease, ease),
+    transform var(--msp-duration-fast, 0.14s) var(--msp-ease-spring, ease);
+}
+
+.detailPrimaryBtn:active:not(:disabled),
+.detailSecondaryBtn:active:not(:disabled) {
+  transform: scale(0.9);
 }
 
 .detailPrimaryBtn {
@@ -957,6 +1156,17 @@ button.brickNode {
 .detailSecondaryBtn:hover {
   border-color: var(--msp-accent, #2b5fab);
   color: var(--msp-accent, #2b5fab);
+}
+
+.detailDangerBtn {
+  color: #b42318;
+  border-color: color-mix(in srgb, #b42318 28%, var(--msp-border, #d0dae8));
+}
+
+.detailDangerBtn:hover {
+  color: #912018;
+  border-color: color-mix(in srgb, #b42318 45%, var(--msp-border, #d0dae8));
+  background: color-mix(in srgb, #b42318 8%, #fff);
 }
 
 .detailList {
@@ -1016,27 +1226,71 @@ button.brickNode {
 }
 
 .detailEmptyCard {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.45rem;
-  padding: 1rem 1.05rem;
-  border: 1px dashed var(--msp-border, #d0dae8);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 80%, #fff);
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent);
+  border-radius: 16px;
+  background: var(--msp-surface, #fff);
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 10px 28px -14px rgba(15, 28, 46, 0.14);
+  color: var(--msp-muted, #5c6b82);
+  text-align: center;
 }
 
 .detailEmptyCardIcon {
-  font-size: 1.35rem;
-  color: var(--msp-accent, #2b5fab);
-  opacity: 0.8;
+  font-size: 2.5rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  opacity: 0.75;
 }
 
 .detailEmptyCardText {
   margin: 0;
-  font-size: 0.82rem;
+  max-width: 28rem;
+  font-size: 0.9rem;
+  font-weight: 500;
   line-height: 1.45;
   color: var(--msp-muted, #5c6b82);
+}
+
+.detailPromoTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.detailPromoCard .detailEmptyCardIcon {
+  color: var(--msp-accent, #2b5fab);
+  opacity: 0.9;
+}
+
+.detailEmptyCardBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  border-radius: 999px;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.detailEmptyCardBtn:hover {
+  filter: brightness(1.06);
 }
 
 .brickNode:not(.brickNodePlaceholder):not(.brickNodeDisabled):hover .brickGlyph,

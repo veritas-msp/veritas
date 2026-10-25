@@ -38,6 +38,24 @@
   background: color-mix(in srgb, var(--msp-accent, #2b5fab) 6%, transparent);
 }
 
+.wrapBare {
+  flex-shrink: 0;
+}
+
+.tokenBtnBare {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.tokenBtnBare:hover {
+  border: none;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+}
+
 .token {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.72rem;

@@ -4,7 +4,6 @@ import { getKnowledgeBaseGuide } from "../PageGuide/knowledgeBaseGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCan } from "../../contexts/PermissionsContext";
@@ -26,6 +25,7 @@ import KnowledgeFolderModal from "./KnowledgeFolderModal";
 import KnowledgeFolderTree, { flattenFolderOptions } from "./KnowledgeFolderTree";
 import { articleTemplates, templateToHtml } from "./knowledgeArticleHelpers";
 import styles from "./knowledgeBase.module.css";
+import { UiKitCrmListToolbar, UiKitEmptyState } from "../UiKit";
 
 function KnowledgeBaseShell({ children }) {
   return (
@@ -496,103 +496,111 @@ export default function KnowledgeBasePage({ onNavigate }) {
             />
             </div>
             <div className={styles.listColumn}>
-          <div className={styles.toolbar} data-guide="kb-toolbar">
-            {canDelete || canEdit ? articles.length > 0 ? (
-              <label className={styles.selectAll}>
-                <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label={copy.selectAll} />
-              </label>
-            ) : null : null}
-            <div className={`${layout.searchWrap} ${layout.searchWrapInCard} ${styles.toolbarSearch}`}>
-              <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-              <input
-                ref={searchInputRef}
-                type="search"
-                inputMode="search"
-                enterKeyHint="search"
-                className={layout.searchInput}
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder={copy.searchPlaceholder}
-                aria-label={copy.searchPlaceholder}
-              />
-              {search ? (
-                <SmartTooltip content={copy.clearSearch}>
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className={layout.clearButton}
-                    aria-label={copy.clearSearch}
-                  >
-                    <FaTimes />
-                  </button>
-                </SmartTooltip>
-              ) : null}
-            </div>
-            <div className={layout.statusChips} role="group" aria-label={copy.filterAll}>
-              {(isTrashView
-                ? [{ key: "all", label: copy.trash, icon: "mdi:delete-outline", tone: "gray" }]
-                : [
-                    { key: "all", label: copy.filterAll, icon: "mdi:file-document-multiple-outline", tone: "blue" },
-                    { key: "draft", label: copy.filterDraft, icon: "mdi:file-edit-outline", tone: "amber" },
-                    { key: "published", label: copy.filterPublished, icon: "mdi:check-circle-outline", tone: "green" },
+          <div data-guide="kb-toolbar">
+          <UiKitCrmListToolbar
+            className={styles.toolbar}
+            title={copy.pageTitle}
+            searchInputRef={searchInputRef}
+            titleIcon="mdi:book-open-variant-outline"
+            searchValue={search}
+            onSearchChange={setSearch}
+            onSearchClear={() => setSearch("")}
+            searchPlaceholder={copy.searchPlaceholder}
+            searchAriaLabel={copy.searchPlaceholder}
+            clearSearchLabel={copy.clearSearch}
+            leading={
+              canDelete || canEdit ? (
+                articles.length > 0 ? (
+                  <label className={styles.selectAll}>
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label={copy.selectAll} />
+                  </label>
+                ) : null
+              ) : null
+            }
+            filters={
+              <>
+                <div className={layout.statusChips} role="group" aria-label={copy.filterAll}>
+                  {(isTrashView
+                    ? [{ key: "all", label: copy.trash, icon: "mdi:delete-outline", tone: "gray" }]
+                    : [
+                        { key: "all", label: copy.filterAll, icon: "mdi:file-document-multiple-outline", tone: "blue" },
+                        { key: "draft", label: copy.filterDraft, icon: "mdi:file-edit-outline", tone: "amber" },
+                        { key: "published", label: copy.filterPublished, icon: "mdi:check-circle-outline", tone: "green" },
+                      ]
+                  ).map(item => {
+                    const active = isTrashView || status === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${isTrashView ? layout.statusChipDisabled : ""}`}
+                        onClick={() => setStatus(item.key)}
+                        disabled={isTrashView}
+                        aria-pressed={active}
+                      >
+                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.tone}`]}`}>
+                          <Icon icon={item.icon} />
+                        </span>
+                        <span className={layout.statusChipLabel}>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <select
+                  className={layout.sortSelect}
+                  value={categoryFilter}
+                  onChange={event => setCategoryFilter(event.target.value)}
+                  aria-label={copy.categoryFilterAll}
+                >
+                  <option value="">{copy.categoryFilterAll}</option>
+                  {categories.map(row => (
+                    <option key={row.id} value={row.name}>{row.name}</option>
+                  ))}
+                </select>
+              </>
+            }
+            filtersAriaLabel={copy.filterAll}
+            moreMenuItems={
+              canEdit
+                ? [
+                    {
+                      key: "categories",
+                      label: copy.categoryManage,
+                      icon: "mdi:tag-outline",
+                      onClick: () => setCategoryModal(true)
+                    }
                   ]
-              ).map(item => {
-                const active = isTrashView || status === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${isTrashView ? layout.statusChipDisabled : ""}`}
-                    onClick={() => setStatus(item.key)}
-                    disabled={isTrashView}
-                    aria-pressed={active}
-                  >
-                    <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.tone}`]}`}>
-                      <Icon icon={item.icon} />
-                    </span>
-                    <span className={layout.statusChipLabel}>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <select
-              className={layout.sortSelect}
-              value={categoryFilter}
-              onChange={event => setCategoryFilter(event.target.value)}
-              aria-label={copy.categoryFilterAll}
-            >
-              <option value="">{copy.categoryFilterAll}</option>
-              {categories.map(row => (
-                <option key={row.id} value={row.name}>{row.name}</option>
-              ))}
-            </select>
-            {canEdit ? (
-              <button type="button" className={styles.secondaryBtn} onClick={() => setCategoryModal(true)}>
-                <Icon icon="mdi:tag-outline" /> {copy.categoryManage}
-              </button>
-            ) : null}
-            {canCreate ? (
-              <div className={`${styles.toolbarActions} ${layout.toolbarActions}`} data-guide="kb-hero">
-                <SmartTooltip content={copy.newArticle}>
-                  <button
-                    type="button"
-                    className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`}
-                    onClick={() => setTemplateOpen(true)}
-                    disabled={creating}
-                    aria-label={copy.newArticle}
-                  >
-                    <Icon icon="mdi:plus" />
-                  </button>
-                </SmartTooltip>
-              </div>
-            ) : null}
+                : []
+            }
+            createAction={
+              canCreate
+                ? {
+                    label: copy.newArticle,
+                    onClick: () => setTemplateOpen(true),
+                    disabled: creating
+                  }
+                : null
+            }
+          />
           </div>
           {loading ? (
             <PageSkeleton variant="list" rows={8} label={copy.loading} />
           ) : articles.length === 0 ? (
-            <div className={styles.empty} data-guide="kb-list">
-              <p>{isTrashView ? copy.trashEmpty : (search || status !== "all" || categoryFilter ? copy.emptyFiltered : currentFolder !== "all" ? copy.emptyFolder : copy.emptyTitle)}</p>
-              <p className={styles.emptyHint}>{isTrashView ? copy.trashEmptyHint : copy.emptyHint}</p>
+            <div className={layout.emptyStateInCard} data-guide="kb-list">
+              <UiKitEmptyState
+                bare
+                icon="mdi:book-open-variant-outline"
+                title={
+                  isTrashView
+                    ? copy.trashEmpty
+                    : search || status !== "all" || categoryFilter
+                      ? copy.emptyFiltered
+                      : currentFolder !== "all"
+                        ? copy.emptyFolder
+                        : copy.emptyTitle
+                }
+                text={isTrashView ? copy.trashEmptyHint : copy.emptyHint}
+              />
             </div>
           ) : (
             <div className={styles.list} data-guide="kb-list">

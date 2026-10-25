@@ -1,7 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { addPrestataire, updatePrestataire } from "../../api/prestataires";
 import { showError, showSuccess } from "../../utils/toast";
 import {
@@ -17,6 +16,14 @@ import {
 } from "./prestataireFormModalI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
+import {
+  UiKitButton,
+  UiKitField,
+  UiKitInput,
+  UiKitTextarea,
+  uiKitLayoutsStyles as kit,
+  useFinderNavIndicator
+} from "../UiKit";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 
@@ -98,6 +105,7 @@ export default function PrestataireFormModal({
     serializeMemberships(buildMembershipsFromInitial(initialPrestataire, lockedClientId, clientList))
   );
   const [activeSection, setActiveSection] = useState("identity");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   const [saving, setSaving] = useState(false);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
@@ -202,15 +210,12 @@ export default function PrestataireFormModal({
   }, [enterpriseDropdownOpen, updateEnterpriseDropdownPosition]);
 
   const visibleSections = useMemo(() => {
-    let sections = formSections;
+    let sections = formSections.filter(section => section.id !== "status");
     if (hideEnterpriseSection) {
       sections = sections.filter(section => section.id !== "enterprise");
     }
-    if (!isEditing) {
-      sections = sections.filter(section => section.id !== "status");
-    }
     return sections;
-  }, [formSections, hideEnterpriseSection, isEditing]);
+  }, [formSections, hideEnterpriseSection]);
 
   useEffect(() => {
     if (!visibleSections.some(section => section.id === activeSection)) {
@@ -357,244 +362,155 @@ export default function PrestataireFormModal({
     const section = visibleSections.find(s => s.id === activeSection);
     switch (activeSection) {
       case "identity":
-        return <>
-          <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+          <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
             <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
           </div>
-          <div className={styles.fieldGrid2}>
-            <div className={`${styles.field} ${styles.fieldFull}`}>
-              <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="prestataire-form-nom">
-                {copy.nameLabel}
-              </label>
-              <input
-                id="prestataire-form-nom"
-                type="text"
-                className={styles.input}
-                value={form.nom || ""}
-                onChange={e => patchForm({ nom: e.target.value })}
-                placeholder={copy.namePlaceholder}
-                autoFocus
-                required
-              />
-            </div>
-            <div className={`${styles.field} ${styles.fieldFull}`}>
-              <label className={styles.label} htmlFor="prestataire-form-type">
-                {copy.typeLabel}
-              </label>
-              <input
-                id="prestataire-form-type"
-                type="text"
-                className={styles.input}
-                value={form.type || ""}
-                onChange={e => patchForm({ type: e.target.value })}
-                placeholder={copy.typePlaceholder}
-              />
+          <div className={styles.sectionScroll}>
+            <div className={styles.fieldGrid2}>
+              <UiKitField label={copy.nameLabel} htmlFor="prestataire-form-nom" required full className={styles.fieldFull}>
+                <UiKitInput
+                  id="prestataire-form-nom"
+                  type="text"
+                  value={form.nom || ""}
+                  onChange={e => patchForm({ nom: e.target.value })}
+                  placeholder={copy.namePlaceholder}
+                  autoFocus
+                  required
+                />
+              </UiKitField>
+              <UiKitField label={copy.typeLabel} htmlFor="prestataire-form-type" full className={styles.fieldFull}>
+                <UiKitInput
+                  id="prestataire-form-type"
+                  type="text"
+                  value={form.type || ""}
+                  onChange={e => patchForm({ type: e.target.value })}
+                  placeholder={copy.typePlaceholder}
+                />
+              </UiKitField>
             </div>
           </div>
-        </>;
+        </div>;
       case "contacts":
-        return <>
-          <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+          <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
             <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
           </div>
-          <p className={styles.hint}>{copy.contactsHint}</p>
-          <div className={styles.fieldStack}>
+          <div className={styles.sectionPinned}>
+            <UiKitButton type="button" variant="secondary" onClick={addContact} icon="mdi:account-plus-outline">
+              {copy.addContact}
+            </UiKitButton>
+          </div>
+          <div className={styles.sectionScroll}>
             {(Array.isArray(form.contacts) ? form.contacts : []).length === 0 ? (
               <p className={styles.hint}>{copy.emptyContacts}</p>
             ) : (
               (form.contacts || []).map((contact, index) => (
-                <div
-                  key={contact._key}
-                  className={styles.field}
-                  style={{
-                    border: "1px solid var(--msp-border, #e2e8f0)",
-                    borderRadius: "10px",
-                    padding: "0.85rem 0.95rem",
-                    background: "var(--msp-surface-2, #f7f9fc)"
-                  }}
-                >
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "0.75rem",
-                    marginBottom: "0.65rem"
-                  }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.84rem" }}>
+                <div key={contact._key} className={styles.membershipRow}>
+                  <div className={styles.membershipRowMain}>
+                    <span className={styles.membershipRowName}>
                       {interpolate(copy.contactCardTitle, { index: index + 1 })}
                     </span>
-                    <button
+                    <UiKitButton
                       type="button"
-                      className={styles.ghostBtn}
+                      square
+                      variant="secondary"
                       onClick={() => removeContact(contact._key)}
                       aria-label={copy.removeContactAria}
-                      style={{ padding: "0.35rem 0.55rem", minHeight: 0 }}
-                    >
-                      <FaTimes aria-hidden />
-                    </button>
+                      icon="mdi:close"
+                    />
                   </div>
-                  <div className={styles.fieldGrid2}>
-                    <div className={styles.field}>
-                      <label className={styles.label}>{copy.contactFirstName}</label>
-                      <input
+                  <div className={styles.fieldGrid2} style={{ marginTop: "0.65rem" }}>
+                    <UiKitField label={copy.contactFirstName}>
+                      <UiKitInput
                         type="text"
-                        className={styles.input}
                         value={contact.prenom || ""}
                         onChange={e => patchContact(contact._key, { prenom: e.target.value })}
                         placeholder={copy.contactFirstNamePlaceholder}
                       />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label}>{copy.contactLastName}</label>
-                      <input
+                    </UiKitField>
+                    <UiKitField label={copy.contactLastName}>
+                      <UiKitInput
                         type="text"
-                        className={styles.input}
                         value={contact.nom || ""}
                         onChange={e => patchContact(contact._key, { nom: e.target.value })}
                         placeholder={copy.contactLastNamePlaceholder}
                       />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label}>{copy.emailLabel}</label>
-                      <input
+                    </UiKitField>
+                    <UiKitField label={copy.emailLabel}>
+                      <UiKitInput
                         type="email"
-                        className={styles.input}
                         value={contact.email || ""}
                         onChange={e => patchContact(contact._key, { email: e.target.value })}
                         placeholder={copy.emailPlaceholder}
                       />
-                    </div>
-                    <div className={styles.field}>
-                      <label className={styles.label}>{copy.phoneLabel}</label>
-                      <input
+                    </UiKitField>
+                    <UiKitField label={copy.phoneLabel}>
+                      <UiKitInput
                         type="tel"
-                        className={styles.input}
                         value={contact.telephone || ""}
                         onChange={e => patchContact(contact._key, { telephone: e.target.value })}
                         placeholder={copy.phonePlaceholder}
                       />
-                    </div>
+                    </UiKitField>
                   </div>
                 </div>
               ))
             )}
-            <button type="button" className={styles.ghostBtn} onClick={addContact}>
-              <Icon icon="mdi:account-plus-outline" aria-hidden />
-              {copy.addContact}
-            </button>
           </div>
-        </>;
+        </div>;
       case "coordinates":
-        return <>
-          <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+          <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
             <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
           </div>
-          <div className={styles.fieldGrid2}>
-            <div className={`${styles.field} ${styles.fieldFull}`}>
-              <label className={styles.label} htmlFor="prestataire-form-site">
-                {copy.websiteLabel}
-              </label>
-              <input
-                id="prestataire-form-site"
-                type="url"
-                className={styles.input}
-                value={form.site_web || ""}
-                onChange={e => patchForm({ site_web: e.target.value })}
-                placeholder={copy.websitePlaceholder}
-              />
-            </div>
-            <div className={`${styles.field} ${styles.fieldFull}`}>
-              <label className={styles.label} htmlFor="prestataire-form-adresse">
-                {copy.addressLabel}
-              </label>
-              <textarea
-                id="prestataire-form-adresse"
-                className={styles.input}
-                rows={2}
-                value={form.adresse || ""}
-                onChange={e => patchForm({ adresse: e.target.value })}
-                placeholder={copy.addressPlaceholder}
-              />
+          <div className={styles.sectionScroll}>
+            <div className={styles.fieldGrid2}>
+              <UiKitField label={copy.websiteLabel} htmlFor="prestataire-form-site" full className={styles.fieldFull}>
+                <UiKitInput
+                  id="prestataire-form-site"
+                  type="url"
+                  value={form.site_web || ""}
+                  onChange={e => patchForm({ site_web: e.target.value })}
+                  placeholder={copy.websitePlaceholder}
+                />
+              </UiKitField>
+              <UiKitField label={copy.addressLabel} htmlFor="prestataire-form-adresse" full className={styles.fieldFull}>
+                <UiKitTextarea
+                  id="prestataire-form-adresse"
+                  rows={3}
+                  value={form.adresse || ""}
+                  onChange={e => patchForm({ adresse: e.target.value })}
+                  placeholder={copy.addressPlaceholder}
+                />
+              </UiKitField>
             </div>
           </div>
-        </>;
+        </div>;
       case "enterprise":
-        return <>
-          <div className={styles.sectionHead}>
+        return <div className={styles.sectionFill}>
+          <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
             <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
           </div>
           {isEnterpriseLocked ? (
-            <p className={styles.hint}>{copy.enterpriseLockedHint}</p>
-          ) : (
-            <p className={styles.hint}>{copy.enterpriseHint}</p>
-          )}
-          <div className={styles.fieldStack}>
-            {isEnterpriseLocked ? (
-              <div className={styles.field}>
-                <label className={styles.label}>{copy.companiesLabel}</label>
-                <input
+            <div className={styles.sectionPinned}>
+              <UiKitField label={copy.companiesLabel}>
+                <UiKitInput
                   type="text"
-                  className={styles.input}
                   value={getClientLabel(lockedClient, copy) || copy.currentClient}
                   readOnly
                   disabled
                 />
-              </div>
-            ) : (
-              <>
-                {memberships.length > 0 && (
-                  <div className={styles.field}>
-                    <label className={styles.label}>{copy.companiesLabel}</label>
-                    <div className={styles.fieldStack}>
-                      {memberships.map(membership => {
-                        const label = membership.name || copy.getClientLabel(membership.client_id);
-                        return (
-                          <div
-                            key={membership.client_id}
-                            className={styles.field}
-                            style={{
-                              border: "1px solid var(--msp-border, #e2e8f0)",
-                              borderRadius: "10px",
-                              padding: "0.75rem 0.9rem",
-                              background: "var(--msp-surface-2, #f7f9fc)"
-                            }}
-                          >
-                            <div style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: "0.75rem"
-                            }}>
-                              <span style={{ fontWeight: 600 }}>{label}</span>
-                              <button
-                                type="button"
-                                className={styles.ghostBtn}
-                                onClick={() => removeMembership(membership.client_id)}
-                                aria-label={interpolate(copy.removeCompanyAria, { name: label })}
-                                style={{ padding: "0.35rem 0.55rem", minHeight: 0 }}
-                              >
-                                <FaTimes aria-hidden />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                <div className={styles.field}>
-                  <label className={styles.label} htmlFor="prestataire-form-enterprise">
-                    {copy.addCompany}
-                  </label>
+              </UiKitField>
+            </div>
+          ) : (
+            <>
+              <div className={styles.sectionPinned}>
+                <UiKitField label={copy.addCompany} htmlFor="prestataire-form-enterprise">
                   <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
-                    <input
+                    <UiKitInput
                       id="prestataire-form-enterprise"
                       type="text"
-                      className={styles.input}
                       placeholder={copy.searchEnterprise}
                       value={enterpriseSearch}
                       onChange={e => {
@@ -605,75 +521,72 @@ export default function PrestataireFormModal({
                       autoComplete="off"
                     />
                   </div>
-                  {enterpriseDropdownOpen
-                    ? createPortal(
-                      <div
-                        ref={enterpriseDropdownRef}
-                        className={styles.dropdownPortal}
-                        style={enterpriseDropdownStyle || {
-                          position: "fixed",
-                          top: 0,
-                          left: 0,
-                          width: 280,
-                          visibility: "hidden",
-                          pointerEvents: "none",
-                          zIndex: getModalDropdownZIndex()
-                        }}
-                        role="listbox"
-                      >
-                        {filteredClients.length === 0 ? (
-                          <div className={styles.dropdownEmpty}>{copy.noEnterprise}</div>
-                        ) : (
-                          filteredClients.map(client => (
+                </UiKitField>
+                {enterpriseDropdownOpen
+                  ? createPortal(
+                    <div
+                      ref={enterpriseDropdownRef}
+                      className={styles.dropdownPortal}
+                      style={enterpriseDropdownStyle || {
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: 280,
+                        visibility: "hidden",
+                        pointerEvents: "none",
+                        zIndex: getModalDropdownZIndex()
+                      }}
+                      role="listbox"
+                    >
+                      {filteredClients.length === 0 ? (
+                        <div className={styles.dropdownEmpty}>{copy.noEnterprise}</div>
+                      ) : (
+                        filteredClients.map(client => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className={styles.dropdownOption}
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => addMembership(client)}
+                          >
+                            {getClientLabel(client, copy)}
+                          </button>
+                        ))
+                      )}
+                    </div>,
+                    document.body
+                  )
+                  : null}
+              </div>
+              <div className={styles.sectionScroll}>
+                {memberships.length > 0 ? (
+                  <div className={styles.membershipList}>
+                    {memberships.map(membership => {
+                      const label = membership.name || copy.getClientLabel(membership.client_id);
+                      return (
+                        <div key={membership.client_id} className={styles.membershipRow}>
+                          <div className={styles.membershipRowMain}>
+                            <span className={styles.membershipRowName}>{label}</span>
                             <button
-                              key={client.id}
                               type="button"
-                              className={styles.dropdownOption}
-                              onMouseDown={e => e.preventDefault()}
-                              onClick={() => addMembership(client)}
+                              className={styles.membershipRemoveBtn}
+                              onClick={() => removeMembership(membership.client_id)}
+                              aria-label={interpolate(copy.removeCompanyAria, { name: label })}
                             >
-                              {getClientLabel(client, copy)}
+                              <Icon icon="mdi:close" aria-hidden />
                             </button>
-                          ))
-                        )}
-                      </div>,
-                      document.body
-                    )
-                    : null}
-                </div>
-              </>
-            )}
-          </div>
-        </>;
-      case "status":
-        return <>
-          <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
-          </div>
-          <div className={styles.modulesGrid}>
-            <button
-              type="button"
-              className={`${styles.moduleTile} ${form.statut === "actif" ? styles.moduleTileActive : ""}`}
-              onClick={() => patchForm({ statut: "actif" })}
-              aria-pressed={form.statut === "actif"}
-            >
-              {form.statut === "actif" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-              <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-              <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
-            </button>
-            <button
-              type="button"
-              className={`${styles.moduleTile} ${form.statut === "inactif" ? styles.moduleTileActive : ""}`}
-              onClick={() => patchForm({ statut: "inactif" })}
-              aria-pressed={form.statut === "inactif"}
-            >
-              {form.statut === "inactif" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-              <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-              <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
-            </button>
-          </div>
-        </>;
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className={styles.hint}>{copy.noEnterprise}</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>;
       default:
         return null;
     }
@@ -693,38 +606,86 @@ export default function PrestataireFormModal({
               <h2 className={styles.title} id="prestataire-form-modal-title">
                 {copy.modalTitle(isEditing)}
               </h2>
-              <p className={styles.subtitle}>{copy.modalSubtitle(isEditing)}</p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} disabled={saving} aria-label={copy.close}>
-            <FaTimes />
-          </button>
+          <div className={styles.headerTrailing}>
+            <label className={styles.headerStatusToggle}>
+              <span className={styles.headerStatusLabel}>
+                {form.statut === "inactif" || form.statut === "inactive"
+                  ? copy.statutInactive
+                  : copy.statutActive}
+              </span>
+              <span className={styles.switchWrap}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={!(form.statut === "inactif" || form.statut === "inactive")}
+                  onChange={e => patchForm({
+                    statut: e.target.checked ? "actif" : "inactif"
+                  })}
+                  role="switch"
+                  aria-checked={!(form.statut === "inactif" || form.statut === "inactive")}
+                  disabled={saving}
+                />
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </span>
+            </label>
+            <UiKitButton
+              type="button"
+              square
+              variant="secondary"
+              className={styles.closeBtn}
+              onClick={onClose}
+              disabled={saving}
+              aria-label={copy.close}
+              icon="mdi:close"
+            />
+          </div>
         </header>
 
         <div className={styles.body}>
-          <nav className={styles.nav} aria-label={copy.navAria}>
-            {visibleSections.map(section => (
-              <button
-                key={section.id}
-                type="button"
-                className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`}
-                onClick={() => setActiveSection(section.id)}
-                aria-current={activeSection === section.id ? "step" : undefined}
-              >
-                <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
-                <span className={styles.navItemText}>
-                  <span className={`${styles.navItemLabel} ${isSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
-                    {section.label}
-                  </span>
-                  <span className={styles.navItemHint}>{section.description}</span>
-                </span>
-                {section.id === "identity" && sectionMeta.identity && <span className={styles.navBadge}>✓</span>}
-                {section.id === "contacts" && sectionMeta.contacts && <span className={styles.navBadge}>✓</span>}
-                {section.id === "enterprise" && sectionMeta.enterprise && <span className={styles.navBadge}>✓</span>}
-              </button>
-            ))}
-          </nav>
-          <div className={styles.content}>{renderSectionContent()}</div>
+          <aside className={`${kit.finderSidebar} ${styles.modalNav}`} aria-label={copy.navAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack}`}
+            >
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {visibleSections.map(section => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={`${kit.finderItem} ${active ? kit.finderItemActive : ""}`}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                    <span className={`${kit.finderItemLabel} ${isSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
+                      {section.label}
+                    </span>
+                    {section.id === "identity" && sectionMeta.identity ? <span className={styles.navBadge}>✓</span> : null}
+                    {section.id === "contacts" && sectionMeta.contacts ? <span className={styles.navBadge}>✓</span> : null}
+                    {section.id === "enterprise" && sectionMeta.enterprise ? <span className={styles.navBadge}>✓</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+          <div className={styles.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={styles.footer}>
@@ -732,27 +693,27 @@ export default function PrestataireFormModal({
             {isEditing && (hasChanges ? copy.footerUnsaved : copy.footerNoChanges)}
           </span>
           <div className={styles.footerActions}>
-            <button type="button" className={styles.ghostBtn} onClick={onClose} disabled={saving}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
               {commonCopy.cancel}
-            </button>
-            <button type="button" className={styles.primaryBtn} onClick={handleSubmit} disabled={submitDisabled}>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={submitDisabled}
+              icon={saving ? undefined : isEditing ? "mdi:content-save-outline" : "mdi:check"}
+            >
               {saving ? (
                 <>
                   <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                   {commonCopy.saving}
                 </>
               ) : isEditing ? (
-                <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {commonCopy.save}
-                </>
+                commonCopy.save
               ) : (
-                <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {copy.createPrestataire}
-                </>
+                copy.createPrestataire
               )}
-            </button>
+            </UiKitButton>
           </div>
         </footer>
       </div>

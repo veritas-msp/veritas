@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { FaPlus, FaTimes } from "react-icons/fa";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchPortalTickets } from "../../api/clientPortalTickets";
 import { showError } from "../../utils/toast";
@@ -113,11 +113,6 @@ export default function ClientTicketListPage() {
           title={isSupervisor ? t.pageTitleSupervisor : t.pageTitle}
           subtitle={loading ? t.loading : copy.formatTicketCount(totalCount)}
           icon="mdi:lifebuoy"
-          actions={
-            <Link to="/client/tickets/new" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} aria-label={t.newTicketAria}>
-              <FaPlus />
-            </Link>
-          }
         />
 
         {!loading ? <div className={tableStyles.kpiRow4}>
@@ -137,30 +132,37 @@ export default function ClientTicketListPage() {
           </div> : null}
 
         <div className={tableStyles.mainColumn}>
-          <div className={`${layout.toolbar} ${tableStyles.toolbarGrow}`}>
-            <div className={`${layout.searchWrap} ${tableStyles.searchWrapFull}`}>
-              <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-              <input type="text" inputMode="search" className={layout.searchInput} placeholder={t.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} aria-label={t.searchAria} />
-              {search ? <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={t.clearSearchAria}>
-                  <FaTimes />
-                </button> : null}
-            </div>
-            <span className={layout.toolbarMeta}>{copy.formatTicketCount(totalCount)}</span>
-          </div>
+          <UiKitCrmListToolbar
+            className={tableStyles.toolbarGrow}
+            searchValue={search}
+            onSearchChange={setSearch}
+            onSearchClear={() => setSearch("")}
+            searchPlaceholder={t.searchPlaceholder}
+            searchAriaLabel={t.searchAria}
+            clearSearchLabel={t.clearSearchAria}
+            searchPending={loading}
+            extraActions={<span className={layout.toolbarMeta}>{copy.formatTicketCount(totalCount)}</span>}
+            createAction={{
+              label: t.newTicket,
+              ariaLabel: t.newTicketAria,
+              onClick: () => navigate("/client/tickets/new")
+            }}
+          />
 
           {loading ? <div className={layout.stateBox}>
               <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
               <span>{t.loading}</span>
-            </div> : totalCount === 0 ? <div className={layout.emptyState}>
-              <Icon icon="mingcute:ticket-fill" className={layout.emptyStateIcon} aria-hidden />
-              <p className={layout.emptyStateTitle}>{t.emptyTitle}</p>
-              <p className={layout.emptyStateHint}>{t.emptyHint}</p>
+            </div> : totalCount === 0 ? <div className={layout.emptyStateInCard}>
+              <UiKitEmptyState bare icon="mingcute:ticket-fill" title={t.emptyTitle} text={t.emptyHint} />
               <Link to="/client/tickets/new" className={layout.primaryBtn}>
                 <Icon icon="mdi:plus" aria-hidden />
                 {t.newTicket}
               </Link>
             </div> : <div className={tableStyles.tablePanel}>
-              <div className={tableStyles.tableScroll}>
+              <UiKitScrollFadeShell
+                className={tableStyles.tableScroll}
+                deps={[sortedTickets.length, filter, search, sortBy, sortDirection]}
+              >
                 <table className={tableStyles.table}>
                   <thead>
                     <tr>
@@ -280,7 +282,7 @@ export default function ClientTicketListPage() {
                 })}
                   </tbody>
                 </table>
-              </div>
+              </UiKitScrollFadeShell>
             </div>}
         </div>
       </div>

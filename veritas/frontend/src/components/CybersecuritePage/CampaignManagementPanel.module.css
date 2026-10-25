@@ -67,7 +67,7 @@
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column;
-  padding: 0.55rem 0.75rem 0.75rem !important;
+  padding: var(--crm-section-content-pad, 0.55rem 0.75rem 0.75rem) !important;
 }
 
 .panelBody {

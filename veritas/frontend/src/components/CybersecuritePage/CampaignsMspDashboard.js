@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import { deleteCampaign, updateClientCampaign } from "../../api/campaigns";
 import API_BASE_URL from "../../config";
 import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
-import SmartTooltip from "../SmartTooltip";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitTable, uiKitTableStyles as tableKit } from "../UiKit";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./AntivirusMspDashboard.module.css";
 import CyberBulkBar from "./CyberBulkBar";
@@ -245,43 +245,44 @@ export default function CampaignsMspDashboard({
         <div className={layout.listBody}>
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
-              <div className={layout.tableSearchBar}>
-                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={campaignsCopy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={campaignsCopy.searchPlaceholder} />
-                  {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
-                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
-                        <FaTimes />
-                      </button>
-                    </SmartTooltip> : null}
-                </div>
-                <div className={layout.statusChips} role="group">
-                  {statusFilterItems.map(item => {
-                    const count = stats.statusCounts[item.id] || 0;
-                    const active = statusFilter === item.id;
-                    return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => setStatusFilter(item.id === statusFilter ? "all" : item.id)} disabled={count === 0}>
-                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                          <Icon icon={item.icon} />
-                        </span>
-                        <span className={layout.statusChipLabel}>{item.label}</span>
-                        <span className={layout.statusChipCount}>{count}</span>
-                      </button>;
-                  })}
-                </div>
-                {onAddCampaign ? <div className={layout.toolbarActions}>
-                    <SmartTooltip content={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
-                      <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={onAddCampaign} aria-label={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
-                        <Icon icon="mdi:plus" aria-hidden />
-                      </button>
-                    </SmartTooltip>
-                  </div> : null}
-              </div>
+              <UiKitCrmListToolbar
+                searchValue={search}
+                onSearchChange={setSearch}
+                onSearchClear={() => setSearch("")}
+                searchPlaceholder={campaignsCopy.searchPlaceholder}
+                searchAriaLabel={campaignsCopy.searchPlaceholder}
+                clearSearchLabel={msp.clearSearch || "Effacer"}
+                filters={statusFilterItems.map(item => {
+                  const count = stats.statusCounts[item.id] || 0;
+                  const active = statusFilter === item.id;
+                  return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => setStatusFilter(item.id === statusFilter ? "all" : item.id)} disabled={count === 0}>
+                      <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                        <Icon icon={item.icon} />
+                      </span>
+                      <span className={layout.statusChipLabel}>{item.label}</span>
+                      <span className={layout.statusChipCount}>{count}</span>
+                    </button>;
+                })}
+                createAction={
+                  onAddCampaign
+                    ? {
+                        label: copy.heroActions?.addCampaign || campaignsCopy.emptyCta,
+                        ariaLabel: copy.heroActions?.addCampaign || campaignsCopy.emptyCta,
+                        onClick: onAddCampaign,
+                        icon: "mdi:plus"
+                      }
+                    : null
+                }
+              />
 
               {filteredRows.length === 0 ? (
                 <div className={layout.emptyStateInCard}>
-                  <Icon icon="mdi:bullhorn-outline" className={layout.emptyStateIcon} aria-hidden />
-                  <p className={layout.emptyStateTitle}>{campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle}</p>
-                  <p className={layout.emptyStateHint}>{campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText}</p>
+                  <UiKitEmptyState
+                    bare
+                    icon="mdi:bullhorn-outline"
+                    title={campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle}
+                    text={campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText}
+                  />
                   {campaigns.length === 0 && onAddCampaign ? (
                     <button type="button" className={layout.primaryBtn} onClick={onAddCampaign}>
                       <Icon icon="mdi:plus" aria-hidden />
@@ -291,9 +292,12 @@ export default function CampaignsMspDashboard({
                 </div>
               ) : (
                 <>
-                  <div className={layout.dataTableWrap}>
-                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
-                      <table className={styles.table}>
+                  <UiKitTable
+                    fill
+                    className={tableKit.tableListFill}
+                    deps={[paginatedRows.length, pageSize, search, statusFilter, sortBy, sortDirection]}
+                  >
+                      <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`}>
                         <thead>
                           <tr>
                             <th className={styles.checkboxCell}>
@@ -346,8 +350,7 @@ export default function CampaignsMspDashboard({
                       })}
                         </tbody>
                       </table>
-                    </div>
-                  </div>
+                  </UiKitTable>
                   <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                     <div className={layout.paginationLeft}>
                       <span className={layout.paginationLabel}>{campaignsCopy.rowsPerPage}</span>

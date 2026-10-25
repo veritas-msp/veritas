@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { createCommunicationEntry, enforcePrimaryCommunications, setPrimaryCommunication, sortCommunicationsByType } from "../../utils/contactCommunications";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getContactCommunicationTypes, getContactFormModalCopy, interpolate } from "./contactFormModalI18n";
+import { UiKitInput } from "../UiKit";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 function CommunicationEntryRow({
   entry,
@@ -15,7 +16,7 @@ function CommunicationEntryRow({
   const inputId = `contact-comm-${entry.id}`;
   return <li className={styles.commRow}>
       <Icon icon={typeDef.icon} className={styles.commRowIcon} aria-hidden />
-      <input id={inputId} type={typeDef.inputType} className={`${styles.input} ${styles.commRowInput}`} value={entry.value} onChange={e => onUpdate(entry.id, {
+      <UiKitInput id={inputId} type={typeDef.inputType} className={styles.commRowInput} value={entry.value} onChange={e => onUpdate(entry.id, {
       value: e.target.value
     })} placeholder={typeDef.placeholder} autoComplete="off" required aria-required="true" aria-label={typeDef.label} />
       <div className={styles.commRowActions}>
@@ -71,14 +72,14 @@ export default function ContactCommunicationsEditor({
     })]);
   };
   return <div className={styles.commSection}>
-      {groupedCommunications.length === 0 ? <p className={styles.hint}>{commCopy.emptyHint}</p> : <div className={styles.commGroups}>
-          {groupedCommunications.map(group => <section key={group.id} className={styles.commGroup}>
+      <div className={styles.commGroups}>
+        {groupedCommunications.length === 0 ? <p className={styles.hint}>{commCopy.emptyHint}</p> : groupedCommunications.map(group => <section key={group.id} className={styles.commGroup}>
               <h4 className={styles.commGroupTitle}>{group.label}</h4>
               <ul className={styles.commList}>
                 {group.entries.map(entry => <CommunicationEntryRow key={entry.id} entry={entry} typeDef={group} commCopy={commCopy} onUpdate={updateEntry} onRemove={removeEntry} onSetPrimary={setPrimary} />)}
               </ul>
             </section>)}
-        </div>}
+      </div>
 
       <div className={styles.commAddBlock}>
         <p className={styles.commAddLabel}>{commCopy.addLabel}</p>

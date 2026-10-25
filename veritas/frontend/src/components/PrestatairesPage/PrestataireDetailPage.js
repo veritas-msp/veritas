@@ -8,7 +8,6 @@ import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournal
 import { fetchClientsList } from "../../api/clients";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import localStyles from "./PrestataireDetailPage.module.css";
-import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import PrestataireFormModal from "./PrestataireFormModal";
@@ -31,7 +30,28 @@ import {
   invalidateDetailCache,
   setDetailCache
 } from "../../utils/detailPageCache";
+import { getListCache, LIST_CACHE_NS } from "../../utils/listPageCache";
 import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
+
+function resolveInitialPrestataireCache(prestataireId, prestataireData) {
+  if (!prestataireId) return null;
+  const cached = getDetailCache(DETAIL_CACHE_NS.prestataire, prestataireId);
+  if (cached?.prestataire && String(cached.prestataire.id) === String(prestataireId)) return cached;
+  if (prestataireData?.prestataire && String(prestataireData.prestataire.id) === String(prestataireId)) {
+    return {
+      prestataire: prestataireData.prestataire,
+      ...(Array.isArray(prestataireData.mentionedTickets)
+        ? { mentionedTickets: prestataireData.mentionedTickets }
+        : {})
+    };
+  }
+  const list = getListCache(LIST_CACHE_NS.prestataires);
+  if (Array.isArray(list)) {
+    const row = list.find(item => String(item?.id) === String(prestataireId));
+    if (row) return { prestataire: row };
+  }
+  return null;
+}
 
 const normalizePhone = value => {
   let normalized = (value || "").toString().trim();
@@ -112,12 +132,24 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
   const canEdit = can("prestataires_detail.edit");
   const canDelete = can("prestataires_detail.delete");
 
-  const [prestataire, setPrestataire] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const resolvedPrestataireId =
+    prestataireData?.prestataireId || prestataireData?.id || urlPrestataireId || null;
+  const initialCachedPrestataire = useMemo(
+    () => resolveInitialPrestataireCache(resolvedPrestataireId, prestataireData),
+    // Snapshot once per mount for this prestataire id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resolvedPrestataireId]
+  );
+  const [prestataire, setPrestataire] = useState(() => initialCachedPrestataire?.prestataire || null);
+  const [loading, setLoading] = useState(() => !initialCachedPrestataire?.prestataire);
   const [error, setError] = useState(null);
   const [allClients, setAllClients] = useState([]);
-  const [mentionedTickets, setMentionedTickets] = useState([]);
-  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [mentionedTickets, setMentionedTickets] = useState(() =>
+    Array.isArray(initialCachedPrestataire?.mentionedTickets) ? initialCachedPrestataire.mentionedTickets : []
+  );
+  const [loadingActivity, setLoadingActivity] = useState(
+    () => !Array.isArray(initialCachedPrestataire?.mentionedTickets)
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -172,9 +204,9 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
     prestataireData?.prestataireId || prestataireData?.id || urlPrestataireId;
 
   const loadActivity = useCallback(
-    async (prestataireId, signal) => {
+    async (prestataireId, signal, { keepVisible = false } = {}) => {
       if (!prestataireId) return;
-      setLoadingActivity(true);
+      if (!keepVisible) setLoadingActivity(true);
       try {
         const data = await fetchPrestataireMentionedTickets(prestataireId, {
           limit: 100,
@@ -193,7 +225,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
       } catch (err) {
         if (err?.name === "AbortError") return;
         console.error("Error loading prestataire mentioned tickets:", err);
-        if (isMountedRef.current) setMentionedTickets([]);
+        if (!keepVisible && isMountedRef.current) setMentionedTickets([]);
       } finally {
         if (isMountedRef.current) setLoadingActivity(false);
       }
@@ -277,7 +309,9 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
       activityControllerRef.current?.abort();
       const activityController = createTrackedAbortController();
       activityControllerRef.current = activityController;
-      loadActivity(fetched.id, activityController.signal);
+      loadActivity(fetched.id, activityController.signal, {
+        keepVisible: Array.isArray(cached?.mentionedTickets)
+      });
       ensureClientsLoaded();
     } catch (err) {
       if (err?.name === "AbortError") return;
@@ -430,7 +464,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                       </span>
                     ) : null}
                     {prestataire.notes ? (
-                      <span className={`${styles.heroMetaItem} ${localStyles.heroMetaNotes}`} title={prestataire.notes}>
+                      <span className={`${styles.heroMetaItem} ${localStyles.heroMetaNotes}`}>
                         <Icon icon="mdi:note-text-outline" aria-hidden />
                         <span>{prestataire.notes}</span>
                       </span>
@@ -581,7 +615,6 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                                     <td>#{ticket.ticket_number || "-"}</td>
                                     <td
                                       className={styles.activityTitleCell}
-                                      title={ticket.title || ticket.side_conversation_subject || undefined}
                                     >
                                       {ticket.title || ticket.side_conversation_subject || "-"}
                                     </td>
@@ -633,11 +666,9 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                           {companies.map(company => {
                             const { code, label } = resolveCompanyLabel(company);
                             return (
-                              <SmartTooltip
-                                as="li"
+                              <li
                                 key={company.id}
                                 className={styles.sidebarContactItem}
-                                content={copy.viewEnterprise}
                                 onClick={() => openEnterprise(company)}
                               >
                                 <div className={styles.sidebarContactAvatar} aria-hidden>
@@ -658,7 +689,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                                     <span className={styles.sidebarContactMeta}>{company.role}</span>
                                   ) : null}
                                 </div>
-                              </SmartTooltip>
+                              </li>
                             );
                           })}
                         </ul>
@@ -775,7 +806,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                   panelStyles={styles}
                   actions={
                     canEdit ? (
-                      <SmartTooltip content={copy.editPrestataire}>
+                      
                         <button
                           type="button"
                           className={styles.editInfoButton}
@@ -787,7 +818,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                         >
                           <FaPlus />
                         </button>
-                      </SmartTooltip>
+                      
                     ) : null
                   }
                 />
@@ -852,11 +883,9 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                         {companies.map(company => {
                           const { code, label } = resolveCompanyLabel(company);
                           return (
-                            <SmartTooltip
-                              as="li"
+                            <li
                               key={`aside-${company.id}`}
                               className={styles.sidebarContactItem}
-                              content={copy.viewEnterprise}
                               onClick={() => openEnterprise(company)}
                             >
                               <div className={styles.sidebarContactAvatar} aria-hidden>
@@ -874,7 +903,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                                   )}
                                 </span>
                               </div>
-                            </SmartTooltip>
+                            </li>
                           );
                         })}
                       </ul>

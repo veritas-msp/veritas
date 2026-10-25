@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
-import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
@@ -458,53 +458,56 @@ export default function SupervisionOpsQueue({
 
   return <>
     <div className={`${layout.panelCard} ${styles.root}`}>
-      <div className={layout.tableSearchBar} data-guide="supervision-filters">
-        <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-          <input type="search" inputMode="search" enterKeyHint="search" className={layout.searchInput} value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
-          {searchQuery ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
-              <button type="button" onClick={() => onSearchChange?.("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
-                <FaTimes />
-              </button>
-            </SmartTooltip> : null}
-        </div>
-        <div className={layout.statusChips} role="group" aria-label={copy.triage?.aria || copy.kpi?.aria} data-guide="supervision-kpis">
-          {triageChips.map(chip => (
-            <FilterChip
-              key={chip.id}
-              label={chip.label}
-              count={chip.count}
-              icon={chip.icon}
-              kpiTone={chip.kpiTone}
-              active={triageView === chip.id}
-              onClick={() => onTriageView?.(chip.id)}
-            />
-          ))}
-          {severityChips.length ? (
-            <>
-              <span className={layout.statusChipSeparator} aria-hidden />
-              {severityChips.map(chip => (
+      <div data-guide="supervision-filters">
+        <UiKitCrmListToolbar
+          searchValue={searchQuery}
+          onSearchChange={value => onSearchChange?.(value)}
+          onSearchClear={() => onSearchChange?.("")}
+          searchPlaceholder={copy.searchPlaceholder}
+          searchAriaLabel={copy.searchPlaceholder}
+          clearSearchLabel={copy.clearSearch || "Effacer"}
+          filtersAriaLabel={copy.triage?.aria || copy.kpi?.aria}
+          filters={
+            <div data-guide="supervision-kpis">
+              {triageChips.map(chip => (
                 <FilterChip
                   key={chip.id}
                   label={chip.label}
                   count={chip.count}
                   icon={chip.icon}
                   kpiTone={chip.kpiTone}
-                  active={severityFilter === chip.id}
-                  onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)}
+                  active={triageView === chip.id}
+                  onClick={() => onTriageView?.(chip.id)}
                 />
               ))}
-            </>
-          ) : null}
-        </div>
-        {toolbarActions}
+              {severityChips.length ? (
+                <>
+                  <span className={layout.statusChipSeparator} aria-hidden />
+                  {severityChips.map(chip => (
+                    <FilterChip
+                      key={chip.id}
+                      label={chip.label}
+                      count={chip.count}
+                      icon={chip.icon}
+                      kpiTone={chip.kpiTone}
+                      active={severityFilter === chip.id}
+                      onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)}
+                    />
+                  ))}
+                </>
+              ) : null}
+            </div>
+          }
+          extraActions={toolbarActions}
+        />
       </div>
 
       {triageView === "waiting" ? (
-        <div className={styles.tableWrap} data-guide="supervision-queue">
+        <UiKitScrollFadeShell className={styles.tableWrap} deps={[exclusions?.length || 0, triageView]}>
           {(exclusions || []).length === 0 ? (
             <div className={styles.emptyWrap}>
-              <MspEmptyState
+              <UiKitEmptyState
+                bare
                 className={styles.emptyStateFill}
                 icon="mdi:wrench-clock"
                 title={waitingCopy.emptyTitle || "No active maintenances"}
@@ -611,16 +614,20 @@ export default function SupervisionOpsQueue({
               </tbody>
             </table>
           )}
-        </div>
+        </UiKitScrollFadeShell>
       ) : items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
-          <MspEmptyState
+          <UiKitEmptyState
+            bare
             className={styles.emptyStateFill}
             icon="mdi:sleep"
             title={triageView === "todo" ? (copy.emptyTodoTitle || copy.emptyTitle) : (copy.emptyInProgressTitle || copy.emptyTitle)}
             text={triageView === "todo" ? (copy.emptyTodoText || copy.emptyText) : (copy.emptyInProgressText || copy.emptyText)}
           />
         </div> : <>
-        <div className={styles.tableWrap} data-guide="supervision-queue">
+        <UiKitScrollFadeShell
+          className={styles.tableWrap}
+          deps={[pagedItems.length, sortKey, sortDir, triageView, severityFilter, searchQuery]}
+        >
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colSev} />
@@ -887,7 +894,7 @@ export default function SupervisionOpsQueue({
             })}
             </tbody>
           </table>
-        </div>
+        </UiKitScrollFadeShell>
         {sortedItems.length > 0 ? <div className={`${layout.pagination} ${styles.paginationBar}`}>
             <div className={layout.paginationLeft}>
               <span className={layout.paginationLabel}>{common.perPage}</span>

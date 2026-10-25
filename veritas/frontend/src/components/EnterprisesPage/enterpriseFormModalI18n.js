@@ -1,12 +1,10 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const SECTION_IDS = ["identity", "location", "contact", "contract", "modules", "status"];
+const SECTION_IDS = ["identity", "location", "contact", "contract"];
 const SECTION_ICONS = {
   identity: "mdi:domain",
   location: "mdi:map-marker-radius-outline",
   contact: "mdi:account-tie-outline",
-  contract: "mdi:file-document-outline",
-  modules: "mdi:view-grid-outline",
-  status: "mdi:toggle-switch-outline"
+  contract: "mdi:file-document-outline"
 };
 const COPY = {
   fr: {
@@ -53,7 +51,7 @@ const COPY = {
       cityPlaceholder: "Bordeaux",
       sitesLabel: "Sites & implantations",
       manageSites: "Gérer les sites ({count})",
-      noSites: "Aucun site enregistré · ouvrez la gestion pour ajouter adresses et cartes.",
+      noSites: "Aucun site enregistré.",
       sitePrimary: "Principal",
       primaryContact: "Contact principal",
       contactSearchPlaceholder: "Rechercher un contact (nom, e-mail, téléphone…)",
@@ -74,7 +72,7 @@ const COPY = {
     sections: {
       identity: {
         label: "Identité",
-        description: "Nom légal, identifiant légal et secteur d'activité"
+        description: "Nom, identifiants, apparence et statut"
       },
       location: {
         label: "Sites",
@@ -85,21 +83,19 @@ const COPY = {
         description: "Interlocuteur principal de l'entreprise"
       },
       contract: {
-        label: "Contrat & SLA",
-        description: "Période, commercial et engagements SLA"
-      },
-      modules: {
-        label: "Services",
-        description: "Options et périmètre du contrat MSP"
-      },
-      status: {
-        label: "Statut",
-        description: "Disponibilité de l'entreprise dans le portefeuille"
+        label: "Contrat",
+        description: "Période, commercial, services MSP et SLA"
       }
     },
     statutActive: "Actif",
     statutInactive: "Inactif",
+    statusBlock: {
+      subsectionTitle: "Statut",
+      subsectionDesc: "Disponibilité de l'entreprise dans le portefeuille"
+    },
     modules: {
+      subsectionTitle: "Services inclus",
+      subsectionDesc: "Options et périmètre du contrat MSP",
       summaryOne: "{count} service sélectionné sur {total} disponibles",
       summaryMany: "{count} services sélectionnés sur {total} disponibles",
       proNewService: "Nouveau service",
@@ -199,7 +195,7 @@ const COPY = {
       cityPlaceholder: "London",
       sitesLabel: "Sites & locations",
       manageSites: "Manage locations ({count})",
-      noSites: "No location saved · open management to add addresses and maps.",
+      noSites: "No location saved.",
       sitePrimary: "Primary",
       primaryContact: "Primary contact",
       contactSearchPlaceholder: "Search a contact (name, email, phone…)",
@@ -220,7 +216,7 @@ const COPY = {
     sections: {
       identity: {
         label: "Identity",
-        description: "Legal name, legal ID and industry sector"
+        description: "Name, identifiers, appearance and status"
       },
       location: {
         label: "Locations",
@@ -231,21 +227,19 @@ const COPY = {
         description: "Main company contact"
       },
       contract: {
-        label: "Contract & SLA",
-        description: "Period, account manager and SLA commitments"
-      },
-      modules: {
-        label: "Services",
-        description: "MSP contract options and scope"
-      },
-      status: {
-        label: "Status",
-        description: "Company availability in the portfolio"
+        label: "Contract",
+        description: "Period, account manager, MSP services and SLA"
       }
     },
     statutActive: "Active",
     statutInactive: "Inactive",
+    statusBlock: {
+      subsectionTitle: "Status",
+      subsectionDesc: "Company availability in the portfolio"
+    },
     modules: {
+      subsectionTitle: "Included services",
+      subsectionDesc: "MSP contract options and scope",
       summaryOne: "{count} service selected of {total} available",
       summaryMany: "{count} services selected of {total} available",
       proNewService: "New service",
@@ -345,7 +339,7 @@ const COPY = {
       cityPlaceholder: "Berlin",
       sitesLabel: "Standorte",
       manageSites: "Standorte verwalten ({count})",
-      noSites: "Kein Standort · öffnen Sie die Verwaltung, um Adressen und Karten hinzuzufügen.",
+      noSites: "Kein Standort gespeichert.",
       sitePrimary: "Hauptstandort",
       primaryContact: "Hauptkontakt",
       contactSearchPlaceholder: "Kontakt suchen (Name, E-Mail, Telefon…)",
@@ -366,7 +360,7 @@ const COPY = {
     sections: {
       identity: {
         label: "Identität",
-        description: "Rechtlicher Name, Kennung und Branche"
+        description: "Name, Kennungen, Erscheinungsbild und Status"
       },
       location: {
         label: "Standorte",
@@ -377,21 +371,19 @@ const COPY = {
         description: "Hauptansprechpartner des Unternehmens"
       },
       contract: {
-        label: "Vertrag & SLA",
-        description: "Zeitraum, Vertriebsreferent und SLA-Verpflichtungen"
-      },
-      modules: {
-        label: "Services",
-        description: "MSP-Vertragsoptionen und Umfang"
-      },
-      status: {
-        label: "Status",
-        description: "Verfügbarkeit des Unternehmens im Portfolio"
+        label: "Vertrag",
+        description: "Zeitraum, Vertriebsreferent, MSP-Services und SLA"
       }
     },
     statutActive: "Aktiv",
     statutInactive: "Inaktiv",
+    statusBlock: {
+      subsectionTitle: "Status",
+      subsectionDesc: "Verfügbarkeit des Unternehmens im Portfolio"
+    },
     modules: {
+      subsectionTitle: "Enthaltene Services",
+      subsectionDesc: "MSP-Vertragsoptionen und Umfang",
       summaryOne: "{count} Service ausgewählt von {total} verfügbar",
       summaryMany: "{count} Services ausgewählt von {total} verfügbar",
       proNewService: "Neuer Service",
@@ -491,7 +483,7 @@ const COPY = {
       cityPlaceholder: "Milano",
       sitesLabel: "Sedi e siti",
       manageSites: "Gestisci sedi ({count})",
-      noSites: "Nessuna sede · apri la gestione per aggiungere indirizzi e mappe.",
+      noSites: "Nessuna sede registrata.",
       sitePrimary: "Principale",
       primaryContact: "Contatto principale",
       contactSearchPlaceholder: "Cerca un contatto (nome, e-mail, telefono…)",
@@ -512,7 +504,7 @@ const COPY = {
     sections: {
       identity: {
         label: "Identità",
-        description: "Ragione sociale, ID legale e settore"
+        description: "Nome, identificativi, aspetto e stato"
       },
       location: {
         label: "Sedi",
@@ -523,21 +515,19 @@ const COPY = {
         description: "Referente principale dell'azienda"
       },
       contract: {
-        label: "Contratto & SLA",
-        description: "Periodo, referente commerciale e impegni SLA"
-      },
-      modules: {
-        label: "Servizi",
-        description: "Opzioni e perimetro contratto MSP"
-      },
-      status: {
-        label: "Stato",
-        description: "Disponibilità dell'azienda nel portafoglio"
+        label: "Contratto",
+        description: "Periodo, referente commerciale, servizi MSP e SLA"
       }
     },
     statutActive: "Attiva",
     statutInactive: "Inattiva",
+    statusBlock: {
+      subsectionTitle: "Stato",
+      subsectionDesc: "Disponibilità dell'azienda nel portafoglio"
+    },
     modules: {
+      subsectionTitle: "Servizi inclusi",
+      subsectionDesc: "Opzioni e perimetro contratto MSP",
       summaryOne: "{count} servizio selezionato su {total} disponibili",
       summaryMany: "{count} servizi selezionati su {total} disponibili",
       proNewService: "Nuovo servizio",
@@ -637,7 +627,7 @@ const COPY = {
       cityPlaceholder: "Madrid",
       sitesLabel: "Sedes e implantaciones",
       manageSites: "Gestionar sedes ({count})",
-      noSites: "Ninguna sede · abra la gestión para añadir direcciones y mapas.",
+      noSites: "Ninguna sede registrada.",
       sitePrimary: "Principal",
       primaryContact: "Contacto principal",
       contactSearchPlaceholder: "Buscar contacto (nombre, e-mail, teléfono…)",
@@ -658,7 +648,7 @@ const COPY = {
     sections: {
       identity: {
         label: "Identidad",
-        description: "Nombre legal, ID legal y sector"
+        description: "Nombre, identificadores, apariencia y estado"
       },
       location: {
         label: "Ubicaciones",
@@ -669,21 +659,19 @@ const COPY = {
         description: "Interlocutor principal de la empresa"
       },
       contract: {
-        label: "Contrato y SLA",
-        description: "Periodo, referente comercial y compromisos SLA"
-      },
-      modules: {
-        label: "Servicios",
-        description: "Opciones y alcance del contrato MSP"
-      },
-      status: {
-        label: "Estado",
-        description: "Disponibilidad de la empresa en la cartera"
+        label: "Contrato",
+        description: "Periodo, referente comercial, servicios MSP y SLA"
       }
     },
     statutActive: "Activa",
     statutInactive: "Inactiva",
+    statusBlock: {
+      subsectionTitle: "Estado",
+      subsectionDesc: "Disponibilidad de la empresa en la cartera"
+    },
     modules: {
+      subsectionTitle: "Servicios incluidos",
+      subsectionDesc: "Opciones y alcance del contrato MSP",
       summaryOne: "{count} servicio seleccionado de {total} disponibles",
       summaryMany: "{count} servicios seleccionados de {total} disponibles",
       proNewService: "Nuevo servicio",

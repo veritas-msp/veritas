@@ -631,6 +631,9 @@ export default function PlanningEventHoverCard({
           }}>
                   <span className={styles.todoMark} aria-hidden />
                   <span>{todo.text}</span>
+                  {todo.assigneeName || todo.assigneeLabel ? (
+                    <span className={styles.todoAssignee}>{todo.assigneeName || todo.assigneeLabel}</span>
+                  ) : null}
                 </li>)}
             </ul>
           </div>}

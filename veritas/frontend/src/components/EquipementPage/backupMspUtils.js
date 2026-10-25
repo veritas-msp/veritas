@@ -4,26 +4,140 @@ const BACKUP_PROVIDER_META = {
   "HYCU Backup": {
     id: "hycu",
     label: "HYCU Backup",
-    icon: "mdi:backup-restore",
+    icon: "mdi:cloud-outline",
     image: "/assets/icons/hycu.png"
   },
   Veeam: {
     id: "veeam",
-    label: "Veeam",
+    label: "Veeam Backup & Replication",
     icon: "simple-icons:veeam",
-    image: null
+    image: "/assets/icons/veeam.png"
+  },
+  "Veeam Agent": {
+    id: "veeam-agent",
+    label: "Veeam Agent",
+    icon: "simple-icons:veeam",
+    image: "/assets/icons/veeam.png"
+  },
+  "Veeam Backup for Microsoft 365": {
+    id: "veeam-m365",
+    label: "Veeam Backup for Microsoft 365",
+    icon: "simple-icons:veeam",
+    image: "/assets/icons/veeam.png"
   },
   "Active Backup for Microsoft 365": {
     id: "active-backup",
-    label: "Active Backup",
+    label: "Active Backup for Microsoft 365",
     icon: "mdi:microsoft-office",
-    image: null
+    image: "/assets/icons/active-backup.png"
+  },
+  "Active Backup for Business": {
+    id: "active-backup-business",
+    label: "Active Backup for Business",
+    icon: "mdi:briefcase-check-outline",
+    image: "/assets/icons/active-backup.png"
   },
   HyperBackup: {
     id: "hyper-backup",
     label: "HyperBackup",
-    icon: "mdi:backup-restore",
+    icon: "mdi:nas",
     image: "/assets/icons/hyperbackup.png"
+  },
+  "Acronis Cyber Protect": {
+    id: "acronis",
+    label: "Acronis Cyber Protect",
+    icon: "simple-icons:acronis",
+    image: null
+  },
+  "Commvault Complete": {
+    id: "commvault",
+    label: "Commvault Complete",
+    icon: "mdi:database-outline",
+    image: null
+  },
+  "Nakivo Backup & Replication": {
+    id: "nakivo",
+    label: "Nakivo",
+    icon: "mdi:backup-restore",
+    image: null
+  },
+  "Datto SIRIS": {
+    id: "datto",
+    label: "Datto SIRIS",
+    icon: "mdi:shield-check-outline",
+    image: null
+  },
+  "Datto SaaS Protection": {
+    id: "datto-saas",
+    label: "Datto SaaS Protection",
+    icon: "mdi:cloud-check-outline",
+    image: null
+  },
+  "AWS Backup": {
+    id: "aws-backup",
+    label: "AWS Backup",
+    icon: "simple-icons:amazonaws",
+    image: null
+  },
+  "Amazon S3 / Glacier": {
+    id: "aws-s3",
+    label: "Amazon S3 / Glacier",
+    icon: "mdi:aws",
+    image: null
+  },
+  "Azure Backup": {
+    id: "azure-backup",
+    label: "Azure Backup",
+    icon: "simple-icons:microsoftazure",
+    image: "/assets/icons/azure.png"
+  },
+  "Azure Blob Storage": {
+    id: "azure-blob",
+    label: "Azure Blob Storage",
+    icon: "mdi:microsoft-azure",
+    image: "/assets/icons/azure.png"
+  },
+  "Microsoft 365 Backup": {
+    id: "m365-backup",
+    label: "Microsoft 365 Backup",
+    icon: "mdi:microsoft-office",
+    image: "/assets/icons/office365.png"
+  },
+  "Google Cloud Backup": {
+    id: "gcp-backup",
+    label: "Google Cloud Backup",
+    icon: "simple-icons:googlecloud",
+    image: null
+  },
+  "Google Cloud Storage": {
+    id: "gcs",
+    label: "Google Cloud Storage",
+    icon: "mdi:google-cloud",
+    image: null
+  },
+  "Backblaze B2": {
+    id: "backblaze-b2",
+    label: "Backblaze B2",
+    icon: "mdi:fire",
+    image: null
+  },
+  "Wasabi Hot Cloud Storage": {
+    id: "wasabi",
+    label: "Wasabi",
+    icon: "mdi:leaf",
+    image: null
+  },
+  "OVHcloud Backup": {
+    id: "ovh-backup",
+    label: "OVHcloud Backup",
+    icon: "simple-icons:ovh",
+    image: "/assets/icons/ovh.png"
+  },
+  "OVHcloud Object Storage": {
+    id: "ovh-object",
+    label: "OVHcloud Object Storage",
+    icon: "mdi:cloud-outline",
+    image: "/assets/icons/ovh.png"
   }
 };
 function normalizeProviderId(instanceLogiciel) {

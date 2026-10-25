@@ -7,17 +7,17 @@ const LICENCES_MODAL_COPY = {
     subtitle: "Suivi générique des renouvellements et expirations",
     navAria: "Sections licences",
     sections: {
-      overview: {
-        label: "Vue d'ensemble",
-        description: "Synthèse et actions"
+      info: {
+        label: "Informations",
+        description: "Nom, dates et fournisseur"
       },
       add: {
-        label: "Nouvelle entrée",
-        description: "Licence ou abonnement"
+        label: "Informations",
+        description: "Nom, dates et fournisseur"
       },
       edit: {
-        label: "Éditer",
-        description: "Modifier l'entrée"
+        label: "Informations",
+        description: "Nom, dates et fournisseur"
       },
       inventory: {
         label: "Inventaire",
@@ -25,10 +25,7 @@ const LICENCES_MODAL_COPY = {
       }
     },
     overview: {
-      title: "Vue d'ensemble",
-      description: "Suivi générique des licences logicielles, abonnements SaaS et renouvellements récurrents. Les alertes remontent dans la supervision.",
-      addBtn: "Ajouter une licence",
-      viewInventory: "Voir l'inventaire"
+      addBtn: "Ajouter une licence"
     },
     add: {
       title: "Nouvelle licence / abonnement",
@@ -113,17 +110,21 @@ const LICENCES_MODAL_COPY = {
     subtitle: "Generic tracking of renewals and expirations",
     navAria: "License sections",
     sections: {
+      info: {
+        label: "Information",
+        description: "Name, dates and vendor"
+      },
       overview: {
         label: "Overview",
         description: "Summary and actions"
       },
       add: {
-        label: "New entry",
-        description: "License or subscription"
+        label: "Information",
+        description: "Name, dates and vendor"
       },
       edit: {
-        label: "Edit",
-        description: "Modify entry"
+        label: "Information",
+        description: "Name, dates and vendor"
       },
       inventory: {
         label: "Inventory",
@@ -219,17 +220,21 @@ const LICENCES_MODAL_COPY = {
     subtitle: "Generische Verfolgung von Verlängerungen und Abläufen",
     navAria: "Lizenz-Bereiche",
     sections: {
+      info: {
+        label: "Informationen",
+        description: "Name, Daten und Anbieter"
+      },
       overview: {
         label: "Übersicht",
         description: "Zusammenfassung und Aktionen"
       },
       add: {
-        label: "Neuer Eintrag",
-        description: "Lizenz oder Abonnement"
+        label: "Informationen",
+        description: "Name, Daten und Anbieter"
       },
       edit: {
-        label: "Bearbeiten",
-        description: "Eintrag ändern"
+        label: "Informationen",
+        description: "Name, Daten und Anbieter"
       },
       inventory: {
         label: "Inventar",
@@ -325,17 +330,21 @@ const LICENCES_MODAL_COPY = {
     subtitle: "Monitoraggio generico di rinnovi e scadenze",
     navAria: "Sezioni licenze",
     sections: {
+      info: {
+        label: "Informazioni",
+        description: "Nome, date e fornitore"
+      },
       overview: {
         label: "Panoramica",
         description: "Sintesi e azioni"
       },
       add: {
-        label: "Nuova voce",
-        description: "Licenza o abbonamento"
+        label: "Informazioni",
+        description: "Nome, date e fornitore"
       },
       edit: {
-        label: "Modifica",
-        description: "Modifica voce"
+        label: "Informazioni",
+        description: "Nome, date e fornitore"
       },
       inventory: {
         label: "Inventario",
@@ -431,17 +440,21 @@ const LICENCES_MODAL_COPY = {
     subtitle: "Seguimiento genérico de renovaciones y vencimientos",
     navAria: "Secciones de licencias",
     sections: {
+      info: {
+        label: "Información",
+        description: "Nombre, fechas y proveedor"
+      },
       overview: {
         label: "Resumen",
         description: "Síntesis y acciones"
       },
       add: {
-        label: "Nueva entrada",
-        description: "Licencia o suscripción"
+        label: "Información",
+        description: "Nombre, fechas y proveedor"
       },
       edit: {
-        label: "Editar",
-        description: "Modificar entrada"
+        label: "Información",
+        description: "Nombre, fechas y proveedor"
       },
       inventory: {
         label: "Inventario",
@@ -531,31 +544,6 @@ const LICENCES_MODAL_COPY = {
     }
   }
 };
-const KPI_CONFIG = [{
-  key: "all",
-  filter: "all",
-  tone: "blue",
-  icon: "mdi:license",
-  labelKey: "all"
-}, {
-  key: "active",
-  filter: "active",
-  tone: "green",
-  icon: "mdi:check-circle-outline",
-  labelKey: "active"
-}, {
-  key: "warning",
-  filter: "warning",
-  tone: "amber",
-  icon: "mdi:clock-alert-outline",
-  labelKey: "warning"
-}, {
-  key: "expired",
-  filter: "expired",
-  tone: "red",
-  icon: "mdi:alert-circle-outline",
-  labelKey: "expired"
-}];
 const FILTER_CONFIG = [{
   value: "all",
   labelKey: "all"
@@ -572,34 +560,14 @@ const FILTER_CONFIG = [{
   value: "neutral",
   labelKey: "neutral"
 }];
-const NAV_SECTION_IDS = ["overview", "add", "edit", "inventory"];
-const NAV_ICONS = {
-  overview: "mdi:view-dashboard-outline",
-  add: "mdi:plus-circle-outline",
-  edit: "mdi:pencil-outline",
-  inventory: "mdi:format-list-bulleted"
-};
 export function getLicencesModalCopy(locale) {
   const t = pickLocaleMessages(LICENCES_MODAL_COPY, locale);
   return {
     ...t,
-    kpiItems: KPI_CONFIG.map(item => ({
-      ...item,
-      label: t.kpi[item.labelKey]
-    })),
     filterOptions: FILTER_CONFIG.map(item => ({
       value: item.value,
       label: t.filters[item.labelKey]
     })),
-    navSections: editing => NAV_SECTION_IDS.filter(id => editing ? id !== "add" : id !== "edit").map(id => {
-      const sectionId = id === "add" && editing ? "edit" : id;
-      return {
-        id: sectionId,
-        icon: NAV_ICONS[sectionId],
-        label: t.sections[sectionId].label,
-        description: t.sections[sectionId].description
-      };
-    }),
     formatInventoryCount: count => {
       const template = count > 1 ? t.inventory.countMany : t.inventory.countOne;
       return interpolate(template, {

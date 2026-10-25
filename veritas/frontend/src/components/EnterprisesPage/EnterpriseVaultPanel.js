@@ -42,6 +42,7 @@ import {
   normalizeTicketTableColumns
 } from "../../utils/ticketTableColumns";
 import { usePermissions } from "../../contexts/PermissionsContext";
+import { UiKitButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import formStyles from "./EnterpriseFormModal.module.css";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import styles from "./EnterpriseVaultPanel.module.css";
@@ -1579,7 +1580,29 @@ function VaultUploadModal({
   const [nameTouched, setNameTouched] = useState(false);
   const [visibleToClient, setVisibleToClient] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [activeSection, setActiveSection] = useState(initialFile ? "info" : "file");
   const dropRef = useRef(null);
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, file?.name, displayName]);
+  const modal = copy.uploadModal;
+  const sections = useMemo(() => [{
+    id: "file",
+    label: modal.sections?.file?.navLabel || modal.fileLabel,
+    icon: "mdi:file-upload-outline"
+  }, {
+    id: "info",
+    label: modal.sections?.info?.navLabel || modal.nameLabel,
+    icon: "mdi:text-box-outline"
+  }, {
+    id: "portal",
+    label: modal.sections?.portal?.navLabel || modal.visiblePortalLabel,
+    icon: "mdi:account-eye-outline"
+  }], [modal]);
+  const nameReady = Boolean(String(displayName || "").trim());
+  const sectionMeta = {
+    file: Boolean(file),
+    info: nameReady,
+    portal: visibleToClient
+  };
   useEffect(() => {
     if (initialFile) {
       setFile(initialFile);
@@ -1593,6 +1616,7 @@ function VaultUploadModal({
       return;
     }
     if (!nameTouched) setDisplayName(nextFile.name || "");
+    if (!nameTouched || !String(displayName || "").trim()) setActiveSection("info");
   };
   const handleDrop = e => {
     e.preventDefault();
@@ -1602,9 +1626,15 @@ function VaultUploadModal({
   const handleSubmit = async e => {
     e.preventDefault();
     if (!clientId) return toast.error(copy.toast.clientNotFound);
-    if (!file) return toast.error(copy.toast.fileRequired);
+    if (!file) {
+      setActiveSection("file");
+      return toast.error(copy.toast.fileRequired);
+    }
     const trimmedName = String(displayName || "").trim();
-    if (!trimmedName) return toast.error(copy.toast.nameRequired || copy.toast.fileRequired);
+    if (!trimmedName) {
+      setActiveSection("info");
+      return toast.error(copy.toast.nameRequired || copy.toast.fileRequired);
+    }
     try {
       setUploading(true);
       const result = await uploadClientFile({
@@ -1624,9 +1654,9 @@ function VaultUploadModal({
       setUploading(false);
     }
   };
-  const modal = copy.uploadModal;
-  return createPortal(<div className={formStyles.overlay} onClick={onClose} role="presentation">
-      <div className={`${formStyles.shell} ${formStyles.shellMedium}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="vault-upload-modal-title">
+  const canSubmit = Boolean(file) && nameReady && !uploading;
+  return createPortal(<div className={formStyles.overlay} onClick={uploading ? undefined : onClose} role="presentation">
+      <div className={formStyles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="vault-upload-modal-title">
         <div className={formStyles.accentBar} aria-hidden />
         <header className={formStyles.header}>
           <div className={formStyles.headerMain}>
@@ -1641,100 +1671,235 @@ function VaultUploadModal({
               <p className={formStyles.subtitle}>{modal.subtitle}</p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={uploading} aria-label={modal.closeAria}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={formStyles.closeBtn}
+            onClick={onClose}
+            disabled={uploading}
+            aria-label={modal.closeAria}
+            icon="mdi:close"
+          />
         </header>
 
         <form className={styles.modalForm} onSubmit={handleSubmit}>
-          <div className={styles.modalFormBody}>
-            <p className={styles.uploadHint}>{modal.hint}</p>
+          <div className={formStyles.body}>
+            <aside className={`${kit.finderSidebar} ${formStyles.modalNav}`} aria-label={modal.sectionsNavAria || modal.title}>
+              <nav
+                ref={navTrackRef}
+                className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${formStyles.modalNavTrack}`}
+              >
+                {navIndicator.ready ? (
+                  <div
+                    className={kit.finderNavIndicator}
+                    style={{
+                      transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                      height: navIndicator.height
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+                {sections.map(section => {
+                  const active = activeSection === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className={`${kit.finderItem} ${active ? kit.finderItemActive : ""}`}
+                      onClick={() => setActiveSection(section.id)}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                      <span className={kit.finderItemLabel}>{section.label}</span>
+                      {sectionMeta[section.id] ? <span className={formStyles.navBadge}>✓</span> : null}
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
 
-            <div className={formStyles.field}>
-              <label className={formStyles.label} htmlFor="vault-category">
-                {modal.categoryLabel}
-              </label>
-              <select id="vault-category" className={formStyles.input} value={category} onChange={e => setCategory(e.target.value)} disabled={uploading}>
-                {copy.categoryKeys.map(cat => <option key={cat} value={cat}>
-                    {copy.getCategoryLabel(cat)}
-                  </option>)}
-              </select>
-            </div>
+            <div className={formStyles.content} key={activeSection}>
+              <div className={kit.contentFadeUp}>
+                {activeSection === "file" ? (
+                  <div className={formStyles.sectionFill}>
+                    <div className={`${formStyles.sectionHead} ${formStyles.sectionPinned}`}>
+                      <h3 className={formStyles.sectionTitle}>
+                        {modal.sections?.file?.title || modal.fileLabel}
+                      </h3>
+                      <p className={formStyles.sectionDesc}>
+                        {modal.sections?.file?.desc || modal.hint}
+                      </p>
+                    </div>
+                    <div className={formStyles.sectionScroll}>
+                      <div className={formStyles.fieldStack}>
+                        {modal.hint ? <p className={styles.uploadHint}>{modal.hint}</p> : null}
+                        <div className={`${formStyles.field} ${formStyles.fieldFull}`}>
+                          <span className={`${formStyles.label} ${formStyles.labelRequired}`}>{modal.fileLabel}</span>
+                          <div
+                            ref={dropRef}
+                            className={`${styles.dropZone} ${styles.dropZoneTall} ${file ? styles.dropZoneActive : ""}`}
+                            onDragOver={e => e.preventDefault()}
+                            onDrop={handleDrop}
+                            onClick={() => document.getElementById("vault-file-input")?.click()}
+                          >
+                            <input
+                              id="vault-file-input"
+                              type="file"
+                              style={{ display: "none" }}
+                              onChange={e => applySelectedFile(e.target.files?.[0] || null)}
+                              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.html,.htm,.zip"
+                              disabled={uploading}
+                            />
+                            {file ? (
+                              <span className={styles.dropZoneFile}>
+                                <Icon icon="mdi:file-document-outline" aria-hidden />
+                                {file.name} ({copy.formatSize(file.size)})
+                              </span>
+                            ) : (
+                              <span className={styles.dropZoneHint}>
+                                <Icon icon="mdi:cloud-upload-outline" aria-hidden />
+                                {modal.dropHint}
+                                <small>{modal.dropFormats}</small>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
-            <div className={formStyles.field}>
-              <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-display-name">
-                {modal.nameLabel || "Nom"}
-              </label>
-              <input
-                id="vault-display-name"
-                className={formStyles.input}
-                type="text"
-                maxLength={255}
-                placeholder={modal.namePlaceholder || file?.name || ""}
-                value={displayName}
-                onChange={e => {
-                  setNameTouched(true);
-                  setDisplayName(e.target.value);
-                }}
-                disabled={uploading}
-              />
-            </div>
+                {activeSection === "info" ? (
+                  <div className={formStyles.sectionFill}>
+                    <div className={`${formStyles.sectionHead} ${formStyles.sectionPinned}`}>
+                      <h3 className={formStyles.sectionTitle}>
+                        {modal.sections?.info?.title || modal.nameLabel}
+                      </h3>
+                      <p className={formStyles.sectionDesc}>
+                        {modal.sections?.info?.desc || ""}
+                      </p>
+                    </div>
+                    <div className={formStyles.sectionScroll}>
+                      <div className={formStyles.fieldStack}>
+                        <div className={`${formStyles.field} ${formStyles.fieldFull}`}>
+                          <label className={formStyles.label} htmlFor="vault-category">
+                            {modal.categoryLabel}
+                          </label>
+                          <select
+                            id="vault-category"
+                            className={formStyles.input}
+                            value={category}
+                            onChange={e => setCategory(e.target.value)}
+                            disabled={uploading}
+                          >
+                            {copy.categoryKeys.map(cat => (
+                              <option key={cat} value={cat}>
+                                {copy.getCategoryLabel(cat)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className={`${formStyles.field} ${formStyles.fieldFull}`}>
+                          <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-display-name">
+                            {modal.nameLabel || "Nom"}
+                          </label>
+                          <input
+                            id="vault-display-name"
+                            className={formStyles.input}
+                            type="text"
+                            maxLength={255}
+                            placeholder={modal.namePlaceholder || file?.name || ""}
+                            value={displayName}
+                            onChange={e => {
+                              setNameTouched(true);
+                              setDisplayName(e.target.value);
+                            }}
+                            disabled={uploading}
+                          />
+                        </div>
+                        <div className={`${formStyles.field} ${formStyles.fieldFull}`}>
+                          <label className={formStyles.label} htmlFor="vault-description">
+                            {modal.descriptionLabel}
+                          </label>
+                          <textarea
+                            id="vault-description"
+                            className={formStyles.input}
+                            rows={4}
+                            maxLength={2000}
+                            placeholder={modal.descriptionPlaceholder}
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            disabled={uploading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
-            <div className={formStyles.field}>
-              <label className={formStyles.label} htmlFor="vault-description">
-                {modal.descriptionLabel}
-              </label>
-              <input id="vault-description" className={formStyles.input} type="text" placeholder={modal.descriptionPlaceholder} value={description} onChange={e => setDescription(e.target.value)} disabled={uploading} />
-            </div>
-
-            <div className={formStyles.field}>
-              <span className={`${formStyles.label} ${formStyles.labelRequired}`}>{modal.fileLabel}</span>
-              <div ref={dropRef} className={`${styles.dropZone} ${file ? styles.dropZoneActive : ""}`} onDragOver={e => e.preventDefault()} onDrop={handleDrop} onClick={() => document.getElementById("vault-file-input")?.click()}>
-                <input id="vault-file-input" type="file" style={{
-                display: "none"
-              }} onChange={e => applySelectedFile(e.target.files?.[0] || null)} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.html,.htm,.zip" disabled={uploading} />
-                {file ? <span className={styles.dropZoneFile}>
-                    <Icon icon="mdi:file-document-outline" aria-hidden />
-                    {file.name} ({copy.formatSize(file.size)})
-                  </span> : <span className={styles.dropZoneHint}>
-                    <Icon icon="mdi:cloud-upload-outline" aria-hidden />
-                    {modal.dropHint}
-                    <small>{modal.dropFormats}</small>
-                  </span>}
+                {activeSection === "portal" ? (
+                  <div className={formStyles.sectionFill}>
+                    <div className={`${formStyles.sectionHead} ${formStyles.sectionPinned}`}>
+                      <h3 className={formStyles.sectionTitle}>
+                        {modal.sections?.portal?.title || modal.visiblePortalLabel}
+                      </h3>
+                      <p className={formStyles.sectionDesc}>
+                        {modal.sections?.portal?.desc || modal.visiblePortalHint}
+                      </p>
+                    </div>
+                    <div className={formStyles.sectionScroll}>
+                      <div className={formStyles.fieldStack}>
+                        <div className={styles.visibilitySwitchRow}>
+                          <div className={styles.visibilitySwitchCopy}>
+                            <span className={formStyles.label}>{modal.visiblePortalLabel}</span>
+                            <p className={styles.visibilitySwitchHint}>{modal.visiblePortalHint}</p>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={visibleToClient}
+                            className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`}
+                            onClick={() => setVisibleToClient(value => !value)}
+                            disabled={uploading}
+                          >
+                            <span className={styles.visibilitySwitchTrack}>
+                              <span className={styles.visibilitySwitchThumb} />
+                            </span>
+                            <span className={styles.visibilitySwitchState}>
+                              {visibleToClient ? modal.visibleOn : modal.visibleOff}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            </div>
-
-            <div className={styles.visibilitySwitchRow}>
-              <div className={styles.visibilitySwitchCopy}>
-                <span className={formStyles.label}>{modal.visiblePortalLabel}</span>
-                <p className={styles.visibilitySwitchHint}>{modal.visiblePortalHint}</p>
-              </div>
-              <button type="button" role="switch" aria-checked={visibleToClient} className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`} onClick={() => setVisibleToClient(value => !value)} disabled={uploading}>
-                <span className={styles.visibilitySwitchTrack}>
-                  <span className={styles.visibilitySwitchThumb} />
-                </span>
-                <span className={styles.visibilitySwitchState}>
-                  {visibleToClient ? modal.visibleOn : modal.visibleOff}
-                </span>
-              </button>
             </div>
           </div>
 
           <footer className={formStyles.footer}>
             <span className={formStyles.footerHint}>{modal.footerRequired}</span>
             <div className={formStyles.footerActions}>
-              <button type="button" className={formStyles.ghostBtn} onClick={onClose} disabled={uploading}>
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={uploading}>
                 {modal.cancel}
-              </button>
-              <button type="submit" className={formStyles.primaryBtn} disabled={uploading || !file || !String(displayName || "").trim()}>
-                {uploading ? <>
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={!canSubmit}
+                icon={uploading ? undefined : "mdi:upload-outline"}
+              >
+                {uploading ? (
+                  <>
                     <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
                     {modal.uploading}
-                  </> : <>
-                    <Icon icon="mdi:upload-outline" aria-hidden />
-                    {modal.upload}
-                  </>}
-              </button>
+                  </>
+                ) : (
+                  modal.upload
+                )}
+              </UiKitButton>
             </div>
           </footer>
         </form>

@@ -1,6 +1,6 @@
 import { createLocaleGetter, interpolate } from "../../../i18n/translate";
 import { getLocaleTag } from "../../../i18n/locales";
-import { IN_APP_EVENT_OPTIONS } from "../../../utils/inAppNotificationSettings";
+import { IN_APP_EVENT_GROUPS, IN_APP_EVENT_OPTIONS } from "../../../utils/inAppNotificationSettings";
 const USER_PROFILE_COPY = {
   fr: {
     loading: "Chargement de votre compte…",
@@ -11,28 +11,24 @@ const USER_PROFILE_COPY = {
     pageTitle: "Mon compte",
     nav: {
       account: {
-        label: "Gestion du compte",
-        desc: "Identité, sécurité et langue"
+        label: "Compte",
+        desc: "Identité, photo et sécurité"
       },
-      interface: {
-        label: "Interface",
-        desc: "Position de la navigation"
+      preferences: {
+        label: "Préférences",
+        desc: "Langue, navigation et planning"
       },
-      support: {
-        label: "Support",
-        desc: "Pseudo helpdesk tickets"
-      },
-      accessibility: {
-        label: "Accessibilité",
-        desc: "Affichage du chat"
+      tickets: {
+        label: "Tickets",
+        desc: "Pseudo helpdesk et chat"
       },
       notifications: {
-        label: "Notifications",
-        desc: "Alertes in-app"
+        label: "Alertes",
+        desc: "Préférences in-app"
       },
-      planning: {
-        label: "Planning",
-        desc: "Visibilité du calendrier"
+      subscriptions: {
+        label: "Abonnements",
+        desc: "Entreprises et équipements"
       }
     },
     kpi: {
@@ -170,6 +166,20 @@ const USER_PROFILE_COPY = {
       reset: "Réinitialiser",
       save: "Enregistrer",
       saving: "Enregistrement…",
+      groups: {
+        activity: {
+          title: "Activité",
+          description: "Échanges et messages sur les tickets."
+        },
+        assignment: {
+          title: "Assignation",
+          description: "Prise en charge et réassignation."
+        },
+        lifecycle: {
+          title: "Cycle de vie",
+          description: "Création, évolution et clôture des tickets."
+        }
+      },
       events: {
         ticket_commented: {
           label: "Commentaire ajouté",
@@ -321,28 +331,24 @@ const USER_PROFILE_COPY = {
     pageTitle: "My account",
     nav: {
       account: {
-        label: "Account management",
-        desc: "Identity, security and language"
+        label: "Account",
+        desc: "Identity, photo and security"
       },
-      interface: {
-        label: "Interface",
-        desc: "Navigation position"
+      preferences: {
+        label: "Preferences",
+        desc: "Language, navigation and planning"
       },
-      support: {
-        label: "Support",
-        desc: "Helpdesk ticket nickname"
-      },
-      accessibility: {
-        label: "Accessibility",
-        desc: "Chat display"
+      tickets: {
+        label: "Tickets",
+        desc: "Helpdesk nickname and chat"
       },
       notifications: {
-        label: "Notifications",
-        desc: "In-app alerts"
+        label: "Alerts",
+        desc: "In-app preferences"
       },
-      planning: {
-        label: "Planning",
-        desc: "Calendar visibility"
+      subscriptions: {
+        label: "Subscriptions",
+        desc: "Enterprises and devices"
       }
     },
     kpi: {
@@ -480,6 +486,20 @@ const USER_PROFILE_COPY = {
       reset: "Reset",
       save: "Save",
       saving: "Saving…",
+      groups: {
+        activity: {
+          title: "Activity",
+          description: "Exchanges and messages on tickets."
+        },
+        assignment: {
+          title: "Assignment",
+          description: "Ownership and reassignment."
+        },
+        lifecycle: {
+          title: "Lifecycle",
+          description: "Ticket creation, updates and closure."
+        }
+      },
       events: {
         ticket_commented: {
           label: "Comment added",
@@ -631,28 +651,24 @@ const USER_PROFILE_COPY = {
     pageTitle: "Mein Konto",
     nav: {
       account: {
-        label: "Kontoverwaltung",
-        desc: "Identität, Sicherheit und Sprache"
+        label: "Konto",
+        desc: "Identität, Foto und Sicherheit"
       },
-      interface: {
-        label: "Oberfläche",
-        desc: "Navigation positionieren"
+      preferences: {
+        label: "Einstellungen",
+        desc: "Sprache, Navigation und Planung"
       },
-      support: {
-        label: "Support",
-        desc: "Helpdesk-Ticket-Pseudonym"
-      },
-      accessibility: {
-        label: "Barrierefreiheit",
-        desc: "Chat-Anzeige"
+      tickets: {
+        label: "Tickets",
+        desc: "Helpdesk-Name und Chat"
       },
       notifications: {
-        label: "Benachrichtigungen",
-        desc: "In-App-Alerts"
+        label: "Meldungen",
+        desc: "In-App-Einstellungen"
       },
-      planning: {
-        label: "Planung",
-        desc: "Kalendersichtbarkeit"
+      subscriptions: {
+        label: "Abonnements",
+        desc: "Unternehmen und Geräte"
       }
     },
     kpi: {
@@ -790,6 +806,20 @@ const USER_PROFILE_COPY = {
       reset: "Zurücksetzen",
       save: "Speichern",
       saving: "Speichern…",
+      groups: {
+        activity: {
+          title: "Aktivität",
+          description: "Austausch und Nachrichten zu Tickets."
+        },
+        assignment: {
+          title: "Zuweisung",
+          description: "Übernahme und Neuzuweisung."
+        },
+        lifecycle: {
+          title: "Lebenszyklus",
+          description: "Erstellung, Änderung und Abschluss von Tickets."
+        }
+      },
       events: {
         ticket_commented: {
           label: "Kommentar hinzugefügt",
@@ -941,28 +971,24 @@ const USER_PROFILE_COPY = {
     pageTitle: "Il mio account",
     nav: {
       account: {
-        label: "Gestione account",
-        desc: "Identità, sicurezza e lingua"
+        label: "Account",
+        desc: "Identità, foto e sicurezza"
       },
-      interface: {
-        label: "Interfaccia",
-        desc: "Posizione navigazione"
+      preferences: {
+        label: "Preferenze",
+        desc: "Lingua, navigazione e planning"
       },
-      support: {
-        label: "Supporto",
-        desc: "Nickname helpdesk ticket"
-      },
-      accessibility: {
-        label: "Accessibilità",
-        desc: "Visualizzazione chat"
+      tickets: {
+        label: "Ticket",
+        desc: "Nickname helpdesk e chat"
       },
       notifications: {
-        label: "Notifiche",
-        desc: "Alert in-app"
+        label: "Avvisi",
+        desc: "Preferenze in-app"
       },
-      planning: {
-        label: "Planning",
-        desc: "Visibilità calendario"
+      subscriptions: {
+        label: "Abbonamenti",
+        desc: "Aziende e dispositivi"
       }
     },
     kpi: {
@@ -1100,6 +1126,20 @@ const USER_PROFILE_COPY = {
       reset: "Reimposta",
       save: "Salva",
       saving: "Salvataggio…",
+      groups: {
+        activity: {
+          title: "Attività",
+          description: "Scambi e messaggi sui ticket."
+        },
+        assignment: {
+          title: "Assegnazione",
+          description: "Presa in carico e riassegnazione."
+        },
+        lifecycle: {
+          title: "Ciclo di vita",
+          description: "Creazione, evoluzione e chiusura dei ticket."
+        }
+      },
       events: {
         ticket_commented: {
           label: "Commento aggiunto",
@@ -1251,28 +1291,24 @@ const USER_PROFILE_COPY = {
     pageTitle: "Mi cuenta",
     nav: {
       account: {
-        label: "Gestión de la cuenta",
-        desc: "Identidad, seguridad e idioma"
+        label: "Cuenta",
+        desc: "Identidad, foto y seguridad"
       },
-      interface: {
-        label: "Interfaz",
-        desc: "Posición de la navegación"
+      preferences: {
+        label: "Preferencias",
+        desc: "Idioma, navegación y planificación"
       },
-      support: {
-        label: "Soporte",
-        desc: "Apodo helpdesk de tickets"
-      },
-      accessibility: {
-        label: "Accesibilidad",
-        desc: "Visualización del chat"
+      tickets: {
+        label: "Tickets",
+        desc: "Apodo helpdesk y chat"
       },
       notifications: {
-        label: "Notificaciones",
-        desc: "Alertas in-app"
+        label: "Alertas",
+        desc: "Preferencias in-app"
       },
-      planning: {
-        label: "Planificación",
-        desc: "Visibilidad del calendario"
+      subscriptions: {
+        label: "Suscripciones",
+        desc: "Empresas y dispositivos"
       }
     },
     kpi: {
@@ -1410,6 +1446,20 @@ const USER_PROFILE_COPY = {
       reset: "Restablecer",
       save: "Guardar",
       saving: "Guardando…",
+      groups: {
+        activity: {
+          title: "Actividad",
+          description: "Intercambios y mensajes en los tickets."
+        },
+        assignment: {
+          title: "Asignación",
+          description: "Toma a cargo y reasignación."
+        },
+        lifecycle: {
+          title: "Ciclo de vida",
+          description: "Creación, evolución y cierre de tickets."
+        }
+      },
       events: {
         ticket_commented: {
           label: "Comentario añadido",
@@ -1634,6 +1684,14 @@ export function getLocalizedNotifEventOptions(locale) {
     ...option,
     label: events[option.key]?.label || option.label,
     description: events[option.key]?.description || option.description
+  }));
+}
+export function getLocalizedNotifEventGroups(locale) {
+  const groups = getUserProfileCopy(locale).notifications.groups || {};
+  return IN_APP_EVENT_GROUPS.map(group => ({
+    ...group,
+    title: groups[group.id]?.title || group.title,
+    description: groups[group.id]?.description || group.description
   }));
 }
 export function getMspModules(locale) {

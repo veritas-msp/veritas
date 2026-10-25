@@ -6,6 +6,8 @@ import { Badge, Btn, Card, ConfirmModal, Page, SubTabs, Table, Pagination, BtnIc
 import { useTablePagination } from "./useTablePagination";
 import adminUi from "./AdminUi.module.css";
 import { Icon } from "@iconify/react";
+import { UiKitPageHero, uiKitLayoutsStyles as kit } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 import RmmEnrollmentTokenValue from "../Rmm/RmmEnrollmentTokenValue";
 import RmmEnrollmentTokenFormModal from "./RmmEnrollmentTokenFormModal";
 import RmmEnrollmentTokenCreatedModal from "./RmmEnrollmentTokenCreatedModal";
@@ -544,12 +546,16 @@ export default function AdminRmm({
       setDownloading(null);
     }
   };
+  const heroCopy = getAdminPanelCopy(locale).items.rmm;
+  const hero = <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:laptop-account" />;
   if (loading && !settings) {
     return <Page>
+        {hero}
         <p className={adminUi.adminMutedText}>{copy.common.loading}</p>
       </Page>;
   }
   return <Page>
+      {hero}
       <SubTabs items={rmmTabs} active={tab} onChange={handleTabChange} fullWidth />
 
       {tab === "deploy" && <Card title={copy.deploy.cardTitle} description={copy.deploy.cardDescription}>
@@ -683,10 +689,10 @@ export default function AdminRmm({
           {loading ? <p className={adminUi.adminMutedText}>{copy.common.loadingShort}</p> : <>
               <div className={styles.agentsToolbar}>
                 <div className={styles.agentsToolbarMain}>
-                  <div className={`${adminUi.searchWrap} ${styles.agentsSearch}`}>
-                    <Icon icon="mdi:magnify" className={adminUi.searchIcon} aria-hidden />
-                    <input type="search" className={adminUi.searchInput} value={agentSearch} onChange={e => setAgentSearch(e.target.value)} placeholder={copy.agents.searchPlaceholder} aria-label={copy.agents.searchAria} autoComplete="off" />
-                    {agentSearch ? <button type="button" className={adminUi.searchClear} onClick={() => setAgentSearch("")} aria-label={copy.agents.searchClear}>
+                  <div className={`${kit.searchBox} ${styles.agentsSearch}`}>
+                    <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                    <input type="search" className={kit.searchInput} value={agentSearch} onChange={e => setAgentSearch(e.target.value)} placeholder={copy.agents.searchPlaceholder} aria-label={copy.agents.searchAria} autoComplete="off" />
+                    {agentSearch ? <button type="button" className={kit.searchClear} onClick={() => setAgentSearch("")} aria-label={copy.agents.searchClear}>
                         <Icon icon="mdi:close" aria-hidden />
                       </button> : null}
                   </div>

@@ -9,6 +9,8 @@ import AdminTicketViews from "./AdminTicketViews";
 import styles from "./AdminTickets.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { pickLocaleMessages } from "../../i18n/translate";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const SERVICE_SETTINGS_TABS = {
   fr: {
@@ -95,7 +97,9 @@ export default function AdminServiceSettingsPage() {
     };
   }, []);
 
+  const heroCopy = getAdminPanelCopy(locale).items["service-settings"];
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:briefcase-edit-outline" />
       <SubTabs items={tabItems} active={activeView} onChange={setActiveView} fullWidth />
       <div className={styles.content}>
         {activeView === "sales-forms" ? <SalesFormsAdmin /> : null}

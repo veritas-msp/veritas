@@ -11,18 +11,25 @@ import { setUserLocaleOverride, useAppLocale } from "../../../hooks/useAppGenera
 import { APP_LOCALES } from "../../../i18n/locales";
 import AvatarEditor from "../../shared/UserAvatar/AvatarEditor";
 import UserAvatar from "../../shared/UserAvatar/UserAvatar";
-import UserInfoIcons from "./UserInfoIcons";
 import { DEFAULT_TICKET_CHAT_UI_SETTINGS, TICKET_CHAT_UI_SETTINGS_KEY, normalizeTicketChatUiSettings } from "../../../utils/ticketChatUiSettings";
 import { DEFAULT_USER_IN_APP_PREFERENCES, normalizeUserInAppPreferences } from "../../../utils/inAppNotificationSettings";
-import { Modal, ModalFooter, ModalForm, IconField, Input, Btn, BtnIcon, FieldRow, Switch, ChoiceGroup } from "../../AdminPage/AdminUi";
-import layout from "../../EnterprisesPage/EnterprisesPage.module.css";
-import account from "../AccountPage/AccountPage.module.css";
-import MspPageHero from "../MspPageHero/MspPageHero";
-import mspStyles from "../../CybersecuritePage/CybersecuritePage.module.css";
+import { Modal, ModalFooter, ModalForm, Switch, ChoiceGroup } from "../../AdminPage/AdminUi";
+import {
+  UiKitAlert,
+  UiKitButton,
+  UiKitEmptyState,
+  UiKitField,
+  UiKitInput,
+  UiKitPanel,
+  UiKitPreviewBox,
+  UiKitScrollFadeShell,
+  UiKitSettingsNav,
+  uiKitLayoutsStyles as kit
+} from "../../UiKit";
 import s from "./UserProfile.module.css";
 import { useSidebarLayout } from "../../../hooks/useSidebarLayout";
 import { SIDEBAR_LAYOUTS } from "../../../utils/sidebarLayoutPreferences";
-import { formatProfileDate, getLocalizedNotifEventOptions, getMfaStatus, getNotificationsSectionDescription, getUserProfileCopy } from "./userProfileI18n";
+import { formatProfileDate, getLocalizedNotifEventGroups, getLocalizedNotifEventOptions, getMfaStatus, getNotificationsSectionDescription, getUserProfileCopy } from "./userProfileI18n";
 
 const APP_LOCALE_KEY = "app_locale";
 const PLANNING_VISIBILITY_KEY = "planning_visibility";
@@ -31,41 +38,29 @@ const NAV_ITEMS = [{
   id: "account",
   icon: "mdi:account-cog-outline"
 }, {
-  id: "interface",
-  icon: "mdi:view-dashboard-outline"
+  id: "preferences",
+  icon: "mdi:tune-variant"
 }, {
-  id: "support",
-  icon: "mdi:headset"
-}, {
-  id: "accessibility",
-  icon: "mdi:eye-outline"
+  id: "tickets",
+  icon: "mdi:ticket-outline"
 }, {
   id: "notifications",
   icon: "mdi:bell-outline"
 }, {
-  id: "planning",
-  icon: "mdi:calendar-lock-outline"
+  id: "subscriptions",
+  icon: "mdi:bell-badge-outline"
 }];
-
-function SectionPanel({
-  title,
-  description,
-  children,
-  full
-}) {
-  return <section className={`${account.sectionPanel} ${full ? account.sectionPanelFull : ""}`}>
-      <header className={account.sectionHeader}>
-        <h2 className={account.sectionTitle}>{title}</h2>
-        {description && <p className={account.sectionDesc}>{description}</p>}
-      </header>
-      <div className={account.sectionBody}>{children}</div>
-    </section>;
-}
 
 export default function UserProfile({ onNavigate } = {}) {
   const locale = useAppLocale();
   const t = useMemo(() => getUserProfileCopy(locale), [locale]);
   const notifEventOptions = useMemo(() => getLocalizedNotifEventOptions(locale), [locale]);
+  const notifEventGroups = useMemo(() => getLocalizedNotifEventGroups(locale), [locale]);
+  const notifEventsByKey = useMemo(() => {
+    const map = new Map();
+    notifEventOptions.forEach(option => map.set(option.key, option));
+    return map;
+  }, [notifEventOptions]);
   const {
     patchUser,
     setMfaEnabledFlag
@@ -155,7 +150,7 @@ export default function UserProfile({ onNavigate } = {}) {
   }, []);
 
   useEffect(() => {
-    if (activeSection !== "notifications") return undefined;
+    if (activeSection !== "subscriptions") return undefined;
     loadSubscriptions();
     return undefined;
   }, [activeSection, loadSubscriptions]);
@@ -508,31 +503,17 @@ export default function UserProfile({ onNavigate } = {}) {
   };
 
   if (loading) {
-    return <div className={`${mspStyles.mspPage} ${layout.page}`}>
-        <div className={mspStyles.mspLayout}>
-          <div className={mspStyles.mspMain}>
-            <div className={`${layout.shell} ${layout.shellFluid}`}>
-              <div className={layout.stateBox}>
-                <Icon icon="mdi:loading" className={layout.spinning} />
-                <span>{t.loading}</span>
-              </div>
-            </div>
-          </div>
+    return <div className={kit.settingsPage}>
+        <div className={`${kit.settingsPageBody} ${kit.settingsStateBody}`}>
+          <UiKitEmptyState icon="mdi:loading" title={t.loading} className={s.loadingState} />
         </div>
       </div>;
   }
 
   if (!user) {
-    return <div className={`${mspStyles.mspPage} ${layout.page}`}>
-        <div className={mspStyles.mspLayout}>
-          <div className={mspStyles.mspMain}>
-            <div className={`${layout.shell} ${layout.shellFluid}`}>
-              <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
-                <Icon icon="mdi:alert-circle-outline" />
-                <span>{t.loadProfileError}</span>
-              </div>
-            </div>
-          </div>
+    return <div className={kit.settingsPage}>
+        <div className={`${kit.settingsPageBody} ${kit.settingsStateBody}`}>
+          <UiKitAlert tone="danger">{t.loadProfileError}</UiKitAlert>
         </div>
       </div>;
   }
@@ -546,52 +527,30 @@ export default function UserProfile({ onNavigate } = {}) {
     return notifPreferences.events?.[option.key]?.enabled !== false;
   }).length;
 
-  return <div className={`${mspStyles.mspPage} ${layout.page}`}>
-      <div className={mspStyles.mspLayout}>
-        <div className={mspStyles.mspMain}>
-          {user.is_active === false && <div className={s.alertBannerWrap}>
-              <div className={account.alertBanner}>
-                <Icon icon="mdi:alert-circle-outline" className={account.alertIcon} />
-                {t.accountDisabled}
-              </div>
-            </div>}
+  return <div className={kit.settingsPage}>
+      {user.is_active === false && <div className={kit.settingsAlertWrap}>
+          <UiKitAlert tone="danger">{t.accountDisabled}</UiKitAlert>
+        </div>}
 
-          <MspPageHero
-            eyebrow={t.eyebrow}
-            title={t.pageTitle}
-            subtitle={t.nav?.account?.desc || null}
-            icon="mdi:account-circle-outline"
-            className={s.heroWithUser}
-            actions={
-              <UserInfoIcons
-                user={user}
-                name={displayName}
-                email={user.email}
-                detail={user.profile || t.roles[user.role] || ""}
-                detailIcon="mdi:badge-account-outline"
-              />
-            }
+      <div className={kit.settingsPageBody}>
+        <div className={`${kit.finderLayout} ${kit.settingsFinder}`}>
+          <UiKitSettingsNav
+            ariaLabel={t.pageTitle}
+            activeId={activeSection}
+            onChange={setActiveSection}
+            items={NAV_ITEMS.map(item => ({
+              id: item.id,
+              icon: item.icon,
+              label: t.nav[item.id]?.label,
+              desc: t.nav[item.id]?.desc
+            }))}
           />
 
-          <main className={mspStyles.mspContent}>
-              <div className={s.accountShell}>
-          <nav className={s.nav} aria-label={t.pageTitle}>
-            {NAV_ITEMS.map(item => {
-            const copy = t.nav[item.id];
-            const active = activeSection === item.id;
-            return <button key={item.id} type="button" className={`${s.navItem} ${active ? s.navItemActive : ""}`} onClick={() => setActiveSection(item.id)} aria-current={active ? "page" : undefined}>
-                  <Icon icon={item.icon} className={s.navItemIcon} aria-hidden />
-                  <span className={s.navText}>
-                    <span className={s.navLabel}>{copy?.label}</span>
-                    {copy?.desc ? <span className={s.navDesc}>{copy.desc}</span> : null}
-                  </span>
-                </button>;
-          })}
-          </nav>
-
-          <div className={s.content}>
-            {activeSection === "account" && <div className={account.contentGrid}>
-                <SectionPanel title={t.sections.identity.title} description={t.sections.identity.description}>
+          <div className={kit.finderContent}>
+          <UiKitScrollFadeShell className={kit.settingsScroll} deps={[activeSection]}>
+          <div className={`${kit.settingsContentPad} ${kit.contentFadeUp}`} key={activeSection}>
+            {activeSection === "account" && <div className={kit.settingsGrid}>
+                <UiKitPanel bare title={t.sections.identity.title} description={t.sections.identity.description}>
                   <div className={s.settingRow}>
                     <div className={s.settingInfo}>
                       <span className={s.settingLabel}>{t.identity.username}</span>
@@ -599,7 +558,7 @@ export default function UserProfile({ onNavigate } = {}) {
                       <span className={s.settingValue}>{user.username || "-"}</span>
                     </div>
                     <div className={s.settingAction}>
-                      <BtnIcon icon="mdi:pencil-outline" title={t.identity.editUsername} onClick={openUsernameModal} />
+                      <UiKitButton square variant="secondary" icon="mdi:pencil-outline" title={t.identity.editUsername} aria-label={t.identity.editUsername} onClick={openUsernameModal} />
                     </div>
                   </div>
                   <div className={s.settingRow}>
@@ -609,7 +568,7 @@ export default function UserProfile({ onNavigate } = {}) {
                       <span className={s.settingValue}>{user.email}</span>
                     </div>
                     <div className={s.settingAction}>
-                      <BtnIcon icon="mdi:pencil-outline" title={t.identity.editEmail} onClick={openEmailModal} />
+                      <UiKitButton square variant="secondary" icon="mdi:pencil-outline" title={t.identity.editEmail} aria-label={t.identity.editEmail} onClick={openEmailModal} />
                     </div>
                   </div>
                   <div className={s.settingRow}>
@@ -619,16 +578,16 @@ export default function UserProfile({ onNavigate } = {}) {
                       <span className={s.settingValue}>••••••••••••</span>
                     </div>
                     <div className={s.settingAction}>
-                      <BtnIcon icon="mdi:key-outline" title={t.identity.changePassword} onClick={openPasswordModal} />
+                      <UiKitButton square variant="secondary" icon="mdi:key-outline" title={t.identity.changePassword} aria-label={t.identity.changePassword} onClick={openPasswordModal} />
                     </div>
                   </div>
-                </SectionPanel>
+                </UiKitPanel>
 
-                <SectionPanel title={t.sections.photo.title} description={t.sections.photo.description}>
+                <UiKitPanel bare title={t.sections.photo.title} description={t.sections.photo.description}>
                   <AvatarEditor user={user} displayName={displayName} onUpdated={handleAvatarUpdated} />
-                </SectionPanel>
+                </UiKitPanel>
 
-                <SectionPanel title={t.sections.security.title} description={t.sections.security.description}>
+                <UiKitPanel bare title={t.sections.security.title} description={t.sections.security.description}>
                   <div className={`${s.mfaBanner} ${mfaStatus.className}`}>
                     <Icon icon={mfaStatus.icon} className={`${s.mfaIcon} ${s[`mfaIcon_${mfaStatus.key}`]}`} />
                     <div className={s.mfaBody}>
@@ -636,30 +595,21 @@ export default function UserProfile({ onNavigate } = {}) {
                       <p className={s.mfaDesc}>{mfaStatus.desc}</p>
                       <div className={s.mfaActions}>
                         {mfaStatus.key === "enabled" ? <>
-                            <Btn variant="ghost" icon="mdi:shield-refresh-outline" onClick={() => openMfaDisableModal("reconfigure")} disabled={mfaBusy}>
+                            <UiKitButton variant="ghost" icon="mdi:shield-refresh-outline" onClick={() => openMfaDisableModal("reconfigure")} disabled={mfaBusy}>
                               {t.mfa.change}
-                            </Btn>
-                            <Btn variant="ghost" icon="mdi:shield-off-outline" onClick={() => openMfaDisableModal("disable")} disabled={mfaBusy}>
+                            </UiKitButton>
+                            <UiKitButton variant="ghost" icon="mdi:shield-off-outline" onClick={() => openMfaDisableModal("disable")} disabled={mfaBusy}>
                               {t.mfa.disable}
-                            </Btn>
-                          </> : <Btn icon="mdi:shield-key-outline" onClick={startMfaSetup} disabled={mfaBusy}>
+                            </UiKitButton>
+                          </> : <UiKitButton variant="primary" icon="mdi:shield-key-outline" onClick={startMfaSetup} disabled={mfaBusy}>
                             {mfaStatus.key === "pending" ? t.mfa.continueSetup : t.mfa.enable}
-                          </Btn>}
+                          </UiKitButton>}
                       </div>
                     </div>
                   </div>
-                </SectionPanel>
+                </UiKitPanel>
 
-                <SectionPanel title={t.sections.locale.title} description={t.sections.locale.description}>
-                  <div className={s.localeBlock}>
-                    <span className={s.settingLabel}>{t.locale.label}</span>
-                    <span className={s.settingHint}>{t.locale.hint}</span>
-                    <ChoiceGroup variant="locale" ariaLabel={t.locale.label} value={appLocale} onChange={handleLocaleChange} options={localeOptions} />
-                    {savingLocale ? <span className={s.inlineStatus}>{t.locale.saving}</span> : null}
-                  </div>
-                </SectionPanel>
-
-                <SectionPanel title={t.sections.activity.title} description={t.sections.activity.description} full>
+                <UiKitPanel bare title={t.sections.activity.title} description={t.sections.activity.description} className={kit.settingsPanelFull}>
                   <div className={s.settingRow}>
                     <div className={s.settingInfo}>
                       <span className={s.settingLabel}>{t.activity.created}</span>
@@ -672,11 +622,29 @@ export default function UserProfile({ onNavigate } = {}) {
                       <span className={s.settingValue}>{formatProfileDate(user.last_login_at, locale)}</span>
                     </div>
                   </div>
-                </SectionPanel>
+                </UiKitPanel>
               </div>}
 
-            {activeSection === "interface" && <div className={account.contentGrid}>
-                <SectionPanel title={t.sections.interface.title} description={t.sections.interface.description} full>
+            {activeSection === "preferences" && <div className={kit.settingsGrid}>
+                <UiKitPanel bare title={t.sections.locale.title} description={t.sections.locale.description}>
+                  <div className={s.localeBlock}>
+                    <span className={s.settingLabel}>{t.locale.label}</span>
+                    <span className={s.settingHint}>{t.locale.hint}</span>
+                    <ChoiceGroup variant="locale" ariaLabel={t.locale.label} value={appLocale} onChange={handleLocaleChange} options={localeOptions} />
+                    {savingLocale ? <span className={s.inlineStatus}>{t.locale.saving}</span> : null}
+                  </div>
+                </UiKitPanel>
+
+                <UiKitPanel bare title={t.sections.planning.title} description={t.sections.planning.description}>
+                  <div className={s.localeBlock}>
+                    <span className={s.settingLabel}>{t.planning.label}</span>
+                    <span className={s.settingHint}>{planningVisibility === "private" ? t.planning.privateHint : t.planning.publicHint}</span>
+                    <ChoiceGroup variant="segment" ariaLabel={t.planning.label} value={planningVisibility} onChange={handlePlanningVisibilityChange} options={planningOptions} />
+                    {savingPlanning ? <span className={s.inlineStatus}>{t.planning.saving}</span> : null}
+                  </div>
+                </UiKitPanel>
+
+                <UiKitPanel bare title={t.sections.interface.title} description={t.sections.interface.description} className={kit.settingsPanelFull}>
                   <div className={s.localeBlock}>
                     <span className={s.settingLabel}>{t.sidebarLayout.label}</span>
                     <span className={s.settingHint}>{t.sidebarLayout.hint}</span>
@@ -694,29 +662,38 @@ export default function UserProfile({ onNavigate } = {}) {
                     </div>
                     {savingSidebarLayout ? <span className={s.inlineStatus}>{t.sidebarLayout.saving}</span> : null}
                   </div>
-                </SectionPanel>
+                </UiKitPanel>
               </div>}
 
-            {activeSection === "support" && <div className={account.contentGrid}>
-                <SectionPanel title={t.sections.helpdesk.title} description={t.sections.helpdesk.description} full>
+            {activeSection === "tickets" && <div className={kit.settingsGrid}>
+                <UiKitPanel bare title={t.sections.helpdesk.title} description={t.sections.helpdesk.description} className={kit.settingsPanelFull}>
                   <div className={s.helpdeskForm}>
-                    <IconField icon="mdi:badge-account-outline" label={t.helpdesk.label} hint={t.helpdesk.hint}>
-                      <Input value={helpdeskName} onChange={e => setHelpdeskName(e.target.value)} placeholder={user.username || t.helpdesk.placeholder} maxLength={80} />
-                    </IconField>
-                    <div className={s.helpdeskPreview}>
+                    <UiKitField
+                      icon="mdi:badge-account-outline"
+                      label={t.helpdesk.label}
+                      hint={t.helpdesk.hint}
+                      htmlFor="profile-helpdesk-name"
+                    >
+                      <UiKitInput
+                        id="profile-helpdesk-name"
+                        value={helpdeskName}
+                        onChange={e => setHelpdeskName(e.target.value)}
+                        placeholder={user.username || t.helpdesk.placeholder}
+                        maxLength={80}
+                      />
+                    </UiKitField>
+                    <UiKitPreviewBox>
                       {t.helpdesk.preview} <strong>{helpdeskPreview}</strong>
-                    </div>
+                    </UiKitPreviewBox>
                     <div>
-                      <Btn icon="mdi:content-save-outline" onClick={handleSaveHelpdeskName} disabled={savingHelpdesk}>
+                      <UiKitButton variant="primary" icon="mdi:content-save-outline" onClick={handleSaveHelpdeskName} disabled={savingHelpdesk}>
                         {savingHelpdesk ? t.helpdesk.saving : t.helpdesk.save}
-                      </Btn>
+                      </UiKitButton>
                     </div>
                   </div>
-                </SectionPanel>
-              </div>}
+                </UiKitPanel>
 
-            {activeSection === "accessibility" && <div className={account.contentGrid}>
-                <SectionPanel title={t.sections.accessibility.title} description={t.sections.accessibility.description} full>
+                <UiKitPanel bare title={t.sections.accessibility.title} description={t.sections.accessibility.description} className={kit.settingsPanelFull}>
                   <div className={s.chatAccessibility}>
                     <label className={s.chatPreviewLabel}>{t.chat.previewLabel}</label>
                     <div className={s.chatPreview} style={{
@@ -771,56 +748,83 @@ export default function UserProfile({ onNavigate } = {}) {
                     </div>
 
                     <div>
-                      <Btn icon="mdi:content-save-outline" onClick={handleSaveChatUiSettings} disabled={savingChatUi}>
+                      <UiKitButton variant="primary" icon="mdi:content-save-outline" onClick={handleSaveChatUiSettings} disabled={savingChatUi}>
                         {savingChatUi ? t.chat.saving : t.chat.savePrefs}
-                      </Btn>
+                      </UiKitButton>
                     </div>
                   </div>
-                </SectionPanel>
+                </UiKitPanel>
               </div>}
 
-            {activeSection === "notifications" && <div className={account.contentGrid}>
-                <SectionPanel title={t.sections.notifications.title} description={getNotificationsSectionDescription(t, {
+            {activeSection === "notifications" && <div className={kit.settingsGrid}>
+                <UiKitPanel bare title={t.sections.notifications.title} description={getNotificationsSectionDescription(t, {
               notifGloballyDisabled,
               notifUserEnabled,
               activeCount: activeNotifEventsCount,
               total: notifEventOptions.length
-            })} full>
-                  {notifGloballyDisabled ? <div className={s.notifAdminBanner}>
-                      <Icon icon="mdi:bell-off-outline" className={s.notifAdminBannerIcon} aria-hidden />
-                      <p className={s.notifAdminBannerText}>{t.notifications.adminBanner}</p>
-                    </div> : <div className={s.notifPrefs}>
-                      <FieldRow icon="mdi:bell-ring-outline" label={t.notifications.masterLabel} hint={t.notifications.masterHint} className={s.notifMasterRow}>
+            })} className={kit.settingsPanelFull}>
+                  {notifGloballyDisabled ? <UiKitAlert tone="warn">{t.notifications.adminBanner}</UiKitAlert> : <div className={s.notifPrefs}>
+                      <div className={s.notifMaster}>
+                        <div className={s.notifMasterMain}>
+                          <Icon icon="mdi:bell-ring-outline" className={s.notifMasterIcon} aria-hidden />
+                          <div className={s.notifMasterText}>
+                            <span className={s.notifMasterLabel}>{t.notifications.masterLabel}</span>
+                            <span className={s.notifMasterHint}>{t.notifications.masterHint}</span>
+                          </div>
+                        </div>
                         <Switch checked={notifUserEnabled} onChange={value => setNotifPreferences(prev => ({
                     ...prev,
                     enabled: value
                   }))} />
-                      </FieldRow>
+                      </div>
 
-                      <div className={`${s.notifEvents} ${!notifUserEnabled ? s.notifEventsDisabled : ""}`}>
-                        {notifEventOptions.map(option => {
-                    const adminEnabled = notifAdminDefaults?.events?.[option.key]?.enabled !== false;
-                    const checked = notifPreferences.events?.[option.key]?.enabled !== false;
-                    return <FieldRow key={option.key} icon={option.icon} label={option.label} hint={adminEnabled ? option.description : t.notifications.adminDisabledHint} className={s.notifEventRow}>
-                              <Switch checked={adminEnabled && checked} disabled={!adminEnabled || !notifUserEnabled} onChange={value => updateNotifEvent(option.key, value)} />
-                            </FieldRow>;
+                      <div className={`${s.notifGroups} ${!notifUserEnabled ? s.notifEventsDisabled : ""}`}>
+                        {notifEventGroups.map(group => {
+                    const groupActive = group.eventKeys.filter(eventKey => {
+                      if (!notifUserEnabled || notifGloballyDisabled) return false;
+                      if (notifAdminDefaults?.events?.[eventKey]?.enabled === false) return false;
+                      return notifPreferences.events?.[eventKey]?.enabled !== false;
+                    }).length;
+                    return <section key={group.id} className={s.notifGroup}>
+                            <header className={s.notifGroupHeader} title={group.description}>
+                              <h3 className={s.notifGroupTitle}>{group.title}</h3>
+                              <span className={s.notifGroupMeta}>{groupActive}/{group.eventKeys.length}</span>
+                            </header>
+                            <div className={s.notifTiles}>
+                              {group.eventKeys.map(eventKey => {
+                        const option = notifEventsByKey.get(eventKey);
+                        if (!option) return null;
+                        const adminEnabled = notifAdminDefaults?.events?.[option.key]?.enabled !== false;
+                        const checked = notifPreferences.events?.[option.key]?.enabled !== false;
+                        const enabled = adminEnabled && checked;
+                        const hint = adminEnabled ? option.description : t.notifications.adminDisabledHint;
+                        return <div key={option.key} className={`${s.notifTile} ${enabled ? s.notifTileOn : ""} ${!adminEnabled ? s.notifTileLocked : ""}`} title={hint}>
+                                    <Icon icon={option.icon} className={s.notifTileIcon} aria-hidden />
+                                    <span className={s.notifTileLabel}>{option.label}</span>
+                                    <Switch checked={adminEnabled && checked} disabled={!adminEnabled || !notifUserEnabled} onChange={value => updateNotifEvent(option.key, value)} />
+                                  </div>;
+                      })}
+                            </div>
+                          </section>;
                   })}
                       </div>
 
                       <p className={s.notifHint}>{t.notifications.hint}</p>
 
                       <div className={s.notifActions}>
-                        <Btn variant="ghost" onClick={handleResetNotifPreferences} disabled={savingNotifPrefs}>
+                        <UiKitButton variant="ghost" onClick={handleResetNotifPreferences} disabled={savingNotifPrefs}>
                           {t.notifications.reset}
-                        </Btn>
-                        <Btn icon="mdi:content-save-outline" onClick={handleSaveNotifPreferences} disabled={savingNotifPrefs}>
+                        </UiKitButton>
+                        <UiKitButton variant="primary" icon="mdi:content-save-outline" onClick={handleSaveNotifPreferences} disabled={savingNotifPrefs}>
                           {savingNotifPrefs ? t.notifications.saving : t.notifications.save}
-                        </Btn>
+                        </UiKitButton>
                       </div>
                     </div>}
-                </SectionPanel>
+                </UiKitPanel>
+              </div>}
 
-                <SectionPanel title={t.sections.subscriptions.title} description={t.sections.subscriptions.description} full>
+            {activeSection === "subscriptions" && <div className={kit.settingsGrid}>
+                <UiKitPanel bare title={t.sections.subscriptions.title} description={t.sections.subscriptions.description} className={kit.settingsPanelFull}>
                   {loadingSubscriptions ? <p className={s.notifHint}>{t.subscriptions.loading}</p> : subscriptions.length === 0 ? <p className={s.notifHint}>{t.subscriptions.empty}</p> : <ul className={s.subscriptionList}>
                       {subscriptions.map(item => {
                   const rowKey = `${item.entityType}:${item.entityId}`;
@@ -841,54 +845,43 @@ export default function UserProfile({ onNavigate } = {}) {
                               <span>{t.subscriptions.channelEmail}</span>
                               <Switch checked={item.notifyEmail === true} disabled={busy} onChange={value => handleSubscriptionChannelChange(item, "email", value)} />
                             </div>
-                            <BtnIcon icon="mdi:bell-off-outline" title={t.subscriptions.unsubscribe} onClick={() => handleUnsubscribe(item)} disabled={busy} />
+                            <UiKitButton square variant="secondary" icon="mdi:bell-off-outline" title={t.subscriptions.unsubscribe} aria-label={t.subscriptions.unsubscribe} onClick={() => handleUnsubscribe(item)} disabled={busy} />
                           </div>
                         </li>;
                 })}
                     </ul>}
-                </SectionPanel>
-              </div>}
-
-            {activeSection === "planning" && <div className={account.contentGrid}>
-                <SectionPanel title={t.sections.planning.title} description={t.sections.planning.description} full>
-                  <div className={s.localeBlock}>
-                    <span className={s.settingLabel}>{t.planning.label}</span>
-                    <span className={s.settingHint}>{planningVisibility === "private" ? t.planning.privateHint : t.planning.publicHint}</span>
-                    <ChoiceGroup variant="segment" ariaLabel={t.planning.label} value={planningVisibility} onChange={handlePlanningVisibilityChange} options={planningOptions} />
-                    {savingPlanning ? <span className={s.inlineStatus}>{t.planning.saving}</span> : null}
-                  </div>
-                </SectionPanel>
+                </UiKitPanel>
               </div>}
           </div>
-              </div>
-          </main>
+          </UiKitScrollFadeShell>
+          </div>
         </div>
       </div>
 
       <Modal open={usernameModal} onClose={() => setUsernameModal(false)} title={t.modals.username.title} icon="mdi:account-edit-outline" width="440px" footer={<ModalFooter onCancel={() => setUsernameModal(false)} onConfirm={handleSaveUsername} confirmLabel={t.modals.save} confirmLoading={savingIdentity} confirmDisabled={!draftUsername.trim()} />}>
         <ModalForm>
-          <IconField icon="mdi:account" label={t.modals.username.label} hint={t.modals.username.hint}>
-            <Input value={draftUsername} onChange={e => setDraftUsername(e.target.value)} placeholder={user.username || t.modals.username.placeholder} autoFocus maxLength={50} />
-          </IconField>
+          <UiKitField icon="mdi:account" label={t.modals.username.label} hint={t.modals.username.hint} htmlFor="profile-username">
+            <UiKitInput id="profile-username" value={draftUsername} onChange={e => setDraftUsername(e.target.value)} placeholder={user.username || t.modals.username.placeholder} autoFocus maxLength={50} />
+          </UiKitField>
         </ModalForm>
       </Modal>
 
       <Modal open={emailModal} onClose={() => setEmailModal(false)} title={t.modals.email.title} icon="mdi:email-edit-outline" width="440px" footer={<ModalFooter onCancel={() => setEmailModal(false)} onConfirm={handleSaveEmail} confirmLabel={t.modals.save} confirmLoading={savingIdentity} confirmDisabled={!draftEmail.trim()} />}>
         <ModalForm>
-          <IconField icon="mdi:email-outline" label={t.modals.email.label}>
-            <Input type="email" value={draftEmail} onChange={e => setDraftEmail(e.target.value)} placeholder={user.email} autoFocus />
-          </IconField>
+          <UiKitField icon="mdi:email-outline" label={t.modals.email.label} htmlFor="profile-email">
+            <UiKitInput id="profile-email" type="email" value={draftEmail} onChange={e => setDraftEmail(e.target.value)} placeholder={user.email} autoFocus />
+          </UiKitField>
         </ModalForm>
       </Modal>
 
       <Modal open={passwordModal} onClose={() => setPasswordModal(false)} title={t.modals.password.title} icon="mdi:lock-reset" width="440px" footer={<ModalFooter onCancel={() => setPasswordModal(false)} onConfirm={handleSavePassword} confirmLabel={t.modals.password.confirmAction} confirmLoading={savingIdentity} confirmDisabled={!draftPwd1 || !draftPwd2} />}>
         <ModalForm>
-          <IconField icon="mdi:lock-outline" label={t.modals.password.label} hint={t.modals.password.hint}>
-            <Input type="password" value={draftPwd1} onChange={e => setDraftPwd1(e.target.value)} autoFocus />
-          </IconField>
-          <IconField icon="mdi:lock-check-outline" label={t.modals.password.confirm}>
-            <Input type="password" value={draftPwd2} onChange={e => setDraftPwd2(e.target.value)} />
-          </IconField>
+          <UiKitField icon="mdi:lock-outline" label={t.modals.password.label} hint={t.modals.password.hint} htmlFor="profile-pwd1">
+            <UiKitInput id="profile-pwd1" type="password" value={draftPwd1} onChange={e => setDraftPwd1(e.target.value)} autoFocus />
+          </UiKitField>
+          <UiKitField icon="mdi:lock-check-outline" label={t.modals.password.confirm} htmlFor="profile-pwd2">
+            <UiKitInput id="profile-pwd2" type="password" value={draftPwd2} onChange={e => setDraftPwd2(e.target.value)} />
+          </UiKitField>
         </ModalForm>
       </Modal>
 
@@ -909,7 +902,9 @@ export default function UserProfile({ onNavigate } = {}) {
             <p className={s.secret}>
               {t.modals.mfa.manualKey} <code>{mfaSetup.secret}</code>
             </p>
-            <input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, ""))} className={s.codeInput} disabled={mfaBusy} />
+            <UiKitField label={t.modals.mfaDisable.codeLabel} htmlFor="profile-mfa-code">
+              <UiKitInput id="profile-mfa-code" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, ""))} disabled={mfaBusy} />
+            </UiKitField>
           </>}
       </Modal>
 
@@ -922,9 +917,9 @@ export default function UserProfile({ onNavigate } = {}) {
     }} onConfirm={handleDisableMfa} confirmLabel={mfaMode === "reconfigure" ? t.modals.mfaDisable.changeConfirm : t.modals.mfaDisable.confirm} confirmLoading={mfaBusy} confirmDisabled={mfaDisableCode.length < 6} />}>
         <ModalForm>
           <p className={s.mfaDesc}>{mfaMode === "reconfigure" ? t.modals.mfaDisable.changeDesc : t.modals.mfaDisable.desc}</p>
-          <IconField icon="mdi:numeric" label={t.modals.mfaDisable.codeLabel}>
-            <Input type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={mfaDisableCode} onChange={e => setMfaDisableCode(e.target.value.replace(/\D/g, ""))} autoFocus disabled={mfaBusy} />
-          </IconField>
+          <UiKitField icon="mdi:numeric" label={t.modals.mfaDisable.codeLabel} htmlFor="profile-mfa-disable">
+            <UiKitInput id="profile-mfa-disable" type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="000000" value={mfaDisableCode} onChange={e => setMfaDisableCode(e.target.value.replace(/\D/g, ""))} autoFocus disabled={mfaBusy} />
+          </UiKitField>
         </ModalForm>
       </Modal>
     </div>;

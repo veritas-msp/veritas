@@ -23,6 +23,8 @@ import HycuIntegrationModal from "./HycuIntegrationModal";
 import WhatsappIntegrationModal from "./WhatsappIntegrationModal";
 import ui from "./AdminUi.module.css";
 import styles from "./AdminIntegrations.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 const FILTER_ALL = "all";
 const FILTER_ACTIVE = "active";
 const FILTER_AVAILABLE = "available";
@@ -267,7 +269,9 @@ export default function AdminInterconnections({
     openConfig: copy.card.openConfig,
     soonHint: copy.card.soonHint
   };
+  const heroCopy = getAdminPanelCopy(locale).items.integrations;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:link-variant" />
       <div className={styles.page}>
         <div className={styles.statsRow}>
           <div className={styles.statCard}>

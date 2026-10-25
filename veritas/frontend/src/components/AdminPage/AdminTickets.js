@@ -5,6 +5,8 @@ import { toast } from "react-toastify";
 import styles from "./AdminTickets.module.css";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
+import { UiKitPageHero, uiKitLayoutsStyles as kit } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 import { Page, SubTabs, Card, Btn, ConfirmModal, EntityStatus, Badge, Pagination } from "./AdminUi";
 import { useTablePagination } from "./useTablePagination";
 import CollectorFormModal from "./CollectorFormModal";
@@ -2881,7 +2883,9 @@ export default function AdminTickets({
       {action.type === "add_attachment" && !proLocked && <div className={macroModalStyles.hintText}>{ss.macros.placeholders.manualAttachmentHint}</div>}
     </>;
   };
+  const heroCopy = getAdminPanelCopy(locale).items.tickets;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:ticket-outline" />
       {!restrictedView ? <SubTabs items={ticketAdminViews} active={activeView} onChange={setActiveView} fullWidth /> : null}
 
       <div className={styles.content}>
@@ -2953,7 +2957,10 @@ export default function AdminTickets({
                 </div>
                 <div className={ui.toolRow}>
                   <div className={ui.toolLeft}>
-                    <input type="search" className={ui.fieldSearch} placeholder={ss.categories.searchSection} value={sectionSearch} onChange={e => setSectionSearch(e.target.value)} />
+                    <div className={kit.searchBox}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                      <input type="search" className={kit.searchInput} placeholder={ss.categories.searchSection} value={sectionSearch} onChange={e => setSectionSearch(e.target.value)} aria-label={ss.categories.searchSection} autoComplete="off" />
+                    </div>
                     <span className={ui.count}>
                       {formatSupportSettingsCount(locale, "section", filteredCategorySections.length)}
                     </span>
@@ -3018,7 +3025,10 @@ export default function AdminTickets({
 
                 <div className={ui.toolRow}>
                   <div className={ui.toolLeft}>
-                    <input type="search" className={ui.fieldSearch} placeholder={ss.categories.searchCategory} value={categorySearch} onChange={e => setCategorySearch(e.target.value)} />
+                    <div className={kit.searchBox}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                      <input type="search" className={kit.searchInput} placeholder={ss.categories.searchCategory} value={categorySearch} onChange={e => setCategorySearch(e.target.value)} aria-label={ss.categories.searchCategory} autoComplete="off" />
+                    </div>
                     <span className={ui.count}>
                       {formatSupportSettingsCount(locale, "category", filteredTicketCategories.length)}
                     </span>
@@ -3083,7 +3093,10 @@ export default function AdminTickets({
 
                 <div className={ui.toolRow}>
                   <div className={ui.toolLeft}>
-                    <input type="search" className={ui.fieldSearch} placeholder={ss.solutions.searchIntervention} value={solutionInterventionSearch} onChange={e => setSolutionInterventionSearch(e.target.value)} />
+                    <div className={kit.searchBox}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                      <input type="search" className={kit.searchInput} placeholder={ss.solutions.searchIntervention} value={solutionInterventionSearch} onChange={e => setSolutionInterventionSearch(e.target.value)} aria-label={ss.solutions.searchIntervention} autoComplete="off" />
+                    </div>
                     <span className={ui.count}>
                       {formatSupportSettingsCount(locale, "entry", filteredSolutionInterventions.length)}
                     </span>
@@ -3148,7 +3161,10 @@ export default function AdminTickets({
 
                 <div className={ui.toolRow}>
                   <div className={ui.toolLeft}>
-                    <input type="search" className={ui.fieldSearch} placeholder={ss.solutions.searchAction} value={solutionActionSearch} onChange={e => setSolutionActionSearch(e.target.value)} />
+                    <div className={kit.searchBox}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                      <input type="search" className={kit.searchInput} placeholder={ss.solutions.searchAction} value={solutionActionSearch} onChange={e => setSolutionActionSearch(e.target.value)} aria-label={ss.solutions.searchAction} autoComplete="off" />
+                    </div>
                     <span className={ui.count}>
                       {formatSupportSettingsCount(locale, "entry", filteredSolutionActions.length)}
                     </span>

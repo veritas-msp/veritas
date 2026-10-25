@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Icon } from "@iconify/react";
-import { FaTimes, FaPlus } from "react-icons/fa";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import { UiKitCrmListToolbar } from "../UiKit";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
@@ -374,11 +374,6 @@ export default function PlanningPage({
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
   const assigneeSelectRef = useRef(null);
-  const [todoItems, setTodoItems] = useState([]);
-  const [todoDraft, setTodoDraft] = useState("");
-  const [todoDraftColor, setTodoDraftColor] = useState("#15d1a0");
-  const [draggingTodoId, setDraggingTodoId] = useState(null);
-  const [dragOverTodoId, setDragOverTodoId] = useState(null);
   const [equipmentMappings, setEquipmentMappings] = useState({});
   const [selectedTypes, setSelectedTypes] = useState(new Set());
   const [selectedUsers, setSelectedUsers] = useState(new Set());
@@ -641,7 +636,15 @@ export default function PlanningPage({
         equipmentName: privacyRedacted ? null : equipmentName,
         serviceName: privacyRedacted ? null : serviceName,
         linkedItems: privacyRedacted ? [] : linkedItemsMeta,
-        todos: privacyRedacted ? [] : Array.isArray(eventMeta.todos) ? eventMeta.todos : [],
+        todos: privacyRedacted ? [] : (Array.isArray(eventMeta.todos) ? eventMeta.todos : []).map(todo => {
+          const assigneeId = todo?.assigneeId != null && todo.assigneeId !== "" ? String(todo.assigneeId) : "";
+          const assignee = assigneeId ? users.find(entry => String(entry.id) === assigneeId) : null;
+          return {
+            ...todo,
+            assigneeId,
+            assigneeName: assignee?.name || assignee?.nom || assignee?.username || null
+          };
+        }),
         notes: privacyRedacted ? [] : Array.isArray(eventMeta.notes) ? eventMeta.notes : [],
         schedule: eventMeta.schedule && typeof eventMeta.schedule === "object" ? eventMeta.schedule : null,
         privacy_redacted: privacyRedacted,
@@ -1308,9 +1311,6 @@ export default function PlanningPage({
     setSelectedAssignedUsers(agentId ? [String(agentId)] : user?.id ? [String(user.id)] : []);
     setClientSearch("");
     setSelectedLinkedItems([]);
-    setTodoItems([]);
-    setTodoDraft("");
-    setTodoDraftColor("#15d1a0");
     setLinkedSearch("");
     setLinkedTypeFilter("all");
     setAssigneeSearch("");
@@ -1508,29 +1508,6 @@ export default function PlanningPage({
       return [...prev, itemId];
     });
   };
-  const addTodoItem = () => {
-    const text = todoDraft.trim();
-    if (!text) return;
-    setTodoItems(prev => [...prev, {
-      id: `todo-${Date.now()}`,
-      text,
-      done: false,
-      color: todoDraftColor || "#15d1a0"
-    }]);
-    setTodoDraft("");
-  };
-  const moveTodoItemById = (sourceId, targetId) => {
-    if (!sourceId || !targetId || sourceId === targetId) return;
-    setTodoItems(prev => {
-      const fromIndex = prev.findIndex(item => item.id === sourceId);
-      const toIndex = prev.findIndex(item => item.id === targetId);
-      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  };
   const persistEventAssignee = useCallback(async (calendarEvent, assignedUserId) => {
     const eventId = getPlanningEventId(calendarEvent);
     if (!eventId || calendarEvent._isCampaign || !assignedUserId) return null;
@@ -1700,11 +1677,9 @@ export default function PlanningPage({
           businessDaysOnly: !!eventForm.businessDaysOnly,
           durationDays: safeDurationDays
         },
-        todos: todoItems.map(todo => ({
-          ...todo,
-          text: (todo.text || "").trim(),
-          color: todo.color || "#15d1a0"
-        })).filter(todo => todo.text)
+        todosEnabled: false,
+        todosAssignEnabled: false,
+        todos: []
       });
       const eventData = {
         title: eventForm.title.trim(),
@@ -1778,9 +1753,6 @@ export default function PlanningPage({
       setSelectedClient("");
       setSelectedAssignedUsers(user?.id ? [String(user.id)] : []);
       setSelectedLinkedItems([]);
-      setTodoItems([]);
-      setTodoDraft("");
-      setTodoDraftColor("#15d1a0");
       setClientSearch("");
       setLinkedSearch("");
       setLinkedTypeFilter("all");
@@ -1810,7 +1782,6 @@ export default function PlanningPage({
     const parsedDescription = parseEventDescription(rawEvent.description || event.description || "");
     const parsedMeta = parsedDescription.meta || {};
     const linkedItemsMeta = Array.isArray(parsedMeta.linkedItems) ? parsedMeta.linkedItems : [];
-    const todosMeta = Array.isArray(parsedMeta.todos) ? parsedMeta.todos : [];
     const scheduleMeta = parsedMeta.schedule && typeof parsedMeta.schedule === "object" ? parsedMeta.schedule : null;
     const assignedUserIdsMeta = Array.isArray(parsedMeta.assignedUserIds) ? parsedMeta.assignedUserIds.map(id => String(id)).filter(Boolean) : [];
     const inferredAllDay = startMoment.format("HH:mm") === "00:00" && endMoment.format("HH:mm") === "23:59";
@@ -1839,14 +1810,6 @@ export default function PlanningPage({
     });
     const linkedFallback = rawEvent.equipment_id ? [String(rawEvent.equipment_id)] : [];
     setSelectedLinkedItems(linkedItemsMeta.length > 0 ? linkedItemsMeta.map(item => String(item.id)).filter(Boolean) : linkedFallback);
-    setTodoItems(todosMeta.map(todo => ({
-      id: todo.id || `todo-${Date.now()}-${Math.random()}`,
-      text: todo.text || "",
-      done: !!todo.done,
-      color: todo.color || "#15d1a0"
-    })));
-    setTodoDraft("");
-    setTodoDraftColor("#15d1a0");
     setLinkedSearch("");
     setLinkedTypeFilter("all");
     setAssigneeSearch("");
@@ -1900,9 +1863,6 @@ export default function PlanningPage({
     setSelectedClient("");
     setSelectedAssignedUsers(user?.id ? [String(user.id)] : []);
     setSelectedLinkedItems([]);
-    setTodoItems([]);
-    setTodoDraft("");
-    setTodoDraftColor("#15d1a0");
     setClientSearch("");
     setClientDropdownOpen(false);
     setLinkedSearch("");
@@ -1991,7 +1951,7 @@ export default function PlanningPage({
           </span>
         </button>
         {removable ? <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedAgent(userItem.id)} aria-label={planningCopy.formatRemoveAgentFromList(userName)} title={planningCopy.filters.removeFromList}>
-          <FaTimes />
+          <Icon icon="mdi:close" width={14} height={14} aria-hidden />
         </button> : null}
       </div>;
   };
@@ -2020,7 +1980,7 @@ export default function PlanningPage({
             <span className={styles.teamFilterMeta}>{planningCopy.formatTeamMemberCount(members.length || memberIds.length)}</span>
           </button>
           <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedTeam(team.id)} aria-label={planningCopy.formatRemoveTeamFromList(teamName)} title={planningCopy.filters.removeFromList}>
-            <FaTimes />
+            <Icon icon="mdi:close" width={14} height={14} aria-hidden />
           </button>
         </div>
         <div className={styles.teamFilterMembers}>
@@ -2054,7 +2014,7 @@ export default function PlanningPage({
               <div className={styles.agentAddRow} ref={agentFilterAddRef}>
                 <div className={styles.agentAddBtnGroup}>
                   <button type="button" className={`${styles.agentAddBtn} ${agentAddMode === "agent" ? styles.agentAddBtnActive : ""}`} onClick={() => openAgentAddMode("agent")} aria-expanded={agentAddMode === "agent"}>
-                    <FaPlus aria-hidden />
+                    <Icon icon="mdi:plus" aria-hidden />
                     {planningCopy.filters.agent}
                   </button>
                   <button type="button" className={`${styles.agentAddBtn} ${styles.agentAddBtnTeam} ${agentAddMode === "team" ? styles.agentAddBtnActive : ""}`} onClick={() => openAgentAddMode("team")} aria-expanded={agentAddMode === "team"}>
@@ -2123,7 +2083,7 @@ export default function PlanningPage({
                 <Icon icon="mdi:magnify" className={styles.clientFilterSearchIcon} aria-hidden />
                 <input type="text" className={styles.clientFilterSearch} value={clientFilterSearch} onChange={e => setClientFilterSearch(e.target.value)} placeholder={planningCopy.filters.searchClient} autoComplete="off" aria-label={planningCopy.filters.searchClient} />
                 {clientFilterSearch ? <button type="button" className={styles.clientFilterSearchClear} onClick={() => setClientFilterSearch("")} aria-label={planningCopy.search.clear}>
-                    <FaTimes />
+                    <Icon icon="mdi:close" width={14} height={14} aria-hidden />
                   </button> : null}
               </div>
               <div className={styles.filtersList}>
@@ -2146,35 +2106,52 @@ export default function PlanningPage({
               <div className={layout.listArea}>
                 <div className={`${layout.panelCard} ${styles.planningPanelCard}`}>
                   <header className={styles.planningHeader}>
-                    <div className={styles.planningHeaderTop}>
-                      <div className={`${layout.searchWrap} ${layout.searchWrapInCard} ${styles.planningSearchWrap}`}>
-                        <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                        <input type="text" inputMode="search" enterKeyHint="search" placeholder={planningCopy.search.placeholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={planningCopy.search.aria} />
-                        {searchQuery && <button type="button" className={layout.clearButton} onClick={() => setSearchQuery("")} aria-label={planningCopy.search.clear}>
-                            <FaTimes />
-                          </button>}
-                      </div>
-                      <div className={styles.planningTypeFilters} role="group" aria-label={planningCopy.filters?.types || "Types"}>
-                        {planningTypes.map(type => {
-                          const count = typeCounts[type.value] || 0;
-                          const active = selectedTypes.has(type.value);
-                          const tip = `${type.label} · ${count}`;
-                          return <SmartTooltip key={type.value} content={tip}>
-                              <button type="button" className={`${styles.typeFilterChip} ${active ? styles.typeFilterChipActive : ""} ${count === 0 ? styles.typeFilterChipDisabled : ""}`} onClick={() => toggleTypeFilter(type.value)} disabled={count === 0} aria-label={tip} aria-pressed={active}>
-                                <span className={`${styles.typeFilterIcon} ${layout[`kpiIcon_${type.kpiTone}`] || layout.kpiIcon_blue}`}>
-                                  <Icon icon={type.icon} aria-hidden />
-                                </span>
-                                <span className={styles.typeFilterCount}>{count}</span>
-                              </button>
-                            </SmartTooltip>;
-                        })}
-                      </div>
-                      {canCreateEvent ? <SmartTooltip content={planningCopy.newEvent}>
-                          <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly} ${styles.planningCreateBtn}`} onClick={() => openCreateEventModal()} aria-label={planningCopy.newEvent}>
-                            <FaPlus />
-                          </button>
-                        </SmartTooltip> : null}
-                    </div>
+                    <UiKitCrmListToolbar
+                      className={styles.planningHeaderTop}
+                      title={planningCopy.title}
+                      titleIcon="mdi:calendar-month-outline"
+                      searchValue={searchQuery}
+                      onSearchChange={setSearchQuery}
+                      onSearchClear={() => setSearchQuery("")}
+                      searchPlaceholder={planningCopy.search.placeholder}
+                      searchAriaLabel={planningCopy.search.aria}
+                      clearSearchLabel={planningCopy.search.clear}
+                      filters={
+                        <div className={styles.planningTypeFilters} role="group" aria-label={planningCopy.filters?.types || "Types"}>
+                          {planningTypes.map(type => {
+                            const count = typeCounts[type.value] || 0;
+                            const active = selectedTypes.has(type.value);
+                            const tip = `${type.label} · ${count}`;
+                            return (
+                              <SmartTooltip key={type.value} content={tip}>
+                                <button
+                                  type="button"
+                                  className={`${styles.typeFilterChip} ${active ? styles.typeFilterChipActive : ""} ${count === 0 ? styles.typeFilterChipDisabled : ""}`}
+                                  onClick={() => toggleTypeFilter(type.value)}
+                                  disabled={count === 0}
+                                  aria-label={tip}
+                                  aria-pressed={active}
+                                >
+                                  <span className={`${styles.typeFilterIcon} ${layout[`kpiIcon_${type.kpiTone}`] || layout.kpiIcon_blue}`}>
+                                    <Icon icon={type.icon} aria-hidden />
+                                  </span>
+                                  <span className={styles.typeFilterCount}>{count}</span>
+                                </button>
+                              </SmartTooltip>
+                            );
+                          })}
+                        </div>
+                      }
+                      filtersAriaLabel={planningCopy.filters?.types || "Types"}
+                      createAction={
+                        canCreateEvent
+                          ? {
+                              label: planningCopy.newEvent,
+                              onClick: () => openCreateEventModal()
+                            }
+                          : null
+                      }
+                    />
                     <PlanningToolbar />
                   </header>
 
@@ -2205,7 +2182,7 @@ export default function PlanningPage({
                 {formatDaySlotActionTitle(daySlotAction)}
               </h3>
               <button type="button" className={styles.dayActionClose} onClick={() => setDaySlotAction(null)} aria-label={planningCopy.dayAction.close}>
-                <FaTimes />
+                <Icon icon="mdi:close" width={18} height={18} aria-hidden />
               </button>
             </div>
             <p className={styles.dayActionHint}>{planningCopy.dayAction.hint}</p>
@@ -2222,6 +2199,6 @@ export default function PlanningPage({
           </div>
         </div>}
 
-      <PlanningEventFormModal open={eventModalOpen} editingEvent={editingEvent} copy={eventFormCopy} saving={saving} deleting={deleting} onClose={handleCloseModal} onSubmit={handleSubmit} onDelete={handleDelete} eventForm={eventForm} onInputChange={handleInputChange} planningTypes={planningTypes} clientSearch={clientSearch} setClientSearch={setClientSearch} clientDropdownOpen={clientDropdownOpen} setClientDropdownOpen={setClientDropdownOpen} clientAutocompleteRef={clientAutocompleteRef} filteredClientOptions={filteredClientOptions} selectedClient={selectedClient} onClientChange={handleClientChange} users={users} currentUser={user} selectedAssignedUsers={selectedAssignedUsers} setSelectedAssignedUsers={setSelectedAssignedUsers} assigneeSearch={assigneeSearch} setAssigneeSearch={setAssigneeSearch} assigneeDropdownOpen={assigneeDropdownOpen} setAssigneeDropdownOpen={setAssigneeDropdownOpen} assigneeSelectRef={assigneeSelectRef} filteredAssigneeOptions={filteredAssigneeOptions} selectedLinkedItems={selectedLinkedItems} toggleLinkedItem={toggleLinkedItem} linkableItems={linkableItems} linkableItemsByGroup={linkableItemsByGroup} linkedSearch={linkedSearch} setLinkedSearch={setLinkedSearch} linkedTypeFilter={linkedTypeFilter} setLinkedTypeFilter={setLinkedTypeFilter} linkedTypeButtons={linkedTypeButtons} loadingLinkedItems={loadingLinkedItems} todoItems={todoItems} setTodoItems={setTodoItems} todoDraft={todoDraft} setTodoDraft={setTodoDraft} todoDraftColor={todoDraftColor} setTodoDraftColor={setTodoDraftColor} addTodoItem={addTodoItem} moveTodoItemById={moveTodoItemById} draggingTodoId={draggingTodoId} setDraggingTodoId={setDraggingTodoId} dragOverTodoId={dragOverTodoId} setDragOverTodoId={setDragOverTodoId} getBusinessEndDate={getBusinessEndDate} getCalendarEndDate={getCalendarEndDate} />
+      <PlanningEventFormModal open={eventModalOpen} editingEvent={editingEvent} copy={eventFormCopy} saving={saving} deleting={deleting} onClose={handleCloseModal} onSubmit={handleSubmit} onDelete={handleDelete} eventForm={eventForm} onInputChange={handleInputChange} planningTypes={planningTypes} clientSearch={clientSearch} setClientSearch={setClientSearch} clientDropdownOpen={clientDropdownOpen} setClientDropdownOpen={setClientDropdownOpen} clientAutocompleteRef={clientAutocompleteRef} filteredClientOptions={filteredClientOptions} selectedClient={selectedClient} onClientChange={handleClientChange} users={users} currentUser={user} selectedAssignedUsers={selectedAssignedUsers} setSelectedAssignedUsers={setSelectedAssignedUsers} assigneeSearch={assigneeSearch} setAssigneeSearch={setAssigneeSearch} assigneeDropdownOpen={assigneeDropdownOpen} setAssigneeDropdownOpen={setAssigneeDropdownOpen} assigneeSelectRef={assigneeSelectRef} filteredAssigneeOptions={filteredAssigneeOptions} selectedLinkedItems={selectedLinkedItems} toggleLinkedItem={toggleLinkedItem} linkableItems={linkableItems} linkableItemsByGroup={linkableItemsByGroup} linkedSearch={linkedSearch} setLinkedSearch={setLinkedSearch} linkedTypeFilter={linkedTypeFilter} setLinkedTypeFilter={setLinkedTypeFilter} linkedTypeButtons={linkedTypeButtons} loadingLinkedItems={loadingLinkedItems} getBusinessEndDate={getBusinessEndDate} getCalendarEndDate={getCalendarEndDate} />
     </div>;
 }

@@ -331,20 +331,23 @@
   gap: 0.5rem;
   padding: 0;
   flex: 0 0 auto;
+  min-height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
 }
 
-/* Recherche + compteur à gauche, actions à droite */
+/* Recherche à gauche, actions à droite (comme onglet Activité) */
 .embeddedFilterBarToolbar .embeddedSearchWrap {
   margin-left: 0;
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
+  justify-content: flex-start;
 }
 
 .embeddedFilterBarToolbar .embeddedSearchActions {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
   gap: 0.45rem;
 }
@@ -466,6 +469,25 @@
   border-radius: 0 0 calc(var(--table-radius, 16px) - 1px) calc(var(--table-radius, 16px) - 1px);
   background: linear-gradient(
     to top,
+    var(--eq-surface, var(--msp-surface, #ffffff)) 5%,
+    color-mix(in srgb, var(--eq-surface, var(--msp-surface, #ffffff)) 78%, transparent) 48%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.tableScrollFadeTop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2.75rem;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: calc(var(--table-radius, 16px) - 1px) calc(var(--table-radius, 16px) - 1px) 0 0;
+  background: linear-gradient(
+    to bottom,
     var(--eq-surface, var(--msp-surface, #ffffff)) 5%,
     color-mix(in srgb, var(--eq-surface, var(--msp-surface, #ffffff)) 78%, transparent) 48%,
     transparent 100%
@@ -681,10 +703,12 @@
   min-width: 200px;
   max-width: 280px;
   width: min(280px, 36vw);
-  min-height: 34px;
+  min-height: var(--msp-btn-h, 2.15rem);
+  height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
   padding: 0 0.85rem;
   border: 1px solid var(--eq-border, var(--msp-border, #dde3ed));
-  border-radius: 999px;
+  border-radius: var(--msp-radius-pill, 999px);
   background: var(--eq-surface, var(--msp-surface, #fff));
   box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   color-scheme: normal;
@@ -884,12 +908,29 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  /* Changement de famille (sidebar) : fade rapide des lignes — opacity seule (texte net) */
+  animation: equipmentEmbeddedTableIn 180ms var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
 .equipmentTableSectionEmbedded + .equipmentTableSectionEmbedded {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--eq-border-light, rgba(15, 28, 46, 0.08));
+}
+
+@keyframes equipmentEmbeddedTableIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .equipmentTableSectionEmbedded {
+    animation: none;
+  }
 }
 
 .embeddedTableMeta {
@@ -2080,9 +2121,10 @@
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded {
-  width: max-content;
+  width: 100%;
   min-width: 100%;
-  table-layout: auto;
+  /* fixed : les largeurs .embeddedCol* sont respectées (auto redistribuait le vide sur Statut, etc.) */
+  table-layout: fixed;
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded thead {
@@ -2347,6 +2389,26 @@
   color: #c2410c;
 }
 
+.statusMaintenance {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  color: #e0ad5c;
+  max-width: 100%;
+}
+
+.statusMaintenanceDot {
+  color: #e0ad5c;
+  flex-shrink: 0;
+}
+
+.statusMaintenanceCone {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
 .alertSuspendedIcon {
   flex-shrink: 0;
   color: #d97706;
@@ -2378,17 +2440,26 @@
 }
 
 .embeddedColBrand {
-  width: 2rem;
-  min-width: 2rem;
-  max-width: 2rem;
+  width: 1.75rem;
+  min-width: 1.75rem;
+  max-width: 1.75rem;
   padding-left: 0.5rem !important;
-  padding-right: 0.25rem !important;
-  text-align: center;
+  padding-right: 0 !important;
+  text-align: left;
+  vertical-align: middle;
+  box-sizing: border-box;
 }
 
 .embeddedColName {
-  width: 12%;
-  min-width: 7rem;
+  /* Colonne principale : absorbe l’espace restant */
+  width: 22%;
+  min-width: 8rem;
+  padding-left: 0.35rem !important;
+}
+
+.equipmentTableEmbedded td.embeddedColName .nameCell,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColName .nameCell {
+  gap: 0.35rem;
 }
 
 .embeddedColDot,
@@ -2440,11 +2511,29 @@
 }
 
 .embeddedColDot {
-  width: 3rem;
-  min-width: 2.75rem;
-  max-width: 3.25rem;
-  padding-left: 0.3rem !important;
-  padding-right: 0.3rem !important;
+  /* Colonne statut : pastille (+ plot maintenance) — reste étroite */
+  width: 2.85rem;
+  min-width: 2.85rem;
+  max-width: 2.85rem;
+  padding-left: 0.2rem !important;
+  padding-right: 0.2rem !important;
+  box-sizing: border-box;
+}
+
+.equipmentTableEmbedded th.embeddedColDot,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColDot {
+  font-size: 0.62rem;
+  letter-spacing: 0.01em;
+  padding-left: 0.15rem !important;
+  padding-right: 0.15rem !important;
+}
+
+.equipmentTableEmbedded th.embeddedColDot .thContent,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColDot .thContent {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .embeddedColSupervision {
@@ -2532,9 +2621,8 @@
 }
 
 .embeddedColFlex {
-  width: 7%;
-  min-width: 4.5rem;
-  max-width: 9rem;
+  width: 8%;
+  min-width: 4rem;
 }
 
 .equipmentTableEmbedded th.embeddedColCount .thContent,
@@ -2550,18 +2638,43 @@
 .equipmentTableEmbedded td.embeddedColBrand,
 .hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColBrand,
 .hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColBrand {
-  width: 2rem;
-  min-width: 2rem;
-  max-width: 2rem;
-  padding-left: 0.5rem;
-  padding-right: 0.25rem;
+  width: 1.75rem !important;
+  min-width: 1.75rem !important;
+  max-width: 1.75rem !important;
+  padding-left: 0.5rem !important;
+  padding-right: 0 !important;
+  text-align: left !important;
+  box-sizing: border-box;
 }
 
-.embeddedColBrand .typeBrandIconSmall,
-.embeddedColBrand img {
+.equipmentTableEmbedded th.embeddedColDot,
+.equipmentTableEmbedded td.embeddedColDot,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColDot,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColDot,
+.equipmentTableEmbedded col.embeddedColDot,
+.hardwarePageEmbedded .equipmentTableEmbedded col.embeddedColDot {
+  width: 2.85rem !important;
+  min-width: 2.85rem !important;
+  max-width: 2.85rem !important;
+}
+
+.embeddedBrandSlot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.embeddedColBrand .embeddedBrandSlot .typeBrandIconSmall,
+.embeddedColBrand .embeddedBrandSlot img,
+.embeddedColBrand .embeddedBrandSlot :global(svg) {
   width: 16px;
   height: 16px;
   object-fit: contain;
+  display: block;
+  margin: 0;
 }
 
 .embeddedColBrand img {

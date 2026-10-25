@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitTable, uiKitTableStyles as tableKit } from "../UiKit";
 import { toast } from "react-toastify";
 import { fetchTicketSatisfied } from "../../api/tickets";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -129,39 +130,54 @@ export default function TicketSatisfiedPanel({
   };
   const columns = sp.columns || {};
   return <>
-      <div className={`${layout.toolbar} ${styles.toolbarGrow}`}>
-        {leadingToolbarContent}
-        <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
-          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-          <input type="text" inputMode="search" className={layout.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder={sp.searchPlaceholder} aria-label={sp.searchAria} />
-          {search ? <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={sp.clearSearchAria}>
-              <FaTimes />
-            </button> : null}
-        </div>
-        <span className={layout.toolbarMeta}>
-          {formatFeedbackCount(totalCount)}
-        </span>
-        <select className={layout.sortSelect} value={sentiment} onChange={e => setSentiment(e.target.value)} aria-label={sp.sentimentFilterAria}>
-          {sentimentFilters.map(item => <option key={item.key || "all"} value={item.key}>
-              {item.label}
-            </option>)}
-        </select>
-        {trailingToolbarContent}
-      </div>
+      <UiKitCrmListToolbar
+        className={styles.toolbarGrow}
+        leading={leadingToolbarContent}
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchClear={() => setSearch("")}
+        searchPlaceholder={sp.searchPlaceholder}
+        searchAriaLabel={sp.searchAria}
+        clearSearchLabel={sp.clearSearchAria}
+        searchPending={loading}
+        extraActions={
+          <>
+            <span className={layout.toolbarMeta}>{formatFeedbackCount(totalCount)}</span>
+            <select
+              className={layout.sortSelect}
+              value={sentiment}
+              onChange={e => setSentiment(e.target.value)}
+              aria-label={sp.sentimentFilterAria}
+            >
+              {sentimentFilters.map(item => (
+                <option key={item.key || "all"} value={item.key}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {trailingToolbarContent}
+          </>
+        }
+      />
 
       {loading ? <div className={layout.stateBox}>
           <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
           <span>{sp.loading}</span>
-        </div> : totalCount === 0 ? <div className={layout.emptyState}>
-          <Icon icon="mdi:star-outline" className={layout.emptyStateIcon} aria-hidden />
-          <p className={layout.emptyStateTitle}>{sp.emptyTitle}</p>
-          <p className={layout.emptyStateHint}>
-            {scope === "mine" ? sp.emptyMine : sp.emptyFiltered}
-          </p>
+        </div> : totalCount === 0 ? <div className={layout.emptyStateInCard}>
+          <UiKitEmptyState
+            bare
+            icon="mdi:star-outline"
+            title={sp.emptyTitle}
+            text={scope === "mine" ? sp.emptyMine : sp.emptyFiltered}
+          />
         </div> : <>
           <div className={styles.tablePanel}>
-            <div className={styles.tableScroll}>
-              <table className={styles.table}>
+            <UiKitTable
+              fill
+              className={tableKit.tableListFill}
+              deps={[items.length, pageSize, search, sentiment, sortBy, sortDirection]}
+            >
+              <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`}>
                 <thead>
                   <tr>
                     <th onClick={() => handleSort("ticket_number")}>
@@ -245,7 +261,7 @@ export default function TicketSatisfiedPanel({
               })}
                 </tbody>
               </table>
-            </div>
+            </UiKitTable>
           </div>
 
           <div className={layout.pagination}>

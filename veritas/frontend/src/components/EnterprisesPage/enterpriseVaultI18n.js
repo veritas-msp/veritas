@@ -94,20 +94,27 @@ const ENTERPRISE_VAULT_COPY = {
     },
     columnsModal: {
       title: "Colonnes du coffre-fort",
-      subtitle: "Choisissez les colonnes visibles dans le tableau du coffre-fort.",
+      subtitle: "Cochez les colonnes à afficher et glissez-les pour changer l'ordre.",
       privateTab: "Vue privée",
       publicTab: "Vue publique",
-      privateHintInactive: "Pas encore de vue privée : la vue publique s’affiche. Cochez des colonnes pour créer la vôtre.",
-      privateHintActive: "Votre vue privée remplace la vue publique.",
-      publicHint: "Colonnes visibles par défaut pour tous les utilisateurs sans vue privée.",
-      adminOnly: "Seuls les administrateurs peuvent modifier la vue publique.",
+      privateTabMeta: "Pour moi",
+      publicTabMeta: "Pour l'équipe",
+      privateExplain: "La vue privée est personnelle : tout agent peut l'utiliser, elle ne change les colonnes que pour lui.",
+      publicExplain: "La vue publique définit les colonnes par défaut pour toute l'équipe.",
+      privateStatusActive: "Active — elle remplace la vue publique pour vous.",
+      privateStatusInactive: "Pas encore définie — vous voyez actuellement la vue publique.",
+      listHeading: "Colonnes",
+      tabsAria: "Type de vue",
+      adminOnly: "Vous n'avez pas la permission de modifier la vue publique (Administration → Permissions).",
+      publicReadOnlyStatus: "Lecture seule — modification réservée via Administration → Permissions.",
+      readOnlyHint: "Lecture seule",
       resetPrivate: "Revenir à la vue publique",
       resetSuccess: "Vue privée réinitialisée",
       savePrivateSuccess: "Vue privée enregistrée",
       savePublicSuccess: "Vue publique enregistrée",
       saveError: "Erreur lors de l’enregistrement des colonnes",
       atLeastOne: "Sélectionnez au moins une colonne.",
-      reorderHint: "Glissez les lignes pour changer l’ordre des colonnes dans le tableau.",
+      reorderHint: "Glissez pour réordonner",
       dragColumn: "Glisser la colonne {name}",
       save: "Enregistrer"
     },
@@ -129,8 +136,26 @@ const ENTERPRISE_VAULT_COPY = {
     uploadModal: {
       eyebrow: "Coffre-fort",
       title: "Ajouter au coffre-fort",
-      subtitle: "Le document sera archivé dans le coffre-fort de l'entreprise.",
-      hint: "Le document sera ajouté dans le dossier ouvert. Choisissez la visibilité portail.",
+      subtitle: "Archivez un document dans le coffre-fort de l'entreprise.",
+      hint: "Le document sera ajouté dans le dossier ouvert.",
+      sectionsNavAria: "Sections du formulaire",
+      sections: {
+        file: {
+          navLabel: "Fichier",
+          title: "Fichier",
+          desc: "Sélectionnez le document à archiver."
+        },
+        info: {
+          navLabel: "Informations",
+          title: "Informations",
+          desc: "Type, nom et description du document."
+        },
+        portal: {
+          navLabel: "Portail client",
+          title: "Visibilité portail",
+          desc: "Contrôlez l'accès depuis le portail client."
+        }
+      },
       destinationLabel: "Dossier de destination",
       destinationHint: "Sélectionnez où ranger le document dans l’arborescence.",
       destinationSelected: "Sélectionné",
@@ -289,17 +314,24 @@ const ENTERPRISE_VAULT_COPY = {
       subtitle: "Choose which columns are visible in the vault table.",
       privateTab: "Private view",
       publicTab: "Public view",
-      privateHintInactive: "No private view yet — the public view is used. Toggle columns to create yours.",
-      privateHintActive: "Your private columns override the public view.",
-      publicHint: "Default columns for all users without a private view.",
-      adminOnly: "Only administrators can edit the public view.",
+      privateTabMeta: "Just me",
+      publicTabMeta: "Whole team",
+      privateExplain: "The private view is personal: any agent can use it, and it only changes columns for them.",
+      publicExplain: "The public view sets the default columns for the whole team.",
+      privateStatusActive: "Active — it overrides the public view for you.",
+      privateStatusInactive: "Not set yet — you currently see the public view.",
+      listHeading: "Columns",
+      tabsAria: "View type",
+      adminOnly: "You do not have permission to edit the public view (Administration → Permissions).",
+      publicReadOnlyStatus: "Read-only — editing requires Administration → Permissions.",
+      readOnlyHint: "Read-only",
       resetPrivate: "Use public view",
       resetSuccess: "Private view reset",
       savePrivateSuccess: "Private view saved",
       savePublicSuccess: "Public view saved",
       saveError: "Error while saving columns",
       atLeastOne: "Select at least one column.",
-      reorderHint: "Drag rows to change the column order in the table.",
+      reorderHint: "Drag to reorder",
       dragColumn: "Drag column {name}",
       save: "Save"
     },
@@ -321,8 +353,26 @@ const ENTERPRISE_VAULT_COPY = {
     uploadModal: {
       eyebrow: "Vault",
       title: "Add to vault",
-      subtitle: "The document will be archived in the company document vault.",
-      hint: "The document will be added to the current folder. Choose portal visibility.",
+      subtitle: "Archive a document in the company vault.",
+      hint: "The document will be added to the current folder.",
+      sectionsNavAria: "Form sections",
+      sections: {
+        file: {
+          navLabel: "File",
+          title: "File",
+          desc: "Select the document to archive."
+        },
+        info: {
+          navLabel: "Details",
+          title: "Details",
+          desc: "Document type, name and description."
+        },
+        portal: {
+          navLabel: "Client portal",
+          title: "Portal visibility",
+          desc: "Control access from the client portal."
+        }
+      },
       destinationLabel: "Destination folder",
       destinationHint: "Select where to store the document in the tree.",
       destinationSelected: "Selected",
@@ -479,8 +529,26 @@ const ENTERPRISE_VAULT_COPY = {
     uploadModal: {
       eyebrow: "Dokumententresor",
       title: "Zum Tresor hinzufügen",
-      subtitle: "Das Dokument wird im Unternehmens-Tresor archiviert.",
-      hint: "Wählen Sie, ob das Dokument im Kundenportal sichtbar sein soll.",
+      subtitle: "Archivieren Sie ein Dokument im Unternehmens-Tresor.",
+      hint: "Das Dokument wird dem geöffneten Ordner hinzugefügt.",
+      sectionsNavAria: "Formularbereiche",
+      sections: {
+        file: {
+          navLabel: "Datei",
+          title: "Datei",
+          desc: "Wählen Sie das zu archivierende Dokument."
+        },
+        info: {
+          navLabel: "Informationen",
+          title: "Informationen",
+          desc: "Typ, Name und Beschreibung des Dokuments."
+        },
+        portal: {
+          navLabel: "Kundenportal",
+          title: "Portal-Sichtbarkeit",
+          desc: "Steuern Sie den Zugriff über das Kundenportal."
+        }
+      },
       categoryLabel: "Dokumenttyp",
       nameLabel: "Dokumentname",
       namePlaceholder: "z. B. Rechnung Q1 2026.pdf",
@@ -634,8 +702,26 @@ const ENTERPRISE_VAULT_COPY = {
     uploadModal: {
       eyebrow: "Cassaforte documenti",
       title: "Aggiungi alla cassaforte",
-      subtitle: "Il documento sarà archiviato nella cassaforte dell'azienda.",
-      hint: "Scegli se il documento deve essere visibile sul portale cliente.",
+      subtitle: "Archivia un documento nella cassaforte dell'azienda.",
+      hint: "Il documento sarà aggiunto alla cartella aperta.",
+      sectionsNavAria: "Sezioni del modulo",
+      sections: {
+        file: {
+          navLabel: "File",
+          title: "File",
+          desc: "Seleziona il documento da archiviare."
+        },
+        info: {
+          navLabel: "Informazioni",
+          title: "Informazioni",
+          desc: "Tipo, nome e descrizione del documento."
+        },
+        portal: {
+          navLabel: "Portale cliente",
+          title: "Visibilità portale",
+          desc: "Controlla l'accesso dal portale cliente."
+        }
+      },
       categoryLabel: "Tipo di documento",
       nameLabel: "Nome del documento",
       namePlaceholder: "Es. Fattura Q1 2026.pdf",
@@ -789,8 +875,26 @@ const ENTERPRISE_VAULT_COPY = {
     uploadModal: {
       eyebrow: "Caja fuerte documental",
       title: "Añadir a la caja fuerte",
-      subtitle: "El documento se archivará en la caja fuerte de la empresa.",
-      hint: "Elija si el documento debe ser visible en el portal cliente.",
+      subtitle: "Archive un documento en la caja fuerte de la empresa.",
+      hint: "El documento se añadirá a la carpeta abierta.",
+      sectionsNavAria: "Secciones del formulario",
+      sections: {
+        file: {
+          navLabel: "Archivo",
+          title: "Archivo",
+          desc: "Seleccione el documento a archivar."
+        },
+        info: {
+          navLabel: "Información",
+          title: "Información",
+          desc: "Tipo, nombre y descripción del documento."
+        },
+        portal: {
+          navLabel: "Portal cliente",
+          title: "Visibilidad portal",
+          desc: "Controle el acceso desde el portal cliente."
+        }
+      },
       categoryLabel: "Tipo de documento",
       nameLabel: "Nombre del documento",
       namePlaceholder: "Ej. Factura T1 2026.pdf",

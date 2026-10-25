@@ -2,6 +2,8 @@ import { createLocaleGetter, interpolate } from "../../i18n/translate";
 const PAGE_COPY = {
   fr: {
     searchPlaceholder: "Rechercher",
+    statusActive: "Actif",
+    statusInactive: "Inactif",
     maintenance: {
       badge: "En maintenance",
       until: "Jusqu’au {date}",
@@ -82,7 +84,7 @@ const PAGE_COPY = {
       monitoring: "Supervision",
       client: "Client",
       location: "Site",
-      processeur: "VCPU/CPU",
+      processeur: "vCPU",
       memoire: "RAM",
       stockage: "Stockage",
       ip: "Adresse IP",
@@ -118,7 +120,7 @@ const PAGE_COPY = {
       mappedJobsCount: "Jobs mappés",
       logiciel: "Logiciel",
       ha: "HA",
-      activeStatus: "Actif"
+      activeStatus: "Statut"
     },
     rmmAgentInstalled: "Agent RMM installé",
     rmmAgentMissing: "Pas d'agent RMM",
@@ -138,11 +140,16 @@ const PAGE_COPY = {
       },
       Serveurs: {
         vlan: "VLAN",
-        processeur: "Proc.",
+        processeur: "vCPU",
+        memoire: "RAM",
+        stockage: "Stockage",
         role: "Rôles",
         serial: "SN"
       },
       Servers: {
+        processeur: "vCPU",
+        memoire: "RAM",
+        stockage: "Stockage",
         serial: "SN"
       },
       Stockage: {
@@ -240,6 +247,8 @@ const PAGE_COPY = {
   },
   en: {
     searchPlaceholder: "Search",
+    statusActive: "Active",
+    statusInactive: "Inactive",
     maintenance: {
       badge: "In maintenance",
       until: "Until {date}",
@@ -320,7 +329,7 @@ const PAGE_COPY = {
       monitoring: "Supervision",
       client: "Client",
       location: "Site",
-      processeur: "vCPU/CPU",
+      processeur: "vCPU",
       memoire: "RAM",
       stockage: "Storage",
       ip: "IP address",
@@ -356,7 +365,7 @@ const PAGE_COPY = {
       mappedJobsCount: "Mapped jobs",
       logiciel: "Software",
       ha: "HA",
-      activeStatus: "Active"
+      activeStatus: "Status"
     },
     rmmAgentInstalled: "RMM agent installed",
     rmmAgentMissing: "No RMM agent",
@@ -376,7 +385,9 @@ const PAGE_COPY = {
       },
       Servers: {
         vlan: "VLAN",
-        processeur: "CPU",
+        processeur: "vCPU",
+        memoire: "RAM",
+        stockage: "Storage",
         role: "Roles",
         serial: "SN"
       },
@@ -472,6 +483,13 @@ const PAGE_COPY = {
   },
   de: {
     searchPlaceholder: "Suchen",
+    statusActive: "Aktiv",
+    statusInactive: "Inaktiv",
+    maintenance: {
+      badge: "In Wartung",
+      until: "Bis {date}",
+      indefinite: "Unbestimmte Dauer"
+    },
     embedded: {
       typeBarAria: "Gerätetypen",
       typeTooltip: "{label} ({count})",
@@ -583,7 +601,7 @@ const PAGE_COPY = {
       mappedJobsCount: "Zugeordnete Jobs",
       logiciel: "Software",
       ha: "HA",
-      activeStatus: "Aktiv"
+      activeStatus: "Status"
     },
     rmmAgentInstalled: "RMM-Agent installiert",
     rmmAgentMissing: "Kein RMM-Agent",
@@ -695,6 +713,13 @@ const PAGE_COPY = {
   },
   it: {
     searchPlaceholder: "Cerca",
+    statusActive: "Attivo",
+    statusInactive: "Inattivo",
+    maintenance: {
+      badge: "In manutenzione",
+      until: "Fino al {date}",
+      indefinite: "Durata indeterminata"
+    },
     embedded: {
       typeBarAria: "Tipi di periferica",
       typeTooltip: "{label} ({count})",
@@ -806,7 +831,7 @@ const PAGE_COPY = {
       mappedJobsCount: "Job mappati",
       logiciel: "Software",
       ha: "HA",
-      activeStatus: "Attivo"
+      activeStatus: "Stato"
     },
     rmmAgentInstalled: "Agente RMM installato",
     rmmAgentMissing: "Nessun agente RMM",
@@ -918,6 +943,13 @@ const PAGE_COPY = {
   },
   es: {
     searchPlaceholder: "Buscar",
+    statusActive: "Activo",
+    statusInactive: "Inactivo",
+    maintenance: {
+      badge: "En mantenimiento",
+      until: "Hasta el {date}",
+      indefinite: "Duración indeterminada"
+    },
     embedded: {
       typeBarAria: "Tipos de periférico",
       typeTooltip: "{label} ({count})",
@@ -1029,7 +1061,7 @@ const PAGE_COPY = {
       mappedJobsCount: "Jobs mapeados",
       logiciel: "Software",
       ha: "HA",
-      activeStatus: "Activo"
+      activeStatus: "Estado"
     },
     rmmAgentInstalled: "Agente RMM instalado",
     rmmAgentMissing: "Sin agente RMM",

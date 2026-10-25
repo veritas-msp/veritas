@@ -46,11 +46,47 @@
   overflow: hidden;
 }
 
+.scrollBody {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .scrollViewport {
   flex: 1 1 auto;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+/**
+ * En-tête figé HORS du scroll — plus de position:sticky dans le viewport
+ * (cause racine des sauts d’en-têtes au hover scrollbar / filtre).
+ */
+.scrollFrozenHeader {
+  flex: 0 0 auto;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--fade-surface, var(--msp-surface, #fff));
+  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
+  box-sizing: border-box;
+}
+
+.scrollViewportWithFrozenHeader {
+  /* thead hors viewport : plus de sticky */
+}
+
+/**
+ * Listes CRM — Y en scroll permanent (largeur client stable au hover Windows).
+ */
+.scrollViewportStable {
+  overflow-x: auto !important;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
 }
 
 .scrollFade {
@@ -128,7 +164,7 @@
 
 /* Table intégrée dans une carte parent (Accueil) — garde fade / scroll kit */
 .tableShellInset {
-  --fade-surface: #ffffff;
+  --fade-surface: var(--msp-surface, #ffffff);
   --fade-radius: 0;
   border: none;
   border-radius: 0;
@@ -167,6 +203,62 @@
   border-bottom: 1px solid var(--msp-border-light);
   white-space: nowrap;
   background: transparent;
+}
+
+/* Densité listes CRM (tickets / campagnes) — alignée table infra équipement */
+.tableList {
+  font-size: 0.8125rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.tableList thead {
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
+}
+
+.tableList th {
+  padding: 0.55rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--msp-muted, #5c6b82);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
+  background: transparent;
+  vertical-align: middle;
+}
+
+.tableList td {
+  padding: 0.55rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
+  vertical-align: middle;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.tableList tbody tr td {
+  background: var(--msp-surface, #ffffff);
+  transition: background 0.12s;
+}
+
+.tableList tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.tableList tbody tr:hover td,
+.tableList tbody tr:nth-child(even):hover td {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.tableListFill {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.tableListFill :global([class*="tableShell"]) {
+  height: 100%;
+  max-height: none;
 }
 
 .tableThSortable {

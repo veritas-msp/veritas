@@ -19,7 +19,8 @@ function formatTokenPreview(token, {
 export default function RmmEnrollmentTokenValue({
   token,
   compact = false,
-  full = false
+  full = false,
+  bare = false
 }) {
   if (!token) {
     return null;
@@ -38,9 +39,9 @@ export default function RmmEnrollmentTokenValue({
     compact
   });
   const tooltip = full ? "Copy token" : `Copy token · ${token}`;
-  return <div className={`${styles.wrap} ${compact ? styles.wrapCompact : ""} ${full ? styles.wrapFull : styles.wrapPreview}`}>
+  return <div className={`${styles.wrap} ${compact ? styles.wrapCompact : ""} ${full ? styles.wrapFull : styles.wrapPreview} ${bare ? styles.wrapBare : ""}`.trim()}>
       <SmartTooltip content={tooltip} as="span">
-        <button type="button" className={styles.tokenBtn} onClick={handleCopy} aria-label="Copy enrollment token">
+        <button type="button" className={`${styles.tokenBtn} ${bare ? styles.tokenBtnBare : ""}`.trim()} onClick={handleCopy} aria-label="Copy enrollment token">
           <code className={`${styles.token} ${full ? styles.tokenFull : ""}`}>{preview}</code>
           <Icon icon="mdi:content-copy" className={styles.copyIcon} aria-hidden />
         </button>

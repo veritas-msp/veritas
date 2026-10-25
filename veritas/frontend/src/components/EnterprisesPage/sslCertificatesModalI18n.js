@@ -7,13 +7,17 @@ const SSL_MODAL_COPY = {
     subtitle: "Surveillance TLS et expiration des certificats",
     navAria: "Sections SSL",
     sections: {
-      overview: {
-        label: "Vue d'ensemble",
-        description: "Synthèse et actions"
+      info: {
+        label: "Informations",
+        description: "Hôte, port et intervalle"
       },
       add: {
-        label: "Nouvel hôte",
-        description: "Ajouter à la surveillance"
+        label: "Informations",
+        description: "Hôte, port et intervalle"
+      },
+      edit: {
+        label: "Informations",
+        description: "Hôte, port et intervalle"
       },
       inventory: {
         label: "Certificats",
@@ -21,13 +25,9 @@ const SSL_MODAL_COPY = {
       }
     },
     overview: {
-      title: "Vue d'ensemble",
-      description: "Suivi TLS des hôtes surveillés : validité, émetteur et dates d'expiration.",
       unknownNoticeOne: "{count} certificat n'a pas encore été vérifié. Lancez une vérification pour récupérer les dates d'expiration.",
       unknownNoticeMany: "{count} certificats n'ont pas encore été vérifiés. Lancez une vérification pour récupérer les dates d'expiration.",
-      heartbeatInfo: "Les certificats sont revérifiés automatiquement à l'ouverture de la cartographie si l'intervalle configuré est dépassé (heartbeat TLS).",
-      addHostBtn: "Ajouter un hôte",
-      viewCertsBtn: "Voir les certificats"
+      addHostBtn: "Ajouter un hôte"
     },
     add: {
       titleNew: "Nouvel hôte",
@@ -98,7 +98,7 @@ const SSL_MODAL_COPY = {
     empty: {
       noneTitle: "Aucun certificat surveillé",
       noFilterTitle: "Aucun certificat pour ce filtre",
-      noneHint: "Ajoutez un hôte dans l'onglet « Nouvel hôte ».",
+      noneHint: "Ajoutez un hôte avec le bouton + pour démarrer la surveillance TLS.",
       noFilterHint: "Modifiez le filtre pour afficher d'autres certificats.",
       addBtn: "Ajouter un hôte"
     },
@@ -144,13 +144,17 @@ const SSL_MODAL_COPY = {
     subtitle: "TLS monitoring and certificate expiration",
     navAria: "SSL sections",
     sections: {
-      overview: {
-        label: "Overview",
-        description: "Summary and actions"
+      info: {
+        label: "Information",
+        description: "Host, port and interval"
       },
       add: {
-        label: "New host",
-        description: "Add to monitoring"
+        label: "Information",
+        description: "Host, port and interval"
+      },
+      edit: {
+        label: "Information",
+        description: "Host, port and interval"
       },
       inventory: {
         label: "Certificates",
@@ -158,13 +162,9 @@ const SSL_MODAL_COPY = {
       }
     },
     overview: {
-      title: "Overview",
-      description: "TLS monitoring of watched hosts: validity, issuer and expiration dates.",
       unknownNoticeOne: "{count} certificate has not been checked yet. Run a check to retrieve expiration dates.",
       unknownNoticeMany: "{count} certificates have not been checked yet. Run a check to retrieve expiration dates.",
-      heartbeatInfo: "Certificates are automatically re-checked when opening the map if the configured interval has elapsed (TLS heartbeat).",
-      addHostBtn: "Add a host",
-      viewCertsBtn: "View certificates"
+      addHostBtn: "Add a host"
     },
     add: {
       titleNew: "New host",
@@ -235,7 +235,7 @@ const SSL_MODAL_COPY = {
     empty: {
       noneTitle: "No monitored certificates",
       noFilterTitle: "No certificates for this filter",
-      noneHint: "Add a host in the « New host » tab.",
+      noneHint: "Add a host with the + button to start TLS monitoring.",
       noFilterHint: "Change the filter to display other certificates.",
       addBtn: "Add a host"
     },
@@ -281,13 +281,17 @@ const SSL_MODAL_COPY = {
     subtitle: "TLS-Überwachung und Zertifikatsablauf",
     navAria: "SSL-Bereiche",
     sections: {
-      overview: {
-        label: "Übersicht",
-        description: "Zusammenfassung und Aktionen"
+      info: {
+        label: "Informationen",
+        description: "Host, Port und Intervall"
       },
       add: {
-        label: "Neuer Host",
-        description: "Zur Überwachung hinzufügen"
+        label: "Informationen",
+        description: "Host, Port und Intervall"
+      },
+      edit: {
+        label: "Informationen",
+        description: "Host, Port und Intervall"
       },
       inventory: {
         label: "Zertifikate",
@@ -295,13 +299,9 @@ const SSL_MODAL_COPY = {
       }
     },
     overview: {
-      title: "Übersicht",
-      description: "TLS-Überwachung überwachter Hosts: Gültigkeit, Aussteller und Ablaufdaten.",
       unknownNoticeOne: "{count} Zertifikat wurde noch nicht geprüft. Starten Sie eine Prüfung, um Ablaufdaten abzurufen.",
       unknownNoticeMany: "{count} Zertifikate wurden noch nicht geprüft. Starten Sie eine Prüfung, um Ablaufdaten abzurufen.",
-      heartbeatInfo: "Zertifikate werden beim Öffnen der Kartografie automatisch erneut geprüft, wenn das konfigurierte Intervall überschritten ist (TLS-Heartbeat).",
-      addHostBtn: "Host hinzufügen",
-      viewCertsBtn: "Zertifikate anzeigen"
+      addHostBtn: "Host hinzufügen"
     },
     add: {
       titleNew: "Neuer Host",
@@ -372,7 +372,7 @@ const SSL_MODAL_COPY = {
     empty: {
       noneTitle: "Keine überwachten Zertifikate",
       noFilterTitle: "Keine Zertifikate für diesen Filter",
-      noneHint: "Fügen Sie einen Host im Tab « Neuer Host » hinzu.",
+      noneHint: "Fügen Sie mit dem +-Button einen Host hinzu, um die TLS-Überwachung zu starten.",
       noFilterHint: "Ändern Sie den Filter, um andere Zertifikate anzuzeigen.",
       addBtn: "Host hinzufügen"
     },
@@ -418,13 +418,17 @@ const SSL_MODAL_COPY = {
     subtitle: "Monitoraggio TLS e scadenza certificati",
     navAria: "Sezioni SSL",
     sections: {
-      overview: {
-        label: "Panoramica",
-        description: "Sintesi e azioni"
+      info: {
+        label: "Informazioni",
+        description: "Host, porta e intervallo"
       },
       add: {
-        label: "Nuovo host",
-        description: "Aggiungi al monitoraggio"
+        label: "Informazioni",
+        description: "Host, porta e intervallo"
+      },
+      edit: {
+        label: "Informazioni",
+        description: "Host, porta e intervallo"
       },
       inventory: {
         label: "Certificati",
@@ -432,13 +436,9 @@ const SSL_MODAL_COPY = {
       }
     },
     overview: {
-      title: "Panoramica",
-      description: "Monitoraggio TLS degli host sorvegliati: validità, emittente e date di scadenza.",
       unknownNoticeOne: "{count} certificato non è ancora stato verificato. Avvia una verifica per recuperare le date di scadenza.",
       unknownNoticeMany: "{count} certificati non sono ancora stati verificati. Avvia una verifica per recuperare le date di scadenza.",
-      heartbeatInfo: "I certificati vengono riverificati automaticamente all'apertura della mappa se l'intervallo configurato è superato (heartbeat TLS).",
-      addHostBtn: "Aggiungi host",
-      viewCertsBtn: "Vedi certificati"
+      addHostBtn: "Aggiungi host"
     },
     add: {
       titleNew: "Nuovo host",
@@ -509,7 +509,7 @@ const SSL_MODAL_COPY = {
     empty: {
       noneTitle: "Nessun certificato monitorato",
       noFilterTitle: "Nessun certificato per questo filtro",
-      noneHint: "Aggiungi un host nella scheda « Nuovo host ».",
+      noneHint: "Aggiungi un host con il pulsante + per avviare il monitoraggio TLS.",
       noFilterHint: "Modifica il filtro per visualizzare altri certificati.",
       addBtn: "Aggiungi host"
     },
@@ -555,13 +555,17 @@ const SSL_MODAL_COPY = {
     subtitle: "Supervisión TLS y vencimiento de certificados",
     navAria: "Secciones SSL",
     sections: {
-      overview: {
-        label: "Resumen",
-        description: "Síntesis y acciones"
+      info: {
+        label: "Información",
+        description: "Host, puerto e intervalo"
       },
       add: {
-        label: "Nuevo host",
-        description: "Añadir a la supervisión"
+        label: "Información",
+        description: "Host, puerto e intervalo"
+      },
+      edit: {
+        label: "Información",
+        description: "Host, puerto e intervalo"
       },
       inventory: {
         label: "Certificados",
@@ -569,13 +573,9 @@ const SSL_MODAL_COPY = {
       }
     },
     overview: {
-      title: "Resumen",
-      description: "Supervisión TLS de hosts monitorizados: validez, emisor y fechas de vencimiento.",
       unknownNoticeOne: "{count} certificado aún no ha sido verificado. Ejecute una verificación para obtener las fechas de vencimiento.",
       unknownNoticeMany: "{count} certificados aún no han sido verificados. Ejecute una verificación para obtener las fechas de vencimiento.",
-      heartbeatInfo: "Los certificados se vuelven a verificar automáticamente al abrir la cartografía si se ha superado el intervalo configurado (heartbeat TLS).",
-      addHostBtn: "Añadir host",
-      viewCertsBtn: "Ver certificados"
+      addHostBtn: "Añadir host"
     },
     add: {
       titleNew: "Nuevo host",
@@ -646,7 +646,7 @@ const SSL_MODAL_COPY = {
     empty: {
       noneTitle: "Ningún certificado monitorizado",
       noFilterTitle: "Ningún certificado para este filtro",
-      noneHint: "Añada un host en la pestaña « Nuevo host ».",
+      noneHint: "Añada un host con el botón + para iniciar la supervisión TLS.",
       noFilterHint: "Modifique el filtro para mostrar otros certificados.",
       addBtn: "Añadir host"
     },
@@ -686,31 +686,6 @@ const SSL_MODAL_COPY = {
     }
   }
 };
-const KPI_CONFIG = [{
-  key: "all",
-  filter: "all",
-  tone: "blue",
-  icon: "mdi:certificate-outline",
-  labelKey: "all"
-}, {
-  key: "active",
-  filter: "active",
-  tone: "green",
-  icon: "mdi:check-circle-outline",
-  labelKey: "active"
-}, {
-  key: "warning",
-  filter: "warning",
-  tone: "amber",
-  icon: "mdi:clock-alert-outline",
-  labelKey: "warning"
-}, {
-  key: "problem",
-  filter: "problem",
-  tone: "red",
-  icon: "mdi:alert-circle-outline",
-  labelKey: "problem"
-}];
 const FILTER_CONFIG = [{
   value: "all",
   labelKey: "all"
@@ -730,29 +705,13 @@ const FILTER_CONFIG = [{
   value: "unknown",
   labelKey: "unknown"
 }];
-const NAV_SECTION_IDS = ["overview", "add", "inventory"];
-const NAV_ICONS = {
-  overview: "mdi:view-dashboard-outline",
-  add: "mdi:web-plus",
-  inventory: "mdi:certificate-outline"
-};
 export function getSslModalCopy(locale) {
   const t = pickLocaleMessages(SSL_MODAL_COPY, locale);
   return {
     ...t,
-    kpiItems: KPI_CONFIG.map(item => ({
-      ...item,
-      label: t.kpi[item.labelKey]
-    })),
     filterOptions: FILTER_CONFIG.map(item => ({
       value: item.value,
       label: t.filters[item.labelKey]
-    })),
-    navSections: NAV_SECTION_IDS.map(id => ({
-      id,
-      icon: NAV_ICONS[id],
-      label: t.sections[id].label,
-      description: t.sections[id].description
     })),
     formatInventoryCount: count => {
       const template = count > 1 ? t.inventory.countMany : t.inventory.countOne;

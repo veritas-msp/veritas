@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { canAccessAdminPanel, canAccessAdminNavKey } from "../../utils/adminPanelPermissions";
@@ -7,6 +6,7 @@ import { COMMUNITY_ADMIN_KEYS } from "../../config/edition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { setProFeaturePromoHandler } from "../Misc/ProFeature/proFeatureUtils";
+import { UiKitAdminNav, UiKitAdminShell, uiKitAdminStyles } from "../UiKit";
 import layout from "./AdminPanelLayout.module.css";
 import AdminAccessDenied from "./AdminAccessDenied";
 import AdminGeneralSettings from "./AdminGeneralSettings";
@@ -386,94 +386,25 @@ export default function AdminPanel({
     return <AdminAccessDenied />;
   }
   const ActiveComponent = TAB_COMPONENTS[activeTab];
-  return <div className={layout.layout}>
-      <aside className={layout.sidebar} aria-label="Navigation administration">
-        <div className={layout.sidebarTop}>
-          <label className={layout.sidebarSearch}>
-            <Icon icon="mdi:magnify" className={layout.sidebarSearchIcon} aria-hidden />
-            <input type="search" className={layout.sidebarSearchInput} value={navSearch} onChange={event => setNavSearch(event.target.value)} placeholder={panelCopy.searchPlaceholder} aria-label={panelCopy.searchPlaceholder} />
-            {navSearch ? <button type="button" className={layout.sidebarSearchClear} onClick={() => setNavSearch("")} aria-label={panelCopy.clearSearch}>
-                <Icon icon="mdi:close" />
-              </button> : null}
-          </label>
-        </div>
-
-        <div className={layout.sidebarNav}>
-        {filteredNavSections.length === 0 && navSearchTokens.length > 0 ? <p className={layout.navSearchEmpty}>
-            {interpolate(panelCopy.noResults, {
-            query: navSearch.trim()
-          })}
-          </p> : null}
-
-        {filteredNavSections.map(section => <div key={section.title || section.items[0]?.key} className={layout.navSection}>
-            {section.title ? <div className={layout.navSectionTitle}>{section.title}</div> : null}
-            <ul className={layout.navList}>
-              {section.items.map(item => {
-              if (item.children) {
-                const expanded = isGroupExpanded(item.key);
-                const hasActiveChild = item.children.some(child => activeTab === child.key && !child.proOnly);
-                return <li key={item.key} className={layout.navGroup}>
-                      <button type="button" className={`${layout.navItem} ${layout.navGroupToggle} ${hasActiveChild ? layout.navGroupActive : ""}`} onClick={() => toggleNavGroup(item.key)} aria-expanded={expanded}>
-                        <Icon icon={item.icon} className={layout.navIcon} />
-                        <span className={layout.navItemText}>
-                          <span className={layout.navItemLabelRow}>
-                            <span className={layout.navItemLabel}>{item.label}</span>
-                          </span>
-                          <span className={layout.navItemDesc}>{item.description}</span>
-                        </span>
-                        <Icon icon="mdi:chevron-down" className={`${layout.navGroupChevron} ${expanded ? layout.navGroupChevronOpen : ""}`} aria-hidden />
-                      </button>
-                      {expanded ? <ul className={layout.navSubList}>
-                          {item.children.map(child => <li key={child.key}>
-                              <button type="button" className={`${layout.navItem} ${layout.navSubItem} ${activeTab === child.key && !child.proOnly ? layout.navItemActive : ""} ${child.proOnly ? layout.navItemProLocked : ""}`} onClick={() => handleNavClick(child)} aria-disabled={child.proOnly || undefined}>
-                                <span className={layout.navItemText}>
-                                  <span className={layout.navItemLabelRow}>
-                                    <span className={layout.navItemLabel}>{child.label}</span>
-                                    {child.proOnly ? <ProFeatureBadge variant="inline" className={layout.navItemProBadge} /> : null}
-                                  </span>
-                                  <span className={layout.navItemDesc}>{child.description}</span>
-                                </span>
-                              </button>
-                            </li>)}
-                        </ul> : null}
-                    </li>;
-              }
-              return <li key={item.key}>
-                    <button type="button" className={`${layout.navItem} ${activeTab === item.key && !item.proOnly ? layout.navItemActive : ""} ${item.proOnly ? layout.navItemProLocked : ""}`} onClick={() => handleNavClick(item)} aria-disabled={item.proOnly || undefined}>
-                      <Icon icon={item.icon} className={layout.navIcon} />
-                      <span className={layout.navItemText}>
-                        <span className={layout.navItemLabelRow}>
-                          <span className={layout.navItemLabel}>{item.label}</span>
-                          {item.proOnly ? <ProFeatureBadge variant="inline" className={layout.navItemProBadge} /> : null}
-                        </span>
-                        <span className={layout.navItemDesc}>{item.description}</span>
-                      </span>
-                    </button>
-                  </li>;
-            })}
-            </ul>
-          </div>)}
-
-        </div>
-      </aside>
-
-      <div className={layout.main}>
-        <div className={layout.content}>
-          {ActiveComponent ? <ActiveComponent isCommunity={isCommunity} {...activeTab === "injection" ? {
-          onRunningChange: handleInjectionRunningChange
-        } : null} onOpenPage={onOpenPage} onNavigate={tab => {
-          if (injectionRunning && tab !== "injection") {
-            toast.warn(injectionCopy.navBlocked);
-            return;
-          }
-          if (allowedNavKeys.includes(tab)) {
-            setActiveTab(tab);
-            onRouteTabChange?.(tab);
-          }
-        }} /> : null}
-        </div>
+  const handleNavigate = tab => {
+    if (injectionRunning && tab !== "injection") {
+      toast.warn(injectionCopy.navBlocked);
+      return;
+    }
+    if (allowedNavKeys.includes(tab)) {
+      setActiveTab(tab);
+      onRouteTabChange?.(tab);
+    }
+  };
+  return <UiKitAdminShell sidebarAriaLabel="Navigation administration" sidebar={<UiKitAdminNav sections={filteredNavSections} activeKey={activeTab} searchValue={navSearch} onSearchChange={setNavSearch} onSearchClear={() => setNavSearch("")} searchPlaceholder={panelCopy.searchPlaceholder} clearSearchLabel={panelCopy.clearSearch} noResultsLabel={interpolate(panelCopy.noResults, {
+    query: navSearch.trim()
+  })} onItemClick={handleNavClick} isGroupExpanded={isGroupExpanded} onToggleGroup={toggleNavGroup} renderProBadge={() => <ProFeatureBadge variant="inline" className={uiKitAdminStyles.adminNavItemProBadge} />} />}>
+      <div className={layout.content}>
+        {ActiveComponent ? <ActiveComponent isCommunity={isCommunity} {...activeTab === "injection" ? {
+        onRunningChange: handleInjectionRunningChange
+      } : null} onOpenPage={onOpenPage} onNavigate={handleNavigate} /> : null}
       </div>
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
-    </div>;
+    </UiKitAdminShell>;
 }

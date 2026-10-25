@@ -149,7 +149,7 @@ export const IN_APP_EVENT_GROUPS = [{
   id: "activity",
   title: "Activity",
   description: "Exchanges and messages on tickets.",
-  eventKeys: ["ticket_commented", "ticket_mentioned", "ticket_validation_requested", "ticket_validation_responded"]
+  eventKeys: ["ticket_mentioned", "ticket_commented", "ticket_validation_requested", "ticket_validation_responded"]
 }, {
   id: "assignment",
   title: "Assignment",

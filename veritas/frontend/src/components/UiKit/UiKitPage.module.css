@@ -510,7 +510,7 @@
   min-width: var(--msp-btn-square);
   min-height: var(--msp-btn-square);
   padding: 0;
-  border-radius: var(--msp-radius-btn);
+  border-radius: 999px;
   border: 1px solid transparent;
   font-size: 0.95rem;
   line-height: 0;
@@ -812,8 +812,8 @@
 .finderNavIndicator {
   position: absolute;
   top: 0;
-  left: 0.45rem;
-  right: 0.45rem;
+  left: 0;
+  right: 0;
   border-radius: var(--msp-radius-btn);
   background: var(--msp-accent-soft);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent) 10%, transparent);
@@ -823,6 +823,18 @@
     transform var(--msp-duration) var(--msp-ease-spring),
     height var(--msp-duration) var(--msp-ease);
   will-change: transform, height;
+}
+
+.finderPrimaryAnimated > .finderNavIndicator {
+  left: 0.55rem;
+  right: 0.55rem;
+}
+
+.finderSecNavAnimated > .finderNavIndicator,
+.finderSecondaryAnimated > .finderNavIndicator {
+  left: 0;
+  right: 0;
+  border-radius: var(--finder-nav-radius, 8px);
 }
 
 .finderItem {

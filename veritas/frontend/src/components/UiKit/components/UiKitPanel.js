@@ -3,6 +3,7 @@ import styles from "../uiKitHome.module.css";
 
 export default function UiKitPanel({
   title,
+  description = null,
   icon = null,
   titleMeta = null,
   action = null,
@@ -23,13 +24,16 @@ export default function UiKitPanel({
         <div className={styles.panelHeader}>
           <div className={styles.panelHeaderMain}>
             {title ? (
-              <div className={styles.panelTitleRow}>
-                {icon ? (
-                  <span className={styles.panelTitleIcon} aria-hidden>
-                    <Icon icon={icon} />
-                  </span>
-                ) : null}
-                <h2 className={styles.panelTitle}>{title}</h2>
+              <div className={styles.panelTitleBlock}>
+                <div className={styles.panelTitleRow}>
+                  {icon ? (
+                    <span className={styles.panelTitleIcon} aria-hidden>
+                      <Icon icon={icon} />
+                    </span>
+                  ) : null}
+                  <h2 className={styles.panelTitle}>{title}</h2>
+                </div>
+                {description ? <p className={styles.panelDescription}>{description}</p> : null}
               </div>
             ) : (
               <span />

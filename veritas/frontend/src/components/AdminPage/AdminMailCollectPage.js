@@ -5,6 +5,8 @@ import AdminEmailIngestionSettings from "./AdminEmailIngestionSettings";
 import AdminMailCollectOptionsSettings from "./AdminMailCollectOptionsSettings";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getAdminMailCollectCopy } from "./adminMailCollectI18n";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 const HUB_VIEW_KEYS = ["collectors", "email-ingestion", "mail-collect-options"];
 export default function AdminMailCollectPage({
   isCommunity = false
@@ -27,7 +29,9 @@ export default function AdminMailCollectPage({
       setActiveView(allowed.has(parsed.view) ? parsed.view : "collectors");
     } catch {}
   }, []);
+  const heroCopy = getAdminPanelCopy(locale).items["mail-collect"];
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:email-outline" />
       <SubTabs items={hubViews} active={activeView} onChange={setActiveView} />
       {activeView === "collectors" ? <AdminCollectorsSettings isCommunity={isCommunity} /> : null}
       {activeView === "email-ingestion" ? <AdminEmailIngestionSettings isCommunity={isCommunity} /> : null}

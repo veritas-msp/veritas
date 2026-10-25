@@ -9,6 +9,8 @@ import AdminNotificationLogs from "./AdminNotificationLogs";
 import AdminWebhooksSettings from "./AdminWebhooksSettings";
 import { getAdminNotificationCenterCopy } from "./adminNotificationCenterI18n";
 import hubStyles from "./AdminNotificationsHub.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const HUB_VIEW_DEFS = [{
   key: "system",
@@ -74,7 +76,9 @@ export default function AdminNotificationsHub({
     }
     setActiveView(key);
   };
+  const heroCopy = getAdminPanelCopy(locale).items.notifications;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:bell-badge-outline" />
       <SubTabs items={views} active={activeView} onChange={handleViewChange} fullWidth />
       <div className={hubStyles.panel} data-page-fill>
         {activeView === "system" ? <AdminSystemNotifications /> : null}

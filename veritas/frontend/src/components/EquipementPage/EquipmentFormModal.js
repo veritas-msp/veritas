@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { createEquipment, updateEquipment, deleteEquipment } from "../../api/equipment";
 import { updateClient } from "../../api/clients";
 import { toast } from "react-toastify";
@@ -11,11 +10,51 @@ import { normalizeInternetFormData } from "../RapportPage/monitoring/internetIpU
 import { syncInternetLegacyDebit } from "./internetConnectionUtils";
 import { buildAvailableSites, buildEquipmentForUpdate, buildEquipmentId, buildEquipmentSectionMeta, buildInitialFormData, cloneEquipmentFormSnapshot, equipmentFormsEqual, getApiType, getFirewallPartnerOptions, getHostServerOptions, getServerHaPartnerOptions, getStorageHaPartnerOptions, isEquipmentRequiredSectionIncomplete, isToipVoipSectionVisible, normalizeServerType, storageTypeToLegacyType, syncFirewallHaPeerLink, syncServerHaPeerLink, syncStorageHaPeerLink } from "./equipmentFormConfig";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getEquipmentFormSectionsI18n, getEquipmentModalsCopy, getEquipmentModuleLabel, validateEquipmentFormI18n, EQUIPMENT_MODULE_ICONS, interpolate } from "./equipmentModalsI18n";
+import { getEquipmentFormSectionsI18n, groupEquipmentFormSections, getEquipmentModalsCopy, getEquipmentModuleLabel, validateEquipmentFormI18n, EQUIPMENT_MODULE_ICONS, interpolate, getFormFields } from "./equipmentModalsI18n";
+import EquipmentSectionNavIcon, { useSectionIconHover } from "./EquipmentSectionNavIcon";
+
+function EquipmentNavSectionButton({
+  section,
+  active,
+  incomplete,
+  done,
+  onSelect,
+  finderItemClass,
+  finderItemActiveClass,
+  finderItemIconClass,
+  finderItemLabelClass,
+  navItemLabelRequiredClass,
+  navBadgeClass,
+}) {
+  const { animRef, onMouseEnter, onMouseLeave } = useSectionIconHover(section.id);
+  return (
+    <button
+      type="button"
+      className={`${finderItemClass} ${active ? finderItemActiveClass : ""}`}
+      onClick={onSelect}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      aria-current={active ? "page" : undefined}
+    >
+      <EquipmentSectionNavIcon
+        sectionId={section.id}
+        iconify={section.icon}
+        className={finderItemIconClass}
+        size={18}
+        animRef={animRef}
+      />
+      <span className={`${finderItemLabelClass} ${incomplete ? navItemLabelRequiredClass : ""}`}>
+        {section.label}
+      </span>
+      {done ? <span className={navBadgeClass}>✓</span> : null}
+    </button>
+  );
+}
 import EquipmentFormSectionContent from "./EquipmentFormSectionContent";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import ModalDiscardConfirm from "../Misc/ModalDiscardConfirm";
 import { useModalCloseGuard } from "../../hooks/useModalCloseGuard";
+import { UiKitButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import { serializeAssignedSsidsForPersistence, serializeWifiSsidCatalogForPersistence, wifiSsidCatalogsEqual, resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
@@ -45,9 +84,11 @@ export default function EquipmentFormModal({
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
   const formCopy = copy.form;
+  const fieldCopy = useMemo(() => getFormFields(locale), [locale]);
   const isAddMode = mode === "add";
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("identity");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   const [initialSnapshot, setInitialSnapshot] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -103,6 +144,7 @@ export default function EquipmentFormModal({
     if (moduleKey !== "TOIP") return withExtra;
     return withExtra.filter(section => section.id !== "voip" || isToipVoipSectionVisible(formData.toipType));
   }, [moduleKey, locale, formData.firewallType, formData.routeurType, formData.typeServer, formData.storageType, formData.toipType, extensionFields.length]);
+  const navGroups = useMemo(() => groupEquipmentFormSections(sections), [sections]);
   const hasChanges = useMemo(() => !equipmentFormsEqual(formData, initialSnapshot), [formData, initialSnapshot]);
   const hasUnsavedChanges = hasChanges;
   const {
@@ -410,7 +452,7 @@ export default function EquipmentFormModal({
   const equipmentDisplayName = equipment?.nom || equipment?.name || formData.name || formCopy.thisEquipment;
   return <>
       {createPortal(<div className={styles.overlay} onClick={requestClose} role="presentation">
-      <div className={`${styles.shell} ${moduleKey === "Internet" ? styles.shellInternet : ""}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="equipment-form-modal-title">
+      <div className={`${styles.shell} ${moduleKey === "Internet" ? styles.shellInternet : styles.shellEquipment}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="equipment-form-modal-title">
         <div className={styles.accentBar} aria-hidden />
         <header className={styles.header}>
           <div className={styles.headerMain}>
@@ -425,55 +467,114 @@ export default function EquipmentFormModal({
               <p className={styles.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={requestClose} disabled={saving || deleting} aria-label={formCopy.close}>
-            <FaTimes />
-          </button>
+          <div className={styles.headerTrailing}>
+            <label className={styles.headerStatusToggle}>
+              <span className={styles.headerStatusLabel}>
+                {formData.is_active === false
+                  ? (fieldCopy.inactive || "Inactif")
+                  : (fieldCopy.active || "Actif")}
+              </span>
+              <span className={styles.switchWrap}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={formData.is_active !== false}
+                  onChange={e => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                  role="switch"
+                  aria-checked={formData.is_active !== false}
+                  disabled={saving || deleting}
+                />
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </span>
+            </label>
+            <UiKitButton
+              type="button"
+              square
+              variant="secondary"
+              className={styles.closeBtn}
+              onClick={requestClose}
+              disabled={saving || deleting}
+              aria-label={formCopy.close}
+              icon="mdi:close"
+            />
+          </div>
         </header>
 
         <div className={styles.body}>
-          <nav className={styles.nav} aria-label={formCopy.navAria}>
-            {sections.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
-                <span className={styles.navItemText}>
-                  <span className={`${styles.navItemLabel} ${isRequiredSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
-                    {section.label}
-                  </span>
-                  <span className={styles.navItemHint}>{section.description}</span>
-                </span>
-                {sectionMeta[section.id] ? <span className={styles.navBadge}>✓</span> : null}
-              </button>)}
-          </nav>
+          <aside className={`${kit.finderSidebar} ${styles.modalNav}`} aria-label={formCopy.navAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack}`}
+            >
+              <div
+                className={kit.finderNavIndicator}
+                style={{
+                  transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                  height: navIndicator.height,
+                  opacity: navIndicator.ready ? 1 : 0
+                }}
+                aria-hidden
+              />
+              {navGroups.map(group => (
+                <div key={group.id} className={kit.finderNavGroup} role="group" aria-label={!group.hideTitle ? (formCopy.navGroups?.[group.id] || group.id) : undefined}>
+                  {!group.hideTitle ? (
+                    <p className={kit.finderNavGroupTitle}>{formCopy.navGroups?.[group.id] || group.id}</p>
+                  ) : null}
+                  {group.sections.map(section => (
+                    <EquipmentNavSectionButton
+                      key={section.id}
+                      section={section}
+                      active={activeSection === section.id}
+                      incomplete={isRequiredSectionIncomplete(section.id)}
+                      done={Boolean(sectionMeta[section.id])}
+                      onSelect={() => setActiveSection(section.id)}
+                      finderItemClass={kit.finderItem}
+                      finderItemActiveClass={kit.finderItemActive}
+                      finderItemIconClass={kit.finderItemIcon}
+                      finderItemLabelClass={kit.finderItemLabel}
+                      navItemLabelRequiredClass={styles.navItemLabelRequired}
+                      navBadgeClass={styles.navBadge}
+                    />
+                  ))}
+                </div>
+              ))}
+            </nav>
+          </aside>
 
-          <div className={styles.content}>
-            {error && <div role="alert" style={{
-              marginBottom: "1rem",
-              padding: "0.65rem 0.85rem",
-              borderRadius: "10px",
-              background: "rgba(220, 38, 38, 0.08)",
-              border: "1px solid rgba(220, 38, 38, 0.2)",
-              color: "#b91c1c",
-              fontSize: "0.8125rem"
-            }}>
-                {error}
-              </div>}
-            {canImportFromUnifi ? (
-              <button
-                type="button"
-                className={styles.ghostBtn}
-                onClick={handleOpenUnifiImport}
-                disabled={saving || deleting || unifiOpening}
-                style={{ marginBottom: "1rem", width: "100%", justifyContent: "flex-start", gap: "0.65rem" }}
-              >
-                <Icon icon="simple-icons:ubiquiti" aria-hidden />
-                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
-                  <span>{formCopy.unifiImportBanner || "Importer depuis UniFi"}</span>
-                  <span style={{ fontSize: "0.75rem", opacity: 0.75, fontWeight: 400 }}>
-                    {formCopy.unifiImportHint || ""}
+          <div className={styles.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>
+              {error && <div role="alert" style={{
+                marginBottom: "1rem",
+                padding: "0.65rem 0.85rem",
+                borderRadius: "10px",
+                background: "rgba(220, 38, 38, 0.08)",
+                border: "1px solid rgba(220, 38, 38, 0.2)",
+                color: "#b91c1c",
+                fontSize: "0.8125rem"
+              }}>
+                  {error}
+                </div>}
+              {canImportFromUnifi ? (
+                <UiKitButton
+                  type="button"
+                  variant="secondary"
+                  onClick={handleOpenUnifiImport}
+                  disabled={saving || deleting || unifiOpening}
+                  icon="simple-icons:ubiquiti"
+                  style={{ marginBottom: "1rem", width: "100%", justifyContent: "flex-start" }}
+                >
+                  <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left" }}>
+                    <span>{formCopy.unifiImportBanner || "Importer depuis UniFi"}</span>
+                    <span style={{ fontSize: "0.75rem", opacity: 0.75, fontWeight: 400 }}>
+                      {formCopy.unifiImportHint || ""}
+                    </span>
                   </span>
-                </span>
-              </button>
-            ) : null}
-            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} serverHaPartnerOptions={serverHaPartnerOptions} storageHaPartnerOptions={storageHaPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} extensionFields={extensionFields} />
+                </UiKitButton>
+              ) : null}
+              <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} serverHaPartnerOptions={serverHaPartnerOptions} storageHaPartnerOptions={storageHaPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} extensionFields={extensionFields} />
+            </div>
           </div>
         </div>
 
@@ -482,25 +583,39 @@ export default function EquipmentFormModal({
             {isAddMode ? formCopy.footerRequired : hasChanges ? formCopy.footerUnsaved : formCopy.footerNoChanges}
           </span>
           <div className={styles.footerActions}>
-            {!isAddMode && <button type="button" className={`${styles.ghostBtn} ${styles.footerDeleteBtn}`} onClick={openDeleteConfirm} disabled={saving || deleting}>
-                <Icon icon="mdi:delete-outline" aria-hidden />
+            {!isAddMode ? (
+              <UiKitButton
+                type="button"
+                variant="ghost"
+                className={styles.footerDeleteBtn}
+                onClick={openDeleteConfirm}
+                disabled={saving || deleting}
+                icon="mdi:delete-outline"
+              >
                 {deleting ? formCopy.deleting : formCopy.delete}
-              </button>}
-            <button type="button" className={styles.ghostBtn} onClick={requestClose} disabled={saving || deleting}>
+              </UiKitButton>
+            ) : null}
+            <UiKitButton type="button" variant="secondary" onClick={requestClose} disabled={saving || deleting}>
               {formCopy.cancel}
-            </button>
-            <button type="button" className={styles.primaryBtn} onClick={handleSubmit} disabled={submitDisabled}>
-              {saving ? <>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={submitDisabled}
+              icon={saving ? undefined : isAddMode ? "mdi:check" : "mdi:content-save-outline"}
+            >
+              {saving ? (
+                <>
                   <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                   {formCopy.saving}
-                </> : isAddMode ? <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {isInternetModule ? formCopy.createInternet : isFirewallModule ? formCopy.createFirewall : isRouterModule ? formCopy.createRouter : isServerModule ? formCopy.createServer : isStorageModule ? formCopy.createStorage : isComputerModule ? formCopy.createComputer : formCopy.createEquipment}
-                </> : <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {formCopy.save}
-                </>}
-            </button>
+                </>
+              ) : isAddMode ? (
+                isInternetModule ? formCopy.createInternet : isFirewallModule ? formCopy.createFirewall : isRouterModule ? formCopy.createRouter : isServerModule ? formCopy.createServer : isStorageModule ? formCopy.createStorage : isComputerModule ? formCopy.createComputer : formCopy.createEquipment
+              ) : (
+                formCopy.save
+              )}
+            </UiKitButton>
           </div>
         </footer>
       </div>

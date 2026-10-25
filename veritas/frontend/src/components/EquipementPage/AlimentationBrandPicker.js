@@ -1,8 +1,43 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FIREWALL_MODEL_OTHER, buildAlimentationBrandTiles } from "./constants/equipmentCatalog";
-import AlimentationBrandIcon from "./constants/alimentationBrandIconMap";
+import { getAlimentationBrandIconDef } from "./constants/alimentationBrandIconMap";
+import EquipmentHoverIcon, { ALIMENTATION_BRAND_ANIMATED } from "./EquipmentHoverIcon";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
+
+function AlimentationBrandTile({ id, label, active, onSelect }) {
+  const animRef = useRef(null);
+  const Animated = ALIMENTATION_BRAND_ANIMATED[id] || null;
+  const iconDef = id === "__other__" ? null : getAlimentationBrandIconDef(id);
+  const iconify = id === "__other__"
+    ? "mdi:dots-horizontal"
+    : iconDef?.type === "iconify"
+      ? iconDef.icon
+      : "mdi:power-plug";
+
+  return (
+    <button
+      type="button"
+      className={`${formStyles.moduleTile} ${active ? formStyles.moduleTileActive : ""}`}
+      onClick={() => onSelect(id)}
+      onMouseEnter={() => animRef.current?.startAnimation?.()}
+      onMouseLeave={() => animRef.current?.stopAnimation?.()}
+      aria-pressed={active}
+    >
+      {active ? <Icon icon="mdi:check-circle" className={formStyles.moduleCheck} aria-hidden /> : null}
+      <span className={`${formStyles.moduleTileIcon} ${formStyles.moduleTileBrandLogo}`} aria-hidden style={{ display: "inline-flex" }}>
+        <EquipmentHoverIcon
+          Animated={Animated}
+          iconify={iconify}
+          size={22}
+          animRef={animRef}
+        />
+      </span>
+      <span className={formStyles.moduleTileLabel}>{label}</span>
+    </button>
+  );
+}
+
 export default function AlimentationBrandPicker({
   catalog,
   manufacturer = "",
@@ -72,52 +107,86 @@ export default function AlimentationBrandPicker({
     setForceCustomModel(false);
     onModelChange(value);
   };
-  return <div className={formStyles.fieldFull} style={{
-    gridColumn: "1 / -1"
-  }}>
+  return (
+    <div className={formStyles.fieldFull} style={{ gridColumn: "1 / -1" }}>
       <span className={`${formStyles.label} ${required ? formStyles.labelRequired : ""}`}>
         {brandLabel}
       </span>
-      <div className={formStyles.modulesGrid} style={{
-      marginTop: "0.45rem"
-    }}>
-        {brandTiles.map(({
-        id,
-        label
-      }) => <button key={id} type="button" className={`${formStyles.moduleTile} ${activeTile === id ? formStyles.moduleTileActive : ""}`} onClick={() => handleBrandSelect(id)} aria-pressed={activeTile === id}>
-            {activeTile === id && <Icon icon="mdi:check-circle" className={formStyles.moduleCheck} aria-hidden />}
-            {id === "__other__" ? <Icon icon="mdi:dots-horizontal" className={`${formStyles.moduleTileIcon} ${formStyles.moduleTileBrandLogo}`} aria-hidden /> : <AlimentationBrandIcon brand={id} className={`${formStyles.moduleTileIcon} ${formStyles.moduleTileBrandLogo}`} />}
-            <span className={formStyles.moduleTileLabel}>{label}</span>
-          </button>)}
+      <div className={formStyles.modulesGrid} style={{ marginTop: "0.45rem" }}>
+        {brandTiles.map(({ id, label }) => (
+          <AlimentationBrandTile
+            key={id}
+            id={id}
+            label={label}
+            active={activeTile === id}
+            onSelect={handleBrandSelect}
+          />
+        ))}
       </div>
 
-      {activeTile === "__other__" && <div className={formStyles.field} style={{
-      marginTop: "0.85rem"
-    }}>
+      {activeTile === "__other__" ? (
+        <div className={formStyles.field} style={{ marginTop: "0.85rem" }}>
           <label className={`${formStyles.label} ${required ? formStyles.labelRequired : ""}`} htmlFor="alimentation-brand-other">
             {otherBrandNameLabel}
           </label>
-          <input id="alimentation-brand-other" type="text" className={formStyles.input} value={manufacturer ?? ""} onChange={e => handleManufacturerInput(e.target.value)} placeholder="Socomec" autoFocus />
-        </div>}
+          <input
+            id="alimentation-brand-other"
+            type="text"
+            className={formStyles.input}
+            value={manufacturer ?? ""}
+            onChange={e => handleManufacturerInput(e.target.value)}
+            placeholder="Socomec"
+            autoFocus
+          />
+        </div>
+      ) : null}
 
-      {showModel && normalizedManufacturer && <div className={formStyles.field} style={{
-      marginTop: "0.85rem"
-    }}>
+      {showModel && normalizedManufacturer ? (
+        <div className={formStyles.field} style={{ marginTop: "0.85rem" }}>
           <label className={formStyles.label} htmlFor="alimentation-model">
             {modelLabel}
           </label>
-          {isKnownBrand ? <>
-              <select id="alimentation-model" className={formStyles.input} value={modelSelectValue} onChange={e => handleModelSelect(e.target.value)}>
+          {isKnownBrand ? (
+            <>
+              <select
+                id="alimentation-model"
+                className={formStyles.input}
+                value={modelSelectValue}
+                onChange={e => handleModelSelect(e.target.value)}
+              >
                 <option value="">-</option>
-                {catalogModels.map(item => <option key={item} value={item}>
+                {catalogModels.map(item => (
+                  <option key={item} value={item}>
                     {item}
-                  </option>)}
+                  </option>
+                ))}
                 <option value={FIREWALL_MODEL_OTHER}>{otherModelOptionLabel}</option>
               </select>
-              {isCustomModel && <input id="alimentation-model-custom" type="text" className={formStyles.input} style={{
-          marginTop: "0.55rem"
-        }} value={model ?? ""} onChange={e => onModelChange(e.target.value)} placeholder={modelPlaceholder} aria-label={formatCustomModelAria(modelLabel)} />}
-            </> : <input id="alimentation-model" type="text" className={formStyles.input} value={model ?? ""} onChange={e => onModelChange(e.target.value)} placeholder={modelPlaceholder} />}
-        </div>}
-    </div>;
+              {isCustomModel ? (
+                <input
+                  id="alimentation-model-custom"
+                  type="text"
+                  className={formStyles.input}
+                  style={{ marginTop: "0.55rem" }}
+                  value={model ?? ""}
+                  onChange={e => onModelChange(e.target.value)}
+                  placeholder={modelPlaceholder}
+                  aria-label={formatCustomModelAria(modelLabel)}
+                />
+              ) : null}
+            </>
+          ) : (
+            <input
+              id="alimentation-model"
+              type="text"
+              className={formStyles.input}
+              value={model ?? ""}
+              onChange={e => onModelChange(e.target.value)}
+              placeholder={modelPlaceholder}
+            />
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }

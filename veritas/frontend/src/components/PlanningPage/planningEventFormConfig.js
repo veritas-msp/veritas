@@ -1,5 +1,3 @@
-export const TODO_PRESET_COLORS = ["#15d1a0", "#2b5fab", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"];
-export const TODO_DEFAULT_COLOR = TODO_PRESET_COLORS[0];
 export const EVENT_FORM_SECTIONS = [{
   id: "general",
   label: "General",
@@ -11,37 +9,11 @@ export const EVENT_FORM_SECTIONS = [{
   description: "Time slot and assignees",
   icon: "mdi:clock-outline"
 }, {
-  id: "description",
-  label: "Description",
-  description: "Context and details",
-  icon: "mdi:text-box-outline"
-}, {
   id: "objects",
   label: "Objects",
   description: "Linked equipment",
   icon: "mdi:cube-outline"
-}, {
-  id: "todos",
-  label: "To-do",
-  description: "Task list",
-  icon: "mdi:format-list-checks"
 }];
-export const EVENT_DESCRIPTION_EDITOR_MODULES = {
-  toolbar: [[{
-    header: [1, 2, 3, false]
-  }], ["bold", "italic", "underline", "strike"], [{
-    color: []
-  }, {
-    background: []
-  }], [{
-    list: "ordered"
-  }, {
-    list: "bullet"
-  }], [{
-    align: []
-  }], ["blockquote", "code-block", "link"], ["clean"]]
-};
-export const EVENT_DESCRIPTION_EDITOR_FORMATS = ["header", "bold", "italic", "underline", "strike", "color", "background", "list", "bullet", "align", "blockquote", "code-block", "link"];
 export function getLinkedItemIcon(item) {
   const type = (item?.type || "").toLowerCase();
   const group = (item?.group || "").toLowerCase();

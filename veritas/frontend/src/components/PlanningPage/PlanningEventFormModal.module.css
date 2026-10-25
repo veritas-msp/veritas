@@ -466,6 +466,72 @@
 }
 
 
+.contentStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.todoPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.todoPanelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.todoPanelTitle {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.todoPanelHint {
+  margin: 0.2rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.todoAssigneeField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.todoAssigneeLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.todoAssigneeSelect,
+.todoAssigneeSelectCompact {
+  min-height: 2.1rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 9px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.8rem;
+}
+
+.todoAssigneeSelectCompact {
+  max-width: 9.5rem;
+  flex: 0 1 auto;
+}
+
 .todoComposer {
   display: flex;
   flex-direction: column;
@@ -473,7 +539,7 @@
   padding: 0.85rem;
   border: 1px solid var(--msp-border, #dde3ed);
   border-radius: 12px;
-  background: var(--msp-surface-2, #f8fafc);
+  background: var(--msp-surface, #fff);
 }
 
 .todoComposerInput {
@@ -803,8 +869,16 @@
 :global(.dark) .noteCard,
 :global(.dark) .itemRow,
 :global(.dark) .todoComposer,
+:global(.dark) .todoPanel,
 :global(.dark) .todoEmpty,
 :global(.dark) .richEditorWrapper {
+  background: var(--msp-surface, #1e293b);
+  border-color: var(--msp-border, #334155);
+  color: var(--msp-text, #f1f5f9);
+}
+
+:global(.dark) .todoAssigneeSelect,
+:global(.dark) .todoAssigneeSelectCompact {
   background: var(--msp-surface, #1e293b);
   border-color: var(--msp-border, #334155);
   color: var(--msp-text, #f1f5f9);

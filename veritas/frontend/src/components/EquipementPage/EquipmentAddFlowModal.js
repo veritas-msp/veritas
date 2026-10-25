@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { fetchClientsList, fetchClientGeneral, fetchClientModules } from "../../api/clients";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { EQUIPMENT_MODULE_ICONS, getEquipmentAddFlowSections, getEquipmentModalsCopy, getEquipmentModuleLabels, interpolate } from "./equipmentModalsI18n";
+import { EQUIPMENT_MODULE_ICONS, getEquipmentModalsCopy, getEquipmentModuleLabels, interpolate } from "./equipmentModalsI18n";
 import { normalizeClientSites } from "../../utils/clientSites";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import ModalDiscardConfirm from "../Misc/ModalDiscardConfirm";
 import { useModalCloseGuard } from "../../hooks/useModalCloseGuard";
+import { UiKitButton, uiKitLayoutsStyles as kit } from "../UiKit";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
+import flowStyles from "./EquipmentAddFlowModal.module.css";
+import EquipmentCategoryTile from "./EquipmentCategoryTile";
 export const EQUIPMENT_ADD_CATEGORIES = [...HARDWARE_TYPE_ORDER];
 function getClientLabel(client, clientPrefix = "Client #") {
   if (!client) return "";
@@ -49,10 +51,6 @@ export default function EquipmentAddFlowModal({
   const [submitting, setSubmitting] = useState(false);
   const enterpriseAutocompleteRef = useRef(null);
   const showClientSection = !prefilledClient;
-  const sections = useMemo(() => {
-    const flowSections = getEquipmentAddFlowSections(locale);
-    return showClientSection ? flowSections : flowSections.filter(s => s.id === "category");
-  }, [locale, showClientSection]);
   useEffect(() => {
     if (!open) {
       setActiveSection("category");
@@ -96,10 +94,6 @@ export default function EquipmentAddFlowModal({
     if (!query) return clients.slice(0, 15);
     return clients.filter(c => getClientLabel(c, copy.clientPrefix).toLowerCase().includes(query)).slice(0, 15);
   }, [clients, enterpriseSearch, copy.clientPrefix]);
-  const sectionMeta = useMemo(() => ({
-    category: Boolean(selectedCategory),
-    client: Boolean(prefilledClient || selectedClient?.id)
-  }), [selectedCategory, prefilledClient, selectedClient]);
   const categoryOptions = useMemo(() => {
     const standard = EQUIPMENT_ADD_CATEGORIES.map(catId => ({
       id: catId,
@@ -165,68 +159,91 @@ export default function EquipmentAddFlowModal({
   if (!open) return null;
   const categoryLabel = moduleLabels[selectedCategory] || selectedCategory || "";
   const renderSectionContent = () => {
-    const section = sections.find(s => s.id === activeSection);
     if (activeSection === "category") {
-      return <>
-          <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
+      return (
+        <div className={`${styles.sectionFill} ${flowStyles.categoryStage}`.trim()}>
+          <div className={flowStyles.categoryGrid} role="listbox" aria-label={t.categoryHint || t.title}>
+            {categoryOptions.map(category => (
+              <EquipmentCategoryTile
+                key={category.id}
+                category={category}
+                selected={selectedCategory === category.id}
+                disabled={submitting}
+                onSelect={handleCategorySelect}
+              />
+            ))}
           </div>
-          <p className={styles.hint}>
-            {t.categoryHint}
-          </p>
-          <div className={styles.modulesGrid}>
-            {categoryOptions.map(category => <button key={category.id} type="button" className={`${styles.moduleTile} ${selectedCategory === category.id ? styles.moduleTileActive : ""}`} onClick={() => handleCategorySelect(category.id)} disabled={submitting} aria-pressed={selectedCategory === category.id}>
-                {selectedCategory === category.id && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon={category.icon || "mdi:cube-outline"} className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>
-                  {category.label}
-                </span>
-              </button>)}
-          </div>
-        </>;
+        </div>
+      );
     }
     if (activeSection === "client") {
-      return <>
-          <div className={styles.sectionHead}>
-            <h3 className={styles.sectionTitle}>{section?.label}</h3>
-            <p className={styles.sectionDesc}>{section?.description}</p>
-          </div>
-          <p className={styles.hint}>
-            {categoryLabel ? interpolate(t.clientHint, {
-            category: categoryLabel
-          }) : t.clientHintGeneric}
-          </p>
-          {loadingClients ? <p className={styles.hint}>{t.loadingClients}</p> : clients.length === 0 ? <p className={styles.hint}>
-              {t.noClients}
-            </p> : <div className={styles.field}>
-              <label className={styles.label} htmlFor="equipment-add-enterprise">
-                {t.enterpriseLabel}
-              </label>
-              <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
-                <input id="equipment-add-enterprise" type="text" className={styles.input} placeholder={t.searchEnterprise} value={enterpriseSearch} onChange={e => {
-              setEnterpriseSearch(e.target.value);
-              setSelectedClient(null);
-              setEnterpriseDropdownOpen(true);
-            }} onFocus={() => setEnterpriseDropdownOpen(true)} disabled={submitting} autoComplete="off" />
-                {enterpriseDropdownOpen && <div className={styles.dropdown}>
-                    {filteredClients.length === 0 ? <div className={styles.dropdownEmpty}>{t.noEnterprise}</div> : filteredClients.map(client => <button key={client.id} type="button" className={`${styles.dropdownOption} ${String(selectedClient?.id) === String(client.id) ? styles.dropdownOptionSelected : ""}`} onClick={() => {
-                setSelectedClient(client);
-                setEnterpriseSearch(getClientLabel(client, copy.clientPrefix));
-                setEnterpriseDropdownOpen(false);
-              }}>
-                          {getClientLabel(client, copy.clientPrefix)}
-                        </button>)}
-                  </div>}
+      return (
+        <div className={styles.sectionFill}>
+          <div className={styles.sectionScroll}>
+            <p className={styles.hint}>
+              {categoryLabel
+                ? interpolate(t.clientHint, { category: categoryLabel })
+                : t.clientHintGeneric}
+            </p>
+            {loadingClients ? (
+              <p className={styles.hint}>{t.loadingClients}</p>
+            ) : clients.length === 0 ? (
+              <p className={styles.hint}>{t.noClients}</p>
+            ) : (
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="equipment-add-enterprise">
+                  {t.enterpriseLabel}
+                </label>
+                <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
+                  <input
+                    id="equipment-add-enterprise"
+                    type="text"
+                    className={styles.input}
+                    placeholder={t.searchEnterprise}
+                    value={enterpriseSearch}
+                    onChange={e => {
+                      setEnterpriseSearch(e.target.value);
+                      setSelectedClient(null);
+                      setEnterpriseDropdownOpen(true);
+                    }}
+                    onFocus={() => setEnterpriseDropdownOpen(true)}
+                    disabled={submitting}
+                    autoComplete="off"
+                  />
+                  {enterpriseDropdownOpen ? (
+                    <div className={styles.dropdown}>
+                      {filteredClients.length === 0 ? (
+                        <div className={styles.dropdownEmpty}>{t.noEnterprise}</div>
+                      ) : (
+                        filteredClients.map(client => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className={`${styles.dropdownOption} ${String(selectedClient?.id) === String(client.id) ? styles.dropdownOptionSelected : ""}`}
+                            onClick={() => {
+                              setSelectedClient(client);
+                              setEnterpriseSearch(getClientLabel(client, copy.clientPrefix));
+                              setEnterpriseDropdownOpen(false);
+                            }}
+                          >
+                            {getClientLabel(client, copy.clientPrefix)}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>}
-        </>;
+            )}
+          </div>
+        </div>
+      );
     }
     return null;
   };
   return createPortal(<>
     <div className={styles.overlay} onClick={handleOverlayClose} role="presentation">
-      <div className={styles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="equipment-add-flow-title">
+      <div className={`${styles.shell} ${styles.shellBackup}`.trim()} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="equipment-add-flow-title">
         <div className={styles.accentBar} aria-hidden />
         <header className={styles.header}>
           <div className={styles.headerMain}>
@@ -243,27 +260,25 @@ export default function EquipmentAddFlowModal({
               </p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={handleOverlayClose} disabled={submitting} aria-label={t.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={styles.closeBtn}
+            onClick={handleOverlayClose}
+            disabled={submitting}
+            aria-label={t.close}
+            icon="mdi:close"
+          />
         </header>
 
-        <div className={styles.body}>
-          <nav className={styles.nav} aria-label={t.navAria}>
-            {sections.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => {
-              if (section.id === "client" && !selectedCategory) return;
-              setActiveSection(section.id);
-            }} disabled={section.id === "client" && !selectedCategory} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
-                <span className={styles.navItemText}>
-                  <span className={styles.navItemLabel}>{section.label}</span>
-                  <span className={styles.navItemHint}>{section.description}</span>
-                </span>
-                {sectionMeta[section.id] && <span className={styles.navBadge}>✓</span>}
-              </button>)}
-          </nav>
-
-          <div className={styles.content}>{renderSectionContent()}</div>
+        <div className={`${styles.bodySingle}${activeSection === "category" ? ` ${flowStyles.bodyCategoryPick}` : ""}`}>
+          <div
+            className={`${styles.content}${activeSection === "category" ? ` ${flowStyles.contentCategoryPick}` : ""}`}
+            key={activeSection}
+          >
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={styles.footer}>
@@ -271,21 +286,32 @@ export default function EquipmentAddFlowModal({
             {activeSection === "category" ? t.footerCategory : submitting ? t.footerOpening : t.footerClient}
           </span>
           <div className={styles.footerActions}>
-            {activeSection === "client" && <button type="button" className={styles.ghostBtn} onClick={() => setActiveSection("category")} disabled={submitting}>
+            {activeSection === "client" ? (
+              <UiKitButton type="button" variant="secondary" onClick={() => setActiveSection("category")} disabled={submitting}>
                 {t.back}
-              </button>}
-            <button type="button" className={styles.ghostBtn} onClick={handleOverlayClose} disabled={submitting}>
+              </UiKitButton>
+            ) : null}
+            <UiKitButton type="button" variant="secondary" onClick={handleOverlayClose} disabled={submitting}>
               {t.cancel}
-            </button>
-            {activeSection === "client" && <button type="button" className={styles.primaryBtn} onClick={handleClientContinue} disabled={!selectedClient || !selectedCategory || submitting}>
-                {submitting ? <>
+            </UiKitButton>
+            {activeSection === "client" ? (
+              <UiKitButton
+                type="button"
+                variant="primary"
+                onClick={handleClientContinue}
+                disabled={!selectedClient || !selectedCategory || submitting}
+                icon={submitting ? undefined : "mdi:arrow-right"}
+              >
+                {submitting ? (
+                  <>
                     <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                     {t.loading}
-                  </> : <>
-                    <Icon icon="mdi:arrow-right" aria-hidden />
-                    {t.continue}
-                  </>}
-              </button>}
+                  </>
+                ) : (
+                  t.continue
+                )}
+              </UiKitButton>
+            ) : null}
           </div>
         </footer>
       </div>

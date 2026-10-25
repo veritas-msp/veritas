@@ -658,7 +658,21 @@ export default function AntivirusConfigModal({
         <p className={formStyles.sectionDesc}>{copy.overview.description}</p>
       </div>
 
-      {solutions.length === 0 ? <div className={avStyles.emptyState}>{copy.overview.empty}</div> : <div className={avStyles.solutionList}>
+      {solutions.length === 0 ? (
+        <div className={avStyles.emptyState}>
+          <Icon icon="mdi:shield-plus-outline" className={avStyles.emptyStateIcon} aria-hidden />
+          <p className={avStyles.emptyStateText}>{copy.overview.empty}</p>
+          <p className={avStyles.emptyStateHint}>{copy.overview.emptyHint || copy.overview.description}</p>
+          <button
+            type="button"
+            className={avStyles.emptyStateBtn}
+            onClick={() => setActiveSection("solution")}
+          >
+            <Icon icon="mdi:plus" aria-hidden />
+            {copy.overview.emptyAddCta || "Ajouter la première solution"}
+          </button>
+        </div>
+      ) : <div className={avStyles.solutionList}>
           {solutions.map((solution, index) => {
         const summary = formatAntivirusSolutionSummary(solution);
         const solutionKey = `${solution.companyId || index}-${solution.mappingMode || "reseller"}-${solution.bitdefenderTenantId || "global"}`;

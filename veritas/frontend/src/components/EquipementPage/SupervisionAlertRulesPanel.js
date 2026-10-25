@@ -19,6 +19,7 @@ import {
 import { getSupervisionAlertRulesCopy } from "./supervisionAlertRulesPanelI18n";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionAlertRulesPanel.module.css";
+import { UiKitCrmListToolbar } from "../UiKit";
 
 const FAMILY_NAV_SECTIONS = [
   { id: "endpoints", titleKey: "navSectionEndpoints", keys: ["ordinateurs"] },
@@ -300,32 +301,21 @@ export default function MonitoringAlertRulesPanel({
 
   return (
     <div className={`${layout.panelCard} ${styles.root}`} data-page-fill>
-      <div className={`${layout.tableSearchBar} ${styles.toolbar}`} data-guide="supervision-filters">
-        <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-          <input
-            type="search"
-            inputMode="search"
-            enterKeyHint="search"
-            className={layout.searchInput}
-            value={navSearch}
-            onChange={event => setNavSearch(event.target.value)}
-            placeholder={copy.searchPlaceholder || "Search…"}
-            aria-label={copy.searchPlaceholder || "Search…"}
-          />
-          {navSearch ? (
-            <button
-              type="button"
-              onClick={() => setNavSearch("")}
-              className={layout.clearButton}
-              aria-label={copy.clearSearch || "Clear"}
-            >
-              <Icon icon="mdi:close" />
-            </button>
-          ) : null}
-        </div>
-        {!isAdmin ? <span className={styles.readOnlyChip}>{copy.readOnly}</span> : null}
-        {toolbarActions}
+      <div className={styles.toolbar} data-guide="supervision-filters">
+        <UiKitCrmListToolbar
+          searchValue={navSearch}
+          onSearchChange={setNavSearch}
+          onSearchClear={() => setNavSearch("")}
+          searchPlaceholder={copy.searchPlaceholder || "Search…"}
+          searchAriaLabel={copy.searchPlaceholder || "Search…"}
+          clearSearchLabel={copy.clearSearch || "Clear"}
+          extraActions={
+            <>
+              {!isAdmin ? <span className={styles.readOnlyChip}>{copy.readOnly}</span> : null}
+              {toolbarActions}
+            </>
+          }
+        />
       </div>
 
       <div className={styles.body}>

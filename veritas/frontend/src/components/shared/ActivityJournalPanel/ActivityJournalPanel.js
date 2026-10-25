@@ -6,7 +6,7 @@ import enterpriseDetailStyles from "../../EnterprisesPage/EnterpriseDetailPage.m
 import equipStyles from "../../EquipementPage/EquipmentPage.module.css";
 import { ConfirmModal } from "../../AdminPage/AdminUi";
 import EquipmentLogDetailModal from "../../EquipementPage/EquipmentLogDetailModal";
-import { getLogActionDetails } from "../../EquipementPage/equipmentLogUtils";
+import { getLogModificationField } from "../../EquipementPage/equipmentLogUtils";
 import TicketColumnsModal from "../../TicketPage/TicketColumnsModal";
 import SortIcon from "../../Misc/SortableHeader/SortIcon";
 import { cycleSortState } from "../../Misc/SortableHeader/cycleSortState";
@@ -20,12 +20,14 @@ import {
   DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS,
   normalizeTicketTableColumns
 } from "../../../utils/ticketTableColumns";
+import { UiKitTable } from "../../UiKit";
 import { getActivityJournalCopy, interpolate } from "./activityJournalI18n";
 import styles from "./ActivityJournalPanel.module.css";
 
 const LOGS_PAGE_SCOPE = "enterprise_logs";
 const LOGS_COLUMN_HEADERS = {
   action: "action",
+  field: "field",
   user: "user",
   date: "date"
 };
@@ -37,6 +39,10 @@ function sanitizeLogsTableColumns(columns) {
     pageScope: LOGS_PAGE_SCOPE
   });
   if (!list.includes("action")) list.unshift("action");
+  if (!list.includes("field")) {
+    const actionIdx = list.indexOf("action");
+    list.splice(actionIdx >= 0 ? actionIdx + 1 : 0, 0, "field");
+  }
   return list;
 }
 
@@ -352,101 +358,113 @@ export default function ActivityJournalPanel({
       </p>
     </div>
   ) : (
-    <div
-      className={`${enterpriseDetailStyles.dataTableWrapper} ${styles.tableWrapper} ${
-        embedded ? styles.tableWrapperEmbedded : ""
-      }`.trim()}
-    >
-      <table className={`${enterpriseDetailStyles.dataTable} ${styles.table}`.trim()}>
-        <thead>
-          <tr>
-            {tableColumns.map(columnId => {
-              const labelKey = LOGS_COLUMN_HEADERS[columnId] || columnId;
-              const label = copy.table?.[labelKey] || columnId;
-              const isSorted = sortBy === columnId;
-              return (
-                <th
-                  key={columnId}
-                  className={styles.sortableTh}
-                  onClick={() => handleSort(columnId)}
-                  aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
-                >
-                  <span className={styles.thContent}>
-                    {label}
-                    {isSorted ? (
-                      <SortIcon active direction={sortDirection || "asc"} className={styles.sortIndicator} />
-                    ) : null}
-                  </span>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {logs.map((log, index) => {
-            const meta = getLogActionDetails(log);
-            const userLabel = log.user_name || log.user || copy.systemUser;
-            const when = log.created_at || log.timestamp;
-            const dateLabel = when
-              ? new Date(when).toLocaleString(getLocaleTag(locale), {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })
-              : "—";
+    <table className={`${enterpriseDetailStyles.dataTable} ${styles.table}`.trim()}>
+      <thead>
+        <tr>
+          {tableColumns.map(columnId => {
+            const labelKey = LOGS_COLUMN_HEADERS[columnId] || columnId;
+            const label = copy.table?.[labelKey] || columnId;
+            const isSorted = sortBy === columnId;
+            const colClass =
+              columnId === "action"
+                ? styles.colAction
+                : columnId === "field"
+                  ? styles.colField
+                  : columnId === "user"
+                    ? styles.colUser
+                    : columnId === "date"
+                      ? styles.colDate
+                      : "";
             return (
-              <tr
-                key={log.id || `${when}-${index}`}
-                className={enterpriseDetailStyles.dataTableRowClickable}
-                onClick={() => setSelectedLog(log)}
-                title={copy.detailTitle}
+              <th
+                key={columnId}
+                className={`${styles.sortableTh} ${colClass}`.trim()}
+                onClick={() => handleSort(columnId)}
+                aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
               >
-                {tableColumns.map(columnId => {
-                  if (columnId === "action") {
-                    return (
-                      <td key={columnId}>
-                        <span className={styles.actionInline} style={{ color: meta.color }}>
-                          <Icon icon={meta.icon} aria-hidden />
-                          {log.action || meta.label}
-                        </span>
-                      </td>
-                    );
-                  }
-                  if (columnId === "user") {
-                    return <td key={columnId}>{userLabel}</td>;
-                  }
-                  if (columnId === "date") {
-                    return (
-                      <td key={columnId} className={styles.dateCell}>
-                        {dateLabel}
-                      </td>
-                    );
-                  }
-                  return null;
-                })}
-              </tr>
+                <span className={styles.thContent}>
+                  {label}
+                  {isSorted ? (
+                    <SortIcon active direction={sortDirection || "asc"} className={styles.sortIndicator} />
+                  ) : null}
+                </span>
+              </th>
             );
           })}
-        </tbody>
-      </table>
-    </div>
+        </tr>
+      </thead>
+      <tbody>
+        {logs.map((log, index) => {
+          const userLabel = log.user_name || log.user || copy.systemUser;
+          const fieldLabel = getLogModificationField(log) || "—";
+          const when = log.created_at || log.timestamp;
+          const dateLabel = when
+            ? new Date(when).toLocaleString(getLocaleTag(locale), {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              })
+            : "—";
+          return (
+            <tr
+              key={log.id || `${when}-${index}`}
+              className={enterpriseDetailStyles.dataTableRowClickable}
+              onClick={() => setSelectedLog(log)}
+              title={copy.detailTitle}
+            >
+              {tableColumns.map(columnId => {
+                if (columnId === "action") {
+                  return (
+                    <td key={columnId} className={`${styles.colAction} ${styles.actionCell}`} title={log.action || ""}>
+                      {log.action || "—"}
+                    </td>
+                  );
+                }
+                if (columnId === "field") {
+                  return (
+                    <td key={columnId} className={`${styles.colField} ${styles.fieldCell}`} title={fieldLabel}>
+                      {fieldLabel}
+                    </td>
+                  );
+                }
+                if (columnId === "user") {
+                  return (
+                    <td key={columnId} className={`${styles.colUser} ${styles.userCell}`} title={userLabel}>
+                      {userLabel}
+                    </td>
+                  );
+                }
+                if (columnId === "date") {
+                  return (
+                    <td key={columnId} className={`${styles.colDate} ${styles.dateCell}`}>
+                      {dateLabel}
+                    </td>
+                  );
+                }
+                return null;
+              })}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 
-  const tableBlock = embedded ? (
-    <div className={styles.tableStack}>
-      <div className={equipStyles.tableScrollShell}>
-        <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
-          <div className={equipStyles.tableCardSurface}>
-            {tableInner}
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className={styles.tableFill}>
-      {tableInner}
+  const tableBlock = (
+    <div className={embedded ? styles.tableStack : styles.tableFill}>
+      {loading || logs.length === 0 ? (
+        tableInner
+      ) : (
+        <UiKitTable
+          fill={embedded}
+          className={styles.logsUiKitTable}
+          deps={[logs.length, page, sortBy, sortDirection, search, tableColumns.join("|")]}
+        >
+          {tableInner}
+        </UiKitTable>
+      )}
     </div>
   );
 

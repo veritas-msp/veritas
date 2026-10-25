@@ -2,8 +2,8 @@
 .contactCivility {
   display: inline-flex;
   align-items: center;
-  padding: 0.1rem 0.4rem;
-  border-radius: 6px;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
   background: rgba(107, 114, 128, 0.12);
   color: #4b5563;
   font-size: 0.68rem;
@@ -24,14 +24,13 @@
 
 .colGender {
   white-space: nowrap;
-  width: 4.5rem;
 }
 
 .contactStatusBadge {
   display: inline-flex;
   align-items: center;
-  padding: 0.12rem 0.45rem;
-  border-radius: 6px;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -96,7 +95,7 @@
 
 .cellEllipsis {
   display: block;
-  max-width: 10rem;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -107,8 +106,7 @@
   align-items: center;
   gap: 0.28rem;
   min-width: 0;
-  width: fit-content;
-  max-width: min(14rem, 100%);
+  max-width: 100%;
 }
 
 .cellWithActionAlign {
@@ -116,7 +114,7 @@
   align-items: center;
   gap: 0.28rem;
   min-width: 0;
-  width: 14rem;
+  width: 100%;
   max-width: 100%;
 }
 
@@ -157,7 +155,7 @@
   height: 1.375rem;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   color: var(--msp-muted-light, #8b9bb5);
   cursor: pointer;
@@ -204,24 +202,65 @@
   white-space: nowrap;
 }
 
-.colContactGender {
-  white-space: nowrap;
+/* —— Largeurs colonnes (th / td / col — mêmes classes) —— */
+.colContactCheckbox {
+  width: 2.5rem;
+}
+
+.colContactStatus {
+  width: 3.5rem;
+  text-align: center;
+}
+
+.statusDotOnly {
+  display: inline-block;
 }
 
 .colContactName {
-  min-width: 0;
+  /* colonne fluide : absorbe le reste */
+  width: auto;
 }
 
-.colContactEnterprise,
+.colContactGender {
+  width: 5.5rem;
+  white-space: nowrap;
+}
+
+.colContactEnterprise {
+  width: 9rem;
+}
+
 .colContactRole {
-  max-width: 11rem;
+  width: 7.5rem;
+}
+
+.colContactEmail {
+  width: 12rem;
+}
+
+.colContactPhone {
+  width: 9rem;
+}
+
+.colContactPortal {
+  width: 3.75rem;
+  text-align: center;
 }
 
 .colContactTickets {
+  width: 4.5rem;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  width: 1%;
+}
+
+.colContactActions {
+  width: 7rem;
+}
+
+.colContactFavorite {
+  width: 3.75rem;
+  text-align: center;
 }
 
 .ticketStatValue {
@@ -247,21 +286,11 @@
   }
 
   .colContactActions {
-    position: sticky;
-    right: 0;
-    z-index: 2;
     width: auto;
     min-width: 5.5rem;
     white-space: nowrap;
     padding-left: 0.35rem !important;
     padding-right: 0.4rem !important;
-    background: var(--msp-surface, #fff);
-    box-shadow: -6px 0 10px rgba(15, 28, 46, 0.05);
-  }
-
-  :global(html.dark) .colContactActions {
-    background: var(--msp-surface, #1f2d4a);
-    box-shadow: -6px 0 10px rgba(0, 0, 0, 0.18);
   }
 
   .colContactActions .cardActions {
@@ -282,14 +311,12 @@
 }
 
 @media (max-width: 1023px) {
-  .colContactName {
-    min-width: 0;
-    max-width: none;
+  .colContactEnterprise {
+    width: 8rem;
   }
 
-  .colContactEnterprise,
   .colContactRole {
-    max-width: 9rem;
+    width: 7rem;
   }
 }
 
@@ -333,9 +360,7 @@
   }
 
   .colContactStatus {
-    width: 4.5rem;
-    min-width: 4rem;
-    max-width: 5.5rem;
+    width: 3rem;
   }
 
   .contactTags {
@@ -356,34 +381,34 @@
   width: 1.75rem;
   height: 1.75rem;
   padding: 0;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 6px;
-  background: var(--msp-surface-2, #f7f9fc);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
-  font-size: 0.85rem;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  font-size: 0.95rem;
+  line-height: 0;
   text-decoration: none;
   box-sizing: border-box;
+  transition: color 0.12s ease;
 }
 
 .iconActionBtn:hover,
 a.iconActionBtn:hover {
-  border-color: var(--msp-accent, #2b5fab);
   color: var(--msp-accent, #2b5fab);
-  background: var(--msp-surface, #fff);
+  background: transparent;
 }
 
 :global(html.dark) .iconActionBtn {
-  background: var(--msp-surface-2, #1a2540);
-  border-color: var(--msp-border, #2a3a55);
+  background: transparent;
+  border: none;
   color: var(--msp-muted, #8fa8c4);
 }
 
 :global(html.dark) .iconActionBtn:hover {
-  border-color: #5a8fd4;
+  border: none;
   color: #a8d4ff;
-  background: var(--msp-surface-3, #1e2d4a);
+  background: transparent;
 }
 
 :global(html.dark) .portalStatusActive {

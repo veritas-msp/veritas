@@ -2,12 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import React from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./CampaignStepModal.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCampaignDetailCopy } from "./campaignDetailI18n";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
+import { UiKitButton, UiKitModalNavSectionButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 
 function useFixedAnchorRect(open, anchorRef) {
   const [coords, setCoords] = useState(null);
@@ -105,6 +105,7 @@ export default function CampaignStepModal({
   const isAdd = mode === "add" || mode === "create";
 
   const [activeSection, setActiveSection] = useState("general");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection]);
   const [name, setName] = useState("");
   const [startLocal, setStartLocal] = useState("");
   const [endLocal, setEndLocal] = useState("");
@@ -269,7 +270,7 @@ export default function CampaignStepModal({
       case "general":
         return (
           <>
-            <div className={layout.sectionHead}>
+            <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
               <h3 className={layout.sectionTitle}>{stepModal.sectionGeneralTitle || stepModal.name || "Général"}</h3>
               <p className={layout.sectionDesc}>{stepModal.sectionGeneralDesc || ""}</p>
             </div>
@@ -296,7 +297,7 @@ export default function CampaignStepModal({
       case "schedule":
         return (
           <>
-            <div className={layout.sectionHead}>
+            <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
               <h3 className={layout.sectionTitle}>{stepModal.sectionScheduleTitle || stepModal.sectionSchedule || "Planning"}</h3>
               <p className={layout.sectionDesc}>{stepModal.sectionScheduleDesc || ""}</p>
             </div>
@@ -339,7 +340,7 @@ export default function CampaignStepModal({
       case "assignees":
         return (
           <>
-            <div className={layout.sectionHead}>
+            <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
               <h3 className={layout.sectionTitle}>{stepModal.sectionAssigneesTitle || stepModal.assignee || "Assignations"}</h3>
               <p className={layout.sectionDesc}>{stepModal.sectionAssigneesDesc || ""}</p>
             </div>
@@ -476,58 +477,80 @@ export default function CampaignStepModal({
               </p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={stepModal.cancel}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={stepModal.cancel}
+            icon="mdi:close"
+          />
         </header>
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={layout.body}>
-            <nav className={layout.nav} aria-label={stepModal.sectionsAria || "Sections phase"}>
-              {formSections.map(section => (
-                <button
-                  key={section.id}
-                  type="button"
-                  className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`}
-                  onClick={() => setActiveSection(section.id)}
-                  aria-current={activeSection === section.id ? "step" : undefined}
-                >
-                  <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
-                  <span className={layout.navItemText}>
-                    <span className={layout.navItemLabel}>{section.label}</span>
-                    <span className={layout.navItemHint}>{section.description}</span>
-                  </span>
-                  {sectionMeta[section.id] ? <span className={layout.navBadge}>✓</span> : null}
-                </button>
-              ))}
-            </nav>
-            <div className={layout.content}>{renderSectionContent()}</div>
+            <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={stepModal.sectionsAria || "Sections phase"}>
+              <nav
+                ref={navTrackRef}
+                className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
+              >
+                {navIndicator.ready ? (
+                  <div
+                    className={kit.finderNavIndicator}
+                    style={{
+                      transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                      height: navIndicator.height
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+                {formSections.map(section => (
+                  <UiKitModalNavSectionButton
+                    key={section.id}
+                    section={section}
+                    active={activeSection === section.id}
+                    badge={sectionMeta[section.id] ? "✓" : null}
+                    onSelect={() => setActiveSection(section.id)}
+                    finderItemClass={kit.finderItem}
+                    finderItemActiveClass={kit.finderItemActive}
+                    finderItemIconClass={kit.finderItemIcon}
+                    finderItemLabelClass={kit.finderItemLabel}
+                    navBadgeClass={layout.navBadge}
+                    navBadgeSlotClass={layout.navBadgeSlot}
+                  />
+                ))}
+              </nav>
+            </aside>
+            <div className={layout.content} key={activeSection}>
+              <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+            </div>
           </div>
 
           <footer className={layout.footer}>
             <span className={layout.footerHint}>{footerSummary}</span>
             <div className={layout.footerActions}>
-              <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
                 {stepModal.cancel}
-              </button>
-              <button type="submit" className={layout.primaryBtn} disabled={saving || !name.trim()}>
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={saving || !name.trim()}
+                icon={saving ? undefined : isAdd ? "mdi:check" : "mdi:content-save-outline"}
+              >
                 {saving ? (
                   <>
                     <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                     {stepModal.saving}
                   </>
                 ) : isAdd ? (
-                  <>
-                    <Icon icon="mdi:check" aria-hidden />
-                    {stepModal.add}
-                  </>
+                  stepModal.add
                 ) : (
-                  <>
-                    <Icon icon="mdi:content-save-outline" aria-hidden />
-                    {stepModal.save}
-                  </>
+                  stepModal.save
                 )}
-              </button>
+              </UiKitButton>
             </div>
           </footer>
         </form>

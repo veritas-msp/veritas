@@ -8,7 +8,6 @@ import { fetchTickets } from "../../api/tickets";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
 import contactStyles from "./ContactDetailPage.module.css";
-import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import ClientTicketBookmarks from "./ClientTicketBookmarks";
 import { useEntitySubscription } from "../../hooks/useEntitySubscription";
@@ -46,6 +45,7 @@ import {
   invalidateDetailCache,
   setDetailCache
 } from "../../utils/detailPageCache";
+import { getListCache, LIST_CACHE_NS } from "../../utils/listPageCache";
 import {
   normalizeContactOverviewTab,
   readContactDetailUi,
@@ -53,6 +53,62 @@ import {
 } from "../../utils/contactDetailUiState";
 import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
 import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
+
+function resolveInitialContactCache(contactId, contactData) {
+  if (!contactId) return null;
+  const cached = getDetailCache(DETAIL_CACHE_NS.contact, contactId);
+  if (cached?.contact && String(cached.contact.id) === String(contactId)) return cached;
+  // Navigation from list often passes the full contact row as contactData.
+  if (contactData?.id && String(contactData.id) === String(contactId) && (contactData.nom != null || contactData.prenom != null)) {
+    return {
+      contact: contactData,
+      client: contactData.client_name || contactData.client_id
+        ? {
+            id: contactData.client_id || null,
+            name: contactData.client_name || `Client #${contactData.client_id}`
+          }
+        : null,
+      formData: {
+        nom: contactData.nom || "",
+        prenom: contactData.prenom || "",
+        sexe: contactData.sexe || "",
+        email: contactData.email || "",
+        telephone: contactData.telephone || "",
+        poste: contactData.poste || "",
+        statut: contactData.statut || "actif",
+        client_id: contactData.client_id || null
+      },
+      tags: Array.isArray(contactData.tags) ? contactData.tags : []
+    };
+  }
+  const list = getListCache(LIST_CACHE_NS.contacts);
+  if (Array.isArray(list)) {
+    const row = list.find(item => String(item?.id) === String(contactId));
+    if (row) {
+      return {
+        contact: row,
+        client: row.client_name || row.client_id
+          ? {
+              id: row.client_id || null,
+              name: row.client_name || `Client #${row.client_id}`
+            }
+          : null,
+        formData: {
+          nom: row.nom || "",
+          prenom: row.prenom || "",
+          sexe: row.sexe || "",
+          email: row.email || "",
+          telephone: row.telephone || "",
+          poste: row.poste || "",
+          statut: row.statut || "actif",
+          client_id: row.client_id || null
+        },
+        tags: Array.isArray(row.tags) ? row.tags : []
+      };
+    }
+  }
+  return null;
+}
 
 function SidebarSectionHeader({
   title,
@@ -154,11 +210,12 @@ export default function ContactDetailPage({
     () => readContactDetailUi(resolvedContactId),
     [resolvedContactId]
   );
-  const initialCachedContact = useMemo(() => {
-    if (!resolvedContactId) return null;
-    const cached = getDetailCache(DETAIL_CACHE_NS.contact, resolvedContactId);
-    return cached?.contact && String(cached.contact.id) === String(resolvedContactId) ? cached : null;
-  }, [resolvedContactId]);
+  const initialCachedContact = useMemo(
+    () => resolveInitialContactCache(resolvedContactId, contactData),
+    // Snapshot once per mount for this contact id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resolvedContactId]
+  );
   const [contact, setContact] = useState(() => initialCachedContact?.contact || null);
   const [loading, setLoading] = useState(() => !initialCachedContact?.contact);
   const [error, setError] = useState(null);
@@ -1044,11 +1101,11 @@ export default function ContactDetailPage({
                             </button>
                           </span>)}
                         <div className={styles.heroTagAddWrap}>
-                          {canEditContact ? <SmartTooltip content={copy.addTag}>
+                          {canEditContact ? 
                             <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
                               <FaPlus />
                             </button>
-                          </SmartTooltip> : null}
+                           : null}
                         </div>
                       </>}
                   </div>
@@ -1166,7 +1223,7 @@ export default function ContactDetailPage({
                             }
                           }}>
                                       <td>#{ticket.ticket_number || "-"}</td>
-                                      <td className={styles.activityTitleCell} title={ticket.title || undefined}>
+                                      <td className={styles.activityTitleCell}>
                                         {ticket.title || "-"}
                                       </td>
                                       <td>
@@ -1225,7 +1282,7 @@ export default function ContactDetailPage({
                               }
                             }}>
                                         <td>#{ticket.ticket_number || "-"}</td>
-                                        <td className={styles.activityTitleCell} title={getPrestationCategoryLabel(ticket.category, locale)}>
+                                        <td className={styles.activityTitleCell}>
                                           {getPrestationCategoryLabel(ticket.category, locale)}
                                         </td>
                                         <td>
@@ -1280,11 +1337,11 @@ export default function ContactDetailPage({
                   <h2 className={styles.panelTitle}>{copy.sharedAccessTitle}</h2>
                 </div>
                 {contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <div className={styles.panelToolbar}>
-                  <SmartTooltip content={copy.shareAccess}>
+                  
                     <button type="button" className={`${pageLayout.primaryBtn} ${pageLayout.primaryBtnIconOnly}`} onClick={() => setShareAccessCreateOpen(true)} aria-label={copy.shareAccess} disabled={isCommunity}>
                       <FaPlus />
                     </button>
-                  </SmartTooltip>
+                  
                 </div> : null}
               </div>
               <div className={styles.panelBody}>
@@ -1442,21 +1499,26 @@ export default function ContactDetailPage({
                   onToggle={() => setCompaniesSectionExpanded(prev => !prev)}
                   controlsId="contact-sidebar-companies"
                   panelStyles={styles}
-                  actions={canEditContact ? <SmartTooltip content={copy.addCompany}>
+                  actions={canEditContact ? 
                       <button type="button" className={styles.editInfoButton} onClick={e => {
                   e.stopPropagation();
                   openCompanyModal();
                 }} disabled={membershipBusy} aria-label={copy.addCompany}>
                         <FaPlus />
                       </button>
-                    </SmartTooltip> : null}
+                     : null}
                 />
                 {companiesSectionExpanded ? <div className={`${styles.sidebarBody} ${contactStyles.sidebarCommBodyWrap}`} id="contact-sidebar-companies">
                   {contactCompanies.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>-</span> : <ul className={styles.sidebarContactsList}>
-                      {contactCompanies.map(company => <SmartTooltip as="li" key={company.id} className={styles.sidebarContactItem} onClick={() => openEnterprise({
-                  id: company.id,
-                  name: company.name
-                })} content={copy.viewEnterprise}>
+                      {contactCompanies.map(company => (
+                        <li
+                          key={company.id}
+                          className={styles.sidebarContactItem}
+                          onClick={() => openEnterprise({
+                            id: company.id,
+                            name: company.name
+                          })}
+                        >
                           <div className={styles.sidebarContactAvatar} aria-hidden>
                             <Icon icon="mdi:domain" />
                           </div>
@@ -1467,9 +1529,7 @@ export default function ContactDetailPage({
                                 {company.is_primary ? <span className={styles.sitePreviewPrimary}>{copy.primaryBadge}</span> : null}
                               </div>
                               {canEditContact ? <div className={styles.sidebarContactActions}>
-                                  <button type="button" className={styles.sidebarCopyButton} disabled={membershipBusy} title={interpolate(copy.removeCompanyAria || "{name}", {
-                            name: company.name
-                          })} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
+                                  <button type="button" className={styles.sidebarCopyButton} disabled={membershipBusy} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
                             name: company.name
                           })} onClick={e => {
                             e.stopPropagation();
@@ -1490,7 +1550,7 @@ export default function ContactDetailPage({
                                   {linkedIds.map(siteId => {
                                 const site = siteById.get(siteId);
                                 const label = site ? getSiteDisplayName(site) : siteId;
-                                return <span key={siteId} className={styles.sidebarContactSiteChip} title={label}>
+                                return <span key={siteId} className={styles.sidebarContactSiteChip}>
                                       <Icon icon="mdi:map-marker-outline" aria-hidden />
                                       <span>{label}</span>
                                       {primaryIds.has(siteId) ? <span className={styles.sitePreviewPrimary}>{copy.sitePrimaryBadge}</span> : null}
@@ -1499,7 +1559,8 @@ export default function ContactDetailPage({
                                 </div>;
                             })()}
                           </div>
-                        </SmartTooltip>)}
+                        </li>
+                      ))}
                     </ul>}
                 </div> : null}
               </section>
@@ -1512,14 +1573,14 @@ export default function ContactDetailPage({
                   onToggle={() => setEmailSectionExpanded(prev => !prev)}
                   controlsId="contact-sidebar-emails"
                   panelStyles={styles}
-                  actions={canEditContact ? <SmartTooltip content={copy.addEmail}>
+                  actions={canEditContact ? 
                       <button type="button" className={styles.editInfoButton} onClick={e => {
                   e.stopPropagation();
                   handleOpenAddCommunication("email");
                 }} aria-label={copy.addEmail}>
                         <FaPlus />
                       </button>
-                    </SmartTooltip> : null}
+                     : null}
                 />
                 {emailSectionExpanded ? <div className={`${styles.sidebarBody} ${contactStyles.sidebarCommBodyWrap}`} id="contact-sidebar-emails">
                     {emailCommunications.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>{copy.noEmails}</span> : <ul className={contactStyles.sidebarCommList}>
@@ -1530,11 +1591,9 @@ export default function ContactDetailPage({
                               {href ? <a href={href} className={contactStyles.coordValueLink} onClick={e => e.stopPropagation()}>
                                   {entry.value}
                                 </a> : <span className={contactStyles.coordValue}>{entry.value}</span>}
-                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
+                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} aria-label={copy.coordFavorite} /> : null}
                             </span>
-                            <SmartTooltip content={interpolate(copy.copyCoord, {
-                        label: copy.sectionEmails.toLowerCase()
-                      })}>
+                            
                               <button type="button" className={styles.sidebarCopyButton} onClick={e => {
                           e.stopPropagation();
                           copyCoordValue(entry.value, copy.sectionEmails);
@@ -1543,7 +1602,7 @@ export default function ContactDetailPage({
                         })}>
                                 <Icon icon="mdi:content-copy" aria-hidden />
                               </button>
-                            </SmartTooltip>
+                            
                           </li>;
                   })}
                       </ul>}
@@ -1558,14 +1617,14 @@ export default function ContactDetailPage({
                   onToggle={() => setPhoneSectionExpanded(prev => !prev)}
                   controlsId="contact-sidebar-phones"
                   panelStyles={styles}
-                  actions={canEditContact ? <SmartTooltip content={copy.addPhone}>
+                  actions={canEditContact ? 
                       <button type="button" className={styles.editInfoButton} onClick={e => {
                   e.stopPropagation();
                   handleOpenAddCommunication("telephone");
                 }} aria-label={copy.addPhone}>
                         <FaPlus />
                       </button>
-                    </SmartTooltip> : null}
+                     : null}
                 />
                 {phoneSectionExpanded ? <div className={`${styles.sidebarBody} ${contactStyles.sidebarCommBodyWrap}`} id="contact-sidebar-phones">
                     {phoneCommunications.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>{copy.noPhones}</span> : <ul className={contactStyles.sidebarCommList}>
@@ -1576,11 +1635,9 @@ export default function ContactDetailPage({
                               {href ? <a href={href} className={contactStyles.coordValueLink} onClick={e => e.stopPropagation()}>
                                   {entry.value}
                                 </a> : <span className={contactStyles.coordValue}>{entry.value}</span>}
-                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
+                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} aria-label={copy.coordFavorite} /> : null}
                             </span>
-                            <SmartTooltip content={interpolate(copy.copyCoord, {
-                        label: copy.sectionPhones.toLowerCase()
-                      })}>
+                            
                               <button type="button" className={styles.sidebarCopyButton} onClick={e => {
                           e.stopPropagation();
                           copyCoordValue(entry.value, copy.sectionPhones);
@@ -1589,7 +1646,7 @@ export default function ContactDetailPage({
                         })}>
                                 <Icon icon="mdi:content-copy" aria-hidden />
                               </button>
-                            </SmartTooltip>
+                            
                           </li>;
                   })}
                       </ul>}

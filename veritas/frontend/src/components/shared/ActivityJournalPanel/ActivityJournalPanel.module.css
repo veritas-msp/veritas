@@ -16,12 +16,12 @@
 .logsPanelBodyEmbedded {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--crm-section-toolbar-gap, 0.65rem);
   min-height: 0;
   flex: 1 1 0;
   height: 100%;
   overflow: hidden;
-  padding: 0.55rem 0.75rem 0.75rem;
+  padding: var(--crm-section-content-pad, 0.55rem 0.75rem 0.75rem);
   box-sizing: border-box;
 }
 
@@ -29,6 +29,8 @@
   flex: 0 0 auto;
   padding: 0 !important;
   width: 100%;
+  min-height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
 }
 
 .tableStack {
@@ -104,20 +106,28 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
+  width: var(--msp-btn-square, 28px);
+  height: var(--msp-btn-square, 28px);
+  min-width: var(--msp-btn-square, 28px);
+  min-height: var(--msp-btn-square, 28px);
   padding: 0;
   border: 1px solid var(--msp-border, #dde3ed);
-  border-radius: 7px;
+  border-radius: 999px;
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
   font-size: 0.85rem;
   line-height: 0;
   flex-shrink: 0;
-  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  transition:
+    border-color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    background-color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    transform var(--msp-duration-fast, 0.15s) var(--msp-ease-spring, ease);
+}
+
+.columnsPillBtn:active:not(:disabled) {
+  transform: scale(0.9);
 }
 
 .columnsPillBtn:hover {
@@ -209,20 +219,28 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
+  width: var(--msp-btn-square, 28px);
+  height: var(--msp-btn-square, 28px);
+  min-width: var(--msp-btn-square, 28px);
+  min-height: var(--msp-btn-square, 28px);
   padding: 0;
   border: 1px solid rgba(220, 38, 38, 0.28);
-  border-radius: 7px;
+  border-radius: 999px;
   background: rgba(254, 242, 242, 0.95);
   color: #b91c1c;
   font-size: 0.85rem;
   line-height: 0;
   cursor: pointer;
   flex-shrink: 0;
-  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  transition:
+    border-color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    background-color var(--msp-duration-fast, 0.15s) var(--msp-ease, ease),
+    transform var(--msp-duration-fast, 0.15s) var(--msp-ease-spring, ease);
+}
+
+.purgeBtn:active:not(:disabled) {
+  transform: scale(0.9);
 }
 
 .purgeBtn:hover:not(:disabled) {
@@ -361,6 +379,7 @@
 
 .table {
   width: 100%;
+  table-layout: fixed;
 }
 
 .sortableTh {
@@ -422,23 +441,50 @@
   border-bottom-color: var(--msp-border, #2a3a55);
 }
 
-.table th:nth-child(2),
-.table td:nth-child(2) {
-  width: 22%;
+.logsUiKitTable {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
-.table th:nth-child(3),
-.table td:nth-child(3) {
-  width: 11rem;
+.logsUiKitTable :global([class*="tableShell"]) {
+  height: 100%;
+  max-height: none;
+}
+
+.colAction {
+  width: 9.5rem;
   white-space: nowrap;
 }
 
-.actionInline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+.colField {
+  width: auto;
+}
+
+.colUser {
+  width: 7.5rem;
+  white-space: nowrap;
+}
+
+.colDate {
+  width: 9.75rem;
+  white-space: nowrap;
+}
+
+.actionCell,
+.userCell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 0.8125rem;
-  font-weight: 600;
+}
+
+.fieldCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: var(--msp-text, #0f1c2e);
 }
 
 .dateCell {

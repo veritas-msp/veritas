@@ -1,5 +1,17 @@
+/* —— Largeurs colonnes prestataires —— */
+.colStatus {
+  width: 3.5rem;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.statusDotOnly {
+  display: inline-block;
+}
+
 .colName {
-  min-width: 10rem;
+  width: auto;
+  min-width: 0;
 }
 
 .colCheckbox {
@@ -7,25 +19,32 @@
   text-align: center;
 }
 
-.colType,
-.colContact,
-.colEmail,
-.colPhone,
-.colEnterprises {
-  max-width: 12rem;
+.colType {
+  width: 7.5rem;
 }
 
-.colStatus {
-  width: auto;
-  white-space: nowrap;
+.colContact {
+  width: 8.5rem;
+}
+
+.colEmail {
+  width: 11rem;
+}
+
+.colPhone {
+  width: 8.5rem;
+}
+
+.colEnterprises {
+  width: 7.5rem;
 }
 
 .colActions {
-  width: 9.5rem;
+  width: 8.5rem;
 }
 
 .colFavorite {
-  width: 2.75rem;
+  width: 3.75rem;
   text-align: center;
 }
 
@@ -36,26 +55,41 @@
 .cardActions {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.15rem;
 }
 
 .iconActionBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
-  color: var(--msp-text-muted, #64748b);
+  color: var(--msp-muted, #5c6b82);
   cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 0;
   text-decoration: none;
+  box-sizing: border-box;
+  transition: color 0.12s ease;
 }
 
-.iconActionBtn:hover {
-  background: rgba(43, 95, 171, 0.1);
-  color: var(--msp-primary, #2b5fab);
+.iconActionBtn:hover,
+a.iconActionBtn:hover {
+  color: var(--msp-accent, #2b5fab);
+  background: transparent;
+}
+
+:global(html.dark) .iconActionBtn {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .iconActionBtn:hover {
+  color: #a8d4ff;
+  background: transparent;
 }
 
 .cellWithAction,
@@ -89,7 +123,7 @@
   width: 1.5rem;
   height: 1.5rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   color: var(--msp-text-muted, #64748b);
   cursor: pointer;
@@ -106,5 +140,5 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 12rem;
+  max-width: 100%;
 }

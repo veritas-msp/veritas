@@ -7,6 +7,8 @@ import { createLocaleGetter } from "../../i18n/translate";
 import { Page, Card, Btn, Switch, NumberStepper } from "./AdminUi";
 import ui from "./AdminUi.module.css";
 import styles from "./AdminAi.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const DEFAULT_LIMITS = {
   autoPriority: 100,
@@ -375,12 +377,10 @@ export default function AdminAi({
     ["enterpriseSummary", copy.featureEnterpriseSummary]
   ];
 
+  const heroCopy = getAdminPanelCopy(locale).items.ai;
   return <Page>
-      <div className={styles.toolbar}>
-        <div>
-          <h2 className={styles.pageTitle}>{copy.title}</h2>
-          <p className={styles.pageDesc}>{copy.description}</p>
-        </div>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:robot-outline" />
+      <div className={styles.toolbar} style={{ justifyContent: "flex-end" }}>
         <div className={styles.toolbarActions}>
           <Btn icon="mdi:refresh" variant="secondary" onClick={load} disabled={loading}>
             {copy.refresh}

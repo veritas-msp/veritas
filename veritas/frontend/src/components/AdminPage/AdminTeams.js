@@ -11,6 +11,9 @@ import MultiSuggestPicker from "./MultiSuggestPicker";
 import { buildDefaultTeamDraft } from "./adminOrgFormConstants";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 const MODAL_WIDTH = "520px";
 function getInitials(user) {
   const base = (user?.username || user?.email || "?").trim();
@@ -19,7 +22,9 @@ function getInitials(user) {
   return base.slice(0, 2).toUpperCase();
 }
 export default function AdminTeams() {
+  const locale = useAppLocale();
   const copy = useAdminPageCopy("teams");
+  const heroCopy = getAdminPanelCopy(locale).items.teams;
   const adminCopy = useAdminCommonCopy();
   const [teams, setTeams] = useState([]);
   const [agents, setAgents] = useState([]);
@@ -211,6 +216,7 @@ export default function AdminTeams() {
     }
   };
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:account-multiple-outline" />
       <div className={s.teamsLayout}>
         <Card title={copy.title} description={copy.description} fill fillNoScroll action={<Btn icon="mdi:plus" onClick={openCreateTeam}>
               {copy.newTeam}

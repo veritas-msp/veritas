@@ -630,7 +630,21 @@ export default function AntispamConfigModal({
         <p className={formStyles.sectionDesc}>{copy.overview.description}</p>
       </div>
 
-      {registeredSolutions.length === 0 ? <div className={avStyles.emptyState}>{copy.overview.empty}</div> : <div className={avStyles.solutionList}>
+      {registeredSolutions.length === 0 ? (
+        <div className={avStyles.emptyState}>
+          <Icon icon="mdi:email-plus-outline" className={avStyles.emptyStateIcon} aria-hidden />
+          <p className={avStyles.emptyStateText}>{copy.overview.empty}</p>
+          <p className={avStyles.emptyStateHint}>{copy.overview.emptyHint || copy.overview.description}</p>
+          <button
+            type="button"
+            className={avStyles.emptyStateBtn}
+            onClick={() => setActiveSection("solution")}
+          >
+            <Icon icon="mdi:plus" aria-hidden />
+            {copy.overview.emptyAddCta || "Ajouter la première solution"}
+          </button>
+        </div>
+      ) : <div className={avStyles.solutionList}>
           {registeredSolutions.map((solution, index) => {
         const summary = formatAntispamSolutionSummary(solution);
         const solutionKey = `${solution.customerId || solution.id || index}-${solution.mappingMode || "dedicated"}-${solution.mailinblackTenantId || "dedicated"}`;

@@ -1,10 +1,20 @@
 import React from "react";
-import { Icon } from "@iconify/react";
 import RoleTagsSelect from "./RoleTagsSelect";
 import { normalizeStorageRoles } from "./constants/storageRoleOptions";
 import { SERVER_CATALOG } from "./constants/equipmentCatalog";
 import { SERVER_TYPE_OPTIONS, STORAGE_TYPE_OPTIONS, FIREWALL_TYPE_OPTIONS, ROUTEUR_TYPE_OPTIONS, ALIMENTATION_TYPE_OPTIONS, TOIP_TYPE_OPTIONS, getFirewallFormProfile, getRouterFormProfile, getServerFormProfile, getStorageFormProfile, applyFirewallTypeChange, applyRouteurTypeChange, applyServerTypeChange, applyStorageTypeChange, applyAlimentationTypeChange, getAlimentationFormProfile, applyToipTypeChange, applyComputerTypeChange, getToipFormProfile, isToipVoipSectionVisible, normalizeServerType, normalizeStorageType, normalizeFirewallType, normalizeRouteurType, resolveToipDeploymentType, EQUIPMENT_SERIAL_PLACEHOLDER } from "./equipmentFormConfig";
 import ComputerTypePicker from "./ComputerTypePicker";
+import EquipmentModuleTypeTile from "./EquipmentModuleTypeTile";
+import ServerRolePicker from "./ServerRolePicker";
+import {
+  SERVER_TYPE_ANIMATED,
+  FIREWALL_TYPE_ANIMATED,
+  STORAGE_TYPE_ANIMATED,
+  ALIMENTATION_TYPE_ANIMATED,
+  ROUTEUR_TYPE_ANIMATED,
+  TOIP_TYPE_ANIMATED,
+  MANAGEABLE_ANIMATED,
+} from "./EquipmentHoverIcon";
 import { getEquipmentFormSectionsI18n, localizeTypeOptions, getLocalizedEquipmentNamePlaceholder } from "./equipmentModalsI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import InternetConnectionFields from "./InternetConnectionFields";
@@ -24,6 +34,7 @@ import ServerRemoteAccessFields from "./ServerRemoteAccessFields";
 import StorageDiskBayPicker from "./StorageDiskBayPicker";
 import CapacityInput from "./CapacityInput";
 import ServerSpecFields from "./ServerSpecFields";
+import OsSystemSelect from "./OsSystemSelect";
 import VlanChipsInput from "./VlanChipsInput";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
@@ -111,16 +122,10 @@ export default function EquipmentFormSectionContent({
     yes: locale === "fr" ? "Oui" : "Yes"
   };
   const sectionIncomplete = isAddMode && typeof isRequiredSectionIncomplete === "function" && isRequiredSectionIncomplete(activeSection);
-  const sectionHead = <div className={styles.sectionHead}>
-      <h3 className={`${styles.sectionTitle} ${sectionIncomplete ? styles.navItemLabelRequired : ""}`}>
-        {activeSection === "extra" ? extraCopy.label : section?.label}
-      </h3>
-      <p className={styles.sectionDesc}>{activeSection === "extra" ? extraCopy.description : section?.description}</p>
-    </div>;
+  const renderSectionFields = () => {
   switch (activeSection) {
     case "identity":
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             <div className={`${styles.field} ${styles.fieldFull}`}>
               <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="equipment-form-name">
@@ -157,11 +162,18 @@ export default function EquipmentFormSectionContent({
               label,
               icon,
               description
-            }) => <button key={value} type="button" className={`${styles.moduleTile} ${(formData.firewallType ?? "materiel") === value ? styles.moduleTileActive : ""}`} onClick={() => setFormData(prev => applyFirewallTypeChange(prev, value))} aria-pressed={(formData.firewallType ?? "materiel") === value} title={description}>
-                    {(formData.firewallType ?? "materiel") === value && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+            }) => (
+                  <EquipmentModuleTypeTile
+                    key={value}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={FIREWALL_TYPE_ANIMATED[value]}
+                    description={description}
+                    selected={(formData.firewallType ?? "materiel") === value}
+                    onSelect={next => setFormData(prev => applyFirewallTypeChange(prev, next))}
+                  />
+                ))}
               </div>
             </div>}
           {apiType === "Servers" && <div className={`${styles.field} ${styles.fieldFull}`} style={{
@@ -176,11 +188,18 @@ export default function EquipmentFormSectionContent({
               label,
               icon,
               description
-            }) => <button key={value} type="button" className={`${styles.moduleTile} ${normalizedServerType === value ? styles.moduleTileActive : ""}`} onClick={() => setFormData(prev => applyServerTypeChange(prev, value))} aria-pressed={normalizedServerType === value} title={description}>
-                    {normalizedServerType === value && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+            }) => (
+                  <EquipmentModuleTypeTile
+                    key={value}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={SERVER_TYPE_ANIMATED[value]}
+                    description={description}
+                    selected={normalizedServerType === value}
+                    onSelect={next => setFormData(prev => applyServerTypeChange(prev, next))}
+                  />
+                ))}
               </div>
             </div>}
           {apiType === "NAS" && <div className={`${styles.field} ${styles.fieldFull}`} style={{
@@ -195,11 +214,18 @@ export default function EquipmentFormSectionContent({
               label,
               icon,
               description
-            }) => <button key={value} type="button" className={`${styles.moduleTile} ${normalizedStorageType === value ? styles.moduleTileActive : ""}`} onClick={() => setFormData(prev => applyStorageTypeChange(prev, value))} aria-pressed={normalizedStorageType === value} title={description}>
-                    {normalizedStorageType === value && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+            }) => (
+                  <EquipmentModuleTypeTile
+                    key={value}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={STORAGE_TYPE_ANIMATED[value]}
+                    description={description}
+                    selected={normalizedStorageType === value}
+                    onSelect={next => setFormData(prev => applyStorageTypeChange(prev, next))}
+                  />
+                ))}
               </div>
             </div>}
           {apiType === "Alimentation" && <div className={`${styles.field} ${styles.fieldFull}`} style={{
@@ -214,11 +240,18 @@ export default function EquipmentFormSectionContent({
               label,
               icon,
               description
-            }) => <button key={value} type="button" className={`${styles.moduleTile} ${(formData.alimentationType ?? "Onduleur") === value ? styles.moduleTileActive : ""}`} onClick={() => setFormData(prev => applyAlimentationTypeChange(prev, value))} aria-pressed={(formData.alimentationType ?? "UPS") === value} title={description}>
-                    {(formData.alimentationType ?? "UPS") === value && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+            }) => (
+                  <EquipmentModuleTypeTile
+                    key={value}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={ALIMENTATION_TYPE_ANIMATED[value]}
+                    description={description}
+                    selected={(formData.alimentationType ?? "Onduleur") === value}
+                    onSelect={next => setFormData(prev => applyAlimentationTypeChange(prev, next))}
+                  />
+                ))}
               </div>
             </div>}
           {apiType === "Routeur" && <div className={`${styles.field} ${styles.fieldFull}`} style={{
@@ -231,11 +264,18 @@ export default function EquipmentFormSectionContent({
               label,
               icon,
               description
-            }) => <button key={value} type="button" className={`${styles.moduleTile} ${(formData.routeurType ?? "Routeur") === value ? styles.moduleTileActive : ""}`} onClick={() => setFormData(prev => applyRouteurTypeChange(prev, value))} aria-pressed={(formData.routeurType ?? "Routeur") === value} title={description}>
-                    {(formData.routeurType ?? "Routeur") === value && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+            }) => (
+                  <EquipmentModuleTypeTile
+                    key={value}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={ROUTEUR_TYPE_ANIMATED[value]}
+                    description={description}
+                    selected={(formData.routeurType ?? "Routeur") === value}
+                    onSelect={next => setFormData(prev => applyRouteurTypeChange(prev, next))}
+                  />
+                ))}
               </div>
             </div>}
           {apiType === "TOIP" && <div className={`${styles.field} ${styles.fieldFull}`} style={{
@@ -250,33 +290,23 @@ export default function EquipmentFormSectionContent({
               label,
               icon,
               description
-            }) => <button key={value} type="button" className={`${styles.moduleTile} ${formData.toipType === value ? styles.moduleTileActive : ""}`} onClick={() => setFormData(prev => applyToipTypeChange(prev, value))} aria-pressed={formData.toipType === value} title={description}>
-                    {formData.toipType === value && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+            }) => (
+                  <EquipmentModuleTypeTile
+                    key={value}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={TOIP_TYPE_ANIMATED[value]}
+                    description={description}
+                    selected={formData.toipType === value}
+                    onSelect={next => setFormData(prev => applyToipTypeChange(prev, next))}
+                  />
+                ))}
               </div>
             </div>}
         </>;
-    case "status":
-      return <>
-          {sectionHead}
-          <div className={styles.modulesGrid}>
-            <button type="button" className={`${styles.moduleTile} ${formData.is_active !== false ? styles.moduleTileActive : ""}`} onClick={() => update("is_active", true)} aria-pressed={formData.is_active !== false}>
-              {formData.is_active !== false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-              <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-              <span className={styles.moduleTileLabel}>{f.active || "Actif"}</span>
-            </button>
-            <button type="button" className={`${styles.moduleTile} ${formData.is_active === false ? styles.moduleTileActive : ""}`} onClick={() => update("is_active", false)} aria-pressed={formData.is_active === false}>
-              {formData.is_active === false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-              <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-              <span className={styles.moduleTileLabel}>{f.inactive || "Inactif"}</span>
-            </button>
-          </div>
-        </>;
     case "common":
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             <div className={styles.field}>
               <label className={styles.label} htmlFor="equipment-form-purchase-date">
@@ -306,7 +336,6 @@ export default function EquipmentFormSectionContent({
         </>;
     case "network":
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             {apiType !== "Internet" && <div className={styles.field}>
                 <label className={styles.label} htmlFor="equipment-form-ip">
@@ -368,7 +397,6 @@ export default function EquipmentFormSectionContent({
       if (apiType === "TOIP" && !toipProfile?.showManagement) return null;
       if (apiType !== "Switch" && apiType !== "Alimentation" && apiType !== "TOIP") return null;
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             <div className={`${styles.field} ${styles.fieldFull}`}>
               <span className={styles.label}>
@@ -387,18 +415,22 @@ export default function EquipmentFormSectionContent({
                 value,
                 label,
                 icon
-              }) => <button key={String(value)} type="button" className={`${styles.moduleTile} ${!!formData.manageable === value ? styles.moduleTileActive : ""}`} onClick={() => {
-                setFormData(prev => ({
-                  ...prev,
-                  manageable: value,
-                  ...(value ? {} : {
-                    adminUrl: ""
-                  })
-                }));
-              }}>
-                    <Icon icon={icon} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{label}</span>
-                  </button>)}
+              }) => (
+                  <EquipmentModuleTypeTile
+                    key={String(value)}
+                    value={value}
+                    label={label}
+                    iconify={icon}
+                    Animated={MANAGEABLE_ANIMATED[String(value)]}
+                    selected={!!formData.manageable === value}
+                    showCheck={false}
+                    onSelect={next => setFormData(prev => ({
+                      ...prev,
+                      manageable: next,
+                      ...(next ? {} : { adminUrl: "" })
+                    }))}
+                  />
+                ))}
               </div>
               <p className={styles.hint}>
                 {apiType === "Alimentation" ? alimentationProfile?.managementHint : apiType === "TOIP" ? toipProfile?.managementHint : f.switchManageableHint}
@@ -414,7 +446,6 @@ export default function EquipmentFormSectionContent({
         </>;
     case "notes":
       return <>
-          {sectionHead}
           {apiType === "Firewalls" ? <div className={`${styles.field} ${styles.fieldFull}`}>
               <label className={styles.label} htmlFor="equipment-form-firewall-notes">
                 {f.notes}
@@ -491,32 +522,26 @@ export default function EquipmentFormSectionContent({
         </>;
     case "internetType":
       return <>
-          {sectionHead}
           <InternetTypePicker value={formData.internetType ?? ""} onChange={nextType => update("internetType", nextType)} formCopy={formCopy} />
         </>;
     case "internetLink":
       return <>
-          {sectionHead}
           <InternetConnectionFields values={formData} onChange={setFormData} idPrefix="equipment-form-internet" section="internetLink" useFormStyles formCopy={formCopy} />
         </>;
     case "internetNetwork":
       return <>
-          {sectionHead}
           <InternetConnectionFields values={formData} onChange={setFormData} idPrefix="equipment-form-internet" section="internetNetwork" useFormStyles formCopy={formCopy} />
         </>;
     case "internetContract":
       return <>
-          {sectionHead}
           <InternetConnectionFields values={formData} onChange={setFormData} idPrefix="equipment-form-internet" section="internetContract" useFormStyles formCopy={formCopy} />
         </>;
     case "internetNotes":
       return <>
-          {sectionHead}
           <InternetConnectionFields values={formData} onChange={setFormData} idPrefix="equipment-form-internet" section="internetNotes" useFormStyles formCopy={formCopy} />
         </>;
     case "hardware":
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             {apiType === "Firewalls" && brandModelCatalog ? <FirewallBrandPicker key={formData.firewallType ?? "materiel"} catalog={brandModelCatalog} manufacturer={formData.manufacturer} model={formData.model} onManufacturerChange={value => updateBrandModel(value)} onManufacturerInputChange={value => update("manufacturer", value)} onModelChange={value => update("model", value)} required={isAddMode} showModel={firewallProfile?.showModel !== false} {...brandPickerLabels} modelLabel={firewallProfile?.modelLabel ?? f.model} modelPlaceholder={firewallProfile?.modelPlaceholder} /> : apiType === "Routeur" && brandModelCatalog ? <RouterBrandPicker key={formData.routeurType ?? "Routeur"} catalog={brandModelCatalog} manufacturer={formData.manufacturer} model={formData.model} onManufacturerChange={value => updateBrandModel(value)} onManufacturerInputChange={value => update("manufacturer", value)} onModelChange={value => update("model", value)} required={isAddMode} showModel={routerProfile?.showModel !== false} {...brandPickerLabels} modelLabel={routerProfile?.modelLabel ?? f.model} modelPlaceholder={routerProfile?.modelPlaceholder} /> : apiType === "Switch" && brandModelCatalog ? <SwitchBrandPicker catalog={brandModelCatalog} manufacturer={formData.manufacturer} model={formData.model} onManufacturerChange={value => updateBrandModel(value)} onManufacturerInputChange={value => update("manufacturer", value)} onModelChange={value => update("model", value)} required={isAddMode} {...brandPickerLabels} modelLabel={f.model} modelPlaceholder={f.switchModelPlaceholder} /> : apiType === "BorneWifi" && brandModelCatalog ? <WifiApBrandPicker catalog={brandModelCatalog} manufacturer={formData.manufacturer} model={formData.model} onManufacturerChange={value => updateBrandModel(value)} onManufacturerInputChange={value => update("manufacturer", value)} onModelChange={value => update("model", value)} required={isAddMode} {...brandPickerLabels} modelLabel={f.model} modelPlaceholder={f.wifiModelPlaceholder} /> : apiType === "Alimentation" && brandModelCatalog ? <AlimentationBrandPicker key={formData.alimentationType ?? "UPS"} catalog={brandModelCatalog} manufacturer={formData.manufacturer} model={formData.model} onManufacturerChange={value => updateBrandModel(value)} onManufacturerInputChange={value => update("manufacturer", value)} onModelChange={value => update("model", value)} required={isAddMode} {...brandPickerLabels} modelLabel={f.model} modelPlaceholder={alimentationProfile?.modelPlaceholder || "Smart-UPS 1500"} /> : apiType === "TOIP" && brandModelCatalog ? <ToipBrandPicker key={formData.toipType || "toip"} catalog={brandModelCatalog} manufacturer={formData.manufacturer} model={formData.model} onManufacturerChange={value => updateBrandModel(value)} onManufacturerInputChange={value => update("manufacturer", value)} onModelChange={value => update("model", value)} required={isAddMode} {...brandPickerLabels} modelLabel={f.model} modelPlaceholder={toipProfile?.modelPlaceholder || "P-Series"} /> : apiType === "TOIP" && !brandModelCatalog ? <>
                 <div className={styles.field}>
@@ -627,7 +652,6 @@ export default function EquipmentFormSectionContent({
         return null;
       }
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             {toipProfile?.showExtensions && <div className={styles.field}>
                 <label className={styles.label} htmlFor="equipment-form-toip-extensions">
@@ -646,7 +670,6 @@ export default function EquipmentFormSectionContent({
     case "power":
       if (apiType !== "Alimentation") return null;
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             {alimentationProfile?.showCapaciteVA && <div className={styles.field}>
                 <label className={styles.label} htmlFor="equipment-form-capacite-va">
@@ -677,7 +700,6 @@ export default function EquipmentFormSectionContent({
     case "wifi":
       if (apiType !== "BorneWifi") return null;
       return <>
-          {sectionHead}
           <WifiApSsidEditor clientSsids={formData.clientSsids} assignedSsidIds={formData.assignedSsidIds} onClientSsidsChange={nextCatalog => update("clientSsids", nextCatalog)} onAssignedSsidIdsChange={nextAssigned => update("assignedSsidIds", nextAssigned)} idPrefix="equipment-form-wifi-ssid" />
         </>;
     case "ha": {
@@ -690,7 +712,6 @@ export default function EquipmentFormSectionContent({
       const selectLabel = isServerHa ? f.haSelectServer || f.haSelectFirewall : isStorageHa ? f.haSelectSan || f.haSelectFirewall : f.haSelectFirewall;
       const emptyHint = isServerHa ? f.haNoServerPartnerHint || f.haNoPartnerHint : isStorageHa ? f.haNoSanPartnerHint || f.haNoPartnerHint : f.haNoPartnerHint;
       return <>
-          {sectionHead}
           <label className={styles.slaToggle} htmlFor="modeHA">
             <span className={styles.slaToggleLabel}>{f.haMode}</span>
             <span className={styles.switchWrap}>
@@ -750,14 +771,12 @@ export default function EquipmentFormSectionContent({
     }
     case "licences":
       return <>
-          {sectionHead}
           {apiType === "Firewalls" ? <FirewallLicencesEditor licences={formData.licences} onChange={nextLicenses => update("licences", nextLicenses)} idPrefix="equipment-form-licence" /> : null}
         </>;
     case "maintenance":
       return null;
     case "system":
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             {apiType === "Servers" && serverProfile?.showHypervisor && <div className={styles.field}>
                 <label className={styles.label} htmlFor="equipment-form-hypervisor">
@@ -792,19 +811,32 @@ export default function EquipmentFormSectionContent({
                     {f.hostServerHint}
                   </p> : null}
               </div>}
-            <div className={styles.field}>
-              <label className={styles.label}>{f.osSystem}</label>
-              <select className={styles.input} value={formData.systeme ?? ""} onChange={e => update("systeme", e.target.value)}>
-                <option value="">{f.dashOption}</option>
-                {optionsCopy.osOptionGroups?.map(group => <optgroup key={group.label} label={group.label}>
-                    {group.options.map(os => <option key={os} value={os}>
-                        {os}
-                      </option>)}
-                  </optgroup>)}
-                {formData.systeme && !(optionsCopy.osOptionGroups || []).some(group => group.options.includes(formData.systeme)) && <option value={formData.systeme}>{formData.systeme} {f.currentValueSuffix}</option>}
-              </select>
+            <div className={`${styles.field} ${styles.fieldFull}`}>
+              <label className={styles.label} htmlFor="equipment-form-systeme" id="equipment-form-systeme-label">
+                {f.osSystem}
+              </label>
+              <OsSystemSelect
+                id="equipment-form-systeme"
+                value={formData.systeme ?? ""}
+                onChange={value => update("systeme", value)}
+                groups={optionsCopy.osOptionGroups || []}
+                emptyLabel={f.dashOption}
+                currentValueSuffix={f.currentValueSuffix}
+              />
             </div>
-            {apiType === "Servers" ? <ServerSpecFields isVirtual={Boolean(serverProfile?.showHypervisor)} cpuLabel={serverProfile?.cpuLabel || f.cpuLabelDefault} processeur={formData.processeur ?? ""} memoire={formData.memoire ?? ""} stockage={formData.stockage ?? ""} onProcesseurChange={value => update("processeur", value)} onMemoireChange={value => update("memoire", value)} onStorageChange={value => update("stockage", value)} widgetsCopy={widgetsCopy.serverSpec} /> : apiType === "Ordinateurs" ? <>
+            {apiType === "Servers" ? (
+              <ServerSpecFields
+                isVirtual={Boolean(serverProfile?.showHypervisor)}
+                cpuLabel={serverProfile?.cpuLabel || f.cpuLabelDefault}
+                processeur={formData.processeur ?? ""}
+                memoire={formData.memoire ?? ""}
+                stockage={formData.stockage ?? ""}
+                onProcesseurChange={value => update("processeur", value)}
+                onMemoireChange={value => update("memoire", value)}
+                onStorageChange={value => update("stockage", value)}
+                widgetsCopy={widgetsCopy.serverSpec}
+              />
+            ) : apiType === "Ordinateurs" ? <>
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="equipment-form-domaine">
                     {f.domain}
@@ -824,22 +856,31 @@ export default function EquipmentFormSectionContent({
                   <input id="equipment-form-memoire" type="text" className={styles.input} value={formData.memoire ?? ""} onChange={e => update("memoire", e.target.value)} placeholder="16 Go" />
                 </div>
               </> : null}
-            {apiType !== "Ordinateurs" ? <div className={`${styles.field} ${styles.fieldFull}`}>
-              <label className={styles.label}>{f.roles}</label>
-              <RoleTagsSelect groups={optionsCopy.serverRoleGroups} options={optionsCopy.serverRoleOptions} value={Array.isArray(formData.role) ? formData.role : []} onChange={roles => update("role", roles)} placeholder={f.rolesPlaceholder} widgetsCopy={widgetsCopy.roleTagsSelect} />
-            </div> : null}
+          </div>
+        </>;
+    case "roles":
+      return <>
+          <div className={`${styles.field} ${styles.fieldFull}`}>
+            <ServerRolePicker
+              value={Array.isArray(formData.role) ? formData.role : []}
+              onChange={roles => update("role", roles)}
+              isVirtual={Boolean(serverProfile?.showHypervisor)}
+              groups={optionsCopy.serverRoleGroups}
+              options={optionsCopy.serverRoleOptions}
+              placeholder={f.rolesPlaceholder}
+              widgetsCopy={widgetsCopy.roleTagsSelect}
+              formCopy={f}
+            />
           </div>
         </>;
     case "remote":
       return <>
-          {sectionHead}
           {apiType === "Servers" ? <div className={styles.fieldGrid2}>
               <ServerRemoteAccessFields remoteAccessSolution={formData.remoteAccessSolution} remoteAccessId={formData.remoteAccessId} onSolutionChange={value => update("remoteAccessSolution", value)} onIdChange={value => update("remoteAccessId", value)} widgetsCopy={widgetsCopy.remoteAccess} />
             </div> : null}
         </>;
     case "storage":
       return <>
-          {sectionHead}
           <div className={styles.fieldGrid2}>
             {apiType === "NAS" && storageProfile?.showRole && <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label}>{f.storageRole}</label>
@@ -890,7 +931,6 @@ export default function EquipmentFormSectionContent({
         </>;
     case "extra":
       return <>
-          {sectionHead}
           {extensionFields.length === 0 ? null : groupEquipmentFieldsBySection(extensionFields).map((group, groupIndex) => {
             const groupKey = group.section?.fieldKey || group.section?.id || `ext-group-${groupIndex}`;
             const sectionLabel = String(group.section?.label || "").trim();
@@ -946,4 +986,16 @@ export default function EquipmentFormSectionContent({
     default:
       return null;
   }
+  };
+  const fields = renderSectionFields();
+  if (fields == null) return null;
+  return <div className={styles.sectionFill}>
+      <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
+        <h3 className={`${styles.sectionTitle} ${sectionIncomplete ? styles.navItemLabelRequired : ""}`}>
+          {activeSection === "extra" ? extraCopy.label : section?.label}
+        </h3>
+        <p className={styles.sectionDesc}>{activeSection === "extra" ? extraCopy.description : section?.description}</p>
+      </div>
+      <div className={styles.sectionScroll}>{fields}</div>
+    </div>;
 }

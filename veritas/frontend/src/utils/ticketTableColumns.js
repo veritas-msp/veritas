@@ -39,9 +39,9 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "updated_at"
   ]),
   enterprises: Object.freeze([
+    "company_status",
     "client_number",
     "company",
-    "company_status",
     "primary_contact",
     "commercial",
     "modules",
@@ -49,9 +49,9 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "tags"
   ]),
   contacts: Object.freeze([
+    "status",
     "contact",
     "gender",
-    "status",
     "enterprise",
     "role",
     "email",
@@ -61,9 +61,9 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "support_tickets_in_progress"
   ]),
   prestataires: Object.freeze([
+    "status",
     "name",
     "type",
-    "status",
     "contact",
     "email",
     "phone",
@@ -78,6 +78,7 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   ]),
   enterprise_logs: Object.freeze([
     "action",
+    "field",
     "user",
     "date"
   ])
@@ -92,9 +93,9 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
   enterprises: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprises]),
   // Colonnes tickets support optionnelles : activables via le modal colonnes.
   contacts: Object.freeze([
+    "status",
     "contact",
     "gender",
-    "status",
     "enterprise",
     "role",
     "email",
@@ -206,6 +207,13 @@ export const PRESTATAIRES_COLUMN_LABEL_KEYS = Object.freeze({
   phone: "phone",
   enterprises: "enterprises"
 });
+
+/** Épingler une colonne en tête (ex. statut à gauche). */
+export function pinColumnLeft(columns, columnId) {
+  if (!columnId || !Array.isArray(columns)) return Array.isArray(columns) ? [...columns] : [];
+  if (!columns.includes(columnId)) return [...columns];
+  return [columnId, ...columns.filter(id => id !== columnId)];
+}
 
 export function normalizeTicketTableColumns(raw, {
   allowNull = false,

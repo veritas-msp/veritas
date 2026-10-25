@@ -1127,6 +1127,28 @@
   gap: 10px;
 }
 
+@keyframes adminChoicePop {
+  from {
+    opacity: 0.7;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes adminChoiceIconPop {
+  from {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .choiceBtn {
   display: inline-flex;
   align-items: center;
@@ -1141,7 +1163,12 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, color 0.15s;
+  transition:
+    border-color var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    background var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    color var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    transform var(--msp-duration-fast, 160ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1));
 }
 
 .choiceBtn:hover {
@@ -1149,11 +1176,16 @@
   background: var(--msp-surface-3);
 }
 
+.choiceBtn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
 .choiceBtnActive {
   border-color: var(--msp-accent);
   background: var(--msp-accent-soft);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--msp-accent) 35%, transparent);
   color: var(--msp-text);
+  animation: adminChoicePop var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)) both;
 }
 
 .choiceBtnSegment {
@@ -1188,6 +1220,7 @@
   background: var(--msp-accent);
   color: #fff;
   box-shadow: none;
+  animation: adminChoicePop var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)) both;
 }
 
 .choiceGroupSegment .choiceBtnSegment.choiceBtnActive:hover {
@@ -1206,6 +1239,12 @@
   gap: 6px;
   min-width: 76px;
   padding: 12px 10px;
+}
+
+.choiceBtnActive .choiceBtnFlagIcon,
+.choiceBtnActive .choiceBtnFlag,
+.choiceBtnActive .choiceBtnIcon {
+  animation: adminChoiceIconPop var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)) both;
 }
 
 .choiceBtnTheme {
@@ -1427,8 +1466,10 @@
   background: var(--msp-border);
   border-radius: 999px;
   position: relative;
-  transition: background 0.2s;
   flex-shrink: 0;
+  transition:
+    background var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .switchTrack::after {
@@ -1440,12 +1481,35 @@
   height: 18px;
   background: var(--msp-surface);
   border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition:
+    transform var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.34, 1.2, 0.64, 1)),
+    width var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-.switchInput:checked + .switchTrack { background: var(--msp-accent); }
-.switchInput:checked + .switchTrack::after { transform: translateX(20px); }
+.switchInput:checked + .switchTrack {
+  background: var(--msp-accent);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft);
+}
+
+.switchInput:checked + .switchTrack::after {
+  transform: translateX(20px);
+}
+
+.switchInput:active:not(:disabled) + .switchTrack::after {
+  width: 22px;
+}
+
+.switchInput:checked:active:not(:disabled) + .switchTrack::after {
+  transform: translateX(16px);
+  width: 22px;
+}
+
+.switchInput:focus-visible + .switchTrack {
+  outline: 2px solid var(--msp-accent);
+  outline-offset: 2px;
+}
 
 .switchLabel {
   font-size: 0.88rem;
@@ -1688,4 +1752,22 @@
 
 :global(html.dark) .numberStepperBtn {
   background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choiceBtn,
+  .choiceBtnActive,
+  .choiceBtnActive .choiceBtnFlagIcon,
+  .choiceBtnActive .choiceBtnFlag,
+  .choiceBtnActive .choiceBtnIcon,
+  .choiceGroupSegment .choiceBtnSegment.choiceBtnActive,
+  .switchTrack,
+  .switchTrack::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .choiceBtn:active:not(:disabled) {
+    transform: none;
+  }
 }

@@ -1,7 +1,7 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 import { getInfraStatusMeta, toInfraDisplayStatus } from "./infraMapUtils";
 const HONEYCOMB_TYPE_KEYS = ["Internet", "Firewalls", "Serveurs", "Stockage", "Switch", "BorneWifi", "Routeur", "Alimentation", "TOIP", "Ordinateurs"];
-const BRICK_GROUP_KEYS = ["cybersecurity", "services", "licensing"];
+const BRICK_GROUP_KEYS = ["cybersecurity", "services"];
 const BRICK_TYPE_KEYS = ["Antivirus", "Antispam", "Sauvegarde", "TenantMicrosoft", "GoogleWorkspace", "NDD", "CertificatsSSL", "LicensesAbonnements", "Campagne"];
 const STATUS_KEYS = ["disabled", "clear", "attention"];
 const INFRA_MAP_COPY = {
@@ -44,8 +44,7 @@ const INFRA_MAP_COPY = {
     },
     brickGroups: {
       cybersecurity: "Cybersécurité",
-      services: "Services",
-      licensing: "Licences & abonnements"
+      services: "Services"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -81,13 +80,23 @@ const INFRA_MAP_COPY = {
       open: "Ouvrir",
       add: "Ajouter",
       configure: "Configurer",
-      comingSoon: "Bientôt",
+      editCurrent: "Éditer la solution",
+      deleteCurrent: "Supprimer la solution",
+      solutionSelect: "Solution",
+      solutionSelectPrompt: "Quelle solution afficher ?",
+      comingSoon: "Bientôt disponible",
       comingSoonHint: "Bientôt disponible",
+      comingSoonBody: "Cette intégration arrive bientôt dans Veritas. Restez connecté pour la découverte.",
       proRequired: "Veritas Pro",
       proHint: "Disponible avec Veritas Pro",
       configuredHint: "Solution configurée",
       emptyHint: "Aucune solution configurée",
-      emptyBody: "Ajoutez une solution pour ce client afin de commencer le suivi."
+      emptyBody: "Ajoutez une solution pour ce client afin de commencer le suivi.",
+      emptyAddCta: "Ajouter la première solution",
+      searchPlaceholder: "Rechercher…",
+      addInstance: "Ajouter une instance",
+      addJob: "Ajouter un job",
+      addJobDisabledHint: "Ajoutez d’abord une instance"
     }
   },
   en: {
@@ -130,7 +139,6 @@ const INFRA_MAP_COPY = {
     brickGroups: {
       cybersecurity: "Cybersecurity",
       services: "Services",
-      licensing: "Licenses & subscriptions"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -165,13 +173,23 @@ const INFRA_MAP_COPY = {
       open: "Open",
       add: "Add",
       configure: "Configure",
-      comingSoon: "Soon",
+      editCurrent: "Edit solution",
+      deleteCurrent: "Delete solution",
+      solutionSelect: "Solution",
+      solutionSelectPrompt: "Which solution to display?",
+      comingSoon: "Coming soon",
       comingSoonHint: "Coming soon",
+      comingSoonBody: "This integration is coming soon to Veritas. Stay tuned for the launch.",
       proRequired: "Veritas Pro",
       proHint: "Available with Veritas Pro",
       configuredHint: "Solution configured",
       emptyHint: "No solution configured",
-      emptyBody: "Add a solution for this client to start tracking it."
+      emptyBody: "Add a solution for this client to start tracking it.",
+      emptyAddCta: "Add the first solution",
+      searchPlaceholder: "Search…",
+      addInstance: "Add an instance",
+      addJob: "Add a job",
+      addJobDisabledHint: "Add an instance first"
     }
   },
   de: {
@@ -214,7 +232,6 @@ const INFRA_MAP_COPY = {
     brickGroups: {
       cybersecurity: "Cybersicherheit",
       services: "Services",
-      licensing: "Lizenzen & Abonnements",
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -249,13 +266,23 @@ const INFRA_MAP_COPY = {
       open: "Öffnen",
       add: "Hinzufügen",
       configure: "Konfigurieren",
-      comingSoon: "Demnächst",
+      editCurrent: "Lösung bearbeiten",
+      deleteCurrent: "Lösung löschen",
+      solutionSelect: "Lösung",
+      solutionSelectPrompt: "Welche Lösung anzeigen?",
+      comingSoon: "Demnächst verfügbar",
       comingSoonHint: "Demnächst verfügbar",
+      comingSoonBody: "Diese Integration kommt bald in Veritas. Bleiben Sie dran.",
       proRequired: "Veritas Pro",
       proHint: "Mit Veritas Pro verfügbar",
       configuredHint: "Lösung konfiguriert",
       emptyHint: "Keine Lösung konfiguriert",
-      emptyBody: "Fügen Sie eine Lösung für diesen Kunden hinzu, um die Überwachung zu starten."
+      emptyBody: "Fügen Sie eine Lösung für diesen Kunden hinzu, um die Überwachung zu starten.",
+      emptyAddCta: "Erste Lösung hinzufügen",
+      searchPlaceholder: "Suchen…",
+      addInstance: "Instanz hinzufügen",
+      addJob: "Job hinzufügen",
+      addJobDisabledHint: "Zuerst eine Instanz hinzufügen"
     }
   },
   it: {
@@ -298,7 +325,6 @@ const INFRA_MAP_COPY = {
     brickGroups: {
       cybersecurity: "Cybersicurezza",
       services: "Servizi",
-      licensing: "Licenze e abbonamenti",
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -333,13 +359,23 @@ const INFRA_MAP_COPY = {
       open: "Apri",
       add: "Aggiungi",
       configure: "Configura",
-      comingSoon: "Presto",
+      editCurrent: "Modifica soluzione",
+      deleteCurrent: "Elimina soluzione",
+      solutionSelect: "Soluzione",
+      solutionSelectPrompt: "Quale soluzione visualizzare?",
+      comingSoon: "Presto disponibile",
       comingSoonHint: "Presto disponibile",
+      comingSoonBody: "Questa integrazione arriverà presto in Veritas. Resta sintonizzato.",
       proRequired: "Veritas Pro",
       proHint: "Disponibile con Veritas Pro",
       configuredHint: "Soluzione configurata",
       emptyHint: "Nessuna soluzione configurata",
-      emptyBody: "Aggiungi una soluzione per questo cliente per iniziare il monitoraggio."
+      emptyBody: "Aggiungi una soluzione per questo cliente per iniziare il monitoraggio.",
+      emptyAddCta: "Aggiungi la prima soluzione",
+      searchPlaceholder: "Cerca…",
+      addInstance: "Aggiungi un'istanza",
+      addJob: "Aggiungi un job",
+      addJobDisabledHint: "Aggiungi prima un'istanza"
     }
   },
   es: {
@@ -382,7 +418,6 @@ const INFRA_MAP_COPY = {
     brickGroups: {
       cybersecurity: "Ciberseguridad",
       services: "Servicios",
-      licensing: "Licencias y suscripciones",
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -417,13 +452,23 @@ const INFRA_MAP_COPY = {
       open: "Abrir",
       add: "Añadir",
       configure: "Configurar",
-      comingSoon: "Pronto",
+      editCurrent: "Editar solución",
+      deleteCurrent: "Eliminar solución",
+      solutionSelect: "Solución",
+      solutionSelectPrompt: "¿Qué solución mostrar?",
+      comingSoon: "Próximamente disponible",
       comingSoonHint: "Próximamente",
+      comingSoonBody: "Esta integración llegará pronto a Veritas. Mantente atento.",
       proRequired: "Veritas Pro",
       proHint: "Disponible con Veritas Pro",
       configuredHint: "Solución configurada",
       emptyHint: "Ninguna solución configurada",
-      emptyBody: "Añada una solución para este cliente para empezar el seguimiento."
+      emptyBody: "Añada una solución para este cliente para empezar el seguimiento.",
+      emptyAddCta: "Añadir la primera solución",
+      searchPlaceholder: "Buscar…",
+      addInstance: "Añadir una instancia",
+      addJob: "Añadir un job",
+      addJobDisabledHint: "Añada primero una instancia"
     }
   }
 };

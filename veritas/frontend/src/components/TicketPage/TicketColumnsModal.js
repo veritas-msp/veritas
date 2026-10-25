@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import {
   DndContext,
@@ -134,7 +133,8 @@ export default function TicketColumnsModal({
     [isCommunity, scope]
   );
 
-  const [tab, setTab] = useState("private");
+  const [tab, setTab] = useState("public");
+  const canEditPublic = Boolean(isAdmin);
   const [publicColumns, setPublicColumns] = useState(() => [...defaultColumns]);
   const [privateColumns, setPrivateColumns] = useState(null);
   const [columnOrder, setColumnOrder] = useState(() => [...defaultColumns]);
@@ -158,7 +158,7 @@ export default function TicketColumnsModal({
 
   useEffect(() => {
     if (!open) return;
-    setTab("private");
+    setTab("public");
     const nextPublic =
       Array.isArray(initialPublic) && initialPublic.length > 0
         ? [...initialPublic]
@@ -171,11 +171,10 @@ export default function TicketColumnsModal({
       Array.isArray(initialEffective) && initialEffective.length > 0
         ? [...initialEffective]
         : null;
-    const visibleSeed = nextPrivate ?? nextEffective ?? nextPublic;
     setPublicColumns(nextPublic);
     setPrivateColumns(nextPrivate);
     setEffectiveSeed(nextEffective);
-    setColumnOrder(buildColumnEditorOrder(visibleSeed, availableColumns));
+    setColumnOrder(buildColumnEditorOrder(nextPublic, availableColumns));
     setError("");
     setSaving(false);
   }, [open, initialPublic, initialPrivate, initialEffective, defaultColumns, availableColumns]);
@@ -202,7 +201,23 @@ export default function TicketColumnsModal({
     : privateColumns ?? effectiveSeed ?? publicColumns;
   const draftColumns = visibleColumnsFromEditorOrder(columnOrder, enabledColumns);
   const hasPrivateView = Array.isArray(privateColumns) && privateColumns.length > 0;
-  const canEditCurrent = editingPublic ? isAdmin : true;
+  const canEditCurrent = editingPublic ? canEditPublic : true;
+  const explainStatus = editingPublic
+    ? {
+        text: canEditPublic
+          ? columnsCopy.publicStatusEditable ||
+            "Modifiable — s’applique à toute l’équipe sans vue privée."
+          : columnsCopy.publicReadOnlyStatus ||
+            "Lecture seule — modification réservée via Administration → Permissions.",
+        tone: canEditPublic ? "active" : "idle"
+      }
+    : {
+        text: hasPrivateView
+          ? columnsCopy.privateStatusActive || "Active — elle remplace la vue publique pour vous."
+          : columnsCopy.privateStatusInactive ||
+            "Pas encore définie — vous voyez actuellement la vue publique.",
+        tone: hasPrivateView ? "active" : "idle"
+      };
 
   const getColumnLabel = columnId => {
     const key = labelKeys[columnId];
@@ -321,10 +336,10 @@ export default function TicketColumnsModal({
             </div>
             <div>
               <h2 id={titleId} className={styles.title}>
-                {columnsCopy.title || "Table columns"}
+                {columnsCopy.title || "Colonnes du tableau"}
               </h2>
               <p className={styles.message}>
-                {columnsCopy.subtitle || "Choose which columns are visible in the ticket list."}
+                {columnsCopy.subtitle || "Cochez les colonnes à afficher et glissez-les pour changer l’ordre."}
               </p>
             </div>
           </div>
@@ -335,11 +350,29 @@ export default function TicketColumnsModal({
             disabled={saving}
             aria-label={commonCopy.close}
           >
-            <FaTimes />
+            <Icon icon="mdi:close" aria-hidden />
           </button>
         </div>
 
-        <div className={styles.tabs} role="tablist">
+        <div className={styles.tabs} role="tablist" aria-label={columnsCopy.tabsAria || "Type de vue"}>
+          <div
+            className={`${styles.tabIndicator} ${tab === "private" ? styles.tabIndicatorPrivate : ""}`.trim()}
+            aria-hidden
+          />
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "public"}
+            className={`${styles.tab} ${tab === "public" ? styles.tabActive : ""}`.trim()}
+            onClick={() => handleTabChange("public")}
+            disabled={saving}
+          >
+            <Icon icon="mdi:earth" aria-hidden />
+            <span className={styles.tabText}>
+              <span className={styles.tabLabel}>{columnsCopy.publicTab || "Vue publique"}</span>
+              <span className={styles.tabMeta}>{columnsCopy.publicTabMeta || "Pour l’équipe"}</span>
+            </span>
+          </button>
           <button
             type="button"
             role="tab"
@@ -349,40 +382,47 @@ export default function TicketColumnsModal({
             disabled={saving}
           >
             <Icon icon="mdi:account-outline" aria-hidden />
-            {columnsCopy.privateTab || "Private view"}
+            <span className={styles.tabText}>
+              <span className={styles.tabLabel}>{columnsCopy.privateTab || "Vue privée"}</span>
+              <span className={styles.tabMeta}>{columnsCopy.privateTabMeta || "Pour moi"}</span>
+            </span>
           </button>
-          {isAdmin ? (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "public"}
-              className={`${styles.tab} ${tab === "public" ? styles.tabActive : ""}`.trim()}
-              onClick={() => handleTabChange("public")}
-              disabled={saving}
-            >
-              <Icon icon="mdi:earth" aria-hidden />
-              {columnsCopy.publicTab || "Public view"}
-            </button>
-          ) : null}
         </div>
 
         <div className={styles.body}>
-          <p className={styles.hint}>
-            {editingPublic
-              ? columnsCopy.publicHint || "Default columns for all users without a private view."
-              : hasPrivateView
-                ? columnsCopy.privateHintActive || "Your private columns override the public view."
-                : columnsCopy.privateHintInactive ||
-                  "No private view yet — the public view is used. Toggle columns to create yours."}
-          </p>
-          <p className={styles.reorderHint}>
-            {columnsCopy.reorderHint || "Drag rows to change the column order in the table."}
-          </p>
-          {!canEditCurrent ? (
-            <p className={styles.adminOnly}>
-              {columnsCopy.adminOnly || "Only administrators can edit the public view."}
-            </p>
-          ) : null}
+          <div className={`${styles.explainCard} ${editingPublic ? styles.explainCardPublic : styles.explainCardPrivate}`}>
+            <Icon
+              icon={editingPublic ? "mdi:earth" : "mdi:account-outline"}
+              className={styles.explainIcon}
+              aria-hidden
+            />
+            <div className={styles.explainContent}>
+              <p className={styles.explainText}>
+                {editingPublic
+                  ? columnsCopy.publicExplain ||
+                    "La vue publique définit les colonnes par défaut pour toute l’équipe."
+                  : columnsCopy.privateExplain ||
+                    "La vue privée est personnelle : tout agent peut l’utiliser, elle ne change les colonnes que pour lui."}
+              </p>
+              <p
+                className={`${styles.statusLine} ${
+                  explainStatus.tone === "active" ? styles.statusActive : styles.statusIdle
+                }`}
+              >
+                {explainStatus.text}
+              </p>
+            </div>
+          </div>
+
+          <div className={styles.listHead}>
+            <span className={styles.listTitle}>{columnsCopy.listHeading || "Colonnes"}</span>
+            <span className={styles.reorderHint}>
+              {canEditCurrent
+                ? columnsCopy.reorderHint || "Glissez pour réordonner"
+                : columnsCopy.readOnlyHint || "Lecture seule"}
+            </span>
+          </div>
+
           <DndContext
             id={`ticket-columns-${scope}-${tab}`}
             sensors={sensors}
@@ -395,7 +435,7 @@ export default function TicketColumnsModal({
                   const label = getColumnLabel(columnId);
                   const dragAria = columnsCopy.dragColumn
                     ? interpolate(columnsCopy.dragColumn, { name: label })
-                    : `Drag ${label}`;
+                    : `Réordonner ${label}`;
                   return (
                     <SortableColumnRow
                       key={columnId}

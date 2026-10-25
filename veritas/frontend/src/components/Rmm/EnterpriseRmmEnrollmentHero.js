@@ -3,10 +3,14 @@ import { Icon } from "@iconify/react";
 import { fetchRmmEnrollmentTokens } from "../../api/rmm";
 import RmmEnrollmentTokenValue from "./RmmEnrollmentTokenValue";
 import SmartTooltip from "../SmartTooltip";
+import styles from "./EnterpriseRmmEnrollmentHero.module.css";
+
 export default function EnterpriseRmmEnrollmentHero({
   clientId,
   isAdmin,
   compact = false,
+  labeled = false,
+  title = "Enrollment token",
   itemClassName = "",
   tokenWrapClassName = ""
 }) {
@@ -40,17 +44,48 @@ export default function EnterpriseRmmEnrollmentHero({
   }
   const primary = activeTokens[0];
   const extraCount = activeTokens.length - 1;
-  const extraHint = extraCount > 0 ? activeTokens.slice(1).map(t => t.label || `Token ${t.id?.slice(0, 8) || ""}`).join(", ") : null;
-  return <span className={itemClassName}>
-      <SmartTooltip content="RMM enrollment token">
+  const extraHint = extraCount > 0
+    ? activeTokens.slice(1).map(t => t.label || `Token ${t.id?.slice(0, 8) || ""}`).join(", ")
+    : null;
+
+  if (labeled) {
+    return (
+      <span className={`${styles.labeled} ${itemClassName}`.trim()}>
+        <span className={styles.labeledTitle}>{title}</span>
+        <span className={`${styles.labeledValue} ${tokenWrapClassName}`.trim()}>
+          <RmmEnrollmentTokenValue token={primary.token} full bare />
+          {extraCount > 0 ? (
+            <SmartTooltip
+              content={`${extraCount} other active token${extraCount > 1 ? "s" : ""}${extraHint ? `: ${extraHint}` : ""}`}
+              as="span"
+            >
+              <span className={styles.extraCount} aria-label={`${extraCount} other active tokens`}>
+                +{extraCount}
+              </span>
+            </SmartTooltip>
+          ) : null}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className={itemClassName}>
+      <SmartTooltip content={title}>
         <Icon icon="mdi:key-outline" aria-hidden />
       </SmartTooltip>
-      {!compact && <span>Enrollment token</span>}
+      {!compact && <span>{title}</span>}
       <span className={tokenWrapClassName}>
         <RmmEnrollmentTokenValue token={primary.token} />
       </span>
-      {extraCount > 0 ? <SmartTooltip content={`${extraCount} other active token${extraCount > 1 ? "s" : ""}${extraHint ? `: ${extraHint}` : ""}`} as="span">
+      {extraCount > 0 ? (
+        <SmartTooltip
+          content={`${extraCount} other active token${extraCount > 1 ? "s" : ""}${extraHint ? `: ${extraHint}` : ""}`}
+          as="span"
+        >
           <span aria-label={`${extraCount} other active tokens`}>+{extraCount}</span>
-        </SmartTooltip> : null}
-    </span>;
+        </SmartTooltip>
+      ) : null}
+    </span>
+  );
 }

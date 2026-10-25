@@ -14,6 +14,7 @@ import AiBriefingPanel from "../Misc/AiBriefingPanel/AiBriefingPanel";
 import { generateDashboardBriefingAi } from "../../api/ai";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import { uiKitLayoutsStyles as kit } from "../UiKit";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import { DEFAULT_PERIOD_FILTER, getPeriodFilterLabel } from "./dashboardPeriodUtils";
@@ -216,7 +217,7 @@ export default function DashboardPage() {
                   </button>
                   <div className={styles.exportMenuWrap} ref={exportMenuRef} data-guide="kpi-export">
                     <SmartTooltip content={copy.export}>
-                      <button type="button" className={layout.iconBtn} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
+                      <button type="button" className={`${kit.btnSquare} ${kit.btnSquareSecondary}`} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
                         <Icon icon="mdi:export-variant" aria-hidden />
                       </button>
                     </SmartTooltip>
@@ -238,12 +239,12 @@ export default function DashboardPage() {
                       </div> : null}
                   </div>
                   <SmartTooltip content={copy.headerSchedule}>
-                    <button type="button" className={layout.iconBtn} onClick={() => setScheduleOpen(true)} aria-label={copy.headerScheduleAria}>
+                    <button type="button" className={`${kit.btnSquare} ${kit.btnSquareSecondary}`} onClick={() => setScheduleOpen(true)} aria-label={copy.headerScheduleAria}>
                       <Icon icon="mdi:calendar-clock-outline" aria-hidden />
                     </button>
                   </SmartTooltip>
                   <SmartTooltip content={copy.refresh}>
-                    <button type="button" className={layout.iconBtn} onClick={() => loadDashboard(periodFilter, scopeFilter, {
+                    <button type="button" className={`${kit.btnSquare} ${kit.btnSquareSecondary}`} onClick={() => loadDashboard(periodFilter, scopeFilter, {
                     silent: true
                   })} disabled={loading || refreshing} aria-label={copy.refresh}>
                       <Icon icon="mdi:refresh" className={refreshing ? styles.spinner : undefined} aria-hidden />

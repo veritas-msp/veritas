@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -43,6 +43,7 @@ import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
 import { getTicketPageCopy } from "./ticketPageI18n";
 import ContextMenu from "../Misc/ContextMenu/ContextMenu";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell, UiKitTable, uiKitLayoutsStyles as kit, uiKitTableStyles as tableKit } from "../UiKit";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { buildAgentPath } from "../../navigation/agentRoutes";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
@@ -101,25 +102,25 @@ function SortableViewRow({
     transform: CSS.Transform.toString(transform),
     transition
   } : undefined;
-  return <div ref={canDrag ? setNodeRef : undefined} style={style} className={`${styles.viewItem} ${isActive ? styles.viewItemActive : ""} ${isDragging ? styles.viewItemDragging : ""} ${reorderMode ? styles.viewItemReorderMode : ""}`} onClick={reorderMode ? undefined : () => onSelect(view)} onKeyDown={reorderMode ? undefined : e => {
+  return <div ref={canDrag ? setNodeRef : undefined} style={style} className={`${kit.finderSecItem} ${styles.viewItemRow} ${isActive ? `${kit.finderSecItemActive} ${styles.viewItemRowActive}` : ""} ${isDragging ? styles.viewItemDragging : ""} ${reorderMode ? styles.viewItemReorderMode : ""}`.trim()} onClick={reorderMode ? undefined : () => onSelect(view)} onKeyDown={reorderMode ? undefined : e => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onSelect(view);
     }
-  }} role={reorderMode ? undefined : "button"} tabIndex={reorderMode ? undefined : 0} title={view.description || view.name} aria-pressed={reorderMode ? undefined : isActive}>
+  }} role={reorderMode ? undefined : "button"} tabIndex={reorderMode ? undefined : 0} title={view.description || view.name} aria-pressed={reorderMode ? undefined : isActive} aria-current={!reorderMode && isActive ? "page" : undefined}>
       {canDrag ? <button type="button" className={styles.viewItemDragHandle} aria-label={copy.formatDragViewAria(view.name)} onClick={event => event.stopPropagation()} {...attributes} {...listeners}>
           <Icon icon="mdi:drag-vertical" aria-hidden />
         </button> : null}
-      <span className={styles.viewItemMain}>
-        <span className={styles.viewItemCount} aria-label={copy.formatViewTicketCountAria(count)}>
+      <Icon icon={view.icon || "mdi:view-list"} className={kit.finderSecItemIcon} aria-hidden />
+      <span className={kit.finderSecItemLabel}>{view.name}</span>
+      <span className={kit.finderSecMeta}>
+        <span className={kit.finderSecCount} aria-label={copy.formatViewTicketCountAria(count)}>
           {count}
         </span>
-        <Icon icon={view.icon || "mdi:view-list"} className={styles.viewItemIcon} aria-hidden />
-        <span className={styles.viewItemLabel}>{view.name}</span>
+        {editable && !reorderMode ? <button type="button" className={styles.viewItemEditBtn} title={copy.views.editView} aria-label={copy.formatEditViewAria(view.name)} onClick={event => onEdit(view, event)}>
+            <Icon icon="mdi:pencil-outline" aria-hidden />
+          </button> : null}
       </span>
-      {editable && !reorderMode ? <button type="button" className={styles.viewItemEditBtn} title={copy.views.editView} aria-label={copy.formatEditViewAria(view.name)} onClick={event => onEdit(view, event)}>
-          <Icon icon="mdi:pencil-outline" aria-hidden />
-        </button> : null}
     </div>;
 }
 function SortableViewsSection({
@@ -249,6 +250,8 @@ export default function TicketPage({
     all: 0
   });
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
+  const [satisfactionMoreMenuOpen, setSatisfactionMoreMenuOpen] = useState(false);
+  const satisfactionMoreMenuRef = useRef(null);
   const [publicTableColumns, setPublicTableColumns] = useState(() => [...DEFAULT_TICKET_TABLE_COLUMNS]);
   const [privateTableColumns, setPrivateTableColumns] = useState(null);
   const [visibleTableColumns, setVisibleTableColumns] = useState(() => [...DEFAULT_TICKET_TABLE_COLUMNS]);
@@ -275,6 +278,21 @@ export default function TicketPage({
       .then(() => setSlaNow(Date.now()))
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    if (!satisfactionMoreMenuOpen) return undefined;
+    const onPointerDown = event => {
+      if (!satisfactionMoreMenuRef.current?.contains(event.target)) setSatisfactionMoreMenuOpen(false);
+    };
+    const onKeyDown = event => {
+      if (event.key === "Escape") setSatisfactionMoreMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [satisfactionMoreMenuOpen]);
   useEffect(() => {
     const controller = createTrackedAbortController();
     (async () => {
@@ -1044,35 +1062,35 @@ export default function TicketPage({
     if (reorderMode && !view.isBuiltin) {
       return <SortableViewRow key={view.id} view={view} isActive={isActive} count={count} editable={editable} reorderMode onSelect={handleSelectView} onEdit={openEditViewModal} copy={pageCopy} />;
     }
-    return <div key={view.id} className={`${styles.viewItem} ${isActive ? styles.viewItemActive : ""}`} onClick={() => handleSelectView(view)} onKeyDown={e => {
+    return <div key={view.id} className={`${kit.finderSecItem} ${styles.viewItemRow} ${isActive ? `${kit.finderSecItemActive} ${styles.viewItemRowActive}` : ""}`.trim()} onClick={() => handleSelectView(view)} onKeyDown={e => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         handleSelectView(view);
       }
-    }} role="button" tabIndex={0} title={view.description || view.name} aria-pressed={isActive}>
-        <span className={styles.viewItemMain}>
-          <span className={styles.viewItemCount} aria-label={pageCopy.formatViewTicketCountAria(count)}>
+    }} role="button" tabIndex={0} title={view.description || view.name} aria-pressed={isActive} aria-current={isActive ? "page" : undefined}>
+        <Icon icon={view.icon || "mdi:view-list"} className={kit.finderSecItemIcon} aria-hidden />
+        <span className={kit.finderSecItemLabel}>{view.name}</span>
+        <span className={kit.finderSecMeta}>
+          <span className={kit.finderSecCount} aria-label={pageCopy.formatViewTicketCountAria(count)}>
             {count}
           </span>
-          <Icon icon={view.icon || "mdi:view-list"} className={styles.viewItemIcon} aria-hidden />
-          <span className={styles.viewItemLabel}>{view.name}</span>
+          {editable ? <button type="button" className={styles.viewItemEditBtn} title={pageCopy.views.editView} aria-label={pageCopy.formatEditViewAria(view.name)} onClick={event => openEditViewModal(view, event)}>
+              <Icon icon="mdi:pencil-outline" aria-hidden />
+            </button> : null}
         </span>
-        {editable ? <button type="button" className={styles.viewItemEditBtn} title={pageCopy.views.editView} aria-label={pageCopy.formatEditViewAria(view.name)} onClick={event => openEditViewModal(view, event)}>
-            <Icon icon="mdi:pencil-outline" aria-hidden />
-          </button> : null}
       </div>;
   };
   const renderCustomViewsSection = (sectionKey, label, views) => {
     if (views.length === 0) return null;
     const orderedViews = viewsReorderMode && customViewsOrder ? orderViewsByIds(views, customViewsOrder[sectionKey]) : views;
-    return <>
-        <div className={styles.viewsGroupLabel}>{label}</div>
+    return <div className={kit.finderSecGroup}>
+        <p className={kit.finderSecGroupTitle}>{label}</p>
         <SortableViewsSection sectionKey={sectionKey} views={orderedViews} reorderMode={viewsReorderMode} sensors={viewReorderSensors} onDragEnd={handleViewsSectionDragEnd}>
           {orderedViews.map(view => renderViewItem(view, {
           reorderMode: viewsReorderMode
         }))}
         </SortableViewsSection>
-      </>;
+      </div>;
   };
   const setViewsPaneCollapsedState = useCallback(collapsed => {
     setViewsPaneCollapsed(collapsed);
@@ -1217,56 +1235,85 @@ export default function TicketPage({
     setPlayMode(false);
     toast.info(pageCopy.playModeDisabled);
   };
-  const toolbarActions = <>
-                {canTrash ? <SmartTooltip content={viewMode === "trash" ? pageCopy.trashSwitchHideTooltip : pageCopy.trashSwitchTitle}>
-                  <button type="button" className={`${styles.trashBtn} ${viewMode === "trash" ? styles.trashBtnActive : ""}`} onClick={() => setViewMode(prev => prev === "trash" ? "active" : "trash")} aria-label={viewMode === "trash" ? pageCopy.trashSwitchHideAria : pageCopy.trashSwitchAria} aria-pressed={viewMode === "trash"}>
-                    <Icon icon="mdi:trash-can-outline" aria-hidden />
-                  </button>
-                </SmartTooltip> : null}
-                {playMode && canRandomMode && <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={pageCopy.playModeDisableTooltip} aria-label={pageCopy.playModeDisableAria}>
-                    <Icon icon="mdi:dice-5" aria-hidden />
-                    {pageCopy.playModeBanner}
-                    <Icon icon="mdi:close" className={playModeStyles.playModeBannerClose} aria-hidden />
-                  </button>}
-                {canRandomMode ? <SmartTooltip content={playMode ? pageCopy.playModeDisableTooltip : pageCopy.playModeTooltip}>
-                  <button type="button" className={`${playModeStyles.diceBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || viewMode === "trash"} aria-label={playMode ? pageCopy.playModeDisableAria : pageCopy.playModeAria} aria-pressed={playMode}>
-                    <Icon icon={loadingRandom ? "mdi:loading" : "mdi:dice-5"} className={loadingRandom ? playModeStyles.spinning : undefined} />
-                  </button>
-                </SmartTooltip> : null}
-                <SmartTooltip content={pageCopy.columnsSettings}>
-                  <button type="button" className={layout.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={pageCopy.columnsSettingsAria}>
-                    <Icon icon="mdi:table-cog" />
-                  </button>
-                </SmartTooltip>
-                {canExportTickets ? <SmartTooltip content={pageCopy.exportCsv}>
-                  <button type="button" className={layout.iconBtn} onClick={handleExportCsv} disabled={exporting || totalCount === 0} aria-label={pageCopy.exportCsvAria}>
-                    <Icon icon="mdi:download-outline" />
-                  </button>
-                </SmartTooltip> : null}
-                {canCreateTicket ? <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={() => onNavigate?.("TicketCreate")} disabled={viewMode === "trash"} aria-label={pageCopy.newTicketAria}>
-                  <FaPlus />
-                </button> : null}
-              </>;
+  const moreActionsLabel = pageCopy.moreActions || "Plus d'actions";
+  const crmMoreMenuItems = [{
+    key: "columns",
+    label: pageCopy.columnsSettings,
+    icon: "mdi:table-cog",
+    onClick: () => setColumnsModalOpen(true)
+  }, ...(canExportTickets ? [{
+    key: "export",
+    label: pageCopy.exportCsv,
+    icon: "mdi:download-outline",
+    disabled: exporting || totalCount === 0,
+    onClick: handleExportCsv
+  }] : [])];
+  const toolbarExtraActions = <>
+      {canTrash ? <SmartTooltip content={viewMode === "trash" ? pageCopy.trashSwitchHideTooltip : pageCopy.trashSwitchTitle}>
+        <button type="button" className={`${styles.trashBtn} ${viewMode === "trash" ? styles.trashBtnActive : ""}`} onClick={() => setViewMode(prev => prev === "trash" ? "active" : "trash")} aria-label={viewMode === "trash" ? pageCopy.trashSwitchHideAria : pageCopy.trashSwitchAria} aria-pressed={viewMode === "trash"}>
+          <Icon icon="mdi:trash-can-outline" aria-hidden />
+        </button>
+      </SmartTooltip> : null}
+      {playMode && canRandomMode ? <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={pageCopy.playModeDisableTooltip} aria-label={pageCopy.playModeDisableAria}>
+          <Icon icon="mdi:dice-5" aria-hidden />
+          {pageCopy.playModeBanner}
+          <Icon icon="mdi:close" className={playModeStyles.playModeBannerClose} aria-hidden />
+        </button> : null}
+      {canRandomMode ? <SmartTooltip content={playMode ? pageCopy.playModeDisableTooltip : pageCopy.playModeTooltip}>
+        <button type="button" className={`${playModeStyles.diceBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || viewMode === "trash"} aria-label={playMode ? pageCopy.playModeDisableAria : pageCopy.playModeAria} aria-pressed={playMode}>
+          <Icon icon={loadingRandom ? "mdi:loading" : "mdi:dice-5"} className={loadingRandom ? playModeStyles.spinning : undefined} />
+        </button>
+      </SmartTooltip> : null}
+    </>;
+  const viewsExpandLeading = viewMode !== "trash" && viewsPaneCollapsed ? <SmartTooltip content={pageCopy.views.expandPane}>
+      <button type="button" className={styles.viewsExpandBtn} onClick={() => setViewsPaneCollapsedState(false)} aria-label={pageCopy.views.expandPane}>
+        <FaChevronRight aria-hidden />
+        <span>{pageCopy.views.title}</span>
+      </button>
+    </SmartTooltip> : null;
+  const satisfactionTrailingToolbar = <div className={layout.toolbarGroupedActions}>
+      {toolbarExtraActions}
+      <div className={layout.exportMenuWrap} ref={satisfactionMoreMenuRef}>
+        <SmartTooltip content={moreActionsLabel}>
+          <button type="button" className={`${kit.btnSquare} ${kit.btnSquareSecondary}`} onClick={() => setSatisfactionMoreMenuOpen(open => !open)} aria-expanded={satisfactionMoreMenuOpen} aria-haspopup="menu" aria-label={moreActionsLabel}>
+            <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
+          </button>
+        </SmartTooltip>
+        {satisfactionMoreMenuOpen ? <div className={layout.exportMenu} role="menu">
+            {crmMoreMenuItems.map(item => <button key={item.key} type="button" role="menuitem" className={layout.exportMenuItem} disabled={item.disabled} onClick={() => {
+            setSatisfactionMoreMenuOpen(false);
+            item.onClick?.();
+          }}>
+                {item.icon ? <Icon icon={item.icon} className={layout.exportMenuItemIcon} aria-hidden /> : null}
+                {item.label}
+              </button>)}
+          </div> : null}
+      </div>
+      {canCreateTicket ? <SmartTooltip content={pageCopy.newTicket}>
+          <button type="button" className={`${kit.btnSquare} ${kit.btnSquarePrimary}`} onClick={() => onNavigate?.("TicketCreate")} disabled={viewMode === "trash"} aria-label={pageCopy.newTicketAria}>
+            <Icon icon="mdi:plus" aria-hidden />
+          </button>
+        </SmartTooltip> : null}
+    </div>;
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
-            <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-        <div className={`${styles.viewsLayout} ${viewMode === "trash" ? styles.viewsLayoutTrash : ""} ${viewsPaneCollapsed ? styles.viewsLayoutCollapsed : ""}`.trim()}>
-          {viewMode !== "trash" && !viewsPaneCollapsed && <aside className={styles.viewsPane} aria-label={pageCopy.views.paneAria}>
-            <div className={styles.viewsPaneHeader}>
-              <span className={styles.viewsTitle}>{pageCopy.views.title}</span>
+        <div className={`${kit.finderLayout} ${styles.viewsFinder} ${viewMode === "trash" || viewsPaneCollapsed ? styles.viewsFinderSolo : ""}`.trim()}>
+          {viewMode !== "trash" && !viewsPaneCollapsed && <aside className={kit.finderSidebar} aria-label={pageCopy.views.paneAria}>
+            <div className={`${kit.finderSecTitleRow} ${styles.viewsFinderHeader}`.trim()}>
+              <p className={kit.finderSecTitle}>{pageCopy.views.title}</p>
               <div className={styles.viewsHeaderActions}>
                 <SmartTooltip content={pageCopy.views.collapsePane}>
-                  <button type="button" className={styles.viewsCollapseBtn} onClick={() => setViewsPaneCollapsedState(true)} title={pageCopy.views.collapsePane} aria-label={pageCopy.views.collapsePane} disabled={viewsReorderMode}>
+                  <button type="button" className={kit.finderVaultAddBtn} onClick={() => setViewsPaneCollapsedState(true)} title={pageCopy.views.collapsePane} aria-label={pageCopy.views.collapsePane} disabled={viewsReorderMode}>
                     <FaChevronLeft aria-hidden />
                   </button>
                 </SmartTooltip>
-                {hasReorderableViews ? <button type="button" className={`${styles.viewsEditBtn} ${viewsReorderMode ? styles.viewsEditBtnActive : ""}`} onClick={toggleViewsReorderMode} title={viewsReorderMode ? pageCopy.views.reorderFinish : pageCopy.views.reorderStart} aria-label={viewsReorderMode ? pageCopy.views.reorderFinish : pageCopy.views.reorderStart} aria-pressed={viewsReorderMode} disabled={viewsOrderSaving}>
+                {hasReorderableViews ? <button type="button" className={`${kit.finderVaultAddBtn} ${viewsReorderMode ? styles.viewsEditBtnActive : ""}`.trim()} onClick={toggleViewsReorderMode} title={viewsReorderMode ? pageCopy.views.reorderFinish : pageCopy.views.reorderStart} aria-label={viewsReorderMode ? pageCopy.views.reorderFinish : pageCopy.views.reorderStart} aria-pressed={viewsReorderMode} disabled={viewsOrderSaving}>
                     <Icon icon={viewsReorderMode ? "mdi:check" : "mdi:pencil-outline"} aria-hidden />
                   </button> : null}
-                {canManageViews ? <button type="button" className={styles.viewsAddBtn} onClick={openCreateViewModal} title={pageCopy.views.create} aria-label={pageCopy.views.create} disabled={viewsReorderMode}>
+                {canManageViews ? <button type="button" className={kit.finderVaultAddBtn} onClick={openCreateViewModal} title={pageCopy.views.create} aria-label={pageCopy.views.create} disabled={viewsReorderMode}>
                   <FaPlus />
                 </button> : null}
               </div>
@@ -1274,20 +1321,24 @@ export default function TicketPage({
             {viewsReorderMode ? <p className={styles.viewsReorderHint}>
                 {viewsOrderSaving ? pageCopy.views.saving : pageCopy.views.reorderHint}
               </p> : null}
-            <div className={styles.viewsList}>
+            <UiKitScrollFadeShell className={kit.finderSecondaryShell} deps={[activeViewId, viewsLoading, viewsReorderMode, visibleSatisfactionViews.length, publicViews.length, assignedViews.length, privateViews.length]}>
+              <div className={kit.finderSecondary}>
+                <nav className={kit.finderSecNav} aria-label={pageCopy.views.paneAria}>
               {viewsLoading ? <div className={styles.viewsEmpty}>
                   <Icon icon="mdi:loading" className={layout.spinning} />
                   {pageCopy.views.loading}
                 </div> : <>
-                  <div className={styles.viewsGroupLabel}>{pageCopy.views.general}</div>
-                  {builtinTicketViews.map(view => renderViewItem(view))}
+                  <div className={kit.finderSecGroup}>
+                    <p className={kit.finderSecGroupTitle}>{pageCopy.views.general}</p>
+                    {builtinTicketViews.map(view => renderViewItem(view))}
+                  </div>
                   {renderCustomViewsSection("public", pageCopy.views.team, publicViews)}
                   {renderCustomViewsSection("assigned", pageCopy.views.assigned, assignedViews)}
                   {renderCustomViewsSection("private", pageCopy.views.private, privateViews)}
-                  {visibleSatisfactionViews.length > 0 ? <>
-                      <div className={styles.viewsGroupLabel}>{pageCopy.views.satisfaction}</div>
+                  {visibleSatisfactionViews.length > 0 ? <div className={kit.finderSecGroup}>
+                      <p className={kit.finderSecGroupTitle}>{pageCopy.views.satisfaction}</p>
                       {visibleSatisfactionViews.map(view => renderViewItem(view))}
-                    </> : null}
+                    </div> : null}
                   {customTicketViews.length === 0 && !viewsReorderMode && !visibleSatisfactionViews.length ? <div className={styles.viewsEmpty}>
                       <p>{pageCopy.views.emptyHint}</p>
                       {canManageViews ? <button type="button" className={styles.viewsCreateLink} onClick={openCreateViewModal}>
@@ -1295,54 +1346,59 @@ export default function TicketPage({
                       </button> : null}
                     </div> : null}
                 </>}
-            </div>
+                </nav>
+              </div>
+            </UiKitScrollFadeShell>
           </aside>}
 
-          <div className={styles.mainColumn}>
-            {isSatisfactionView ? <TicketSatisfactionsPanel scope={satisfactionScope} onNavigate={onNavigate} leadingToolbarContent={viewMode !== "trash" && viewsPaneCollapsed ? <SmartTooltip content={pageCopy.views.expandPane}>
-                      <button type="button" className={styles.viewsExpandBtn} onClick={() => setViewsPaneCollapsedState(false)} aria-label={pageCopy.views.expandPane}>
-                        <FaChevronRight aria-hidden />
-                        <span>{pageCopy.views.title}</span>
-                      </button>
-                    </SmartTooltip> : null} trailingToolbarContent={<div className={layout.toolbarActions}>{toolbarActions}</div>} /> : <>
+          <div className={`${kit.finderContent} ${styles.viewsFinderContent}`.trim()}>
+            <div className={styles.viewsFinderMain}>
+            {isSatisfactionView ? <div key={`sat-${activeViewId}`} className={styles.contentFadeUp}>
+              <div className={`${layout.panelCard} ${styles.viewsFinderPanel}`.trim()}>
+                <TicketSatisfactionsPanel scope={satisfactionScope} onNavigate={onNavigate} leadingToolbarContent={viewsExpandLeading} trailingToolbarContent={satisfactionTrailingToolbar} />
+              </div>
+            </div> : <>
             {loading ? (
             <PageSkeleton variant="list" rows={8} label={pageCopy.loadingTickets} />
           ) : <div className={layout.listBody}>
             <div className={layout.listArea}>
-            <div className={`${layout.panelCard} ${refreshing ? styles.tablePanelRefreshing : ""}`.trim()}>
-              <div className={layout.tableSearchBar}>
-                {viewMode !== "trash" && viewsPaneCollapsed ? <SmartTooltip content={pageCopy.views.expandPane}>
-                    <button type="button" className={styles.viewsExpandBtn} onClick={() => setViewsPaneCollapsedState(false)} aria-label={pageCopy.views.expandPane}>
-                      <FaChevronRight aria-hidden />
-                      <span>{pageCopy.views.title}</span>
-                    </button>
-                  </SmartTooltip> : null}
-                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                  <Icon icon={isSearchPending || refreshing ? "mdi:loading" : "mdi:magnify"} className={`${layout.searchIcon} ${isSearchPending || refreshing ? layout.spinning : ""}`.trim()} aria-hidden />
-                  <input type="text" inputMode="search" className={layout.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder={pageCopy.search.placeholder} aria-label={pageCopy.search.aria} />
-                  {search && !isSearchPending && !refreshing ? <button type="button" className={layout.clearButton} onClick={() => setSearch("")} aria-label={pageCopy.search.clear}>
-                      <FaTimes />
-                    </button> : null}
-                </div>
-                <div className={layout.toolbarActions}>{toolbarActions}</div>
-              </div>
+            <div className={`${layout.panelCard} ${styles.viewsFinderPanel} ${refreshing ? styles.tablePanelRefreshing : ""}`.trim()}>
+              <UiKitCrmListToolbar
+                title={pageCopy.pageTitle}
+                titleIcon="mingcute:ticket-fill"
+                searchValue={search}
+                onSearchChange={setSearch}
+                onSearchClear={() => setSearch("")}
+                searchPlaceholder={pageCopy.search.placeholder}
+                searchAriaLabel={pageCopy.search.aria}
+                clearSearchLabel={pageCopy.search.clear}
+                searchPending={isSearchPending || refreshing}
+                leading={viewsExpandLeading}
+                moreActionsLabel={moreActionsLabel}
+                moreMenuItems={crmMoreMenuItems}
+                extraActions={toolbarExtraActions}
+                createAction={canCreateTicket ? {
+                  label: pageCopy.newTicket,
+                  ariaLabel: pageCopy.newTicketAria,
+                  onClick: () => onNavigate?.("TicketCreate"),
+                  disabled: viewMode === "trash"
+                } : null}
+              />
 
+              <div key={`${viewMode}-${activeViewId}`} className={styles.contentFadeUp}>
               {totalCount === 0 && !refreshing ? <div className={layout.emptyStateInCard}>
-                <Icon icon="mingcute:ticket-fill" className={layout.emptyStateIcon} />
-                <p className={layout.emptyStateTitle}>
-                  {viewMode === "trash" ? pageCopy.empty.trashTitle : pageCopy.empty.noTicketsTitle}
-                </p>
-                <p className={layout.emptyStateHint}>
-                  {viewMode === "trash" ? pageCopy.empty.trashHint : pageCopy.empty.activeHint}
-                </p>
+                <UiKitEmptyState bare icon="mingcute:ticket-fill" title={viewMode === "trash" ? pageCopy.empty.trashTitle : pageCopy.empty.noTicketsTitle} text={viewMode === "trash" ? pageCopy.empty.trashHint : pageCopy.empty.activeHint} />
                 {viewMode !== "trash" && canCreateTicket && <button type="button" className={layout.primaryBtn} onClick={() => onNavigate?.("TicketCreate")}>
                     <Icon icon="mdi:plus" />
                     {pageCopy.newTicket}
                   </button>}
               </div> : <>
-              <div className={layout.dataTableWrap}>
-              <div className={`${styles.tableScroll} ${layout.dataTableScroll}`}>
-                <table className={styles.table}>
+              <UiKitTable
+                fill
+                className={tableKit.tableListFill}
+                deps={[tickets.length, pageSize, debouncedSearch, tableColumns.join("|"), viewMode, activeViewId, refreshing]}
+              >
+                <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`}>
             <thead>
               <tr>
                 <th className={styles.checkboxCell}>
@@ -1572,8 +1628,7 @@ export default function TicketPage({
                             })}
             </tbody>
                 </table>
-              </div>
-              </div>
+              </UiKitTable>
 
             {totalCount > 0 ? (
               <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
@@ -1595,18 +1650,19 @@ export default function TicketPage({
                 </div>
                 <div className={layout.paginationRight}>
                   <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage <= 1} aria-label={commonCopy.prevPage}>
-                    <FaChevronLeft />
+                    <Icon icon="mdi:chevron-left" aria-hidden />
                   </button>
                   <span className={layout.paginationInfo}>
                     {formatPageInfo(locale, currentPage, totalPages)}
                   </span>
                   <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage >= totalPages} aria-label={commonCopy.nextPage}>
-                    <FaChevronRight />
+                    <Icon icon="mdi:chevron-right" aria-hidden />
                   </button>
                 </div>
               </div>
             ) : null}
               </>}
+              </div>
             </div>
             </div>
             {selectedCount > 0 && <div className={styles.bulkBar}>
@@ -1640,6 +1696,7 @@ export default function TicketPage({
               </div>}
           </div>}
               </>}
+            </div>
           </div>
         </div>
 

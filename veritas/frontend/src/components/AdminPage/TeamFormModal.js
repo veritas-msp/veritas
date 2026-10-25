@@ -2,14 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
-import { Switch } from "./AdminUi";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAdminCommonCopy, useAdminModalCopy } from "../../hooks/useAdminCopy";
 import { getTeamFormSections } from "./adminModalsI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
-import formStyles from "./IngestionRuleFormModal.module.css";
 export default function TeamFormModal({
   open,
   mode = "create",
@@ -23,7 +21,10 @@ export default function TeamFormModal({
   const commonCopy = useCommonCopy();
   const adminCopy = useAdminCommonCopy();
   const modalCopy = useAdminModalCopy("teamForm");
-  const formSections = useMemo(() => getTeamFormSections(locale), [locale]);
+  const formSections = useMemo(
+    () => getTeamFormSections(locale).filter(section => section.id !== "status"),
+    [locale]
+  );
   const isCreate = mode === "create";
   const [activeSection, setActiveSection] = useState("general");
   useEffect(() => {
@@ -31,8 +32,7 @@ export default function TeamFormModal({
     setActiveSection("general");
   }, [open]);
   const sectionMeta = useMemo(() => ({
-    general: Boolean(String(draft?.name || "").trim()),
-    status: true
+    general: Boolean(String(draft?.name || "").trim())
   }), [draft]);
   if (!open || !draft) return null;
   const patchDraft = patch => setDraft(prev => ({
@@ -70,22 +70,6 @@ export default function TeamFormModal({
               </div>
             </div>
           </>;
-      case "status":
-        return <>
-            <div className={layout.sectionHead}>
-              <h3 className={layout.sectionTitle}>{modalCopy.statusTitle}</h3>
-              <p className={layout.sectionDesc}>{modalCopy.statusDesc}</p>
-            </div>
-            <div className={formStyles.statusRow}>
-              <div>
-                <div className={formStyles.statusLabel}>{modalCopy.teamActiveLabel}</div>
-                <p className={formStyles.statusHint}>{modalCopy.teamActiveHint}</p>
-              </div>
-              <Switch checked={Boolean(draft.isActive)} onChange={on => patchDraft({
-              isActive: on
-            })} label={draft.isActive ? adminCopy.activeShort : adminCopy.inactiveShort} />
-            </div>
-          </>;
       default:
         return null;
     }
@@ -108,9 +92,30 @@ export default function TeamFormModal({
               <p className={layout.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={commonCopy.close}>
-            <FaTimes />
-          </button>
+          <div className={layout.headerTrailing}>
+            <label className={layout.headerStatusToggle}>
+              <span className={layout.headerStatusLabel}>
+                {draft.isActive ? adminCopy.activeShort : adminCopy.inactiveShort}
+              </span>
+              <span className={layout.switchWrap}>
+                <input
+                  type="checkbox"
+                  className={layout.switchInput}
+                  checked={Boolean(draft.isActive)}
+                  onChange={e => patchDraft({ isActive: e.target.checked })}
+                  role="switch"
+                  aria-checked={Boolean(draft.isActive)}
+                  disabled={saving}
+                />
+                <span className={layout.switchTrack} aria-hidden="true">
+                  <span className={layout.switchThumb} />
+                </span>
+              </span>
+            </label>
+            <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={commonCopy.close}>
+              <FaTimes />
+            </button>
+          </div>
         </header>
 
         <div className={layout.body}>

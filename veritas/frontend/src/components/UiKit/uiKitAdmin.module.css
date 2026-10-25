@@ -1,0 +1,372 @@
+/* —— Menu administration (AdminPanel) —— */
+.adminMenuDemo {
+  display: grid;
+  grid-template-columns: minmax(15rem, 16.25rem) minmax(0, 1fr);
+  gap: 0;
+  height: 28rem;
+  border: 1px solid var(--msp-border-light);
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface);
+  box-shadow: var(--msp-shadow-sm);
+  overflow: hidden;
+}
+
+.adminMenu {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  border-right: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.adminMenu::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(ellipse 280px 200px at 110% 8%, color-mix(in srgb, var(--msp-accent) 12%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 220px 260px at -8% 92%, color-mix(in srgb, var(--msp-accent) 8%, transparent) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.adminMenu > * {
+  position: relative;
+  z-index: 1;
+}
+
+.adminMenuTop {
+  flex-shrink: 0;
+  padding: 0.85rem 0.75rem 0.65rem;
+  border-bottom: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  box-shadow: var(--msp-shadow-sm);
+}
+
+.adminMenuSearch {
+  display: block;
+  position: relative;
+}
+
+.adminMenuSearchIcon {
+  position: absolute;
+  left: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: var(--msp-muted);
+  pointer-events: none;
+}
+
+.adminMenuSearchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 2rem 0.5rem 2rem;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-btn);
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  transition:
+    border-color var(--msp-duration-fast) var(--msp-ease),
+    box-shadow var(--msp-duration-fast) var(--msp-ease);
+}
+
+.adminMenuSearchInput::placeholder {
+  color: var(--msp-muted-light);
+}
+
+.adminMenuSearchInput:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--msp-accent) 65%, var(--msp-border));
+  box-shadow: 0 0 0 3px var(--msp-accent-soft);
+}
+
+.adminMenuSearchInput::-webkit-search-cancel-button {
+  display: none;
+}
+
+.adminMenuSearchClear {
+  appearance: none;
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted);
+  cursor: pointer;
+}
+
+.adminMenuSearchClear:hover {
+  background: var(--msp-accent-soft);
+  color: var(--msp-text);
+}
+
+.adminMenuNav {
+  --fade-surface: var(--msp-surface);
+  --fade-radius: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.55rem 0.75rem 1rem;
+}
+
+.adminNavTrack {
+  position: relative;
+}
+
+.adminNavIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--msp-radius-btn);
+  background: var(--msp-accent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--msp-accent) 35%, transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    transform var(--msp-duration) var(--msp-ease-spring),
+    width var(--msp-duration) var(--msp-ease),
+    height var(--msp-duration) var(--msp-ease);
+  will-change: transform, width, height;
+}
+
+.adminNavEmpty {
+  margin: 0;
+  padding: 0.75rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--msp-muted);
+  text-align: center;
+}
+
+.adminNavSection {
+  margin-bottom: 0.85rem;
+}
+
+.adminNavSectionTitle {
+  margin: 0 0 0.4rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.adminNavList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.adminNavItem {
+  appearance: none;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: var(--msp-radius-btn);
+  background: transparent;
+  color: var(--msp-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--msp-duration-fast) var(--msp-ease),
+    color var(--msp-duration-fast) var(--msp-ease);
+}
+
+.adminNavItem:hover:not(.adminNavItemActive):not(.adminNavGroupActive) {
+  background: var(--msp-accent-soft);
+}
+
+/* Fond géré par .adminNavIndicator (glisse comme le Finder) */
+.adminNavItemActive,
+.adminNavItemActive:hover {
+  background: transparent;
+  color: #fff;
+}
+
+.adminNavItemActive .adminNavItemDesc {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.adminNavItemActive .adminNavIcon {
+  color: #fff;
+}
+
+.adminNavIcon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  color: var(--msp-accent);
+}
+
+.adminNavItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.adminNavItemLabel {
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: inherit;
+}
+
+.adminNavItemDesc {
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--msp-muted);
+}
+
+.adminNavGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.adminNavGroupToggle {
+  position: relative;
+  padding-right: 2rem;
+}
+
+.adminNavGroupChevron {
+  position: absolute;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.05rem;
+  color: var(--msp-muted);
+  transition: transform var(--msp-duration-fast) var(--msp-ease);
+}
+
+.adminNavGroupChevronOpen {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.adminNavGroupActive {
+  background: var(--msp-accent-soft);
+}
+
+.adminNavGroupActive:hover {
+  background: var(--msp-accent-soft);
+}
+
+.adminNavSubList {
+  list-style: none;
+  margin: 0 0 0.2rem;
+  padding: 0 0 0 0.65rem;
+  margin-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  border-left: 2px solid var(--msp-border-light);
+  overflow: hidden;
+}
+
+.adminNavSubListOpen {
+  animation: uikitAdminSubOpen var(--msp-duration) var(--msp-ease) both;
+}
+
+.adminNavSubItem {
+  padding: 0.45rem 0.55rem;
+}
+
+.adminMenuContent {
+  padding: 1.25rem 1.35rem;
+  background: var(--msp-bg);
+  min-height: 0;
+}
+
+.adminMenuContentTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.adminMenuContentHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+}
+
+/* —— Pro lock (AdminPanel) —— */
+.adminNavItemProLocked { opacity: 0.72; }
+.adminNavItemProLocked:hover { background: var(--msp-accent-soft); }
+.adminNavItemLabelRow { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.adminNavItemProBadge { flex-shrink: 0; }
+
+/* —— Shell layout —— */
+.adminShell {
+  display: grid;
+  grid-template-columns: minmax(15rem, 16.5rem) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--msp-page-bg, var(--msp-bg));
+}
+
+.adminShellMain {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  background: var(--msp-bg);
+}
+
+@media (max-width: 900px) {
+  .adminShell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .adminShell > .adminMenu {
+    height: auto;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adminNavIndicator,
+  .adminNavSubListOpen {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes uikitAdminSubOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import ActivitySectorSelect from "../Misc/ActivitySectorSelect";
-import SiretInput from "../Misc/SiretInput";
 import { fetchActiveUsers, createUser } from "../../api/users";
+import { normalizeLegalIdentifier } from "../../utils/siret";
 import { fetchContactsList, addContact, updateContact, addContactMembership, setContactPrimaryForClient } from "../../api/clients";
 import API_BASE_URL from "../../config";
 import AgentFormModal from "../AdminPage/AgentFormModal";
@@ -30,6 +29,14 @@ import {
   ENTERPRISE_ICON_COLOR_PRESETS,
   resolveEnterpriseIconColor
 } from "./enterpriseIconChoices";
+import {
+  UiKitButton,
+  UiKitField,
+  UiKitInput,
+  uiKitFormsStyles as forms,
+  uiKitLayoutsStyles as kit,
+  useFinderNavIndicator
+} from "../UiKit";
 import styles from "./EnterpriseFormModal.module.css";
 function getCommercialUserLabel(user) {
   if (!user) return "";
@@ -73,6 +80,7 @@ export default function EnterpriseFormModal({
   const isCreate = mode === "create";
   const form = formProp ?? formData;
   const [activeSection, setActiveSection] = useState("identity");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   const [usersLocal, setUsersLocal] = useState([]);
   const [loadingUsersLocal, setLoadingUsersLocal] = useState(false);
   const [internalSitesModalOpen, setInternalSitesModalOpen] = useState(false);
@@ -467,9 +475,7 @@ export default function EnterpriseFormModal({
       identity: Boolean(form?.name?.trim()),
       location: clientSites.length > 0,
       contact: Boolean(contact.nom?.trim()),
-      contract: hasContractDates || hasCommercial || slaEnabled,
-      modules: activeModulesCount > 0,
-      status: Boolean(form?.statut)
+      contract: hasContractDates || hasCommercial || slaEnabled || activeModulesCount > 0
     };
   }, [form, activeModulesCount, clientSites.length]);
   // Contact principal obligatoire uniquement à la création : en édition, on peut
@@ -508,10 +514,18 @@ export default function EnterpriseFormModal({
   const submitDisabled = saving || !requiredFieldsValid || !isCreate && !hasChanges;
   const deleteButtonDisabled = deleteDisabled || deleteLoading || loadingDeletionCheck || deletionBlocked;
   const deleteTooltip = loadingDeletionCheck ? copy.checkingLinked : deletionBlocked && deleteBlockedTooltip ? deleteBlockedTooltip : null;
-  const deleteButton = <button type="button" className={`${styles.ghostBtn} ${styles.footerDeleteBtn} ${deleteButtonDisabled ? styles.footerDeleteBtnDisabled : ""}`} onClick={onDeleteEnterprise} disabled={deleteButtonDisabled}>
-      <Icon icon="mdi:delete-outline" aria-hidden />
+  const deleteButton = (
+    <UiKitButton
+      type="button"
+      variant="ghost"
+      className={`${styles.footerDeleteBtn} ${deleteButtonDisabled ? styles.footerDeleteBtnDisabled : ""}`}
+      onClick={onDeleteEnterprise}
+      disabled={deleteButtonDisabled}
+      icon="mdi:delete-outline"
+    >
       {deleteLoading ? copy.deleting : loadingDeletionCheck ? copy.checking : copy.delete}
-    </button>;
+    </UiKitButton>
+  );
   const requiredHint = isCreate ? copy.footer.requiredHint : copy.footer.requiredHintEdit;
   const footerHint = !requiredFieldsValid
     ? requiredHint
@@ -525,122 +539,128 @@ export default function EnterpriseFormModal({
             : copy.footer.noChanges
           : "";
   const modalTitle = title || copy.formatTitle(isCreate, form.name);
-  const modalSubtitle = subtitle || (isCreate ? copy.subtitleCreate : copy.subtitleEdit);
+  const modalSubtitle = subtitle || "";
   const f = copy.fields;
   const renderSectionContent = () => {
     const section = visibleSections.find(s => s.id === activeSection);
     switch (activeSection) {
       case "identity":
-        return <>
-            <div className={styles.sectionHead}>
+        {
+          return <div className={styles.sectionFill}>
+            <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
-            <div className={styles.fieldGrid2}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-client-number">
-                  {f.clientNumber}
-                </label>
-                <input id="enterprise-form-client-number" type="text" className={styles.input} value={form.clientNumber || ""} onChange={e => patchForm({
-                clientNumber: e.target.value.trim()
-              })} placeholder={f.clientNumberPlaceholder} inputMode="numeric" />
-              </div>
-              <div className={styles.field}>
-                <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="enterprise-form-name">
-                  {f.name}
-                </label>
-                <input id="enterprise-form-name" type="text" className={styles.input} value={form.name || ""} onChange={e => patchForm({
-                name: e.target.value
-              })} placeholder={f.namePlaceholder} autoFocus={isCreate} />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-siret">
-                  {copy.legalIdentifier}
-                </label>
-                <SiretInput id="enterprise-form-siret" className={styles.input} value={form.siret || ""} onChange={value => patchForm({
-                siret: value
-              })} placeholder={f.legalIdentifierPlaceholder} />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-secteur">
-                  {f.sector}
-                </label>
-                <ActivitySectorSelect id="enterprise-form-secteur" className={styles.input} value={form.secteur || ""} onChange={e => patchForm({
-                secteur: e.target.value
-              })} />
-              </div>
-              <div className={`${styles.field} ${styles.fieldFull}`}>
-                <span className={styles.label}>{f.icon}</span>
-                <p className={styles.hint}>{f.iconHint}</p>
-                <div className={styles.iconAppearanceRow}>
-                  <div className={styles.iconPickerRow}>
-                    <IconPicker
-                      value={form.icon || DEFAULT_ENTERPRISE_ICON}
-                      onChange={icon => patchForm({ icon })}
-                      choices={ENTERPRISE_ICON_CHOICES}
-                      searchable
-                      popover
-                      bare
-                      color={resolveEnterpriseIconColor(form.iconColor)}
-                      searchPlaceholder={f.iconSearchPlaceholder}
-                      searchAria={f.iconSearchAria}
-                      clearSearchLabel={f.iconClearSearch}
-                      changeLabel={f.iconChangeLabel}
-                      pickerAria={f.iconPickerAria}
-                    />
-                    {form.icon ? (
-                      <button
-                        type="button"
-                        className={styles.iconClearBtn}
-                        onClick={() => patchForm({ icon: "", iconColor: "" })}
-                      >
-                        {f.iconClear}
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className={styles.iconColorField}>
-                    <span className={styles.label}>{f.iconColor}</span>
-                    <div className={styles.iconColorPicker} role="group" aria-label={f.iconColorAria}>
-                      {ENTERPRISE_ICON_COLOR_PRESETS.map(color => {
-                        const selected = resolveEnterpriseIconColor(form.iconColor).toLowerCase() === color.toLowerCase();
-                        return <button
-                          key={color}
+            <div className={styles.sectionScroll}>
+              <div className={styles.fieldGrid2}>
+                <UiKitField label={f.name} htmlFor="enterprise-form-name" required>
+                  <UiKitInput
+                    id="enterprise-form-name"
+                    type="text"
+                    value={form.name || ""}
+                    onChange={e => patchForm({ name: e.target.value })}
+                    placeholder={f.namePlaceholder}
+                    autoFocus={isCreate}
+                  />
+                </UiKitField>
+                <UiKitField label={f.clientNumber} htmlFor="enterprise-form-client-number">
+                  <UiKitInput
+                    id="enterprise-form-client-number"
+                    type="text"
+                    value={form.clientNumber || ""}
+                    onChange={e => patchForm({ clientNumber: e.target.value.trim() })}
+                    placeholder={f.clientNumberPlaceholder}
+                    inputMode="numeric"
+                  />
+                </UiKitField>
+                <UiKitField label={copy.legalIdentifier} htmlFor="enterprise-form-siret">
+                  <UiKitInput
+                    id="enterprise-form-siret"
+                    type="text"
+                    autoComplete="off"
+                    value={form.siret || ""}
+                    onChange={e => patchForm({ siret: normalizeLegalIdentifier(e.target.value) })}
+                    placeholder={f.legalIdentifierPlaceholder}
+                  />
+                </UiKitField>
+                <UiKitField label={f.sector} htmlFor="enterprise-form-secteur">
+                  <ActivitySectorSelect
+                    id="enterprise-form-secteur"
+                    className={forms.input}
+                    value={form.secteur || ""}
+                    onChange={e => patchForm({ secteur: e.target.value })}
+                  />
+                </UiKitField>
+                <UiKitField label={f.icon} full className={styles.fieldFull}>
+                  <div className={styles.iconAppearanceRow}>
+                    <div className={styles.iconPickerRow}>
+                      <IconPicker
+                        value={form.icon || DEFAULT_ENTERPRISE_ICON}
+                        onChange={icon => patchForm({ icon })}
+                        choices={ENTERPRISE_ICON_CHOICES}
+                        searchable
+                        popover
+                        bare
+                        color={resolveEnterpriseIconColor(form.iconColor)}
+                        searchPlaceholder={f.iconSearchPlaceholder}
+                        searchAria={f.iconSearchAria}
+                        clearSearchLabel={f.iconClearSearch}
+                        changeLabel={f.iconChangeLabel}
+                        pickerAria={f.iconPickerAria}
+                      />
+                      {form.icon ? (
+                        <button
                           type="button"
-                          className={`${styles.iconColorSwatch} ${selected ? styles.iconColorSwatchActive : ""}`}
-                          style={{ "--swatch-color": color }}
-                          onClick={() => patchForm({ iconColor: color })}
-                          aria-label={`${f.iconColor} ${color}`}
-                          aria-pressed={selected}
-                        />;
-                      })}
-                      <label className={styles.iconColorCustom} title={f.iconColorCustom}>
-                        <input
-                          type="color"
-                          className={styles.iconColorInput}
-                          value={resolveEnterpriseIconColor(form.iconColor)}
-                          onChange={e => patchForm({ iconColor: e.target.value })}
-                          aria-label={f.iconColorCustom}
-                        />
-                      </label>
+                          className={styles.iconClearBtn}
+                          onClick={() => patchForm({ icon: "", iconColor: "" })}
+                        >
+                          {f.iconClear}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.iconColorField}>
+                      <span className={forms.fieldLabel}>{f.iconColor}</span>
+                      <div className={styles.iconColorPicker} role="group" aria-label={f.iconColorAria}>
+                        {ENTERPRISE_ICON_COLOR_PRESETS.map(color => {
+                          const selected = resolveEnterpriseIconColor(form.iconColor).toLowerCase() === color.toLowerCase();
+                          return <button
+                            key={color}
+                            type="button"
+                            className={`${styles.iconColorSwatch} ${selected ? styles.iconColorSwatchActive : ""}`}
+                            style={{ "--swatch-color": color }}
+                            onClick={() => patchForm({ iconColor: color })}
+                            aria-label={`${f.iconColor} ${color}`}
+                            aria-pressed={selected}
+                          />;
+                        })}
+                        <label className={styles.iconColorCustom} title={f.iconColorCustom}>
+                          <input
+                            type="color"
+                            className={styles.iconColorInput}
+                            value={resolveEnterpriseIconColor(form.iconColor)}
+                            onChange={e => patchForm({ iconColor: e.target.value })}
+                            aria-label={f.iconColorCustom}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </UiKitField>
               </div>
             </div>
-          </>;
+          </div>;
+        }
       case "location":
-        return <>
+        return <div className={styles.sectionFill}>
             <div className={`${styles.sectionHead} ${styles.sectionHeadWithAction}`.trim()}>
               <div className={styles.sectionHeadText}>
                 <h3 className={styles.sectionTitle}>{section?.label}</h3>
-                <p className={styles.sectionDesc}>{section?.description}</p>
               </div>
               <button type="button" className={styles.manageSitesBtn} onClick={openSitesManager}>
                 <Icon icon="mdi:map-marker-radius" aria-hidden />
                 {copy.formatManageSites(clientSites.length)}
               </button>
             </div>
-            <div className={styles.sitesBlock}>
+            <div className={`${styles.sitesBlock} ${styles.sectionScroll}`}>
               {clientSites.length === 0 ? <span className={styles.sectionDesc}>{f.noSites}</span> : <div className={styles.siteSummaryList}>
                   {clientSites.map(site => {
                 const address = buildSiteAddress(site);
@@ -659,66 +679,74 @@ export default function EnterpriseFormModal({
               })}
                 </div>}
             </div>
-          </>;
+          </div>;
       case "contact":
         {
           const contactComms = normalizeContactCommunications(contact);
           const primaryEmail = getPrimaryCommunicationValue(contactComms, "email") || contact.email || "";
           const primaryPhone = getPrimaryCommunicationValue(contactComms, "telephone") || contact.telephone || "";
           const contactDisplayName = [contact.prenom, contact.nom].filter(Boolean).join(" ");
-          return <>
-            <div className={styles.sectionHead}>
+          return <div className={styles.sectionFill}>
+            <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
-            <p className={styles.hint}>{f.contactHint}</p>
-            <div className={styles.fieldStack}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-contact-search">
-                  {f.primaryContact}
-                </label>
-                <div className={styles.autocomplete} ref={contactAutocompleteRef}>
-                  <input id="enterprise-form-contact-search" type="text" className={styles.input} placeholder={f.contactSearchPlaceholder} value={contactSearch} disabled={loadingContactsCatalog} autoComplete="off" aria-expanded={contactDropdownOpen} aria-haspopup="listbox" onChange={e => {
-                    setContactSearch(e.target.value);
-                    setContactDropdownOpen(true);
-                    setContactHighlight(0);
-                    setPrimaryContact(emptyPrimaryContact());
-                  }} onFocus={() => setContactDropdownOpen(true)} onKeyDown={e => {
-                    if (!contactDropdownOpen || filteredContacts.length === 0) return;
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setContactHighlight(index => Math.min(index + 1, filteredContacts.length - 1));
-                    } else if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setContactHighlight(index => Math.max(index - 1, 0));
-                    } else if (e.key === "Enter") {
-                      e.preventDefault();
-                      const picked = filteredContacts[contactHighlight];
-                      if (picked) selectExistingContact(picked);
-                    } else if (e.key === "Escape") {
-                      setContactDropdownOpen(false);
-                    }
-                  }} />
-                  {contactDropdownOpen && <div className={styles.dropdown} role="listbox">
-                      <button type="button" className={`${styles.dropdownCreate} ${styles.dropdownCreateTop}`} onClick={openPrimaryContactCreateModal}>
-                        <Icon icon="mdi:account-plus-outline" aria-hidden />
-                        {f.createContact}
-                      </button>
-                      {filteredContacts.length === 0 ? <div className={styles.dropdownEmpty}>
-                          {loadingContactsCatalog ? f.loadingContacts : f.noContactFound}
-                        </div> : filteredContacts.map((row, index) => {
-                      const name = [row.prenom, row.nom].filter(Boolean).join(" ") || row.nom;
-                      const company = row.client_name || "";
-                      return <button key={row.id} type="button" role="option" aria-selected={index === contactHighlight} className={`${styles.dropdownOption} ${index === contactHighlight ? styles.dropdownOptionSelected : ""}`} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setContactHighlight(index)} onClick={() => selectExistingContact(row)}>
-                              <span>{name}</span>
-                              {company ? <span className={styles.contactOptionMeta}> · {company}</span> : null}
-                              {row.email ? <span className={styles.contactOptionMeta}> · {row.email}</span> : null}
-                            </button>;
-                    })}
-                    </div>}
-                </div>
+            <div className={styles.sectionPinned}>
+              <div className={styles.autocomplete} ref={contactAutocompleteRef}>
+                <UiKitField label={f.primaryContact} htmlFor="enterprise-form-contact-search">
+                  <UiKitInput
+                    id="enterprise-form-contact-search"
+                    type="text"
+                    placeholder={f.contactSearchPlaceholder}
+                    value={contactSearch}
+                    disabled={loadingContactsCatalog}
+                    autoComplete="off"
+                    aria-expanded={contactDropdownOpen}
+                    aria-haspopup="listbox"
+                    onChange={e => {
+                      setContactSearch(e.target.value);
+                      setContactDropdownOpen(true);
+                      setContactHighlight(0);
+                      setPrimaryContact(emptyPrimaryContact());
+                    }}
+                    onFocus={() => setContactDropdownOpen(true)}
+                    onKeyDown={e => {
+                      if (!contactDropdownOpen || filteredContacts.length === 0) return;
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setContactHighlight(index => Math.min(index + 1, filteredContacts.length - 1));
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setContactHighlight(index => Math.max(index - 1, 0));
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        const picked = filteredContacts[contactHighlight];
+                        if (picked) selectExistingContact(picked);
+                      } else if (e.key === "Escape") {
+                        setContactDropdownOpen(false);
+                      }
+                    }}
+                  />
+                </UiKitField>
+                {contactDropdownOpen && <div className={styles.dropdown} role="listbox">
+                    <button type="button" className={`${styles.dropdownCreate} ${styles.dropdownCreateTop}`} onClick={openPrimaryContactCreateModal}>
+                      <Icon icon="mdi:account-plus-outline" aria-hidden />
+                      {f.createContact}
+                    </button>
+                    {filteredContacts.length === 0 ? <div className={styles.dropdownEmpty}>
+                        {loadingContactsCatalog ? f.loadingContacts : f.noContactFound}
+                      </div> : filteredContacts.map((row, index) => {
+                    const name = [row.prenom, row.nom].filter(Boolean).join(" ") || row.nom;
+                    const company = row.client_name || "";
+                    return <button key={row.id} type="button" role="option" aria-selected={index === contactHighlight} className={`${styles.dropdownOption} ${index === contactHighlight ? styles.dropdownOptionSelected : ""}`} onMouseDown={event => event.preventDefault()} onMouseEnter={() => setContactHighlight(index)} onClick={() => selectExistingContact(row)}>
+                            <span>{name}</span>
+                            {company ? <span className={styles.contactOptionMeta}> · {company}</span> : null}
+                            {row.email ? <span className={styles.contactOptionMeta}> · {row.email}</span> : null}
+                          </button>;
+                  })}
+                  </div>}
               </div>
-
+            </div>
+            <div className={styles.sectionScroll}>
               {contact.nom?.trim() ? <div className={styles.contactSummaryCard}>
                   <strong>{contactDisplayName || contact.nom}</strong>
                   {contact.poste ? <span className={styles.contactSummaryMeta}>{contact.poste}</span> : null}
@@ -730,34 +758,28 @@ export default function EnterpriseFormModal({
                   </button>
                 </div> : null}
             </div>
-          </>;
+          </div>;
         }
       case "contract":
         {
           const sla = form.contrat?.sla || createDefaultClientSla();
           const previewSla = createDefaultClientSla();
-          return <>
-            <div className={styles.sectionHead}>
+          return <div className={styles.sectionFill}>
+            <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
               <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
+            <div className={styles.sectionScroll}>
             <div className={styles.fieldGrid2}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-debut">
-                  {f.contractStart}
-                </label>
-                <input id="enterprise-form-debut" type="date" className={styles.input} value={form.contrat?.debut || ""} onChange={e => patchContrat("debut", e.target.value)} />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-expiration">
-                  {f.contractEnd}
-                </label>
-                <input id="enterprise-form-expiration" type="date" className={styles.input} value={form.contrat?.expiration || ""} onChange={e => patchContrat("expiration", e.target.value)} />
-              </div>
+              <UiKitField label={f.contractStart} htmlFor="enterprise-form-debut">
+                <UiKitInput id="enterprise-form-debut" type="date" value={form.contrat?.debut || ""} onChange={e => patchContrat("debut", e.target.value)} />
+              </UiKitField>
+              <UiKitField label={f.contractEnd} htmlFor="enterprise-form-expiration">
+                <UiKitInput id="enterprise-form-expiration" type="date" value={form.contrat?.expiration || ""} onChange={e => patchContrat("expiration", e.target.value)} />
+              </UiKitField>
             </div>
-            <div className={styles.field}>
+            <UiKitField htmlFor="enterprise-form-commercial" className={styles.commercialFieldWrap}>
               <div className={styles.commercialFieldHead}>
-                <label className={styles.label} htmlFor="enterprise-form-commercial">
+                <label className={forms.fieldLabel} htmlFor="enterprise-form-commercial">
                   {f.commercial}
                 </label>
                 <button type="button" className={styles.createAgentBtn} onClick={openCreateAgentModal} disabled={loadingAgentProfiles || creatingAgent || loadingUsers}>
@@ -765,15 +787,51 @@ export default function EnterpriseFormModal({
                   {f.createAgent}
                 </button>
               </div>
-              <MultiSuggestPicker singleSelect maxResults={8} inputId="enterprise-form-commercial" placeholder={loadingUsers ? f.loadingAgents : f.commercialSearchPlaceholder} options={commercialUserOptions} selectedIds={commercialId ? [commercialId] : []} emptyHint={f.noAgentSelected} emptyResultsHint={f.noAgentFound} onChange={ids => setCommercialId(ids[0] ? String(ids[0]) : "")} />
+              <MultiSuggestPicker
+                singleSelect
+                maxResults={8}
+                inputId="enterprise-form-commercial"
+                hideSearchIcon
+                inputClassName={forms.input}
+                className={styles.commercialPicker}
+                placeholder={loadingUsers ? f.loadingAgents : f.commercialSearchPlaceholder}
+                options={commercialUserOptions}
+                selectedIds={commercialId ? [commercialId] : []}
+                emptyHint={f.noAgentSelected}
+                emptyResultsHint={f.noAgentFound}
+                onChange={ids => setCommercialId(ids[0] ? String(ids[0]) : "")}
+              />
+            </UiKitField>
+
+            <div className={styles.contractSubBlock}>
+              <div className={styles.sectionHeadRow}>
+                <h4 className={styles.subsectionTitle}>{copy.modules.subsectionTitle}</h4>
+                {activeModulesCount > 0 ? <span className={styles.navBadge}>{activeModulesCount}</span> : null}
+              </div>
+              <div className={styles.modulesGrid}>
+                {localizedEnabledModules.map(mod => {
+                const key = mod.moduleKey;
+                const active = !!form.modules?.[key];
+                return <button key={key} type="button" className={`${styles.moduleTile} ${active ? styles.moduleTileActive : ""}`} onClick={() => toggleModule(key)} aria-pressed={active}>
+                      {active && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                      <Icon icon={mod.icon || "mdi:puzzle-outline"} className={styles.moduleTileIcon} aria-hidden />
+                      <span className={styles.moduleTileLabel}>{mod.label}</span>
+                    </button>;
+              })}
+                {isCommunity ? <button type="button" className={`${styles.moduleTile} ${styles.moduleTileProAdd}`} onClick={() => setProPromoFeature("customContractModules")} aria-label={copy.modules.proAria}>
+                    <span className={styles.moduleTileProBadge}>Pro</span>
+                    <Icon icon="mdi:plus" className={styles.moduleTileProAddIcon} aria-hidden />
+                    <span className={styles.moduleTileLabel}>{copy.modules.proNewService}</span>
+                    <span className={styles.moduleTileProHint}>{copy.modules.proCustomServices}</span>
+                  </button> : null}
+              </div>
             </div>
 
-            <div className={styles.contractSlaBlock}>
+            <div className={styles.contractSubBlock}>
               <div className={styles.sectionHeadRow}>
                 <h4 className={styles.subsectionTitle}>{copy.sla.subsectionTitle}</h4>
                 {isSlaCommunityLocked ? <span className={styles.navProBadge}>Pro</span> : null}
               </div>
-              <p className={styles.sectionDesc}>{copy.sla.subsectionDesc}</p>
 
               {isSlaCommunityLocked ? <>
                 <div className={styles.slaToggleLocked} aria-disabled="true">
@@ -801,7 +859,6 @@ export default function EnterpriseFormModal({
                         </tr>)}
                     </tbody>
                   </table>
-                  <p className={styles.slaHint}>{copy.sla.previewHint}</p>
                 </div>
               </> : <>
                 <label className={styles.slaToggle}>
@@ -828,88 +885,51 @@ export default function EnterpriseFormModal({
                         {copy.slaPriorityEntries.map(([priorityKey, priorityLabel]) => <tr key={priorityKey}>
                             <td>{priorityLabel}</td>
                             <td>
-                              <input type="number" min="0.25" step="0.25" className={styles.input} value={sla.byPriority?.[priorityKey]?.firstResponseHours ?? ""} onChange={e => patchSlaField(current => ({
-                            ...current,
-                            byPriority: {
-                              ...current.byPriority,
-                              [priorityKey]: {
-                                ...current.byPriority[priorityKey],
-                                firstResponseHours: Number(e.target.value)
-                              }
-                            }
-                          }))} />
+                              <UiKitInput
+                                type="number"
+                                size="s"
+                                min="0.25"
+                                step="0.25"
+                                value={sla.byPriority?.[priorityKey]?.firstResponseHours ?? ""}
+                                onChange={e => patchSlaField(current => ({
+                                  ...current,
+                                  byPriority: {
+                                    ...current.byPriority,
+                                    [priorityKey]: {
+                                      ...current.byPriority[priorityKey],
+                                      firstResponseHours: Number(e.target.value)
+                                    }
+                                  }
+                                }))}
+                              />
                             </td>
                             <td>
-                              <input type="number" min="0.25" step="0.25" className={styles.input} value={sla.byPriority?.[priorityKey]?.resolutionHours ?? ""} onChange={e => patchSlaField(current => ({
-                            ...current,
-                            byPriority: {
-                              ...current.byPriority,
-                              [priorityKey]: {
-                                ...current.byPriority[priorityKey],
-                                resolutionHours: Number(e.target.value)
-                              }
-                            }
-                          }))} />
+                              <UiKitInput
+                                type="number"
+                                size="s"
+                                min="0.25"
+                                step="0.25"
+                                value={sla.byPriority?.[priorityKey]?.resolutionHours ?? ""}
+                                onChange={e => patchSlaField(current => ({
+                                  ...current,
+                                  byPriority: {
+                                    ...current.byPriority,
+                                    [priorityKey]: {
+                                      ...current.byPriority[priorityKey],
+                                      resolutionHours: Number(e.target.value)
+                                    }
+                                  }
+                                }))}
+                              />
                             </td>
                           </tr>)}
                       </tbody>
                     </table>
-                    <p className={styles.slaHint}>{copy.sla.editHint}</p>
                   </div> : null}
               </>}
             </div>
-          </>;
-        }
-      case "modules":
-        return <>
-            <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
             </div>
-            <div className={styles.modulesGrid}>
-              {localizedEnabledModules.map(mod => {
-              const key = mod.moduleKey;
-              const active = !!form.modules?.[key];
-              return <button key={key} type="button" className={`${styles.moduleTile} ${active ? styles.moduleTileActive : ""}`} onClick={() => toggleModule(key)} aria-pressed={active}>
-                    {active && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                    <Icon icon={mod.icon || "mdi:puzzle-outline"} className={styles.moduleTileIcon} aria-hidden />
-                    <span className={styles.moduleTileLabel}>{mod.label}</span>
-                  </button>;
-            })}
-              {isCommunity ? <button type="button" className={`${styles.moduleTile} ${styles.moduleTileProAdd}`} onClick={() => setProPromoFeature("customContractModules")} aria-label={copy.modules.proAria}>
-                  <span className={styles.moduleTileProBadge}>Pro</span>
-                  <Icon icon="mdi:plus" className={styles.moduleTileProAddIcon} aria-hidden />
-                  <span className={styles.moduleTileLabel}>{copy.modules.proNewService}</span>
-                  <span className={styles.moduleTileProHint}>{copy.modules.proCustomServices}</span>
-                </button> : null}
-            </div>
-          </>;
-      case "status":
-        {
-          const isInactive = form.statut === "inactive" || form.statut === "inactif";
-          const isActive = !isInactive;
-          return <>
-            <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
-            </div>
-            <div className={styles.modulesGrid}>
-              <button type="button" className={`${styles.moduleTile} ${isActive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-              statut: "actif"
-            })} aria-pressed={isActive}>
-                {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
-              </button>
-              <button type="button" className={`${styles.moduleTile} ${isInactive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-              statut: "inactive"
-            })} aria-pressed={isInactive}>
-                {isInactive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
-              </button>
-            </div>
-          </>;
+          </div>;
         }
       default:
         return null;
@@ -929,35 +949,99 @@ export default function EnterpriseFormModal({
               <h2 className={styles.title} id="enterprise-form-modal-title">
                 {modalTitle}
               </h2>
-              <p className={styles.subtitle}>{modalSubtitle}</p>
+              {modalSubtitle ? <p className={styles.subtitle}>{modalSubtitle}</p> : null}
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} disabled={saving} aria-label={copy.closeAria}>
-            <FaTimes />
-          </button>
+          <div className={styles.headerTrailing}>
+            <label className={styles.headerStatusToggle}>
+              <span className={styles.headerStatusLabel}>
+                {form.statut === "inactive" || form.statut === "inactif"
+                  ? copy.statutInactive
+                  : copy.statutActive}
+              </span>
+              <span className={styles.switchWrap}>
+                <input
+                  type="checkbox"
+                  className={styles.switchInput}
+                  checked={!(form.statut === "inactive" || form.statut === "inactif")}
+                  onChange={e => patchForm({
+                    statut: e.target.checked ? "actif" : "inactive"
+                  })}
+                  role="switch"
+                  aria-checked={!(form.statut === "inactive" || form.statut === "inactif")}
+                  disabled={saving}
+                />
+                <span className={styles.switchTrack} aria-hidden="true">
+                  <span className={styles.switchThumb} />
+                </span>
+              </span>
+            </label>
+            <UiKitButton
+              type="button"
+              square
+              variant="secondary"
+              className={styles.closeBtn}
+              onClick={onClose}
+              disabled={saving}
+              aria-label={copy.closeAria}
+              icon="mdi:close"
+            />
+          </div>
         </header>
 
         <div className={styles.body}>
-          <nav className={styles.nav} aria-label={copy.navAria}>
-            {visibleSections.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
-                <span className={styles.navItemText}>
-                  <span className={`${styles.navItemLabel} ${isRequiredSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
-                    {section.label}
-                  </span>
-                  <span className={styles.navItemHint}>{section.description}</span>
-                </span>
-                {section.id === "location" && clientSites.length > 0 && <span className={styles.navBadge}>{clientSites.length}</span>}
-                {section.id === "modules" && activeModulesCount > 0 && <span className={styles.navBadge}>{activeModulesCount}</span>}
-                {section.id === "contract" && isSlaCommunityLocked ? <span className={styles.navProBadge}>Pro</span> : null}
-                {section.id !== "location" &&
-                  section.id !== "modules" &&
-                  !(section.id === "contract" && isSlaCommunityLocked) &&
-                  sectionMeta[section.id] && <span className={styles.navBadge}>✓</span>}
-              </button>)}
-          </nav>
+          <aside className={`${kit.finderSidebar} ${styles.modalNav}`} aria-label={copy.navAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack}`}
+            >
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {visibleSections.map(section => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={`${kit.finderItem} ${active ? kit.finderItemActive : ""}`}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                    <span className={`${kit.finderItemLabel} ${isRequiredSectionIncomplete(section.id) ? styles.navItemLabelRequired : ""}`}>
+                      {section.label}
+                    </span>
+                    {section.id === "location" && clientSites.length > 0 ? (
+                      <span className={styles.navBadge}>{clientSites.length}</span>
+                    ) : null}
+                    {section.id === "contract" && activeModulesCount > 0 ? (
+                      <span className={styles.navBadge}>{activeModulesCount}</span>
+                    ) : null}
+                    {section.id === "contract" && isSlaCommunityLocked ? (
+                      <span className={styles.navProBadge}>Pro</span>
+                    ) : null}
+                    {section.id !== "location" &&
+                    !(section.id === "contract" && (activeModulesCount > 0 || isSlaCommunityLocked)) &&
+                    sectionMeta[section.id] ? (
+                      <span className={styles.navBadge}>✓</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-          <div className={styles.content}>{renderSectionContent()}</div>
+          <div className={styles.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={styles.footer}>
@@ -966,21 +1050,27 @@ export default function EnterpriseFormModal({
             {!isCreate && onDeleteEnterprise ? deleteTooltip ? <SmartTooltip as="span" content={deleteTooltip} className={styles.footerDeleteWrap}>
                   {deleteButton}
                 </SmartTooltip> : deleteButton : null}
-            <button type="button" className={styles.ghostBtn} onClick={onClose} disabled={saving || deleteLoading}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving || deleteLoading}>
               {copy.cancel}
-            </button>
-            <button type="button" className={styles.primaryBtn} onClick={handlePrimaryAction} disabled={submitDisabled || deleteLoading}>
-              {saving ? <>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={handlePrimaryAction}
+              disabled={submitDisabled || deleteLoading}
+              icon={saving ? undefined : isCreate ? "mdi:check" : "mdi:content-save-outline"}
+            >
+              {saving ? (
+                <>
                   <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                   {copy.saving}
-                </> : isCreate ? <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {copy.create}
-                </> : <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {copy.save}
-                </>}
-            </button>
+                </>
+              ) : isCreate ? (
+                copy.create
+              ) : (
+                copy.save
+              )}
+            </UiKitButton>
           </div>
         </footer>
       </div>

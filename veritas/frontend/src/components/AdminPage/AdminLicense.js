@@ -12,6 +12,8 @@ import CommunityFeatureBadge from "../Misc/ProFeature/CommunityFeatureBadge";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { resolveLicenseApiError, resolveLicenseStatusMessage } from "./licensePageUtils";
 import s from "./AdminLicense.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 const COMMERCIAL_LINKS = getVeritasCommercialLinks();
 function statusBadgeVariant(status, valid) {
   if (status === "offline_lease") return "warn";
@@ -199,7 +201,9 @@ export default function AdminLicense() {
       setOfflineActivating(false);
     }
   };
+  const heroCopy = getAdminPanelCopy(locale).items.license;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:key-variant" />
       <Card title={copy.title} action={<Btn variant="secondary" icon="mdi:refresh" onClick={onRefresh} disabled={refreshing || loading}>
             {refreshing ? copy.refreshing : copy.refresh}
           </Btn>}>

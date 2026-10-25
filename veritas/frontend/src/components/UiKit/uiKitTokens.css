@@ -12,8 +12,8 @@
   --msp-accent-dark: #234f91;
   --msp-accent-soft: rgba(43, 95, 171, 0.1);
 
-  /* Fonds */
-  --msp-bg: #e8f1fa;
+  /* Fonds — --msp-bg suit le thème (écrasé par theme.css / applyThemeToRoot) */
+  --msp-bg: var(--msp-page-bg, #e8f1fa);
   --msp-page-bg: #e8f1fa;
   --msp-surface: #ffffff;
   --msp-surface-2: #f4f7fb;
@@ -58,6 +58,10 @@
   /* Bouton carré icône */
   --msp-btn-square: 28px;
   --msp-btn-h: 2.15rem;
+
+  /* Contenu sous nav secondaire (équipement / activité / vault / logs / tickets…) */
+  --crm-section-content-pad: 0.55rem 0.75rem 0.75rem;
+  --crm-section-toolbar-gap: 0.65rem;
 
   /* Motion */
   --msp-ease: cubic-bezier(0.22, 1, 0.36, 1);

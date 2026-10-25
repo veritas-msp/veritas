@@ -11,6 +11,8 @@ import { buildDefaultPlanningEventTypeDraft, buildPlanningEventTypeDraftFromType
 import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import formStyles from "./ContractModuleOptionFormModal.module.css";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const EMPTY_FORM = buildDefaultPlanningEventTypeDraft();
 
@@ -217,7 +219,9 @@ export default function AdminPlanning() {
   const total = types.length;
   const metaKey = total > 1 && activeCount > 1 ? "metaBothPlural" : total > 1 ? "metaPlural" : activeCount > 1 ? "metaActivePlural" : "meta";
 
+  const heroCopy = getAdminPanelCopy(locale).items.planning;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:calendar-clock-outline" />
       <Card title={copy.title} description={copy.description} fill action={<Btn icon="mdi:plus" onClick={openCreate}>
             {copy.newType}
           </Btn>}>

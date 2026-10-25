@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
-import { Icon } from "@iconify/react";
+import { Icon, loadIcons } from "@iconify/react";
 import { toast } from 'react-toastify';
 import { updateClient, saveClientModules, getClientLogs, purgeClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
 import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
@@ -23,7 +23,6 @@ import { getPlanningEventTypesList } from "../PlanningPage/planningEventTypes";
 import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import API_BASE_URL from "../../config";
-import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import { useEntitySubscription } from "../../hooks/useEntitySubscription";
@@ -60,12 +59,36 @@ import { normalizeContactCommunications, getCommunicationTypeDef, buildContactAp
 import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
 import { INFRA_BRICK_GROUPS, buildInfraBrickGroups } from "./infraHoneycombLayout";
-import { getInfraTypeIcon } from "./infraMapUtils";
+import { getInfraTypeIcon, INFRA_TYPE_ICONS } from "./infraMapUtils";
+import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "./EnterpriseFinderTabIcon";
+
+const ENTERPRISE_FINDER_ICONS = [
+  ...Object.values(INFRA_TYPE_ICONS),
+  "mdi:lan",
+  "mdi:shield-lock-outline",
+  "mdi:backup-restore",
+  "mdi:ticket-confirmation-outline",
+  "mdi:safe-square-outline",
+  "mdi:history",
+  "mdi:ticket-outline",
+  "mdi:briefcase-outline",
+  "mdi:bullhorn-outline",
+  "mdi:calendar-month-outline",
+  "mdi:plus",
+  "mdi:devices",
+  "mdi:file-document-outline",
+  "mdi:map-marker-outline",
+  "mdi:account-multiple-outline",
+  "mdi:handshake-outline",
+  "mdi:note-text-outline",
+  "mdi:credit-card-outline",
+  "mdi:timer-sand"
+];
 import { getInfraMapCopy } from "./infraMapI18n";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
 import CrmDetailPageSkeleton from "./CrmDetailPageSkeleton";
 import UpcomingEventBookmarks from "./UpcomingEventBookmarks";
-import { UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit } from "../UiKit";
+import { UiKitEmptyState, UiKitScrollFadeShell, UiKitTable, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 import styles from "./EnterpriseDetailPage.module.css";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
@@ -73,7 +96,7 @@ import { formatClientSlaRows, parseClientSla, getTicketSlaDisplay, getTicketSlaS
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { normalizeClientOptions } from "../../constants/contractModules";
-import { formatTableDate } from "../../utils/tableDateFormat";
+import { formatTableDate, formatTableDateTime } from "../../utils/tableDateFormat";
 import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionsContext";
@@ -97,6 +120,9 @@ import { isSalesTicket } from "../../utils/salesTicketUtils";
 import SupportCreditPackModal from "../AdminPage/SupportCreditPackModal";
 import AntivirusConfigModal from "./AntivirusConfigModal";
 import BackupConfigModal from "./BackupConfigModal";
+import BackupOverviewPanel from "./BackupOverviewPanel";
+import { filterBySite } from "../../utils/siteFilterUtils";
+import mapStyles from "./InfrastructureMap.module.css";
 import AntivirusSolutionPickerModal from "./AntivirusSolutionPickerModal";
 import AntispamConfigModal from "./AntispamConfigModal";
 import AntispamSolutionPickerModal from "./AntispamSolutionPickerModal";
@@ -106,6 +132,8 @@ import CampaignFormModal from "../CybersecuritePage/CampaignFormModal";
 import CampaignPickerModal from "./CampaignPickerModal";
 import { getCybersecuritePageCopy } from "../CybersecuritePage/cybersecuritePageI18n";
 import ContextMenu from "../Misc/ContextMenu/ContextMenu";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { listConfiguredAntivirusSolutions, listOverviewAntivirusSolutions, mergeAntivirusSources, normalizeAntivirusItem, removeAntivirusSolution, reorderAntivirusSolutions, buildAntivirusDetailNavigationPayload } from "./antivirusSolutionUtils";
 import { listConfiguredAntispamSolutions, listOverviewAntispamSolutions, mergeAntispamSources, normalizeAntispamItem, removeAntispamSolution, reorderAntispamSolutions, buildAntispamDetailNavigationPayload } from "./antispamSolutionUtils";
 import { buildMicrosoftTenantDetailNavigationPayload, listConfiguredMicrosoftTenants, removeMicrosoftTenant } from "./microsoftTenantSolutionUtils";
@@ -124,7 +152,23 @@ import {
   invalidateDetailCache,
   setDetailCache
 } from "../../utils/detailPageCache";
+import { getListCache, LIST_CACHE_NS } from "../../utils/listPageCache";
 import { invalidateEquipmentInventoryCache } from "../../utils/equipmentInventoryDataCache";
+
+function resolveInitialEnterpriseCache(clientId, clientData) {
+  if (!clientId) return null;
+  const cached = getDetailCache(DETAIL_CACHE_NS.enterprise, clientId);
+  if (cached?.client && String(cached.client.id) === String(clientId)) return cached;
+  if (clientData?.client && String(clientData.client.id) === String(clientId)) {
+    return { client: clientData.client };
+  }
+  const list = getListCache(LIST_CACHE_NS.enterprises);
+  if (Array.isArray(list)) {
+    const row = list.find(item => String(item?.id) === String(clientId));
+    if (row) return { client: row };
+  }
+  return null;
+}
 const SERVICE_BRICK_MENU_TYPES = new Set([
   "Antivirus",
   "Antispam",
@@ -210,6 +254,77 @@ function getContactInitials(contact) {
   if (prenom && nom) return `${prenom[0]}${nom[0]}`.toUpperCase();
   return (nom || prenom || "-").slice(0, 2).toUpperCase();
 }
+
+/** Segmented Tous / Ouverts / Clos — pastille glissante comme les onglets UI Kit */
+function ActivityStatusSegmented({ value, onChange, options, ariaLabel }) {
+  const trackRef = useRef(null);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
+
+  useLayoutEffect(() => {
+    const root = trackRef.current;
+    if (!root) return undefined;
+    const update = () => {
+      const active = root.querySelector('[aria-pressed="true"]');
+      if (!active) {
+        setIndicator(prev => (prev.ready ? { ...prev, ready: false } : prev));
+        return;
+      }
+      const next = {
+        left: active.offsetLeft,
+        width: active.offsetWidth,
+        ready: true
+      };
+      setIndicator(prev =>
+        prev.left === next.left && prev.width === next.width && prev.ready ? prev : next
+      );
+    };
+    update();
+    const raf = requestAnimationFrame(() => {
+      update();
+      requestAnimationFrame(update);
+    });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(root);
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [value]);
+
+  return (
+    <div
+      ref={trackRef}
+      className={styles.macosSegmented}
+      role="group"
+      aria-label={ariaLabel}
+    >
+      {indicator.ready ? (
+        <span
+          className={styles.macosSegmentIndicator}
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: indicator.width
+          }}
+          aria-hidden
+        />
+      ) : null}
+      {options.map(option => (
+        <button
+          key={option.id}
+          type="button"
+          className={`${styles.macosSegment} ${value === option.id ? styles.macosSegmentActive : ""}`}
+          aria-pressed={value === option.id}
+          onClick={() => onChange(option.id)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function SidebarSectionHeader({
   title,
   icon = null,
@@ -356,10 +471,7 @@ function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
         horaire: job.horaire || "",
         retention: job.retention || "",
         serveurLie: normalizeServeurLieList(job.serveurLie),
-        destination:
-          instance.logiciel === "HYCU Backup"
-            ? "Datacenter PSI"
-            : job.destination || job.stockageLie || "",
+        destination: job.destination || job.stockageLie || instance.server || "",
         isMapped: isBackupJobCheckmkMapped(job, mappingsMap[jobId]),
         checkmkMapping: buildJobCheckmkMapping(job, mappingsMap[jobId]),
         last_backup_date: job.last_backup_date ?? null,
@@ -429,14 +541,20 @@ export default function ClientDetailPage({
   const canManageVault = can("clients_detail.vault");
   const canCreateTicket = can("tickets.create");
   const resolvedClientId = urlClientId || clientData?.client?.id || clientData?.clientId || null;
+  const initialCachedEnterprise = useMemo(
+    () => resolveInitialEnterpriseCache(resolvedClientId, clientData),
+    // Snapshot once per mount for this client id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resolvedClientId]
+  );
   const initialPeripheralsUi = useMemo(
     () => readEnterprisePeripheralsUi(resolvedClientId),
     // Restore once per mount for this client id
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [resolvedClientId]
   );
-  const [client, setClient] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState(() => initialCachedEnterprise?.client || null);
+  const [loading, setLoading] = useState(() => !initialCachedEnterprise?.client);
   const [error, setError] = useState(null);
   const [enterpriseEditModalOpen, setEnterpriseEditModalOpen] = useState(false);
   const [generatingReversibility, setGeneratingReversibility] = useState(false);
@@ -457,19 +575,25 @@ export default function ClientDetailPage({
     }
   });
   const [saving, setSaving] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [users, setUsers] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.users) ? initialCachedEnterprise.users : []
+  );
+  const [loadingUsers, setLoadingUsers] = useState(() => !Array.isArray(initialCachedEnterprise?.users));
   const [photos, setPhotos] = useState([]);
-  const [notes, setNotes] = useState([]);
+  const [notes, setNotes] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.notes) ? initialCachedEnterprise.notes : []
+  );
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteModalMode, setNoteModalMode] = useState("create");
   const [noteModalNoteId, setNoteModalNoteId] = useState(null);
   const [noteModalInitialContent, setNoteModalInitialContent] = useState("");
   const [loadingPhotos, setLoadingPhotos] = useState(false);
-  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingNotes, setLoadingNotes] = useState(() => !Array.isArray(initialCachedEnterprise?.notes));
   const [savingNote, setSavingNote] = useState(false);
-  const [clientTags, setClientTags] = useState([]);
-  const [loadingTags, setLoadingTags] = useState(false);
+  const [clientTags, setClientTags] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.tags) ? initialCachedEnterprise.tags : []
+  );
+  const [loadingTags, setLoadingTags] = useState(() => !Array.isArray(initialCachedEnterprise?.tags));
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
@@ -509,10 +633,16 @@ export default function ClientDetailPage({
   const skipPeripheralsUiPersistRef = useRef(false);
   const equipmentExportMenuRef = useRef(null);
   const vaultPanelRef = useRef(null);
-  const [contacts, setContacts] = useState([]);
-  const [loadingContacts, setLoadingContacts] = useState(false);
-  const [prestataires, setPrestataires] = useState([]);
-  const [loadingPrestataires, setLoadingPrestataires] = useState(false);
+  const [contacts, setContacts] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.contacts) ? initialCachedEnterprise.contacts : []
+  );
+  const [loadingContacts, setLoadingContacts] = useState(() => !Array.isArray(initialCachedEnterprise?.contacts));
+  const [prestataires, setPrestataires] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.prestataires) ? initialCachedEnterprise.prestataires : []
+  );
+  const [loadingPrestataires, setLoadingPrestataires] = useState(
+    () => !Array.isArray(initialCachedEnterprise?.prestataires)
+  );
   const [slaExpanded, setSlaExpanded] = useState(false);
   const [creditsExpanded, setCreditsExpanded] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
@@ -568,21 +698,50 @@ export default function ClientDetailPage({
     global_progress: 0,
     description: ""
   });
-  const [supportTickets, setSupportTickets] = useState([]);
-  const [supportCreditBalance, setSupportCreditBalance] = useState(null);
-  const [supportCreditPacks, setSupportCreditPacks] = useState([]);
-  const [prestationTickets, setPrestationTickets] = useState([]);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [recentEvents, setRecentEvents] = useState([]);
-  const [loadingClientActivity, setLoadingClientActivity] = useState(false);
+  const [supportTickets, setSupportTickets] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.supportTickets) ? initialCachedEnterprise.supportTickets : []
+  );
+  const [supportCreditBalance, setSupportCreditBalance] = useState(() =>
+    initialCachedEnterprise?.supportCreditBalance != null
+      ? Number(initialCachedEnterprise.supportCreditBalance)
+      : null
+  );
+  const [supportCreditPacks, setSupportCreditPacks] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.supportCreditPacks) ? initialCachedEnterprise.supportCreditPacks : []
+  );
+  const [prestationTickets, setPrestationTickets] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.prestationTickets) ? initialCachedEnterprise.prestationTickets : []
+  );
+  const [upcomingEvents, setUpcomingEvents] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.upcomingEvents) ? initialCachedEnterprise.upcomingEvents : []
+  );
+  const [recentEvents, setRecentEvents] = useState(() =>
+    Array.isArray(initialCachedEnterprise?.recentEvents) ? initialCachedEnterprise.recentEvents : []
+  );
+  const [loadingClientActivity, setLoadingClientActivity] = useState(() => {
+    const snap = initialCachedEnterprise;
+    return !(
+      Array.isArray(snap?.upcomingEvents) ||
+      Array.isArray(snap?.recentEvents) ||
+      Array.isArray(snap?.supportTickets) ||
+      Array.isArray(snap?.prestationTickets) ||
+      snap?.supportCreditBalance != null
+    );
+  });
   const [overviewTab, setOverviewTab] = useState(() => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab));
   // Keep-alive des onglets lourds : montés une fois (hidden) pour éviter flash / re-fetch.
   const [mapTabMounted, setMapTabMounted] = useState(false);
   const [cyberTabMounted, setCyberTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "cyber"
   );
+  const [backupTabMounted, setBackupTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "backup"
+  );
   const [activityTabMounted, setActivityTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "activity"
+  );
+  const [eventsTabMounted, setEventsTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "events"
   );
   const [logsTabMounted, setLogsTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "logs"
@@ -606,15 +765,21 @@ export default function ClientDetailPage({
   const [unifiLinkModalOpen, setUnifiLinkModalOpen] = useState(false);
   const [unifiImportModalOpen, setUnifiImportModalOpen] = useState(false);
   const [unifiLink, setUnifiLink] = useState(null);
-  const [domainsConfigInitialSection, setDomainsConfigInitialSection] = useState("overview");
+  const [domainsConfigInitialSection, setDomainsConfigInitialSection] = useState("inventory");
   const [domainsConfigInitialProviderId, setDomainsConfigInitialProviderId] = useState(null);
+  const [domainsConfigOpenAddChoice, setDomainsConfigOpenAddChoice] = useState(false);
   const [domainPickerOpen, setDomainPickerOpen] = useState(false);
   const [domainPickerDomains, setDomainPickerDomains] = useState([]);
   const [domainOverviewOpen, setDomainOverviewOpen] = useState(false);
   const [domainOverviewItem, setDomainOverviewItem] = useState(null);
   const [sslModalOpen, setSslModalOpen] = useState(false);
+  const [sslModalItem, setSslModalItem] = useState(null);
   const [licencesModalOpen, setLicensesModalOpen] = useState(false);
+  const [licencesModalItem, setLicensesModalItem] = useState(null);
   const [backupConfigModalOpen, setBackupConfigModalOpen] = useState(false);
+  const [backupConfigInitialSection, setBackupConfigInitialSection] = useState("overview");
+  const [backupConfigInitialInstance, setBackupConfigInitialInstance] = useState(null);
+  const [backupConfigInitialJob, setBackupConfigInitialJob] = useState(null);
   const [antivirusConfigModalOpen, setAntivirusConfigModalOpen] = useState(false);
   const [antivirusConfigInitialSection, setAntivirusConfigInitialSection] = useState("overview");
   const [antivirusConfigEditingSolution, setAntivirusConfigEditingSolution] = useState(null);
@@ -631,6 +796,9 @@ export default function ClientDetailPage({
   const [microsoftTenantPickerOpen, setMicrosoftTenantPickerOpen] = useState(false);
   const [microsoftTenantPickerTenants, setMicrosoftTenantPickerTenants] = useState([]);
   const [serviceBrickMenu, setServiceBrickMenu] = useState(null);
+  const [solutionDeleteTarget, setSolutionDeleteTarget] = useState(null);
+  const [deletingSolution, setDeletingSolution] = useState(false);
+  const configModalsCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const openAntivirusConfigModal = useCallback((section = "overview", editingSolution = null) => {
     setAntivirusConfigInitialSection(section);
     setAntivirusConfigEditingSolution(editingSolution);
@@ -664,9 +832,16 @@ export default function ClientDetailPage({
     if (!payload) return;
     onNavigate("TenantDetail", payload, options);
   }, [onNavigate, client]);
-  const openDomainsConfigModal = useCallback((section = "overview", providerId = null) => {
+  const openBackupConfigModal = useCallback((section = "overview", options = {}) => {
+    setBackupConfigInitialSection(section || "overview");
+    setBackupConfigInitialInstance(options?.instance || null);
+    setBackupConfigInitialJob(options?.job || null);
+    setBackupConfigModalOpen(true);
+  }, []);
+  const openDomainsConfigModal = useCallback((section = "inventory", providerId = null, { openAddChoice = false } = {}) => {
     setDomainsConfigInitialSection(section);
     setDomainsConfigInitialProviderId(providerId);
+    setDomainsConfigOpenAddChoice(openAddChoice);
     setDomainsConfigModalOpen(true);
   }, []);
   const [backupInstances, setBackupInstances] = useState([]);
@@ -832,6 +1007,18 @@ export default function ClientDetailPage({
     if (selectedCyberBrickType === effectiveCyberBrickType) return;
     setSelectedCyberBrickType(effectiveCyberBrickType);
   }, [overviewTab, effectiveCyberBrickType, selectedCyberBrickType]);
+  const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
+    overviewTab
+  ]);
+  const { trackRef: finderCyberTrackRef, indicator: finderCyberIndicator } = useFinderNavIndicator([
+    overviewTab,
+    selectedCyberBrickType,
+    effectiveCyberBrickType
+  ]);
+  const { trackRef: finderActivityTrackRef, indicator: finderActivityIndicator } = useFinderNavIndicator([
+    overviewTab,
+    activitySection
+  ]);
   useEffect(() => {
     if (!client?.id) {
       setGlobalOvhConfigured(false);
@@ -1070,6 +1257,7 @@ export default function ClientDetailPage({
       setMapTabMounted(false);
       setCyberTabMounted(nextOverviewTab === "cyber");
       setActivityTabMounted(nextOverviewTab === "activity");
+      setEventsTabMounted(nextOverviewTab === "events");
       setVaultTabMounted(nextOverviewTab === "vault");
       setLogsTabMounted(nextOverviewTab === "logs");
       setActiveSiteFilter(saved?.siteFilter || null);
@@ -1096,15 +1284,34 @@ export default function ClientDetailPage({
     setMapTabMounted(true);
     setCyberTabMounted(true);
     setActivityTabMounted(true);
+    setEventsTabMounted(true);
     setVaultTabMounted(true);
     setLogsTabMounted(true);
   }, [client?.id]);
   useEffect(() => {
+    // Prefetch Iconify glyphs so secondary nav icons appear with labels (no async gap).
+    try {
+      loadIcons(ENTERPRISE_FINDER_ICONS);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  useEffect(() => {
     if (overviewTab === "map") setMapTabMounted(true);
     if (overviewTab === "cyber") setCyberTabMounted(true);
+    if (overviewTab === "backup") setBackupTabMounted(true);
     if (overviewTab === "activity") setActivityTabMounted(true);
+    if (overviewTab === "events") setEventsTabMounted(true);
     if (overviewTab === "vault") setVaultTabMounted(true);
     if (overviewTab === "logs") setLogsTabMounted(true);
+  }, [overviewTab]);
+  const [finderSecEnter, setFinderSecEnter] = useState(true);
+  useLayoutEffect(() => {
+    setFinderSecEnter(false);
+  }, [overviewTab]);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setFinderSecEnter(true));
+    return () => cancelAnimationFrame(id);
   }, [overviewTab]);
   useEffect(() => {
     const el = pageRootRef.current;
@@ -1505,26 +1712,46 @@ export default function ClientDetailPage({
       return [];
     }
   }, [client?.id]);
-  const handleSslBrickClick = useCallback(() => {
+  const refreshSslData = useCallback(() => {
+    if (!client?.id) return Promise.resolve([]);
+    return fetchClientSslCertificates(client.id, { autoCheck: true })
+      .then(items => {
+        const list = Array.isArray(items) ? items : [];
+        setSslData(list);
+        setEquipmentRevision(revision => revision + 1);
+        return list;
+      })
+      .catch(error => {
+        console.error(error);
+        return [];
+      });
+  }, [client?.id]);
+  const openSslModal = useCallback((item = null) => {
     if (!client?.id) return;
+    setSslModalItem(item || null);
     setSslModalOpen(true);
-    fetchClientSslCertificates(client.id, { autoCheck: true })
+    refreshSslData();
+  }, [client?.id, refreshSslData]);
+  const refreshLicencesData = useCallback(() => {
+    if (!client?.id) return Promise.resolve([]);
+    return fetchClientLicences(client.id)
       .then(items => {
-        setSslData(Array.isArray(items) ? items : []);
+        const list = Array.isArray(items) ? items : [];
+        setLicensesData(list);
         setEquipmentRevision(revision => revision + 1);
+        return list;
       })
-      .catch(error => console.error(error));
+      .catch(error => {
+        console.error(error);
+        return [];
+      });
   }, [client?.id]);
-  const handleLicensesBrickClick = useCallback(() => {
+  const openLicencesModal = useCallback((item = null) => {
     if (!client?.id) return;
+    setLicensesModalItem(item || null);
     setLicensesModalOpen(true);
-    fetchClientLicences(client.id)
-      .then(items => {
-        setLicensesData(Array.isArray(items) ? items : []);
-        setEquipmentRevision(revision => revision + 1);
-      })
-      .catch(error => console.error(error));
-  }, [client?.id]);
+    refreshLicencesData();
+  }, [client?.id, refreshLicencesData]);
   const enrichAzureCredentials = async (clientInfo, signal, isCurrentRequest) => {
     if (!clientInfo?.id) return clientInfo;
     try {
@@ -2132,14 +2359,19 @@ export default function ClientDetailPage({
     setServiceBrickMenu({
       type: brick.type,
       label: brick.label || brick.type,
+      items: Array.isArray(brick.items) ? brick.items : [],
       x,
       y
     });
   }, []);
-  const handleServiceBrickOpenPage = useCallback(brickType => {
+  const handleServiceBrickOpenPage = useCallback((brickType, selectedItem = null) => {
     if (!client?.id || !onNavigate) return;
     switch (brickType) {
       case "Antivirus": {
+        if (selectedItem?.companyId) {
+          navigateToAntivirusDetail(selectedItem);
+          return;
+        }
         const navigable = configuredAntivirusSolutions.filter(item => item?.companyId);
         if (navigable.length === 1) {
           navigateToAntivirusDetail(navigable[0]);
@@ -2157,6 +2389,10 @@ export default function ClientDetailPage({
         return;
       }
       case "Antispam": {
+        if (selectedItem?.customerId || selectedItem?.mailinblackTenantId) {
+          navigateToAntispamDetail(selectedItem);
+          return;
+        }
         const navigable = configuredAntispamSolutions.filter(item => item?.customerId || item?.mailinblackTenantId);
         if (navigable.length === 1) {
           navigateToAntispamDetail(navigable[0]);
@@ -2174,6 +2410,10 @@ export default function ClientDetailPage({
         return;
       }
       case "TenantMicrosoft": {
+        if (selectedItem && (selectedItem.tenantId || selectedItem.id || selectedItem.configured)) {
+          navigateToMicrosoftTenantDetail(selectedItem);
+          return;
+        }
         if (configuredMicrosoftTenants.length === 1) {
           navigateToMicrosoftTenantDetail(configuredMicrosoftTenants[0]);
           return;
@@ -2242,7 +2482,7 @@ export default function ClientDetailPage({
         });
         return;
       case "LicensesAbonnements":
-        handleLicensesBrickClick();
+        refreshLicencesData();
         return;
       case "Campagne": {
         if (isCommunity) {
@@ -2274,39 +2514,82 @@ export default function ClientDetailPage({
     configuredDomains,
     configuredMicrosoftTenants,
     copy.proFeatures.campaigns,
-    handleLicensesBrickClick,
     isCommunity,
     navigateToAntivirusDetail,
+    refreshLicencesData,
     navigateToAntispamDetail,
     navigateToMicrosoftTenantDetail,
     onNavigate
   ]);
-  const handleServiceBrickEdit = useCallback(brickType => {
+  const handleServiceBrickEdit = useCallback((brickType, selectedItem = undefined) => {
     if (!client?.id) return;
     switch (brickType) {
       case "Antivirus":
-        openAntivirusConfigModal(configuredAntivirusSolutions.length ? "overview" : "solution");
+        if (selectedItem) {
+          openAntivirusConfigModal("overview", selectedItem);
+          return;
+        }
+        if (selectedItem === null || !configuredAntivirusSolutions.length) {
+          openAntivirusConfigModal("solution", null);
+          return;
+        }
+        openAntivirusConfigModal("overview");
         return;
       case "Antispam":
-        openAntispamConfigModal(configuredAntispamSolutions.length ? "overview" : "solution");
+        if (selectedItem) {
+          openAntispamConfigModal("overview", selectedItem);
+          return;
+        }
+        if (selectedItem === null || !configuredAntispamSolutions.length) {
+          openAntispamConfigModal("solution", null);
+          return;
+        }
+        openAntispamConfigModal("overview");
         return;
       case "TenantMicrosoft":
-        openMicrosoftTenantConfigModal(configuredMicrosoftTenants.length ? "overview" : "configuration", null);
+        if (selectedItem) {
+          openMicrosoftTenantConfigModal("configuration", selectedItem);
+          return;
+        }
+        if (selectedItem === null || !configuredMicrosoftTenants.length) {
+          openMicrosoftTenantConfigModal("configuration", null);
+          return;
+        }
+        openMicrosoftTenantConfigModal("overview", null);
         return;
       case "GoogleWorkspace":
         notifyProFeature(copy.toast?.googleWorkspaceSoon || "Google Workspace", "googleWorkspace");
         return;
       case "Backup":
-        setBackupConfigModalOpen(true);
+        if (selectedItem?.backupAction === "add-job") {
+          openBackupConfigModal("add-job");
+          return;
+        }
+        if (selectedItem?.backupAction === "add-instance" || selectedItem === null) {
+          openBackupConfigModal("add-instance");
+          return;
+        }
+        if (selectedItem?.backupAction === "edit-instance" && selectedItem.item) {
+          openBackupConfigModal("edit-instance", { instance: selectedItem.item });
+          return;
+        }
+        if (selectedItem?.backupAction === "edit-job" && selectedItem.item) {
+          openBackupConfigModal("edit-job", {
+            job: selectedItem.item,
+            instance: selectedItem.item.instanceId ? { id: selectedItem.item.instanceId } : null
+          });
+          return;
+        }
+        openBackupConfigModal("overview");
         return;
       case "NDD":
-        openDomainsConfigModal(configuredDomains.length ? "overview" : "provider", globalOvhConfigured ? "ovh" : null);
+        openDomainsConfigModal("inventory", null, { openAddChoice: configuredDomains.length === 0 });
         return;
       case "CertificatsSSL":
-        handleSslBrickClick();
+        openSslModal(selectedItem || null);
         return;
       case "LicensesAbonnements":
-        handleLicensesBrickClick();
+        openLicencesModal(selectedItem || null);
         return;
       case "Campagne":
         if (isCommunity) {
@@ -2327,29 +2610,100 @@ export default function ClientDetailPage({
     configuredMicrosoftTenants.length,
     copy.proFeatures,
     globalOvhConfigured,
-    handleLicensesBrickClick,
-    handleSslBrickClick,
+    openSslModal,
+    openLicencesModal,
     isCommunity,
     openAntivirusConfigModal,
     openAntispamConfigModal,
+    openBackupConfigModal,
     openDomainsConfigModal,
     openMicrosoftTenantConfigModal
+  ]);
+  const requestServiceBrickDelete = useCallback((brickType, item) => {
+    if (!item || !brickType) return;
+    const labelCandidates = [
+      item.name,
+      item.nom,
+      item.label,
+      item.solution,
+      item.editeur,
+      item.logiciel,
+      item.tenantName,
+      item.displayName,
+      item.domain
+    ];
+    const label = labelCandidates.find(value => typeof value === "string" && value.trim())?.trim()
+      || brickType;
+    setSolutionDeleteTarget({ type: brickType, item, label });
+  }, []);
+  const confirmServiceBrickDelete = useCallback(async () => {
+    if (!client?.id || !solutionDeleteTarget?.item) return;
+    const { type, item } = solutionDeleteTarget;
+    setDeletingSolution(true);
+    try {
+      if (type === "Antivirus") {
+        await removeAntivirusSolution(client.id, item);
+        await refreshAntivirusState();
+        toast.success(copy.toast.antivirusAssociationRemoved);
+      } else if (type === "Antispam") {
+        await removeAntispamSolution(client.id, item);
+        await refreshAntispamState();
+        toast.success(copy.toast.antispamAssociationRemoved);
+      } else if (type === "TenantMicrosoft") {
+        await removeMicrosoftTenant(client.id, item);
+        await refreshMicrosoftTenantState();
+        toast.success(copy.toast.microsoftTenantRemoved);
+      }
+      setSolutionDeleteTarget(null);
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.message || interpolate(copy.toast.saveError, { message: "suppression" }));
+    } finally {
+      setDeletingSolution(false);
+    }
+  }, [
+    client?.id,
+    copy.toast,
+    refreshAntivirusState,
+    refreshAntispamState,
+    refreshMicrosoftTenantState,
+    solutionDeleteTarget
   ]);
   const serviceBrickMenuItems = useMemo(() => {
     if (!serviceBrickMenu?.type) return [];
     const menuCopy = copy.serviceBrickMenu || {};
+    const isSolutionBrick = ["Antivirus", "Antispam", "TenantMicrosoft"].includes(serviceBrickMenu.type);
+    if (isSolutionBrick) {
+      const items = Array.isArray(serviceBrickMenu.items) ? serviceBrickMenu.items : [];
+      const menuItems = [{
+        key: "edit",
+        label: menuCopy.edit || "Éditer",
+        icon: "mdi:pencil-outline",
+        onSelect: () => handleServiceBrickEdit(serviceBrickMenu.type, items.length === 1 ? items[0] : undefined)
+      }];
+      if (items.length === 1) {
+        menuItems.push({
+          key: "delete",
+          label: menuCopy.delete || "Supprimer",
+          icon: "mdi:trash-can-outline",
+          danger: true,
+          onSelect: () => requestServiceBrickDelete(serviceBrickMenu.type, items[0])
+        });
+      }
+      return menuItems;
+    }
     return [{
-      key: "open",
-      label: menuCopy.openPage || "Ouvrir la page",
-      icon: "mdi:open-in-new",
-      onSelect: () => handleServiceBrickOpenPage(serviceBrickMenu.type)
-    }, {
       key: "edit",
       label: menuCopy.edit || "Éditer",
       icon: "mdi:pencil-outline",
       onSelect: () => handleServiceBrickEdit(serviceBrickMenu.type)
     }];
-  }, [copy.serviceBrickMenu, handleServiceBrickEdit, handleServiceBrickOpenPage, serviceBrickMenu]);
+  }, [
+    copy.serviceBrickMenu,
+    handleServiceBrickEdit,
+    requestServiceBrickDelete,
+    serviceBrickMenu
+  ]);
   const handleSubmitCampaign = async e => {
     e?.preventDefault?.();
     if (!client?.id) return;
@@ -2516,6 +2870,10 @@ export default function ClientDetailPage({
           a = getTicketSlaSortValue(left, slaOptions);
           b = getTicketSlaSortValue(right, slaOptions);
           break;
+        case "created":
+          a = toActivitySortTime(left.created_at);
+          b = toActivitySortTime(right.created_at);
+          break;
         case "updated":
         default:
           a = toActivitySortTime(left.updated_at || left.created_at);
@@ -2547,9 +2905,13 @@ export default function ClientDetailPage({
           b = getTicketStatusLabel(normalizeTicketStatus(right.status), locale);
           break;
         case "created":
-        default:
           a = toActivitySortTime(left.created_at);
           b = toActivitySortTime(right.created_at);
+          break;
+        case "updated":
+        default:
+          a = toActivitySortTime(left.updated_at || left.created_at);
+          b = toActivitySortTime(right.updated_at || right.created_at);
           break;
       }
       return compareActivitySortValues(a, b, direction);
@@ -2691,7 +3053,7 @@ export default function ClientDetailPage({
           </span>
         </div>
         <div className={equipStyles.paginationRight}>
-          <SmartTooltip content={copy.activityPrevPage || "Page précédente"}>
+          
             <button
               type="button"
               className={equipStyles.pageBtn}
@@ -2701,14 +3063,14 @@ export default function ClientDetailPage({
             >
               <FaChevronLeft />
             </button>
-          </SmartTooltip>
+          
           <span className={equipStyles.paginationInfo}>
             {interpolate(copy.activityPageInfo || "Page {current} / {total}", {
               current: String(total === 0 ? 0 : page),
               total: String(total === 0 ? 0 : totalPages)
             })}
           </span>
-          <SmartTooltip content={copy.activityNextPage || "Page suivante"}>
+          
             <button
               type="button"
               className={equipStyles.pageBtn}
@@ -2718,7 +3080,7 @@ export default function ClientDetailPage({
             >
               <FaChevronRight />
             </button>
-          </SmartTooltip>
+          
         </div>
       </div>
     );
@@ -2730,6 +3092,12 @@ export default function ClientDetailPage({
     copy.activityRangeInfo,
     setActivitySectionPage
   ]);
+
+  const renderActivityEmpty = useCallback((icon, text) => (
+    <div className={styles.activityEmptyState}>
+      <UiKitEmptyState bare icon={icon} text={text} />
+    </div>
+  ), []);
 
   const renderActivityToolbar = useCallback((searchValue, onSearchChange, statusFilter, onStatusFilterChange, extraActions = null) => {
     const placeholder = copy.activitySearchPlaceholder || "Rechercher";
@@ -2763,19 +3131,12 @@ export default function ClientDetailPage({
             ) : null}
           </div>
           <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
-            <div className={styles.macosSegmented} role="group" aria-label={copy.activityFilterStatusAria || "Filtrer par statut"}>
-              {statusOptions.map(option => (
-                <button
-                  key={option.id}
-                  type="button"
-                  className={`${styles.macosSegment} ${statusFilter === option.id ? styles.macosSegmentActive : ""}`}
-                  aria-pressed={statusFilter === option.id}
-                  onClick={() => onStatusFilterChange(option.id)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+            <ActivityStatusSegmented
+              value={statusFilter}
+              onChange={onStatusFilterChange}
+              options={statusOptions}
+              ariaLabel={copy.activityFilterStatusAria || "Filtrer par statut"}
+            />
             {extraActions}
           </div>
         </div>
@@ -4210,6 +4571,26 @@ export default function ClientDetailPage({
         })
     : null;
   const showOnboardingHero = Boolean(clientOnboarding) && !isCompanyInactive;
+  const finderSecondaryVisible =
+    overviewTab === "map" ||
+    overviewTab === "cyber" ||
+    overviewTab === "activity" ||
+    overviewTab === "vault";
+  const filteredBackupInstancesForTab = useMemo(
+    () => filterBySite(backupInstances, activeSiteFilter),
+    [backupInstances, activeSiteFilter]
+  );
+  const filteredBackupJobsForTab = useMemo(() => {
+    if (!activeSiteFilter) return Array.isArray(backupJobs) ? backupJobs : [];
+    const instanceIds = new Set(
+      filteredBackupInstancesForTab.map(instance => String(instance?.id)).filter(Boolean)
+    );
+    return (Array.isArray(backupJobs) ? backupJobs : []).filter(job => {
+      const instanceId = job?.instanceId != null ? String(job.instanceId) : "";
+      return instanceId && instanceIds.has(instanceId);
+    });
+  }, [backupJobs, filteredBackupInstancesForTab, activeSiteFilter]);
+  const backupPreviewCopy = infraMapCopy.preview || {};
 
   return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${isCompanyInactive ? styles.heroInactive : ""} ${showOnboardingHero ? styles.heroInOnboarding : ""} msp-page-grid`.trim()}>
       <header className={styles.pageHero} ref={headerRef} data-guide="enterprise-hero">
@@ -4257,83 +4638,75 @@ export default function ClientDetailPage({
                     {showOnboardingHero ? (
                       <span
                         className={styles.heroOnboardingBadge}
-                        title={onboardingHint || copy.onboardingBadge || "Onboarding"}
                         aria-label={copy.onboardingBadge || "Onboarding"}
                       >
                         <Icon icon="mdi:account-clock-outline" width={12} height={12} aria-hidden />
                         {copy.onboardingBadge || "Onboarding"}
                       </span>
                     ) : null}
+                    {loadingTags ? (
+                      <span className={styles.heroTagsLoading}>{copy.loadingTags}</span>
+                    ) : clientTags.length > 0 || canManageTags ? (
+                      <span className={styles.heroTitleTags} aria-label={copy.heroMetaAria}>
+                        {clientTags.map(tag => (
+                          <span
+                            key={tag.id}
+                            className={styles.heroTagChip}
+                            style={{
+                              backgroundColor: `${tag.color || "#2b5fab"}18`,
+                              borderColor: `${tag.color || "#2b5fab"}55`,
+                              color: tag.color || "#2b5fab"
+                            }}
+                          >
+                            {tag.label}
+                            {canManageTags ? (
+                              <button
+                                type="button"
+                                className={styles.heroTagRemove}
+                                onClick={() => handleRemoveClientTag(tag.id)}
+                                aria-label={interpolate(copy.removeTagAria, { label: tag.label })}
+                              >
+                                <FaTimes />
+                              </button>
+                            ) : null}
+                          </span>
+                        ))}
+                        {canManageTags ? (
+                          <span className={styles.heroTagAddWrap}>
+                            <button
+                              type="button"
+                              className={styles.heroTagAddTrigger}
+                              onClick={() => setTagModalOpen(true)}
+                              aria-label={copy.addTag}
+                            >
+                              <FaPlus />
+                            </button>
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
                   </h1>
                   {showOnboardingHero && onboardingHint ? (
-                    <p className={styles.heroOnboardingHint} title={onboardingHint}>
+                    <p className={styles.heroOnboardingHint}>
                       {onboardingHint}
                     </p>
                   ) : null}
-                  <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                    {commercialLabel ? <span className={styles.heroMetaItem}>
-                        <Icon icon="mdi:account-tie-outline" aria-hidden />
-                        {commercialLabel}
-                      </span> : null}
-                    <EnterpriseRmmEnrollmentHero clientId={client?.id} isAdmin={userRole === "admin"} compact itemClassName={`${styles.heroMetaItem} ${styles.heroMetaItemRmm}`} tokenWrapClassName={styles.heroRmmToken} />
-                    {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                        {clientTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
-                      backgroundColor: `${tag.color || "#2b5fab"}18`,
-                      borderColor: `${tag.color || "#2b5fab"}55`,
-                      color: tag.color || "#2b5fab"
-                    }}>
-                            {tag.label}
-                            {canManageTags ? <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveClientTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
-                        label: tag.label
-                      })}>
-                              <FaTimes />
-                            </button> : null}
-                          </span>)}
-                        {canManageTags ? <div className={styles.heroTagAddWrap}>
-                          <SmartTooltip content={copy.addTag}>
-                            <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
-                              <FaPlus />
-                            </button>
-                          </SmartTooltip>
-                        </div> : null}
-                      </>}
-                  </div>
                 </div>
               </div>
-              <div className={styles.heroPlanningFrise} data-guide="enterprise-planning-frise">
-                <UpcomingEventBookmarks
-                  upcomingEvents={upcomingEventsForBookmarks}
-                  recentEvents={recentEventsForBookmarks}
-                  loading={loadingClientActivity}
-                  typeLabels={eventTypeLabels}
-                  labels={copy.eventBookmarks}
-                  menuLabels={copy.eventActionMenu}
-                  locale={locale}
-                  users={users}
-                  proFeatureLabel={copy.proFeatures.planning}
-                  proFeatureKey="planning"
-                  proLocked={isCommunity}
-                  heroFrise
-                  onEditEvent={canScheduleEvent ? event => {
-                    if (event?._isCampaign && event._campaignData) {
-                      handleOpenCampaign(event._campaignData);
-                      return;
-                    }
-                    setEditingEvent(event);
-                    setEventModalOpen(true);
-                  } : event => {
-                    if (event?._isCampaign && event._campaignData) {
-                      handleOpenCampaign(event._campaignData);
-                    }
-                  }}
-                  onGoToPlanning={event => {
-                    const start = event?.event_start ?? event?.start ?? event?.["start"];
-                    onNavigate?.("Planning", {
-                      focusEventId: event?._isCampaign ? undefined : event?.id,
-                      focusDate: start,
-                      clientId: event?.client_id ?? client?.id ?? null
-                    });
-                  }}
+              <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                {commercialLabel ? (
+                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock}`}>
+                    <Icon icon="mdi:account-tie-outline" aria-hidden />
+                    {commercialLabel}
+                  </span>
+                ) : null}
+                <EnterpriseRmmEnrollmentHero
+                  clientId={client?.id}
+                  isAdmin={userRole === "admin"}
+                  labeled
+                  title={copy.enrollmentTokenTitle || "Token d'enrôlement"}
+                  itemClassName={`${styles.heroMetaItemRmm} ${styles.heroMetaBlock}`}
+                  tokenWrapClassName={styles.heroRmmToken}
                 />
               </div>
             </div>
@@ -4381,7 +4754,7 @@ export default function ClientDetailPage({
                       />
                     );
                   })}
-                  <label className={styles.heroIconColorCustom} title={copy.heroIconColorCustom || "Couleur personnalisée"}>
+                  <label className={styles.heroIconColorCustom}>
                     <input
                       type="color"
                       className={styles.heroIconColorInput}
@@ -4415,55 +4788,147 @@ export default function ClientDetailPage({
           )
         : null}
 
-      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "cyber" || overviewTab === "activity" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
-        <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
+      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "cyber" || overviewTab === "backup" || overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
+          <div className={styles.pageGrid}>
+          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" || overviewTab === "backup" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" || overviewTab === "events" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
             <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
               <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
-                <nav className={finderKit.finderPrimary} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
-                  <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${finderKit.finderItem} ${overviewTab === "map" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
-                    <Icon icon="mdi:lan" className={finderKit.finderItemIcon} aria-hidden />
-                    <span className={finderKit.finderItemLabel}>{copy.overviewTabMap}</span>
-              </button>
-                  <button type="button" role="tab" aria-selected={overviewTab === "cyber"} className={`${finderKit.finderItem} ${overviewTab === "cyber" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("cyber")} data-guide="enterprise-cyber-tab">
-                    <Icon icon="mdi:shield-lock-outline" className={finderKit.finderItemIcon} aria-hidden />
-                    <span className={finderKit.finderItemLabel}>{copy.overviewTabCyber || "Cyber & Cloud"}</span>
-              </button>
-                  <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${finderKit.finderItem} ${overviewTab === "activity" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
-                    <Icon icon="mdi:ticket-confirmation-outline" className={finderKit.finderItemIcon} aria-hidden />
-                    <span className={finderKit.finderItemLabel}>{copy.overviewTabActivity}</span>
-                  </button>
-                  <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${finderKit.finderItem} ${overviewTab === "vault" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
-                    <Icon icon="mdi:safe-square-outline" className={finderKit.finderItemIcon} aria-hidden />
-                    <span className={finderKit.finderItemLabel}>{copy.overviewTabVault}</span>
-                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-              </button>
-                  <button type="button" role="tab" aria-selected={overviewTab === "logs"} className={`${finderKit.finderItem} ${overviewTab === "logs" ? finderKit.finderItemActive : ""}`} onClick={() => setOverviewTab("logs")} data-guide="enterprise-logs">
-                    <Icon icon="mdi:history" className={finderKit.finderItemIcon} aria-hidden />
-                    <span className={finderKit.finderItemLabel}>{copy.overviewTabLogs || "Logs"}</span>
-              </button>
-            </nav>
+                <nav
+                  ref={finderPrimaryTrackRef}
+                  className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated}`}
+                  role="tablist"
+                  aria-label={copy.overviewTabsAria || copy.infraMapTitle}
+                >
+                  {finderPrimaryIndicator.ready ? (
+                    <div
+                      className={finderKit.finderNavIndicator}
+                      style={{
+                        transform: `translate3d(0, ${finderPrimaryIndicator.top}px, 0)`,
+                        height: finderPrimaryIndicator.height
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <EnterpriseOverviewTabButton
+                    tabId="map"
+                    iconify="mdi:lan"
+                    label={copy.overviewTabMap}
+                    active={overviewTab === "map"}
+                    onClick={() => setOverviewTab("map")}
+                    className={`${finderKit.finderItem} ${overviewTab === "map" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-infra-map-tab"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="cyber"
+                    iconify="mdi:shield-lock-outline"
+                    label={copy.overviewTabCyber || "Cyber & Cloud"}
+                    active={overviewTab === "cyber"}
+                    onClick={() => setOverviewTab("cyber")}
+                    className={`${finderKit.finderItem} ${overviewTab === "cyber" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-cyber-tab"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="backup"
+                    iconify="mdi:backup-restore"
+                    label={copy.overviewTabBackup || "Sauvegarde"}
+                    active={overviewTab === "backup"}
+                    onClick={() => setOverviewTab("backup")}
+                    className={`${finderKit.finderItem} ${overviewTab === "backup" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-backup-tab"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="activity"
+                    iconify="mdi:ticket-confirmation-outline"
+                    label={copy.overviewTabActivity}
+                    active={overviewTab === "activity"}
+                    onClick={() => setOverviewTab("activity")}
+                    className={`${finderKit.finderItem} ${overviewTab === "activity" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-activity"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="events"
+                    iconify="mdi:calendar-month-outline"
+                    label={copy.overviewTabEvents || copy.eventsTitle || "Événements"}
+                    active={overviewTab === "events"}
+                    onClick={() => setOverviewTab("events")}
+                    className={`${finderKit.finderItem} ${overviewTab === "events" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-events"
+                    badge={isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="vault"
+                    iconify="mdi:safe-square-outline"
+                    label={copy.overviewTabVault}
+                    active={overviewTab === "vault"}
+                    onClick={() => setOverviewTab("vault")}
+                    className={`${finderKit.finderItem} ${overviewTab === "vault" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-vault"
+                    badge={isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="logs"
+                    iconify="mdi:history"
+                    label={copy.overviewTabLogs || "Logs"}
+                    active={overviewTab === "logs"}
+                    onClick={() => setOverviewTab("logs")}
+                    className={`${finderKit.finderItem} ${overviewTab === "logs" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-logs"
+                  />
+                </nav>
 
-                {overviewTab === "map" || overviewTab === "cyber" || overviewTab === "activity" || overviewTab === "vault" ? (
                 <UiKitScrollFadeShell
-                  className={finderKit.finderSecondaryShell}
+                  className={`${finderKit.finderSecondaryShell} ${styles.finderSecondaryShell}${finderSecondaryVisible ? "" : ` ${finderKit.finderSecondaryShellHidden}`}`.trim()}
+                  style={finderSecondaryVisible ? undefined : { display: "none" }}
                   deps={[overviewTab, activitySection, selectedCyberBrickType, equipTypeNavPortalEl, vaultTreeNavPortalEl]}
                 >
-                  <div className={finderKit.finderSecondary}>
-                    {overviewTab === "map" ? (
-                      <>
+                  <div
+                    className={`${finderKit.finderSecondary} ${styles.finderSecondary}`}
+                    aria-hidden={!finderSecondaryVisible}
+                  >
+                    <div
+                      className={`${finderKit.finderSecReveal} ${finderSecondaryVisible && finderSecEnter ? finderKit.finderSecRevealActive : ""}`.trim()}
+                    >
+                    {/* Keep-alive: avoid remount/Iconify refetch when swapping tabs */}
+                    <div className={finderKit.finderSecPanel} hidden={overviewTab !== "map"} aria-hidden={overviewTab !== "map"}>
                         <p className={finderKit.finderSecTitle}>{copy.navSectionEquipment || "Familles"}</p>
                         <div
                           ref={setEquipTypeNavPortalEl}
-                          className={finderKit.finderTypeNavHost}
+                          className={`${finderKit.finderTypeNavHost} ${styles.finderTypeNavHost}`}
                           data-guide="enterprise-equipment-type-nav"
                         />
-                      </>
-                    ) : null}
+                    </div>
 
-                    {overviewTab === "cyber" ? (
-                      <>
-                        <nav className={finderKit.finderSecNav} aria-label={copy.navSectionCyber || "Services"} data-guide="enterprise-cyber-services-nav">
+                    <div className={finderKit.finderSecPanel} hidden={overviewTab !== "cyber"} aria-hidden={overviewTab !== "cyber"}>
+                        <nav
+                          ref={finderCyberTrackRef}
+                          className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated}`}
+                          aria-label={copy.navSectionCyber || "Services"}
+                          data-guide="enterprise-cyber-services-nav"
+                        >
+                          {finderCyberIndicator.ready ? (
+                            <div
+                              className={finderKit.finderNavIndicator}
+                              style={{
+                                transform: `translate3d(0, ${finderCyberIndicator.top}px, 0)`,
+                                height: finderCyberIndicator.height
+                              }}
+                              aria-hidden
+                            />
+                          ) : null}
                           {INFRA_BRICK_GROUPS.map(group => (
                             <div key={group.id} className={finderKit.finderSecGroup} data-infra-group={group.id}>
                               <p className={finderKit.finderSecGroupTitle}>
@@ -4481,6 +4946,7 @@ export default function ClientDetailPage({
                                     type="button"
                                     className={`${finderKit.finderSecItem} ${isActive ? finderKit.finderSecItemActive : ""}`.trim()}
                                     aria-current={isActive ? "page" : undefined}
+                                    tabIndex={overviewTab === "cyber" ? undefined : -1}
                                     onClick={() => setSelectedCyberBrickType(type)}
                                     onContextMenu={event => {
                                       if (!brick) return;
@@ -4503,17 +4969,30 @@ export default function ClientDetailPage({
                             </div>
                           ))}
                         </nav>
-                      </>
-                    ) : null}
+                    </div>
 
-                    {overviewTab === "activity" ? (
-                      <>
+                    <div className={finderKit.finderSecPanel} hidden={overviewTab !== "activity"} aria-hidden={overviewTab !== "activity"}>
                         <p className={finderKit.finderSecTitle}>{copy.navSectionActivity || "Sections"}</p>
-                        <nav className={finderKit.finderSecNav} aria-label={copy.navSectionActivity || "Sections"}>
+                        <nav
+                          ref={finderActivityTrackRef}
+                          className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated}`}
+                          aria-label={copy.navSectionActivity || "Sections"}
+                        >
+                          {finderActivityIndicator.ready ? (
+                            <div
+                              className={finderKit.finderNavIndicator}
+                              style={{
+                                transform: `translate3d(0, ${finderActivityIndicator.top}px, 0)`,
+                                height: finderActivityIndicator.height
+                              }}
+                              aria-hidden
+                            />
+                          ) : null}
                           <button
                             type="button"
                             className={`${finderKit.finderSecItem} ${activitySection === "support" ? finderKit.finderSecItemActive : ""}`}
                             aria-current={activitySection === "support" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
                             onClick={() => setActivitySection("support")}
                           >
                             <Icon icon="mdi:ticket-outline" className={finderKit.finderSecItemIcon} aria-hidden />
@@ -4523,6 +5002,7 @@ export default function ClientDetailPage({
                             type="button"
                             className={`${finderKit.finderSecItem} ${activitySection === "prestations" ? finderKit.finderSecItemActive : ""}`}
                             aria-current={activitySection === "prestations" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
                             onClick={() => setActivitySection("prestations")}
                           >
                             <Icon icon="mdi:briefcase-outline" className={finderKit.finderSecItemIcon} aria-hidden />
@@ -4532,22 +5012,22 @@ export default function ClientDetailPage({
                             type="button"
                             className={`${finderKit.finderSecItem} ${activitySection === "campaigns" ? finderKit.finderSecItemActive : ""}`}
                             aria-current={activitySection === "campaigns" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
                             onClick={() => setActivitySection("campaigns")}
                           >
                             <Icon icon="mdi:bullhorn-outline" className={finderKit.finderSecItemIcon} aria-hidden />
                             <span className={finderKit.finderSecItemLabel}>{copy.campaignsTitle}</span>
                           </button>
                         </nav>
-                      </>
-                    ) : null}
+                    </div>
 
-                    {overviewTab === "vault" ? (
-                      <>
+                    <div className={finderKit.finderSecPanel} hidden={overviewTab !== "vault"} aria-hidden={overviewTab !== "vault"}>
                         <div className={finderKit.finderSecTitleRow}>
                           <p className={finderKit.finderSecTitle}>{vaultCopy.panel.treeTitle}</p>
                           <button
                             type="button"
                             className={finderKit.finderVaultAddBtn}
+                            tabIndex={overviewTab === "vault" ? undefined : -1}
                             onClick={() => vaultPanelRef.current?.openCreateFolder?.()}
                             title={vaultCopy.panel.newFolder}
                             aria-label={vaultCopy.panel.newFolder}
@@ -4557,14 +5037,13 @@ export default function ClientDetailPage({
                         </div>
                         <div
                           ref={setVaultTreeNavPortalEl}
-                          className={`${finderKit.finderTypeNavHost} ${styles.finderVaultTreeHost}`}
+                          className={`${finderKit.finderTypeNavHost} ${styles.finderTypeNavHost} ${styles.finderVaultTreeHost}`}
                           data-guide="enterprise-vault-tree-nav"
                         />
-                      </>
-                    ) : null}
+                    </div>
+                    </div>
                   </div>
                 </UiKitScrollFadeShell>
-                ) : null}
               </aside>
 
               <div className={`${finderKit.finderContent} ${styles.enterpriseFinderContent}`}>
@@ -4584,7 +5063,7 @@ export default function ClientDetailPage({
                     ref={equipmentPageRef}
                     embedded
                     embeddedTypeNav="portal"
-                    typeNavPortalTarget={overviewTab === "map" ? equipTypeNavPortalEl : null}
+                    typeNavPortalTarget={equipTypeNavPortalEl}
                     fixedClientId={client.id}
                     embeddedClient={client ? {
                       ...client,
@@ -4624,7 +5103,7 @@ export default function ClientDetailPage({
                       <>
                         <div className={styles.equipmentToolbarActions}>
                   <div className={styles.exportMenuWrap} ref={equipmentExportMenuRef}>
-                    <SmartTooltip as="span" content={copy.peripheralsMoreActions || "Plus d'actions"}>
+                    
                       <button
                         type="button"
                                 className={`${finderKit.btnSquare} ${finderKit.btnSquareSecondary} ${styles.exportHeaderButton}`}
@@ -4635,7 +5114,7 @@ export default function ClientDetailPage({
                       >
                                 <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
                       </button>
-                    </SmartTooltip>
+                    
                     {equipmentExportMenuOpen ? (
                       <div className={styles.exportMenu} role="menu">
                         <button
@@ -4696,7 +5175,7 @@ export default function ClientDetailPage({
                     ) : null}
                   </div>
                   {canManageDevices ? (
-                    <SmartTooltip as="span" content={copy.addEquipment}>
+                    
                       <button
                         type="button"
                                 className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
@@ -4705,7 +5184,7 @@ export default function ClientDetailPage({
                       >
                         <FaPlus />
                       </button>
-                    </SmartTooltip>
+                    
                   ) : null}
                 </div>
                       </>
@@ -4716,6 +5195,40 @@ export default function ClientDetailPage({
             </section>
             </div>
             </div>
+            </div>
+            ) : null}
+
+            {backupTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "backup"}
+              style={overviewTab === "backup" ? undefined : { display: "none" }}
+              data-guide="enterprise-backup-panel"
+            >
+              <div className={`${styles.panel} ${styles.cyberServicesCard}`}>
+                {siteFilterBadge ? <div className={styles.mapModulesToolbar}>{siteFilterBadge}</div> : null}
+                <section className={mapStyles.cyberDetail} aria-label={copy.overviewTabBackup || "Sauvegarde"}>
+                  <div className={`${mapStyles.detailPanel} ${mapStyles.detailPanelTable} ${mapStyles.detailPanelMetricsBare}`.trim()}>
+                    <BackupOverviewPanel
+                      instances={filteredBackupInstancesForTab}
+                      jobs={filteredBackupJobsForTab}
+                      searchPlaceholder={backupPreviewCopy.searchPlaceholder || "Rechercher…"}
+                      onAddInstance={canManageSolutions ? () => openBackupConfigModal("add-instance") : null}
+                      onAddJob={canManageSolutions ? () => openBackupConfigModal("add-job") : null}
+                      onEditInstance={canManageSolutions ? instance => openBackupConfigModal("edit-instance", { instance }) : null}
+                      onEditJob={canManageSolutions ? job => openBackupConfigModal("edit-job", {
+                        job,
+                        instance: job?.instanceId ? { id: job.instanceId } : null
+                      }) : null}
+                      canAddJob={filteredBackupInstancesForTab.length > 0}
+                      addInstanceLabel={backupPreviewCopy.addInstance || "Ajouter une instance"}
+                      addJobLabel={backupPreviewCopy.addJob || "Ajouter un job"}
+                      addJobDisabledHint={backupPreviewCopy.addJobDisabledHint || "Ajoutez d’abord une instance"}
+                      editLabel={backupPreviewCopy.editCurrent || backupPreviewCopy.configure || "Éditer"}
+                    />
+                  </div>
+                </section>
+              </div>
             </div>
             ) : null}
 
@@ -4764,17 +5277,22 @@ export default function ClientDetailPage({
                   }}
                   onNavigate={onNavigate}
                   onSynced={() => loadCybersecurityData(client.id)}
-                  onBrickOpen={brick => {
+                  onBrickOpen={(brick, selectedItem = null) => {
                     if (!brick?.type) return;
                     if (!canManageSolutions && brick.type !== "Campagne") return;
                     if (brick.type === "Campagne" && !canManageCampaigns && !canManageSolutions) return;
-                    handleServiceBrickOpenPage(brick.type);
+                    handleServiceBrickOpenPage(brick.type, selectedItem);
                   }}
-                  onBrickConfigure={brick => {
+                  onBrickConfigure={(brick, selectedItem = undefined) => {
                     if (!brick?.type) return;
                     if (!canManageSolutions && brick.type !== "Campagne") return;
                     if (brick.type === "Campagne" && !canManageCampaigns) return;
-                    handleServiceBrickEdit(brick.type);
+                    handleServiceBrickEdit(brick.type, selectedItem);
+                  }}
+                  onBrickDelete={(brick, selectedItem = null) => {
+                    if (!brick?.type || !selectedItem) return;
+                    if (!canManageSolutions) return;
+                    requestServiceBrickDelete(brick.type, selectedItem);
                   }}
                 />
             </div>
@@ -4794,9 +5312,24 @@ export default function ClientDetailPage({
                         <div className={styles.activityUnifiedBody}>
                           {renderActivityToolbar(supportSearchQuery, setSupportSearchQuery, supportStatusFilter, setSupportStatusFilter)}
                           <div className={styles.activityTableStack}>
-                            <div className={equipStyles.tableScrollShell}>
-                              <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
-                                <div className={equipStyles.tableCardSurface}>
+                            {pagedSupportTickets.total === 0 ? renderActivityEmpty(
+                              "mdi:ticket-outline",
+                              supportSearchQuery.trim() && supportTickets.length > 0
+                                ? (copy.emptyActivitySearch || copy.emptySupportTickets)
+                                : copy.emptySupportTickets
+                            ) : (
+                            <UiKitTable
+                              fill
+                              className={styles.activityUiKitTable}
+                              deps={[
+                                pagedSupportTickets.total,
+                                pagedSupportTickets.page,
+                                activityTableSort.support?.key,
+                                activityTableSort.support?.direction,
+                                supportSearchQuery,
+                                supportStatusFilter
+                              ]}
+                            >
                             <table className={styles.dataTable}>
                               <thead>
                                 <tr>
@@ -4804,17 +5337,12 @@ export default function ClientDetailPage({
                                         {renderActivitySortableTh("support", "title", copy.table.title)}
                                         {renderActivitySortableTh("support", "status", copy.table.status)}
                                         {!isCommunity && renderActivitySortableTh("support", "sla", copy.table.sla)}
+                                        {renderActivitySortableTh("support", "created", copy.table.created)}
                                         {renderActivitySortableTh("support", "updated", copy.table.updated)}
                                 </tr>
                               </thead>
                               <tbody>
-                                      {pagedSupportTickets.total === 0 ? <tr className={styles.dataTableEmptyRow}>
-                                    <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
-                                            {supportSearchQuery.trim() && supportTickets.length > 0
-                                              ? (copy.emptyActivitySearch || copy.emptySupportTickets)
-                                              : copy.emptySupportTickets}
-                                    </td>
-                                        </tr> : pagedSupportTickets.pagedList.map(ticket => {
+                                      {pagedSupportTickets.pagedList.map(ticket => {
                           const status = normalizeTicketStatus(ticket.status);
                           const sla = getTicketSlaDisplay(ticket, {
                             clients: client ? [client] : [],
@@ -4827,7 +5355,7 @@ export default function ClientDetailPage({
                             }
                           }}>
                                       <td>#{ticket.ticket_number || "-"}</td>
-                                      <td className={styles.activityTitleCell} title={ticket.title || undefined}>
+                                      <td className={styles.activityTitleCell}>
                                         {ticket.title || "-"}
                                       </td>
                                       <td>
@@ -4836,14 +5364,14 @@ export default function ClientDetailPage({
                                         </span>
                                       </td>
                                       {!isCommunity && <td>{sla.label}</td>}
+                                      <td>{formatRelativeFrench(ticket.created_at)}</td>
                                       <td>{formatRelativeFrench(ticket.updated_at || ticket.created_at)}</td>
                                     </tr>;
                         })}
                               </tbody>
                             </table>
-                          </div>
-                        </div>
-                            </div>
+                            </UiKitTable>
+                            )}
                             {renderActivityPagination({
                               section: "support",
                               total: pagedSupportTickets.total,
@@ -4862,9 +5390,24 @@ export default function ClientDetailPage({
                           <div className={styles.activityUnifiedBody}>
                             {renderActivityToolbar(prestationSearchQuery, setPrestationSearchQuery, prestationStatusFilter, setPrestationStatusFilter)}
                             <div className={styles.activityTableStack}>
-                              <div className={equipStyles.tableScrollShell}>
-                                <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
-                                  <div className={equipStyles.tableCardSurface}>
+                              {pagedPrestationTickets.total === 0 ? renderActivityEmpty(
+                                "mdi:handshake-outline",
+                                prestationSearchQuery.trim() && prestationTicketsSource.length > 0
+                                  ? (copy.emptyActivitySearch || copy.emptyPrestationTickets)
+                                  : copy.emptyPrestationTickets
+                              ) : (
+                              <UiKitTable
+                                fill
+                                className={styles.activityUiKitTable}
+                                deps={[
+                                  pagedPrestationTickets.total,
+                                  pagedPrestationTickets.page,
+                                  activityTableSort.prestations?.key,
+                                  activityTableSort.prestations?.direction,
+                                  prestationSearchQuery,
+                                  prestationStatusFilter
+                                ]}
+                              >
                               <table className={styles.dataTable}>
                                 <thead>
                                   <tr>
@@ -4872,16 +5415,11 @@ export default function ClientDetailPage({
                                           {renderActivitySortableTh("prestations", "type", copy.table.type)}
                                           {renderActivitySortableTh("prestations", "status", copy.table.status)}
                                           {renderActivitySortableTh("prestations", "created", copy.table.created)}
+                                          {renderActivitySortableTh("prestations", "updated", copy.table.updated)}
                                   </tr>
                                 </thead>
                                 <tbody>
-                                        {pagedPrestationTickets.total === 0 ? <tr className={styles.dataTableEmptyRow}>
-                                      <td colSpan={4} className={styles.dataTableEmptyCell}>
-                                              {prestationSearchQuery.trim() && prestationTicketsSource.length > 0
-                                                ? (copy.emptyActivitySearch || copy.emptyPrestationTickets)
-                                                : copy.emptyPrestationTickets}
-                                      </td>
-                                          </tr> : pagedPrestationTickets.pagedList.map(ticket => {
+                                        {pagedPrestationTickets.pagedList.map(ticket => {
                             const status = normalizeTicketStatus(ticket.status);
                             return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
                               if (e.button === 1) {
@@ -4890,7 +5428,7 @@ export default function ClientDetailPage({
                               }
                             }}>
                                         <td>#{ticket.ticket_number || "-"}</td>
-                                        <td className={styles.activityTitleCell} title={getPrestationCategoryLabel(ticket.category, locale)}>
+                                        <td className={styles.activityTitleCell}>
                                           {getPrestationCategoryLabel(ticket.category, locale)}
                                         </td>
                                         <td>
@@ -4898,14 +5436,14 @@ export default function ClientDetailPage({
                                             {getTicketStatusLabel(status, locale)}
                                           </span>
                                         </td>
-                                        <td>{formatTableDate(ticket.created_at)}</td>
+                                        <td>{formatTableDateTime(ticket.created_at)}</td>
+                                        <td>{formatRelativeFrench(ticket.updated_at || ticket.created_at)}</td>
                                       </tr>;
                           })}
                                 </tbody>
                               </table>
-                                  </div>
-                                </div>
-                              </div>
+                              </UiKitTable>
+                              )}
                               {renderActivityPagination({
                                 section: "prestations",
                                 total: pagedPrestationTickets.total,
@@ -4929,17 +5467,35 @@ export default function ClientDetailPage({
                               campaignStatusFilter,
                               setCampaignStatusFilter,
                               !isCommunity && canManageCampaigns && client?.id ? (
-                                <SmartTooltip as="span" content={copy.addCampaign}>
-                                <button type="button" className={styles.addEquipmentButton} onClick={handleOpenCreateCampaign} aria-label={copy.addCampaign}>
+                                <button
+                                  type="button"
+                                  className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
+                                  onClick={handleOpenCreateCampaign}
+                                  aria-label={copy.addCampaign}
+                                >
                                   <FaPlus />
                                 </button>
-                                </SmartTooltip>
                               ) : null
                             )}
                             <div className={styles.activityTableStack}>
-                              <div className={equipStyles.tableScrollShell}>
-                                <div className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}>
-                                  <div className={equipStyles.tableCardSurface}>
+                              {pagedOngoingCampaigns.total === 0 ? renderActivityEmpty(
+                                "mdi:bullhorn-outline",
+                                campaignSearchQuery.trim() && campaignSourceList.length > 0
+                                  ? (copy.emptyActivitySearch || copy.emptyCampaigns)
+                                  : copy.emptyCampaigns
+                              ) : (
+                              <UiKitTable
+                                fill
+                                className={styles.activityUiKitTable}
+                                deps={[
+                                  pagedOngoingCampaigns.total,
+                                  pagedOngoingCampaigns.page,
+                                  activityTableSort.campaigns?.key,
+                                  activityTableSort.campaigns?.direction,
+                                  campaignSearchQuery,
+                                  campaignStatusFilter
+                                ]}
+                              >
                             <table className={styles.dataTable}>
                               <thead>
                                 <tr>
@@ -4951,14 +5507,8 @@ export default function ClientDetailPage({
                                 </tr>
                               </thead>
                               <tbody>
-                                        {pagedOngoingCampaigns.total === 0 ? <tr className={styles.dataTableEmptyRow}>
-                                    <td colSpan={5} className={styles.dataTableEmptyCell}>
-                                              {campaignSearchQuery.trim() && campaignSourceList.length > 0
-                                                ? (copy.emptyActivitySearch || copy.emptyCampaigns)
-                                                : copy.emptyCampaigns}
-                                    </td>
-                                          </tr> : pagedOngoingCampaigns.pagedList.map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
-                                    <td className={styles.activityTitleCell} title={campaign.name || undefined}>{campaign.name || "-"}</td>
+                                        {pagedOngoingCampaigns.pagedList.map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
+                                    <td className={styles.activityTitleCell}>{campaign.name || "-"}</td>
                                     <td>{getCampaignTypeLabel(campaign.type, locale)}</td>
                                     <td>
                                       <span className={styles.ticketStatusBadge}>
@@ -4972,9 +5522,8 @@ export default function ClientDetailPage({
                                   </tr>)}
                               </tbody>
                             </table>
-                                  </div>
-                                </div>
-                              </div>
+                              </UiKitTable>
+                              )}
                               {renderActivityPagination({
                                 section: "campaigns",
                                 total: pagedOngoingCampaigns.total,
@@ -4987,8 +5536,86 @@ export default function ClientDetailPage({
                       </section>
                     </ProFeatureLock>
                       ) : null}
+
                     </div>
             </div>
+            </div>
+            ) : null}
+
+            {eventsTabMounted ? (
+            <div
+              className={styles.overviewTabPanel}
+              hidden={overviewTab !== "events"}
+              style={overviewTab === "events" ? undefined : { display: "none" }}
+              data-guide="enterprise-events-panel"
+            >
+              <div className={styles.activityLayout}>
+                <div className={styles.activityUnifiedCard}>
+                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.planning} featureKey="planning" className={styles.activityUnifiedProLock} badgePosition="none">
+                    <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo} ${styles.activityEventsSection}`}>
+                      <div className={styles.activityUnifiedBody}>
+                        <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}>
+                          <div className={equipStyles.embeddedSearchWrap}>
+                            <div className={styles.activityEventsToolbarIntro}>
+                              <Icon icon="mdi:calendar-month-outline" aria-hidden />
+                              <span>{copy.overviewTabEvents || copy.eventsTitle || "Événements"}</span>
+                            </div>
+                            <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
+                              {canScheduleEvent ? (
+                                <button
+                                  type="button"
+                                  className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
+                                  onClick={handleQuickScheduleIntervention}
+                                  aria-label={copy.eventBookmarks?.createEventAria || "Créer un événement"}
+                                  title={copy.eventBookmarks?.createEvent || "Créer un événement"}
+                                >
+                                  <FaPlus />
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                        <div className={styles.activityEventsPanel}>
+                          <UpcomingEventBookmarks
+                            upcomingEvents={upcomingEventsForBookmarks}
+                            recentEvents={recentEventsForBookmarks}
+                            loading={loadingClientActivity}
+                            typeLabels={eventTypeLabels}
+                            labels={copy.eventBookmarks}
+                            menuLabels={copy.eventActionMenu}
+                            locale={locale}
+                            users={users}
+                            proFeatureLabel={copy.proFeatures.planning}
+                            proFeatureKey="planning"
+                            proLocked={false}
+                            defaultCollapsed={false}
+                            onEditEvent={canScheduleEvent ? event => {
+                              if (event?._isCampaign && event._campaignData) {
+                                handleOpenCampaign(event._campaignData);
+                                return;
+                              }
+                              setEditingEvent(event);
+                              setEventModalOpen(true);
+                            } : event => {
+                              if (event?._isCampaign && event._campaignData) {
+                                handleOpenCampaign(event._campaignData);
+                              }
+                            }}
+                            onGoToPlanning={event => {
+                              const start = event?.event_start ?? event?.start ?? event?.["start"];
+                              onNavigate?.("Planning", {
+                                focusEventId: event?._isCampaign ? undefined : event?.id,
+                                focusDate: start,
+                                clientId: event?.client_id ?? client?.id ?? null
+                              });
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </section>
+                  </ProFeatureLock>
+                </div>
+              </div>
             </div>
             ) : null}
 
@@ -5007,7 +5634,7 @@ export default function ClientDetailPage({
                       copy={vaultCopy}
                       clientId={client.id}
                       clientName={client.name}
-                      treeNavPortalTarget={overviewTab === "vault" ? vaultTreeNavPortalEl : null}
+                      treeNavPortalTarget={vaultTreeNavPortalEl}
                     />
                   ) : null}
                 </ProFeatureLock>
@@ -5053,92 +5680,63 @@ export default function ClientDetailPage({
             >
               <div className={styles.sidebarActionToolbar}>
                 {canEditClient ? (
-                  <SmartTooltip content={quickActionsCopy.editEnterprise || copy.editEnterprise}>
-                    <button
-                      type="button"
-                      className={styles.sidebarActionIconBtn}
-                      onClick={openEnterpriseEditModal}
-                      aria-label={quickActionsCopy.editEnterprise || copy.editEnterprise}
-                    >
-                      <Icon icon="mdi:square-edit-outline" aria-hidden />
-                    </button>
-                        </SmartTooltip>
+                  <EnterpriseQuickActionButton
+                    actionId="edit"
+                    iconify="mdi:square-edit-outline"
+                    className={styles.sidebarActionIconBtn}
+                    onClick={openEnterpriseEditModal}
+                    aria-label={quickActionsCopy.editEnterprise || copy.editEnterprise}
+                  />
                 ) : null}
                 {canCreateTicket ? (
-                  <SmartTooltip content={quickActionsCopy.createTicket}>
-                    <button
-                      type="button"
-                      className={styles.sidebarActionIconBtn}
-                      onClick={handleQuickCreateTicket}
-                      aria-label={quickActionsCopy.createTicket}
-                    >
-                      <Icon icon="mdi:ticket-outline" aria-hidden />
-                    </button>
-                  </SmartTooltip>
+                  <EnterpriseQuickActionButton
+                    actionId="ticket"
+                    iconify="mdi:ticket-outline"
+                    className={styles.sidebarActionIconBtn}
+                    onClick={handleQuickCreateTicket}
+                    aria-label={quickActionsCopy.createTicket}
+                  />
                 ) : null}
                 {canScheduleEvent ? (
-                  <SmartTooltip content={quickActionsCopy.scheduleIntervention}>
-                    <button
-                      type="button"
-                      className={styles.sidebarActionIconBtn}
-                      onClick={handleQuickScheduleIntervention}
-                      aria-label={quickActionsCopy.scheduleIntervention}
-                    >
-                      <Icon icon="mdi:calendar-check-outline" aria-hidden />
-                    </button>
-                  </SmartTooltip>
+                  <EnterpriseQuickActionButton
+                    actionId="schedule"
+                    iconify="mdi:calendar-check-outline"
+                    className={styles.sidebarActionIconBtn}
+                    onClick={handleQuickScheduleIntervention}
+                    aria-label={quickActionsCopy.scheduleIntervention}
+                  />
                 ) : null}
-                <SmartTooltip
-                  content={
+                <EnterpriseQuickActionButton
+                  actionId="subscribe"
+                  iconify={enterpriseSubscribed ? "mdi:bell-ring-outline" : "mdi:bell-outline"}
+                  className={`${styles.sidebarActionIconBtn} ${enterpriseSubscribed ? styles.sidebarActionIconBtnActive : ""}`}
+                  onClick={toggleEnterpriseSubscribe}
+                  disabled={!client?.id || enterpriseSubscribeLoading || enterpriseSubscribeSaving}
+                  aria-pressed={enterpriseSubscribed}
+                  aria-label={
                     enterpriseSubscribed
                       ? copy.subscribe?.unsubscribe || "Se désabonner"
                       : copy.subscribe?.subscribe || "S’abonner aux notifications"
                   }
-                >
-                      <button
-                        type="button"
-                    className={`${styles.sidebarActionIconBtn} ${enterpriseSubscribed ? styles.sidebarActionIconBtnActive : ""}`}
-                        onClick={toggleEnterpriseSubscribe}
-                        disabled={!client?.id || enterpriseSubscribeLoading || enterpriseSubscribeSaving}
-                        aria-pressed={enterpriseSubscribed}
-                    aria-label={
-                      enterpriseSubscribed
-                            ? copy.subscribe?.unsubscribe || "Se désabonner"
-                        : copy.subscribe?.subscribe || "S’abonner aux notifications"
-                    }
-                  >
-                    <Icon icon={enterpriseSubscribed ? "mdi:bell-ring-outline" : "mdi:bell-outline"} aria-hidden />
-                      </button>
-                </SmartTooltip>
-                    {canReversibility ? (
-                  <SmartTooltip
-                    content={
-                      generatingReversibility && !isCommunity
-                        ? copy.generatingDossier || copy.generatingFolder
-                        : copy.reversibilityDossier || copy.reversibilityFolder
-                    }
-                  >
-                        <button
-                          type="button"
-                      className={styles.sidebarActionIconBtn}
-                          onClick={() => {
-                            if (isCommunity) {
-                              notifyProFeature(copy.proFeatures.reversibility);
-                              return;
-                            }
-                            handleExportReversibility();
-                          }}
-                          disabled={!isCommunity && generatingReversibility}
-                      aria-label={copy.reversibilityDossier || copy.reversibilityFolder}
-                    >
-                      {generatingReversibility && !isCommunity ? (
-                        <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
-                      ) : (
-                        <Icon icon="mdi:export-variant" aria-hidden />
-                      )}
-                        </button>
-                  </SmartTooltip>
-                    ) : null}
+                />
+                {canReversibility ? (
+                  <EnterpriseQuickActionButton
+                    actionId="export"
+                    iconify="mdi:export-variant"
+                    className={styles.sidebarActionIconBtn}
+                    onClick={() => {
+                      if (isCommunity) {
+                        notifyProFeature(copy.proFeatures.reversibility);
+                        return;
+                      }
+                      handleExportReversibility();
+                    }}
+                    disabled={!isCommunity && generatingReversibility}
+                    loading={!isCommunity && generatingReversibility}
+                    loadingClassName={styles.spinning}
+                    aria-label={copy.reversibilityDossier || copy.reversibilityFolder}
+                  />
+                ) : null}
               </div>
             </section>
 
@@ -5180,9 +5778,9 @@ export default function ClientDetailPage({
                           <span className={styles.sidebarInfoFieldLabel}>{copy.contractPeriodLabel || "Période"}</span>
                           <span className={styles.sidebarInfoFieldValue}>
                             <span className={styles.sidebarContractPeriod}>
-                              <span title={copy.startDateLabel || "Date de début"}>{contractStartLabel || "—"}</span>
+                              <span>{contractStartLabel || "—"}</span>
                               <span className={styles.sidebarContractPeriodSep} aria-hidden>→</span>
-                              <span title={copy.endDateLabel || copy.heroFacts?.nextDeadline || "Expiration"}>{contractEndLabel || "—"}</span>
+                              <span>{contractEndLabel || "—"}</span>
                             </span>
                           </span>
                         </div>
@@ -5197,11 +5795,11 @@ export default function ClientDetailPage({
                           <ul className={styles.sidebarContractIconRow}>
                             {activeContractModules.map(mod => (
                               <li key={mod.moduleKey}>
-                                <SmartTooltip content={mod.label}>
+                                
                                   <span className={styles.sidebarContractIconChip} aria-label={mod.label}>
                                     <Icon icon={mod.icon || "mdi:puzzle-outline"} aria-hidden />
                                   </span>
-                                </SmartTooltip>
+                                
                               </li>
                             ))}
                           </ul>
@@ -5222,14 +5820,6 @@ export default function ClientDetailPage({
                 onToggle={() => setSitesSectionExpanded(prev => !prev)}
                 controlsId="enterprise-sidebar-sites"
                 panelStyles={styles}
-                actions={canManageSites ? <SmartTooltip content={copy.manageSites}>
-                    <button type="button" className={styles.editInfoButton} onClick={e => {
-                  e.stopPropagation();
-                  setSitesModalOpen(true);
-                }} aria-label={copy.manageSites}>
-                      <FaPencilAlt />
-                    </button>
-                  </SmartTooltip> : null}
               />
               {sitesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
                 {(formData.sites || []).length === 0 ? <div className={styles.emptyState}>
@@ -5318,14 +5908,14 @@ export default function ClientDetailPage({
                 onToggle={() => setContactsSectionExpanded(prev => !prev)}
                 controlsId="enterprise-sidebar-contacts"
                 panelStyles={styles}
-                actions={canAddContact ? <SmartTooltip content={copy.addContact}>
+                actions={canAddContact ? 
                     <button type="button" className={styles.editInfoButton} onClick={e => {
                   e.stopPropagation();
                   handleAddContact();
                 }} aria-label={copy.addContact}>
                       <FaPlus />
                     </button>
-                  </SmartTooltip> : null}
+                   : null}
               />
               {contactsSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-contacts">
               {loadingContacts ? <div className={styles.loadingState}>{copy.loadingContacts}</div> : !contacts || contacts.length === 0 ? <div className={styles.emptyState}>
@@ -5364,13 +5954,18 @@ export default function ClientDetailPage({
                 <ul className={styles.sidebarContactsList}>
                   {visibleContacts.map(contact => {
                     const isPrimaryContact = isContactPrimaryForClient(contact, client?.id);
-                    return <SmartTooltip as="li" key={contact.id} className={`${styles.sidebarContactItem} ${isPrimaryContact ? styles.sidebarContactItemPrimary : ""}`.trim()} onClick={() => {
-                      if (onNavigate) {
-                        onNavigate("ContactDetail", {
-                          contactId: contact.id
-                        });
-                      }
-                    }} content={copy.viewContactDetails}>
+                    return (
+                      <li
+                        key={contact.id}
+                        className={`${styles.sidebarContactItem} ${isPrimaryContact ? styles.sidebarContactItemPrimary : ""}`.trim()}
+                        onClick={() => {
+                          if (onNavigate) {
+                            onNavigate("ContactDetail", {
+                              contactId: contact.id
+                            });
+                          }
+                        }}
+                      >
                       <div className={styles.sidebarContactBody}>
                         <div className={styles.sidebarContactTop}>
                           <div className={styles.sidebarContactIdentity}>
@@ -5405,7 +6000,7 @@ export default function ClientDetailPage({
                                   {[...linkedSiteIds].map(siteId => {
                                 const site = siteById.get(siteId);
                                 const label = site ? getSiteDisplayName(site) : siteId;
-                                return <span key={siteId} className={`${styles.sidebarContactSiteChip} ${primarySiteIds.has(siteId) ? styles.sidebarContactSiteChipPrimary : ""}`.trim()} title={label}>
+                                return <span key={siteId} className={`${styles.sidebarContactSiteChip} ${primarySiteIds.has(siteId) ? styles.sidebarContactSiteChipPrimary : ""}`.trim()}>
                                       <Icon icon="mdi:map-marker-outline" aria-hidden />
                                       <span>{label}</span>
                                     </span>;
@@ -5414,13 +6009,13 @@ export default function ClientDetailPage({
                             })()}
                           </div>
                           <div className={styles.sidebarContactActions}>
-                            <button type="button" className={styles.sidebarCopyButton} title={copy.copyContactCard} aria-label={copy.copyContactCard} onClick={e => {
+                            <button type="button" className={styles.sidebarCopyButton} aria-label={copy.copyContactCard} onClick={e => {
                               e.stopPropagation();
                               copyContactCard(contact);
                             }}>
                               <Icon icon="mdi:content-copy" />
                             </button>
-                            <button type="button" className={styles.sidebarShareButton} title={copy.shareContactCard} aria-label={copy.shareContactCard} onClick={e => {
+                            <button type="button" className={styles.sidebarShareButton} aria-label={copy.shareContactCard} onClick={e => {
                               e.stopPropagation();
                               shareContactCard(contact);
                             }}>
@@ -5442,14 +6037,15 @@ export default function ClientDetailPage({
                                     <Icon icon={typeDef.icon} className={styles.sidebarContactMetaIcon} aria-hidden />
                                     <span className={styles.sidebarContactMetaValue}>{entry.value}</span>
                                     <span className={styles.sidebarContactMetaStarSlot}>
-                                    {entry.isPrimary ? <Icon icon="mdi:star" className={styles.sidebarContactFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
+                                    {entry.isPrimary ? <Icon icon="mdi:star" className={styles.sidebarContactFavoriteStar} aria-label={copy.coordFavorite} /> : null}
                                     </span>
                                   </RowTag>;
                             })}
                             </div>;
                         })()}
                       </div>
-                    </SmartTooltip>;
+                      </li>
+                    );
                   })}
                 </ul>
                 </>}
@@ -5466,14 +6062,14 @@ export default function ClientDetailPage({
                 onToggle={() => setPrestatairesSectionExpanded(prev => !prev)}
                 controlsId="enterprise-sidebar-prestataires"
                 panelStyles={styles}
-                actions={canAddPrestataire ? <SmartTooltip content={copy.addProvider}>
+                actions={canAddPrestataire ? 
                     <button type="button" className={styles.editInfoButton} onClick={e => {
                   e.stopPropagation();
                   openPrestataireAttachModal();
                 }} aria-label={copy.addProvider}>
                       <FaPlus />
                     </button>
-                  </SmartTooltip> : null}
+                   : null}
               />
               {prestatairesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-prestataires">
               {loadingPrestataires ? <div className={styles.loadingState}>{copy.loadingProviders}</div> : !prestataires || prestataires.length === 0 ? <div className={styles.emptyState}>
@@ -5510,14 +6106,19 @@ export default function ClientDetailPage({
                     <h5>{copy.noProviderResults}</h5>
                   </div> : <>
                 <ul className={styles.sidebarContactsList}>
-                  {visiblePrestataires.map(prestataire => <SmartTooltip as="li" key={prestataire.id} className={styles.sidebarContactItem} onClick={() => {
-                      if (onNavigate) {
-                        onNavigate("PrestataireDetail", {
-                          prestataireId: prestataire.id,
-                          nom: prestataire.nom
-                        });
-                      }
-                    }} content={copy.viewProviderDetails}>
+                  {visiblePrestataires.map(prestataire => (
+                      <li
+                        key={prestataire.id}
+                        className={styles.sidebarContactItem}
+                        onClick={() => {
+                          if (onNavigate) {
+                            onNavigate("PrestataireDetail", {
+                              prestataireId: prestataire.id,
+                              nom: prestataire.nom
+                            });
+                          }
+                        }}
+                      >
                       <div className={styles.sidebarContactBody}>
                         <div className={styles.sidebarContactTop}>
                           <div className={styles.sidebarContactIdentity}>
@@ -5552,7 +6153,8 @@ export default function ClientDetailPage({
                       })()}
                           </div> : null}
                       </div>
-                    </SmartTooltip>)}
+                      </li>
+                    ))}
                 </ul>
                 </>}
                 </>}
@@ -5576,14 +6178,14 @@ export default function ClientDetailPage({
                   }}
                   controlsId="enterprise-sidebar-credits"
                   panelStyles={styles}
-                  actions={!isCommunity && canAddCredits ? <SmartTooltip content={copy.addCreditPack}>
+                  actions={!isCommunity && canAddCredits ? 
                           <button type="button" className={styles.editInfoButton} onClick={e => {
                     e.stopPropagation();
                     setSupportCreditModalOpen(true);
                   }} aria-label={copy.addCreditPack}>
                             <FaPlus />
                           </button>
-                        </SmartTooltip> : null}
+                         : null}
                 />
                 {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
                     <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.creditPacks} featureKey="credits" badgePosition="none" softLocked={isCommunity}>
@@ -5673,14 +6275,14 @@ export default function ClientDetailPage({
                 onToggle={() => setNotesSectionExpanded(prev => !prev)}
                 controlsId="enterprise-sidebar-notes"
                 panelStyles={styles}
-                actions={canManageNotes ? <SmartTooltip content={copy.addNote}>
+                actions={canManageNotes ? 
                     <button type="button" className={styles.editInfoButton} onClick={e => {
                   e.stopPropagation();
                   openCreateNoteModal();
                 }} aria-label={copy.addNote}>
                       <FaPlus />
                     </button>
-                  </SmartTooltip> : null}
+                   : null}
               />
               {notesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-notes">
               {loadingNotes ? <div className={styles.loadingState}>{copy.loadingNotes}</div> : notes.length === 0 ? <div className={styles.emptyState}>
@@ -5701,16 +6303,16 @@ export default function ClientDetailPage({
                           </span>
                         </div>
                         {canEditNote(note) ? <div className={styles.clientNoteActions}>
-                            <SmartTooltip content={copy.editNote}>
+                            
                               <button type="button" className={`${styles.editInfoButton} ${styles.clientNoteActionBtn}`} onClick={() => openEditNoteModal(note)} aria-label={copy.editNoteAria}>
                                 <FaPencilAlt />
                               </button>
-                            </SmartTooltip>
-                            <SmartTooltip content={copy.deleteNote}>
+                            
+                            
                               <button type="button" className={`${styles.cancelInfoButton} ${styles.clientNoteActionBtn}`} onClick={() => handleDeleteNote(note.id)} aria-label={copy.deleteNoteAria}>
                                 <Icon icon="mdi:trash-can-outline" />
                               </button>
-                            </SmartTooltip>
+                            
                           </div> : null}
                       </div>
                       <p className={styles.clientNoteContent}>{note.content}</p>
@@ -5741,9 +6343,9 @@ export default function ClientDetailPage({
                 <FaCamera className={styles.modalIcon} />
                 {copy.modals.photoTitle}
               </h2>
-              <SmartTooltip as="button" className={styles.modalCloseButton} onClick={() => setPhotoModalOpen(false)} content={copy.close}>
+              <button type="button" className={styles.modalCloseButton} onClick={() => setPhotoModalOpen(false)} aria-label={copy.close}>
                 <FaTimes />
-              </SmartTooltip>
+              </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.comingSoonMessage}>
@@ -5804,12 +6406,13 @@ export default function ClientDetailPage({
       {}
       <DomainsModal isOpen={domainsModalOpen} onClose={() => setDomainsModalOpen(false)} domains={domainsData} onConfigure={() => {
       setDomainsModalOpen(false);
-      openDomainsConfigModal("overview");
+      openDomainsConfigModal("inventory");
     }} />
 
-      {domainsConfigModalOpen && client?.id && <DomainsConfigModal client={client} initialSection={domainsConfigInitialSection} initialProviderId={domainsConfigInitialProviderId} isCommunity={isCommunity} onClose={() => {
+      {domainsConfigModalOpen && client?.id && <DomainsConfigModal client={client} initialSection={domainsConfigInitialSection} initialProviderId={domainsConfigInitialProviderId} initialOpenAddChoice={domainsConfigOpenAddChoice} isCommunity={isCommunity} onClose={() => {
       setDomainsConfigModalOpen(false);
       setDomainsConfigInitialProviderId(null);
+      setDomainsConfigOpenAddChoice(false);
     }} onSaved={refreshDomainsState} />}
       {unifiLinkModalOpen && client?.id ? (
         <UnifiSiteLinkModal
@@ -5842,11 +6445,11 @@ export default function ClientDetailPage({
     }} onAddDomain={() => {
       setDomainPickerOpen(false);
       setDomainPickerDomains([]);
-      openDomainsConfigModal("provider");
+      openDomainsConfigModal("inventory", null, { openAddChoice: true });
     }} onEditDomain={() => {
       setDomainPickerOpen(false);
       setDomainPickerDomains([]);
-      openDomainsConfigModal("overview", globalOvhConfigured ? "ovh" : null);
+      openDomainsConfigModal("inventory");
     }} onDeleteDomain={async domain => {
       if (!client?.id) return;
       await removeMonitoredDomain(client.id, domain);
@@ -5882,7 +6485,7 @@ export default function ClientDetailPage({
     }} onSynced={refreshDomainsState} onEdit={() => {
       setDomainOverviewOpen(false);
       setDomainOverviewItem(null);
-      openDomainsConfigModal("overview", globalOvhConfigured ? "ovh" : null);
+      openDomainsConfigModal("inventory");
     }} onDelete={async domain => {
       if (!client?.id) return;
       await removeMonitoredDomain(client.id, domain);
@@ -5892,21 +6495,27 @@ export default function ClientDetailPage({
       setDomainOverviewItem(null);
     }} />}
 
-      <SslCertificatesModal isOpen={sslModalOpen} onClose={() => setSslModalOpen(false)} certificates={sslData} clientId={client?.id} onRefresh={async () => {
-      if (!client?.id) return;
-      const items = await fetchClientSslCertificates(client.id, {
-        autoCheck: true
-      });
-      setSslData(items);
-      setEquipmentRevision(revision => revision + 1);
-    }} />
+      <SslCertificatesModal
+        isOpen={sslModalOpen}
+        onClose={() => {
+          setSslModalOpen(false);
+          setSslModalItem(null);
+        }}
+        initialItem={sslModalItem}
+        clientId={client?.id}
+        onRefresh={refreshSslData}
+      />
 
-      <LicencesAbonnementsModal isOpen={licencesModalOpen} onClose={() => setLicensesModalOpen(false)} licences={licencesData} clientId={client?.id} onRefresh={async () => {
-      if (!client?.id) return;
-      const items = await fetchClientLicences(client.id);
-      setLicensesData(items);
-      setEquipmentRevision(revision => revision + 1);
-    }} />
+      <LicencesAbonnementsModal
+        isOpen={licencesModalOpen}
+        onClose={() => {
+          setLicensesModalOpen(false);
+          setLicensesModalItem(null);
+        }}
+        initialItem={licencesModalItem}
+        clientId={client?.id}
+        onRefresh={refreshLicencesData}
+      />
 
       {antivirusConfigModalOpen && client?.id && <AntivirusConfigModal client={client} initialSection={antivirusConfigInitialSection} initialEditingSolution={antivirusConfigEditingSolution} isCommunity={isCommunity} onClose={() => {
       setAntivirusConfigModalOpen(false);
@@ -6054,7 +6663,12 @@ export default function ClientDetailPage({
       setAntispamPickerSolutions(listConfiguredAntispamSolutions(client, [], modulesData, tenants));
     }} />}
 
-      {backupConfigModalOpen && client?.id && <BackupConfigModal client={client} onClose={() => setBackupConfigModalOpen(false)} onSaved={async () => {
+      {backupConfigModalOpen && client?.id && <BackupConfigModal client={client} initialSection={backupConfigInitialSection} initialInstance={backupConfigInitialInstance} initialJob={backupConfigInitialJob} onClose={() => {
+      setBackupConfigModalOpen(false);
+      setBackupConfigInitialSection("overview");
+      setBackupConfigInitialInstance(null);
+      setBackupConfigInitialJob(null);
+    }} onSaved={async () => {
       await loadBackupData(client.id);
       const modulesData = await fetchClientModules(client.id);
       hydrateServicesFromModules(modulesData);
@@ -6092,9 +6706,9 @@ export default function ClientDetailPage({
               count: domainsData.length
             })}
               </h2>
-              <SmartTooltip as="button" className={styles.modalCloseButton} onClick={() => setServiceDetailsModalOpen(false)} content={copy.close}>
+              <button type="button" className={styles.modalCloseButton} onClick={() => setServiceDetailsModalOpen(false)} aria-label={copy.close}>
                 <FaTimes />
-              </SmartTooltip>
+              </button>
             </div>
             <div className={styles.modalBody}>
               {domainsData && domainsData.length > 0 ? <div className={styles.domainsTableSection}>
@@ -6160,9 +6774,9 @@ export default function ClientDetailPage({
               name: selectedSecurityItem.nom || selectedSecurityItem.name || selectedSecurityItem.solution || "N/A"
             })}
               </h2>
-              <SmartTooltip as="button" className={styles.modalCloseButton} onClick={() => setUserDetailsModalOpen(false)} content={copy.close}>
+              <button type="button" className={styles.modalCloseButton} onClick={() => setUserDetailsModalOpen(false)} aria-label={copy.close}>
                 <FaTimes />
-              </SmartTooltip>
+              </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.securityDetailsGrid}>
@@ -6252,9 +6866,9 @@ export default function ClientDetailPage({
                 <Icon icon="mdi:history" className={styles.modalIcon} />
                 {copy.modals.logTitle}
               </h2>
-              <SmartTooltip as="button" className={styles.modalCloseButton} onClick={() => setLogDetailsModalOpen(false)} content={copy.close}>
+              <button type="button" className={styles.modalCloseButton} onClick={() => setLogDetailsModalOpen(false)} aria-label={copy.close}>
                 <FaTimes />
-              </SmartTooltip>
+              </button>
             </div>
             <div className={styles.modalBody}>
               <div className={styles.securityDetailsGrid}>
@@ -6304,9 +6918,9 @@ export default function ClientDetailPage({
               name: antivirusDetailData.item.nom || antivirusDetailData.item.name || antivirusDetailData.item.solution || "N/A"
             })}
               </h2>
-              <SmartTooltip as="button" className={styles.modalCloseButton} onClick={() => setAntivirusDetailsModalOpen(false)} content={copy.close}>
+              <button type="button" className={styles.modalCloseButton} onClick={() => setAntivirusDetailsModalOpen(false)} aria-label={copy.close}>
                 <FaTimes />
-              </SmartTooltip>
+              </button>
             </div>
             <div className={styles.modalBody}>
               {loadingAntivirusDetails ? <div style={{
@@ -6419,6 +7033,33 @@ export default function ClientDetailPage({
       setCampaignPickerOpen(false);
       handleOpenCreateCampaign();
     } : undefined} />
+
+      <ConfirmModal
+        open={Boolean(solutionDeleteTarget)}
+        title={
+          solutionDeleteTarget?.type === "TenantMicrosoft"
+            ? configModalsCopy.confirm.deleteMicrosoftTenant.title
+            : configModalsCopy.confirm.deleteConfiguration.title
+        }
+        message={
+          solutionDeleteTarget
+            ? interpolate(
+              solutionDeleteTarget.type === "TenantMicrosoft"
+                ? configModalsCopy.confirm.deleteMicrosoftTenant.message
+                : configModalsCopy.confirm.deleteConfiguration.message,
+              { label: solutionDeleteTarget.label }
+            )
+            : ""
+        }
+        confirmLabel={common.delete}
+        variant="danger"
+        icon="mdi:delete-outline"
+        loading={deletingSolution}
+        onClose={() => {
+          if (!deletingSolution) setSolutionDeleteTarget(null);
+        }}
+        onConfirm={confirmServiceBrickDelete}
+      />
 
       {serviceBrickMenu ? <ContextMenu
         x={serviceBrickMenu.x}

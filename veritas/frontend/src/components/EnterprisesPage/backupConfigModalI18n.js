@@ -1,14 +1,14 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
+import {
+  buildSoftwareIconsMap,
+  listSoftwareTypeIds,
+  productSupportsJobs,
+} from "./backupSoftwareCatalog";
 const JOB_TYPE_VALUES = ["Complète", "Incrémentale", "Différentielle", "Syntèse"];
 const REGULARITY_VALUES = ["Quotidienne", "Hebdomadaire", "Mensuelle", "Annuelle"];
 const RETENTION_VALUES = ["7 jours", "14 jours", "30 jours", "60 jours", "90 jours", "6 mois"];
-const SOFTWARE_TYPES = ["Veeam", "HYCU Backup", "HyperBackup", "Active Backup for Microsoft 365"];
-const SOFTWARE_ICONS = {
-  Veeam: "veeam.png",
-  "HYCU Backup": "hycu.png",
-  HyperBackup: "hyperbackup.png",
-  "Active Backup for Microsoft 365": "active-backup.png"
-};
+const SOFTWARE_TYPES = listSoftwareTypeIds();
+const SOFTWARE_ICONS = buildSoftwareIconsMap();
 const NAV_ICONS = {
   overview: "mdi:view-dashboard-outline",
   instances: "mdi:server-outline",
@@ -20,8 +20,222 @@ const NAV_ICONS = {
 };
 const ACTIVE_BACKUP_MODULE_KEYS = ["oneDrive", "sharePoint", "exchange", "teams", "calendar", "contacts"];
 function supportsJobs(logiciel) {
-  return logiciel === "Veeam" || logiciel === "HYCU Backup";
+  return productSupportsJobs(logiciel);
 }
+
+const SOFTWARE_LABELS_FR = {
+  Veeam: {
+    label: "Veeam Backup & Replication",
+    description: "Sauvegarde et réplication pour environnements virtualisés"
+  },
+  "Veeam Agent": {
+    label: "Veeam Agent",
+    description: "Sauvegarde agents Windows / Linux / postes de travail"
+  },
+  "Veeam Backup for Microsoft 365": {
+    label: "Veeam Backup for Microsoft 365",
+    description: "Exchange, SharePoint, OneDrive et Teams"
+  },
+  "HYCU Backup": {
+    label: "HYCU Backup",
+    description: "Sauvegarde cloud-native pour Nutanix et VMware"
+  },
+  HyperBackup: {
+    label: "Synology HyperBackup",
+    description: "Réplication NAS vers NAS ou disque externe"
+  },
+  "Active Backup for Business": {
+    label: "Active Backup for Business",
+    description: "Sauvegarde Synology PC, serveurs et VM"
+  },
+  "Active Backup for Microsoft 365": {
+    label: "Active Backup for Microsoft 365",
+    description: "Sauvegarde Synology pour Microsoft 365"
+  },
+  "Acronis Cyber Protect": {
+    label: "Acronis Cyber Protect",
+    description: "Sauvegarde et cybersécurité unifiées"
+  },
+  "Acronis Cyber Protect Cloud": {
+    label: "Acronis Cyber Protect Cloud",
+    description: "Protection SaaS / endpoints hébergée dans le cloud"
+  },
+  "Commvault Complete": {
+    label: "Commvault Complete",
+    description: "Plateforme enterprise de protection des données"
+  },
+  "Commvault Metallic": {
+    label: "Commvault Metallic",
+    description: "Sauvegarde SaaS et workloads en mode cloud"
+  },
+  "Nakivo Backup & Replication": {
+    label: "Nakivo Backup & Replication",
+    description: "Sauvegarde VMware, Hyper-V et cloud"
+  },
+  "Datto SIRIS": {
+    label: "Datto SIRIS",
+    description: "BCDR avec image et restauration rapide"
+  },
+  "Datto SaaS Protection": {
+    label: "Datto SaaS Protection",
+    description: "Sauvegarde Microsoft 365 et Google Workspace"
+  },
+  "AWS Backup": {
+    label: "AWS Backup",
+    description: "Service managé de sauvegarde multi-services AWS"
+  },
+  "Amazon S3 / Glacier": {
+    label: "Amazon S3 / Glacier",
+    description: "Stockage objet et archives froides AWS"
+  },
+  "Azure Backup": {
+    label: "Azure Backup",
+    description: "Sauvegarde managée des workloads Azure et hybrides"
+  },
+  "Azure Blob Storage": {
+    label: "Azure Blob Storage",
+    description: "Stockage objet Azure pour dépôts de sauvegarde"
+  },
+  "Microsoft 365 Backup": {
+    label: "Microsoft 365 Backup",
+    description: "Sauvegarde native Exchange, SharePoint et OneDrive"
+  },
+  "Google Cloud Backup": {
+    label: "Google Cloud Backup",
+    description: "Sauvegarde managée des ressources Google Cloud"
+  },
+  "Google Cloud Storage": {
+    label: "Google Cloud Storage",
+    description: "Buckets GCS pour dépôts et archives"
+  },
+  "Backblaze B2": {
+    label: "Backblaze B2",
+    description: "Stockage objet cloud compatible S3"
+  },
+  "Backblaze Computer Backup": {
+    label: "Backblaze Computer Backup",
+    description: "Sauvegarde continue des postes de travail"
+  },
+  "Wasabi Hot Cloud Storage": {
+    label: "Wasabi Hot Cloud Storage",
+    description: "Stockage objet cloud haute performance"
+  },
+  "OVHcloud Backup": {
+    label: "OVHcloud Backup",
+    description: "Sauvegarde managée des instances et volumes OVH"
+  },
+  "OVHcloud Object Storage": {
+    label: "OVHcloud Object Storage",
+    description: "Stockage objet S3-compatible OVHcloud"
+  }
+};
+
+const SOFTWARE_LABELS_EN = {
+  Veeam: {
+    label: "Veeam Backup & Replication",
+    description: "Backup and replication for virtualized environments"
+  },
+  "Veeam Agent": {
+    label: "Veeam Agent",
+    description: "Agent-based backup for Windows / Linux / endpoints"
+  },
+  "Veeam Backup for Microsoft 365": {
+    label: "Veeam Backup for Microsoft 365",
+    description: "Exchange, SharePoint, OneDrive and Teams"
+  },
+  "HYCU Backup": {
+    label: "HYCU Backup",
+    description: "Cloud-native backup for Nutanix and VMware"
+  },
+  HyperBackup: {
+    label: "Synology HyperBackup",
+    description: "NAS-to-NAS or external disk replication"
+  },
+  "Active Backup for Business": {
+    label: "Active Backup for Business",
+    description: "Synology backup for PCs, servers and VMs"
+  },
+  "Active Backup for Microsoft 365": {
+    label: "Active Backup for Microsoft 365",
+    description: "Synology backup for Microsoft 365"
+  },
+  "Acronis Cyber Protect": {
+    label: "Acronis Cyber Protect",
+    description: "Unified backup and cyber protection"
+  },
+  "Acronis Cyber Protect Cloud": {
+    label: "Acronis Cyber Protect Cloud",
+    description: "Cloud-hosted SaaS / endpoint protection"
+  },
+  "Commvault Complete": {
+    label: "Commvault Complete",
+    description: "Enterprise data protection platform"
+  },
+  "Commvault Metallic": {
+    label: "Commvault Metallic",
+    description: "Cloud SaaS and workload backup"
+  },
+  "Nakivo Backup & Replication": {
+    label: "Nakivo Backup & Replication",
+    description: "Backup for VMware, Hyper-V and cloud"
+  },
+  "Datto SIRIS": {
+    label: "Datto SIRIS",
+    description: "BCDR with imaging and fast recovery"
+  },
+  "Datto SaaS Protection": {
+    label: "Datto SaaS Protection",
+    description: "Microsoft 365 and Google Workspace backup"
+  },
+  "AWS Backup": {
+    label: "AWS Backup",
+    description: "Managed multi-service backup across AWS"
+  },
+  "Amazon S3 / Glacier": {
+    label: "Amazon S3 / Glacier",
+    description: "Object storage and cold archives on AWS"
+  },
+  "Azure Backup": {
+    label: "Azure Backup",
+    description: "Managed backup for Azure and hybrid workloads"
+  },
+  "Azure Blob Storage": {
+    label: "Azure Blob Storage",
+    description: "Azure object storage for backup repositories"
+  },
+  "Microsoft 365 Backup": {
+    label: "Microsoft 365 Backup",
+    description: "Native backup for Exchange, SharePoint and OneDrive"
+  },
+  "Google Cloud Backup": {
+    label: "Google Cloud Backup",
+    description: "Managed backup for Google Cloud resources"
+  },
+  "Google Cloud Storage": {
+    label: "Google Cloud Storage",
+    description: "GCS buckets for repositories and archives"
+  },
+  "Backblaze B2": {
+    label: "Backblaze B2",
+    description: "S3-compatible cloud object storage"
+  },
+  "Backblaze Computer Backup": {
+    label: "Backblaze Computer Backup",
+    description: "Continuous backup for endpoints"
+  },
+  "Wasabi Hot Cloud Storage": {
+    label: "Wasabi Hot Cloud Storage",
+    description: "High-performance cloud object storage"
+  },
+  "OVHcloud Backup": {
+    label: "OVHcloud Backup",
+    description: "Managed backup for OVH instances and volumes"
+  },
+  "OVHcloud Object Storage": {
+    label: "OVHcloud Object Storage",
+    description: "S3-compatible object storage on OVHcloud"
+  }
+};
 function mapOptionLabels(values, labels) {
   return values.map((value, index) => ({
     value,
@@ -82,8 +296,9 @@ const BACKUP_MODAL_COPY = {
     },
     overview: {
       title: "Vue d'ensemble",
-      description: "Configurez les instances de sauvegarde (Veeam, HYCU, HyperBackup…) et leurs jobs pour cette entreprise.",
+      description: "Configurez les instances de sauvegarde (marques et produits) et leurs jobs pour cette entreprise. Une instance peut héberger plusieurs jobs.",
       addBtn: "Ajouter une instance",
+      addJobBtn: "Ajouter un job",
       viewInstances: "Voir les instances"
     },
     instances: {
@@ -96,8 +311,17 @@ const BACKUP_MODAL_COPY = {
     },
     addInstance: {
       title: "Nouvelle instance",
-      description: "Choisissez un logiciel de sauvegarde, puis renseignez sa configuration.",
-      pickType: "Choisir un logiciel"
+      description: "Choisissez une marque et un produit, puis renseignez la configuration. Une instance peut ensuite accueillir plusieurs jobs.",
+      pickType: "Choisir un logiciel",
+      pickBrand: "Marque",
+      pickProduct: "Produit",
+      otherBrand: "Autre",
+      otherBrandName: "Nom de la marque",
+      otherProduct: "Autre produit",
+      otherProductName: "Nom du produit",
+      otherProductDesc: "Saisie libre pour un logiciel hors catalogue",
+      changeSoftware: "Changer de logiciel",
+      configTitle: "Configuration"
     },
     editInstance: {
       title: "Modifier l'instance",
@@ -111,48 +335,53 @@ const BACKUP_MODAL_COPY = {
       addBtn: "Ajouter un job",
       noJobsSupport: "Ce type d'instance ne gère pas de jobs séparés.",
       selectInstance: "Sélectionnez une instance pour gérer ses jobs.",
+      needInstanceFirst: "Ajoutez d’abord une instance pour créer un job.",
       defaultJob: "Job par défaut"
     },
     addJob: {
       title: "Nouveau job",
-      description: "Définissez le nom, le type et la planification du job."
+      description: "Définissez le nom, le type et la planification du job.",
+      pickDescription: "Choisissez l'instance de sauvegarde, puis configurez le job.",
+      pickInstance: "Choisir une instance",
+      changeInstance: "Changer",
+      sections: {
+        general: "Général",
+        target: "Cible & destination",
+        schedule: "Planification"
+      }
     },
     editJob: {
       title: "Modifier le job",
-      description: "Mettez à jour les paramètres de ce job de sauvegarde."
+      description: "Mettez à jour les paramètres de ce job de sauvegarde.",
+      sections: {
+        general: "Général",
+        target: "Cible & destination",
+        schedule: "Planification"
+      }
     },
     kpi: {
       instances: "Instances",
       jobs: "Jobs"
     },
-    software: {
-      Veeam: {
-        label: "Veeam Backup & Replication",
-        description: "Sauvegarde et réplication pour environnements virtualisés"
-      },
-      "HYCU Backup": {
-        label: "HYCU Backup",
-        description: "Sauvegarde cloud-native pour Nutanix et VMware"
-      },
-      HyperBackup: {
-        label: "Synology HyperBackup",
-        description: "Réplication NAS vers NAS ou disque externe"
-      },
-      "Active Backup for Microsoft 365": {
-        label: "Active Backup for Microsoft 365",
-        description: "Sauvegarde Synology pour Microsoft 365"
-      }
-    },
+    software: SOFTWARE_LABELS_FR,
     form: {
       logiciel: "Logiciel",
       expiration: "Expiration de licence",
+      license: "Clé / contrat de licence",
+      licensePlaceholder: "Ex. contrat ou numéro de série",
+      cloudRegion: "Région / localisation",
+      cloudRegionPlaceholder: "Ex. eu-west-3, West Europe…",
+      cloudBucket: "Bucket / conteneur",
+      cloudBucketPlaceholder: "Ex. nom du bucket S3",
       server: "Serveur de sauvegarde",
       serverNone: "Aucun serveur",
+      serverPlaceholder: "Nom du serveur",
       hyperbackupSource: "Source",
       hyperbackupDestination: "Destination",
       activeBackupModules: "Modules activés",
       activeBackupStorage: "Destination de stockage",
       storageNone: "Sélectionner une destination",
+      jobInstance: "Instance",
       jobName: "Nom du job",
       jobNamePlaceholder: "Ex. Backup quotidien VMs",
       jobTarget: "Cible",
@@ -214,7 +443,8 @@ const BACKUP_MODAL_COPY = {
       addJob: "Ajouter un job"
     },
     footer: {
-      pickSoftware: "Choisissez un logiciel pour continuer",
+      pickSoftware: "Choisissez une marque et un produit pour continuer",
+      pickInstance: "Choisissez une instance pour continuer",
       nameRequired: "Le nom du job est obligatoire"
     },
     primary: {
@@ -292,6 +522,7 @@ const BACKUP_MODAL_COPY = {
       title: "Overview",
       description: "Configure backup instances (Veeam, HYCU, HyperBackup…) and their jobs for this company.",
       addBtn: "Add an instance",
+      addJobBtn: "Add a job",
       viewInstances: "View instances"
     },
     instances: {
@@ -304,8 +535,17 @@ const BACKUP_MODAL_COPY = {
     },
     addInstance: {
       title: "New instance",
-      description: "Choose backup software, then fill in its configuration.",
-      pickType: "Choose software"
+      description: "Choose a brand and product, then fill in the configuration. An instance can host multiple jobs.",
+      pickType: "Choose software",
+      pickBrand: "Brand",
+      pickProduct: "Product",
+      otherBrand: "Other",
+      otherBrandName: "Brand name",
+      otherProduct: "Other product",
+      otherProductName: "Product name",
+      otherProductDesc: "Free entry for software outside the catalog",
+      changeSoftware: "Change software",
+      configTitle: "Configuration"
     },
     editInstance: {
       title: "Edit instance",
@@ -319,48 +559,53 @@ const BACKUP_MODAL_COPY = {
       addBtn: "Add a job",
       noJobsSupport: "This instance type does not manage separate jobs.",
       selectInstance: "Select an instance to manage its jobs.",
+      needInstanceFirst: "Add an instance first before creating a job.",
       defaultJob: "Default job"
     },
     addJob: {
       title: "New job",
-      description: "Define the job name, type and schedule."
+      description: "Define the job name, type and schedule.",
+      pickDescription: "Choose the backup instance, then configure the job.",
+      pickInstance: "Choose an instance",
+      changeInstance: "Change",
+      sections: {
+        general: "General",
+        target: "Target & destination",
+        schedule: "Schedule"
+      }
     },
     editJob: {
       title: "Edit job",
-      description: "Update this backup job settings."
+      description: "Update this backup job settings.",
+      sections: {
+        general: "General",
+        target: "Target & destination",
+        schedule: "Schedule"
+      }
     },
     kpi: {
       instances: "Instances",
       jobs: "Jobs"
     },
-    software: {
-      Veeam: {
-        label: "Veeam Backup & Replication",
-        description: "Backup and replication for virtualized environments"
-      },
-      "HYCU Backup": {
-        label: "HYCU Backup",
-        description: "Cloud-native backup for Nutanix and VMware"
-      },
-      HyperBackup: {
-        label: "Synology HyperBackup",
-        description: "NAS-to-NAS or external disk replication"
-      },
-      "Active Backup for Microsoft 365": {
-        label: "Active Backup for Microsoft 365",
-        description: "Synology backup for Microsoft 365"
-      }
-    },
+    software: SOFTWARE_LABELS_EN,
     form: {
       logiciel: "Software",
       expiration: "License expiration",
+      license: "License key / contract",
+      licensePlaceholder: "E.g. contract or serial number",
+      cloudRegion: "Region / location",
+      cloudRegionPlaceholder: "E.g. eu-west-3, West Europe…",
+      cloudBucket: "Bucket / container",
+      cloudBucketPlaceholder: "E.g. S3 bucket name",
       server: "Backup server",
       serverNone: "No server",
+      serverPlaceholder: "Server name",
       hyperbackupSource: "Source",
       hyperbackupDestination: "Destination",
       activeBackupModules: "Enabled modules",
       activeBackupStorage: "Storage destination",
       storageNone: "Select a destination",
+      jobInstance: "Instance",
       jobName: "Job name",
       jobNamePlaceholder: "E.g. Daily VM backup",
       jobTarget: "Target",
@@ -422,7 +667,8 @@ const BACKUP_MODAL_COPY = {
       addJob: "Add a job"
     },
     footer: {
-      pickSoftware: "Choose software to continue",
+      pickSoftware: "Choose a brand and product to continue",
+      pickInstance: "Choose an instance to continue",
       nameRequired: "Job name is required"
     },
     primary: {
@@ -500,6 +746,7 @@ const BACKUP_MODAL_COPY = {
       title: "Übersicht",
       description: "Konfigurieren Sie Backup-Instanzen (Veeam, HYCU, HyperBackup…) und deren Jobs für dieses Unternehmen.",
       addBtn: "Instanz hinzufügen",
+      addJobBtn: "Job hinzufügen",
       viewInstances: "Instanzen anzeigen"
     },
     instances: {
@@ -512,8 +759,17 @@ const BACKUP_MODAL_COPY = {
     },
     addInstance: {
       title: "Neue Instanz",
-      description: "Wählen Sie eine Backup-Software und füllen Sie die Konfiguration aus.",
-      pickType: "Software wählen"
+      description: "Wählen Sie Marke und Produkt, dann die Konfiguration. Eine Instanz kann mehrere Jobs hosten.",
+      pickType: "Software wählen",
+      pickBrand: "Marke",
+      pickProduct: "Produkt",
+      otherBrand: "Andere",
+      otherBrandName: "Markenname",
+      otherProduct: "Anderes Produkt",
+      otherProductName: "Produktname",
+      otherProductDesc: "Freie Eingabe für Software außerhalb des Katalogs",
+      changeSoftware: "Software wechseln",
+      configTitle: "Konfiguration"
     },
     editInstance: {
       title: "Instanz bearbeiten",
@@ -527,48 +783,53 @@ const BACKUP_MODAL_COPY = {
       addBtn: "Job hinzufügen",
       noJobsSupport: "Dieser Instanztyp verwaltet keine separaten Jobs.",
       selectInstance: "Wählen Sie eine Instanz, um deren Jobs zu verwalten.",
+      needInstanceFirst: "Fügen Sie zuerst eine Instanz hinzu, um einen Job zu erstellen.",
       defaultJob: "Standard-Job"
     },
     addJob: {
       title: "Neuer Job",
-      description: "Definieren Sie Name, Typ und Zeitplan des Jobs."
+      description: "Definieren Sie Name, Typ und Zeitplan des Jobs.",
+      pickDescription: "Wählen Sie die Backup-Instanz, dann konfigurieren Sie den Job.",
+      pickInstance: "Instanz wählen",
+      changeInstance: "Ändern",
+      sections: {
+        general: "Allgemein",
+        target: "Ziel & Speicher",
+        schedule: "Zeitplan"
+      }
     },
     editJob: {
       title: "Job bearbeiten",
-      description: "Aktualisieren Sie die Einstellungen dieses Backup-Jobs."
+      description: "Aktualisieren Sie die Einstellungen dieses Backup-Jobs.",
+      sections: {
+        general: "Allgemein",
+        target: "Ziel & Speicher",
+        schedule: "Zeitplan"
+      }
     },
     kpi: {
       instances: "Instanzen",
       jobs: "Jobs"
     },
-    software: {
-      Veeam: {
-        label: "Veeam Backup & Replication",
-        description: "Backup und Replikation für virtualisierte Umgebungen"
-      },
-      "HYCU Backup": {
-        label: "HYCU Backup",
-        description: "Cloud-natives Backup für Nutanix und VMware"
-      },
-      HyperBackup: {
-        label: "Synology HyperBackup",
-        description: "NAS-zu-NAS- oder externe Festplatten-Replikation"
-      },
-      "Active Backup for Microsoft 365": {
-        label: "Active Backup for Microsoft 365",
-        description: "Synology-Backup für Microsoft 365"
-      }
-    },
+    software: SOFTWARE_LABELS_EN,
     form: {
       logiciel: "Software",
       expiration: "Lizenzablauf",
+      license: "Lizenzschlüssel / Vertrag",
+      licensePlaceholder: "z. B. Vertrag oder Seriennummer",
+      cloudRegion: "Region / Standort",
+      cloudRegionPlaceholder: "z. B. eu-west-3, West Europe…",
+      cloudBucket: "Bucket / Container",
+      cloudBucketPlaceholder: "z. B. S3-Bucket-Name",
       server: "Backup-Server",
       serverNone: "Kein Server",
+      serverPlaceholder: "Servername",
       hyperbackupSource: "Quelle",
       hyperbackupDestination: "Ziel",
       activeBackupModules: "Aktivierte Module",
       activeBackupStorage: "Speicherziel",
       storageNone: "Ziel auswählen",
+      jobInstance: "Instanz",
       jobName: "Jobname",
       jobNamePlaceholder: "z. B. Tägliches VM-Backup",
       jobTarget: "Ziel",
@@ -631,6 +892,7 @@ const BACKUP_MODAL_COPY = {
     },
     footer: {
       pickSoftware: "Wählen Sie eine Software, um fortzufahren",
+      pickInstance: "Wählen Sie eine Instanz, um fortzufahren",
       nameRequired: "Jobname ist erforderlich"
     },
     primary: {
@@ -706,6 +968,7 @@ const BACKUP_MODAL_COPY = {
       title: "Panoramica",
       description: "Configura le istanze di backup (Veeam, HYCU, HyperBackup…) e i relativi job per questa azienda.",
       addBtn: "Aggiungi un'istanza",
+      addJobBtn: "Aggiungi un job",
       viewInstances: "Vedi le istanze"
     },
     instances: {
@@ -718,8 +981,17 @@ const BACKUP_MODAL_COPY = {
     },
     addInstance: {
       title: "Nuova istanza",
-      description: "Scegli un software di backup, poi compilane la configurazione.",
-      pickType: "Scegli un software"
+      description: "Scegli marca e prodotto, poi la configurazione. Un'istanza può ospitare più job.",
+      pickType: "Scegli un software",
+      pickBrand: "Marca",
+      pickProduct: "Prodotto",
+      otherBrand: "Altro",
+      otherBrandName: "Nome della marca",
+      otherProduct: "Altro prodotto",
+      otherProductName: "Nome del prodotto",
+      otherProductDesc: "Inserimento libero per software fuori catalogo",
+      changeSoftware: "Cambia software",
+      configTitle: "Configurazione"
     },
     editInstance: {
       title: "Modifica istanza",
@@ -733,48 +1005,53 @@ const BACKUP_MODAL_COPY = {
       addBtn: "Aggiungi un job",
       noJobsSupport: "Questo tipo di istanza non gestisce job separati.",
       selectInstance: "Seleziona un'istanza per gestirne i job.",
+      needInstanceFirst: "Aggiungi prima un'istanza per creare un job.",
       defaultJob: "Job predefinito"
     },
     addJob: {
       title: "Nuovo job",
-      description: "Definisci nome, tipo e pianificazione del job."
+      description: "Definisci nome, tipo e pianificazione del job.",
+      pickDescription: "Scegli l'istanza di backup, poi configura il job.",
+      pickInstance: "Scegli un'istanza",
+      changeInstance: "Cambia",
+      sections: {
+        general: "Generale",
+        target: "Destinazione",
+        schedule: "Pianificazione"
+      }
     },
     editJob: {
       title: "Modifica job",
-      description: "Aggiorna le impostazioni di questo job di backup."
+      description: "Aggiorna le impostazioni di questo job di backup.",
+      sections: {
+        general: "Generale",
+        target: "Destinazione",
+        schedule: "Pianificazione"
+      }
     },
     kpi: {
       instances: "Istanze",
       jobs: "Job"
     },
-    software: {
-      Veeam: {
-        label: "Veeam Backup & Replication",
-        description: "Backup e replica per ambienti virtualizzati"
-      },
-      "HYCU Backup": {
-        label: "HYCU Backup",
-        description: "Backup cloud-native per Nutanix e VMware"
-      },
-      HyperBackup: {
-        label: "Synology HyperBackup",
-        description: "Replica NAS-to-NAS o su disco esterno"
-      },
-      "Active Backup for Microsoft 365": {
-        label: "Active Backup for Microsoft 365",
-        description: "Backup Synology per Microsoft 365"
-      }
-    },
+    software: SOFTWARE_LABELS_EN,
     form: {
       logiciel: "Software",
       expiration: "Scadenza licenza",
+      license: "Chiave / contratto di licenza",
+      licensePlaceholder: "Es. contratto o numero di serie",
+      cloudRegion: "Regione / localizzazione",
+      cloudRegionPlaceholder: "Es. eu-west-3, West Europe…",
+      cloudBucket: "Bucket / contenitore",
+      cloudBucketPlaceholder: "Es. nome bucket S3",
       server: "Server di backup",
       serverNone: "Nessun server",
+      serverPlaceholder: "Nome server",
       hyperbackupSource: "Origine",
       hyperbackupDestination: "Destinazione",
       activeBackupModules: "Moduli attivati",
       activeBackupStorage: "Destinazione di archiviazione",
       storageNone: "Seleziona una destinazione",
+      jobInstance: "Istanza",
       jobName: "Nome del job",
       jobNamePlaceholder: "Es. Backup giornaliero VM",
       jobTarget: "Destinazione",
@@ -837,6 +1114,7 @@ const BACKUP_MODAL_COPY = {
     },
     footer: {
       pickSoftware: "Scegli un software per continuare",
+      pickInstance: "Scegli un'istanza per continuare",
       nameRequired: "Il nome del job è obbligatorio"
     },
     primary: {
@@ -912,6 +1190,7 @@ const BACKUP_MODAL_COPY = {
       title: "Resumen",
       description: "Configure las instancias de copia (Veeam, HYCU, HyperBackup…) y sus trabajos para esta empresa.",
       addBtn: "Añadir una instancia",
+      addJobBtn: "Añadir un trabajo",
       viewInstances: "Ver las instancias"
     },
     instances: {
@@ -924,8 +1203,17 @@ const BACKUP_MODAL_COPY = {
     },
     addInstance: {
       title: "Nueva instancia",
-      description: "Elija un software de copia y complete su configuración.",
-      pickType: "Elegir un software"
+      description: "Elija marca y producto, luego la configuración. Una instancia puede alojar varios trabajos.",
+      pickType: "Elegir un software",
+      pickBrand: "Marca",
+      pickProduct: "Producto",
+      otherBrand: "Otro",
+      otherBrandName: "Nombre de la marca",
+      otherProduct: "Otro producto",
+      otherProductName: "Nombre del producto",
+      otherProductDesc: "Entrada libre para software fuera del catálogo",
+      changeSoftware: "Cambiar software",
+      configTitle: "Configuración"
     },
     editInstance: {
       title: "Editar instancia",
@@ -939,48 +1227,53 @@ const BACKUP_MODAL_COPY = {
       addBtn: "Añadir un trabajo",
       noJobsSupport: "Este tipo de instancia no gestiona trabajos separados.",
       selectInstance: "Seleccione una instancia para gestionar sus trabajos.",
+      needInstanceFirst: "Añada primero una instancia para crear un trabajo.",
       defaultJob: "Trabajo predeterminado"
     },
     addJob: {
       title: "Nuevo trabajo",
-      description: "Defina el nombre, el tipo y la planificación del trabajo."
+      description: "Defina el nombre, el tipo y la planificación del trabajo.",
+      pickDescription: "Elija la instancia de copia, luego configure el trabajo.",
+      pickInstance: "Elegir una instancia",
+      changeInstance: "Cambiar",
+      sections: {
+        general: "General",
+        target: "Objetivo y destino",
+        schedule: "Planificación"
+      }
     },
     editJob: {
       title: "Editar trabajo",
-      description: "Actualice los parámetros de este trabajo de copia."
+      description: "Actualice los parámetros de este trabajo de copia.",
+      sections: {
+        general: "General",
+        target: "Objetivo y destino",
+        schedule: "Planificación"
+      }
     },
     kpi: {
       instances: "Instancias",
       jobs: "Trabajos"
     },
-    software: {
-      Veeam: {
-        label: "Veeam Backup & Replication",
-        description: "Copia y replicación para entornos virtualizados"
-      },
-      "HYCU Backup": {
-        label: "HYCU Backup",
-        description: "Copia cloud-native para Nutanix y VMware"
-      },
-      HyperBackup: {
-        label: "Synology HyperBackup",
-        description: "Replicación NAS a NAS o disco externo"
-      },
-      "Active Backup for Microsoft 365": {
-        label: "Active Backup for Microsoft 365",
-        description: "Copia Synology para Microsoft 365"
-      }
-    },
+    software: SOFTWARE_LABELS_EN,
     form: {
       logiciel: "Software",
       expiration: "Caducidad de licencia",
+      license: "Clave / contrato de licencia",
+      licensePlaceholder: "Ej. contrato o número de serie",
+      cloudRegion: "Región / ubicación",
+      cloudRegionPlaceholder: "Ej. eu-west-3, West Europe…",
+      cloudBucket: "Bucket / contenedor",
+      cloudBucketPlaceholder: "Ej. nombre del bucket S3",
       server: "Servidor de copia",
       serverNone: "Ningún servidor",
+      serverPlaceholder: "Nombre del servidor",
       hyperbackupSource: "Origen",
       hyperbackupDestination: "Destino",
       activeBackupModules: "Módulos activados",
       activeBackupStorage: "Destino de almacenamiento",
       storageNone: "Seleccionar un destino",
+      jobInstance: "Instancia",
       jobName: "Nombre del trabajo",
       jobNamePlaceholder: "Ej. Copia diaria de VMs",
       jobTarget: "Objetivo",
@@ -1043,6 +1336,7 @@ const BACKUP_MODAL_COPY = {
     },
     footer: {
       pickSoftware: "Elija un software para continuar",
+      pickInstance: "Elija una instancia para continuar",
       nameRequired: "El nombre del trabajo es obligatorio"
     },
     primary: {

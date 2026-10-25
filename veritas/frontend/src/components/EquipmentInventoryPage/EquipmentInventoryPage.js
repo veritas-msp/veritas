@@ -3,7 +3,6 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getEquipmentInventoryGuide } from "../PageGuide/equipmentInventoryGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { getEquipmentInventoryList, fetchEquipmentTagsBatch } from "../../api/equipment";
 import { getLocalizedEquipmentTypeLabel } from "../../i18n/equipmentFamilyLabels";
@@ -24,6 +23,7 @@ import InventoryEquipmentActions from "./InventoryEquipmentActions";
 import InventoryBulkEditModal from "./InventoryBulkEditModal";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import {
   getEquipmentInventoryUiDefaults,
@@ -1402,7 +1402,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                           onClick={() => setFacetQuery("")}
                           aria-label={copy.clearSearch}
                         >
-                          <FaTimes />
+                          <Icon icon="mdi:close" width={14} height={14} aria-hidden />
                         </button>
                       ) : null}
                     </div>
@@ -1445,69 +1445,52 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                     <div className={layout.listBody}>
                       <div className={layout.listArea}>
                         <div className={layout.panelCard}>
-                          <div className={layout.tableSearchBar} data-guide="inventory-search">
-                            <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                              <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                              <input
-                                type="text"
-                                inputMode="search"
-                                enterKeyHint="search"
-                                className={layout.searchInput}
-                                placeholder={copy.searchPlaceholder}
-                                value={search}
-                                onChange={e => setSearch(e.target.value)}
-                                aria-label={copy.searchAria}
-                              />
-                              {search ? (
-                                <button
-                                  type="button"
-                                  className={layout.clearButton}
-                                  onClick={() => setSearch("")}
-                                  aria-label={copy.clearSearch}
-                                >
-                                  <FaTimes />
-                                </button>
-                              ) : null}
-                            </div>
-                            <div className={layout.toolbarActions} data-guide="inventory-hero">
-                              <SmartTooltip content={copy.exportCsv}>
-                                <button
-                                  type="button"
-                                  className={layout.iconBtn}
-                                  onClick={handleExportCsv}
-                                  disabled={filtered.length === 0}
-                                  aria-label={copy.exportCsvAria}
-                                >
-                                  <Icon icon="mdi:download-outline" />
-                                </button>
-                              </SmartTooltip>
-                              <SmartTooltip content={copy.refresh}>
-                                <button
-                                  type="button"
-                                  className={layout.iconBtn}
-                                  onClick={load}
-                                  aria-label={copy.refresh}
-                                >
-                                  <Icon icon="mdi:refresh" />
-                                </button>
-                              </SmartTooltip>
-                            </div>
+                          <div data-guide="inventory-search">
+                          <UiKitCrmListToolbar
+                            title={copy.pageTitle}
+                            titleIcon="mdi:devices"
+                            searchValue={search}
+                            onSearchChange={setSearch}
+                            onSearchClear={() => setSearch("")}
+                            searchPlaceholder={copy.searchPlaceholder}
+                            searchAriaLabel={copy.searchAria}
+                            clearSearchLabel={copy.clearSearch}
+                            moreMenuItems={[
+                              {
+                                key: "export",
+                                label: copy.exportCsv,
+                                icon: "mdi:download-outline",
+                                disabled: filtered.length === 0,
+                                onClick: handleExportCsv
+                              },
+                              {
+                                key: "refresh",
+                                label: copy.refresh,
+                                icon: "mdi:refresh",
+                                onClick: load
+                              }
+                            ]}
+                          />
                           </div>
 
                           {filtered.length === 0 ? (
                             <div className={layout.emptyStateInCard} data-guide="inventory-table">
-                              <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
-                              <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
-                              <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
+                              <UiKitEmptyState
+                                bare
+                                icon="mdi:devices"
+                                title={copy.emptyTitle}
+                                text={hasFilters ? copy.emptyFiltered : copy.emptyHint}
+                              />
                             </div>
                           ) : (
                             <>
-                              <div className={layout.dataTableWrap} data-guide="inventory-table">
-                                <div
-                                  ref={tableScrollRef}
-                                  className={`${layout.dataTableScroll} ${styles.tableScroll}`}
-                                >
-                                  <table className={styles.table}>
+                              <UiKitScrollFadeShell
+                                className={`${layout.dataTableWrap} ${styles.tableScroll}`}
+                                scrollViewportRef={tableScrollRef}
+                                stableScrollbar
+                                deps={[paginatedItems.length, pageSize, page, tableColumns.join("|")]}
+                              >
+                                  <table className={styles.table} data-guide="inventory-table">
                                     <thead>
                                       <tr>
                                         {canBulkEdit ? (
@@ -1598,8 +1581,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                       })}
                                     </tbody>
                                   </table>
-                                </div>
-                              </div>
+                              </UiKitScrollFadeShell>
 
                               <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                                 <div className={layout.paginationLeft}>
@@ -1631,7 +1613,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                       disabled={page <= 1}
                                       aria-label={copy.prevPage}
                                     >
-                                      <FaChevronLeft />
+                                      <Icon icon="mdi:chevron-left" width={16} aria-hidden />
                                     </button>
                                   </SmartTooltip>
                                   <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
@@ -1643,7 +1625,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                       disabled={page >= totalPages}
                                       aria-label={copy.nextPage}
                                     >
-                                      <FaChevronRight />
+                                      <Icon icon="mdi:chevron-right" width={16} aria-hidden />
                                     </button>
                                   </SmartTooltip>
                                 </div>

@@ -1,7 +1,12 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 import { PLANNING_EVENT_TYPES } from "./planningEventTypes";
 import { getLinkedItemIcon } from "./planningEventFormConfig";
-const SECTION_IDS = ["general", "schedule", "description", "objects", "todos"];
+const SECTION_IDS = ["general", "schedule", "objects"];
+const SECTION_ICONS = {
+  general: "mdi:calendar-text-outline",
+  schedule: "mdi:clock-outline",
+  objects: "mdi:cube-outline"
+};
 const PLANNING_EVENT_FORM_COPY = {
   fr: {
     eyebrow: "Planning",
@@ -28,17 +33,9 @@ const PLANNING_EVENT_FORM_COPY = {
         label: "Dates",
         description: "Créneau et agents"
       },
-      description: {
-        label: "Description",
-        description: "Contexte et détails"
-      },
       objects: {
-        label: "Objets",
-        description: "Équipements liés"
-      },
-      todos: {
-        label: "To-do",
-        description: "Liste de tâches"
+        label: "Matériels liés",
+        description: "Équipements et services du client"
       }
     },
     fields: {
@@ -90,7 +87,16 @@ const PLANNING_EVENT_FORM_COPY = {
       markTask: "Marquer la tâche « {text} »",
       editTaskLabel: "Modifier le libellé de la tâche",
       editTaskNamed: "Modifier la tâche « {text} »",
-      deleteTaskNamed: "Supprimer la tâche « {text} »"
+      deleteTaskNamed: "Supprimer la tâche « {text} »",
+      todosEnabled: "Ajouter des to-dos",
+      todosEnabledHint: "Activez pour préparer une checklist de tâches sur cet événement.",
+      todosAssign: "Attribuer les tâches",
+      todosAssignHint: "Assignez chaque tâche à un agent de l'événement.",
+      todoSectionTitle: "To-dos",
+      todoAssignee: "Assigné à",
+      todoAssigneeNone: "Non attribué",
+      todoAssigneeNew: "Assigner la nouvelle tâche",
+      todoNeedAgents: "Ajoutez des agents dans Dates pour pouvoir attribuer les tâches."
     },
     eventTypes: {
       intervention: "Intervention",
@@ -154,17 +160,9 @@ const PLANNING_EVENT_FORM_COPY = {
         label: "Schedule",
         description: "Slot and assignees"
       },
-      description: {
-        label: "Description",
-        description: "Context and details"
-      },
       objects: {
-        label: "Objects",
-        description: "Linked equipment"
-      },
-      todos: {
-        label: "To-do",
-        description: "Task list"
+        label: "Linked equipment",
+        description: "Client equipment and services"
       }
     },
     fields: {
@@ -216,7 +214,16 @@ const PLANNING_EVENT_FORM_COPY = {
       markTask: "Mark task « {text} »",
       editTaskLabel: "Edit task label",
       editTaskNamed: "Edit task « {text} »",
-      deleteTaskNamed: "Delete task « {text} »"
+      deleteTaskNamed: "Delete task « {text} »",
+      todosEnabled: "Add to-dos",
+      todosEnabledHint: "Enable to prepare a task checklist for this event.",
+      todosAssign: "Assign tasks",
+      todosAssignHint: "Assign each task to an event assignee.",
+      todoSectionTitle: "To-dos",
+      todoAssignee: "Assigned to",
+      todoAssigneeNone: "Unassigned",
+      todoAssigneeNew: "Assign the new task",
+      todoNeedAgents: "Add assignees in Schedule before assigning tasks."
     },
     eventTypes: {
       intervention: "Intervention",
@@ -280,17 +287,9 @@ const PLANNING_EVENT_FORM_COPY = {
         label: "Termine",
         description: "Slot und Zuständige"
       },
-      description: {
-        label: "Beschreibung",
-        description: "Kontext und Details"
-      },
       objects: {
-        label: "Objekte",
-        description: "Verknüpfte Geräte"
-      },
-      todos: {
-        label: "To-do",
-        description: "Aufgabenliste"
+        label: "Verknüpfte Geräte",
+        description: "Geräte und Dienste des Kunden"
       }
     },
     fields: {
@@ -342,7 +341,16 @@ const PLANNING_EVENT_FORM_COPY = {
       markTask: "Aufgabe « {text} » markieren",
       editTaskLabel: "Aufgabenbezeichnung bearbeiten",
       editTaskNamed: "Aufgabe « {text} » bearbeiten",
-      deleteTaskNamed: "Aufgabe « {text} » löschen"
+      deleteTaskNamed: "Aufgabe « {text} » löschen",
+      todosEnabled: "To-dos hinzufügen",
+      todosEnabledHint: "Aktivieren, um eine Aufgaben-Checkliste für dieses Ereignis vorzubereiten.",
+      todosAssign: "Aufgaben zuweisen",
+      todosAssignHint: "Weisen Sie jede Aufgabe einem Zuständigen des Ereignisses zu.",
+      todoSectionTitle: "To-dos",
+      todoAssignee: "Zugewiesen an",
+      todoAssigneeNone: "Nicht zugewiesen",
+      todoAssigneeNew: "Neue Aufgabe zuweisen",
+      todoNeedAgents: "Fügen Sie zuerst Zuständige unter Termine hinzu, um Aufgaben zuzuweisen."
     },
     eventTypes: {
       intervention: "Einsatz",
@@ -406,17 +414,9 @@ const PLANNING_EVENT_FORM_COPY = {
         label: "Date",
         description: "Slot e agenti"
       },
-      description: {
-        label: "Descrizione",
-        description: "Contesto e dettagli"
-      },
       objects: {
-        label: "Oggetti",
-        description: "Apparecchiature collegate"
-      },
-      todos: {
-        label: "To-do",
-        description: "Elenco attività"
+        label: "Materiali collegati",
+        description: "Apparecchiature e servizi del cliente"
       }
     },
     fields: {
@@ -468,7 +468,16 @@ const PLANNING_EVENT_FORM_COPY = {
       markTask: "Segna attività « {text} »",
       editTaskLabel: "Modifica etichetta attività",
       editTaskNamed: "Modifica attività « {text} »",
-      deleteTaskNamed: "Elimina attività « {text} »"
+      deleteTaskNamed: "Elimina attività « {text} »",
+      todosEnabled: "Aggiungi to-do",
+      todosEnabledHint: "Attiva per preparare una checklist di attività per questo evento.",
+      todosAssign: "Assegna le attività",
+      todosAssignHint: "Assegna ogni attività a un agente dell'evento.",
+      todoSectionTitle: "To-do",
+      todoAssignee: "Assegnato a",
+      todoAssigneeNone: "Non assegnato",
+      todoAssigneeNew: "Assegna la nuova attività",
+      todoNeedAgents: "Aggiungi agenti in Date per poter assegnare le attività."
     },
     eventTypes: {
       intervention: "Intervento",
@@ -532,17 +541,9 @@ const PLANNING_EVENT_FORM_COPY = {
         label: "Fechas",
         description: "Horario y agentes"
       },
-      description: {
-        label: "Descripción",
-        description: "Contexto y detalles"
-      },
       objects: {
-        label: "Objetos",
-        description: "Equipos vinculados"
-      },
-      todos: {
-        label: "To-do",
-        description: "Lista de tareas"
+        label: "Materiales vinculados",
+        description: "Equipos y servicios del cliente"
       }
     },
     fields: {
@@ -594,7 +595,16 @@ const PLANNING_EVENT_FORM_COPY = {
       markTask: "Marcar tarea « {text} »",
       editTaskLabel: "Editar etiqueta de la tarea",
       editTaskNamed: "Editar tarea « {text} »",
-      deleteTaskNamed: "Eliminar tarea « {text} »"
+      deleteTaskNamed: "Eliminar tarea « {text} »",
+      todosEnabled: "Añadir to-dos",
+      todosEnabledHint: "Active para preparar una lista de tareas de este evento.",
+      todosAssign: "Asignar las tareas",
+      todosAssignHint: "Asigne cada tarea a un agente del evento.",
+      todoSectionTitle: "To-dos",
+      todoAssignee: "Asignado a",
+      todoAssigneeNone: "Sin asignar",
+      todoAssigneeNew: "Asignar la nueva tarea",
+      todoNeedAgents: "Añada agentes en Fechas para poder asignar las tareas."
     },
     eventTypes: {
       intervention: "Intervención",
@@ -653,7 +663,7 @@ export function getPlanningEventFormCopy(locale, catalogTypes = null) {
       id,
       label: t.sections[id].label,
       description: t.sections[id].description,
-      icon: id === "general" ? "mdi:calendar-text-outline" : id === "schedule" ? "mdi:clock-outline" : id === "description" ? "mdi:text-box-outline" : id === "objects" ? "mdi:cube-outline" : "mdi:format-list-checks"
+      icon: SECTION_ICONS[id] || "mdi:circle-outline"
     })),
     planningTypes: baseTypes.map(type => ({
       ...type,

@@ -534,7 +534,9 @@
 
 .agentsSearch {
   flex: 1;
+  width: 100%;
   max-width: 420px;
+  min-width: 200px;
 }
 
 .agentSelectCell {

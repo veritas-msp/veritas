@@ -23,6 +23,8 @@ import { normalizeProfileName, isSuperAdminProtectedProfile } from "../../utils/
 import { fetchTeams } from "../../api/teams";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
+import { UiKitPageHero, uiKitLayoutsStyles as kit } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 const COMMUNITY_ACCESS_MODULE_KEYS = new Set(["entreprise", "contact", "tickets"]);
@@ -652,7 +654,9 @@ export default function AdminUsers({
   const isLastAdmin = userRow => userRow?.role === "admin" && adminCount <= 1;
   const cannotDeleteEditAgent = !editAgentDraft || editAgentDraft.id === currentUserId || isLastAdmin(editAgentDraft);
   const editAgentDeleteDescription = editAgentDraft?.id === currentUserId ? copy.deleteAgent.self : isLastAdmin(editAgentDraft) ? copy.deleteAgent.lastAdmin : copy.deleteAgent.default;
+  const heroCopy = getAdminPanelCopy(locale).items.users;
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:account-group-outline" />
       <SubTabs items={userAdminViews} active={activeView} onChange={handleAdminViewChange} />
 
       {activeView === "users" && <Card title={copy.agents.title} description={copy.agents.description} fill action={<Btn icon="mdi:plus" onClick={openCreateAgentModal} disabled={agentAtLimit} title={agentAtLimit ? interpolate(copy.agents.limitTitle, {
@@ -662,7 +666,10 @@ export default function AdminUsers({
             </Btn>}>
             <div className={ui.toolRow}>
               <div className={ui.toolLeft}>
-                <input type="search" className={ui.fieldSearch} placeholder={copy.agents.searchPlaceholder} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <div className={kit.searchBox}>
+                  <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                  <input type="search" className={kit.searchInput} placeholder={copy.agents.searchPlaceholder} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} aria-label={copy.agents.searchPlaceholder} autoComplete="off" />
+                </div>
                 <span className={ui.count}>
                   {filteredUsers.length === 1 ? interpolate(copy.agents.agentCount, {
               count: filteredUsers.length
@@ -766,7 +773,10 @@ export default function AdminUsers({
             </Btn>}>
             <div className={ui.toolRow}>
               <div className={ui.toolLeft}>
-                <input type="search" className={ui.fieldSearch} placeholder={copy.profiles.searchPlaceholder} value={profilesSearchTerm} onChange={e => setProfilesSearchTerm(e.target.value)} />
+                <div className={kit.searchBox}>
+                  <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                  <input type="search" className={kit.searchInput} placeholder={copy.profiles.searchPlaceholder} value={profilesSearchTerm} onChange={e => setProfilesSearchTerm(e.target.value)} aria-label={copy.profiles.searchPlaceholder} autoComplete="off" />
+                </div>
                 <span className={ui.count}>
                   {filteredProfiles.length === 1 ? interpolate(copy.profiles.profileCount, {
               count: filteredProfiles.length

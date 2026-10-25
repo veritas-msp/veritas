@@ -19,11 +19,21 @@ export default function BackupOverviewPanel({
   instances = [],
   jobs = [],
   toolbar = null,
-  searchPlaceholder = "Rechercher…"
+  searchPlaceholder = "Rechercher…",
+  onAddInstance = null,
+  onAddJob = null,
+  onEditInstance = null,
+  onEditJob = null,
+  canAddJob = false,
+  addInstanceLabel = "Ajouter une instance",
+  addJobLabel = "Ajouter un job",
+  addJobDisabledHint = "Ajoutez d’abord une instance",
+  editLabel = "Éditer"
 }) {
   const [search, setSearch] = useState("");
   const instanceList = Array.isArray(instances) ? instances : [];
   const jobList = Array.isArray(jobs) ? jobs : [];
+  const jobAddDisabled = !canAddJob;
 
   const filteredJobs = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -99,10 +109,23 @@ export default function BackupOverviewPanel({
 
       <div className={mapStyles.backupTablesSplit}>
         <section className={mapStyles.backupTableBlock} aria-label="Instances de sauvegarde">
-          <h3 className={mapStyles.backupTableTitle}>
-            Instances
-            <span className={mapStyles.backupTableCount}>{filteredInstances.length}</span>
-          </h3>
+          <div className={mapStyles.backupTableHead}>
+            <h3 className={mapStyles.backupTableTitle}>
+              Instances
+              <span className={mapStyles.backupTableCount}>{filteredInstances.length}</span>
+            </h3>
+            {onAddInstance ? (
+              <button
+                type="button"
+                className={mapStyles.backupTableAddBtn}
+                onClick={onAddInstance}
+                title={addInstanceLabel}
+                aria-label={addInstanceLabel}
+              >
+                <Icon icon="mdi:plus" aria-hidden />
+              </button>
+            ) : null}
+          </div>
           <div className={mapStyles.backupTableHost}>
             <CyberBrickItemsTable
               brickType="Backup"
@@ -110,22 +133,40 @@ export default function BackupOverviewPanel({
               emptyLabel="Aucune instance"
               hideSearchBar
               sortable
+              onEditItem={onEditInstance}
+              editLabel={editLabel}
             />
           </div>
         </section>
 
         <section className={mapStyles.backupTableBlock} aria-label="Jobs de sauvegarde">
-          <h3 className={mapStyles.backupTableTitle}>
-            Jobs
-            <span className={mapStyles.backupTableCount}>{filteredJobs.length}</span>
-          </h3>
+          <div className={mapStyles.backupTableHead}>
+            <h3 className={mapStyles.backupTableTitle}>
+              Jobs
+              <span className={mapStyles.backupTableCount}>{filteredJobs.length}</span>
+            </h3>
+            {onAddJob ? (
+              <button
+                type="button"
+                className={mapStyles.backupTableAddBtn}
+                onClick={onAddJob}
+                disabled={jobAddDisabled}
+                title={jobAddDisabled ? addJobDisabledHint : addJobLabel}
+                aria-label={jobAddDisabled ? addJobDisabledHint : addJobLabel}
+              >
+                <Icon icon="mdi:plus" aria-hidden />
+              </button>
+            ) : null}
+          </div>
           <div className={mapStyles.backupTableHost}>
             <CyberBrickItemsTable
               brickType="BackupJobs"
               items={filteredJobs}
-              emptyLabel="Aucun job"
+              emptyLabel={jobAddDisabled ? "Ajoutez d’abord une instance" : "Aucun job"}
               hideSearchBar
               sortable
+              onEditItem={onEditJob}
+              editLabel={editLabel}
             />
           </div>
         </section>

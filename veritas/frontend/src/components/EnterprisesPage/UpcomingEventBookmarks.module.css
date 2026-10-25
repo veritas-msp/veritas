@@ -28,13 +28,33 @@
 
 /* Inline frise in enterprise header (beside identity, full remaining width) */
 .heroFriseShell {
+  display: flex;
+  align-items: center;
   min-width: 0;
   width: 100%;
   max-width: 100%;
+  height: 100%;
+  min-height: 0;
   margin: 0;
   border: none;
   background: transparent;
   overflow: visible;
+}
+
+.heroFriseShell > :global([class*="wrap"]) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.heroFriseShell > :global([class*="wrap"]) > :global([class*="content"]) {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .barHeroFrise {
@@ -42,32 +62,39 @@
   --hero-frise-pad: 0.2rem;
   --hero-frise-card-h: 2.15rem;
   --hero-frise-icon-hang: 0.3rem;
+  display: flex;
+  align-items: center;
   margin: 0;
   padding: 0;
   border-top: none;
   max-width: none;
+  width: 100%;
   overflow: visible;
   height: 100%;
   max-height: 100%;
+  min-height: 0;
 }
 
 .barHeroFrise .barInner,
 .barHeroFrise .trackWrap {
-  min-height: 0;
+  display: flex;
+  align-items: center;
+  min-height: 0 !important;
   height: 100%;
   max-height: 100%;
+  width: 100%;
   overflow: visible;
 }
 
 .barHeroFrise .barInner,
 .barHeroFrise .track {
-  min-height: 0;
+  min-height: 0 !important;
   height: 100%;
   max-height: 100%;
 }
 
 .barHeroFrise .track {
-  align-items: flex-start;
+  align-items: center;
   gap: 0.28rem;
   /* bas = pad + dépassement pastille → marge visuelle égale au-dessus et en-dessous */
   padding: var(--hero-frise-pad) 0.15rem calc(var(--hero-frise-pad) + var(--hero-frise-icon-hang));
@@ -86,13 +113,30 @@
   box-shadow: 0 4px 12px rgba(15, 28, 46, 0.08) !important;
 }
 
+/* Empty state: no hang padding — sit on the same midline as hero identity */
+.barHeroFrise .track:has(.empty) {
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 0.15rem;
+}
+
 .barHeroFrise .empty {
-  min-height: var(--hero-frise-card-h);
-  height: var(--hero-frise-card-h);
-  max-height: var(--hero-frise-card-h);
-  padding: 0.15rem 0.4rem;
-  font-size: 0.62rem;
-  line-height: 1.15;
+  align-self: center;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  padding: 0;
+  margin: 0;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.barHeroFrise .empty svg {
+  font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .barHeroFrise .sectionLabel,
@@ -673,6 +717,78 @@
 .empty svg {
   font-size: 1.05rem;
   opacity: 0.75;
+}
+
+/* Empty state onglet Événements — même chrome que le coffre-fort */
+.panelEmptyShell {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.barPanelEmpty,
+.barPanelEmpty .barInner,
+.barPanelEmpty .trackWrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.trackPanelEmpty {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100%;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
+.emptyPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent);
+  border-radius: 16px;
+  background: var(--msp-surface, #fff);
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 10px 28px -14px rgba(15, 28, 46, 0.14);
+  color: var(--msp-muted, #5c6b82);
+  text-align: center;
+}
+
+.emptyPanelIcon {
+  font-size: 2.5rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  opacity: 0.75;
+}
+
+.emptyPanel p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+:global(html.dark) .emptyPanel,
+:global(body.dark) .emptyPanel {
+  background: var(--msp-surface, #1a2540);
+  border-color: color-mix(in srgb, var(--msp-border, #2f4260) 80%, transparent);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 28px -14px rgba(0, 0, 0, 0.45);
 }
 
 .barActions {

@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspDashboardSkeleton from "../Misc/Skeleton/MspDashboardSkeleton";
 import SmartTooltip from "../SmartTooltip";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as kit } from "../UiKit";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import { buildSslFleetFromList, buildSslFleetStats, filterSslFleetRows, sortSslFleetRows } from "./sslMspUtils";
@@ -114,34 +115,31 @@ export default function SslMspDashboard({
         <div className={layout.listBody}>
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
-              <div className={layout.tableSearchBar}>
-                <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input type="search" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={copy.searchPlaceholder} />
-                  {search ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
-                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
-                        <FaTimes />
-                      </button>
-                    </SmartTooltip> : null}
-                </div>
-                <div className={layout.statusChips} role="group">
-                  {statusFilterItems.map(item => {
-                    const count = stats.statusCounts[item.id] || 0;
-                    const active = statusFilter === item.id;
-                    return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={count === 0}>
-                        <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                          <Icon icon={item.icon} />
-                        </span>
-                        <span className={layout.statusChipLabel}>{item.label}</span>
-                        <span className={layout.statusChipCount}>{count}</span>
-                      </button>;
-                  })}
-                </div>
-                {onSync ? <div className={layout.toolbarActions} data-guide="service-sync">
+              <UiKitCrmListToolbar
+                searchValue={search}
+                onSearchChange={setSearch}
+                onSearchClear={() => setSearch("")}
+                searchPlaceholder={copy.searchPlaceholder}
+                searchAriaLabel={copy.searchPlaceholder}
+                clearSearchLabel={copy.clearSearch || "Effacer"}
+                filters={statusFilterItems.map(item => {
+                  const count = stats.statusCounts[item.id] || 0;
+                  const active = statusFilter === item.id;
+                  return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={count === 0}>
+                      <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                        <Icon icon={item.icon} />
+                      </span>
+                      <span className={layout.statusChipLabel}>{item.label}</span>
+                      <span className={layout.statusChipCount}>{count}</span>
+                    </button>;
+                })}
+                extraActions={
+                  onSync ? (
                     <SmartTooltip content={copy.checkAll}>
                       <button
                         type="button"
-                        className={layout.iconBtn}
+                        className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                        data-guide="service-sync"
                         aria-label={copy.checkAll}
                         onClick={onSync}
                         disabled={syncing || certificates.length === 0}
@@ -149,19 +147,25 @@ export default function SslMspDashboard({
                         <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
                       </button>
                     </SmartTooltip>
-                  </div> : null}
-              </div>
+                  ) : null
+                }
+              />
 
               {sortedRows.length === 0 ? (
                 <div className={layout.emptyStateInCard}>
-                  <Icon icon="mdi:certificate-outline" className={layout.emptyStateIcon} aria-hidden />
-                  <p className={layout.emptyStateTitle}>{fleetRows.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch}</p>
-                  <p className={layout.emptyStateHint}>{fleetRows.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch}</p>
+                  <UiKitEmptyState
+                    bare
+                    icon="mdi:certificate-outline"
+                    title={fleetRows.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch}
+                    text={fleetRows.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch}
+                  />
                 </div>
               ) : (
                 <>
-                  <div className={layout.dataTableWrap}>
-                    <div className={`${layout.dataTableScroll} ${styles.tableScroll}`}>
+                  <UiKitScrollFadeShell
+                    className={`${layout.dataTableWrap} ${styles.tableScroll}`}
+                    deps={[paginatedRows.length, pageSize, search, statusFilter, sortBy, sortDirection]}
+                  >
                       <table className={styles.table}>
                         <thead>
                           <tr>
@@ -181,8 +185,7 @@ export default function SslMspDashboard({
                       }} />)}
                         </tbody>
                       </table>
-                    </div>
-                  </div>
+                  </UiKitScrollFadeShell>
                   <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                     <div className={layout.paginationLeft}>
                       <span className={layout.paginationLabel}>{copy.rowsPerPage}</span>

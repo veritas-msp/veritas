@@ -28,52 +28,100 @@ function CpuField({
     }));
   };
   if (isVirtual) {
-    return <div className={styles.fieldBlock}>
-        <label className={styles.label}>{label}</label>
+    return (
+      <div className={styles.fieldBlock}>
+        <div className={styles.labelRow}>
+          <span className={`${styles.labelIcon} ${styles.labelIconCpu}`} aria-hidden>
+            <Icon icon="mdi:cpu-64-bit" width={15} height={15} />
+          </span>
+          <label className={styles.label}>{label}</label>
+        </div>
         <div className={styles.inlineRow}>
-          <input type="text" inputMode="numeric" className={styles.numberInput} value={cpu.count} placeholder="4" onChange={e => emit({
-          ...cpu,
-          count: e.target.value.replace(/[^0-9]/g, "")
-        })} />
+          <input
+            type="text"
+            inputMode="numeric"
+            className={`${styles.numberInput} ${styles.numberInputWide}`}
+            value={cpu.count}
+            placeholder="4"
+            onChange={e => emit({
+              ...cpu,
+              count: e.target.value.replace(/[^0-9]/g, "")
+            })}
+          />
           <span className={styles.unitSuffix}>{widgetsCopy.vcpuSuffix || "vCPU"}</span>
         </div>
         <div className={styles.presets}>
-          {VCPU_PRESETS.map(preset => <button key={preset} type="button" className={styles.presetBtn} onClick={() => emit({
-          count: preset,
-          model: ""
-        })}>
+          {VCPU_PRESETS.map(preset => (
+            <button
+              key={preset}
+              type="button"
+              className={styles.presetBtn}
+              onClick={() => emit({
+                count: preset,
+                model: ""
+              })}
+            >
               {preset} {widgetsCopy.vcpuSuffix || "vCPU"}
-            </button>)}
+            </button>
+          ))}
         </div>
-      </div>;
+      </div>
+    );
   }
-  return <div className={styles.fieldBlock}>
-      <label className={styles.label}>{label}</label>
-      <div className={styles.inlineRow}>
-        <input type="text" inputMode="numeric" className={styles.countInput} value={cpu.count} min="1" aria-label={widgetsCopy.processorCountAria || "Number of processors"} onChange={e => emit({
-        ...cpu,
-        count: e.target.value.replace(/[^0-9]/g, "") || "1"
-      })} />
-        <span className={styles.timesLabel} aria-hidden>
-          ×
+  return (
+    <div className={styles.fieldBlock}>
+      <div className={styles.labelRow}>
+        <span className={`${styles.labelIcon} ${styles.labelIconCpu}`} aria-hidden>
+          <Icon icon="mdi:cpu-64-bit" width={15} height={15} />
         </span>
-        <input type="text" className={styles.textInput} list="server-cpu-model-presets" value={cpu.model} placeholder="Xeon Silver 4314" onChange={e => emit({
-        ...cpu,
-        model: e.target.value
-      })} />
+        <label className={styles.label}>{label}</label>
+      </div>
+      <div className={styles.inlineRow}>
+        <input
+          type="text"
+          inputMode="numeric"
+          className={styles.countInput}
+          value={cpu.count}
+          min="1"
+          aria-label={widgetsCopy.processorCountAria || "Number of processors"}
+          onChange={e => emit({
+            ...cpu,
+            count: e.target.value.replace(/[^0-9]/g, "") || "1"
+          })}
+        />
+        <span className={styles.timesLabel} aria-hidden>×</span>
+        <input
+          type="text"
+          className={styles.textInput}
+          list="server-cpu-model-presets"
+          value={cpu.model}
+          placeholder="Xeon Silver 4314"
+          onChange={e => emit({
+            ...cpu,
+            model: e.target.value
+          })}
+        />
       </div>
       <datalist id="server-cpu-model-presets">
         {CPU_MODEL_PRESETS.map(preset => <option key={preset} value={preset} />)}
       </datalist>
       <div className={styles.presets}>
-        {CPU_MODEL_PRESETS.slice(0, 4).map(preset => <button key={preset} type="button" className={styles.presetBtn} onClick={() => emit({
-        ...cpu,
-        model: preset
-      })}>
+        {CPU_MODEL_PRESETS.slice(0, 4).map(preset => (
+          <button
+            key={preset}
+            type="button"
+            className={styles.presetBtn}
+            onClick={() => emit({
+              ...cpu,
+              model: preset
+            })}
+          >
             {preset.replace("Intel ", "").replace("AMD ", "")}
-          </button>)}
+          </button>
+        ))}
       </div>
-    </div>;
+    </div>
+  );
 }
 function MemoryField({
   value,
@@ -86,33 +134,56 @@ function MemoryField({
     setMemory(next);
     onChange(formatMemory(next));
   };
-  return <div className={styles.fieldBlock}>
-      <label className={styles.label}>{widgetsCopy.ram || "RAM"}</label>
+  return (
+    <div className={styles.fieldBlock}>
+      <div className={styles.labelRow}>
+        <span className={`${styles.labelIcon} ${styles.labelIconRam}`} aria-hidden>
+          <Icon icon="mdi:memory" width={15} height={15} />
+        </span>
+        <label className={styles.label}>{widgetsCopy.ram || "RAM"}</label>
+      </div>
       <div className={styles.inlineRow}>
-        <input type="text" inputMode="decimal" className={styles.numberInput} style={{
-        width: "5rem",
-        flex: "1 1 auto"
-      }} value={memory.amount} placeholder="64" onChange={e => emit({
-        ...memory,
-        amount: sanitizeDecimalInput(e.target.value)
-      })} />
-        <select className={styles.selectInput} style={{
-        flex: "0 0 5rem"
-      }} value={memory.unit} onChange={e => emit({
-        ...memory,
-        unit: e.target.value
-      })} aria-label={widgetsCopy.ramUnitAria || "RAM unit"}>
-          {MEMORY_UNITS.map(unit => <option key={unit.value} value={unit.value}>
+        <input
+          type="text"
+          inputMode="decimal"
+          className={`${styles.numberInput} ${styles.numberInputWide}`}
+          value={memory.amount}
+          placeholder="64"
+          onChange={e => emit({
+            ...memory,
+            amount: sanitizeDecimalInput(e.target.value)
+          })}
+        />
+        <select
+          className={`${styles.selectInput} ${styles.selectInputFixed}`}
+          value={memory.unit}
+          onChange={e => emit({
+            ...memory,
+            unit: e.target.value
+          })}
+          aria-label={widgetsCopy.ramUnitAria || "RAM unit"}
+        >
+          {MEMORY_UNITS.map(unit => (
+            <option key={unit.value} value={unit.value}>
               {unit.label}
-            </option>)}
+            </option>
+          ))}
         </select>
       </div>
       <div className={styles.presets}>
-        {MEMORY_PRESETS.map(preset => <button key={`${preset.amount}-${preset.unit}`} type="button" className={styles.presetBtn} onClick={() => emit(preset)}>
+        {MEMORY_PRESETS.map(preset => (
+          <button
+            key={`${preset.amount}-${preset.unit}`}
+            type="button"
+            className={styles.presetBtn}
+            onClick={() => emit(preset)}
+          >
             {preset.amount} {preset.unit}
-          </button>)}
+          </button>
+        ))}
       </div>
-    </div>;
+    </div>
+  );
 }
 function StorageField({
   value,
@@ -152,73 +223,129 @@ function StorageField({
   };
   const preview = formatStorageVolumes(volumes);
   const hint = formatStorageHint(volumes);
-  return <div className={`${styles.fieldBlock} ${styles.fieldBlockFull}`}>
-      <label className={styles.label}>{widgetsCopy.storage || "Storage"}</label>
-      <div className={styles.volumeList}>
-        {volumes.map((volume, index) => <div key={`storage-volume-${index}`} className={isVirtual ? styles.volumeRowVirtual : styles.volumeRow}>
-            {!isVirtual ? <>
-                <input type="text" inputMode="numeric" className={styles.countInput} value={volume.count} aria-label={interpolate(widgetsCopy.diskCountAria || "Number of disks {index}", {
-            index: index + 1
-          })} onChange={e => updateVolume(index, {
-            count: e.target.value.replace(/[^0-9]/g, "") || "1"
-          })} />
-                <span className={styles.timesLabel} aria-hidden>
-                  ×
-                </span>
-              </> : null}
-            <input type="text" inputMode="decimal" className={styles.numberInput} style={{
-          width: "auto"
-        }} value={volume.capacity} placeholder="480" aria-label={interpolate(widgetsCopy.diskCapacityAria || "Disk capacity {index}", {
-          index: index + 1
-        })} onChange={e => updateVolume(index, {
-          capacity: sanitizeDecimalInput(e.target.value)
-        })} />
-            <select className={styles.selectInput} value={volume.unit} onChange={e => updateVolume(index, {
-          unit: e.target.value
-        })} aria-label={interpolate(widgetsCopy.diskUnitAria || "Disk unit {index}", {
-          index: index + 1
-        })}>
-              {MEMORY_UNITS.map(unit => <option key={unit.value} value={unit.value}>
-                  {unit.label}
-                </option>)}
-            </select>
-            <select className={styles.selectInput} value={volume.media} onChange={e => updateVolume(index, {
-          media: e.target.value
-        })} aria-label={interpolate(widgetsCopy.diskTypeAria || "Disk type {index}", {
-          index: index + 1
-        })}>
-              {STORAGE_MEDIA_TYPES.map(media => <option key={media.value} value={media.value}>
-                  {media.label}
-                </option>)}
-            </select>
-            {volumes.length > 1 ? <button type="button" className={styles.removeBtn} onClick={() => removeVolume(index)} aria-label={interpolate(widgetsCopy.removeVolumeAria || "Remove volume {index}", {
-          index: index + 1
-        })}>
-                <Icon icon="mdi:close" />
-              </button> : <span aria-hidden />}
-          </div>)}
+  return (
+    <div className={`${styles.fieldBlock} ${styles.fieldBlockFull}`}>
+      <div className={styles.labelRow}>
+        <span className={`${styles.labelIcon} ${styles.labelIconStorage}`} aria-hidden>
+          <Icon icon="mdi:harddisk" width={15} height={15} />
+        </span>
+        <label className={styles.label}>{widgetsCopy.storage || "Storage"}</label>
       </div>
-      {!isVirtual ? <button type="button" className={styles.addBtn} onClick={addVolume}>
-          <Icon icon="mdi:plus" />
-          {widgetsCopy.addVolume || "Add volume"}
-        </button> : null}
+      <div className={styles.volumeList}>
+        {volumes.map((volume, index) => (
+          <div key={`storage-volume-${index}`} className={styles.volumeRow}>
+            {!isVirtual ? (
+              <>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={styles.countInput}
+                  value={volume.count}
+                  aria-label={interpolate(widgetsCopy.diskCountAria || "Number of disks {index}", {
+                    index: index + 1
+                  })}
+                  onChange={e => updateVolume(index, {
+                    count: e.target.value.replace(/[^0-9]/g, "") || "1"
+                  })}
+                />
+                <span className={styles.timesLabel} aria-hidden>×</span>
+              </>
+            ) : null}
+            <input
+              type="text"
+              inputMode="decimal"
+              className={styles.numberInput}
+              value={volume.capacity}
+              placeholder="480"
+              aria-label={interpolate(widgetsCopy.diskCapacityAria || "Disk capacity {index}", {
+                index: index + 1
+              })}
+              onChange={e => updateVolume(index, {
+                capacity: sanitizeDecimalInput(e.target.value)
+              })}
+            />
+            <select
+              className={styles.selectInput}
+              value={volume.unit}
+              onChange={e => updateVolume(index, {
+                unit: e.target.value
+              })}
+              aria-label={interpolate(widgetsCopy.diskUnitAria || "Disk unit {index}", {
+                index: index + 1
+              })}
+            >
+              {MEMORY_UNITS.map(unit => (
+                <option key={unit.value} value={unit.value}>
+                  {unit.label}
+                </option>
+              ))}
+            </select>
+            <select
+              className={styles.selectInput}
+              value={volume.media}
+              onChange={e => updateVolume(index, {
+                media: e.target.value
+              })}
+              aria-label={interpolate(widgetsCopy.diskTypeAria || "Disk type {index}", {
+                index: index + 1
+              })}
+            >
+              {STORAGE_MEDIA_TYPES.map(media => (
+                <option key={media.value} value={media.value}>
+                  {media.label}
+                </option>
+              ))}
+            </select>
+            {volumes.length > 1 ? (
+              <button
+                type="button"
+                className={styles.removeBtn}
+                onClick={() => removeVolume(index)}
+                aria-label={interpolate(widgetsCopy.removeVolumeAria || "Remove volume {index}", {
+                  index: index + 1
+                })}
+              >
+                <Icon icon="mdi:close" />
+              </button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+      <div className={styles.volumeActions}>
+        {!isVirtual ? (
+          <button type="button" className={styles.addBtn} onClick={addVolume}>
+            <Icon icon="mdi:plus" />
+            {widgetsCopy.addVolume || "Add volume"}
+          </button>
+        ) : null}
+      </div>
       <div className={styles.presets}>
-        {STORAGE_CAPACITY_PRESETS.map(preset => <button key={`${preset.capacity}-${preset.unit}`} type="button" className={styles.presetBtn} onClick={() => emit([{
-        count: "1",
-        capacity: preset.capacity,
-        unit: preset.unit,
-        media: "SSD"
-      }])}>
+        {STORAGE_CAPACITY_PRESETS.map(preset => (
+          <button
+            key={`${preset.capacity}-${preset.unit}`}
+            type="button"
+            className={styles.presetBtn}
+            onClick={() => emit([{
+              count: "1",
+              capacity: preset.capacity,
+              unit: preset.unit,
+              media: "SSD"
+            }])}
+          >
             {preset.capacity} {preset.unit}
-          </button>)}
+          </button>
+        ))}
       </div>
       {preview ? <p className={styles.preview}>{preview}</p> : null}
-      {hint ? <p className={styles.hint}>
+      {hint ? (
+        <p className={styles.hint}>
           {interpolate(widgetsCopy.totalCapacityApprox || "Total capacity ≈ {hint}", {
-        hint
-      })}
-        </p> : null}
-    </div>;
+            hint
+          })}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 export default function ServerSpecFields({
   isVirtual = false,

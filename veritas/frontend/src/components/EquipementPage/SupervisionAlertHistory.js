@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-toastify";
-import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
@@ -453,54 +453,80 @@ export default function SupervisionAlertHistory({
   }];
 
   return <div className={`${layout.panelCard} ${styles.root}`}>
-      <div className={layout.tableSearchBar}>
-        <div className={`${layout.searchWrap} ${layout.searchWrapInCard}`}>
-          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-          <input type="search" inputMode="search" enterKeyHint="search" className={layout.searchInput} value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
-          {searchQuery ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
-              <button type="button" onClick={() => onSearchChange?.("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
-                <FaTimes />
-              </button>
-            </SmartTooltip> : null}
-        </div>
-        <div className={layout.statusChips} role="group" aria-label={copy.filterAria || "Filters"}>
-          {domainChips.length && !trashMode ? <>
-              {domainChips.map(chip => <button key={chip.id} type="button" className={`${layout.statusChip} ${domainFilter === chip.id ? layout.statusChipActive : ""}`} onClick={() => onDomainFilter?.(chip.id)}>
-                  <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${chip.kpiTone}`] || layout.kpiIcon_gray}`}>
-                    <Icon icon={chip.icon} />
-                  </span>
-                  <span className={layout.statusChipLabel}>{chip.label}</span>
-                </button>)}
-              <span className={layout.statusChipSeparator} aria-hidden />
-            </> : null}
-          {!trashMode ? statusChips.map(chip => <button key={chip.id} type="button" className={`${layout.statusChip} ${statusFilter === chip.id ? layout.statusChipActive : ""}`} onClick={() => onStatusFilter?.(statusFilter === chip.id ? "all" : chip.id)}>
-                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${chip.kpiTone}`] || layout.kpiIcon_gray}`}>
-                  <Icon icon={chip.icon} />
-                </span>
-                <span className={layout.statusChipLabel}>{chip.label}</span>
-              </button>) : null}
-        </div>
-        <button
-          type="button"
-          className={`${styles.trashToggle} ${trashMode ? styles.trashToggleActive : ""}`}
-          onClick={() => onTrashModeChange?.(!trashMode)}
-          aria-pressed={trashMode}
-        >
-          <Icon icon="mdi:delete-outline" aria-hidden />
-          <span>{copy.trash || "Corbeille"}</span>
-        </button>
-        {toolbarActions}
-      </div>
+      <UiKitCrmListToolbar
+        searchValue={searchQuery}
+        onSearchChange={value => onSearchChange?.(value)}
+        onSearchClear={() => onSearchChange?.("")}
+        searchPlaceholder={copy.searchPlaceholder}
+        searchAriaLabel={copy.searchPlaceholder}
+        clearSearchLabel={copy.clearSearch || "Effacer"}
+        filtersAriaLabel={copy.filterAria || "Filters"}
+        filters={
+          <>
+            {domainChips.length && !trashMode ? (
+              <>
+                {domainChips.map(chip => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className={`${layout.statusChip} ${domainFilter === chip.id ? layout.statusChipActive : ""}`}
+                    onClick={() => onDomainFilter?.(chip.id)}
+                  >
+                    <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${chip.kpiTone}`] || layout.kpiIcon_gray}`}>
+                      <Icon icon={chip.icon} />
+                    </span>
+                    <span className={layout.statusChipLabel}>{chip.label}</span>
+                  </button>
+                ))}
+                <span className={layout.statusChipSeparator} aria-hidden />
+              </>
+            ) : null}
+            {!trashMode
+              ? statusChips.map(chip => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    className={`${layout.statusChip} ${statusFilter === chip.id ? layout.statusChipActive : ""}`}
+                    onClick={() => onStatusFilter?.(statusFilter === chip.id ? "all" : chip.id)}
+                  >
+                    <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${chip.kpiTone}`] || layout.kpiIcon_gray}`}>
+                      <Icon icon={chip.icon} />
+                    </span>
+                    <span className={layout.statusChipLabel}>{chip.label}</span>
+                  </button>
+                ))
+              : null}
+          </>
+        }
+        extraActions={
+          <>
+            <button
+              type="button"
+              className={`${styles.trashToggle} ${trashMode ? styles.trashToggleActive : ""}`}
+              onClick={() => onTrashModeChange?.(!trashMode)}
+              aria-pressed={trashMode}
+            >
+              <Icon icon="mdi:delete-outline" aria-hidden />
+              <span>{copy.trash || "Corbeille"}</span>
+            </button>
+            {toolbarActions}
+          </>
+        }
+      />
 
       {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <div className={styles.emptyWrap}>
-          <MspEmptyState
+          <UiKitEmptyState
+            bare
             className={styles.emptyStateFill}
             icon={trashMode ? "mdi:delete-outline" : "mdi:history"}
             title={trashMode ? (copy.emptyTrashTitle || "Corbeille vide") : copy.emptyTitle}
             text={trashMode ? (copy.emptyTrashText || "") : copy.emptyText}
           />
         </div> : <>
-        <div className={styles.tableWrap}>
+        <UiKitScrollFadeShell
+          className={styles.tableWrap}
+          deps={[pagedAlerts.length, sortKey, sortDir, trashMode, domainFilter, statusFilter, searchQuery]}
+        >
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colSelect} />
@@ -683,7 +709,7 @@ export default function SupervisionAlertHistory({
             })}
             </tbody>
           </table>
-        </div>
+        </UiKitScrollFadeShell>
         {sortedAlerts.length > 0 ? <div className={`${layout.pagination} ${styles.paginationBar}`}>
             <div className={layout.paginationLeft}>
               <span className={layout.paginationLabel}>{common.perPage}</span>

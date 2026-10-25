@@ -21,8 +21,11 @@
 }
 
 .toolbarGrow {
-  flex-wrap: wrap;
-  row-gap: 0.45rem;
+  flex-wrap: nowrap;
+  row-gap: 0;
+  padding: 0 !important;
+  min-height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
 }
 
 .searchWrapFull {
@@ -35,11 +38,12 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04), 0 8px 24px rgba(15, 28, 46, 0.06));
   overflow: hidden;
+  /* Chrome porté par UiKitTable.tableShell (comme infra) */
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   transition: opacity 0.15s ease;
 }
 
@@ -171,13 +175,6 @@
   cursor: not-allowed;
 }
 
-.table thead {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--msp-surface-2, #f7f9fc);
-}
-
 .thSortInner {
   display: inline-flex;
   align-items: center;
@@ -185,15 +182,6 @@
 }
 
 .table th {
-  padding: 0.45rem 0.6rem;
-  text-align: left;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--msp-muted, #5c6b82);
-  border-bottom: 1px solid var(--msp-border, #e2e8f0);
-  white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
@@ -202,20 +190,28 @@
   color: var(--msp-accent, #2b5fab);
 }
 
-.table td {
-  padding: 0.45rem 0.6rem;
-  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
-  color: var(--msp-text, #0f1c2e);
-  vertical-align: middle;
-}
-
 .table tbody tr {
   cursor: pointer;
-  transition: background 0.1s;
 }
 
-.table tbody tr:hover {
-  background: rgba(43, 95, 171, 0.04);
+.table tbody tr.selectedRow td,
+.table tbody tr.selectedRow:nth-child(even) td {
+  background: rgba(43, 95, 171, 0.1);
+}
+
+.table tbody tr.selectedRow:hover td,
+.table tbody tr.selectedRow:nth-child(even):hover td {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
+}
+
+.table tbody tr.majorIncidentRow td,
+.table tbody tr.majorIncidentRow:nth-child(even) td {
+  background: #fdecec;
+}
+
+.table tbody tr.majorIncidentRow:hover td,
+.table tbody tr.majorIncidentRow:nth-child(even):hover td {
+  background: #fbe4e4;
 }
 
 .subjectCellWrap {
@@ -675,21 +671,75 @@
 
 
 
-.viewsLayout {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 0.75rem;
-  flex: 1;
+.viewsFinder {
+  flex: 1 1 auto;
   min-height: 0;
-  align-items: stretch;
+  align-self: stretch;
+  background: var(--msp-surface);
+  border-color: var(--msp-border-light);
 }
 
-.viewsLayoutTrash {
+.viewsFinderSolo {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.viewsLayoutCollapsed {
-  grid-template-columns: minmax(0, 1fr);
+.viewsFinderHeader {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding-top: 0.55rem;
+}
+
+.viewsFinderContent {
+  min-height: 0;
+  background: var(--msp-surface);
+}
+
+.viewsFinderMain {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-surface);
+}
+
+/* Fade zone droite — changement de vue / section (colonne gauche) */
+@keyframes ticketViewsContentFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contentFadeUp {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: ticketViewsContentFade var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.viewsFinderPanel {
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: var(--crm-section-content-pad, 0.55rem 0.75rem 0.75rem);
+  gap: var(--crm-section-toolbar-gap, 0.65rem);
+}
+
+.viewsFinderPanel :global([class*="tableShell"]),
+.viewsFinderPanel :global([class*="dataTableWrap"]) {
+  --fade-surface: var(--msp-surface);
+  background: var(--msp-surface);
+}
+
+.viewsFinderPanel :global([class*="emptyStateInCard"]) {
+  background: var(--msp-surface-2);
+  border-color: var(--msp-border);
 }
 
 .trashBanner {
@@ -710,87 +760,21 @@
   color: #f87171;
 }
 
-.viewsPane {
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
-  padding: 0.65rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  align-self: stretch;
-  height: 100%;
-  max-height: none;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.viewsPaneHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
-  padding-bottom: 0.35rem;
-  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
-}
-
 .viewsHeaderActions {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.15rem;
+  flex-shrink: 0;
 }
 
-.viewsEditBtn,
-.viewsAddBtn,
-.viewsCollapseBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 8px;
-  background: var(--msp-surface-2, #f7f9fc);
-  color: var(--msp-accent, #2b5fab);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.viewsCollapseBtn {
-  font-size: 0.72rem;
-}
-
-.viewsEditBtn {
-  font-size: 0.95rem;
-}
-
-.viewsEditBtn:hover,
-.viewsAddBtn:hover,
-.viewsCollapseBtn:hover {
-  border-color: var(--msp-accent, #2b5fab);
-  background: rgba(43, 95, 171, 0.08);
-}
-
-.viewsEditBtn:disabled,
-.viewsAddBtn:disabled,
-.viewsCollapseBtn:disabled {
+.viewsHeaderActions button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
 .viewsEditBtnActive {
-  border-color: var(--msp-accent, #2b5fab);
-  background: rgba(43, 95, 171, 0.14);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
   color: var(--msp-accent, #2b5fab);
-}
-
-.viewsTitle {
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--msp-muted, #5c6b82);
 }
 
 .viewsExpandBtn {
@@ -820,28 +804,10 @@
 
 .viewsReorderHint {
   margin: 0;
-  padding: 0.15rem 0.2rem 0;
+  padding: 0 0.65rem 0.35rem;
   font-size: 0.72rem;
   color: var(--msp-muted, #5c6b82);
-}
-
-.viewsList {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding-right: 2px;
-}
-
-.viewsGroupLabel {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--msp-muted-light, #8b9bb5);
-  padding: 0.28rem 0.3rem 0.08rem;
+  flex-shrink: 0;
 }
 
 .viewsEmpty {
@@ -865,33 +831,6 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   font-family: inherit;
-}
-
-.viewItem {
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 0.45rem;
-  background: transparent;
-  padding: 0.38rem 0.45rem;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.84rem;
-  cursor: pointer;
-  color: var(--msp-text, #0f1c2e);
-  text-align: left;
-  font-family: inherit;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.viewItem:hover {
-  background: var(--msp-surface-2, #f3f4f6);
-}
-
-.viewItemActive {
-  border-color: var(--msp-accent, #2b5fab);
-  background: rgba(43, 95, 171, 0.08);
-  color: var(--msp-accent, #2b5fab);
 }
 
 .viewItemReorderMode {
@@ -924,45 +863,8 @@
 }
 
 .viewItemDragHandle:hover {
-  background: rgba(43, 95, 171, 0.1);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
   color: var(--msp-accent, #2b5fab);
-}
-
-.viewItemMain {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.viewItemCount {
-  flex-shrink: 0;
-  min-width: 1.15rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--msp-muted, #5c6b82);
-  text-align: right;
-}
-
-.viewItemActive .viewItemCount {
-  color: var(--msp-accent, #2b5fab);
-}
-
-.viewItemIcon {
-  font-size: 1rem;
-  color: var(--msp-accent, #2b5fab);
-  flex-shrink: 0;
-}
-
-.viewItemLabel {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-  min-width: 0;
-  flex: 1;
 }
 
 .viewItemEditBtn {
@@ -981,14 +883,14 @@
   transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
 
-.viewItem:hover .viewItemEditBtn,
-.viewItem:focus-within .viewItemEditBtn,
-.viewItemActive .viewItemEditBtn {
+.viewItemRow:hover .viewItemEditBtn,
+.viewItemRow:focus-within .viewItemEditBtn,
+.viewItemRowActive .viewItemEditBtn {
   opacity: 1;
 }
 
 .viewItemEditBtn:hover {
-  background: rgba(43, 95, 171, 0.12);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
   color: var(--msp-accent, #2b5fab);
 }
 
@@ -1046,53 +948,42 @@
   color: var(--msp-text, #0f1c2e);
 }
 
-.mainColumn {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  min-height: 0;
-  align-self: stretch;
-}
-
-.mainColumn > :global(.emptyState),
-.mainColumn > :global(.stateBox),
-.mainColumn > :global(.listBody) {
+.viewsFinderMain > :global(.emptyState),
+.viewsFinderMain > :global(.stateBox),
+.viewsFinderMain > :global([class*="listBody"]) {
   flex: 1;
   min-height: 0;
 }
 
-.mainColumn :global(.listArea),
-.mainColumn :global(.panelCard) {
+.viewsFinderMain :global([class*="listArea"]),
+.viewsFinderMain :global([class*="panelCard"]) {
   flex: 1;
   min-height: 0;
 }
 
-.mainColumn .viewsExpandBtn {
+.viewsFinderMain .viewsExpandBtn {
   flex-shrink: 0;
 }
 
-.mainColumn .trashBtn {
+.viewsFinderMain .trashBtn {
   width: 34px;
   height: 34px;
 }
 
-.mainColumn :global(.toolbar) {
-  padding: 0.5rem 0.65rem;
+.viewsFinderMain :global([class*="tableSearchBar"]) {
+  padding: 0;
+  min-height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
 }
 
-.mainColumn :global(.pagination) {
+.viewsFinderMain :global([class*="pagination"]) {
   padding: 0.15rem 0.15rem 0;
 }
 
 @media (max-width: 960px) {
-  .viewsLayout {
+  .viewsFinder:not(.viewsFinderSolo) {
     grid-template-columns: 1fr;
-  }
-
-  .viewsPane {
-    height: auto;
-    max-height: none;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 }
 
@@ -1112,13 +1003,8 @@
 }
 
 
-:global(html.dark) .table thead {
-  background: var(--msp-surface-2, #152035);
-}
-
 :global(html.dark) .table th {
   color: var(--msp-muted, #8fa8c4);
-  border-bottom-color: var(--msp-border, #2a3a55);
 }
 
 :global(html.dark) .table th:hover {
@@ -1127,19 +1013,19 @@
 
 :global(html.dark) .table td {
   color: var(--msp-text, #e8edf5);
-  border-bottom-color: var(--msp-border, #2a3a55);
 }
 
-:global(html.dark) .table tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+:global(html.dark) .table tbody tr td {
+  background: var(--msp-surface, #1f2d4a);
 }
 
-:global(html.dark) .table tbody tr:hover {
-  background: rgba(90, 143, 212, 0.1);
+:global(html.dark) .table tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #162338);
 }
 
-:global(html.dark) .table tbody tr:nth-child(even):hover {
-  background: rgba(90, 143, 212, 0.12);
+:global(html.dark) .table tbody tr:hover td,
+:global(html.dark) .table tbody tr:nth-child(even):hover td {
+  background: var(--msp-accent-soft, rgba(90, 143, 212, 0.14));
 }
 
 :global(html.dark) .subjectCell {
@@ -1262,24 +1148,32 @@
   background: rgba(248, 113, 113, 0.12);
 }
 
-:global(html.dark) .viewItem:hover {
-  background: rgba(255, 255, 255, 0.05);
+:global(html.dark) .viewsFinder,
+:global(html.dark) .viewsFinderContent,
+:global(html.dark) .viewsFinderMain {
+  background: var(--msp-surface, #1f2d4a);
+  border-color: var(--msp-border-light, #2c3d5a);
 }
 
-:global(html.dark) .viewItemActive {
-  color: #a8d4ff;
-  background: rgba(90, 143, 212, 0.16);
-  border-color: rgba(90, 143, 212, 0.45);
+:global(html.dark) .viewsFinder .viewsFinderPanel {
+  background: transparent;
+  box-shadow: none;
 }
 
-:global(html.dark) .viewItemActive .viewItemCount {
-  color: #a8d4ff;
+:global(html.dark) .viewsFinder .viewsFinderPanel :global([class*="dataTableWrap"]) {
+  --fade-surface: var(--msp-surface-2, #162338);
+  background: var(--msp-surface-2, #162338);
 }
 
-:global(html.dark) .viewsAddBtn {
-  background: var(--msp-surface-2, #152035);
-  border-color: var(--msp-border, #2a3a55);
-  color: #7eb8f0;
+:global(html.dark) .viewsFinder .viewsFinderPanel :global([class*="emptyStateInCard"]) {
+  background: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border, #3d5478);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentFadeUp {
+    animation: none !important;
+  }
 }
 
 :global(html.dark) .activeViewBanner {

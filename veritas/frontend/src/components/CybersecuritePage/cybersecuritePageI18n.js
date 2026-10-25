@@ -368,21 +368,15 @@ const CYBERSECURITE_PAGE_COPY = {
         sections: {
           general: {
             navLabel: "Général",
-            navHint: "Entreprise et type",
+            navHint: "Entreprise, type et nom",
             title: "Informations générales",
-            desc: "Sélectionnez l'entreprise et nommez la campagne MFA Microsoft."
+            desc: "Entreprise, type de campagne, nom et description."
           },
           dates: {
             navLabel: "Dates",
             navHint: "Période de campagne",
             title: "Période",
             desc: "Définissez la fenêtre de démarrage et de fin de la campagne."
-          },
-          details: {
-            navLabel: "Détails",
-            navHint: "Contexte et notes",
-            title: "Spécificités",
-            desc: "Ajoutez le contexte, les attentes ou les contraintes de la campagne."
           }
         },
         close: "Fermer",
@@ -391,8 +385,8 @@ const CYBERSECURITE_PAGE_COPY = {
         enterpriseSearch: "Rechercher une entreprise…",
         noEnterprise: "Aucune entreprise trouvée",
         name: "Nom de la campagne *",
-        type: "Type *",
-        provider: "Provider *",
+        type: "Type de campagne *",
+        provider: "Type de campagne *",
         providerMicrosoft: "Microsoft",
         providerGoogle: "Google Workspace",
         providerOkta: "Okta",
@@ -404,8 +398,8 @@ const CYBERSECURITE_PAGE_COPY = {
         needMicrosoftTenant: "Configurez d’abord un tenant Microsoft Entra pour cette entreprise avant de créer une campagne MFA.",
         startDate: "Date de début",
         endDate: "Date de fin",
-        specificity: "Spécificité",
-        specificityPlaceholder: "Spécificités de la campagne (contexte, attentes, contraintes…)",
+        specificity: "Description",
+        specificityPlaceholder: "Description de la campagne (contexte, attentes, contraintes…)",
         saveEdit: "Modifier la campagne",
         saveCreate: "Créer la campagne",
         status: "Statut",
@@ -804,21 +798,15 @@ const CYBERSECURITE_PAGE_COPY = {
         sections: {
           general: {
             navLabel: "General",
-            navHint: "Company and type",
+            navHint: "Company, type and name",
             title: "General information",
-            desc: "Select the company and name the Microsoft MFA campaign."
+            desc: "Company, campaign type, name and description."
           },
           dates: {
             navLabel: "Dates",
             navHint: "Campaign period",
             title: "Period",
             desc: "Set the campaign start and end window."
-          },
-          details: {
-            navLabel: "Details",
-            navHint: "Context and notes",
-            title: "Specifics",
-            desc: "Add context, expectations, or constraints for the campaign."
           }
         },
         close: "Close",
@@ -827,8 +815,8 @@ const CYBERSECURITE_PAGE_COPY = {
         enterpriseSearch: "Search for a company…",
         noEnterprise: "No company found",
         name: "Campaign name *",
-        type: "Type *",
-        provider: "Provider *",
+        type: "Campaign type *",
+        provider: "Campaign type *",
         providerMicrosoft: "Microsoft",
         providerGoogle: "Google Workspace",
         providerOkta: "Okta",
@@ -1240,21 +1228,15 @@ const CYBERSECURITE_PAGE_COPY = {
         sections: {
           general: {
             navLabel: "Allgemein",
-            navHint: "Unternehmen und Typ",
+            navHint: "Unternehmen, Typ und Name",
             title: "Allgemeine Informationen",
-            desc: "Wählen Sie das Unternehmen und benennen Sie die Microsoft-MFA-Kampagne."
+            desc: "Unternehmen, Kampagnentyp, Name und Beschreibung."
           },
           dates: {
             navLabel: "Daten",
             navHint: "Kampagnenzeitraum",
             title: "Zeitraum",
             desc: "Legen Sie Start- und Endfenster der Kampagne fest."
-          },
-          details: {
-            navLabel: "Details",
-            navHint: "Kontext und Notizen",
-            title: "Besonderheiten",
-            desc: "Fügen Sie Kontext, Erwartungen oder Einschränkungen hinzu."
           }
         },
         close: "Schließen",
@@ -1263,8 +1245,8 @@ const CYBERSECURITE_PAGE_COPY = {
         enterpriseSearch: "Unternehmen suchen…",
         noEnterprise: "Kein Unternehmen gefunden",
         name: "Kampagnenname *",
-        type: "Typ *",
-        provider: "Provider *",
+        type: "Kampagnentyp *",
+        provider: "Kampagnentyp *",
         providerMicrosoft: "Microsoft",
         providerGoogle: "Google Workspace",
         providerOkta: "Okta",
@@ -1675,21 +1657,15 @@ const CYBERSECURITE_PAGE_COPY = {
         sections: {
           general: {
             navLabel: "Generale",
-            navHint: "Azienda e tipo",
+            navHint: "Azienda, tipo e nome",
             title: "Informazioni generali",
-            desc: "Seleziona l'azienda e assegna un nome alla campagna MFA Microsoft."
+            desc: "Azienda, tipo di campagna, nome e descrizione."
           },
           dates: {
             navLabel: "Date",
             navHint: "Periodo campagna",
             title: "Periodo",
             desc: "Definisci la finestra di inizio e fine della campagna."
-          },
-          details: {
-            navLabel: "Dettagli",
-            navHint: "Contesto e note",
-            title: "Specificità",
-            desc: "Aggiungi contesto, aspettative o vincoli della campagna."
           }
         },
         close: "Chiudi",
@@ -1698,8 +1674,8 @@ const CYBERSECURITE_PAGE_COPY = {
         enterpriseSearch: "Cerca un'azienda…",
         noEnterprise: "Nessuna azienda trovata",
         name: "Nome campagna *",
-        type: "Tipo *",
-        provider: "Provider *",
+        type: "Tipo di campagna *",
+        provider: "Tipo di campagna *",
         providerMicrosoft: "Microsoft",
         providerGoogle: "Google Workspace",
         providerOkta: "Okta",
@@ -2110,21 +2086,15 @@ const CYBERSECURITE_PAGE_COPY = {
         sections: {
           general: {
             navLabel: "General",
-            navHint: "Empresa y tipo",
+            navHint: "Empresa, tipo y nombre",
             title: "Información general",
-            desc: "Seleccione la empresa y asigne un nombre a la campaña MFA Microsoft."
+            desc: "Empresa, tipo de campaña, nombre y descripción."
           },
           dates: {
             navLabel: "Fechas",
             navHint: "Periodo de campaña",
             title: "Periodo",
             desc: "Defina la ventana de inicio y fin de la campaña."
-          },
-          details: {
-            navLabel: "Detalles",
-            navHint: "Contexto y notas",
-            title: "Especificidades",
-            desc: "Añada contexto, expectativas o restricciones de la campaña."
           }
         },
         close: "Cerrar",
@@ -2133,8 +2103,8 @@ const CYBERSECURITE_PAGE_COPY = {
         enterpriseSearch: "Buscar una empresa…",
         noEnterprise: "Ninguna empresa encontrada",
         name: "Nombre de la campaña *",
-        type: "Tipo *",
-        provider: "Provider *",
+        type: "Tipo de campaña *",
+        provider: "Tipo de campaña *",
         providerMicrosoft: "Microsoft",
         providerGoogle: "Google Workspace",
         providerOkta: "Okta",

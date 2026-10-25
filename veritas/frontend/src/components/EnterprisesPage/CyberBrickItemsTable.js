@@ -340,9 +340,36 @@ export default function CyberBrickItemsTable({
   hideSearchBar = false,
   search: controlledSearch,
   onSearchChange,
-  sortable = true
+  sortable = true,
+  onEditItem = null,
+  editLabel = "Éditer"
 }) {
-  const columns = useMemo(() => getColumns(brickType), [brickType]);
+  const baseColumns = useMemo(() => getColumns(brickType), [brickType]);
+  const columns = useMemo(() => {
+    if (typeof onEditItem !== "function") return baseColumns;
+    return [
+      ...baseColumns,
+      {
+        key: "actions",
+        label: "Actions",
+        sortable: false,
+        get: () => "",
+        render: item => (
+          <div className={equipStyles.embeddedRowActions} onClick={event => event.stopPropagation()}>
+            <button
+              type="button"
+              className={equipStyles.embeddedQuickActionButton}
+              onClick={() => onEditItem(item)}
+              title={editLabel}
+              aria-label={editLabel}
+            >
+              <Icon icon="mdi:pencil-outline" aria-hidden />
+            </button>
+          </div>
+        )
+      }
+    ];
+  }, [baseColumns, editLabel, onEditItem]);
   const defaultSortKey = columns[0]?.key || "name";
   const [internalSearch, setInternalSearch] = useState("");
   const isControlled = typeof onSearchChange === "function";
@@ -351,6 +378,7 @@ export default function CyberBrickItemsTable({
   const [sortBy, setSortBy] = useState(defaultSortKey);
   const [sortDirection, setSortDirection] = useState("asc");
   const [fadeVisible, setFadeVisible] = useState(false);
+  const [fadeTopVisible, setFadeTopVisible] = useState(false);
   const scrollRef = useRef(null);
   const list = Array.isArray(items) ? items : [];
 
@@ -394,6 +422,7 @@ export default function CyberBrickItemsTable({
     const updateFade = () => {
       const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
       setFadeVisible(remaining > 4);
+      setFadeTopVisible(el.scrollTop > 4);
     };
     updateFade();
     const raf = requestAnimationFrame(() => {
@@ -451,15 +480,20 @@ export default function CyberBrickItemsTable({
                 <thead>
                   <tr>
                     {columns.map(col => {
-                      const isSorted = sortable && sortBy === col.key;
+                      const isActions = col.key === "actions";
+                      const canSort = sortable && col.sortable !== false && !isActions;
+                      const isSorted = canSort && sortBy === col.key;
                       return (
                         <th
                           key={col.key}
                           scope="col"
-                          className={sortable ? equipStyles.sortableTh : undefined}
-                          onClick={() => handleSort(col.key)}
+                          className={[
+                            canSort ? equipStyles.sortableTh : undefined,
+                            isActions ? equipStyles.embeddedColActions : undefined
+                          ].filter(Boolean).join(" ") || undefined}
+                          onClick={canSort ? () => handleSort(col.key) : undefined}
                           aria-sort={
-                            sortable
+                            canSort
                               ? isSorted
                                 ? sortDirection === "asc"
                                   ? "ascending"
@@ -467,11 +501,11 @@ export default function CyberBrickItemsTable({
                                 : "none"
                               : undefined
                           }
-                          title={sortable ? `Trier par ${col.label}` : undefined}
+                          title={canSort ? `Trier par ${col.label}` : undefined}
                         >
                           <span className={equipStyles.thContent}>
                             {col.label}
-                            {sortable && isSorted ? (
+                            {canSort && isSorted ? (
                               <SortIcon
                                 active
                                 direction={sortDirection}
@@ -487,11 +521,16 @@ export default function CyberBrickItemsTable({
                 <tbody>
                   {sorted.length ? (
                     sorted.map((item, index) => (
-                      <tr key={rowKey(item, index)}>
+                      <tr key={rowKey(item, index)} className={equipStyles.equipmentRowEmbedded}>
                         {columns.map(col => {
+                          const isActions = col.key === "actions";
                           const text = String(col.get(item) ?? "");
                           return (
-                            <td key={col.key} title={text}>
+                            <td
+                              key={col.key}
+                              className={isActions ? equipStyles.embeddedColActions : undefined}
+                              title={isActions ? undefined : text}
+                            >
                               {typeof col.render === "function" ? col.render(item) : col.get(item)}
                             </td>
                           );
@@ -511,6 +550,10 @@ export default function CyberBrickItemsTable({
               </table>
             </div>
           </div>
+          <div
+            className={`${equipStyles.tableScrollFadeTop} ${fadeTopVisible ? equipStyles.tableScrollFadeVisible : ""}`}
+            aria-hidden
+          />
           <div
             className={`${equipStyles.tableScrollFade} ${fadeVisible ? equipStyles.tableScrollFadeVisible : ""}`}
             aria-hidden

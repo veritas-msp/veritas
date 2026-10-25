@@ -7,13 +7,13 @@ import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import styles from "./EnterprisesPage.module.css";
 import { UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as kit } from "../UiKit";
 import { Icon } from "@iconify/react";
-import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import ClientModal from "../AdminPage/ClientSkeleton/ClientModal";
 import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
 import EnterpriseBulkEditModal from "./EnterpriseBulkEditModal";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
+import { useCrmListPagination } from "../../hooks/useCrmListPagination";
 import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterprisesPageCopy } from "./enterprisesPageI18n";
@@ -27,7 +27,8 @@ import { fetchTicketTableColumns } from "../../api/tickets";
 import {
   DEFAULT_ENTERPRISES_TABLE_COLUMNS,
   TICKET_TABLE_COLUMN_SORT_KEYS,
-  normalizeTicketTableColumns
+  normalizeTicketTableColumns,
+  pinColumnLeft
 } from "../../utils/ticketTableColumns";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
@@ -36,6 +37,8 @@ import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { collectTagSearchValues, matchesSearchQuery } from "../../utils/tableSearch";
 import { resolveEnterpriseIcon, resolveEnterpriseIconColor } from "./enterpriseIconChoices";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
+import { getListCache, setListCache, LIST_CACHE_NS } from "../../utils/listPageCache";
+import { DETAIL_CACHE_NS, getDetailCache, setDetailCache } from "../../utils/detailPageCache";
 
 const ENTERPRISES_PAGE_SCOPE = "enterprises";
 const ENTERPRISES_FAVORITES_SETTING = "enterprises_favorites";
@@ -63,13 +66,23 @@ function enterprisesColumnClass(columnId) {
   };
   return map[columnId] || "";
 }
+
+function EnterprisesColGroup({ columns, showCheckbox }) {
+  return (
+    <colgroup>
+      {showCheckbox ? <col className={styles.checkboxCell} /> : null}
+      {columns.map(columnId => (
+        <col key={columnId} className={enterprisesColumnClass(columnId) || undefined} />
+      ))}
+      <col className={styles.favoriteCell} />
+      <col className={styles.chevronCell} />
+    </colgroup>
+  );
+}
 function withCompanyStatusColumn(columns) {
   const list = Array.isArray(columns) ? [...columns] : [];
-  if (list.includes("company_status")) return list;
-  const companyIdx = list.indexOf("company");
-  if (companyIdx >= 0) list.splice(companyIdx + 1, 0, "company_status");
-  else list.push("company_status");
-  return list;
+  if (!list.includes("company_status")) list.unshift("company_status");
+  return pinColumnLeft(list, "company_status");
 }
 function sanitizeEnterprisesTableColumns(columns) {
   return withCompanyStatusColumn(normalizeTicketTableColumns(columns, {
@@ -110,8 +123,11 @@ export default function EnterprisesPage({
     modules: contractModules
   } = useContractModuleOptions();
   const resolveModuleLabel = useCallback(moduleKey => getLocalizedModuleLabel(contractModules, moduleKey, locale), [contractModules, locale]);
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [clients, setClients] = useState(() => {
+    const cached = getListCache(LIST_CACHE_NS.enterprises);
+    return Array.isArray(cached) ? cached : [];
+  });
+  const [loading, setLoading] = useState(() => !Array.isArray(getListCache(LIST_CACHE_NS.enterprises)));
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("name");
@@ -201,8 +217,9 @@ export default function EnterprisesPage({
   const defaultModules = useMemo(() => buildEmptyModulesMap(contractModules), [contractModules]);
   useEffect(() => {
     isMountedRef.current = true;
-    loadClients();
-    const handleRefreshEnterprises = () => loadClients();
+    const hadCache = Array.isArray(getListCache(LIST_CACHE_NS.enterprises));
+    loadClients({ silent: hadCache });
+    const handleRefreshEnterprises = () => loadClients({ silent: true });
     const pollInterval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       loadClients({
@@ -283,6 +300,7 @@ export default function EnterprisesPage({
           return client.sites || [];
         })()
       }));
+      setListCache(LIST_CACHE_NS.enterprises, parsedClients);
       if (!isMountedRef.current) return;
       setClients(parsedClients);
     } catch (err) {
@@ -456,17 +474,28 @@ export default function EnterprisesPage({
     });
     return filtered;
   }, [kpiFilteredClients, sortBy, sortOrder, copy, isFavorite]);
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedClients.length / pageSize));
-  const paginatedClients = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredAndSortedClients.slice(start, start + pageSize);
-  }, [filteredAndSortedClients, currentPage, pageSize]);
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilters, companyStatusFilters, sortBy, sortOrder, pageSize]);
-  useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
+  const {
+    paginatedItems: paginatedClients,
+    totalPages,
+    effectivePage,
+    isFilteredEmpty,
+    rangeStart,
+    rangeEnd
+  } = useCrmListPagination(
+    filteredAndSortedClients,
+    pageSize,
+    currentPage,
+    setCurrentPage,
+    [searchQuery, statusFilters, companyStatusFilters, sortBy, sortOrder, pageSize]
+  );
+  const tableScrollRef = useRef(null);
+  const showSourceEmpty = !loading && clients.length === 0;
+  const showFilteredEmpty = !loading && clients.length > 0 && isFilteredEmpty;
+  const tableColSpan = useMemo(() => {
+    let span = tableColumns.length + 2;
+    if (showBulkSelection) span += 1;
+    return span;
+  }, [tableColumns.length, showBulkSelection]);
   useEffect(() => {
     setSelectedIds(prev => {
       if (!prev.size) return prev;
@@ -536,23 +565,41 @@ export default function EnterprisesPage({
       suspended: 0,
       unknown: 0
     };
-    kpiFilteredClients.forEach(client => {
+    // Compter hors filtre contrat (sinon les autres chips passent à 0 au clic).
+    let base = clients;
+    if (searchQuery.trim()) {
+      base = base.filter(client => matchesSearch(client, searchQuery));
+    }
+    if (companyStatusFilters.size > 0) {
+      base = base.filter(client => companyStatusFilters.has(normalizeCompanyStatusKey(client.statut)));
+    }
+    base.forEach(client => {
       const status = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu).status;
       if (counts[status] !== undefined) counts[status] += 1;
     });
     return counts;
-  }, [kpiFilteredClients, copy]);
+  }, [clients, searchQuery, companyStatusFilters, matchesSearch, getContractStatus]);
   const companyStatusCounts = useMemo(() => {
     const counts = {
       active: 0,
       inactive: 0
     };
-    clients.forEach(client => {
+    let base = clients;
+    if (searchQuery.trim()) {
+      base = base.filter(client => matchesSearch(client, searchQuery));
+    }
+    if (statusFilters.size > 0) {
+      base = base.filter(client => {
+        const contractStatus = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu);
+        return statusFilters.has(contractStatus.status);
+      });
+    }
+    base.forEach(client => {
       const key = normalizeCompanyStatusKey(client.statut);
       if (counts[key] !== undefined) counts[key] += 1;
     });
     return counts;
-  }, [clients]);
+  }, [clients, searchQuery, statusFilters, matchesSearch, getContractStatus]);
   const handleExportCsv = () => {
     const headers = [];
     tableColumns.forEach(columnId => {
@@ -621,6 +668,12 @@ export default function EnterprisesPage({
     URL.revokeObjectURL(url);
   };
   const openClient = (client, background = false) => {
+    if (client?.id) {
+      const existing = getDetailCache(DETAIL_CACHE_NS.enterprise, client.id, { ttlMs: 0 });
+      if (!existing?.client) {
+        setDetailCache(DETAIL_CACHE_NS.enterprise, client.id, { client });
+      }
+    }
     onNavigate("ContratDetail", {
       clientId: client.id,
       name: getClientNameWithoutCode(client) || client.name,
@@ -701,6 +754,7 @@ export default function EnterprisesPage({
                   key={`company-${item.key}`}
                   type="button"
                   className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`}
+                  onMouseDown={e => e.preventDefault()}
                   onClick={() => toggleCompanyStatusFilter(item.key)}
                   disabled={loading || error || count === 0}
                 >
@@ -721,6 +775,7 @@ export default function EnterprisesPage({
                   key={item.key}
                   type="button"
                   className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`}
+                  onMouseDown={e => e.preventDefault()}
                   onClick={() => toggleStatusFilter(item.key)}
                   disabled={loading || error || count === 0}
                 >
@@ -735,7 +790,7 @@ export default function EnterprisesPage({
           </div>
           <div className={styles.toolbarGroupedActions}>
             <div className={styles.exportMenuWrap} ref={moreMenuRef}>
-              <SmartTooltip content={copy.moreActions || "Plus d'actions"}>
+              
                 <button
                   type="button"
                   className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
@@ -746,7 +801,7 @@ export default function EnterprisesPage({
                 >
                   <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
                 </button>
-              </SmartTooltip>
+              
               {moreMenuOpen ? (
                 <div className={styles.exportMenu} role="menu">
                   <button
@@ -779,7 +834,7 @@ export default function EnterprisesPage({
               ) : null}
             </div>
             {canCreateEnterprise ? (
-              <SmartTooltip content={copy.newEnterprise}>
+              
                 <button
                   type="button"
                   className={`${kit.btnSquare} ${kit.btnSquarePrimary}`}
@@ -791,7 +846,7 @@ export default function EnterprisesPage({
                 >
                   <Icon icon="mdi:plus" aria-hidden />
                 </button>
-              </SmartTooltip>
+              
             ) : null}
           </div>
         </div>
@@ -810,7 +865,7 @@ export default function EnterprisesPage({
               <div className={styles.panelCard}>
                 {tableToolbar}
 
-                {!showSkeleton && paginatedClients.length === 0 ? <div className={styles.emptyStateInCard}>
+                {showSourceEmpty ? <div className={styles.emptyStateInCard}>
                     <UiKitEmptyState bare icon="mdi:office-building-outline" title={copy.emptyTitle} text={copy.emptyHint} />
                     {canCreateEnterprise ? <button type="button" className={styles.primaryBtn} onClick={() => {
                 setClientModalInitial(null);
@@ -820,32 +875,41 @@ export default function EnterprisesPage({
                         {copy.newEnterprise}
                       </button> : null}
                   </div> : <>
+                    <div className={styles.listTableStack}>
                     <UiKitScrollFadeShell
                       className={styles.dataTableWrap}
-                      deps={[paginatedClients.length, pageSize, searchQuery, tableColumns.join("|"), showSkeleton]}
+                      fadeTop
+                      deps={[pageSize, tableColumns.join("|"), showSkeleton, showBulkSelection]}
+                      scrollViewportRef={tableScrollRef}
+                      header={
+                        <table className={styles.dataTable}>
+                          <EnterprisesColGroup columns={tableColumns} showCheckbox={showBulkSelection} />
+                          <thead>
+                            <tr>
+                              {showBulkSelection ? <th className={styles.checkboxCell}>
+                                  <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} disabled={showSkeleton} />
+                                </th> : null}
+                              {tableColumns.map(columnId => {
+                      const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
+                      const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
+                      const label = copy.table[labelKey] || columnId;
+                      const columnClass = enterprisesColumnClass(columnId);
+                      if (!sortKey) {
+                        return <th key={columnId} className={columnClass || undefined}>{label}</th>;
+                      }
+                      return <th key={columnId} className={columnClass || undefined} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
+                                    <ThSort label={label} col={sortKey} />
+                                  </th>;
+                    })}
+                              <th className={styles.favoriteCell}>{copy.favorites.columnLabel}</th>
+                              <th className={styles.chevronCell} aria-hidden />
+                            </tr>
+                          </thead>
+                        </table>
+                      }
                     >
-                      <table className={styles.dataTable} aria-busy={showSkeleton || undefined} aria-label={showSkeleton ? copy.loading : undefined}>
-                        <thead>
-                          <tr>
-                            {showBulkSelection ? <th className={styles.checkboxCell}>
-                                <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} disabled={showSkeleton} />
-                              </th> : null}
-                            {tableColumns.map(columnId => {
-                    const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
-                    const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
-                    const label = copy.table[labelKey] || columnId;
-                    const columnClass = enterprisesColumnClass(columnId);
-                    if (!sortKey) {
-                      return <th key={columnId} className={columnClass || undefined}>{label}</th>;
-                    }
-                    return <th key={columnId} className={columnClass || undefined} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
-                                  <ThSort label={label} col={sortKey} />
-                                </th>;
-                  })}
-                            <th className={styles.favoriteCell}>{copy.favorites.columnLabel}</th>
-                            <th className={styles.chevronCell} aria-hidden />
-                          </tr>
-                        </thead>
+                      <table className={`${styles.dataTable} ${styles.dataTableBody}`} aria-busy={showSkeleton || undefined} aria-label={showSkeleton ? copy.loading : undefined}>
+                        <EnterprisesColGroup columns={tableColumns} showCheckbox={showBulkSelection} />
                         <tbody>
                           {showSkeleton ? (
                             <CrmListTableSkeleton
@@ -858,7 +922,14 @@ export default function EnterprisesPage({
                               showChevron
                             />
                           ) : null}
-                          {!showSkeleton && paginatedClients.map(client => {
+                          {!showSkeleton && showFilteredEmpty ? (
+                            <tr className={styles.dataTableEmptyRow}>
+                              <td colSpan={tableColSpan} className={styles.dataTableEmptyCell}>
+                                {copy.emptyHint}
+                              </td>
+                            </tr>
+                          ) : null}
+                          {!showSkeleton && !showFilteredEmpty && paginatedClients.map(client => {
                     const modules = client.options || client.contrat?.modules || {};
                     const activeModules = getAllActiveModuleKeys(modules, contractModules);
                     const contractStatus = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu);
@@ -898,17 +969,10 @@ export default function EnterprisesPage({
                                           <span className={styles.companyIcon} style={{ color: companyIconColor }} aria-hidden>
                                             <Icon icon={companyIcon} width={24} height={24} />
                                           </span>
-                                          <SmartTooltip content={formatClientTabLabel(client)} as="span" className={styles.clientNameText}>
+                                          <span className={styles.clientNameText}>
                                             {getClientNameWithoutCode(client) || client.name || "-"}
-                                          </SmartTooltip>
-                                          {onboarding ? <SmartTooltip content={onboarding.ageDays < 1 ? interpolate(copy.onboardingTooltipToday, {
-                                  remaining: onboarding.remainingDays
-                                }) : interpolate(copy.onboardingTooltip, {
-                                  days: onboarding.ageDays,
-                                  remaining: onboarding.remainingDays
-                                })} as="span" className={styles.onboardingBadge}>
-                                              {copy.onboardingBadge}
-                                            </SmartTooltip> : null}
+                                          </span>
+                                          {onboarding ? <span className={styles.onboardingBadge}>{copy.onboardingBadge}</span> : null}
                                         </div>
                                       </td>;
                         }
@@ -930,14 +994,14 @@ export default function EnterprisesPage({
                           const visibleModules = activeModules.slice(0, visibleLimit);
                           const hiddenCount = Math.max(0, activeModules.length - visibleLimit);
                           return <td key={columnId} className={styles.colModules}>
-                                        {activeModules.length > 0 ? <SmartTooltip content={modulesTooltip} as="div" className={styles.tableModulesClip}>
+                                        {activeModules.length > 0 ? 
                                             <div className={styles.tableModules}>
                                               {visibleModules.map(key => <span key={key} className={styles.moduleTag}>
                                                   {resolveModuleLabel(key)}
                                                 </span>)}
                                               {hiddenCount > 0 ? <span className={`${styles.moduleTag} ${styles.moduleTagMore}`}>+{hiddenCount}</span> : null}
                                             </div>
-                                          </SmartTooltip> : <span className={styles.moduleTag}>{copy.noModuleOptions}</span>}
+                                           : <span className={styles.moduleTag}>{copy.noModuleOptions}</span>}
                                       </td>;
                         }
                         if (columnId === "expiration") {
@@ -964,11 +1028,11 @@ export default function EnterprisesPage({
                         return <td key={columnId}>-</td>;
                       })}
                                 <td className={styles.favoriteCell} onClick={e => e.stopPropagation()}>
-                                  <SmartTooltip content={favorited ? copy.favorites.remove : copy.favorites.add}>
+                                  
                                     <button type="button" className={`${styles.favoriteBtn} ${favorited ? styles.favoriteBtnActive : ""}`} aria-label={favorited ? copy.favorites.remove : copy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(client.id)}>
                                       <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />
                                     </button>
-                                  </SmartTooltip>
+                                  
                                 </td>
                                 <td className={styles.chevronCell} aria-hidden>
                                   <Icon icon="mdi:chevron-right" className={styles.rowChevron} />
@@ -991,24 +1055,25 @@ export default function EnterprisesPage({
                         <span className={styles.paginationInfo}>
                           {showSkeleton
                             ? "—"
-                            : copy.formatRangeInfo((currentPage - 1) * pageSize + 1, Math.min(currentPage * pageSize, filteredAndSortedClients.length), filteredAndSortedClients.length)}
+                            : copy.formatRangeInfo(rangeStart, rangeEnd, filteredAndSortedClients.length)}
                         </span>
                       </div>
                       <div className={styles.paginationRight}>
-                        <SmartTooltip content={copy.prevPage}>
-                          <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={showSkeleton || currentPage <= 1} aria-label={copy.prevPage}>
+                        
+                          <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={showSkeleton || effectivePage <= 1} aria-label={copy.prevPage}>
                             <Icon icon="mdi:chevron-left" aria-hidden />
                           </button>
-                        </SmartTooltip>
+                        
                         <span className={styles.paginationInfo}>
-                          {showSkeleton ? "—" : copy.formatPageInfo(currentPage, totalPages)}
+                          {showSkeleton ? "—" : copy.formatPageInfo(effectivePage, totalPages)}
                         </span>
-                        <SmartTooltip content={copy.nextPage}>
-                          <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={showSkeleton || currentPage >= totalPages} aria-label={copy.nextPage}>
+                        
+                          <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={showSkeleton || effectivePage >= totalPages} aria-label={copy.nextPage}>
                             <Icon icon="mdi:chevron-right" aria-hidden />
                           </button>
-                        </SmartTooltip>
+                        
                       </div>
+                    </div>
                     </div>
                   </>}
               </div>

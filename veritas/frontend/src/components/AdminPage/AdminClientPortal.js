@@ -15,6 +15,8 @@ import { formatAccountCount, interpolate } from "./adminClientPortalI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
+import { UiKitPageHero } from "../UiKit";
+import { getAdminPanelCopy } from "./adminPanelI18n";
 export default function AdminClientPortal({
   isCommunity = false
 }) {
@@ -207,7 +209,9 @@ export default function AdminClientPortal({
       setBusy(false);
     }
   };
+  const heroCopy = getAdminPanelCopy(locale).items["client-portal"];
   return <Page>
+      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:monitor-dashboard" />
       <Card title={copy.page.title} description={copy.page.description} fill>
           <div className={ui.toolRow}>
             <div className={ui.toolLeft}>

@@ -125,8 +125,10 @@ function SortableTab({
     id: tab.id,
     disabled: !draggable
   });
+  // Réorganisation horizontale uniquement (pas de déplacement haut/bas).
+  const lockedTransform = transform ? { ...transform, y: 0 } : null;
   const style = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Transform.toString(lockedTransform),
     transition,
     opacity: isDragging ? 0.5 : 1
   };

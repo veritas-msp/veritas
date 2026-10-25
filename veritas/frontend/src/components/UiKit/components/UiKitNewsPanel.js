@@ -6,6 +6,9 @@ import UiKitEmptyState from "./UiKitEmptyState";
 import UiKitScrollFadeShell from "./UiKitScrollFadeShell";
 import styles from "../uiKitHome.module.css";
 
+const FADE_OUT_MS = 560;
+const REVEAL_DONE_MS = 1600;
+
 export const NEWS_CATEGORY_ICON = {
   cve: "mdi:bug-outline",
   security: "mdi:shield-alert-outline",
@@ -75,21 +78,75 @@ export default function UiKitNewsPanel({
   className = "",
   "aria-label": ariaLabel
 }) {
-  const busy = loading || refreshing;
   const refreshIconRef = useRef(null);
   const wasRefreshingRef = useRef(false);
+  const fadeOutTimerRef = useRef(null);
+  const revealTimerRef = useRef(null);
+  const [phase, setPhase] = useState("idle");
   const [revealId, setRevealId] = useState(0);
   const listClass = layout === "grid" ? `${styles.newsList} ${styles.newsListGrid}` : styles.newsList;
+  const animBusy = phase === "fadingOut" || phase === "syncing" || phase === "revealing";
+  const busy = loading || refreshing || animBusy;
+  const childCount = Children.count(children);
+
+  useEffect(() => {
+    return () => {
+      if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (refreshing) {
       wasRefreshingRef.current = true;
+      setPhase(current => (current === "fadingOut" || current === "idle" ? "syncing" : current));
       return;
     }
     if (!wasRefreshingRef.current) return;
     wasRefreshingRef.current = false;
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    if (empty || childCount === 0) {
+      setPhase("idle");
+      return;
+    }
     setRevealId(id => id + 1);
-  }, [refreshing]);
+    setPhase("revealing");
+    revealTimerRef.current = setTimeout(() => {
+      setPhase("idle");
+      revealTimerRef.current = null;
+    }, REVEAL_DONE_MS);
+  }, [refreshing, empty, childCount]);
+
+  const startRefresh = () => {
+    if (busy || typeof onRefresh !== "function") return;
+    const hasItems = childCount > 0 && !empty;
+    if (!hasItems) {
+      setPhase("syncing");
+      onRefresh();
+      return;
+    }
+    setPhase("fadingOut");
+    if (fadeOutTimerRef.current) clearTimeout(fadeOutTimerRef.current);
+    fadeOutTimerRef.current = setTimeout(() => {
+      fadeOutTimerRef.current = null;
+      setPhase("syncing");
+      onRefresh();
+    }, FADE_OUT_MS);
+  };
+
+  const showList =
+    !loading &&
+    !error &&
+    phase !== "syncing" &&
+    (phase === "fadingOut" || phase === "revealing" || !empty);
+
+  const listMotionClass =
+    phase === "fadingOut"
+      ? ` ${styles.newsListFadeOut}`
+      : phase === "revealing"
+        ? ` ${styles.newsListReveal}`
+        : "";
+
   return (
     <aside
       className={`${styles.newsPanel}${className ? ` ${className}` : ""}`}
@@ -113,10 +170,7 @@ export default function UiKitNewsPanel({
             square
             variant="secondary"
             className={busy ? styles.newsRefreshBusy : ""}
-            onClick={() => {
-              if (busy) return;
-              onRefresh();
-            }}
+            onClick={startRefresh}
             onMouseEnter={() => {
               if (!busy) refreshIconRef.current?.startAnimation?.();
             }}
@@ -153,15 +207,28 @@ export default function UiKitNewsPanel({
         </div>
       ) : null}
 
-      {!loading && !error && empty ? (
+      {!loading && !error && empty && phase === "idle" ? (
         <div className={styles.newsState}>
           <UiKitEmptyState icon="mdi:newspaper-remove-outline" text={emptyLabel} />
         </div>
       ) : null}
 
-      {!loading && !error && !empty ? (
-        <UiKitScrollFadeShell className={`${styles.newsScroll}${refreshing ? ` ${styles.newsScrollSync}` : ""}`} fadeTop deps={[Children.count(children), layout, refreshing]}>
-          <div key={revealId || "idle"} className={`${listClass}${revealId ? ` ${styles.newsListReveal}` : ""}`}>
+      {!loading && !error && phase === "syncing" ? (
+        <div className={styles.newsSyncStage} role="status" aria-live="polite">
+          <span className={styles.newsSyncHalo} aria-hidden>
+            <Icon icon="mdi:sync" className={styles.newsSyncIcon} />
+          </span>
+          {loadingLabel ? <span className={styles.newsSyncLabel}>{loadingLabel}</span> : null}
+        </div>
+      ) : null}
+
+      {showList ? (
+        <UiKitScrollFadeShell
+          className={styles.newsScroll}
+          fadeTop
+          deps={[childCount, layout, phase, revealId]}
+        >
+          <div key={revealId || "idle"} className={`${listClass}${listMotionClass}`}>
             {children}
           </div>
         </UiKitScrollFadeShell>
