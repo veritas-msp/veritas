@@ -3,10 +3,11 @@ import { Icon } from "@iconify/react";
 import SmartTooltip from "../../SmartTooltip";
 import kit from "../uiKitLayouts.module.css";
 import layout from "../../EnterprisesPage/EnterprisesPage.module.css";
+import equipStyles from "../../EquipementPage/EquipmentPage.module.css";
 
 /**
  * Barre d’outils liste CRM — même structure que Entreprises / Contacts / Prestataires.
- * Titre + recherche UiKit + filtres + menu ⋯ + création.
+ * Titre optionnel + recherche UiKit (ou style embedded EnterpriseDetail) + filtres + menu ⋯ + création.
  */
 export default function UiKitCrmListToolbar({
   title,
@@ -19,6 +20,8 @@ export default function UiKitCrmListToolbar({
   searchAriaLabel = "",
   clearSearchLabel = "Effacer la recherche",
   searchPending = false,
+  /** "default" = kit.searchBox | "embedded" = pill EnterpriseDetail / périphériques */
+  searchVariant = "default",
   filters = null,
   filtersAriaLabel,
   leading = null,
@@ -27,7 +30,9 @@ export default function UiKitCrmListToolbar({
   createAction = null,
   extraActions = null,
   searchInputRef = null,
-  className = ""
+  className = "",
+  /** Désactive les SmartTooltip (ex. Support / Prestations) */
+  disableTooltips = false
 }) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef(null);
@@ -38,6 +43,7 @@ export default function UiKitCrmListToolbar({
   const showMoreMenu = visibleMenuItems.length > 0;
   const showCreate =
     createAction && !createAction.hidden && typeof createAction.onClick === "function";
+  const useEmbeddedSearch = searchVariant === "embedded";
 
   useEffect(() => {
     if (!moreMenuOpen) return undefined;
@@ -55,6 +61,73 @@ export default function UiKitCrmListToolbar({
     };
   }, [moreMenuOpen]);
 
+  const searchBox = typeof onSearchChange === "function" ? (
+    useEmbeddedSearch ? (
+      /* Wrapper tokens only — display:contents keeps horizontal toolbar layout */
+      <div className={equipStyles.hardwarePageEmbedded} style={{ display: "contents" }}>
+        <div className={equipStyles.embeddedSearchBox}>
+          <Icon
+            icon={searchPending ? "mdi:loading" : "mdi:magnify"}
+            className={`${equipStyles.embeddedSearchIcon}${searchPending ? ` ${layout.spinning}` : ""}`}
+            aria-hidden
+          />
+          <input
+            ref={searchInputRef}
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onChange={event => onSearchChange(event.target.value)}
+            className={equipStyles.embeddedSearchInput}
+            aria-label={searchAriaLabel || searchPlaceholder}
+          />
+          {searchValue && !searchPending ? (
+            <button
+              type="button"
+              className={equipStyles.embeddedSearchClear}
+              onClick={() => (onSearchClear ? onSearchClear() : onSearchChange(""))}
+              aria-label={clearSearchLabel}
+            >
+              <Icon icon="mdi:close" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      </div>
+    ) : (
+      <div className={kit.searchBox}>
+        <Icon
+          icon={searchPending ? "mdi:loading" : "mdi:magnify"}
+          className={`${kit.searchIcon}${searchPending ? ` ${layout.spinning}` : ""}`}
+          aria-hidden
+        />
+        <input
+          ref={searchInputRef}
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
+          autoComplete="off"
+          placeholder={searchPlaceholder}
+          value={searchValue}
+          onChange={event => onSearchChange(event.target.value)}
+          className={kit.searchInput}
+          aria-label={searchAriaLabel || searchPlaceholder}
+        />
+        {searchValue && !searchPending ? (
+          <button
+            type="button"
+            className={kit.searchClear}
+            onClick={() => (onSearchClear ? onSearchClear() : onSearchChange(""))}
+            aria-label={clearSearchLabel}
+          >
+            <Icon icon="mdi:close" aria-hidden />
+          </button>
+        ) : null}
+      </div>
+    )
+  ) : null;
+
   return (
     <div className={`${layout.tableSearchBar}${className ? ` ${className}` : ""}`}>
       {leading}
@@ -69,37 +142,7 @@ export default function UiKitCrmListToolbar({
         </header>
       ) : null}
 
-      {typeof onSearchChange === "function" ? (
-        <div className={kit.searchBox}>
-          <Icon
-            icon={searchPending ? "mdi:loading" : "mdi:magnify"}
-            className={`${kit.searchIcon}${searchPending ? ` ${layout.spinning}` : ""}`}
-            aria-hidden
-          />
-          <input
-            ref={searchInputRef}
-            type="text"
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            placeholder={searchPlaceholder}
-            value={searchValue}
-            onChange={event => onSearchChange(event.target.value)}
-            className={kit.searchInput}
-            aria-label={searchAriaLabel || searchPlaceholder}
-          />
-          {searchValue && !searchPending ? (
-            <button
-              type="button"
-              className={kit.searchClear}
-              onClick={() => (onSearchClear ? onSearchClear() : onSearchChange(""))}
-              aria-label={clearSearchLabel}
-            >
-              <Icon icon="mdi:close" aria-hidden />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {searchBox}
 
       <div className={layout.toolbarActions}>
         {filters ? (
@@ -113,18 +156,21 @@ export default function UiKitCrmListToolbar({
 
           {showMoreMenu ? (
             <div className={layout.exportMenuWrap} ref={moreMenuRef}>
-              <SmartTooltip content={moreActionsLabel}>
-                <button
-                  type="button"
-                  className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
-                  onClick={() => setMoreMenuOpen(open => !open)}
-                  aria-expanded={moreMenuOpen}
-                  aria-haspopup="menu"
-                  aria-label={moreActionsLabel}
-                >
-                  <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
-                </button>
-              </SmartTooltip>
+              {(() => {
+                const moreBtn = (
+                  <button
+                    type="button"
+                    className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                    onClick={() => setMoreMenuOpen(open => !open)}
+                    aria-expanded={moreMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label={moreActionsLabel}
+                  >
+                    <Icon icon="mdi:dots-horizontal" width={16} height={16} aria-hidden />
+                  </button>
+                );
+                return disableTooltips ? moreBtn : <SmartTooltip content={moreActionsLabel}>{moreBtn}</SmartTooltip>;
+              })()}
               {moreMenuOpen ? (
                 <div className={layout.exportMenu} role="menu">
                   {visibleMenuItems.map(item => (
@@ -150,8 +196,8 @@ export default function UiKitCrmListToolbar({
             </div>
           ) : null}
 
-          {showCreate ? (
-            <SmartTooltip content={createAction.label}>
+          {showCreate ? (() => {
+            const createBtn = (
               <button
                 type="button"
                 className={`${kit.btnSquare} ${kit.btnSquarePrimary}`}
@@ -161,8 +207,9 @@ export default function UiKitCrmListToolbar({
               >
                 <Icon icon={createAction.icon || "mdi:plus"} aria-hidden />
               </button>
-            </SmartTooltip>
-          ) : null}
+            );
+            return disableTooltips ? createBtn : <SmartTooltip content={createAction.label}>{createBtn}</SmartTooltip>;
+          })() : null}
         </div>
       </div>
     </div>

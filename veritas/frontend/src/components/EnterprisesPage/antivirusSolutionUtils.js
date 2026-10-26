@@ -45,7 +45,7 @@ export function formatAntivirusEndpointType(type) {
 }
 export function getAntivirusSolutionModeLabel(solution) {
   const mode = canonicalizeAntivirusMappingMode(solution);
-  if (mode === "dedicated") return "Dedicated tenant";
+  if (mode === "dedicated") return "Tenant dédié";
   if (mode === "manual") return "Saisie manuelle";
   return "Tenant global";
 }
@@ -69,15 +69,15 @@ export function canonicalizeAntivirusMappingMode(solution) {
 }
 export function formatAntivirusSolutionLabel(solution) {
   const normalized = normalizeAntivirusItem(solution);
-  if (!normalized) return "Antivirus solution";
+  if (!normalized) return "Solution antivirus";
   const providerId = normalized.providerId || (normalized.companyId ? "bitdefender" : "manual");
   if (providerId === "bitdefender") return BITDEFENDER_BRAND_NAME;
-  return resolveAntivirusTenantLabel(normalized) || normalized.solution || normalized.nom || normalized.name || "Antivirus solution";
+  return resolveAntivirusTenantLabel(normalized) || normalized.solution || normalized.nom || normalized.name || "Solution antivirus";
 }
 export function formatAntivirusSolutionSummary(solution) {
   const normalized = normalizeAntivirusItem(solution);
   const providerId = normalized?.providerId || (normalized?.companyId ? "bitdefender" : "manual");
-  const providerName = providerId === "bitdefender" ? BITDEFENDER_BRAND_NAME : providerId === "manual" ? "Other solution" : providerId;
+  const providerName = providerId === "bitdefender" ? BITDEFENDER_BRAND_NAME : providerId === "manual" ? "Autre solution" : providerId;
   const tenantLabel = resolveAntivirusTenantLabel(normalized || solution);
   const label = providerId === "bitdefender" ? providerName : tenantLabel || formatAntivirusSolutionLabel(normalized || solution);
   const mode = getAntivirusSolutionModeLabel(normalized || solution);

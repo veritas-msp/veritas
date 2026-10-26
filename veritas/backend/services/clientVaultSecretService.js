@@ -28,6 +28,7 @@ export function resolveVaultSecretAvailability(row, now = new Date()) {
 function mapAgentVaultSecret(row) {
   const availability = resolveVaultSecretAvailability(row);
   const viewsRemaining = Math.max(Number(row.max_views) - Number(row.view_count), 0);
+  const archivedAt = row.archived_at || null;
   return {
     id: row.id,
     client_id: row.client_id,
@@ -41,6 +42,8 @@ function mapAgentVaultSecret(row) {
     availability,
     status: row.status,
     deletion_requested_at: row.deletion_requested_at,
+    archived_at: archivedAt,
+    is_archived: Boolean(archivedAt),
     created_at: row.created_at,
     updated_at: row.updated_at
   };
@@ -105,7 +108,7 @@ export async function listAgentVaultSecrets(contactId) {
   const {
     rows
   } = await pool.query(`SELECT id, client_id, contact_id, title, description, expires_at, max_views, view_count,
-            status, deletion_requested_at, created_at, updated_at
+            status, deletion_requested_at, archived_at, created_at, updated_at
      FROM v_b_client_vault_secrets
      WHERE contact_id = $1
      ORDER BY created_at DESC`, [Number(contactId)]);
@@ -163,7 +166,7 @@ export async function createAgentVaultSecret({
        NOW() + ($8::int * INTERVAL '1 day'), $9, $10
      )
      RETURNING id, client_id, contact_id, title, description, expires_at, max_views, view_count,
-               status, deletion_requested_at, created_at, updated_at`, [Number(clientId), Number(contactId), normalizedTitle, normalizedDescription || null, encrypted.encrypted, encrypted.iv, encrypted.authTag, days, views, resolveFileUploadedBy(createdBy)]);
+               status, deletion_requested_at, archived_at, created_at, updated_at`, [Number(clientId), Number(contactId), normalizedTitle, normalizedDescription || null, encrypted.encrypted, encrypted.iv, encrypted.authTag, days, views, resolveFileUploadedBy(createdBy)]);
   return mapAgentVaultSecret(rows[0]);
 }
 export async function revokeAgentVaultSecret(secretId, revokedBy) {
@@ -179,9 +182,52 @@ export async function revokeAgentVaultSecret(secretId, revokedBy) {
          updated_at = NOW()
      WHERE id = $1
      RETURNING id, client_id, contact_id, title, description, expires_at, max_views, view_count,
-               status, deletion_requested_at, created_at, updated_at`, [secretId, resolveFileUploadedBy(revokedBy)]);
+               status, deletion_requested_at, archived_at, created_at, updated_at`, [secretId, resolveFileUploadedBy(revokedBy)]);
   if (!rows.length) throw new Error("Access not found.");
   return mapAgentVaultSecret(rows[0]);
+}
+export async function archiveAgentVaultSecret(secretId, archivedBy) {
+  if (!(await hasClientVaultSecretsTable())) {
+    throw new Error("Feature unavailable.");
+  }
+  const actor = resolveFileUploadedBy(archivedBy);
+  const {
+    rows
+  } = await pool.query(`UPDATE v_b_client_vault_secrets
+     SET archived_at = COALESCE(archived_at, NOW()),
+         archived_by = COALESCE(archived_by, $2),
+         status = CASE WHEN status = 'active' THEN 'revoked' ELSE status END,
+         revoked_at = CASE
+           WHEN status = 'active' AND revoked_at IS NULL THEN NOW()
+           ELSE revoked_at
+         END,
+         revoked_by = CASE
+           WHEN status = 'active' AND revoked_by IS NULL THEN $2
+           ELSE revoked_by
+         END,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, client_id, contact_id, title, description, expires_at, max_views, view_count,
+               status, deletion_requested_at, archived_at, created_at, updated_at`, [secretId, actor]);
+  if (!rows.length) throw new Error("Access not found.");
+  return mapAgentVaultSecret(rows[0]);
+}
+export async function deleteArchivedAgentVaultSecret(secretId) {
+  if (!(await hasClientVaultSecretsTable())) {
+    throw new Error("Feature unavailable.");
+  }
+  const {
+    rows
+  } = await pool.query(`DELETE FROM v_b_client_vault_secrets
+     WHERE id = $1 AND archived_at IS NOT NULL
+     RETURNING id, title`, [secretId]);
+  if (!rows.length) {
+    throw new Error("Archived access not found.");
+  }
+  return {
+    id: rows[0].id,
+    title: rows[0].title
+  };
 }
 export async function listPortalVaultSecrets(contactId) {
   if (!(await hasClientVaultSecretsTable())) return [];
@@ -193,6 +239,7 @@ export async function listPortalVaultSecrets(contactId) {
      FROM v_b_client_vault_secrets
      WHERE contact_id = $1
        AND status = 'active'
+       AND archived_at IS NULL
        AND deletion_requested_at IS NULL
        AND expires_at > NOW()
        AND view_count < max_views
@@ -208,6 +255,7 @@ export async function countPortalVaultSecrets(contactId) {
      FROM v_b_client_vault_secrets
      WHERE contact_id = $1
        AND status = 'active'
+       AND archived_at IS NULL
        AND deletion_requested_at IS NULL
        AND expires_at > NOW()
        AND view_count < max_views`, [Number(contactId)]);
@@ -233,6 +281,11 @@ export async function revealPortalVaultSecret(contactId, secretId) {
     if (!row) {
       const err = new Error("Access not found.");
       err.code = "NOT_FOUND";
+      throw err;
+    }
+    if (row.archived_at) {
+      const err = new Error("This access is no longer available.");
+      err.code = "ARCHIVED";
       throw err;
     }
     const availability = resolveVaultSecretAvailability(row);
@@ -279,7 +332,7 @@ export async function requestPortalVaultSecretRevocation(contactId, secretId, po
          revoked_at = NOW(),
          revoked_by = $3,
          updated_at = NOW()
-     WHERE id = $1 AND contact_id = $2 AND status = 'active'
+     WHERE id = $1 AND contact_id = $2 AND status = 'active' AND archived_at IS NULL
      RETURNING id, title`, [secretId, Number(contactId), portalUserId || null]);
   if (!rows.length) throw new Error("Access not found or already deleted.");
   return {

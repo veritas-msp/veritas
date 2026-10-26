@@ -49,7 +49,6 @@ export default function TeamFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.generalTitle}</h3>
-              <p className={layout.sectionDesc}>{modalCopy.generalDesc}</p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={`${layout.field} ${layout.fieldFull}`}>

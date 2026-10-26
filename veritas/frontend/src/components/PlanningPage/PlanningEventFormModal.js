@@ -1,11 +1,42 @@
-import { useState, useEffect, useLayoutEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { UiKitButton, UiKitModalNavSectionButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import eventStyles from "./PlanningEventFormModal.module.css";
+import pickerStyles from "../EquipementPage/EquipmentAddFlowModal.module.css";
+import EquipmentHoverIcon, { PLANNING_EVENT_TYPE_ANIMATED } from "../EquipementPage/EquipmentHoverIcon";
 import NumberStepperInput from "../Misc/NumberStepperInput/NumberStepperInput";
 import { getLinkedItemIcon } from "./planningEventFormConfig";
+
+function PlanningEventTypeTile({ type, selected, onSelect }) {
+  const animRef = useRef(null);
+  const Animated = PLANNING_EVENT_TYPE_ANIMATED[type.value] || null;
+  return (
+    <button
+      type="button"
+      role="option"
+      className={`${pickerStyles.categoryTile} ${selected ? pickerStyles.categoryTileActive : ""}`}
+      onClick={() => onSelect(type.value)}
+      onMouseEnter={() => animRef.current?.startAnimation?.()}
+      onMouseLeave={() => animRef.current?.stopAnimation?.()}
+      aria-pressed={selected}
+      aria-selected={selected}
+    >
+      {selected ? <Icon icon="mdi:check-circle" className={pickerStyles.categoryCheck} aria-hidden /> : null}
+      <span className={pickerStyles.categoryIconWrap} aria-hidden>
+        <EquipmentHoverIcon
+          Animated={Animated}
+          iconify={type.icon || "mdi:calendar-blank"}
+          size={20}
+          className={pickerStyles.categoryIcon}
+          animRef={animRef}
+        />
+      </span>
+      <span className={pickerStyles.categoryLabel}>{type.label}</span>
+    </button>
+  );
+}
 
 function useFixedDropdownPosition(isOpen, anchorRef, offset = 6) {
   const [style, setStyle] = useState(null);
@@ -200,7 +231,6 @@ export default function PlanningEventFormModal({
     return (
       <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
         <h3 className={layout.sectionTitle}>{section.label}</h3>
-        <p className={layout.sectionDesc}>{section.description}</p>
       </div>
     );
   };
@@ -218,18 +248,18 @@ export default function PlanningEventFormModal({
           <div className={layout.fieldStack}>
             <div className={`${layout.field} ${layout.fieldFull}`}>
               <span className={layout.label}>{copy.fields.eventType}</span>
-              <div className={eventStyles.typeGrid}>
+              <div
+                className={`${pickerStyles.categoryGrid} ${pickerStyles.computerTypeGrid} ${eventStyles.eventTypeGrid}`}
+                role="listbox"
+                aria-label={copy.fields.eventType}
+              >
                 {visiblePlanningTypes.map(type => (
-                  <button
+                  <PlanningEventTypeTile
                     key={type.value}
-                    type="button"
-                    className={`${eventStyles.typeBtn} ${eventForm.type === type.value ? eventStyles.typeBtnActive : ""}`}
-                    onClick={() => onInputChange("type", type.value)}
-                    aria-pressed={eventForm.type === type.value}
-                  >
-                    <Icon icon={type.icon} className={eventStyles.typeBtnIcon} aria-hidden />
-                    <span className={eventStyles.typeBtnLabel}>{type.label}</span>
-                  </button>
+                    type={type}
+                    selected={eventForm.type === type.value}
+                    onSelect={value => onInputChange("type", value)}
+                  />
                 ))}
               </div>
             </div>
@@ -327,6 +357,27 @@ export default function PlanningEventFormModal({
               ) : null}
             </div>
 
+            <div className={eventStyles.switchRow}>
+              <span className={eventStyles.switchLabel}>{copy.fields.allDayLabel}</span>
+              <label className={eventStyles.switchControl}>
+                <input type="checkbox" checked={!!eventForm.allDay} onChange={e => handleAllDayChange(e.target.checked)} />
+                <span className={eventStyles.switchSlider} />
+              </label>
+            </div>
+            {eventForm.allDay ? (
+              <div className={eventStyles.switchRow}>
+                <span className={eventStyles.switchLabel}>{copy.fields.businessDaysOnly}</span>
+                <label className={eventStyles.switchControl}>
+                  <input
+                    type="checkbox"
+                    checked={!!eventForm.businessDaysOnly}
+                    onChange={e => onInputChange("businessDaysOnly", e.target.checked)}
+                  />
+                  <span className={eventStyles.switchSlider} />
+                </label>
+              </div>
+            ) : null}
+
             <div className={layout.fieldGrid2}>
               <div className={layout.field}>
                 <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="planning-event-start-date">
@@ -417,27 +468,6 @@ export default function PlanningEventFormModal({
                 </div>
               )}
             </div>
-
-            <div className={eventStyles.switchRow}>
-              <span className={eventStyles.switchLabel}>{copy.fields.allDayLabel}</span>
-              <label className={eventStyles.switchControl}>
-                <input type="checkbox" checked={!!eventForm.allDay} onChange={e => handleAllDayChange(e.target.checked)} />
-                <span className={eventStyles.switchSlider} />
-              </label>
-            </div>
-            {eventForm.allDay ? (
-              <div className={eventStyles.switchRow}>
-                <span className={eventStyles.switchLabel}>{copy.fields.businessDaysOnly}</span>
-                <label className={eventStyles.switchControl}>
-                  <input
-                    type="checkbox"
-                    checked={!!eventForm.businessDaysOnly}
-                    onChange={e => onInputChange("businessDaysOnly", e.target.checked)}
-                  />
-                  <span className={eventStyles.switchSlider} />
-                </label>
-              </div>
-            ) : null}
           </div>
         );
       case "objects":

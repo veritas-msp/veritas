@@ -407,14 +407,21 @@
   text-transform: none;
   letter-spacing: 0.02em;
   color: var(--msp-muted, #5c6b82);
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
   background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .table tbody td {
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
   vertical-align: middle;
   color: var(--msp-text, #0f1c2e);

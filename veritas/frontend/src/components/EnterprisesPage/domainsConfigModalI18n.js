@@ -94,7 +94,10 @@ const DOMAINS_MODAL_COPY = {
       removeTitle: "Retirer",
       editTitle: "Éditer",
       editAria: "Éditer {label}",
-      addHostBtn: "Ajouter un domaine"
+      addHostBtn: "Ajouter un domaine",
+      syncBtn: "Synchroniser les domaines OVH",
+      syncBusy: "Synchronisation…",
+      syncEmpty: "Aucun domaine OVH à synchroniser"
     },
     manual: {
       title: "Ajout manuel",
@@ -180,7 +183,9 @@ const DOMAINS_MODAL_COPY = {
       deleteError: "Erreur lors de la suppression.",
       domainNotFound: "Domaine introuvable.",
       domainNameRequired: "Indiquez un nom de domaine.",
-      domainDuplicate: "Ce nom de domaine est déjà enregistré pour ce client."
+      domainDuplicate: "Ce nom de domaine est déjà enregistré pour ce client.",
+      synced: "Noms de domaine synchronisés.",
+      syncError: "Échec de la synchronisation des domaines."
     }
   },
   en: {
@@ -276,7 +281,10 @@ const DOMAINS_MODAL_COPY = {
       removeTitle: "Remove",
       editTitle: "Edit",
       editAria: "Edit {label}",
-      addHostBtn: "Add a domain"
+      addHostBtn: "Add a domain",
+      syncBtn: "Sync OVH domains",
+      syncBusy: "Syncing…",
+      syncEmpty: "No OVH domains to sync"
     },
     manual: {
       title: "Manual entry",
@@ -360,7 +368,9 @@ const DOMAINS_MODAL_COPY = {
       removed: "Domain removed.",
       manualSaved: "Domain name saved.",
       deleteError: "Error while deleting.",
-      domainNotFound: "Domain not found."
+      domainNotFound: "Domain not found.",
+      synced: "Domain names synchronized.",
+      syncError: "Domain synchronization failed."
     }
   },
   de: {

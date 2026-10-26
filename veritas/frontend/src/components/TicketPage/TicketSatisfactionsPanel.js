@@ -132,6 +132,8 @@ export default function TicketSatisfiedPanel({
   return <>
       <UiKitCrmListToolbar
         className={styles.toolbarGrow}
+        searchVariant="embedded"
+        disableTooltips
         leading={leadingToolbarContent}
         searchValue={search}
         onSearchChange={setSearch}
@@ -174,6 +176,8 @@ export default function TicketSatisfiedPanel({
           <div className={styles.tablePanel}>
             <UiKitTable
               fill
+              fadeTop
+              fadeTopInset="2.85rem"
               className={tableKit.tableListFill}
               deps={[items.length, pageSize, search, sentiment, sortBy, sortDirection]}
             >
@@ -245,7 +249,7 @@ export default function TicketSatisfiedPanel({
                             {satisfactionCriteria.map(({
                         key,
                         label
-                      }) => <span key={key} title={label}>
+                      }) => <span key={key} aria-label={label}>
                                 {label.split(" ")[0]} {ratings?.[key] ?? "-"}/5
                               </span>)}
                           </div>

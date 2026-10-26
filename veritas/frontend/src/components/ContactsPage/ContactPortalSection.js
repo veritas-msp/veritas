@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { createContactPortal, resendContactPortalInvite, setContactPortalActive, setContactPortalRole, setContactPortalEmail, resetContactPortalPassword, deleteContactPortal, impersonateContactPortal, stopPortalImpersonation, getPortalStatusFromContact, fetchClientPortalUsage } from "../../api/contactPortal";
+import {
+  createContactPortal,
+  resendContactPortalInvite,
+  setContactPortalActive,
+  setContactPortalEmail,
+  resetContactPortalPassword,
+  deleteContactPortal,
+  impersonateContactPortal,
+  stopPortalImpersonation,
+  getPortalStatusFromContact,
+  fetchClientPortalUsage,
+  fetchContactPortalLogins
+} from "../../api/contactPortal";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getCommunityClientPortalLimit } from "../../config/edition";
@@ -11,7 +23,63 @@ import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ContactPortalPasswordModal from "./ContactPortalPasswordModal";
 import ContactPortalRevokeModal from "./ContactPortalRevokeModal";
 import PortalImpersonationOverlay from "./PortalImpersonationOverlay";
+import { UiKitEmptyState } from "../UiKit";
+import EquipmentHoverIcon, { QUICK_ACTION_ANIMATED } from "../EquipementPage/EquipmentHoverIcon";
+import detailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import s from "./ContactPortalSection.module.css";
+
+function PortalQuickActionTile({
+  actionId,
+  iconify,
+  label,
+  title,
+  onClick,
+  disabled = false,
+  primary = false,
+  danger = false,
+  index = 0
+}) {
+  const animRef = useRef(null);
+  const Animated = QUICK_ACTION_ANIMATED[actionId] || null;
+  const tooltip = title || label;
+
+  return (
+    <button
+      type="button"
+      className={[
+        s.quickActionTile,
+        primary ? s.quickActionTilePrimary : "",
+        danger ? s.quickActionTileDanger : ""
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={{ animationDelay: `${Math.min(index, 8) * 28}ms` }}
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={tooltip}
+      title={tooltip}
+      onMouseEnter={() => !disabled && animRef.current?.startAnimation?.()}
+      onMouseLeave={() => animRef.current?.stopAnimation?.()}
+    >
+      <span className={s.quickActionIconWrap} aria-hidden>
+        <EquipmentHoverIcon
+          Animated={Animated}
+          iconify={iconify}
+          size={22}
+          className={s.quickActionIcon}
+          animRef={animRef}
+        />
+      </span>
+      <span className={s.quickActionLabel}>{label}</span>
+    </button>
+  );
+}
+
+function portalLoginStatusClass(status) {
+  if (status === "success") return s.loginStatusSuccess;
+  if (status === "blocked" || status === "pending_activation") return s.loginStatusWarn;
+  return s.loginStatusDanger;
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -34,10 +102,6 @@ function listContactEmails(contact) {
   return out;
 }
 
-function normalizePortalRole(value) {
-  return String(value || "").toLowerCase() === "supervisor" ? "supervisor" : "user";
-}
-
 function PortalEmailPicker({
   value,
   options,
@@ -50,13 +114,8 @@ function PortalEmailPicker({
   if (!options.length) return null;
   const showSelect = options.length > 1 && !readOnly;
   return (
-    <div className={s.emailPicker}>
-      <div className={s.emailPickerText}>
-        <span className={s.emailPickerTitle}>{copy.loginEmailLabel}</span>
-        {showSelect ? (
-          <span className={s.emailPickerHint}>{copy.loginEmailHint}</span>
-        ) : null}
-      </div>
+    <div className={s.metaItem}>
+      <span className={s.metaLabel}>{copy.loginEmailLabel}</span>
       {showSelect ? (
         <select
           className={s.emailSelect}
@@ -75,57 +134,27 @@ function PortalEmailPicker({
           })}
         </select>
       ) : (
-        <span className={s.emailPickerValue}>{value || options[0]}</span>
+        <span className={s.metaValue}>{value || options[0]}</span>
       )}
+      {showSelect ? <span className={s.metaHint}>{copy.loginEmailHint}</span> : null}
     </div>
   );
 }
-function PortalRolePicker({
-  value,
-  onChange,
-  disabled,
-  copy,
-  compact = false,
-  stacked = false
-}) {
-  const role = normalizePortalRole(value);
-  return <div className={`${s.roleRow} ${stacked ? s.roleRowStacked : ""} ${compact ? s.roleRowCompact : ""}`.trim()}>
-      <div className={s.roleText}>
-        <span className={s.roleTitle}>{copy.roleTitle}</span>
-        <span className={s.roleHint}>
-          {role === "supervisor" ? copy.roleSupervisorHint : copy.roleUserHint}
-        </span>
-      </div>
-      <div className={s.roleSeg} role="radiogroup" aria-label={copy.roleAria}>
-        <button type="button" role="radio" aria-checked={role === "user"} className={`${s.roleBtn} ${role === "user" ? s.roleBtnActive : ""}`.trim()} disabled={disabled} onClick={() => onChange("user")} title={copy.roleUserHint}>
-          {copy.roleUser}
-        </button>
-        <button type="button" role="radio" aria-checked={role === "supervisor"} className={`${s.roleBtn} ${role === "supervisor" ? s.roleBtnActive : ""}`.trim()} disabled={disabled} onClick={() => onChange("supervisor")} title={copy.roleSupervisorHint}>
-          {copy.roleSupervisor}
-        </button>
-      </div>
-    </div>;
-}
+
 export default function ContactPortalSection({
   contact,
   onUpdated,
   canManage = true
 }) {
   const locale = useAppLocale();
-  const {
-    formatDateTime
-  } = useAppFormatters();
+  const { formatDateTime } = useAppFormatters();
   const portalCopy = useMemo(() => getContactDetailCopy(locale).portal, [locale]);
   const toastCopy = portalCopy.toast;
-  const {
-    isCommunity,
-    limits
-  } = useVeritasEdition();
+  const { isCommunity, limits } = useVeritasEdition();
   const maxPortalUsers = isCommunity ? getCommunityClientPortalLimit(limits) : null;
   const [busy, setBusy] = useState(false);
   const [passwordModal, setPasswordModal] = useState(null);
   const [showRevoke, setShowRevoke] = useState(false);
-  const [createPortalRole, setCreatePortalRole] = useState("user");
   const [selectedPortalEmail, setSelectedPortalEmail] = useState("");
   const [portalUsage, setPortalUsage] = useState({
     active: 0,
@@ -162,9 +191,6 @@ export default function ContactPortalSection({
     loadPortalUsage();
   }, [loadPortalUsage]);
   useEffect(() => {
-    setCreatePortalRole(normalizePortalRole(contact?.portal_role));
-  }, [contact?.id, contact?.portal_role]);
-  useEffect(() => {
     const preferred =
       String(contact?.portal_email || "").trim() ||
       primaryEmail ||
@@ -177,13 +203,43 @@ export default function ContactPortalSection({
       return preferred;
     });
   }, [contact?.id, contact?.portal_email, primaryEmail, contactEmails]);
+
+  const [loginEvents, setLoginEvents] = useState([]);
+  const [loginEventsLoading, setLoginEventsLoading] = useState(false);
+  const loginHistoryCopy = portalCopy.loginHistory || {};
+  const loadLoginEvents = useCallback(async signal => {
+    if (!contact?.id || !contact?.portal_user_id) {
+      setLoginEvents([]);
+      setLoginEventsLoading(false);
+      return;
+    }
+    setLoginEventsLoading(true);
+    try {
+      const data = await fetchContactPortalLogins(contact.id, { limit: 50, signal });
+      if (signal?.aborted) return;
+      setLoginEvents(Array.isArray(data?.events) ? data.events : []);
+    } catch (err) {
+      if (signal?.aborted || err?.name === "AbortError") return;
+      setLoginEvents([]);
+    } finally {
+      if (!signal?.aborted) setLoginEventsLoading(false);
+    }
+  }, [contact?.id, contact?.portal_user_id]);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadLoginEvents(controller.signal);
+    return () => controller.abort();
+  }, [loadLoginEvents]);
+
   if (!contact?.id) return null;
   const activePortalCount = portalUsage.active;
   const portalAtLimit = maxPortalUsers != null && activePortalCount >= maxPortalUsers;
   const warnPortalLimit = () => {
-    toast.warn(interpolate(portalCopy.limitWarn, {
-      max: String(maxPortalUsers)
-    }));
+    toast.warn(
+      interpolate(portalCopy.limitWarn, {
+        max: String(maxPortalUsers)
+      })
+    );
   };
   const status = getPortalStatusFromContact(contact);
   const hasPortal = status !== "none";
@@ -194,6 +250,14 @@ export default function ContactPortalSection({
   const refresh = () => {
     onUpdated?.();
     loadPortalUsage();
+    loadLoginEvents();
+  };
+
+  const statusLabelForLogin = statusKey =>
+    loginHistoryCopy.status?.[statusKey] || statusKey || "—";
+  const reasonLabelForLogin = reasonKey => {
+    if (!reasonKey) return null;
+    return loginHistoryCopy.reasons?.[reasonKey] || null;
   };
   const handleToggle = async next => {
     if (next && portalAtLimit && !contact.portal_active) {
@@ -214,7 +278,7 @@ export default function ContactPortalSection({
   const handleCreateAccess = async () => {
     setBusy(true);
     try {
-      await createContactPortal(contact.id, createPortalRole, selectedPortalEmail || null);
+      await createContactPortal(contact.id, "user", selectedPortalEmail || null);
       toast.success(toastCopy.created);
       refresh();
     } catch (e) {
@@ -249,20 +313,6 @@ export default function ContactPortalSection({
       refresh();
     } catch (e) {
       toast.error(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const handleRoleChange = async next => {
-    const role = normalizePortalRole(next);
-    if (role === normalizePortalRole(contact.portal_role)) return;
-    setBusy(true);
-    try {
-      await setContactPortalRole(contact.id, role);
-      toast.success(toastCopy.roleUpdated);
-      refresh();
-    } catch (e) {
-      toast.error(e.message || toastCopy.roleError);
     } finally {
       setBusy(false);
     }
@@ -310,13 +360,14 @@ export default function ContactPortalSection({
   };
   const handleImpersonate = async () => {
     if (!contact.portal_active || contactInactive || impersonationOverlay) return;
-    const label = [contact.prenom, contact.nom].filter(Boolean).join(" ").trim() || loginEmail || portalCopy.contactFallback;
+    const label =
+      [contact.prenom, contact.nom].filter(Boolean).join(" ").trim() ||
+      loginEmail ||
+      portalCopy.contactFallback;
     const controller = new AbortController();
     impersonationAbortRef.current = controller;
     impersonationStartedRef.current = false;
-    setImpersonationOverlay({
-      label
-    });
+    setImpersonationOverlay({ label });
     setBusy(true);
     try {
       await impersonateContactPortal(contact.id, {
@@ -330,9 +381,12 @@ export default function ContactPortalSection({
       }
       impersonationStartedRef.current = true;
       try {
-        sessionStorage.setItem("veritas_impersonation_return", JSON.stringify({
-          contactId: contact.id
-        }));
+        sessionStorage.setItem(
+          "veritas_impersonation_return",
+          JSON.stringify({
+            contactId: contact.id
+          })
+        );
       } catch {}
       window.location.href = "/client";
     } catch (e) {
@@ -343,175 +397,317 @@ export default function ContactPortalSection({
   };
   const statusBadge = () => {
     if (status === "pending") {
-      return <span className={`${s.badge} ${s.badgePending || s.badgeInactive}`}>
+      return (
+        <span className={`${s.badge} ${s.badgePending || s.badgeInactive}`}>
           <Icon icon="mdi:email-fast-outline" aria-hidden />
           {portalCopy.statusPending || "Invitation en attente"}
-        </span>;
+        </span>
+      );
     }
     if (status === "active") {
-      return <span className={`${s.badge} ${s.badgeActive}`}>
+      return (
+        <span className={`${s.badge} ${s.badgeActive}`}>
           <Icon icon="mdi:check-circle" aria-hidden />
           {portalCopy.statusActive}
-        </span>;
+        </span>
+      );
     }
     if (status === "inactive") {
-      return <span className={`${s.badge} ${s.badgeInactive}`}>
+      return (
+        <span className={`${s.badge} ${s.badgeInactive}`}>
           <Icon icon="mdi:pause-circle" aria-hidden />
           {portalCopy.statusInactive}
-        </span>;
+        </span>
+      );
     }
-    return <span className={`${s.badge} ${s.badgeNone}`}>
+    return (
+      <span className={`${s.badge} ${s.badgeNone}`}>
         <Icon icon="mdi:account-off-outline" aria-hidden />
         {portalCopy.statusNone}
-      </span>;
+      </span>
+    );
   };
-  return <section className={s.portalSection}>
-      {hasPortal ? <>
-          <div className={s.portalHero}>
-            <div className={s.portalHeroIcon} aria-hidden>
-              <Icon icon="mdi:monitor-dashboard" />
-            </div>
-            <div className={s.portalHeroBody}>
-              <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
-              {loginEmail ? <p className={s.portalHeroMeta}>{loginEmail}</p> : null}
-            </div>
-            <div className={s.heroRight}>
-              {statusBadge()}
-              {canManage ? <label className={s.switch} title={contact.portal_active ? portalCopy.toggleActive : portalCopy.toggleInactive}>
-                  <input type="checkbox" checked={Boolean(contact.portal_active)} disabled={busy || contactInactive || !contact.portal_active && portalAtLimit} onChange={e => handleToggle(e.target.checked)} aria-label={portalCopy.toggleAria} />
-                  <span className={s.switchTrack} />
-                </label> : null}
-            </div>
+  const activationSwitch =
+    canManage && hasPortal ? (
+      <label
+        className={s.switch}
+        title={contact.portal_active ? portalCopy.toggleActive : portalCopy.toggleInactive}
+      >
+        <input
+          type="checkbox"
+          checked={Boolean(contact.portal_active)}
+          disabled={busy || contactInactive || (!contact.portal_active && portalAtLimit)}
+          onChange={e => handleToggle(e.target.checked)}
+          aria-label={portalCopy.toggleAria}
+        />
+        <span className={s.switchTrack} />
+      </label>
+    ) : null;
+
+  const usageBlock =
+    maxPortalUsers != null ? (
+      <p className={s.usageHint}>
+        {interpolate(portalCopy.usageHint, {
+          active: String(activePortalCount),
+          max: String(maxPortalUsers)
+        })}
+        {portalAtLimit ? (
+          <>
+            {" "}
+            {portalCopy.limitReached} <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
+          </>
+        ) : null}
+      </p>
+    ) : null;
+
+  const inactiveAlert = contactInactive ? (
+    <div className={`${s.alert} ${s.alertWarning}`} role="status">
+      <Icon icon="mdi:alert-outline" className={s.alertIcon} aria-hidden />
+      <span>{portalCopy.alertInactive}</span>
+    </div>
+  ) : null;
+
+  const quickActionItems = [];
+  if (canManage && (status === "pending" || contact.portal_pending)) {
+    quickActionItems.push({
+      actionId: "portalInvite",
+      iconify: "mdi:email-fast-outline",
+      label: portalCopy.sendInvite,
+      title: portalCopy.resendInvite || portalCopy.sendInvite,
+      onClick: handleSendInvite,
+      primary: true
+    });
+  }
+  if (canManage) {
+    quickActionItems.push({
+      actionId: "portalReset",
+      iconify: "mdi:key-outline",
+      label: portalCopy.resetPassword,
+      onClick: () => setPasswordModal("reset")
+    });
+  }
+  if (contact.portal_active && !contactInactive) {
+    quickActionItems.push({
+      actionId: "portalImpersonate",
+      iconify: "mdi:incognito",
+      label: portalCopy.impersonate,
+      title: portalCopy.impersonateTitle || portalCopy.impersonate,
+      onClick: handleImpersonate
+    });
+  }
+  if (canManage) {
+    quickActionItems.push({
+      actionId: "portalRevoke",
+      iconify: "mdi:link-off",
+      label: portalCopy.revoke,
+      onClick: () => setShowRevoke(true),
+      danger: true
+    });
+  }
+
+  const quickActions =
+    canManage || (contact.portal_active && !contactInactive) ? (
+      quickActionItems.length ? (
+        <div
+          className={s.quickActionsGrid}
+          role="group"
+          aria-label={portalCopy.quickActionsAria || "Actions rapides"}
+        >
+          {quickActionItems.map((item, index) => (
+            <PortalQuickActionTile
+              key={item.actionId}
+              {...item}
+              index={index}
+              disabled={busy}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className={s.inviteDesc}>{portalCopy.noActionsHint || portalCopy.roleUserHint}</p>
+      )
+    ) : (
+      <p className={s.inviteDesc}>{portalCopy.noActionsHint || portalCopy.roleUserHint}</p>
+    );
+
+  const loginHistoryBlock = (
+    <div className={s.loginHistory}>
+      <div className={s.loginHistoryHeader}>
+        <div className={s.loginHistoryTitles}>
+          <h3 className={s.loginHistoryTitle}>
+            {loginHistoryCopy.title || "Activité de connexion"}
+          </h3>
+          <p className={s.loginHistoryHint}>
+            {loginHistoryCopy.hint || "Suivi des tentatives de connexion au portail client"}
+          </p>
+        </div>
+      </div>
+      <div className={s.loginHistoryBody}>
+        {loginEventsLoading ? (
+          <div className={s.loginHistoryLoading}>
+            <Icon icon="mdi:loading" className={s.spinning} aria-hidden />
+            {loginHistoryCopy.loading || "Chargement…"}
           </div>
+        ) : loginEvents.length === 0 ? (
+          <div className={detailStyles.activityEmptyState}>
+            <UiKitEmptyState
+              icon="mdi:shield-key-outline"
+              title={loginHistoryCopy.empty || "Aucune tentative de connexion pour le moment."}
+              bare
+            />
+          </div>
+        ) : (
+          <div className={detailStyles.dataTableWrapper}>
+            <table className={detailStyles.dataTable}>
+              <thead>
+                <tr>
+                  <th>{loginHistoryCopy.columns?.date || "Date"}</th>
+                  <th>{loginHistoryCopy.columns?.status || "Statut"}</th>
+                  <th>{loginHistoryCopy.columns?.locality || "Localité"}</th>
+                  <th>{loginHistoryCopy.columns?.ip || "Adresse IP"}</th>
+                  <th>{loginHistoryCopy.columns?.device || "Appareil"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loginEvents.map(event => {
+                  const reason = reasonLabelForLogin(event.failure_reason);
+                  return (
+                    <tr key={event.id}>
+                      <td>{event.created_at ? formatDateTime(event.created_at) : "—"}</td>
+                      <td>
+                        <span className={`${s.loginStatusBadge} ${portalLoginStatusClass(event.status)}`.trim()}>
+                          {statusLabelForLogin(event.status)}
+                        </span>
+                        {reason ? <span className={s.loginStatusReason}>{reason}</span> : null}
+                      </td>
+                      <td>{event.locality || loginHistoryCopy.unknownLocality || "Inconnue"}</td>
+                      <td className={s.loginMono}>{event.ip || "—"}</td>
+                      <td>{event.device_label || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
-          {maxPortalUsers != null && <p className={s.usageHint}>
-              {interpolate(portalCopy.usageHint, {
-            active: String(activePortalCount),
-            max: String(maxPortalUsers)
-          })}
-              {portalAtLimit ? <>
-                  {" "}
-                  {portalCopy.limitReached} <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
-                </> : null}
-            </p>}
+  return (
+    <section className={s.portalSection}>
+      {hasPortal ? (
+        <div className={s.portalLayout}>
+          <aside className={s.portalAside}>
+            {usageBlock}
+            {inactiveAlert}
 
-          {contactInactive && <div className={`${s.alert} ${s.alertWarning}`} role="status">
-              <Icon icon="mdi:alert-outline" className={s.alertIcon} aria-hidden />
-              <span>{portalCopy.alertInactive}</span>
-            </div>}
-
-          <div className={s.portalGrid}>
-            <div className={s.portalCard}>
-              <div className={s.metaList}>
-                <PortalEmailPicker
-                  value={selectedPortalEmail || loginEmail}
-                  options={contactEmails}
-                  primaryEmail={primaryEmail}
-                  onChange={handlePortalEmailChange}
-                  disabled={busy || !canManage}
-                  copy={portalCopy}
-                  readOnly={!canManage}
-                />
-                <div className={s.metaItem}>
-                  <span className={s.metaLabel}>{portalCopy.lastLoginLabel}</span>
-                  <span className={s.metaValue}>{lastLogin || portalCopy.never}</span>
+            <div className={s.metaList}>
+              <div className={s.metaItem}>
+                <span className={s.metaLabel}>{portalCopy.statusLabel || "Statut"}</span>
+                <div className={s.statusControls}>
+                  {statusBadge()}
+                  {activationSwitch}
                 </div>
               </div>
-              <PortalRolePicker value={contact.portal_role} onChange={handleRoleChange} disabled={busy || !canManage} copy={portalCopy} compact />
-            </div>
-
-            {(canManage || contact.portal_active && !contactInactive) ? <div className={s.portalCard}>
-                <div className={s.actions}>
-                  {canManage && (status === "pending" || contact.portal_pending) ? <button type="button" className={`${s.actionBtn} ${s.actionBtnInvite || ""}`.trim()} onClick={handleSendInvite} disabled={busy} title={portalCopy.resendInvite || portalCopy.sendInvite}>
-                      <Icon icon="mdi:email-fast-outline" aria-hidden />
-                      {portalCopy.sendInvite}
-                    </button> : null}
-                  {canManage ? <button type="button" className={s.actionBtn} onClick={() => setPasswordModal("reset")} disabled={busy}>
-                      <Icon icon="mdi:key-outline" aria-hidden />
-                      {portalCopy.resetPassword}
-                    </button> : null}
-                  {contact.portal_active && !contactInactive ? <button type="button" className={`${s.actionBtn} ${s.actionBtnImpersonate}`} onClick={handleImpersonate} disabled={busy} title={portalCopy.impersonateTitle}>
-                      <Icon icon="mdi:incognito" aria-hidden />
-                      {portalCopy.impersonate}
-                    </button> : null}
-                  {canManage ? <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} onClick={() => setShowRevoke(true)} disabled={busy}>
-                      <Icon icon="mdi:link-off" aria-hidden />
-                      {portalCopy.revoke}
-                    </button> : null}
-                </div>
-              </div> : <div className={s.portalCard}>
-                <p className={s.inviteDesc}>{portalCopy.noActionsHint || portalCopy.roleUserHint}</p>
-              </div>}
-          </div>
-        </> : <div className={s.setupCard}>
-          <div className={s.setupHeader}>
-            <div className={s.portalHeroIcon} aria-hidden>
-              <Icon icon="mdi:monitor-dashboard" />
-            </div>
-            <div className={s.portalHeroBody}>
-              <div className={s.setupTitleRow}>
-                <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
-                {statusBadge()}
-              </div>
-              <p className={s.setupDesc}>
-                {canCreate
-                  ? interpolate(portalCopy.emptyDesc, { email: loginEmail })
-                  : portalCopy.alertNeedEmail}
-              </p>
-            </div>
-          </div>
-
-          {maxPortalUsers != null && <p className={s.usageHint}>
-              {interpolate(portalCopy.usageHint, {
-            active: String(activePortalCount),
-            max: String(maxPortalUsers)
-          })}
-              {portalAtLimit ? <>
-                  {" "}
-                  {portalCopy.limitReached} <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
-                </> : null}
-            </p>}
-
-          {contactInactive && <div className={`${s.alert} ${s.alertWarning}`} role="status">
-              <Icon icon="mdi:alert-outline" className={s.alertIcon} aria-hidden />
-              <span>{portalCopy.alertInactive}</span>
-            </div>}
-
-          {canManage && canCreate ? <div className={s.setupFooter}>
               <PortalEmailPicker
-                value={selectedPortalEmail}
+                value={selectedPortalEmail || loginEmail}
                 options={contactEmails}
                 primaryEmail={primaryEmail}
-                onChange={setSelectedPortalEmail}
-                disabled={busy}
+                onChange={handlePortalEmailChange}
+                disabled={busy || !canManage}
                 copy={portalCopy}
+                readOnly={!canManage}
               />
-              <PortalRolePicker
-                value={createPortalRole}
-                onChange={setCreatePortalRole}
-                disabled={busy}
-                copy={portalCopy}
-                stacked
-              />
-              <button type="button" className={s.primaryBtn} onClick={() => {
-            if (portalAtLimit) {
-              warnPortalLimit();
-              return;
-            }
-            handleCreateAccess();
-          }} disabled={busy || contactInactive || portalAtLimit} title={portalAtLimit ? interpolate(portalCopy.limitTooltip, {
-            max: String(maxPortalUsers)
-          }) : undefined}>
-                <Icon icon="mdi:account-check-outline" aria-hidden />
-                {portalCopy.createAccess}
-              </button>
-            </div> : null}
-        </div>}
+              <div className={s.metaItem}>
+                <span className={s.metaLabel}>{portalCopy.lastLoginLabel}</span>
+                <span className={s.metaValue}>{lastLogin || portalCopy.never}</span>
+              </div>
+            </div>
 
-      <ContactPortalPasswordModal open={passwordModal === "reset"} mode="reset" contact={contact} saving={busy} onClose={() => setPasswordModal(null)} onSubmit={handleReset} />
+            <div className={s.quickActionsBlock}>
+              <span className={s.metaLabel}>{portalCopy.quickActionsLabel || "Actions rapides"}</span>
+              {quickActions}
+            </div>
+          </aside>
 
-      <ContactPortalRevokeModal open={showRevoke} contact={contact} saving={busy} onClose={() => setShowRevoke(false)} onConfirm={handleRevoke} />
+          <div className={s.portalMain}>{loginHistoryBlock}</div>
+        </div>
+      ) : (
+        <div className={s.portalTop}>
+          <div className={s.portalStack}>
+            <div className={s.metaItem}>
+              <span className={s.metaLabel}>{portalCopy.statusLabel || "Statut"}</span>
+              <div className={s.statusControls}>{statusBadge()}</div>
+            </div>
+            <p className={s.setupDesc}>
+              {canCreate
+                ? interpolate(portalCopy.emptyDesc, { email: loginEmail })
+                : portalCopy.alertNeedEmail}
+            </p>
 
-      <PortalImpersonationOverlay open={Boolean(impersonationOverlay)} contactLabel={impersonationOverlay?.label} onCancel={handleCancelImpersonation} />
-    </section>;
+            {usageBlock}
+            {inactiveAlert}
+
+            {canManage && canCreate ? (
+              <div className={s.setupFooter}>
+                <PortalEmailPicker
+                  value={selectedPortalEmail}
+                  options={contactEmails}
+                  primaryEmail={primaryEmail}
+                  onChange={setSelectedPortalEmail}
+                  disabled={busy}
+                  copy={portalCopy}
+                />
+                <button
+                  type="button"
+                  className={s.primaryBtn}
+                  onClick={() => {
+                    if (portalAtLimit) {
+                      warnPortalLimit();
+                      return;
+                    }
+                    handleCreateAccess();
+                  }}
+                  disabled={busy || contactInactive || portalAtLimit}
+                  title={
+                    portalAtLimit
+                      ? interpolate(portalCopy.limitTooltip, {
+                          max: String(maxPortalUsers)
+                        })
+                      : undefined
+                  }
+                >
+                  <Icon icon="mdi:account-check-outline" aria-hidden />
+                  {portalCopy.createAccess}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      <ContactPortalPasswordModal
+        open={passwordModal === "reset"}
+        mode="reset"
+        contact={contact}
+        saving={busy}
+        onClose={() => setPasswordModal(null)}
+        onSubmit={handleReset}
+      />
+
+      <ContactPortalRevokeModal
+        open={showRevoke}
+        contact={contact}
+        saving={busy}
+        onClose={() => setShowRevoke(false)}
+        onConfirm={handleRevoke}
+      />
+
+      <PortalImpersonationOverlay
+        open={Boolean(impersonationOverlay)}
+        contactLabel={impersonationOverlay?.label}
+        onCancel={handleCancelImpersonation}
+      />
+    </section>
+  );
 }

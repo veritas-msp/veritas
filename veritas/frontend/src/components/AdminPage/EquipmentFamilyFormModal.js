@@ -197,7 +197,6 @@ export default function EquipmentFamilyFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.identityTitle}</h3>
-              <p className={layout.sectionDesc}>{modalCopy.identityDesc}</p>
             </div>
             <div className={styles.formGrid}>
               <div className={styles.formField}>
@@ -241,11 +240,9 @@ export default function EquipmentFamilyFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.fieldsTitle}</h3>
-              <p className={layout.sectionDesc}>{isSystem ? modalCopy.systemFieldsDesc : modalCopy.fieldsDesc}</p>
             </div>
             {isSystem && builtinFields.length > 0 ? <>
                 <h4 className={styles.subTitle}>{modalCopy.builtinFieldsTitle}</h4>
-                <p className={layout.sectionDesc}>{modalCopy.builtinFieldsDesc}</p>
                 <div className={styles.fieldsList}>
                   <div className={styles.fieldRowHead} aria-hidden>
                     <span />
@@ -295,7 +292,6 @@ export default function EquipmentFamilyFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.mapTitle}</h3>
-              <p className={layout.sectionDesc}>{modalCopy.mapDesc}</p>
             </div>
             <div className={styles.mapIconField}>
               <label className={layout.label}>{adminCopy.icon}</label>

@@ -39,7 +39,7 @@ const ZapIcon = forwardRef(({ onMouseEnter, onMouseLeave, className, size = 28, 
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="2"
-        transition={{ type: "spring", stiffness: 280, damping: 16 }}
+        transition={{ duration: 0.45, ease: "easeInOut" }}
         variants={{
           normal: { rotate: 0, scale: 1 },
           animate: { rotate: [0, -12, 8, 0], scale: [1, 1.12, 1] },

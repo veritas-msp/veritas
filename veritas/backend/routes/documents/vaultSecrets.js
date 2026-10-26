@@ -1,7 +1,7 @@
 import express from "express";
 import verifyJWT from "../../middleware/auth.js";
 import { requireAnyPermission } from "../../middleware/permissions.js";
-import { createAgentVaultSecret, listAgentVaultSecrets, revokeAgentVaultSecret } from "../../services/clientVaultSecretService.js";
+import { archiveAgentVaultSecret, createAgentVaultSecret, deleteArchivedAgentVaultSecret, listAgentVaultSecrets, revokeAgentVaultSecret } from "../../services/clientVaultSecretService.js";
 import { notifyVaultAccessShared } from "../../services/systemNotificationService.js";
 const router = express.Router();
 function requireAgent(req, res, next) {
@@ -72,6 +72,30 @@ router.post("/:id/revoke", requireAnyPermission("vault.manage", "clients_detail.
     const status = err.message?.includes("not found") ? 404 : 400;
     res.status(status).json({
       error: err.message || "Unable to revoke access."
+    });
+  }
+});
+router.post("/:id/archive", requireAnyPermission("vault.manage", "clients_detail.vault"), async (req, res) => {
+  try {
+    const secret = await archiveAgentVaultSecret(req.params.id, req.user);
+    res.json(secret);
+  } catch (err) {
+    console.error("[POST /vault-secrets/:id/archive]", err.message);
+    const status = err.message?.includes("not found") ? 404 : 400;
+    res.status(status).json({
+      error: err.message || "Unable to archive access."
+    });
+  }
+});
+router.delete("/:id", requireAnyPermission("vault.manage", "clients_detail.vault"), async (req, res) => {
+  try {
+    const result = await deleteArchivedAgentVaultSecret(req.params.id);
+    res.json(result);
+  } catch (err) {
+    console.error("[DELETE /vault-secrets/:id]", err.message);
+    const status = err.message?.includes("not found") ? 404 : 400;
+    res.status(status).json({
+      error: err.message || "Unable to delete archived access."
     });
   }
 });

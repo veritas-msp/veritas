@@ -1,21 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
-import { deleteClientOffice365Credentials, getClientOffice365Credentials, getClientSecretExpiration, saveClientOffice365Credentials, testClientOffice365Connection, testOffice365ConnectionWithCredentials, unwrapOffice365CredentialsList } from "../../api/clientOffice365";
+import {
+  deleteClientOffice365Credentials,
+  getClientOffice365Credentials,
+  getClientSecretExpiration,
+  saveClientOffice365Credentials,
+  testClientOffice365Connection,
+  testOffice365ConnectionWithCredentials,
+  unwrapOffice365CredentialsList
+} from "../../api/clientOffice365";
+import { UiKitButton, uiKitLayoutsStyles as kit } from "../UiKit";
 import { showError, showSuccess } from "../../utils/toast";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
-import { buildMicrosoftTenantNavSections } from "./microsoftTenantFormConfig";
+import { GRAPH_API_PERMISSIONS } from "./microsoftTenantFormConfig";
 import { formatMicrosoftTenantSummary, normalizeMicrosoftTenantCredentials } from "./microsoftTenantSolutionUtils";
 import formStyles from "./EnterpriseFormModal.module.css";
 import avStyles from "./AntivirusConfigModal.module.css";
 import msStyles from "./MicrosoftTenantConfigModal.module.css";
-import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
-import EntraApiGuide from "./integrationGuides/EntraApiGuide";
+
 const STORED_SECRET_MASK = "••••••••••••••••";
 const EMPTY_FORM = {
   tenantId: "",
@@ -23,19 +30,20 @@ const EMPTY_FORM = {
   clientSecret: "",
   secretKeyId: ""
 };
+
 export default function MicrosoftTenantConfigModal({
   client,
   onClose,
   onSaved,
   onViewTenant,
-  initialSection = "overview",
   initialEditingTenant = null
 }) {
   const locale = useAppLocale();
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const common = useCommonCopy();
-  const [activeSection, setActiveSection] = useState(initialSection);
-  const [loading, setLoading] = useState(() => Boolean(initialEditingTenant?.id || initialEditingTenant?.tenantId));
+  const [loading, setLoading] = useState(() =>
+    Boolean(initialEditingTenant?.id || initialEditingTenant?.tenantId)
+  );
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -47,15 +55,14 @@ export default function MicrosoftTenantConfigModal({
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [applicationDisplayName, setApplicationDisplayName] = useState(null);
   const [editingCredentialId, setEditingCredentialId] = useState(initialEditingTenant?.id || null);
-  const configured = useMemo(() => Boolean(existingCredentials?.tenantId && existingCredentials?.clientIdAzure), [existingCredentials]);
-  const navSections = useMemo(() => buildMicrosoftTenantNavSections({
-    configured
-  }), [configured]);
+
+  const configured = useMemo(
+    () => Boolean(existingCredentials?.tenantId && existingCredentials?.clientIdAzure),
+    [existingCredentials]
+  );
   const summary = useMemo(() => formatMicrosoftTenantSummary(credentials, client), [credentials, client]);
-  const sectionBadges = useMemo(() => ({
-    overview: configured,
-    configuration: configured
-  }), [configured]);
+  const isEditing = Boolean(existingCredentials?.id || editingCredentialId);
+
   const applyCredential = useCallback(async (normalized, clientId) => {
     setCredentials(normalized);
     setExistingCredentials(normalized);
@@ -87,6 +94,7 @@ export default function MicrosoftTenantConfigModal({
       setApplicationDisplayName(null);
     }
   }, []);
+
   const resetForm = useCallback(() => {
     setCredentials(null);
     setExistingCredentials(null);
@@ -96,6 +104,7 @@ export default function MicrosoftTenantConfigModal({
     setConnectionStatus(null);
     setApplicationDisplayName(null);
   }, []);
+
   const loadCredentials = useCallback(async () => {
     if (!client?.id) return;
     const targetId = initialEditingTenant?.id || editingCredentialId;
@@ -108,9 +117,13 @@ export default function MicrosoftTenantConfigModal({
     try {
       const result = await getClientOffice365Credentials(client.id);
       const list = unwrapOffice365CredentialsList(result);
-      const match = list.find(item => targetId && String(item.id) === String(targetId))
-        || list.find(item => initialEditingTenant?.tenantId && item.tenantId === initialEditingTenant.tenantId)
-        || null;
+      const match =
+        list.find(item => targetId && String(item.id) === String(targetId)) ||
+        list.find(
+          item =>
+            initialEditingTenant?.tenantId && item.tenantId === initialEditingTenant.tenantId
+        ) ||
+        null;
       if (match) {
         await applyCredential(normalizeMicrosoftTenantCredentials(match), client.id);
       } else {
@@ -118,30 +131,38 @@ export default function MicrosoftTenantConfigModal({
       }
     } catch (error) {
       console.error(error);
-      showError("Unable to load the Microsoft tenant.");
+      showError("Impossible de charger le tenant Microsoft.");
     } finally {
       setLoading(false);
     }
-  }, [applyCredential, client?.id, editingCredentialId, initialEditingTenant?.id, initialEditingTenant?.tenantId, resetForm]);
+  }, [
+    applyCredential,
+    client?.id,
+    editingCredentialId,
+    initialEditingTenant?.id,
+    initialEditingTenant?.tenantId,
+    resetForm
+  ]);
+
   useEffect(() => {
     loadCredentials();
   }, [client?.id, initialEditingTenant?.id, initialEditingTenant?.tenantId]);
-  useEffect(() => {
-    setActiveSection(initialSection);
-  }, [initialSection, client?.id, initialEditingTenant?.id]);
+
+  const patchForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+
   const handleTestConnection = async () => {
     if (!client?.id) return;
     setTestingConnection(true);
     try {
       let result;
-      if (existingCredentials?.id) {
+      if (existingCredentials?.id && !form.clientSecret?.trim()) {
         result = await testClientOffice365Connection(client.id, existingCredentials.id);
       } else {
         const hasTenantId = form.tenantId?.trim();
         const hasClientIdAzure = form.clientIdAzure?.trim();
         const hasClientSecret = form.clientSecret?.trim();
         if (!hasTenantId || !hasClientIdAzure || !hasClientSecret) {
-          showError("Enter the Tenant ID, Client ID, and Client Secret to test.");
+          showError("Saisissez le Tenant ID, le Client ID et le Client Secret pour tester.");
           return;
         }
         result = await testOffice365ConnectionWithCredentials({
@@ -153,25 +174,26 @@ export default function MicrosoftTenantConfigModal({
       }
       setConnectionStatus("success");
       setApplicationDisplayName(result.applicationDisplayName || null);
-      showSuccess("Entra ID connection successful.");
+      showSuccess("Connexion Entra ID réussie.");
     } catch (error) {
       setConnectionStatus("error");
       setApplicationDisplayName(null);
-      showError(error.message || "Connection test failed.");
+      showError(error.message || "Échec du test de connexion.");
     } finally {
       setTestingConnection(false);
     }
   };
+
   const handleSave = async () => {
     if (!client?.id) return;
     const hasTenantId = form.tenantId?.trim();
     const hasClientIdAzure = form.clientIdAzure?.trim();
     if (!hasTenantId || !hasClientIdAzure) {
-      showError("Enter at least the Tenant ID and Client ID.");
+      showError("Saisissez au moins le Tenant ID et le Client ID.");
       return;
     }
     if (!existingCredentials && !form.clientSecret?.trim()) {
-      showError("The Client Secret is required for the initial setup.");
+      showError("Le Client Secret est obligatoire pour la première configuration.");
       return;
     }
     setSaving(true);
@@ -183,242 +205,307 @@ export default function MicrosoftTenantConfigModal({
         clientSecret: form.clientSecret?.trim() || undefined,
         secretKeyId: form.secretKeyId?.trim() || null
       });
-      const savedCredential = normalizeMicrosoftTenantCredentials(saved?.credentials) || normalizeMicrosoftTenantCredentials({
-        id: saved?.credentials?.id,
-        tenantId: form.tenantId.trim(),
-        clientIdAzure: form.clientIdAzure.trim(),
-        secretKeyId: form.secretKeyId?.trim() || null,
-        hasSecret: true
-      });
+      const savedCredential =
+        normalizeMicrosoftTenantCredentials(saved?.credentials) ||
+        normalizeMicrosoftTenantCredentials({
+          id: saved?.credentials?.id,
+          tenantId: form.tenantId.trim(),
+          clientIdAzure: form.clientIdAzure.trim(),
+          secretKeyId: form.secretKeyId?.trim() || null,
+          hasSecret: true
+        });
       if (savedCredential) {
         await applyCredential(savedCredential, client.id);
       }
-      showSuccess("Microsoft tenant saved.");
+      showSuccess("Tenant Microsoft enregistré.");
       if (typeof onSaved === "function") await onSaved();
-      setActiveSection("overview");
+      onClose?.();
     } catch (error) {
-      showError(error.message || "Unable to save the tenant.");
+      showError(error.message || "Impossible d'enregistrer le tenant.");
     } finally {
       setSaving(false);
     }
   };
+
   const handleDelete = async () => {
     if (!client?.id) return;
     setDeleting(true);
     try {
-      await deleteClientOffice365Credentials(client.id, existingCredentials?.id || editingCredentialId || null);
-      showSuccess("Microsoft tenant deleted.");
+      await deleteClientOffice365Credentials(
+        client.id,
+        existingCredentials?.id || editingCredentialId || null
+      );
+      showSuccess("Tenant Microsoft supprimé.");
       setDeleteConfirmOpen(false);
       resetForm();
       if (typeof onSaved === "function") await onSaved();
+      onClose?.();
     } catch (error) {
-      showError(error.message || "Unable to delete the tenant.");
+      showError(error.message || "Impossible de supprimer le tenant.");
     } finally {
       setDeleting(false);
     }
   };
-  const renderOverview = () => <>
-      <div className={formStyles.sectionHead}>
-        <h3 className={formStyles.sectionTitle}>Tenant Microsoft 365</h3>
-        <p className={formStyles.sectionDesc}>
-          A client can have several dedicated Entra ID tenants. Statistics (users,
-          licenses, Exchange, Teams, security…) open in a new Veritas tab.
-        </p>
-      </div>
 
-      {!configured ? <div className={avStyles.emptyState}>
-          No tenant configured for this client.
-          <button type="button" className={formStyles.ghostBtn} onClick={() => setActiveSection("configuration")} style={{
-        marginTop: "0.75rem"
-      }}>
-            Configure a dedicated tenant
-          </button>
-        </div> : <div className={avStyles.solutionList}>
-          <div className={avStyles.solutionCard}>
-            <div className={`${avStyles.solutionCardIcon} ${msStyles.headerIconMicrosoft}`}>
-              <Icon icon="hugeicons:office-365" aria-hidden />
-            </div>
-            <div className={avStyles.solutionCardMain}>
-              <div className={avStyles.solutionName} title={summary.label}>
-                {summary.label}
-              </div>
-              <div className={avStyles.solutionMeta}>
-                {summary.providerName}
-                {" · "}
-                {summary.mode}
-                {summary.tenantId ? ` · ${summary.shortTenantId}` : ""}
-              </div>
-              {connectionStatus === "success" && applicationDisplayName ? <div className={avStyles.solutionMeta}>
-                  Application: {applicationDisplayName}
-                </div> : null}
-              {secretExpiration ? <div className={avStyles.solutionMeta}>
-                  Secret expires on{" "}
-                  {new Date(secretExpiration).toLocaleDateString("en-GB")}
-                </div> : null}
-            </div>
-            <div className={avStyles.solutionCardButtons}>
-              {onViewTenant ? <button type="button" className={avStyles.solutionIconBtn} onClick={() => onViewTenant(credentials)} disabled={deleting} aria-label="View statistics" title="View statistics">
-                  <Icon icon="mdi:chart-box-outline" aria-hidden />
-                </button> : null}
-              <button type="button" className={avStyles.solutionIconBtn} onClick={() => setActiveSection("configuration")} disabled={deleting} aria-label="Edit tenant" title="Edit">
-                <Icon icon="mdi:pencil-outline" aria-hidden />
-              </button>
-              <button type="button" className={`${avStyles.solutionIconBtn} ${avStyles.solutionIconBtnDanger}`} onClick={() => setDeleteConfirmOpen(true)} disabled={deleting} aria-label="Delete tenant" title="Delete">
-                <Icon icon={deleting ? "mdi:loading" : "mdi:delete-outline"} className={deleting ? formStyles.spinning : ""} aria-hidden />
-              </button>
-            </div>
-          </div>
-        </div>}
-    </>;
-  const renderConfiguration = () => <>
-      <div className={formStyles.sectionHead}>
-        <h3 className={formStyles.sectionTitle}>Dedicated tenant · Entra ID</h3>
-        <p className={formStyles.sectionDesc}>
-          Enter the credentials for the application registered on the client&apos;s tenant.
-          No global integration is used: each company has its own
-          credentials.
-        </p>
-      </div>
-
-      <div className={avStyles.notice}>
-        <Icon icon="mdi:information-outline" className={avStyles.noticeIcon} aria-hidden />
-        <div>
-          <strong>Initial setup</strong>
-          Create the application in Entra ID using the guide, then test the connection before
-          saving.
-        </div>
-      </div>
-
-      <form className={avStyles.dedicatedTenantForm} autoComplete="off" onSubmit={e => e.preventDefault()}>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="ms-tenant-id">
-            Tenant ID
-          </label>
-          <input id="ms-tenant-id" type="text" className={formStyles.input} value={form.tenantId} onChange={e => setForm({
-          ...form,
-          tenantId: e.target.value
-        })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autoComplete="off" />
-        </div>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="ms-client-id">
-            Client ID (Application ID)
-          </label>
-          <input id="ms-client-id" type="text" className={formStyles.input} value={form.clientIdAzure} onChange={e => setForm({
-          ...form,
-          clientIdAzure: e.target.value
-        })} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autoComplete="off" />
-        </div>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="ms-secret-key-id">
-            Secret ID (optional)
-          </label>
-          <input id="ms-secret-key-id" type="text" className={formStyles.input} value={form.secretKeyId} onChange={e => setForm({
-          ...form,
-          secretKeyId: e.target.value
-        })} placeholder="Secret identifier (Key ID)" autoComplete="off" />
-        </div>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="ms-client-secret">
-            Client Secret
-          </label>
-          <input id="ms-client-secret" type="password" className={formStyles.input} value={form.clientSecret} onChange={e => setForm({
-          ...form,
-          clientSecret: e.target.value
-        })} placeholder={existingCredentials ? `${STORED_SECRET_MASK} (unchanged if empty)` : "Client secret value"} autoComplete="new-password" />
-          <button type="button" className={integrationStyles.guideLinkBtn} onClick={() => setActiveSection("guide")}>
-            <Icon icon="mdi:help-circle-outline" aria-hidden />
-            How do I create the application in Entra ID?
-          </button>
-        </div>
-      </form>
-
-      {(connectionStatus || secretExpiration) && <div className={avStyles.inlineActions}>
-          {connectionStatus ? <span className={`${avStyles.connectionOk} ${connectionStatus === "error" ? avStyles.connectionError : ""}`}>
-              {connectionStatus === "success" ? `Connected${applicationDisplayName ? ` (${applicationDisplayName})` : ""}` : "Connection error"}
-            </span> : null}
-          {secretExpiration ? <span className={formStyles.footerHint}>
-              Secret expires on {new Date(secretExpiration).toLocaleDateString("en-GB")}
-            </span> : null}
-        </div>}
-    </>;
-  const renderSectionContent = () => {
-    if (loading) {
-      return <div className={avStyles.loadingBlock}>
-          <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          Loading Microsoft tenant…
-        </div>;
-    }
-    switch (activeSection) {
-      case "configuration":
-        return renderConfiguration();
-      case "guide":
-        return <EntraApiGuide />;
-      default:
-        return renderOverview();
-    }
-  };
-  const showConfigurationActions = activeSection === "configuration";
   if (!client?.id) return null;
-  return <>
-      {createPortal(<div className={formStyles.overlay} onClick={saving || testingConnection || deleting ? undefined : onClose} role="presentation">
-          <div className={formStyles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="microsoft-tenant-config-modal-title">
+
+  return (
+    <>
+      {createPortal(
+        <div
+          className={formStyles.overlay}
+          onClick={saving || testingConnection || deleting ? undefined : onClose}
+          role="presentation"
+        >
+          <div
+            className={formStyles.shell}
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="microsoft-tenant-config-modal-title"
+          >
             <div className={formStyles.accentBar} aria-hidden />
             <header className={formStyles.header}>
               <div className={formStyles.headerMain}>
-                <div className={`${formStyles.headerIconWrap} ${msStyles.headerIconMicrosoft}`} aria-hidden>
+                <div
+                  className={`${formStyles.headerIconWrap} ${msStyles.headerIconMicrosoft}`}
+                  aria-hidden
+                >
                   <Icon icon="hugeicons:office-365" />
                 </div>
                 <div className={formStyles.headerText}>
                   <p className={formStyles.eyebrow}>Services</p>
                   <h2 className={formStyles.title} id="microsoft-tenant-config-modal-title">
-                    Tenant Microsoft
+                    {isEditing ? "Modifier le tenant Microsoft" : "Ajouter un tenant Microsoft"}
                   </h2>
-                  <p className={formStyles.subtitle}>{client.name}</p>
                 </div>
               </div>
-              <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving || deleting} aria-label="Close">
-                <FaTimes />
-              </button>
+              <UiKitButton
+                type="button"
+                square
+                variant="secondary"
+                className={formStyles.closeBtn}
+                onClick={onClose}
+                disabled={saving || deleting}
+                aria-label={common.close || "Fermer"}
+                icon="mdi:close"
+              />
             </header>
 
-            <div className={formStyles.body}>
-              <nav className={formStyles.nav} aria-label="Microsoft tenant sections">
-                {navSections.map(section => <button key={section.id} type="button" className={`${formStyles.navItem} ${activeSection === section.id ? formStyles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                    <Icon icon={section.icon} className={formStyles.navItemIcon} aria-hidden />
-                    <span className={formStyles.navItemText}>
-                      <span className={formStyles.navItemLabel}>{section.label}</span>
-                      <span className={formStyles.navItemHint}>{section.description}</span>
+            <div className={formStyles.bodySingle}>
+              <div className={formStyles.content}>
+                {loading ? (
+                  <div className={avStyles.loadingBlock} role="status" aria-live="polite">
+                    <span className={avStyles.loadingBlockIcon} aria-hidden>
+                      <Icon icon="mdi:loading" className={formStyles.spinning} />
                     </span>
-                    {sectionBadges[section.id] ? <span className={formStyles.navBadge} aria-hidden>
-                        ✓
-                      </span> : null}
-                  </button>)}
-              </nav>
+                    <p className={avStyles.loadingBlockText}>Chargement du tenant Microsoft…</p>
+                  </div>
+                ) : (
+                  <div className={kit.contentFadeUp} key={editingCredentialId || "new"}>
+                    <div className={formStyles.sectionFill}>
+                      <div className={`${formStyles.sectionHead} ${formStyles.sectionPinned}`}>
+                        <h3 className={formStyles.sectionTitle}>Identifiants Entra ID</h3>
+                      </div>
+                      <div className={formStyles.sectionScroll}>
+                        <form
+                          className={avStyles.dedicatedTenantForm}
+                          autoComplete="off"
+                          onSubmit={e => e.preventDefault()}
+                        >
+                          <div className={formStyles.fieldGrid2}>
+                            <div className={`${formStyles.field} ${formStyles.fieldFull}`}>
+                              <label
+                                className={`${formStyles.label} ${formStyles.labelRequired}`}
+                                htmlFor="ms-tenant-id"
+                              >
+                                Tenant ID
+                              </label>
+                              <input
+                                id="ms-tenant-id"
+                                type="text"
+                                className={formStyles.input}
+                                value={form.tenantId}
+                                onChange={e => patchForm("tenantId", e.target.value)}
+                                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                autoComplete="off"
+                                autoFocus
+                              />
+                            </div>
+                            <div className={`${formStyles.field} ${formStyles.fieldFull}`}>
+                              <label
+                                className={`${formStyles.label} ${formStyles.labelRequired}`}
+                                htmlFor="ms-client-id"
+                              >
+                                Client ID (Application ID)
+                              </label>
+                              <input
+                                id="ms-client-id"
+                                type="text"
+                                className={formStyles.input}
+                                value={form.clientIdAzure}
+                                onChange={e => patchForm("clientIdAzure", e.target.value)}
+                                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                autoComplete="off"
+                              />
+                            </div>
+                            <div className={formStyles.field}>
+                              <label className={formStyles.label} htmlFor="ms-secret-key-id">
+                                Secret ID (optionnel)
+                              </label>
+                              <input
+                                id="ms-secret-key-id"
+                                type="text"
+                                className={formStyles.input}
+                                value={form.secretKeyId}
+                                onChange={e => patchForm("secretKeyId", e.target.value)}
+                                placeholder="Identifiant du secret (Key ID)"
+                                autoComplete="off"
+                              />
+                            </div>
+                            <div className={formStyles.field}>
+                              <label
+                                className={`${formStyles.label} ${
+                                  existingCredentials ? "" : formStyles.labelRequired
+                                }`}
+                                htmlFor="ms-client-secret"
+                              >
+                                Client Secret
+                              </label>
+                              <input
+                                id="ms-client-secret"
+                                type="password"
+                                className={formStyles.input}
+                                value={form.clientSecret}
+                                onChange={e => patchForm("clientSecret", e.target.value)}
+                                placeholder={
+                                  existingCredentials
+                                    ? `${STORED_SECRET_MASK} (inchangé si vide)`
+                                    : "Valeur du client secret"
+                                }
+                                autoComplete="new-password"
+                              />
+                            </div>
+                          </div>
 
-              <div className={formStyles.content}>{renderSectionContent()}</div>
+                          {(connectionStatus || secretExpiration || applicationDisplayName) && (
+                            <div className={avStyles.inlineActions}>
+                              {connectionStatus ? (
+                                <span
+                                  className={`${avStyles.connectionOk} ${
+                                    connectionStatus === "error" ? avStyles.connectionError : ""
+                                  }`}
+                                >
+                                  {connectionStatus === "success"
+                                    ? `Connecté${
+                                        applicationDisplayName
+                                          ? ` (${applicationDisplayName})`
+                                          : ""
+                                      }`
+                                    : "Erreur de connexion"}
+                                </span>
+                              ) : null}
+                              {secretExpiration ? (
+                                <span className={formStyles.footerHint}>
+                                  Secret expire le{" "}
+                                  {new Date(secretExpiration).toLocaleDateString("fr-FR")}
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+
+                          <div className={msStyles.permissionsBlock}>
+                            <h4 className={msStyles.permissionsTitle}>
+                              <Icon icon="mdi:shield-key-outline" aria-hidden />
+                              Permissions Microsoft Graph (Application)
+                            </h4>
+                            <p className={msStyles.permissionsHint}>
+                              Ajoutez ces permissions <strong>Application</strong> sur l’app Entra
+                              ID, puis validez le consentement administrateur.
+                            </p>
+                            <ul className={msStyles.permissionsList}>
+                              {GRAPH_API_PERMISSIONS.map(permission => (
+                                <li key={permission}>
+                                  <code>{permission}</code>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <footer className={formStyles.footer}>
               <span className={formStyles.footerHint}>
-                {configured ? "Dedicated tenant configured" : "No tenant configured"}
+                {configured
+                  ? "Tenant dédié configuré"
+                  : "Saisissez les identifiants de l’application Entra ID"}
               </span>
               <div className={formStyles.footerActions}>
-                {showConfigurationActions ? <>
-                    <button type="button" className={formStyles.ghostBtn} onClick={handleTestConnection} disabled={testingConnection || saving}>
-                      <Icon icon={testingConnection ? "mdi:loading" : "mdi:lan-check"} className={testingConnection ? formStyles.spinning : ""} aria-hidden />
-                      Test connection
-                    </button>
-                    <button type="button" className={formStyles.primaryBtn} onClick={handleSave} disabled={saving || testingConnection}>
-                      <Icon icon={saving ? "mdi:loading" : "mdi:content-save-outline"} className={saving ? formStyles.spinning : ""} aria-hidden />
-                      {saving ? "Saving…" : "Save"}
-                    </button>
-                  </> : null}
+                {isEditing ? (
+                  <UiKitButton
+                    type="button"
+                    variant="ghost"
+                    className={formStyles.footerDeleteBtn}
+                    onClick={() => setDeleteConfirmOpen(true)}
+                    disabled={saving || deleting || testingConnection || loading}
+                    icon="mdi:delete-outline"
+                  >
+                    Supprimer
+                  </UiKitButton>
+                ) : null}
+                {isEditing && onViewTenant && credentials ? (
+                  <UiKitButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => onViewTenant(credentials)}
+                    disabled={saving || deleting || loading}
+                    icon="mdi:chart-box-outline"
+                  >
+                    Statistiques
+                  </UiKitButton>
+                ) : null}
+                <UiKitButton
+                  type="button"
+                  variant="secondary"
+                  onClick={handleTestConnection}
+                  disabled={testingConnection || saving || deleting || loading}
+                  icon={testingConnection ? "mdi:loading" : "mdi:lan-check"}
+                >
+                  Tester la connexion
+                </UiKitButton>
+                <UiKitButton
+                  type="button"
+                  variant="primary"
+                  onClick={handleSave}
+                  disabled={saving || testingConnection || deleting || loading}
+                  icon={saving ? "mdi:loading" : "mdi:content-save-outline"}
+                >
+                  {saving ? "Enregistrement…" : "Enregistrer"}
+                </UiKitButton>
               </div>
             </footer>
           </div>
-        </div>, document.getElementById("modal-root") || document.body)}
-      <ConfirmModal open={deleteConfirmOpen} title={configCopy.confirm.deleteMicrosoftTenant.title} message={interpolate(configCopy.confirm.deleteMicrosoftTenant.message, {
-      label: summary.label
-    })} confirmLabel={common.delete} variant="danger" icon="mdi:delete-outline" loading={deleting} onConfirm={handleDelete} onClose={() => setDeleteConfirmOpen(false)} />
-    </>;
+        </div>,
+        document.getElementById("modal-root") || document.body
+      )}
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        title={configCopy.confirm.deleteMicrosoftTenant.title}
+        message={interpolate(configCopy.confirm.deleteMicrosoftTenant.message, {
+          label: summary.label
+        })}
+        confirmLabel={common.delete}
+        variant="danger"
+        icon="mdi:delete-outline"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onClose={() => setDeleteConfirmOpen(false)}
+      />
+    </>
+  );
 }

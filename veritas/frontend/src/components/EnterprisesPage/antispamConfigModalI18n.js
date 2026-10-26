@@ -32,7 +32,7 @@ const ANTISPAM_MODAL_COPY = {
       },
       dedicated: {
         label: "Tenant dédié",
-        description: "Credentials API propres au client"
+        description: "Identifiants API propres au client"
       },
       guide: {
         label: "Guide",
@@ -44,8 +44,10 @@ const ANTISPAM_MODAL_COPY = {
       }
     },
     solutionPicker: {
-      title: "Solution paramétrable",
-      description: "Fournisseurs disponibles.",
+      title: "Choisir une solution",
+      description: "Sélectionnez une intégration paramétrée dans Administration → Intégrations. Les solutions non configurées apparaissent en gris.",
+      notConfiguredHint: "Non paramétré en Administration → Intégrations",
+      notConfiguredToast: "Activez cette intégration en Administration → Intégrations.",
       connectionTitle: "Connexion {provider}",
       globalDetected: "Intégration globale détectée en administration. Choisissez le tenant global ou un tenant dédié pour ce client.",
       globalNotActive: "Le tenant global n'est pas actif en administration. Utilisez un tenant dédié ou activez l'intégration globale.",
@@ -58,14 +60,15 @@ const ANTISPAM_MODAL_COPY = {
       },
       modeDedicated: {
         title: "Tenant dédié",
-        description: "Credentials API propres à ce client, indépendants du tenant global.",
+        description: "Identifiants API propres à ce client, indépendants du tenant global.",
         action: "Configurer"
       }
     },
     providerBadges: {
       soon: "Bientôt",
       pro: "Pro",
-      global: "Global"
+      global: "Global",
+      notConfigured: "Non paramétré"
     },
     overview: {
       title: "Solution enregistrée",
@@ -107,14 +110,14 @@ const ANTISPAM_MODAL_COPY = {
         { value: "en", label: "EN (mibc-en)" },
         { value: "custom", label: "Autre" }
       ],
-      apiKeyLabel: "Auth key",
-      apiKeyPlaceholderStored: "Auth key enregistrée · cliquez pour modifier",
-      apiKeyPlaceholderNew: "Auth key générée dans Espace manager → Intégration → Clés API",
-      apiKeyHint: "Veritas échange Client ID + Auth key contre un token de session.",
+      apiKeyLabel: "Clé d'authentification",
+      apiKeyPlaceholderStored: "Laisser vide pour conserver la clé actuelle",
+      apiKeyPlaceholderNew: "Clé d'authentification",
+      apiKeyHint: "",
       detectedAccountLabel: "Compte détecté",
       clientIdLabel: "Client ID",
-      clientIdPlaceholder: "Client ID affiché à la création de la clé",
-      apiKeyGuideLink: "Comment obtenir Client ID et Auth key ?"
+      clientIdPlaceholder: "Client ID",
+      apiKeyGuideLink: ""
     },
     loading: "Chargement de la configuration antispam…",
     comingSoonProvider: "La configuration client pour {provider} sera disponible prochainement. Utilisez Mailinblack Protect.",
@@ -173,7 +176,7 @@ const ANTISPAM_MODAL_COPY = {
       connectionSuccess: "Connexion Mailinblack réussie.",
       connectionTestFailed: "Échec du test de connexion.",
       apiUrlRequired: "URL API requise.",
-      apiKeyRequired: "Auth key requise pour enregistrer la solution.",
+      apiKeyRequired: "La clé d'authentification est requise pour enregistrer la solution.",
       clientIdRequired: "Client ID requis.",
       accountNotFound: "Connexion établie mais compte Mailinblack introuvable. Vérifiez la clé API et les droits Protect/Management.",
       syncFailed: "Synchronisation échouée",
@@ -224,8 +227,10 @@ const ANTISPAM_MODAL_COPY = {
       }
     },
     solutionPicker: {
-      title: "Configurable solution",
-      description: "Available providers.",
+      title: "Choose a solution",
+      description: "Select an integration configured in Administration → Integrations. Unconfigured solutions appear grayed out.",
+      notConfiguredHint: "Not configured in Administration → Integrations",
+      notConfiguredToast: "Enable this integration in Administration → Integrations.",
       connectionTitle: "Connect {provider}",
       globalDetected: "Global integration detected in administration. Choose the global tenant or a dedicated tenant for this client.",
       globalNotActive: "The global tenant is not active in administration. Use a dedicated tenant or enable the global integration.",
@@ -245,7 +250,8 @@ const ANTISPAM_MODAL_COPY = {
     providerBadges: {
       soon: "Soon",
       pro: "Pro",
-      global: "Global"
+      global: "Global",
+      notConfigured: "Not configured"
     },
     overview: {
       title: "Registered solution",
@@ -288,13 +294,13 @@ const ANTISPAM_MODAL_COPY = {
         { value: "custom", label: "Other" }
       ],
       apiKeyLabel: "Auth key",
-      apiKeyPlaceholderStored: "Key saved · click to edit",
-      apiKeyPlaceholderNew: "Auth key generated in Manager space → Integration → API keys",
-      apiKeyHint: "Veritas exchanges Client ID + Auth key for a session token.",
+      apiKeyPlaceholderStored: "Leave empty to keep the current key",
+      apiKeyPlaceholderNew: "Auth key",
+      apiKeyHint: "",
       detectedAccountLabel: "Detected account",
       clientIdLabel: "Client ID",
-      clientIdPlaceholder: "Client ID shown when the key is created",
-      apiKeyGuideLink: "How to get Client ID and Auth key?"
+      clientIdPlaceholder: "Client ID",
+      apiKeyGuideLink: ""
     },
     loading: "Loading antispam configuration…",
     comingSoonProvider: "Client configuration for {provider} will be available soon. Use Mailinblack Protect.",
@@ -465,14 +471,14 @@ const ANTISPAM_MODAL_COPY = {
         { value: "en", label: "EN (mibc-en)" },
         { value: "custom", label: "Andere" }
       ],
-      apiKeyLabel: "API-Schlüssel",
-      apiKeyPlaceholderStored: "Schlüssel gespeichert · zum Bearbeiten klicken",
-      apiKeyPlaceholderNew: "Schlüssel erstellt in Manager-Bereich → Integration → API-Schlüssel",
-      apiKeyHint: "Veritas tauscht diesen Schlüssel automatisch gegen ein Sitzungstoken.",
+      apiKeyLabel: "Authentifizierungsschlüssel",
+      apiKeyPlaceholderStored: "Leer lassen, um den aktuellen Schlüssel zu behalten",
+      apiKeyPlaceholderNew: "Authentifizierungsschlüssel",
+      apiKeyHint: "",
       detectedAccountLabel: "Erkanntes Konto",
       clientIdLabel: "Client-ID",
-      clientIdPlaceholder: "Client-ID bei der Erstellung des Schlüssels angezeigt",
-      apiKeyGuideLink: "Wie erhält man den API-Schlüssel?"
+      clientIdPlaceholder: "Client-ID",
+      apiKeyGuideLink: ""
     },
     loading: "Antispam-Konfiguration wird geladen…",
     comingSoonProvider: "Die Kundenkonfiguration für {provider} wird demnächst verfügbar sein. Verwenden Sie Mailinblack Protect.",
@@ -642,14 +648,14 @@ const ANTISPAM_MODAL_COPY = {
         { value: "en", label: "EN (mibc-en)" },
         { value: "custom", label: "Altro" }
       ],
-      apiKeyLabel: "Chiave API",
-      apiKeyPlaceholderStored: "Chiave salvata · clicca per modificare",
-      apiKeyPlaceholderNew: "Chiave generata in Spazio manager → Integrazione → Chiavi API",
-      apiKeyHint: "Veritas scambia automaticamente questa chiave con un token di sessione.",
+      apiKeyLabel: "Chiave di autenticazione",
+      apiKeyPlaceholderStored: "Lasciare vuoto per conservare la chiave attuale",
+      apiKeyPlaceholderNew: "Chiave di autenticazione",
+      apiKeyHint: "",
       detectedAccountLabel: "Account rilevato",
       clientIdLabel: "Client ID",
-      clientIdPlaceholder: "Client ID mostrato alla creazione della chiave",
-      apiKeyGuideLink: "Come ottenere la chiave API?"
+      clientIdPlaceholder: "Client ID",
+      apiKeyGuideLink: ""
     },
     loading: "Caricamento configurazione antispam…",
     comingSoonProvider: "La configurazione cliente per {provider} sarà disponibile a breve. Usa Mailinblack Protect.",
@@ -819,14 +825,14 @@ const ANTISPAM_MODAL_COPY = {
         { value: "en", label: "EN (mibc-en)" },
         { value: "custom", label: "Otro" }
       ],
-      apiKeyLabel: "Clave API",
-      apiKeyPlaceholderStored: "Clave guardada · haga clic para modificar",
-      apiKeyPlaceholderNew: "Clave generada en Espacio manager → Integración → Claves API",
-      apiKeyHint: "Veritas intercambia automáticamente esta clave por un token de sesión.",
+      apiKeyLabel: "Clave de autenticación",
+      apiKeyPlaceholderStored: "Dejar vacío para conservar la clave actual",
+      apiKeyPlaceholderNew: "Clave de autenticación",
+      apiKeyHint: "",
       detectedAccountLabel: "Cuenta detectada",
       clientIdLabel: "Client ID",
-      clientIdPlaceholder: "Client ID mostrado al crear la clave",
-      apiKeyGuideLink: "¿Cómo obtener la clave API?"
+      clientIdPlaceholder: "Client ID",
+      apiKeyGuideLink: ""
     },
     loading: "Cargando configuración antispam…",
     comingSoonProvider: "La configuración de cliente para {provider} estará disponible próximamente. Use Mailinblack Protect.",

@@ -14,6 +14,7 @@ function ComputerTypeTile({
   selected,
   disabled,
   compact,
+  index = 0,
   onSelect,
 }) {
   const animRef = useRef(null);
@@ -31,7 +32,10 @@ function ComputerTypeTile({
       aria-pressed={selected}
       aria-selected={selected}
       title={description}
-      style={compact ? { minHeight: "5.5rem", minWidth: 0, padding: "0.55rem 0.4rem" } : undefined}
+      style={{
+        animationDelay: `${Math.min(index, 12) * 28}ms`,
+        ...(compact ? { minHeight: "5.5rem", minWidth: 0, padding: "0.55rem 0.4rem" } : null),
+      }}
     >
       {selected ? <Icon icon="mdi:check-circle" className={pickerStyles.categoryCheck} aria-hidden /> : null}
       <span
@@ -70,7 +74,7 @@ export default function ComputerTypePicker({
         </span>
       ) : null}
       <div
-        className={pickerStyles.categoryGrid}
+        className={`${pickerStyles.categoryGrid} ${pickerStyles.computerTypeGrid}`}
         style={compact ? { marginTop: 0, gap: "0.5rem" } : { marginTop: "0.35rem" }}
         role="listbox"
         aria-label={label || "Type"}
@@ -80,7 +84,7 @@ export default function ComputerTypePicker({
           label: optionLabel,
           icon,
           description,
-        }) => (
+        }, index) => (
           <ComputerTypeTile
             key={optionValue}
             optionValue={optionValue}
@@ -90,6 +94,7 @@ export default function ComputerTypePicker({
             selected={selected === optionValue}
             disabled={disabled}
             compact={compact}
+            index={index}
             onSelect={onChange}
           />
         ))}

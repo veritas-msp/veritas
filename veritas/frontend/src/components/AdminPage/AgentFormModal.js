@@ -75,9 +75,6 @@ export default function AgentFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.identityTitle}</h3>
-              <p className={layout.sectionDesc}>
-                {isEdit ? modalCopy.identityDescEdit : modalCopy.identityDescCreate}
-              </p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
@@ -102,9 +99,6 @@ export default function AgentFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.securityTitle}</h3>
-              <p className={layout.sectionDesc}>
-                {isEdit ? modalCopy.securityDescEdit : modalCopy.securityDescCreate}
-              </p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={layout.field}>
@@ -146,7 +140,6 @@ export default function AgentFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.accessTitle}</h3>
-              <p className={layout.sectionDesc}>{modalCopy.accessDesc}</p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
@@ -193,7 +186,6 @@ export default function AgentFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.mfaTitle}</h3>
-              <p className={layout.sectionDesc}>{modalCopy.mfaDesc}</p>
             </div>
             <div className={mfaStyles.mfaPanel}>
               <MfaStatusBadge user={draft} locale={locale} />

@@ -40,7 +40,7 @@ function PickerRow({
   const isDragging = draggedIndex === index;
   const isDragOver = dragOverIndex === index && draggedIndex !== index;
   return <div className={`${pickerStyles.solutionRow} ${isManaging ? pickerStyles.solutionRowManaging : ""} ${isDragOver ? pickerStyles.solutionRowDragOver : ""} ${isDragging ? pickerStyles.solutionRowDragging : ""}`} onDragOver={isManaging && canReorder ? event => onDragOver(event, index) : undefined} onDrop={isManaging && canReorder ? event => onDrop(event, index) : undefined}>
-      {isManaging && canReorder ? <button type="button" className={pickerStyles.dragHandle} draggable={!busy} onDragStart={event => onDragStart(event, index)} onDragEnd={onDragEnd} disabled={busy} aria-label={`Reorder ${label}`} title="Drag to reorder">
+      {isManaging && canReorder ? <button type="button" className={pickerStyles.dragHandle} draggable={!busy} onDragStart={event => onDragStart(event, index)} onDragEnd={onDragEnd} disabled={busy} aria-label={`Réordonner ${label}`} title="Glisser pour réordonner">
           <Icon icon="mdi:drag-vertical" aria-hidden />
         </button> : null}
 
@@ -68,10 +68,10 @@ function PickerRow({
         </button>}
 
       {isManaging ? <div className={pickerStyles.solutionRowActions}>
-          {onEdit ? <button type="button" className={pickerStyles.solutionIconBtn} onClick={() => onEdit(item)} disabled={busy} aria-label={`Edit ${label}`} title="Edit">
+          {onEdit ? <button type="button" className={pickerStyles.solutionIconBtn} onClick={() => onEdit(item)} disabled={busy} aria-label={`Modifier ${label}`} title="Modifier">
               <Icon icon="mdi:pencil-outline" aria-hidden />
             </button> : null}
-          {onDelete ? <button type="button" className={`${pickerStyles.solutionIconBtn} ${pickerStyles.solutionIconBtnDanger}`} onClick={() => onDelete(item, index)} disabled={busy} aria-label={`Delete ${label}`} title="Delete">
+          {onDelete ? <button type="button" className={`${pickerStyles.solutionIconBtn} ${pickerStyles.solutionIconBtnDanger}`} onClick={() => onDelete(item, index)} disabled={busy} aria-label={`Supprimer ${label}`} title="Supprimer">
               <Icon icon={isDeleting ? "mdi:loading" : "mdi:delete-outline"} className={isDeleting ? formStyles.spinning : ""} aria-hidden />
             </button> : null}
         </div> : null}
@@ -110,8 +110,8 @@ export default function ManagedSolutionPickerModal({
   getDeleteConfirmMessage,
   onRefreshIntegration,
   canRefreshIntegration = false,
-  refreshIntegrationLabel = "Sync",
-  refreshIntegrationTitle = "Refresh data from integration",
+  refreshIntegrationLabel = "Synchroniser",
+  refreshIntegrationTitle = "Actualiser depuis l’intégration",
   refreshIntegrationBusy = false
 }) {
   const locale = useAppLocale();
@@ -285,7 +285,9 @@ export default function ManagedSolutionPickerModal({
     });
   }, [orderedItems, resolveSortValue, tableSort.direction, tableSort.key]);
   if (!open || !client?.id) return null;
-  const intro = isManaging ? getManageIntro?.(orderedItems.length) || "Reorder, edit, or delete saved items." : getViewIntro?.(orderedItems.length) || "Select an item to open it, or add a new one.";
+  const intro = isManaging
+    ? getManageIntro?.(orderedItems.length) || "Réordonnez, modifiez ou supprimez les éléments enregistrés."
+    : getViewIntro?.(orderedItems.length) || "Sélectionnez un élément pour l’ouvrir, ou ajoutez-en un nouveau.";
   const isTableLayout = layout === "table" && Array.isArray(tableColumns) && tableColumns.length > 0;
   const visibleColumns = isTableLayout ? isManaging ? [...tableColumns, {
     key: "__actions",
@@ -307,10 +309,9 @@ export default function ManagedSolutionPickerModal({
               <h2 className={formStyles.title} id={dialogId}>
                 {title}
               </h2>
-              <p className={formStyles.subtitle}>{client.name}</p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={busy} aria-label="Close">
+          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={busy} aria-label={common.close || "Fermer"}>
             <FaTimes />
           </button>
         </header>
@@ -321,11 +322,11 @@ export default function ManagedSolutionPickerModal({
               <table className={pickerStyles.pickerTable}>
                 <thead>
                   <tr>
-                    {isManaging && onReorderItems ? <th className={pickerStyles.tableDragCol} aria-label="Reorder" /> : null}
+                    {isManaging && onReorderItems ? <th className={pickerStyles.tableDragCol} aria-label="Réordonner" /> : null}
                     {visibleColumns.map(column => {
                 const sortable = sortEnabled && column.key !== "__actions" && column.sortable !== false;
                 const isSorted = tableSort.key === column.key;
-                return <th key={column.key} className={[column.className || undefined, sortable ? pickerStyles.sortableTh : undefined].filter(Boolean).join(" ") || undefined} scope="col" onClick={sortable ? () => handleTableSort(column.key) : undefined} aria-sort={isSorted ? tableSort.direction === "asc" ? "ascending" : "descending" : sortable ? "none" : undefined} title={sortable ? `Sort by ${column.label}` : undefined}>
+                return <th key={column.key} className={[column.className || undefined, sortable ? pickerStyles.sortableTh : undefined].filter(Boolean).join(" ") || undefined} scope="col" onClick={sortable ? () => handleTableSort(column.key) : undefined} aria-sort={isSorted ? tableSort.direction === "asc" ? "ascending" : "descending" : sortable ? "none" : undefined} title={sortable ? `Trier par ${column.label}` : undefined}>
                           <span className={pickerStyles.thContent}>
                             {column.label}
                             {sortable ? (
@@ -355,7 +356,7 @@ export default function ManagedSolutionPickerModal({
               const isDragOver = dragOverIndex === index && draggedIndex !== index;
               return <tr key={itemKey} className={[!isManaging ? pickerStyles.tableRowClickable : "", isDragOver ? pickerStyles.tableRowDragOver : "", isDragging ? pickerStyles.tableRowDragging : ""].filter(Boolean).join(" ") || undefined} onClick={!isManaging && onSelectItem ? () => onSelectItem(item) : undefined} onDragOver={isManaging && onReorderItems ? event => handleDragOver(event, index) : undefined} onDrop={isManaging && onReorderItems ? event => handleDrop(event, index) : undefined}>
                         {isManaging && onReorderItems ? <td className={pickerStyles.tableDragCol}>
-                            <button type="button" className={pickerStyles.tableDragHandle} draggable={!busy} onDragStart={event => handleDragStart(event, index)} onDragEnd={handleDragEnd} disabled={busy} aria-label={`Reorder ${label}`} title="Drag to reorder" onClick={event => event.stopPropagation()}>
+                            <button type="button" className={pickerStyles.tableDragHandle} draggable={!busy} onDragStart={event => handleDragStart(event, index)} onDragEnd={handleDragEnd} disabled={busy} aria-label={`Réordonner ${label}`} title="Glisser pour réordonner" onClick={event => event.stopPropagation()}>
                               <Icon icon="mdi:drag-vertical" aria-hidden />
                             </button>
                           </td> : null}
@@ -363,10 +364,10 @@ export default function ManagedSolutionPickerModal({
                   if (column.key === "__actions") {
                     return <td key={column.key} className={pickerStyles.tableActionsCol} onClick={event => event.stopPropagation()}>
                               <div className={pickerStyles.tableRowActions}>
-                                {onEditItem ? <button type="button" className={pickerStyles.solutionIconBtn} onClick={() => onEditItem(item)} disabled={busy} aria-label={`Edit ${label}`} title="Edit">
+                                {onEditItem ? <button type="button" className={pickerStyles.solutionIconBtn} onClick={() => onEditItem(item)} disabled={busy} aria-label={`Modifier ${label}`} title="Modifier">
                                     <Icon icon="mdi:pencil-outline" aria-hidden />
                                   </button> : null}
-                                {onDeleteItem ? <button type="button" className={`${pickerStyles.solutionIconBtn} ${pickerStyles.solutionIconBtnDanger}`} onClick={() => requestDelete(item, index)} disabled={busy} aria-label={`Delete ${label}`} title="Delete">
+                                {onDeleteItem ? <button type="button" className={`${pickerStyles.solutionIconBtn} ${pickerStyles.solutionIconBtnDanger}`} onClick={() => requestDelete(item, index)} disabled={busy} aria-label={`Supprimer ${label}`} title="Supprimer">
                                     <Icon icon={isDeleting ? "mdi:loading" : "mdi:delete-outline"} className={isDeleting ? formStyles.spinning : ""} aria-hidden />
                                   </button> : null}
                               </div>
@@ -399,13 +400,13 @@ export default function ManagedSolutionPickerModal({
         <footer className={`${formStyles.footer} ${pickerStyles.footer}`}>
           <span className={formStyles.footerHint}>
             {formatCountLabel(orderedItems.length)}
-            {isManaging ? " · edit mode" : ""}
+            {isManaging ? " · mode édition" : ""}
           </span>
           <div className={`${formStyles.footerActions} ${pickerStyles.footerActions}`}>
             {showRefreshIntegration ? <button type="button" className={`${formStyles.ghostBtn} ${pickerStyles.footerIconBtn}`} onClick={onRefreshIntegration} disabled={busy} aria-label={refreshIntegrationLabel} title={refreshIntegrationTitle}>
                 <Icon icon={refreshIntegrationBusy ? "mdi:loading" : "mdi:cloud-sync-outline"} className={refreshIntegrationBusy ? formStyles.spinning : ""} aria-hidden />
               </button> : null}
-            {canManage ? <button type="button" className={`${formStyles.ghostBtn} ${pickerStyles.footerIconBtn} ${isManaging ? pickerStyles.footerIconBtnActive : ""}`} onClick={() => setIsManaging(value => !value)} disabled={busy} aria-label={isManaging ? "Finish editing" : "Manage items"} title={isManaging ? "Finish" : "Manage"} aria-pressed={isManaging}>
+            {canManage ? <button type="button" className={`${formStyles.ghostBtn} ${pickerStyles.footerIconBtn} ${isManaging ? pickerStyles.footerIconBtnActive : ""}`} onClick={() => setIsManaging(value => !value)} disabled={busy} aria-label={isManaging ? "Terminer l’édition" : "Gérer les éléments"} title={isManaging ? "Terminer" : "Gérer"} aria-pressed={isManaging}>
                 <Icon icon={isManaging ? "mdi:check" : "mdi:pencil-outline"} aria-hidden />
               </button> : null}
             {onAddItem ? <button type="button" className={`${formStyles.primaryBtn} ${pickerStyles.addIconBtn}`} onClick={onAddItem} disabled={busy} aria-label={addAriaLabel} title={addTitle || addAriaLabel}>

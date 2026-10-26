@@ -29,6 +29,7 @@ import { ensureKnowledgeArticlesSchema } from "./ensureKnowledgeArticlesSchema.j
 import { ensureAzureMfaSchema } from "./ensureAzureMfaSchema.js";
 import { ensurePrestatairesSchema } from "./ensurePrestatairesSchema.js";
 import { ensureEntitySubscriptionsSchema } from "./ensureEntitySubscriptionsSchema.js";
+import { ensurePortalLoginEventsSchema } from "./ensurePortalLoginEventsSchema.js";
 import { runIncrementalAvrilMigrations } from "../utils/incrementalAvrilMigrations.js";
 export async function runPostSetupSchemaMigrations() {
   await ensureProfilesSchema();
@@ -40,6 +41,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureTicketTrashSchema();
   await ensureUserNotificationsSchema();
   await ensureEntitySubscriptionsSchema();
+  await ensurePortalLoginEventsSchema();
   await ensureTicketEmailThreadSchema();
   await ensureTicketSideConversationsSchema();
   await ensureTicketCommentUpdatedAtSchema();
@@ -78,6 +80,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureKnowledgeArticlesSchema();
   await ensurePrestatairesSchema();
   await ensureEntitySubscriptionsSchema();
+  await ensurePortalLoginEventsSchema();
   await ensureSupervisionAlertRulesSchema();
   await ensureCheckmkSyncRunsSchema();
 }

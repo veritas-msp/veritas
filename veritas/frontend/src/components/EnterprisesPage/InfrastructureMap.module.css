@@ -42,6 +42,27 @@
   background: var(--msp-surface, #fff);
 }
 
+@keyframes cyberContentFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.contentFadeUp {
+  animation: cyberContentFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contentFadeUp {
+    animation: none !important;
+  }
+}
+
 .cyberDetail:has(.detailPanelTable),
 .cyberDetail:has(.detailPanelMetrics),
 .cyberDetail:has(.backupOverview) {
@@ -239,9 +260,26 @@
 }
 
 .serviceTableToolbar .backupTableAddBtn,
-.serviceTableToolbar .detailPrimaryBtn {
+.serviceTableToolbar .detailPrimaryBtn,
+.serviceTableToolbarActions {
   margin-left: auto;
   flex: 0 0 auto;
+}
+
+.serviceTableToolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.spinning {
+  animation: infraSpin 0.8s linear infinite;
+}
+
+@keyframes infraSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .serviceTableEmpty {
@@ -481,6 +519,12 @@
   padding: 0.55rem 0.75rem 0.75rem;
 }
 
+.detailPanelTable :global([class*="bulkBar"]) {
+  flex: 0 0 auto;
+  margin-top: 0.35rem;
+  margin-bottom: 0;
+}
+
 .detailPanelTable .detailHeader {
   flex-wrap: wrap;
   row-gap: 0.55rem;
@@ -521,6 +565,16 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+/* Densité lignes = infra / tickets (tableList 2.85rem) */
+.detailTableHost :global([class*="equipmentTableEmbedded"]) th,
+.detailTableHost :global([class*="equipmentTableEmbedded"]) td {
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
+  vertical-align: middle;
 }
 
 :global(html.dark) .detailPanelTable .detailHeader {
@@ -1142,7 +1196,8 @@ button.brickNode {
   border-color: var(--msp-accent-dark, #1a3d75);
 }
 
-.detailPrimaryBtn:disabled {
+.detailPrimaryBtn:disabled,
+.detailSecondaryBtn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

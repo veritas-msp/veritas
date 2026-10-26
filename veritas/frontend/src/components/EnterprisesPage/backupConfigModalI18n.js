@@ -346,7 +346,7 @@ const BACKUP_MODAL_COPY = {
       changeInstance: "Changer",
       sections: {
         general: "Général",
-        target: "Cible & destination",
+        target: "Cible et destination",
         schedule: "Planification"
       }
     },
@@ -355,7 +355,7 @@ const BACKUP_MODAL_COPY = {
       description: "Mettez à jour les paramètres de ce job de sauvegarde.",
       sections: {
         general: "Général",
-        target: "Cible & destination",
+        target: "Cible et destination",
         schedule: "Planification"
       }
     },
@@ -423,6 +423,9 @@ const BACKUP_MODAL_COPY = {
       externalDisk: "Disque dur externe",
       nas: "NAS",
       san: "SAN",
+      cloud: "Cloud",
+      virtual: "Virtuel",
+      robot: "Robot de sauvegarde",
       lunOn: "LUN sur {name}",
       diskNumber: "N°{number}"
     },
@@ -570,7 +573,7 @@ const BACKUP_MODAL_COPY = {
       changeInstance: "Change",
       sections: {
         general: "General",
-        target: "Target & destination",
+        target: "Target and destination",
         schedule: "Schedule"
       }
     },
@@ -579,7 +582,7 @@ const BACKUP_MODAL_COPY = {
       description: "Update this backup job settings.",
       sections: {
         general: "General",
-        target: "Target & destination",
+        target: "Target and destination",
         schedule: "Schedule"
       }
     },
@@ -647,6 +650,9 @@ const BACKUP_MODAL_COPY = {
       externalDisk: "External hard drive",
       nas: "NAS",
       san: "SAN",
+      cloud: "Cloud",
+      virtual: "Virtual",
+      robot: "Backup robot",
       lunOn: "LUN on {name}",
       diskNumber: "No. {number}"
     },
@@ -871,6 +877,9 @@ const BACKUP_MODAL_COPY = {
       externalDisk: "Externe Festplatte",
       nas: "NAS",
       san: "SAN",
+      cloud: "Cloud",
+      virtual: "Virtuell",
+      robot: "Backup-Robot",
       lunOn: "LUN auf {name}",
       diskNumber: "Nr. {number}"
     },
@@ -1093,6 +1102,9 @@ const BACKUP_MODAL_COPY = {
       externalDisk: "Disco rigido esterno",
       nas: "NAS",
       san: "SAN",
+      cloud: "Cloud",
+      virtual: "Virtuale",
+      robot: "Robot di backup",
       lunOn: "LUN su {name}",
       diskNumber: "N. {number}"
     },
@@ -1315,6 +1327,9 @@ const BACKUP_MODAL_COPY = {
       externalDisk: "Disco duro externo",
       nas: "NAS",
       san: "SAN",
+      cloud: "Cloud",
+      virtual: "Virtual",
+      robot: "Robot de backup",
       lunOn: "LUN en {name}",
       diskNumber: "N.º {number}"
     },

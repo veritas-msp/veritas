@@ -13,28 +13,28 @@ import { showError, showSuccess } from "../../utils/toast";
 
 const DOMAIN_TABLE_COLUMNS = [{
   key: "domain",
-  label: "Domain name",
+  label: "Nom de domaine",
   cellClassName: pickerStyles.tableDomainName
 }, {
   key: "registrar",
   label: "Registrar"
 }, {
   key: "expiry",
-  label: "Expiry"
+  label: "Expiration"
 }, {
   key: "renewal",
-  label: "Renewal"
+  label: "Renouvellement"
 }, {
   key: "dnsZone",
   label: "Zone DNS"
 }, {
   key: "status",
-  label: "Status"
+  label: "Statut"
 }];
 
 function formatLinkedDomainsLabel(count) {
-  if (count <= 1) return "1 monitored domain";
-  return `${count} monitored domains`;
+  if (count <= 1) return "1 domaine surveillé";
+  return `${count} domaines surveillés`;
 }
 
 function buildDomainKey(domain, index) {
@@ -45,7 +45,7 @@ function buildDomainKey(domain, index) {
 function formatDate(dateString) {
   if (!dateString) return "—";
   try {
-    return new Date(dateString).toLocaleDateString("en-GB");
+    return new Date(dateString).toLocaleDateString("fr-FR");
   } catch {
     return "—";
   }
@@ -54,20 +54,20 @@ function formatDate(dateString) {
 function getDomainStatus(expiration) {
   if (!expiration) {
     return {
-      text: "Unknown",
+      text: "Inconnu",
       className: pickerStyles.statusUnknown
     };
   }
   const expiryDate = new Date(expiration);
   if (Number.isNaN(expiryDate.getTime())) {
     return {
-      text: "Unknown",
+      text: "Inconnu",
       className: pickerStyles.statusUnknown
     };
   }
   const isExpired = expiryDate < new Date();
   return {
-    text: isExpired ? "Expired" : "Active",
+    text: isExpired ? "Expiré" : "Actif",
     className: isExpired ? pickerStyles.statusExpired : pickerStyles.statusActive
   };
 }
@@ -87,7 +87,7 @@ function getDomainRenewal(domain) {
     };
   }
   return {
-    text: value ? "Auto" : "Manual",
+    text: value ? "Auto" : "Manuel",
     className: value ? pickerStyles.statusActive : pickerStyles.statusExpired
   };
 }
@@ -159,29 +159,68 @@ export default function DomainSolutionPickerModal({
     setSyncing(true);
     try {
       const updated = await refreshMonitoredDomainsFromOvh(client.id);
-      showSuccess("Domain names synchronized from OVH.");
+      showSuccess("Noms de domaine synchronisés depuis OVH.");
       await onDomainsSynced?.(updated);
     } catch (error) {
-      showError(error?.message || "OVH synchronization failed.");
+      showError(error?.message || "Échec de la synchronisation OVH.");
     } finally {
       setSyncing(false);
     }
   }, [canRefreshFromIntegration, client?.id, onDomainsSynced, syncing]);
-  return <ManagedSolutionPickerModal open={open} client={client} items={domains} onClose={onClose} dialogId="domain-picker-title" eyebrow="Licenses & abonnements" viewTitle="Domain Names" manageTitle="Domain Names" headerIcon="stash:domain" headerIconClassName={dnsStyles.headerIconDns} layout="table" tableColumns={DOMAIN_TABLE_COLUMNS} getTableCells={buildDomainTableCells} getTableSortValue={getDomainTableSortValue} formatCountLabel={formatLinkedDomainsLabel} getViewIntro={count => count === 1 ? "One domain name is monitored for this client. Open it to view the dashboard, or add more." : `${count} domain names are monitored. Select one to view.`} getManageIntro={() => "Reorder, edit or remove the domain names saved for this client."} getItemKey={buildDomainKey} getItemPresentation={domain => {
-    const {
-      label,
-      meta,
-      providerId
-    } = formatDomainSummary(domain);
-    const provider = getDnsProvider(providerId);
-    const visual = getProviderPresentation(provider, "stash:domain");
-    return {
-      ...visual,
-      label,
-      meta,
-      trailingIcon: "mdi:chart-box-outline"
-    };
-  }} deleteConfirmTitle={configCopy.confirm.removeMonitoring.title} confirmDeleteLabel={common.remove} getDeleteConfirmMessage={label => interpolate(configCopy.confirm.removeMonitoringReversible.message, {
-    label
-  })} onSelectItem={onSelectDomain} onAddItem={onAddDomain} onEditItem={onEditDomain} onDeleteItem={onDeleteDomain} onReorderItems={onReorderDomains} onRefreshIntegration={handleRefreshFromIntegration} canRefreshIntegration={canRefreshFromIntegration} refreshIntegrationBusy={syncing} refreshIntegrationLabel="Sync with OVH" refreshIntegrationTitle="Refresh domain data from OVH integration" addAriaLabel="Add a domain" addTitle="Add a domain" />;
+  return (
+    <ManagedSolutionPickerModal
+      open={open}
+      client={client}
+      items={domains}
+      onClose={onClose}
+      dialogId="domain-picker-title"
+      eyebrow="Services · Domaines"
+      viewTitle="Noms de domaine"
+      manageTitle="Noms de domaine"
+      headerIcon="stash:domain"
+      headerIconClassName={dnsStyles.headerIconDns}
+      layout="table"
+      tableColumns={DOMAIN_TABLE_COLUMNS}
+      getTableCells={buildDomainTableCells}
+      getTableSortValue={getDomainTableSortValue}
+      formatCountLabel={formatLinkedDomainsLabel}
+      getViewIntro={count =>
+        count === 1
+          ? "Un nom de domaine est surveillé pour ce client. Ouvrez-le pour consulter le tableau de bord, ou ajoutez-en d’autres."
+          : `${count} noms de domaine sont surveillés. Sélectionnez-en un pour le consulter.`
+      }
+      getManageIntro={() =>
+        "Réordonnez, modifiez ou retirez les noms de domaine enregistrés pour ce client."
+      }
+      getItemKey={buildDomainKey}
+      getItemPresentation={domain => {
+        const { label, meta, providerId } = formatDomainSummary(domain);
+        const provider = getDnsProvider(providerId);
+        const visual = getProviderPresentation(provider, "stash:domain");
+        return {
+          ...visual,
+          label,
+          meta,
+          trailingIcon: "mdi:chart-box-outline"
+        };
+      }}
+      deleteConfirmTitle={configCopy.confirm.removeMonitoring.title}
+      confirmDeleteLabel={common.remove}
+      getDeleteConfirmMessage={label =>
+        interpolate(configCopy.confirm.removeMonitoringReversible.message, { label })
+      }
+      onSelectItem={onSelectDomain}
+      onAddItem={onAddDomain}
+      onEditItem={onEditDomain}
+      onDeleteItem={onDeleteDomain}
+      onReorderItems={onReorderDomains}
+      onRefreshIntegration={handleRefreshFromIntegration}
+      canRefreshIntegration={canRefreshFromIntegration}
+      refreshIntegrationBusy={syncing}
+      refreshIntegrationLabel="Synchroniser avec OVH"
+      refreshIntegrationTitle="Actualiser les domaines depuis l’intégration OVH"
+      addAriaLabel="Ajouter un domaine"
+      addTitle="Ajouter un domaine"
+    />
+  );
 }

@@ -24,7 +24,7 @@ const ANTIVIRUS_MODAL_COPY = {
       },
       dedicated: {
         label: "Tenant dédié",
-        description: "Credentials API propres au client"
+        description: "Identifiants API propres au client"
       },
       guide: {
         label: "Guide",
@@ -58,11 +58,13 @@ const ANTIVIRUS_MODAL_COPY = {
       deleteAria: "Supprimer {label}"
     },
     solutionPicker: {
-      title: "Solution paramétrable",
-      description: "Fournisseurs disponibles.",
+      title: "Choisir une solution",
+      description: "Sélectionnez une intégration paramétrée dans Administration → Intégrations. Les solutions non configurées apparaissent en gris.",
+      notConfiguredHint: "Non paramétré en Administration → Intégrations",
+      notConfiguredToast: "Activez cette intégration en Administration → Intégrations.",
       connectionTitle: "Connexion {provider}",
       globalIntegrationDetected: "Intégration globale détectée en administration. Choisissez le tenant global ou un tenant dédié pour ce client.",
-      noGlobalIntegration: "Aucune intégration globale en administration · configurez uniquement un tenant dédié avec les credentials du client.",
+      noGlobalIntegration: "Aucune intégration globale en administration · configurez uniquement un tenant dédié avec les identifiants du client.",
       modeGlobal: {
         title: "Tenant global",
         descConfigured: "Utilise l'intégration configurée en administration.",
@@ -72,7 +74,7 @@ const ANTIVIRUS_MODAL_COPY = {
       },
       modeDedicated: {
         title: "Tenant dédié",
-        description: "Credentials API propres à ce client, indépendants du tenant global.",
+        description: "Identifiants API propres à ce client, indépendants du tenant global.",
         action: "Configurer"
       }
     },
@@ -97,7 +99,7 @@ const ANTIVIRUS_MODAL_COPY = {
     },
     dedicated: {
       title: "Bitdefender · tenant dédié",
-      description: "Credentials API propres à ce client, puis association d'une entreprise GravityZone au sein de ce tenant.",
+      description: "Identifiants API propres à ce client, puis association d'une entreprise GravityZone au sein de ce tenant.",
       existingTenant: "Tenant existant",
       selectPlaceholder: "Sélectionner",
       newTenant: "+ Nouveau tenant",
@@ -126,7 +128,8 @@ const ANTIVIRUS_MODAL_COPY = {
     badges: {
       soon: "Bientôt",
       pro: "Pro",
-      global: "Global"
+      global: "Global",
+      notConfigured: "Non paramétré"
     },
     modeLabels: {
       dedicated: "Tenant dédié",
@@ -241,8 +244,10 @@ const ANTIVIRUS_MODAL_COPY = {
       deleteAria: "Delete {label}"
     },
     solutionPicker: {
-      title: "Configurable solution",
-      description: "Available providers.",
+      title: "Choose a solution",
+      description: "Select an integration configured in Administration → Integrations. Unconfigured solutions appear grayed out.",
+      notConfiguredHint: "Not configured in Administration → Integrations",
+      notConfiguredToast: "Enable this integration in Administration → Integrations.",
       connectionTitle: "Connect {provider}",
       globalIntegrationDetected: "Global integration detected in administration. Choose the global tenant or a dedicated tenant for this client.",
       noGlobalIntegration: "No global integration in administration · configure only a dedicated tenant with the client's credentials.",
@@ -309,7 +314,8 @@ const ANTIVIRUS_MODAL_COPY = {
     badges: {
       soon: "Soon",
       pro: "Pro",
-      global: "Global"
+      global: "Global",
+      notConfigured: "Not configured"
     },
     modeLabels: {
       dedicated: "Dedicated tenant",

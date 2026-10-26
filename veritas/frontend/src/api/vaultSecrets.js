@@ -37,6 +37,22 @@ export async function revokeVaultSecret(secretId) {
   if (!res.ok) await parseError(res);
   return res.json();
 }
+export async function archiveVaultSecret(secretId) {
+  const res = await fetch(`${BASE}/${secretId}/archive`, {
+    method: "POST",
+    credentials: "include"
+  });
+  if (!res.ok) await parseError(res);
+  return res.json();
+}
+export async function deleteArchivedVaultSecret(secretId) {
+  const res = await fetch(`${BASE}/${secretId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  if (!res.ok) await parseError(res);
+  return res.json();
+}
 export const VAULT_SECRET_AVAILABILITY_LABELS = {
   active: "Actif",
   expired: "Expired",

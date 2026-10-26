@@ -3,9 +3,6 @@ const STEP_TARGETS = [{
   key: "hero",
   target: '[data-guide="contact-hero"]'
 }, {
-  key: "ticketBookmarks",
-  target: '[data-guide="contact-ticket-bookmarks"]'
-}, {
   key: "activity",
   target: '[data-guide="contact-activity"]',
   handler: "showActivity"

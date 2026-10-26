@@ -2,10 +2,10 @@ import { getEmailSecurityIntegrations, getIntegrationById, isIntegrationConfigur
 export const ANTISPAM_MANUAL_PROVIDER = {
   id: "manual",
   integrationId: null,
-  label: "Other solution",
+  label: "Autre solution",
   solutionName: null,
   icon: "mdi:email-plus-outline",
-  description: "Manual entry without API synchronization (users, domains, expiration).",
+  description: "Saisie manuelle sans synchronisation API (utilisateurs, domaines, expiration).",
   status: "available",
   isManual: true,
   supportsGlobal: false,
@@ -29,9 +29,10 @@ export function catalogIntegrationToAntispamProvider(integration) {
   };
 }
 export function getAntispamProviderOptions() {
-  return [...getEmailSecurityIntegrations().map(catalogIntegrationToAntispamProvider), ANTISPAM_MANUAL_PROVIDER];
+  return getEmailSecurityIntegrations().map(catalogIntegrationToAntispamProvider);
 }
 export function getAntispamProvider(providerId) {
+  if (providerId === "manual") return ANTISPAM_MANUAL_PROVIDER;
   return getAntispamProviderOptions().find(provider => provider.id === providerId) || null;
 }
 export function resolveProviderGlobalConfigured(providerId, settingsMap = {}, apiGlobalStatus = {}) {
@@ -61,12 +62,12 @@ export function buildAntispamNavSections({
 }) {
   const sections = [{
     id: "overview",
-    label: "Solution saved",
+    label: "Solution enregistrée",
     description: "Pour ce client",
     icon: "mdi:view-list-outline"
   }, {
     id: "solution",
-    label: "Configurable solution",
+    label: "Solution paramétrable",
     description: "Fournisseurs",
     icon: "mdi:email-secure-outline"
   }];
@@ -76,22 +77,24 @@ export function buildAntispamNavSections({
       sections.push({
         id: "reseller",
         label: "Tenant global",
-        description: globalConfigured ? "Integration configured in administration" : "Not configured in administration",
+        description: globalConfigured
+          ? "Intégration configurée en administration"
+          : "Non configuré en administration",
         icon: "mdi:store-cog-outline",
         disabled: !globalConfigured
       });
     } else if (visibleTenantMode === "dedicated") {
       sections.push({
         id: "dedicated",
-        label: "Dedicated tenant",
-        description: "Credentials API propres au client",
+        label: "Tenant dédié",
+        description: "Identifiants API propres au client",
         icon: "mdi:shield-key-outline"
       });
       if (selectedProviderId === "mailinblack") {
         sections.push({
           id: "guide",
           label: "Guide",
-          description: "Get an API key",
+          description: "Obtenir une clé API",
           icon: "mdi:book-open-outline"
         });
       }
@@ -100,7 +103,7 @@ export function buildAntispamNavSections({
     sections.push({
       id: "manual",
       label: "Saisie manuelle",
-      description: "Users, domaines et expiration",
+      description: "Utilisateurs, domaines et expiration",
       icon: "mdi:form-textbox"
     });
   }

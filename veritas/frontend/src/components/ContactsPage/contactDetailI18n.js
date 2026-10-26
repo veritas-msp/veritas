@@ -27,6 +27,8 @@ const DETAIL_COPY = {
       title: "Actions rapides",
       seeAll: "Voir toutes les actions",
       editContact: "Éditer le contact",
+      createTicket: "Créer un ticket",
+      createTicketNeedEnterprise: "Rattachez le contact à une entreprise pour créer un ticket.",
       copyCard: "Copier la fiche",
       shareCard: "Partager la fiche",
       deleteContact: "Supprimer le contact"
@@ -76,6 +78,13 @@ const DETAIL_COPY = {
     noEmails: "Aucun e-mail renseigné",
     noPhones: "Aucun téléphone renseigné",
     activityTitle: "Activité MSP",
+    activitySearchPlaceholder: "Rechercher",
+    activityClearSearchAria: "Effacer la recherche",
+    activityFilterAll: "Tous",
+    activityFilterOpen: "Ouverts",
+    activityFilterClosed: "Clos",
+    activityFilterStatusAria: "Filtrer par statut",
+    emptyActivitySearch: "Aucun résultat pour cette recherche.",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
     loadingActivity: "Chargement de l'activité…",
@@ -93,6 +102,10 @@ const DETAIL_COPY = {
     portalTitle: "Portail client",
     sharedAccessTitle: "Partage d'accès",
     shareAccess: "Partager un accès",
+    shareSearchAria: "Rechercher un accès partagé",
+    shareFilterOngoing: "En cours",
+    shareFilterArchived: "Archivé",
+    shareFilterStatusAria: "Filtrer les partages d'accès",
     sidebarInfo: "Informations",
     sidebarDates: "Dates de la fiche",
     fields: {
@@ -261,6 +274,7 @@ const DETAIL_COPY = {
     portal: {
       heroTitle: "Espace client",
       heroDesc: "Connexion au dashboard entreprise via l'identité de ce contact.",
+      statusLabel: "Statut",
       statusActive: "Actif",
       statusInactive: "Désactivé",
       statusNone: "Aucun accès",
@@ -275,6 +289,37 @@ const DETAIL_COPY = {
       loginEmailPrimary: "Principale",
       lastLoginLabel: "Dernière connexion",
       never: "Jamais",
+      quickActionsLabel: "Actions rapides",
+      quickActionsAria: "Actions rapides du portail",
+      loginHistory: {
+        title: "Activité de connexion",
+        hint: "Suivi des tentatives de connexion au portail client",
+        loading: "Chargement de l’activité…",
+        empty: "Aucune tentative de connexion pour le moment.",
+        unknownLocality: "Inconnue",
+        columns: {
+          date: "Date",
+          status: "Statut",
+          locality: "Localité",
+          ip: "Adresse IP",
+          device: "Appareil"
+        },
+        status: {
+          success: "Réussie",
+          failure: "Échouée",
+          blocked: "Compte désactivé",
+          pending_activation: "Activation requise",
+          mfa_failure: "MFA échouée"
+        },
+        reasons: {
+          invalid_password: "Mot de passe incorrect",
+          wrong_portal: "Mauvais portail de connexion",
+          account_disabled: "Compte désactivé",
+          password_pending: "Compte non activé",
+          invalid_mfa_code: "Code MFA invalide",
+          activation: "Activation du compte"
+        }
+      },
       accessCardTitle: "Accès",
       actionsCardTitle: "Actions",
       noActionsHint: "Aucune action disponible pour ce compte.",
@@ -400,6 +445,8 @@ const DETAIL_COPY = {
       title: "Quick actions",
       seeAll: "See all actions",
       editContact: "Edit contact",
+      createTicket: "Create ticket",
+      createTicketNeedEnterprise: "Link the contact to a company to create a ticket.",
       copyCard: "Copy record",
       shareCard: "Share record",
       deleteContact: "Delete contact"
@@ -449,6 +496,13 @@ const DETAIL_COPY = {
     noEmails: "No email on file",
     noPhones: "No phone on file",
     activityTitle: "MSP activity",
+    activitySearchPlaceholder: "Search",
+    activityClearSearchAria: "Clear search",
+    activityFilterAll: "All",
+    activityFilterOpen: "Open",
+    activityFilterClosed: "Closed",
+    activityFilterStatusAria: "Filter by status",
+    emptyActivitySearch: "No results for this search.",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
     loadingActivity: "Loading activity…",
@@ -466,6 +520,10 @@ const DETAIL_COPY = {
     portalTitle: "Client portal",
     sharedAccessTitle: "Access sharing",
     shareAccess: "Share access",
+    shareSearchAria: "Search shared access",
+    shareFilterOngoing: "Ongoing",
+    shareFilterArchived: "Archived",
+    shareFilterStatusAria: "Filter shared access",
     sidebarInfo: "Information",
     sidebarDates: "Record dates",
     fields: {
@@ -634,6 +692,7 @@ const DETAIL_COPY = {
     portal: {
       heroTitle: "Client space",
       heroDesc: "Sign in to the company dashboard as this contact.",
+      statusLabel: "Status",
       statusActive: "Active",
       statusInactive: "Disabled",
       statusNone: "No access",
@@ -648,6 +707,37 @@ const DETAIL_COPY = {
       loginEmailPrimary: "Primary",
       lastLoginLabel: "Last login",
       never: "Never",
+      quickActionsLabel: "Quick actions",
+      quickActionsAria: "Portal quick actions",
+      loginHistory: {
+        title: "Sign-in activity",
+        hint: "Track client portal sign-in attempts",
+        loading: "Loading activity…",
+        empty: "No sign-in attempts yet.",
+        unknownLocality: "Unknown",
+        columns: {
+          date: "Date",
+          status: "Status",
+          locality: "Locality",
+          ip: "IP address",
+          device: "Device"
+        },
+        status: {
+          success: "Successful",
+          failure: "Failed",
+          blocked: "Account disabled",
+          pending_activation: "Activation required",
+          mfa_failure: "MFA failed"
+        },
+        reasons: {
+          invalid_password: "Incorrect password",
+          wrong_portal: "Wrong sign-in portal",
+          account_disabled: "Account disabled",
+          password_pending: "Account not activated",
+          invalid_mfa_code: "Invalid MFA code",
+          activation: "Account activation"
+        }
+      },
       accessCardTitle: "Access",
       actionsCardTitle: "Actions",
       noActionsHint: "No actions available for this account.",
@@ -773,6 +863,8 @@ const DETAIL_COPY = {
       title: "Schnellaktionen",
       seeAll: "Alle Aktionen anzeigen",
       editContact: "Kontakt bearbeiten",
+      createTicket: "Ticket erstellen",
+      createTicketNeedEnterprise: "Kontakt mit Unternehmen verknüpfen, um ein Ticket zu erstellen.",
       copyCard: "Datensatz kopieren",
       shareCard: "Datensatz teilen",
       deleteContact: "Kontakt löschen"
@@ -820,6 +912,13 @@ const DETAIL_COPY = {
     noEmails: "Keine E-Mail hinterlegt",
     noPhones: "Kein Telefon hinterlegt",
     activityTitle: "MSP-Aktivität",
+    activitySearchPlaceholder: "Suchen",
+    activityClearSearchAria: "Suche löschen",
+    activityFilterAll: "Alle",
+    activityFilterOpen: "Offen",
+    activityFilterClosed: "Geschlossen",
+    activityFilterStatusAria: "Nach Status filtern",
+    emptyActivitySearch: "Keine Ergebnisse für diese Suche.",
     ticketCount: "{count} Ticket",
     ticketCountPlural: "{count} Tickets",
     loadingActivity: "Aktivität wird geladen…",
@@ -837,6 +936,10 @@ const DETAIL_COPY = {
     portalTitle: "Kundenportal",
     sharedAccessTitle: "Zugriff teilen",
     shareAccess: "Zugriff teilen",
+    shareSearchAria: "Geteilten Zugriff suchen",
+    shareFilterOngoing: "Laufend",
+    shareFilterArchived: "Archiviert",
+    shareFilterStatusAria: "Geteilte Zugriffe filtern",
     sidebarInfo: "Informationen",
     sidebarDates: "Datensatz-Daten",
     fields: {
@@ -1002,6 +1105,7 @@ const DETAIL_COPY = {
     portal: {
       heroTitle: "Kundenbereich",
       heroDesc: "Anmeldung am Unternehmens-Dashboard als dieser Kontakt.",
+      statusLabel: "Status",
       statusActive: "Aktiv",
       statusInactive: "Deaktiviert",
       statusNone: "Kein Zugang",
@@ -1015,6 +1119,37 @@ const DETAIL_COPY = {
       loginEmailPrimary: "Primär",
       lastLoginLabel: "Letzte Anmeldung",
       never: "Nie",
+      quickActionsLabel: "Schnellaktionen",
+      quickActionsAria: "Portal-Schnellaktionen",
+      loginHistory: {
+        title: "Anmeldeaktivität",
+        hint: "Verfolgung der Kundenportal-Anmeldeversuche",
+        loading: "Aktivität wird geladen…",
+        empty: "Noch keine Anmeldeversuche.",
+        unknownLocality: "Unbekannt",
+        columns: {
+          date: "Datum",
+          status: "Status",
+          locality: "Ort",
+          ip: "IP-Adresse",
+          device: "Gerät"
+        },
+        status: {
+          success: "Erfolgreich",
+          failure: "Fehlgeschlagen",
+          blocked: "Konto deaktiviert",
+          pending_activation: "Aktivierung erforderlich",
+          mfa_failure: "MFA fehlgeschlagen"
+        },
+        reasons: {
+          invalid_password: "Falsches Passwort",
+          wrong_portal: "Falsches Anmeldeportal",
+          account_disabled: "Konto deaktiviert",
+          password_pending: "Konto nicht aktiviert",
+          invalid_mfa_code: "Ungültiger MFA-Code",
+          activation: "Kontoaktivierung"
+        }
+      },
       accessCardTitle: "Zugang",
       actionsCardTitle: "Aktionen",
       noActionsHint: "Keine Aktionen für dieses Konto verfügbar.",
@@ -1141,6 +1276,8 @@ const DETAIL_COPY = {
       title: "Azioni rapide",
       seeAll: "Vedi tutte le azioni",
       editContact: "Modifica contatto",
+      createTicket: "Crea ticket",
+      createTicketNeedEnterprise: "Collega il contatto a un'azienda per creare un ticket.",
       copyCard: "Copia scheda",
       shareCard: "Condividi scheda",
       deleteContact: "Elimina contatto"
@@ -1188,6 +1325,13 @@ const DETAIL_COPY = {
     noEmails: "Nessuna e-mail indicata",
     noPhones: "Nessun telefono indicato",
     activityTitle: "Attività MSP",
+    activitySearchPlaceholder: "Cerca",
+    activityClearSearchAria: "Cancella ricerca",
+    activityFilterAll: "Tutti",
+    activityFilterOpen: "Aperti",
+    activityFilterClosed: "Chiusi",
+    activityFilterStatusAria: "Filtra per stato",
+    emptyActivitySearch: "Nessun risultato per questa ricerca.",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} ticket",
     loadingActivity: "Caricamento attività…",
@@ -1205,6 +1349,10 @@ const DETAIL_COPY = {
     portalTitle: "Portale cliente",
     sharedAccessTitle: "Condivisione accessi",
     shareAccess: "Condividi accesso",
+    shareSearchAria: "Cerca accesso condiviso",
+    shareFilterOngoing: "In corso",
+    shareFilterArchived: "Archiviato",
+    shareFilterStatusAria: "Filtra accessi condivisi",
     sidebarInfo: "Informazioni",
     sidebarDates: "Date scheda",
     fields: {
@@ -1370,6 +1518,7 @@ const DETAIL_COPY = {
     portal: {
       heroTitle: "Spazio cliente",
       heroDesc: "Accesso alla dashboard azienda con l'identità di questo contatto.",
+      statusLabel: "Stato",
       statusActive: "Attivo",
       statusInactive: "Disattivato",
       statusNone: "Nessun accesso",
@@ -1383,6 +1532,37 @@ const DETAIL_COPY = {
       loginEmailPrimary: "Principale",
       lastLoginLabel: "Ultimo accesso",
       never: "Mai",
+      quickActionsLabel: "Azioni rapide",
+      quickActionsAria: "Azioni rapide del portale",
+      loginHistory: {
+        title: "Attività di accesso",
+        hint: "Tracciamento dei tentativi di accesso al portale cliente",
+        loading: "Caricamento attività…",
+        empty: "Nessun tentativo di accesso per ora.",
+        unknownLocality: "Sconosciuta",
+        columns: {
+          date: "Data",
+          status: "Stato",
+          locality: "Località",
+          ip: "Indirizzo IP",
+          device: "Dispositivo"
+        },
+        status: {
+          success: "Riuscito",
+          failure: "Fallito",
+          blocked: "Account disattivato",
+          pending_activation: "Attivazione richiesta",
+          mfa_failure: "MFA non riuscita"
+        },
+        reasons: {
+          invalid_password: "Password errata",
+          wrong_portal: "Portale di accesso errato",
+          account_disabled: "Account disattivato",
+          password_pending: "Account non attivato",
+          invalid_mfa_code: "Codice MFA non valido",
+          activation: "Attivazione account"
+        }
+      },
       accessCardTitle: "Accesso",
       actionsCardTitle: "Azioni",
       noActionsHint: "Nessuna azione disponibile per questo account.",
@@ -1509,6 +1689,8 @@ const DETAIL_COPY = {
       title: "Acciones rápidas",
       seeAll: "Ver todas las acciones",
       editContact: "Editar contacto",
+      createTicket: "Crear ticket",
+      createTicketNeedEnterprise: "Vincule el contacto a una empresa para crear un ticket.",
       copyCard: "Copiar ficha",
       shareCard: "Compartir ficha",
       deleteContact: "Eliminar contacto"
@@ -1556,6 +1738,13 @@ const DETAIL_COPY = {
     noEmails: "Ningún correo indicado",
     noPhones: "Ningún teléfono indicado",
     activityTitle: "Actividad MSP",
+    activitySearchPlaceholder: "Buscar",
+    activityClearSearchAria: "Borrar búsqueda",
+    activityFilterAll: "Todos",
+    activityFilterOpen: "Abiertos",
+    activityFilterClosed: "Cerrados",
+    activityFilterStatusAria: "Filtrar por estado",
+    emptyActivitySearch: "Ningún resultado para esta búsqueda.",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
     loadingActivity: "Cargando actividad…",
@@ -1573,6 +1762,10 @@ const DETAIL_COPY = {
     portalTitle: "Portal cliente",
     sharedAccessTitle: "Compartir acceso",
     shareAccess: "Compartir acceso",
+    shareSearchAria: "Buscar acceso compartido",
+    shareFilterOngoing: "En curso",
+    shareFilterArchived: "Archivado",
+    shareFilterStatusAria: "Filtrar accesos compartidos",
     sidebarInfo: "Información",
     sidebarDates: "Fechas de la ficha",
     fields: {
@@ -1738,6 +1931,7 @@ const DETAIL_COPY = {
     portal: {
       heroTitle: "Espacio cliente",
       heroDesc: "Acceso al panel de la empresa con la identidad de este contacto.",
+      statusLabel: "Estado",
       statusActive: "Activo",
       statusInactive: "Desactivado",
       statusNone: "Sin acceso",
@@ -1751,6 +1945,37 @@ const DETAIL_COPY = {
       loginEmailPrimary: "Principal",
       lastLoginLabel: "Último acceso",
       never: "Nunca",
+      quickActionsLabel: "Acciones rápidas",
+      quickActionsAria: "Acciones rápidas del portal",
+      loginHistory: {
+        title: "Actividad de inicio de sesión",
+        hint: "Seguimiento de intentos de acceso al portal cliente",
+        loading: "Cargando actividad…",
+        empty: "Ningún intento de inicio de sesión por ahora.",
+        unknownLocality: "Desconocida",
+        columns: {
+          date: "Fecha",
+          status: "Estado",
+          locality: "Localidad",
+          ip: "Dirección IP",
+          device: "Dispositivo"
+        },
+        status: {
+          success: "Correcto",
+          failure: "Fallido",
+          blocked: "Cuenta desactivada",
+          pending_activation: "Activación requerida",
+          mfa_failure: "MFA fallida"
+        },
+        reasons: {
+          invalid_password: "Contraseña incorrecta",
+          wrong_portal: "Portal de acceso incorrecto",
+          account_disabled: "Cuenta desactivada",
+          password_pending: "Cuenta no activada",
+          invalid_mfa_code: "Código MFA inválido",
+          activation: "Activación de cuenta"
+        }
+      },
       accessCardTitle: "Acceso",
       actionsCardTitle: "Acciones",
       noActionsHint: "No hay acciones disponibles para esta cuenta.",

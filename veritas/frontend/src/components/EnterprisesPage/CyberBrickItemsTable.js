@@ -61,6 +61,16 @@ function formatDateTimeValue(value) {
   }
 }
 
+function formatCheckIntervalHours(hours) {
+  const value = Number(hours);
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  if (value >= 24 && value % 24 === 0) {
+    const days = value / 24;
+    return `${days} j`;
+  }
+  return `${value} h`;
+}
+
 function formatDaysRemaining(item) {
   if (item?.daysRemaining != null && item.daysRemaining !== "") {
     const n = Number(item.daysRemaining);
@@ -195,10 +205,31 @@ function getColumns(brickType) {
       return [
         {
           key: "hostname",
-          label: "Hostname",
+          label: "Nom d'hôte",
           get: item => item?.hostname || item?.host || item?.commonName || item?.subjectCN || "—"
         },
         { key: "port", label: "Port", get: item => (item?.port != null ? String(item.port) : "—") },
+        {
+          key: "checkInterval",
+          label: "Période de vérification",
+          get: item => formatCheckIntervalHours(item?.checkIntervalHours ?? item?.check_interval_hours),
+          sortValue: item => Number(item?.checkIntervalHours ?? item?.check_interval_hours) || 0
+        },
+        {
+          key: "lastChecked",
+          label: "Dernière vérification",
+          get: item =>
+            formatDateTimeValue(
+              item?.lastChecked || item?.last_checked || item?.lastCheck || item?.updated_at
+            ),
+          sortValue: item => {
+            const raw =
+              item?.lastChecked || item?.last_checked || item?.lastCheck || item?.updated_at;
+            if (!raw) return 0;
+            const t = new Date(raw).getTime();
+            return Number.isFinite(t) ? t : 0;
+          }
+        },
         {
           key: "expiration",
           label: "Expiration",
@@ -301,8 +332,16 @@ function rowMatches(item, columns, query) {
   return haystack.includes(query);
 }
 
+export function cyberBrickItemKey(item, index = 0) {
+  if (item?.id != null && String(item.id).trim() !== "") return String(item.id);
+  if (item?.hostname) return `host:${String(item.hostname).toLowerCase()}:${item.port || 443}`;
+  const nom = item?.nom || item?.domain || item?.domaine || item?.name;
+  if (nom) return `nom:${String(nom).trim().toLowerCase()}`;
+  return `idx:${index}`;
+}
+
 function rowKey(item, index) {
-  return String(item?.id || item?.hostname || item?.domain || item?.nom || item?.name || index);
+  return cyberBrickItemKey(item, index);
 }
 
 function getSortScalar(col, item) {
@@ -342,14 +381,45 @@ export default function CyberBrickItemsTable({
   onSearchChange,
   sortable = true,
   onEditItem = null,
-  editLabel = "Éditer"
+  editLabel = "Éditer",
+  selectable = false,
+  selectedIds = null,
+  allSelected = false,
+  onToggleItem = null,
+  onToggleAll = null,
+  selectAllLabel = "Tout sélectionner",
+  selectRowLabel = "Sélectionner"
 }) {
   const baseColumns = useMemo(() => getColumns(brickType), [brickType]);
   const columns = useMemo(() => {
-    if (typeof onEditItem !== "function") return baseColumns;
-    return [
-      ...baseColumns,
-      {
+    const next = [...baseColumns];
+    if (selectable) {
+      next.unshift({
+        key: "select",
+        label: "",
+        sortable: false,
+        get: () => "",
+        render: item => {
+          const id = cyberBrickItemKey(item);
+          const checked = selectedIds instanceof Set ? selectedIds.has(id) : false;
+          return (
+            <input
+              type="checkbox"
+              className={equipStyles.embeddedRowCheckbox}
+              checked={checked}
+              onChange={event => {
+                event.stopPropagation();
+                onToggleItem?.(id, event.target.checked);
+              }}
+              onClick={event => event.stopPropagation()}
+              aria-label={`${selectRowLabel} ${baseColumns[0]?.get?.(item) || id}`}
+            />
+          );
+        }
+      });
+    }
+    if (typeof onEditItem === "function") {
+      next.push({
         key: "actions",
         label: "Actions",
         sortable: false,
@@ -367,9 +437,18 @@ export default function CyberBrickItemsTable({
             </button>
           </div>
         )
-      }
-    ];
-  }, [baseColumns, editLabel, onEditItem]);
+      });
+    }
+    return next;
+  }, [
+    baseColumns,
+    editLabel,
+    onEditItem,
+    onToggleItem,
+    selectRowLabel,
+    selectable,
+    selectedIds
+  ]);
   const defaultSortKey = columns[0]?.key || "name";
   const [internalSearch, setInternalSearch] = useState("");
   const isControlled = typeof onSearchChange === "function";
@@ -379,7 +458,9 @@ export default function CyberBrickItemsTable({
   const [sortDirection, setSortDirection] = useState("asc");
   const [fadeVisible, setFadeVisible] = useState(false);
   const [fadeTopVisible, setFadeTopVisible] = useState(false);
+  const [fadeTopOffset, setFadeTopOffset] = useState(0);
   const scrollRef = useRef(null);
+  const theadRef = useRef(null);
   const list = Array.isArray(items) ? items : [];
 
   useEffect(() => {
@@ -419,7 +500,13 @@ export default function CyberBrickItemsTable({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return undefined;
+    const syncFadeTopOffset = () => {
+      const head = theadRef.current;
+      const next = head ? Math.ceil(head.getBoundingClientRect().height) : 0;
+      setFadeTopOffset(prev => (prev === next ? prev : next));
+    };
     const updateFade = () => {
+      syncFadeTopOffset();
       const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
       setFadeVisible(remaining > 4);
       setFadeTopVisible(el.scrollTop > 4);
@@ -432,6 +519,7 @@ export default function CyberBrickItemsTable({
     el.addEventListener("scroll", updateFade, { passive: true });
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateFade) : null;
     ro?.observe(el);
+    if (theadRef.current) ro?.observe(theadRef.current);
     return () => {
       cancelAnimationFrame(raf);
       el.removeEventListener("scroll", updateFade);
@@ -477,11 +565,12 @@ export default function CyberBrickItemsTable({
           >
             <div className={equipStyles.tableCardSurface}>
               <table className={equipStyles.equipmentTableEmbedded}>
-                <thead>
+                <thead ref={theadRef}>
                   <tr>
                     {columns.map(col => {
                       const isActions = col.key === "actions";
-                      const canSort = sortable && col.sortable !== false && !isActions;
+                      const isSelect = col.key === "select";
+                      const canSort = sortable && col.sortable !== false && !isActions && !isSelect;
                       const isSorted = canSort && sortBy === col.key;
                       return (
                         <th
@@ -489,7 +578,8 @@ export default function CyberBrickItemsTable({
                           scope="col"
                           className={[
                             canSort ? equipStyles.sortableTh : undefined,
-                            isActions ? equipStyles.embeddedColActions : undefined
+                            isActions ? equipStyles.embeddedColActions : undefined,
+                            isSelect ? equipStyles.embeddedColCheckbox : undefined
                           ].filter(Boolean).join(" ") || undefined}
                           onClick={canSort ? () => handleSort(col.key) : undefined}
                           aria-sort={
@@ -503,16 +593,26 @@ export default function CyberBrickItemsTable({
                           }
                           title={canSort ? `Trier par ${col.label}` : undefined}
                         >
-                          <span className={equipStyles.thContent}>
-                            {col.label}
-                            {canSort && isSorted ? (
-                              <SortIcon
-                                active
-                                direction={sortDirection}
-                                className={equipStyles.sortIndicator}
-                              />
-                            ) : null}
-                          </span>
+                          {isSelect ? (
+                            <input
+                              type="checkbox"
+                              className={equipStyles.embeddedRowCheckbox}
+                              checked={Boolean(allSelected && sorted.length > 0)}
+                              onChange={() => onToggleAll?.()}
+                              aria-label={selectAllLabel}
+                            />
+                          ) : (
+                            <span className={equipStyles.thContent}>
+                              {col.label}
+                              {canSort && isSorted ? (
+                                <SortIcon
+                                  active
+                                  direction={sortDirection}
+                                  className={equipStyles.sortIndicator}
+                                />
+                              ) : null}
+                            </span>
+                          )}
                         </th>
                       );
                     })}
@@ -520,23 +620,37 @@ export default function CyberBrickItemsTable({
                 </thead>
                 <tbody>
                   {sorted.length ? (
-                    sorted.map((item, index) => (
-                      <tr key={rowKey(item, index)} className={equipStyles.equipmentRowEmbedded}>
-                        {columns.map(col => {
-                          const isActions = col.key === "actions";
-                          const text = String(col.get(item) ?? "");
-                          return (
-                            <td
-                              key={col.key}
-                              className={isActions ? equipStyles.embeddedColActions : undefined}
-                              title={isActions ? undefined : text}
-                            >
-                              {typeof col.render === "function" ? col.render(item) : col.get(item)}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))
+                    sorted.map((item, index) => {
+                      const id = rowKey(item, index);
+                      const isSelected = selectedIds instanceof Set && selectedIds.has(cyberBrickItemKey(item, index));
+                      return (
+                        <tr
+                          key={id}
+                          className={[
+                            equipStyles.equipmentRowEmbedded,
+                            isSelected ? equipStyles.equipmentRowEmbeddedSelected : undefined
+                          ].filter(Boolean).join(" ")}
+                        >
+                          {columns.map(col => {
+                            const isActions = col.key === "actions";
+                            const isSelect = col.key === "select";
+                            const text = String(col.get(item) ?? "");
+                            return (
+                              <td
+                                key={col.key}
+                                className={[
+                                  isActions ? equipStyles.embeddedColActions : undefined,
+                                  isSelect ? equipStyles.embeddedColCheckbox : undefined
+                                ].filter(Boolean).join(" ") || undefined}
+                                title={isActions || isSelect ? undefined : text}
+                              >
+                                {typeof col.render === "function" ? col.render(item) : col.get(item)}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={columns.length}>
@@ -552,6 +666,7 @@ export default function CyberBrickItemsTable({
           </div>
           <div
             className={`${equipStyles.tableScrollFadeTop} ${fadeTopVisible ? equipStyles.tableScrollFadeVisible : ""}`}
+            style={fadeTopOffset > 0 ? { top: fadeTopOffset } : undefined}
             aria-hidden
           />
           <div

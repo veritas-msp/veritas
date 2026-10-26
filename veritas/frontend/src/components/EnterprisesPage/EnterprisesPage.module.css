@@ -1331,16 +1331,18 @@
   table-layout: fixed;
 }
 
-/* thead hors scroll (UiKitScrollFadeShell header) — pas de sticky */
+/* thead hors scroll (UiKitScrollFadeShell header) — densite alignée infra / sauvegarde */
 .dataTable thead th {
   text-align: left;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 0.72rem;
+  font-weight: 650;
   font-family: inherit;
   text-transform: none;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
   color: var(--msp-muted, #5c6b82);
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
   border-bottom: none;
   background: #ffffff;
   white-space: nowrap;
@@ -1394,19 +1396,22 @@
 }
 
 .dataTable tbody td {
-  padding: 0.5rem 0.5rem;
-  font-size: 13px;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  font-size: 0.8125rem;
   font-weight: 400;
   font-family: inherit;
   letter-spacing: normal;
   text-transform: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 75%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
   vertical-align: middle;
   color: var(--msp-text, #0f1c2e);
   background: #ffffff;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dataTable tbody tr:last-child td {

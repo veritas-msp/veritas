@@ -191,7 +191,8 @@
   background: transparent;
   position: sticky;
   top: 0;
-  z-index: 1;
+  /* Au-dessus des fades (z-index 5) pour garder l’entête nette */
+  z-index: 6;
 }
 
 .table th {
@@ -205,18 +206,28 @@
   background: transparent;
 }
 
-/* Densité listes CRM (tickets / campagnes) — alignée table infra équipement */
-.tableList {
+/* Densité listes CRM (tickets / campagnes / presta) — alignée table infra / sauvegarde.
+   Spécificité .table.tableList pour gagner sur .table th/td déclarés plus bas. */
+.table.tableList {
   font-size: 0.8125rem;
   color: var(--msp-text, #0f1c2e);
 }
 
-.tableList thead {
+.table.tableList thead {
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
+  z-index: 6;
+}
+
+.table.tableList thead th {
   background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
 }
 
-.tableList th {
-  padding: 0.55rem 0.5rem;
+.table.tableList th {
+  /* Hauteur alignée lignes infra/sauvegarde (cellule ≈ bouton action 28px + padding) */
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   font-size: 0.72rem;
   font-weight: 650;
   letter-spacing: 0.02em;
@@ -227,26 +238,32 @@
   vertical-align: middle;
 }
 
-.tableList td {
-  padding: 0.55rem 0.5rem;
+.table.tableList td {
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   font-size: 0.8125rem;
   font-weight: 400;
   border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
   vertical-align: middle;
   color: var(--msp-text, #0f1c2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.tableList tbody tr td {
+.table.tableList tbody tr td {
   background: var(--msp-surface, #ffffff);
   transition: background 0.12s;
 }
 
-.tableList tbody tr:nth-child(even) td {
+.table.tableList tbody tr:nth-child(even) td {
   background: var(--msp-surface-2, #f7f9fc);
 }
 
-.tableList tbody tr:hover td,
-.tableList tbody tr:nth-child(even):hover td {
+.table.tableList tbody tr:hover td,
+.table.tableList tbody tr:nth-child(even):hover td {
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
 }
 
@@ -377,8 +394,8 @@
 }
 
 .tableActionsCell {
-  padding-top: 0.35rem;
-  padding-bottom: 0.35rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
   padding-right: 0.55rem;
 }
 

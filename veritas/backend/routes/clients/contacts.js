@@ -26,6 +26,7 @@ import {
 import { attachOrphanTicketsToContact } from '../../services/ticketEmailThread.js';
 import { normalizePortalTicketRole } from '../../utils/portalTicketRole.js';
 import { SUPPORT_TICKET_SQL } from '../../utils/ticketEditionGuard.js';
+import { listPortalLoginEventsForContact } from '../../utils/portalLoginEvents.js';
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
 const router = express.Router();
 router.use(verifyJWT);
@@ -340,6 +341,28 @@ router.get('/:id/portal', verifyJWT, requireAgent, async (req, res) => {
     res.json({
       contact_id: contactId,
       portal
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message || "Server error"
+    });
+  }
+});
+router.get('/:id/portal/logins', verifyJWT, requireAgent, async (req, res) => {
+  const contactId = parseContactId(req.params.id);
+  if (!contactId) return res.status(400).json({
+    error: "Invalid ID contact"
+  });
+  try {
+    const contact = await loadContactById(contactId);
+    if (!contact) return res.status(404).json({
+      error: "Contact not found"
+    });
+    const limit = Number(req.query.limit) || 50;
+    const events = await listPortalLoginEventsForContact(contactId, { limit });
+    res.json({
+      contact_id: contactId,
+      events
     });
   } catch (err) {
     res.status(500).json({

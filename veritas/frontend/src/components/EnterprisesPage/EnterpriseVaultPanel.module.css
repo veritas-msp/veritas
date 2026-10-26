@@ -1736,57 +1736,137 @@
   gap: 0.85rem;
 }
 
-.secretsList {
+.secretsPanelTable {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0;
 }
 
-.secretCard {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid var(--msp-border, #c5d0df);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+.secretsPanelTable :global([class*="dataTableWrapper"]),
+.secretsPanelTable :global([class*="activityEmptyState"]),
+.secretsPanelTable .secretsTableShell {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
-.secretCardMain {
-  flex: 1;
+.secretsTableShell {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent) !important;
+  border-radius: 16px !important;
+  background: var(--msp-surface, #fff) !important;
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 10px 28px -14px rgba(15, 28, 46, 0.14) !important;
+}
+
+:global(html.dark) .secretsTableShell,
+:global(body.dark) .secretsTableShell {
+  background: var(--msp-surface, #1a2540) !important;
+  border-color: color-mix(in srgb, var(--msp-border, #2f4260) 80%, transparent) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 12px 28px -14px rgba(0, 0, 0, 0.45) !important;
+}
+
+.secretTableTitleCell {
   min-width: 0;
+  max-width: 22rem;
+  white-space: normal !important;
+  height: auto !important;
+  min-height: 2.85rem;
+  vertical-align: middle;
 }
 
-.secretCardHead {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.secretCardIcon {
-  flex-shrink: 0;
-  font-size: 1.35rem;
-  color: var(--msp-accent, #2b5fab);
-  margin-top: 0.1rem;
-}
-
-.secretCardTitleWrap {
-  flex: 1;
-  min-width: 0;
-}
-
-.secretCardTitle {
-  margin: 0;
-  font-size: 0.92rem;
-  font-weight: 700;
+.secretTableTitle {
+  display: block;
+  font-weight: 600;
   color: var(--msp-text, #0f1c2e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.secretCardDesc {
-  margin: 0.2rem 0 0;
+.secretTableDesc {
+  display: block;
+  margin-top: 0.15rem;
   font-size: 0.78rem;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secretsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  overflow: hidden;
+}
+
+.secretRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.secretRow:last-child {
+  border-bottom: none;
+}
+
+.secretRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.secretRowTitleLine {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.secretRowTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secretRowDesc {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.secretRowMeta {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--msp-muted-light, #8b9bb5);
 }
 
 .secretBadge {
@@ -1814,28 +1894,68 @@
   color: #475569;
 }
 
-.secretMetaRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.85rem;
-  margin-top: 0.55rem;
-  font-size: 0.74rem;
-  color: var(--msp-muted-light, #8b9bb5);
-}
-
 .secretDeletionRequested {
   color: #b45309;
   font-weight: 600;
 }
 
-.secretRevokeBtn {
+.secretTableActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Aligné sur EquipmentPage `.mappingActionButton` (onglet périphériques) */
+.secretActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 7px;
+  background: var(--msp-surface, #ffffff);
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
   flex-shrink: 0;
+  font-size: 0.85rem;
+  line-height: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.secretActionBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.secretActionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shareSectionFill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.shareForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
 }
 
 .secretInputRow {
   display: flex;
-  align-items: stretch;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .secretInputRow .input,

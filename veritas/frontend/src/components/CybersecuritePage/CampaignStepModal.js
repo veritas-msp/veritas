@@ -272,7 +272,6 @@ export default function CampaignStepModal({
           <>
             <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
               <h3 className={layout.sectionTitle}>{stepModal.sectionGeneralTitle || stepModal.name || "Général"}</h3>
-              <p className={layout.sectionDesc}>{stepModal.sectionGeneralDesc || ""}</p>
             </div>
             <div className={layout.fieldStack}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
@@ -299,7 +298,6 @@ export default function CampaignStepModal({
           <>
             <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
               <h3 className={layout.sectionTitle}>{stepModal.sectionScheduleTitle || stepModal.sectionSchedule || "Planning"}</h3>
-              <p className={layout.sectionDesc}>{stepModal.sectionScheduleDesc || ""}</p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={layout.field}>
@@ -342,7 +340,6 @@ export default function CampaignStepModal({
           <>
             <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
               <h3 className={layout.sectionTitle}>{stepModal.sectionAssigneesTitle || stepModal.assignee || "Assignations"}</h3>
-              <p className={layout.sectionDesc}>{stepModal.sectionAssigneesDesc || ""}</p>
             </div>
             <div className={layout.fieldStack}>
               <div className={`${layout.field} ${layout.fieldFull}`}>

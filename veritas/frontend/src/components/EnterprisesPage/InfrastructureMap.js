@@ -1,18 +1,29 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getInfraMapCopy } from "./infraMapI18n";
+import { getCybersecuritePageCopy } from "../CybersecuritePage/cybersecuritePageI18n";
 import { filterBySite, matchesSiteFilter } from "../../utils/siteFilterUtils";
 import { buildInfraBrickGroups } from "./infraHoneycombLayout";
 import { getInfraTypeIcon } from "./infraMapUtils";
 import { AntivirusOverviewPanel } from "./AntivirusOverviewModal";
 import { AntispamOverviewPanel } from "./AntispamOverviewModal";
 import { MicrosoftTenantOverviewPanel } from "./MicrosoftTenantOverviewPanel";
-import CyberBrickItemsTable, { isCyberBrickTableType } from "./CyberBrickItemsTable";
+import CyberBrickItemsTable, { cyberBrickItemKey, isCyberBrickTableType } from "./CyberBrickItemsTable";
 import BackupOverviewPanel from "./BackupOverviewPanel";
 import EquipmentHoverIcon, { CYBER_BRICK_ANIMATED } from "../EquipementPage/EquipmentHoverIcon";
+import { isOvhManagedDomain } from "./domainSolutionUtils";
+import CyberBulkBar from "../CybersecuritePage/CyberBulkBar";
+import { useCyberBulkSelection } from "../CybersecuritePage/useCyberBulkSelection";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import SslBulkIntervalModal from "./SslBulkIntervalModal";
+import { updateClientSslCertificate } from "../../api/clients";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
+import { showError, showSuccess } from "../../utils/toast";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import styles from "./InfrastructureMap.module.css";
+
+const SELECTABLE_SERVICE_TABLE_TYPES = new Set(["NDD", "CertificatsSSL", "LicensesAbonnements"]);
 
 function getBrickItemTitle(brickType, item, index) {
   if (!item || typeof item !== "object") return `#${index + 1}`;
@@ -213,24 +224,28 @@ function CyberIntegrationDashboard({
     </div>
   ) : null;
 
+  const hideHeaderTitle = isAntivirus || isAntispam;
+
   return (
     <div className={`${styles.detailPanel} ${styles.detailPanelMetrics} ${styles.detailPanelMetricsBare}`.trim()}>
       <header className={styles.detailHeader}>
-        <div
-          className={styles.detailHeaderTitleRow}
-          onMouseEnter={() => titleAnimRef.current?.startAnimation?.()}
-          onMouseLeave={() => titleAnimRef.current?.stopAnimation?.()}
-        >
-          <span className={styles.detailTitleIcon} aria-hidden>
-            <EquipmentHoverIcon
-              Animated={TitleAnimated}
-              iconify={icon}
-              size={20}
-              animRef={titleAnimRef}
-            />
-          </span>
-          <h3 className={styles.detailTitle}>{brick.label}</h3>
-        </div>
+        {!hideHeaderTitle ? (
+          <div
+            className={styles.detailHeaderTitleRow}
+            onMouseEnter={() => titleAnimRef.current?.startAnimation?.()}
+            onMouseLeave={() => titleAnimRef.current?.stopAnimation?.()}
+          >
+            <span className={styles.detailTitleIcon} aria-hidden>
+              <EquipmentHoverIcon
+                Animated={TitleAnimated}
+                iconify={icon}
+                size={20}
+                animRef={titleAnimRef}
+              />
+            </span>
+            <h3 className={styles.detailTitle}>{brick.label}</h3>
+          </div>
+        ) : null}
         <div className={styles.detailHeaderActions}>{actionButtons}</div>
       </header>
 
@@ -289,14 +304,50 @@ function CyberServiceDetailPanel({
   onConfigure,
   onDelete,
   onSynced,
-  onNavigate
+  onNavigate,
+  onSyncSsl = null,
+  onSyncDomains = null
 }) {
+  const locale = useAppLocale();
+  const common = useCommonCopy();
+  const cyberCopy = useMemo(() => getCybersecuritePageCopy(locale), [locale]);
   const preview = copy.preview || {};
   const [tableSearch, setTableSearch] = useState("");
+  const [tableSyncing, setTableSyncing] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkIntervalOpen, setBulkIntervalOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const tableItems = useMemo(
+    () => (Array.isArray(brick?.items) ? brick.items : []),
+    [brick?.items]
+  );
+  const selectionEnabled = SELECTABLE_SERVICE_TABLE_TYPES.has(brick?.type);
+  const selectableItems = selectionEnabled ? tableItems : [];
+  const getItemId = useCallback(item => cyberBrickItemKey(item), []);
+  const {
+    selectedIds,
+    selectedItems,
+    selectedCount,
+    allSelected,
+    clearSelection,
+    toggleItem,
+    toggleAll,
+    selectAll
+  } = useCyberBulkSelection(selectableItems, getItemId);
 
   useEffect(() => {
     setTableSearch("");
-  }, [brick?.type]);
+    clearSelection();
+    setBulkDeleteOpen(false);
+    setBulkIntervalOpen(false);
+  }, [brick?.type, clearSelection]);
+
+  useEffect(() => {
+    setTableSyncing(false);
+  }, [brick?.type, client?.id]);
+
+  const titleAnimRef = useRef(null);
 
   if (!brick) {
     return (
@@ -325,7 +376,7 @@ function CyberServiceDetailPanel({
     );
   }
 
-  const items = Array.isArray(brick.items) ? brick.items : [];
+  const items = tableItems;
   const hasItems = items.length > 0 || Number(brick.count) > 0;
   const isComingSoon = Boolean(brick.comingSoon);
   const isProLocked = Boolean(isCommunity && brick.proOnly);
@@ -359,7 +410,127 @@ function CyberServiceDetailPanel({
   if (isServiceTable && !isComingSoon && !isProLocked) {
     const searchPlaceholder = preview.searchPlaceholder || "Rechercher…";
     const emptyLabel = preview.emptyBody || "Ajoutez une solution pour ce client afin de commencer le suivi.";
+    const emptyAddCta = preview.emptyAddCta || preview.add || "Ajouter la première solution";
+    const tableIcon = getInfraTypeIcon(brick.type, brick.icon);
     const showTable = items.length > 0 || Boolean(tableSearch.trim());
+    const canSyncSsl = brick.type === "CertificatsSSL" && typeof onSyncSsl === "function";
+    const canSyncDomains = brick.type === "NDD" && typeof onSyncDomains === "function";
+    const canSync = canSyncSsl || canSyncDomains;
+    const hasOvhDomains = canSyncDomains && items.some(item => isOvhManagedDomain(item));
+    const syncDisabled =
+      tableSyncing ||
+      (canSyncSsl && items.length === 0) ||
+      (canSyncDomains && !hasOvhDomains);
+    const syncLabel = (() => {
+      if (canSyncSsl) {
+        if (tableSyncing) return preview.syncSslBusy || "Synchronisation en cours…";
+        if (items.length === 0) return preview.syncSslEmpty || "Aucun certificat à synchroniser";
+        return preview.syncSsl || "Synchroniser tous les certificats SSL";
+      }
+      if (canSyncDomains) {
+        if (tableSyncing) return preview.syncDomainsBusy || "Synchronisation en cours…";
+        if (!hasOvhDomains) return preview.syncDomainsEmpty || "Aucun domaine OVH à synchroniser";
+        return preview.syncDomains || "Synchroniser les noms de domaine (OVH)";
+      }
+      return "";
+    })();
+    const handleTableSync = async () => {
+      if (!canSync || syncDisabled) return;
+      setTableSyncing(true);
+      try {
+        if (canSyncSsl) await onSyncSsl();
+        else if (canSyncDomains) await onSyncDomains();
+      } finally {
+        setTableSyncing(false);
+      }
+    };
+    const canRowEdit = SELECTABLE_SERVICE_TABLE_TYPES.has(brick.type);
+    const isSslTable = brick.type === "CertificatsSSL";
+    const handleBulkEdit = () => {
+      if (isSslTable) {
+        if (selectedItems.length === 1) {
+          onConfigure?.(brick, selectedItems[0]);
+          clearSelection();
+          return;
+        }
+        if (selectedItems.length > 1) {
+          setBulkIntervalOpen(true);
+        }
+        return;
+      }
+      if (selectedItems.length !== 1) return;
+      onConfigure?.(brick, selectedItems[0]);
+      clearSelection();
+    };
+    const handleBulkIntervalSubmit = async checkIntervalHours => {
+      if (!client?.id || !selectedItems.length) return;
+      setBulkBusy(true);
+      let updated = 0;
+      let failed = 0;
+      try {
+        for (const item of selectedItems) {
+          if (!item?.id) {
+            failed += 1;
+            continue;
+          }
+          try {
+            await updateClientSslCertificate(client.id, item.id, {
+              hostname: item.hostname,
+              port: item.port || 443,
+              checkIntervalHours
+            });
+            updated += 1;
+          } catch {
+            failed += 1;
+          }
+        }
+        if (updated > 0 && failed === 0) {
+          showSuccess(
+            cyberCopy.formatBulkEditSuccess?.(updated) || `${updated} certificat(s) mis à jour`
+          );
+        } else if (updated > 0) {
+          showError(
+            cyberCopy.formatBulkEditPartial?.(updated, failed) ||
+              `${updated} ok, ${failed} échec(s)`
+          );
+        } else {
+          showError(cyberCopy.bulk?.toasts?.editError || "Aucune modification appliquée");
+        }
+        clearSelection();
+        setBulkIntervalOpen(false);
+        await onSynced?.();
+      } finally {
+        setBulkBusy(false);
+      }
+    };
+    const handleBulkDeleteConfirm = async () => {
+      if (!selectedItems.length || typeof onDelete !== "function") return;
+      setBulkBusy(true);
+      let deleted = 0;
+      let failed = 0;
+      try {
+        for (const item of selectedItems) {
+          try {
+            await onDelete(brick, item, { skipConfirm: true });
+            deleted += 1;
+          } catch {
+            failed += 1;
+          }
+        }
+        if (deleted > 0 && failed === 0) {
+          showSuccess(cyberCopy.formatBulkDeleteSuccess?.(deleted) || `${deleted} élément(s) supprimé(s)`);
+        } else if (deleted > 0) {
+          showError(cyberCopy.formatBulkDeletePartial?.(deleted, failed) || `${deleted} ok, ${failed} échec(s)`);
+        } else {
+          showError(cyberCopy.bulk?.toasts?.deleteError || "Suppression impossible");
+        }
+        clearSelection();
+        setBulkDeleteOpen(false);
+        await onSynced?.();
+      } finally {
+        setBulkBusy(false);
+      }
+    };
     return (
       <div className={`${styles.detailPanel} ${styles.detailPanelTable} ${styles.detailPanelMetricsBare}`.trim()}>
         <div className={styles.serviceTableToolbar}>
@@ -384,15 +555,34 @@ function CyberServiceDetailPanel({
               </button>
             ) : null}
           </div>
-          <button
-            type="button"
-            className={styles.detailPrimaryBtn}
-            onClick={handleAdd}
-            title={preview.add || "Ajouter"}
-            aria-label={preview.add || "Ajouter"}
-          >
-            <Icon icon="mdi:plus" aria-hidden />
-          </button>
+          <div className={styles.serviceTableToolbarActions}>
+            {canSync ? (
+              <button
+                type="button"
+                className={styles.detailSecondaryBtn}
+                onClick={handleTableSync}
+                disabled={syncDisabled}
+                title={syncLabel}
+                aria-label={syncLabel}
+              >
+                <Icon
+                  icon={tableSyncing ? "mdi:loading" : "mdi:sync"}
+                  className={tableSyncing ? styles.spinning : undefined}
+                  aria-hidden
+                />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={styles.detailPrimaryBtn}
+              onClick={handleAdd}
+              disabled={tableSyncing}
+              title={preview.add || "Ajouter"}
+              aria-label={preview.add || "Ajouter"}
+            >
+              <Icon icon="mdi:plus" aria-hidden />
+            </button>
+          </div>
         </div>
         <div className={styles.detailTableHost}>
           {showTable ? (
@@ -404,19 +594,69 @@ function CyberServiceDetailPanel({
               search={tableSearch}
               onSearchChange={setTableSearch}
               sortable
+              selectable={canRowEdit}
+              selectedIds={selectedIds}
+              allSelected={allSelected}
+              onToggleItem={toggleItem}
+              onToggleAll={toggleAll}
+              selectAllLabel={cyberCopy.bulk?.selectAll || "Tout sélectionner"}
+              selectRowLabel={cyberCopy.bulk?.selectAll || "Sélectionner"}
+              onEditItem={canRowEdit ? item => onConfigure?.(brick, item) : null}
+              editLabel={preview.editCurrent || preview.configure || "Éditer"}
             />
           ) : (
-            <div className={styles.serviceTableEmpty}>
-              <p className={styles.serviceTableEmptyText}>{emptyLabel}</p>
+            <div className={styles.detailEmptyCard}>
+              <Icon icon={tableIcon} className={styles.detailEmptyCardIcon} aria-hidden />
+              <p className={styles.detailEmptyCardText}>{emptyLabel}</p>
+              <button type="button" className={styles.detailEmptyCardBtn} onClick={handleAdd}>
+                <Icon icon="mdi:plus" aria-hidden />
+                {emptyAddCta}
+              </button>
             </div>
           )}
         </div>
+        {canRowEdit && selectedCount > 0 ? (
+          <CyberBulkBar
+            copy={cyberCopy}
+            selectedCount={selectedCount}
+            allSelected={allSelected}
+            filteredCount={items.length}
+            busy={bulkBusy || tableSyncing}
+            onSelectAll={selectAll}
+            onEdit={
+              isSslTable || selectedCount === 1 ? handleBulkEdit : undefined
+            }
+            onDelete={() => setBulkDeleteOpen(true)}
+            onClear={clearSelection}
+          />
+        ) : null}
+        <ConfirmModal
+          open={bulkDeleteOpen}
+          variant="danger"
+          title={cyberCopy.bulk?.deleteTitle || "Supprimer la sélection"}
+          message={cyberCopy.formatBulkDeleteMessage?.(selectedCount) || `Supprimer ${selectedCount} élément(s) ?`}
+          confirmLabel={cyberCopy.bulk?.deleteConfirm || common.remove || "Supprimer"}
+          loading={bulkBusy}
+          onClose={() => {
+            if (!bulkBusy) setBulkDeleteOpen(false);
+          }}
+          onConfirm={handleBulkDeleteConfirm}
+        />
+        {isSslTable ? (
+          <SslBulkIntervalModal
+            open={bulkIntervalOpen}
+            items={selectedItems}
+            onClose={() => {
+              if (!bulkBusy) setBulkIntervalOpen(false);
+            }}
+            onSubmit={handleBulkIntervalSubmit}
+          />
+        ) : null}
       </div>
     );
   }
 
   const icon = getInfraTypeIcon(brick.type, brick.icon);
-  const titleAnimRef = useRef(null);
   const TitleAnimated = CYBER_BRICK_ANIMATED[brick?.type] || null;
 
   const actionButtons = !isComingSoon && !isProLocked ? (
@@ -536,6 +776,8 @@ export default function InfrastructureMap({
   onBrickDelete,
   onSynced,
   onNavigate,
+  onSyncSsl = null,
+  onSyncDomains = null,
   isCommunity = false,
   onLoadingChange
 }) {
@@ -606,7 +848,11 @@ export default function InfrastructureMap({
   return (
     <div className={`${styles.map} ${styles.mapFill}`}>
       <div className={`${styles.mapShell} ${styles.cyberDetailShell}`}>
-        <section className={styles.cyberDetail} aria-label={copy.preview?.panelAria || "Aperçu du service"}>
+        <section
+          key={selectedType || "none"}
+          className={`${styles.cyberDetail} ${styles.contentFadeUp}`}
+          aria-label={copy.preview?.panelAria || "Aperçu du service"}
+        >
           <CyberServiceDetailPanel
             brick={selectedBrick}
             client={client}
@@ -619,6 +865,8 @@ export default function InfrastructureMap({
             onDelete={onBrickDelete}
             onSynced={onSynced}
             onNavigate={onNavigate}
+            onSyncSsl={onSyncSsl}
+            onSyncDomains={onSyncDomains}
           />
         </section>
       </div>

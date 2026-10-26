@@ -13,6 +13,8 @@ export default function UiKitScrollFadeShell({
   deps = [],
   stickToBottom = false,
   fadeTop = true,
+  /** Décale le fade haut sous un thead sticky (ex. "2.85rem") — évite de le recouvrir */
+  fadeTopInset = null,
   stableScrollbar = false,
   style,
   shellRef,
@@ -118,6 +120,7 @@ export default function UiKitScrollFadeShell({
         {fadeTop ? (
           <div
             className={`${styles.scrollFadeTop} ${fadeTopVisible ? styles.scrollFadeVisible : ""}`}
+            style={fadeTopInset ? { top: fadeTopInset } : undefined}
             aria-hidden
           />
         ) : null}

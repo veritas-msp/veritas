@@ -116,7 +116,6 @@ export default function DomainOverviewModal({
               <h2 className={formStyles.title} id="domain-overview-title">
                 {summary.label}
               </h2>
-              <p className={formStyles.subtitle}>{client.name}</p>
             </div>
           </div>
           <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Close">

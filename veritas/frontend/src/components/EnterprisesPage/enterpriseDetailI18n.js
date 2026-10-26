@@ -330,7 +330,9 @@ const DETAIL_COPY = {
       created: "Créé le",
       name: "Nom",
       progress: "Progression",
-      start: "Début"
+      start: "Début",
+      end: "Fin",
+      agent: "Agent"
     },
     activitySearchPlaceholder: "Rechercher",
     activityClearSearchAria: "Effacer la recherche",
@@ -343,10 +345,13 @@ const DETAIL_COPY = {
     activityNextPage: "Page suivante",
     activityPageInfo: "Page {current} / {total}",
     activityRangeInfo: "{start}–{end} sur {total}",
+    eventStatusUpcoming: "À venir",
+    eventStatusRecent: "Récents",
     emptyActivitySearch: "Aucun résultat pour cette recherche.",
     emptySupportTickets: "Aucun ticket support pour ce client.",
     emptyPrestationTickets: "Aucun ticket prestations / services pour ce client.",
     emptyCampaigns: "Aucune campagne en cours pour ce client.",
+    emptyEvents: "Aucun événement pour ce client.",
     guideFab: "Guide de la fiche entreprise",
     guideTitle: "Fiche entreprise",
     guide: {
@@ -924,7 +929,9 @@ const DETAIL_COPY = {
       created: "Created",
       name: "Name",
       progress: "Progress",
-      start: "Start"
+      start: "Start",
+      end: "End",
+      agent: "Agent"
     },
     activitySearchPlaceholder: "Search",
     activityClearSearchAria: "Clear search",
@@ -937,10 +944,13 @@ const DETAIL_COPY = {
     activityNextPage: "Next page",
     activityPageInfo: "Page {current} / {total}",
     activityRangeInfo: "{start}–{end} of {total}",
+    eventStatusUpcoming: "Upcoming",
+    eventStatusRecent: "Recent",
     emptyActivitySearch: "No results for this search.",
     emptySupportTickets: "No support tickets for this client.",
     emptyPrestationTickets: "No services tickets for this client.",
     emptyCampaigns: "No ongoing campaigns for this client.",
+    emptyEvents: "No events for this client.",
     guideFab: "Company record guide",
     guideTitle: "Company record",
     guide: {

@@ -26,6 +26,21 @@
   overflow: visible;
 }
 
+.computerTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  width: 100%;
+  overflow: visible;
+}
+
+.computerTypeGrid .categoryTile {
+  flex: none;
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+}
+
 .categoryTile {
   position: relative;
   display: flex;
@@ -45,16 +60,18 @@
   text-align: center;
   font-family: inherit;
   overflow: visible;
+  animation: categoryTileIn 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transition:
     border-color 180ms ease,
     background 180ms ease,
     transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 180ms ease;
+    box-shadow 180ms ease,
+    filter 180ms ease;
 }
 
 .categoryTile:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 50%, transparent);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
   z-index: 1;
 }
@@ -72,8 +89,34 @@
 }
 
 .categoryTile:disabled {
-  opacity: 0.55;
   cursor: not-allowed;
+  filter: grayscale(1);
+  border-color: #e5e7eb;
+  background: #f3f4f6;
+  box-shadow: none;
+  color: #9ca3af;
+}
+
+.categoryTile:disabled .categoryIconWrap {
+  background: #e8eaef;
+  color: #9ca3af;
+  filter: grayscale(1);
+}
+
+.categoryTile:disabled .categoryLabel {
+  color: #9ca3af;
+}
+
+.categoryTile:disabled .categoryIcon,
+.categoryTile:disabled img {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+.categoryTile:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #e5e7eb;
 }
 
 .categoryCheck {
@@ -82,6 +125,7 @@
   right: 0.45rem;
   font-size: 0.95rem;
   color: var(--msp-accent, #2b5fab);
+  animation: categoryCheckPop 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .categoryIconWrap {
@@ -113,7 +157,7 @@
 .categoryTile:hover:not(:disabled) .categoryIconWrap {
   background: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
   color: var(--msp-accent, #2b5fab);
-  transform: translateY(-1px) scale(1.04);
+  transform: translateY(-2px) scale(1.08);
 }
 
 .categoryTile:hover:not(:disabled) .categoryIcon {
@@ -144,6 +188,28 @@
   color: var(--msp-accent, #2b5fab);
 }
 
+@keyframes categoryTileIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes categoryCheckPop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes categoryIconPop {
   0% {
     transform: scale(1) rotate(0deg);
@@ -165,6 +231,12 @@
     max-width: calc((100% - 1.4rem) / 3);
     min-height: 6.5rem;
   }
+
+  .computerTypeGrid .categoryTile {
+    flex-basis: auto;
+    max-width: none;
+    min-height: 6.5rem;
+  }
 }
 
 @media (max-width: 560px) {
@@ -173,15 +245,40 @@
     max-width: calc((100% - 0.7rem) / 2);
     min-width: 0;
   }
+
+  .computerTypeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .computerTypeGrid .categoryTile {
+    flex-basis: auto;
+    max-width: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .categoryTile,
   .categoryIconWrap,
+  .categoryCheck,
   .categoryTile:hover:not(:disabled) .categoryIcon {
     animation: none !important;
     transition: none;
+    opacity: 1;
+    transform: none;
   }
+}
+
+:global(html.dark) .categoryTile:disabled,
+:global(body.dark-mode) .categoryTile:disabled {
+  background: color-mix(in srgb, var(--msp-surface, #1e293b) 88%, #0f172a);
+  border-color: var(--msp-border, #334155);
+  color: #64748b;
+  filter: grayscale(1) brightness(0.85);
+}
+
+:global(html.dark) .categoryTile:disabled .categoryLabel,
+:global(body.dark-mode) .categoryTile:disabled .categoryLabel {
+  color: #64748b;
 }
 
 :global(html.dark) .categoryTile {

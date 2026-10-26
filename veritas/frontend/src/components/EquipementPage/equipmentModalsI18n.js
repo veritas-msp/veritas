@@ -69,8 +69,8 @@ const EQUIPMENT_MODALS = {
       addEquipmentSubtitle: "Renseignez les informations du nouvel équipement.",
       editInternetSubtitle: "Connexion internet · Mettez à jour les champs par section.",
       editEquipmentSubtitle: "{module} · Mettez à jour les champs par section.",
-      unifiImportBanner: "Importer depuis UniFi (tenant global ou dédié)",
-      unifiImportHint: "Préremplir via Site Manager ou Network API du client.",
+      unifiImportBanner: "Importer depuis UniFi",
+      unifiImportHint: "Préremplir via le tenant global Site Manager (Administration → Intégrations).",
       navAria: "Sections du formulaire",
       navGroups: {
         general: "Général",
@@ -300,8 +300,8 @@ const EQUIPMENT_MODALS = {
       addEquipmentSubtitle: "Enter the new equipment details.",
       editInternetSubtitle: "Internet connection · Update fields by section.",
       editEquipmentSubtitle: "{module} · Update fields by section.",
-      unifiImportBanner: "Import from UniFi (global or dedicated tenant)",
-      unifiImportHint: "Prefill via Site Manager or the client's Network API.",
+      unifiImportBanner: "Import from UniFi",
+      unifiImportHint: "Prefill via the global Site Manager tenant (Administration → Integrations).",
       navAria: "Form sections",
       navGroups: {
         general: "General",

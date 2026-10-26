@@ -7,6 +7,7 @@ export default function EquipmentCategoryTile({
   category,
   selected = false,
   disabled = false,
+  index = 0,
   onSelect,
 }) {
   const animRef = useRef(null);
@@ -17,6 +18,7 @@ export default function EquipmentCategoryTile({
       type="button"
       role="option"
       className={`${styles.categoryTile} ${selected ? styles.categoryTileActive : ""}`}
+      style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}
       onClick={() => onSelect?.(category.id)}
       onMouseEnter={() => animRef.current?.startAnimation?.()}
       onMouseLeave={() => animRef.current?.stopAnimation?.()}

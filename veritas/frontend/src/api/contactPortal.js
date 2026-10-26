@@ -13,6 +13,16 @@ export async function fetchContactPortal(contactId) {
   if (!res.ok) await parseError(res);
   return res.json();
 }
+export async function fetchContactPortalLogins(contactId, { limit = 50, signal } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set("limit", String(limit));
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/portal/logins?${params}`, {
+    credentials: "include",
+    signal
+  });
+  if (!res.ok) await parseError(res);
+  return res.json();
+}
 export async function createContactPortal(contactId, portalRole = "user", email = null) {
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/portal`, {
     method: "POST",

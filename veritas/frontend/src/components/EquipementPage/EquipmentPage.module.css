@@ -484,12 +484,13 @@
   top: 0;
   height: 2.75rem;
   pointer-events: none;
-  z-index: 5;
-  border-radius: calc(var(--table-radius, 16px) - 1px) calc(var(--table-radius, 16px) - 1px) 0 0;
+  /* Au-dessus des lignes, décalé sous le thead sticky via offset JS */
+  z-index: 13;
+  border-radius: 0;
   background: linear-gradient(
     to bottom,
-    var(--eq-surface, var(--msp-surface, #ffffff)) 5%,
-    color-mix(in srgb, var(--eq-surface, var(--msp-surface, #ffffff)) 78%, transparent) 48%,
+    var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 5%,
+    color-mix(in srgb, var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 78%, transparent) 48%,
     transparent 100%
   );
   opacity: 0;
@@ -1015,7 +1016,10 @@
 }
 
 .equipmentTableEmbedded th {
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   text-align: left;
   font-size: 0.72rem;
   font-weight: 650;
@@ -1028,10 +1032,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
+  vertical-align: middle;
 }
 
 .equipmentTableEmbedded td {
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   font-size: 0.8125rem;
   font-weight: 400;
   font-family: inherit;
@@ -2120,6 +2128,16 @@
   );
 }
 
+:global(html.dark) .tableScrollFadeTop,
+:global(body.dark) .tableScrollFadeTop {
+  background: linear-gradient(
+    to bottom,
+    var(--msp-surface-2, #152035) 5%,
+    color-mix(in srgb, var(--msp-surface-2, #152035) 78%, transparent) 48%,
+    transparent 100%
+  );
+}
+
 .hardwarePageEmbedded .equipmentTableEmbedded {
   width: 100%;
   min-width: 100%;
@@ -2263,6 +2281,30 @@
   text-align: right;
   background: var(--eq-surface-2, var(--msp-surface-2, #f7f9fc));
   box-shadow: -6px 0 10px rgba(15, 28, 46, 0.06);
+}
+
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColCheckbox,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColCheckbox {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  text-align: center;
+  padding-left: 0.45rem;
+  padding-right: 0.35rem;
+}
+
+.embeddedRowCheckbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.equipmentRowEmbeddedSelected td,
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbeddedSelected td,
+.hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbeddedSelected:nth-child(even) td {
+  background: rgba(43, 95, 171, 0.1);
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColActions .embeddedRowActions,

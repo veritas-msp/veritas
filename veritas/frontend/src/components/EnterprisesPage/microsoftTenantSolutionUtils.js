@@ -40,7 +40,7 @@ export function formatMicrosoftTenantSummary(credentials, client = null) {
     label: displayName,
     tenantId,
     shortTenantId,
-    mode: "Dedicated tenant",
+    mode: "Tenant dédié",
     providerName: "Microsoft Entra ID"
   };
 }

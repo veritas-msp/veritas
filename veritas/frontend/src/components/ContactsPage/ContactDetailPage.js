@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
@@ -6,10 +6,9 @@ import { fetchClientsList, addContactTag, removeContactTag, deleteContact, addCo
 import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { fetchTickets } from "../../api/tickets";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
-import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
 import contactStyles from "./ContactDetailPage.module.css";
+import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import StatusDot from "../shared/StatusDot/StatusDot";
-import ClientTicketBookmarks from "./ClientTicketBookmarks";
 import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import { getContactSexeIcon, normalizeContactSexe } from "../../utils/contactSexe";
 import { FaTimes, FaPlus } from "react-icons/fa";
@@ -20,13 +19,15 @@ import ContactFormModal from "./ContactFormModal";
 import ContactCompanyModal from "./ContactCompanyModal";
 import ContactDeleteModal from "./ContactDeleteModal";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
+import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
+import { UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 import { formatTableDate } from "../../utils/tableDateFormat";
 import { getTicketSlaDisplay } from "../../utils/ticketSlaUtils";
 import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getContactDetailCopy, getContactStatusLocalized, getPrestationCategoryLabel as getPrestationCategoryLabelI18n, getTicketStatusLabels, interpolate } from "./contactDetailI18n";
+import { getContactDetailCopy, getContactStatusLocalized, getPrestationCategoryLabel as getPrestationCategoryLabelI18n, interpolate } from "./contactDetailI18n";
 import { getTicketStatusLabel } from "../EnterprisesPage/enterpriseDetailI18n";
 import { getContactSexeLabelLocalized } from "./contactFormModalI18n";
 import ProFeatureLock from "../Misc/ProFeature/ProFeatureLock";
@@ -47,6 +48,7 @@ import {
 } from "../../utils/detailPageCache";
 import { getListCache, LIST_CACHE_NS } from "../../utils/listPageCache";
 import {
+  normalizeContactActivitySection,
   normalizeContactOverviewTab,
   readContactDetailUi,
   writeContactDetailUi
@@ -179,11 +181,72 @@ const isOpenTicket = ticket => {
   return !["resolved", "closed"].includes(status);
 };
 const getPrestationCategoryLabel = (category, locale) => getPrestationCategoryLabelI18n(category, locale);
-const sortTicketsByRecent = (a, b) => {
-  const aTime = new Date(a?.updated_at || a?.created_at || 0).getTime();
-  const bTime = new Date(b?.updated_at || b?.created_at || 0).getTime();
-  return bTime - aTime;
-};
+
+/** Segmented Tous / Ouverts / Clos — pastille glissante comme fiche entreprise */
+function ActivityStatusSegmented({ value, onChange, options, ariaLabel }) {
+  const trackRef = useRef(null);
+  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
+
+  useLayoutEffect(() => {
+    const root = trackRef.current;
+    if (!root) return undefined;
+    const update = () => {
+      const active = root.querySelector('[aria-pressed="true"]');
+      if (!active) {
+        setIndicator(prev => (prev.ready ? { ...prev, ready: false } : prev));
+        return;
+      }
+      const next = {
+        left: active.offsetLeft,
+        width: active.offsetWidth,
+        ready: true
+      };
+      setIndicator(prev =>
+        prev.left === next.left && prev.width === next.width && prev.ready ? prev : next
+      );
+    };
+    update();
+    const raf = requestAnimationFrame(() => {
+      update();
+      requestAnimationFrame(update);
+    });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
+    ro?.observe(root);
+    window.addEventListener("resize", update);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [value]);
+
+  return (
+    <div ref={trackRef} className={styles.macosSegmented} role="group" aria-label={ariaLabel}>
+      {indicator.ready ? (
+        <span
+          className={styles.macosSegmentIndicator}
+          style={{
+            transform: `translateX(${indicator.left}px)`,
+            width: indicator.width
+          }}
+          aria-hidden
+        />
+      ) : null}
+      {options.map(option => (
+        <button
+          key={option.id}
+          type="button"
+          className={`${styles.macosSegment} ${value === option.id ? styles.macosSegmentActive : ""}`}
+          aria-pressed={value === option.id}
+          onClick={() => onChange(option.id)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ContactDetailPage({
   onNavigate,
   contactData
@@ -193,7 +256,6 @@ export default function ContactDetailPage({
   } = useParams();
   const locale = useAppLocale();
   const copy = useMemo(() => getContactDetailCopy(locale), [locale]);
-  const ticketStatusLabels = useMemo(() => getTicketStatusLabels(locale), [locale]);
   const {
     isCommunity
   } = useVeritasEdition();
@@ -204,6 +266,7 @@ export default function ContactDetailPage({
   const canDeleteContact = can("contacts_detail.delete");
   const canManagePortal = can("contacts_detail.portal");
   const canAccessSharing = can("contacts_detail.access_sharing");
+  const canCreateTicket = can("tickets.create");
   const resolveContactId = () => contactData?.contactId || contactData?.id || urlContactId || null;
   const resolvedContactId = contactData?.contactId || contactData?.id || urlContactId || null;
   const initialContactUi = useMemo(
@@ -229,7 +292,6 @@ export default function ContactDetailPage({
   const [emailSectionExpanded, setEmailSectionExpanded] = useState(false);
   const [phoneSectionExpanded, setPhoneSectionExpanded] = useState(false);
   const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(false);
-  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [deleteContactModalOpen, setDeleteContactModalOpen] = useState(false);
   const [deletingContact, setDeletingContact] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
@@ -271,8 +333,13 @@ export default function ContactDetailPage({
   const [loadingTags, setLoadingTags] = useState(() => !Array.isArray(initialCachedContact?.tags));
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [shareAccessCreateOpen, setShareAccessCreateOpen] = useState(false);
+  const [shareSearchQuery, setShareSearchQuery] = useState("");
+  const [shareListFilter, setShareListFilter] = useState("ongoing");
   const [overviewTab, setOverviewTab] = useState(() =>
     normalizeContactOverviewTab(initialContactUi?.overviewTab)
+  );
+  const [activitySection, setActivitySection] = useState(() =>
+    normalizeContactActivitySection(initialContactUi?.activitySection)
   );
   const [activityTabMounted, setActivityTabMounted] = useState(true);
   const [portalTabMounted, setPortalTabMounted] = useState(
@@ -295,9 +362,10 @@ export default function ContactDetailPage({
   const [prestationTickets, setPrestationTickets] = useState(() =>
     Array.isArray(initialCachedContact?.prestationTickets) ? initialCachedContact.prestationTickets : []
   );
-  const [loadingActivity, setLoadingActivity] = useState(
-    () => !Array.isArray(initialCachedContact?.supportTickets)
-  );
+  const [supportSearchQuery, setSupportSearchQuery] = useState("");
+  const [prestationSearchQuery, setPrestationSearchQuery] = useState("");
+  const [supportStatusFilter, setSupportStatusFilter] = useState("all");
+  const [prestationStatusFilter, setPrestationStatusFilter] = useState("all");
   const activityControllerRef = useRef(null);
   const displayCommunications = useMemo(() => sortCommunicationsByType(normalizeContactCommunications(contact || {})), [contact]);
   const emailCommunications = useMemo(() => displayCommunications.filter(entry => entry.type === "email"), [displayCommunications]);
@@ -333,16 +401,120 @@ export default function ContactDetailPage({
     const source = isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets;
     return source.filter(isOpenTicket).length;
   }, [isCommunity, prestationTickets]);
-  const openContactTickets = useMemo(() => supportTickets.filter(isOpenTicket).sort(sortTicketsByRecent), [supportTickets]);
-  const closedContactTickets = useMemo(
-    () => supportTickets.filter(ticket => !isOpenTicket(ticket)).sort(sortTicketsByRecent).slice(0, 12),
-    [supportTickets]
-  );
   const [slaNow, setSlaNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
   }, []);
+  const prestationTicketsSource = useMemo(
+    () => (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets),
+    [isCommunity, prestationTickets]
+  );
+  const matchesActivityStatusFilter = useCallback((ticket, statusFilter) => {
+    if (statusFilter === "open") return isOpenTicket(ticket);
+    if (statusFilter === "closed") return !isOpenTicket(ticket);
+    return true;
+  }, []);
+  const filteredSupportTickets = useMemo(() => {
+    const query = supportSearchQuery.trim().toLowerCase();
+    const slaOptions = {
+      clients: allClients.length ? allClients : client ? [client] : [],
+      now: slaNow
+    };
+    return supportTickets.filter(ticket => {
+      if (!matchesActivityStatusFilter(ticket, supportStatusFilter)) return false;
+      if (!query) return true;
+      const status = getTicketStatusLabel(normalizeTicketStatus(ticket.status), locale);
+      const slaLabel = isCommunity ? "" : getTicketSlaDisplay(ticket, slaOptions).label || "";
+      const haystack = [ticket.ticket_number, ticket.title, status, slaLabel]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [
+    allClients,
+    client,
+    isCommunity,
+    locale,
+    matchesActivityStatusFilter,
+    slaNow,
+    supportSearchQuery,
+    supportStatusFilter,
+    supportTickets
+  ]);
+  const filteredPrestationTickets = useMemo(() => {
+    const query = prestationSearchQuery.trim().toLowerCase();
+    return prestationTicketsSource.filter(ticket => {
+      if (!matchesActivityStatusFilter(ticket, prestationStatusFilter)) return false;
+      if (!query) return true;
+      const status = getTicketStatusLabel(normalizeTicketStatus(ticket.status), locale);
+      const typeLabel = getPrestationCategoryLabel(ticket.category, locale);
+      const haystack = [ticket.ticket_number, typeLabel, status].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [
+    locale,
+    matchesActivityStatusFilter,
+    prestationSearchQuery,
+    prestationStatusFilter,
+    prestationTicketsSource
+  ]);
+  const renderActivityToolbar = useCallback(
+    (searchValue, onSearchChange, statusFilter, onStatusFilterChange) => {
+      const placeholder = copy.activitySearchPlaceholder || "Rechercher";
+      const statusOptions = [
+        { id: "all", label: copy.activityFilterAll || "Tous" },
+        { id: "open", label: copy.activityFilterOpen || "Ouverts" },
+        { id: "closed", label: copy.activityFilterClosed || "Clos" }
+      ];
+      return (
+        <div
+          className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}
+        >
+          <div className={equipStyles.embeddedSearchWrap}>
+            <div className={equipStyles.embeddedSearchBox}>
+              <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+              <input
+                type="text"
+                className={equipStyles.embeddedSearchInput}
+                value={searchValue}
+                onChange={event => onSearchChange(event.target.value)}
+                placeholder={placeholder}
+                aria-label={placeholder}
+              />
+              {searchValue ? (
+                <button
+                  type="button"
+                  className={equipStyles.embeddedSearchClear}
+                  onClick={() => onSearchChange("")}
+                  aria-label={copy.activityClearSearchAria || "Effacer la recherche"}
+                >
+                  <FaTimes aria-hidden />
+                </button>
+              ) : null}
+            </div>
+            <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
+              <ActivityStatusSegmented
+                value={statusFilter}
+                onChange={onStatusFilterChange}
+                options={statusOptions}
+                ariaLabel={copy.activityFilterStatusAria || "Filtrer par statut"}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    },
+    [
+      copy.activityClearSearchAria,
+      copy.activityFilterAll,
+      copy.activityFilterClosed,
+      copy.activityFilterOpen,
+      copy.activityFilterStatusAria,
+      copy.activitySearchPlaceholder
+    ]
+  );
   const contactGuideSteps = useMemo(() => {
     const steps = getContactDetailGuideSteps({
       showActivity: () => setOverviewTab("activity"),
@@ -472,6 +644,7 @@ export default function ContactDetailPage({
       const saved = readContactDetailUi(id);
       const nextTab = normalizeContactOverviewTab(saved?.overviewTab);
       setOverviewTab(nextTab);
+      setActivitySection(normalizeContactActivitySection(saved?.activitySection));
       setPortalTabMounted(nextTab === "portal");
       setShareTabMounted(nextTab === "share");
       setLogsTabMounted(nextTab === "logs");
@@ -488,9 +661,10 @@ export default function ContactDetailPage({
     }
     writeContactDetailUi(contact.id, {
       overviewTab,
+      activitySection,
       vaultClientId: vaultClientId || null
     });
-  }, [contact?.id, overviewTab, vaultClientId]);
+  }, [contact?.id, overviewTab, activitySection, vaultClientId]);
   useEffect(() => {
     if (!contact?.id) return;
     setActivityTabMounted(true);
@@ -503,6 +677,21 @@ export default function ContactDetailPage({
     if (overviewTab === "portal") setPortalTabMounted(true);
     if (overviewTab === "share") setShareTabMounted(true);
     if (overviewTab === "logs") setLogsTabMounted(true);
+  }, [overviewTab]);
+  const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
+    overviewTab
+  ]);
+  const { trackRef: finderActivityTrackRef, indicator: finderActivityIndicator } = useFinderNavIndicator([
+    overviewTab,
+    activitySection
+  ]);
+  const [finderSecEnter, setFinderSecEnter] = useState(true);
+  useLayoutEffect(() => {
+    setFinderSecEnter(false);
+  }, [overviewTab]);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setFinderSecEnter(true));
+    return () => cancelAnimationFrame(id);
   }, [overviewTab]);
   useEffect(() => {
     const el = pageRootRef.current;
@@ -738,11 +927,6 @@ export default function ContactDetailPage({
       applyContactSnapshot(cached.contact, cached);
       setLoading(false);
       setLoadingTags(false);
-      if (Array.isArray(cached.supportTickets)) {
-        setLoadingActivity(false);
-      } else {
-        setLoadingActivity(true);
-      }
     } else {
       setContact(null);
       setSupportTickets([]);
@@ -816,7 +1000,6 @@ export default function ContactDetailPage({
   const loadContactActivity = async (contactId, clientId, signal, {
     keepVisible = false
   } = {}) => {
-    if (!keepVisible) setLoadingActivity(true);
     try {
       const contactTicketRows = await fetchTickets({
         requesterContactId: contactId,
@@ -841,8 +1024,6 @@ export default function ContactDetailPage({
         setSupportTickets([]);
         setPrestationTickets([]);
       }
-    } finally {
-      if (isMountedRef.current) setLoadingActivity(false);
     }
   };
   const handleOpenTicket = (ticket, background = false) => {
@@ -871,6 +1052,27 @@ export default function ContactDetailPage({
       seedCommunicationType: options.seedCommunicationType || null
     });
     setContactModalOpen(true);
+  };
+  const handleQuickCreateTicket = () => {
+    if (!canCreateTicket || !onNavigate || !contact?.id) return;
+    const clientId =
+      vaultClientId ||
+      contact.client_id ||
+      contactCompanies[0]?.id ||
+      client?.id ||
+      null;
+    if (!clientId) {
+      toast.warn(
+        copy.toast?.createTicketNeedEnterprise ||
+          copy.quickActions?.createTicketNeedEnterprise ||
+          "Rattachez le contact à une entreprise pour créer un ticket."
+      );
+      return;
+    }
+    onNavigate("TicketCreate", {
+      clientId,
+      contactId: contact.id
+    });
   };
   const handleOpenAddCommunication = type => {
     handleOpenEditModal({
@@ -1039,11 +1241,13 @@ export default function ContactDetailPage({
         className={contactStyles.contactDetailPage}
         loadingAria={copy.loading || "Chargement…"}
         titleHint={titleHint}
-        showMidSlot
-        tabCount={3}
+        showTitleIcon
+        tabCount={4}
+        secondaryCount={2}
         body="activity"
         showAside
-        asideSections={4}
+        asideSections={3}
+        asideActionCount={5}
       />
     );
   }
@@ -1060,6 +1264,13 @@ export default function ContactDetailPage({
     prenom: formData.prenom,
     nom: formData.nom
   }, copy.defaultName);
+  const finderSecondaryVisible = overviewTab === "activity";
+  const renderActivityEmpty = (icon, text) => (
+    <div className={styles.activityEmptyState}>
+      <UiKitEmptyState bare icon={icon} text={text} />
+    </div>
+  );
+
   return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
       <header className={styles.pageHero} data-guide="contact-hero">
         <div className={styles.heroTop}>
@@ -1068,59 +1279,73 @@ export default function ContactDetailPage({
             <div className={styles.heroIdentityRow}>
               <div className={styles.heroMain}>
                 <span className={styles.heroBrandIcon} aria-hidden>
-                  <Icon icon={formData.sexe ? getContactSexeIcon(formData.sexe) : "mdi:account"} width={30} height={30} />
+                  <Icon icon={formData.sexe ? getContactSexeIcon(formData.sexe) : "mdi:account"} width={16} height={16} />
                 </span>
                 <div className={styles.heroText}>
                   <h1 className={styles.heroTitle}>
+                    <StatusDot
+                      active={contactStatus.status === "active"}
+                      label={contactStatus.label}
+                      className={styles.heroTitleStatus}
+                    />
                     <span className={styles.heroTitleName}>{displayName}</span>
-                    <span className={`${styles.heroStatusBadge} ${contactStatus.status === "active" ? "" : styles.heroStatusBadgeInactive}`.trim()}>
-                      <StatusDot active={contactStatus.status === "active"} label="" className={styles.heroTitleStatus} />
-                      {contactStatus.label}
-                    </span>
-                  </h1>
-                  <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                    {formData.sexe && <span className={styles.heroMetaItem}>
-                        <Icon icon={getContactSexeIcon(formData.sexe)} aria-hidden />
-                        {getContactSexeLabelLocalized(formData.sexe, locale)}
-                      </span>}
-                    {formData.poste && <span className={styles.heroMetaItem}>
-                        <Icon icon="mdi:briefcase-outline" aria-hidden />
-                        {formData.poste}
-                      </span>}
-                    {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                        {contactTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
-                      backgroundColor: `${tag.color || "#2b5fab"}18`,
-                      borderColor: `${tag.color || "#2b5fab"}55`,
-                      color: tag.color || "#2b5fab"
-                    }}>
+                    {loadingTags ? (
+                      <span className={styles.heroTagsLoading}>{copy.loadingTags}</span>
+                    ) : contactTags.length > 0 || canEditContact ? (
+                      <span className={styles.heroTitleTags} aria-label={copy.heroMetaAria}>
+                        {contactTags.map(tag => (
+                          <span
+                            key={tag.id}
+                            className={styles.heroTagChip}
+                            style={{
+                              backgroundColor: `${tag.color || "#2b5fab"}18`,
+                              borderColor: `${tag.color || "#2b5fab"}55`,
+                              color: tag.color || "#2b5fab"
+                            }}
+                          >
                             {tag.label}
-                            <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveContactTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
-                        label: tag.label
-                      })}>
-                              <FaTimes />
-                            </button>
-                          </span>)}
-                        <div className={styles.heroTagAddWrap}>
-                          {canEditContact ? 
-                            <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
+                            {canEditContact ? (
+                              <button
+                                type="button"
+                                className={styles.heroTagRemove}
+                                onClick={() => handleRemoveContactTag(tag.id)}
+                                aria-label={interpolate(copy.removeTagAria, { label: tag.label })}
+                              >
+                                <FaTimes />
+                              </button>
+                            ) : null}
+                          </span>
+                        ))}
+                        {canEditContact ? (
+                          <span className={styles.heroTagAddWrap}>
+                            <button
+                              type="button"
+                              className={styles.heroTagAddTrigger}
+                              onClick={() => setTagModalOpen(true)}
+                              aria-label={copy.addTag}
+                            >
                               <FaPlus />
                             </button>
-                           : null}
-                        </div>
-                      </>}
-                  </div>
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
+                  </h1>
                 </div>
               </div>
-              <div className={styles.heroPlanningFrise} data-guide="contact-ticket-bookmarks">
-                <ClientTicketBookmarks
-                  openTickets={openContactTickets}
-                  closedTickets={closedContactTickets}
-                  loading={loadingActivity}
-                  statusLabels={ticketStatusLabels}
-                  onTicketClick={handleOpenTicket}
-                  clients={allClients}
-                  heroFrise
-                />
+              <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                {formData.sexe ? (
+                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock}`}>
+                    <Icon icon={getContactSexeIcon(formData.sexe)} aria-hidden />
+                    {getContactSexeLabelLocalized(formData.sexe, locale)}
+                  </span>
+                ) : null}
+                {formData.poste ? (
+                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock}`}>
+                    <Icon icon="mdi:briefcase-outline" aria-hidden />
+                    {formData.poste}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1129,26 +1354,134 @@ export default function ContactDetailPage({
 
       <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${overviewTab === "activity" || overviewTab === "logs" ? styles.mainColumnActivity : ""} ${overviewTab === "portal" || overviewTab === "share" ? styles.mainColumnContactTab : ""}`.trim()}>
-            <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
-              <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
-                <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
-              </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "portal"} className={`${styles.heroTab} ${overviewTab === "portal" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("portal")} data-guide="contact-portal">
-                <Icon icon="mdi:web" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabPortal}</span>
-              </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "share"} className={`${styles.heroTab} ${overviewTab === "share" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("share")} data-guide="contact-shared-access">
-                <Icon icon="mdi:share-variant-outline" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabShare}</span>
-                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-              </button>
-              <button type="button" role="tab" aria-selected={overviewTab === "logs"} className={`${styles.heroTab} ${overviewTab === "logs" ? styles.heroTabActive : ""}`} onClick={() => setOverviewTab("logs")} data-guide="contact-logs">
-                <Icon icon="mdi:history" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabLogs || "Logs"}</span>
-              </button>
-            </nav>
+          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "activity" || overviewTab === "portal" || overviewTab === "share" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
+            <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
+              <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria || copy.activityTitle}>
+                <nav
+                  ref={finderPrimaryTrackRef}
+                  className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated}`}
+                  role="tablist"
+                  aria-label={copy.overviewTabsAria || copy.activityTitle}
+                >
+                  {finderPrimaryIndicator.ready ? (
+                    <div
+                      className={finderKit.finderNavIndicator}
+                      style={{
+                        transform: `translate3d(0, ${finderPrimaryIndicator.top}px, 0)`,
+                        height: finderPrimaryIndicator.height
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <EnterpriseOverviewTabButton
+                    tabId="activity"
+                    iconify="mdi:ticket-confirmation-outline"
+                    label={copy.overviewTabActivity}
+                    active={overviewTab === "activity"}
+                    onClick={() => setOverviewTab("activity")}
+                    className={`${finderKit.finderItem} ${overviewTab === "activity" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="contact-activity"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="portal"
+                    iconify="mdi:web"
+                    label={copy.overviewTabPortal}
+                    active={overviewTab === "portal"}
+                    onClick={() => setOverviewTab("portal")}
+                    className={`${finderKit.finderItem} ${overviewTab === "portal" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="contact-portal"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="vault"
+                    iconify="mdi:share-variant-outline"
+                    label={copy.overviewTabShare}
+                    active={overviewTab === "share"}
+                    onClick={() => setOverviewTab("share")}
+                    className={`${finderKit.finderItem} ${overviewTab === "share" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="contact-shared-access"
+                    badge={isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="logs"
+                    iconify="mdi:history"
+                    label={copy.overviewTabLogs || "Logs"}
+                    active={overviewTab === "logs"}
+                    onClick={() => setOverviewTab("logs")}
+                    className={`${finderKit.finderItem} ${overviewTab === "logs" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="contact-logs"
+                  />
+                </nav>
+
+                <UiKitScrollFadeShell
+                  className={`${finderKit.finderSecondaryShell} ${styles.finderSecondaryShell}${finderSecondaryVisible ? "" : ` ${finderKit.finderSecondaryShellHidden}`}`.trim()}
+                  style={finderSecondaryVisible ? undefined : { display: "none" }}
+                  deps={[overviewTab, activitySection]}
+                >
+                  <div
+                    className={`${finderKit.finderSecondary} ${styles.finderSecondary}`}
+                    aria-hidden={!finderSecondaryVisible}
+                  >
+                    <div
+                      className={`${finderKit.finderSecReveal} ${finderSecondaryVisible && finderSecEnter ? finderKit.finderSecRevealActive : ""}`.trim()}
+                    >
+                      <div className={finderKit.finderSecPanel} hidden={overviewTab !== "activity"} aria-hidden={overviewTab !== "activity"}>
+                        <p className={finderKit.finderSecTitle}>{copy.navSectionActivity || "Sections"}</p>
+                        <nav
+                          ref={finderActivityTrackRef}
+                          className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated}`}
+                          aria-label={copy.navSectionActivity || "Sections"}
+                        >
+                          {finderActivityIndicator.ready ? (
+                            <div
+                              className={finderKit.finderNavIndicator}
+                              style={{
+                                transform: `translate3d(0, ${finderActivityIndicator.top}px, 0)`,
+                                height: finderActivityIndicator.height
+                              }}
+                              aria-hidden
+                            />
+                          ) : null}
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "support" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "support" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
+                            onClick={() => setActivitySection("support")}
+                          >
+                            <Icon icon="mdi:ticket-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.supportTicketsTitle}</span>
+                            <span className={finderKit.finderSecCount}>{openSupportCount}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "prestations" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "prestations" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
+                            onClick={() => setActivitySection("prestations")}
+                          >
+                            <Icon icon="mdi:briefcase-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.prestationsTitle}</span>
+                            {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : (
+                              <span className={finderKit.finderSecCount}>{openPrestationCount}</span>
+                            )}
+                          </button>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                </UiKitScrollFadeShell>
+              </aside>
+
+              <div className={`${finderKit.finderContent} ${styles.enterpriseFinderContent}`}>
+            <div className={styles.mainCommunityPanels}>
             {activityTabMounted ? (
             <div
               className={styles.overviewTabPanel}
@@ -1156,44 +1489,23 @@ export default function ContactDetailPage({
               style={overviewTab === "activity" ? undefined : { display: "none" }}
             >
             <div className={styles.activityLayout} data-guide="contact-activity-panel">
-                    <div className={styles.activityKpiRow}>
-                      <div className={styles.activityKpiCard}>
-                        <span className={styles.activityKpiValue}>{supportTickets.length}</span>
-                        <span className={styles.activityKpiLabel}>{copy.kpiSupportTotal}</span>
-                      </div>
-                      <div className={styles.activityKpiCard}>
-                        <span className={styles.activityKpiValue}>{openSupportCount}</span>
-                        <span className={styles.activityKpiLabel}>{copy.kpiSupportOpen}</span>
-                      </div>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
-                        <div className={styles.activityKpiCard}>
-                          <span className={styles.activityKpiValue}>{(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length}</span>
-                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationTotal}</span>
-                        </div>
-                      </ProFeatureLock>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
-                        <div className={styles.activityKpiCard}>
-                          <span className={styles.activityKpiValue}>{openPrestationCount}</span>
-                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationOpen}</span>
-                        </div>
-                      </ProFeatureLock>
-                    </div>
-                    <div className={styles.activityGridSplit}>
-                      <section className={styles.panel}>
-                        <div className={styles.panelHeader}>
-                          <div className={styles.panelHeaderMain}>
-                            <h2 className={styles.panelTitle}>
-                              <Icon icon="mdi:ticket-outline" className={styles.panelTitleIcon} aria-hidden />
-                              {copy.supportTicketsTitle}
-                            </h2>
-                          </div>
-                          <span className={styles.activityBlockCount}>
-                            {interpolate(copy.openCount, {
-                        count: openSupportCount
-                      })}
-                          </span>
-                        </div>
-                        <div className={styles.panelBody}>
+              <div className={styles.activityUnifiedCard} data-guide="contact-activity-sections" data-activity-section={activitySection}>
+                {activitySection === "support" ? (
+                  <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="support">
+                    <div className={styles.activityUnifiedBody}>
+                      {renderActivityToolbar(
+                        supportSearchQuery,
+                        setSupportSearchQuery,
+                        supportStatusFilter,
+                        setSupportStatusFilter
+                      )}
+                      <div className={styles.activityTableStack}>
+                        {filteredSupportTickets.length === 0 ? renderActivityEmpty(
+                          "mdi:ticket-outline",
+                          supportTickets.length > 0 && (supportSearchQuery.trim() || supportStatusFilter !== "all")
+                            ? (copy.emptyActivitySearch || copy.emptySupportTickets)
+                            : copy.emptySupportTickets
+                        ) : (
                           <div className={styles.dataTableWrapper}>
                             <table className={styles.dataTable}>
                               <thead>
@@ -1206,26 +1518,26 @@ export default function ContactDetailPage({
                                 </tr>
                               </thead>
                               <tbody>
-                                {supportTickets.length === 0 ? <tr className={styles.dataTableEmptyRow}>
-                                    <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
-                                      {copy.emptySupportTickets}
-                                    </td>
-                                  </tr> : supportTickets.map(ticket => {
-                          const status = normalizeTicketStatus(ticket.status);
-                          const sla = getTicketSlaDisplay(ticket, {
-                            clients: allClients.length ? allClients : client ? [client] : [],
-                            now: slaNow
-                          });
-                          return <tr key={ticket.id} className={styles.dataTableRowClickable} onClick={() => handleOpenTicket(ticket)} onAuxClick={e => {
-                            if (e.button === 1) {
-                              e.preventDefault();
-                              handleOpenTicket(ticket, true);
-                            }
-                          }}>
+                                {filteredSupportTickets.map(ticket => {
+                                  const status = normalizeTicketStatus(ticket.status);
+                                  const sla = getTicketSlaDisplay(ticket, {
+                                    clients: allClients.length ? allClients : client ? [client] : [],
+                                    now: slaNow
+                                  });
+                                  return (
+                                    <tr
+                                      key={ticket.id}
+                                      className={styles.dataTableRowClickable}
+                                      onClick={() => handleOpenTicket(ticket)}
+                                      onAuxClick={e => {
+                                        if (e.button === 1) {
+                                          e.preventDefault();
+                                          handleOpenTicket(ticket, true);
+                                        }
+                                      }}
+                                    >
                                       <td>#{ticket.ticket_number || "-"}</td>
-                                      <td className={styles.activityTitleCell}>
-                                        {ticket.title || "-"}
-                                      </td>
+                                      <td className={styles.activityTitleCell}>{ticket.title || "-"}</td>
                                       <td>
                                         <span className={styles.ticketStatusBadge}>
                                           {getTicketStatusLabel(status, locale)}
@@ -1233,31 +1545,35 @@ export default function ContactDetailPage({
                                       </td>
                                       {!isCommunity && <td>{sla.label}</td>}
                                       <td>{formatRelativeFrench(ticket.updated_at || ticket.created_at)}</td>
-                                    </tr>;
-                        })}
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
-                        </div>
-                      </section>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
 
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityBlockProLock} badgePosition="none">
-                        <section className={styles.panel}>
-                          <div className={styles.panelHeader}>
-                            <div className={styles.panelHeaderMain}>
-                              <h2 className={styles.panelTitle}>
-                                <Icon icon="mdi:briefcase-outline" className={styles.panelTitleIcon} aria-hidden />
-                                {copy.prestationsTitle}
-                                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                              </h2>
-                            </div>
-                            <span className={styles.activityBlockCount}>
-                              {interpolate(copy.prestationsCount, {
-                          count: (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length
-                        })}
-                            </span>
-                          </div>
-                          <div className={styles.panelBody}>
+                {activitySection === "prestations" ? (
+                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityUnifiedProLock} badgePosition="none">
+                    <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="prestations">
+                      <div className={styles.activityUnifiedBody}>
+                        {renderActivityToolbar(
+                          prestationSearchQuery,
+                          setPrestationSearchQuery,
+                          prestationStatusFilter,
+                          setPrestationStatusFilter
+                        )}
+                        <div className={styles.activityTableStack}>
+                          {filteredPrestationTickets.length === 0 ? renderActivityEmpty(
+                            "mdi:briefcase-outline",
+                            prestationTicketsSource.length > 0 && (prestationSearchQuery.trim() || prestationStatusFilter !== "all")
+                              ? (copy.emptyActivitySearch || copy.emptyPrestationTickets)
+                              : copy.emptyPrestationTickets
+                          ) : (
                             <div className={styles.dataTableWrapper}>
                               <table className={styles.dataTable}>
                                 <thead>
@@ -1269,18 +1585,20 @@ export default function ContactDetailPage({
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length === 0 ? <tr className={styles.dataTableEmptyRow}>
-                                      <td colSpan={4} className={styles.dataTableEmptyCell}>
-                                        {copy.emptyPrestationTickets}
-                                      </td>
-                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).map(ticket => {
-                            const status = normalizeTicketStatus(ticket.status);
-                            return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
-                              if (e.button === 1) {
-                                e.preventDefault();
-                                handleOpenTicket(ticket, true);
-                              }
-                            }}>
+                                  {filteredPrestationTickets.map(ticket => {
+                                    const status = normalizeTicketStatus(ticket.status);
+                                    return (
+                                      <tr
+                                        key={ticket.id}
+                                        className={isCommunity ? undefined : styles.dataTableRowClickable}
+                                        onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)}
+                                        onAuxClick={isCommunity ? undefined : e => {
+                                          if (e.button === 1) {
+                                            e.preventDefault();
+                                            handleOpenTicket(ticket, true);
+                                          }
+                                        }}
+                                      >
                                         <td>#{ticket.ticket_number || "-"}</td>
                                         <td className={styles.activityTitleCell}>
                                           {getPrestationCategoryLabel(ticket.category, locale)}
@@ -1291,15 +1609,19 @@ export default function ContactDetailPage({
                                           </span>
                                         </td>
                                         <td>{formatTableDate(ticket.created_at)}</td>
-                                      </tr>;
-                          })}
+                                      </tr>
+                                    );
+                                  })}
                                 </tbody>
                               </table>
                             </div>
-                          </div>
-                        </section>
-                      </ProFeatureLock>
-                    </div>
+                          )}
+                        </div>
+                      </div>
+                    </section>
+                  </ProFeatureLock>
+                ) : null}
+              </div>
             </div>
             </div>
             ) : null}
@@ -1310,18 +1632,20 @@ export default function ContactDetailPage({
               hidden={overviewTab !== "portal"}
               style={overviewTab === "portal" ? undefined : { display: "none" }}
             >
-            <section className={`${styles.panel} ${styles.contactFillPanel}`} data-guide="contact-portal-panel">
-              <div className={styles.panelBody}>
-                <div className={`${styles.overviewTabPanel} ${contactStyles.portalTabContent}`}>
-                  <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
-                const controller = createTrackedAbortController();
-                loadControllerRef.current?.abort();
-                loadControllerRef.current = controller;
-                loadContactData(controller.signal);
-              }} />
-                </div>
+            <div className={styles.activityLayout} data-guide="contact-portal-panel">
+              <div className={styles.activityUnifiedCard}>
+                <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
+                  <div className={`${styles.activityUnifiedBody} ${contactStyles.portalTabContent}`}>
+                    <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
+                      const controller = createTrackedAbortController();
+                      loadControllerRef.current?.abort();
+                      loadControllerRef.current = controller;
+                      loadContactData(controller.signal);
+                    }} />
+                  </div>
+                </section>
               </div>
-            </section>
+            </div>
             </div>
             ) : null}
 
@@ -1331,35 +1655,103 @@ export default function ContactDetailPage({
               hidden={overviewTab !== "share"}
               style={overviewTab === "share" ? undefined : { display: "none" }}
             >
-            <section className={`${styles.panel} ${styles.contactFillPanel}`} data-guide="contact-share-panel">
-              <div className={styles.panelHeader}>
-                <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.sharedAccessTitle}</h2>
-                </div>
-                {contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <div className={styles.panelToolbar}>
-                  
-                    <button type="button" className={`${pageLayout.primaryBtn} ${pageLayout.primaryBtnIconOnly}`} onClick={() => setShareAccessCreateOpen(true)} aria-label={copy.shareAccess} disabled={isCommunity}>
-                      <FaPlus />
-                    </button>
-                  
-                </div> : null}
+            <div className={styles.activityLayout} data-guide="contact-share-panel">
+              <div className={styles.activityUnifiedCard}>
+                <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
+                  <div className={styles.activityUnifiedBody}>
+                    {contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? (
+                      <div
+                        className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}
+                      >
+                        <div className={equipStyles.embeddedSearchWrap}>
+                          <div className={equipStyles.embeddedSearchBox}>
+                            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+                            <input
+                              type="text"
+                              className={equipStyles.embeddedSearchInput}
+                              value={shareSearchQuery}
+                              onChange={event => setShareSearchQuery(event.target.value)}
+                              placeholder={copy.activitySearchPlaceholder || "Rechercher"}
+                              aria-label={copy.shareSearchAria || copy.activitySearchPlaceholder || "Rechercher"}
+                            />
+                            {shareSearchQuery ? (
+                              <button
+                                type="button"
+                                className={equipStyles.embeddedSearchClear}
+                                onClick={() => setShareSearchQuery("")}
+                                aria-label={copy.activityClearSearchAria || "Effacer la recherche"}
+                              >
+                                <FaTimes aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
+                            <ActivityStatusSegmented
+                              value={shareListFilter}
+                              onChange={setShareListFilter}
+                              options={[
+                                { id: "ongoing", label: copy.shareFilterOngoing || "En cours" },
+                                { id: "archived", label: copy.shareFilterArchived || "Archivé" }
+                              ]}
+                              ariaLabel={copy.shareFilterStatusAria || "Filtrer les partages"}
+                            />
+                            {contactCompanies.length > 1 ? (
+                              <label className={contactStyles.vaultClientFieldCompact}>
+                                <span className={contactStyles.srOnly}>{copy.vaultClientLabel || copy.selectCompany}</span>
+                                <select
+                                  className={contactStyles.vaultClientSelect}
+                                  value={vaultClientId || ""}
+                                  onChange={e => setVaultClientId(e.target.value || null)}
+                                  aria-label={copy.vaultClientLabel || copy.selectCompany}
+                                >
+                                  {contactCompanies.map(company => (
+                                    <option key={company.id} value={company.id}>
+                                      {company.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ) : null}
+                            <button
+                              type="button"
+                              className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
+                              onClick={() => setShareAccessCreateOpen(true)}
+                              aria-label={copy.shareAccess}
+                              disabled={isCommunity || shareListFilter === "archived"}
+                            >
+                              <FaPlus />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className={styles.activityTableStack}>
+                      {contact?.id && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? (
+                        <ProFeatureLock
+                          locked={isCommunity}
+                          featureLabel={copy.sharedAccessTitle}
+                          featureKey="sharedAccess"
+                          className={styles.activityUnifiedProLock}
+                          badgePosition="none"
+                        >
+                          <VaultSecretsPanel
+                            contactId={contact.id}
+                            clientId={vaultClientId || contact.client_id || contactCompanies[0]?.id}
+                            contactName={formatContactName(contact, copy.defaultName)}
+                            createModalOpen={shareAccessCreateOpen}
+                            onCreateModalChange={setShareAccessCreateOpen}
+                            searchQuery={shareSearchQuery}
+                            listFilter={shareListFilter}
+                          />
+                        </ProFeatureLock>
+                      ) : (
+                        <p className={contactStyles.coordEmpty}>{copy.shareNeedsCompany || copy.coordEmpty}</p>
+                      )}
+                    </div>
+                  </div>
+                </section>
               </div>
-              <div className={styles.panelBody}>
-                <div className={styles.overviewTabPanel}>
-                  {contact?.id && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <ProFeatureLock locked={isCommunity} featureLabel={copy.sharedAccessTitle} featureKey="sharedAccess">
-{contactCompanies.length > 1 ? <label className={contactStyles.vaultClientField}>
-                        <span className={contactStyles.vaultClientLabel}>{copy.vaultClientLabel || copy.selectCompany}</span>
-                        <select className={contactStyles.vaultClientSelect} value={vaultClientId || ""} onChange={e => setVaultClientId(e.target.value || null)}>
-                          {contactCompanies.map(company => <option key={company.id} value={company.id}>
-                              {company.name}
-                            </option>)}
-                        </select>
-                      </label> : null}
-                    <VaultSecretsPanel contactId={contact.id} clientId={vaultClientId || contact.client_id || contactCompanies[0]?.id} contactName={formatContactName(contact, copy.defaultName)} createModalOpen={shareAccessCreateOpen} onCreateModalChange={setShareAccessCreateOpen} />
-                  </ProFeatureLock> : <p className={contactStyles.coordEmpty}>{copy.shareNeedsCompany || copy.coordEmpty}</p>}
-                </div>
-              </div>
-            </section>
+            </div>
             </div>
             ) : null}
 
@@ -1373,6 +1765,7 @@ export default function ContactDetailPage({
               {contact?.id ? (
                 <ActivityJournalPanel
                   entityId={contact.id}
+                  embedded
                   active={overviewTab === "logs"}
                   fetchLogs={(page, options) =>
                     fetchContactLogs(contact.id, {
@@ -1388,109 +1781,77 @@ export default function ContactDetailPage({
               ) : null}
             </div>
             ) : null}
+            </div>
+              </div>
+            </div>
           </main>
 
-          <div className={styles.asideStack}>
-            <section className={styles.quickActionsCard} data-guide="contact-quick-actions" aria-label={copy.quickActions?.title || "Actions rapides"}>
-              <h3 className={styles.quickActionsTitle}>{copy.quickActions?.title || "Actions rapides"}</h3>
-              <ul className={styles.quickActionsList}>
-                <li>
-                  <button
-                    type="button"
-                    className={styles.quickActionItem}
+          <aside className={`${styles.asideStack} ${styles.asidePanel}`} aria-label={copy.sidebarInfo || "Informations"}>
+            <div className={styles.rightSidebarContent}>
+              <section
+                className={`${styles.sidebarSection} ${styles.sidebarActionToolbarSection}`}
+                data-guide="contact-quick-actions"
+                aria-label={copy.quickActions?.title || "Actions rapides"}
+              >
+                <div className={styles.sidebarActionToolbar}>
+                  {canEditContact ? (
+                    <EnterpriseQuickActionButton
+                      actionId="edit"
+                      iconify="mdi:square-edit-outline"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={handleOpenEditModal}
+                      aria-label={copy.quickActions?.editContact || copy.editContact}
+                    />
+                  ) : null}
+                  {canCreateTicket ? (
+                    <EnterpriseQuickActionButton
+                      actionId="ticket"
+                      iconify="mdi:ticket-outline"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={handleQuickCreateTicket}
+                      aria-label={copy.quickActions?.createTicket || "Créer un ticket"}
+                    />
+                  ) : null}
+                  <EnterpriseQuickActionButton
+                    actionId="copy"
+                    iconify="mdi:content-copy"
+                    className={styles.sidebarActionIconBtn}
+                    onClick={handleCopyContact}
+                    aria-label={copy.quickActions?.copyCard || copy.copyCard}
+                  />
+                  <EnterpriseQuickActionButton
+                    actionId="share"
+                    iconify="mdi:share-variant"
+                    className={styles.sidebarActionIconBtn}
+                    onClick={handleShareContact}
+                    aria-label={copy.quickActions?.shareCard || copy.shareCard}
+                  />
+                  <EnterpriseQuickActionButton
+                    actionId="subscribe"
+                    iconify={contactSubscribed ? "mdi:bell-ring-outline" : "mdi:bell-outline"}
+                    className={`${styles.sidebarActionIconBtn} ${contactSubscribed ? styles.sidebarActionIconBtnActive : ""}`}
                     onClick={toggleContactSubscribe}
                     disabled={!contact?.id || contactSubscribeLoading || contactSubscribeSaving}
                     aria-pressed={contactSubscribed}
-                  >
-                    <span className={styles.quickActionIcon} aria-hidden>
-                      <Icon icon={contactSubscribed ? "mdi:bell-ring" : "mdi:bell-outline"} />
-                    </span>
-                    <span className={styles.quickActionLabel}>
-                      {contactSubscribed
+                    aria-label={
+                      contactSubscribed
                         ? copy.subscribe?.unsubscribe || "Se désabonner"
-                        : copy.subscribe?.subscribe || "S’abonner aux notifications"}
-                    </span>
-                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                  </button>
-                </li>
-                {canEditContact ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={handleOpenEditModal}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:pencil-outline" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{copy.quickActions?.editContact || copy.editContact}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                    </button>
-                  </li>
-                ) : null}
-                <li>
-                  <button type="button" className={styles.quickActionItem} onClick={handleCopyContact}>
-                    <span className={styles.quickActionIcon} aria-hidden>
-                      <Icon icon="mdi:content-copy" />
-                    </span>
-                    <span className={styles.quickActionLabel}>{copy.quickActions?.copyCard || copy.copyCard}</span>
-                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                  </button>
-                </li>
-                <li>
-                  <button type="button" className={styles.quickActionItem} onClick={handleShareContact}>
-                    <span className={styles.quickActionIcon} aria-hidden>
-                      <Icon icon="mdi:share-variant" />
-                    </span>
-                    <span className={styles.quickActionLabel}>{copy.quickActions?.shareCard || copy.shareCard}</span>
-                    <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                  </button>
-                </li>
-                {quickActionsExpanded ? (
-                  <>
-                    {contactCompanies.map(company => (
-                      <li key={company.id}>
-                        <button
-                          type="button"
-                          className={styles.quickActionItem}
-                          onClick={() => openEnterprise({ id: company.id, name: company.name })}
-                        >
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:domain" />
-                          </span>
-                          <span className={styles.quickActionLabel}>{company.name || copy.viewEnterprise}</span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ))}
-                    {canDeleteContact ? (
-                      <li>
-                        <button
-                          type="button"
-                          className={styles.quickActionItem}
-                          onClick={openDeleteContactModal}
-                          disabled={deletingContact}
-                        >
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:trash-can-outline" />
-                          </span>
-                          <span className={styles.quickActionLabel}>
-                            {deletingContact ? copy.deleting : copy.quickActions?.deleteContact || copy.deleteContact}
-                          </span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ) : null}
-                  </>
-                ) : null}
-              </ul>
-              <button
-                type="button"
-                className={styles.quickActionsSeeAll}
-                onClick={() => setQuickActionsExpanded(prev => !prev)}
-              >
-                {copy.quickActions?.seeAll || "Voir toutes les actions"}
-                <Icon icon={quickActionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
-              </button>
-            </section>
-          <aside className={styles.asidePanel}>
-            <div className={styles.rightSidebarContent}>
+                        : copy.subscribe?.subscribe || "S’abonner aux notifications"
+                    }
+                  />
+                  {canDeleteContact ? (
+                    <EnterpriseQuickActionButton
+                      actionId="delete"
+                      iconify="mdi:trash-can-outline"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={openDeleteContactModal}
+                      disabled={deletingContact}
+                      aria-label={deletingContact ? copy.deleting : copy.quickActions?.deleteContact || copy.deleteContact}
+                    />
+                  ) : null}
+                </div>
+              </section>
+
               <section className={`${styles.sidebarSection} ${contactStyles.sidebarCommSection}`} data-guide="contact-sidebar-companies">
                 <SidebarSectionHeader
                   title={copy.companies || copy.share.lines.enterprise}
@@ -1654,7 +2015,6 @@ export default function ContactDetailPage({
               </section>
             </div>
           </aside>
-          </div>
         </div>
       </div>
 

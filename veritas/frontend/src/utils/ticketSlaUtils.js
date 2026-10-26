@@ -235,8 +235,12 @@ export function buildTicketSlaDisplayInput(ticket, {
   statusHistory
 } = {}) {
   let resolvedContrat = clientContrat ?? ticket?.client_contrat ?? null;
-  if (!resolvedContrat && ticket?.client_id && Array.isArray(clients)) {
-    const client = clients.find(c => String(c.id) === String(ticket.client_id));
+  if (!resolvedContrat && ticket?.client_id && clients) {
+    const client = typeof clients.get === "function"
+      ? clients.get(String(ticket.client_id))
+      : Array.isArray(clients)
+        ? clients.find(c => String(c.id) === String(ticket.client_id))
+        : null;
     resolvedContrat = client?.contrat ?? null;
   }
   return {

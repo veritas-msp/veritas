@@ -41,7 +41,6 @@ export default function RmmEnrollmentTokenFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{tf.enterpriseTitle}</h3>
-              <p className={layout.sectionDesc}>{tf.enterpriseDesc}</p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
@@ -64,7 +63,6 @@ export default function RmmEnrollmentTokenFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{tf.detailsTitle}</h3>
-              <p className={layout.sectionDesc}>{tf.detailsDesc}</p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={`${layout.field} ${layout.fieldFull}`}>

@@ -560,30 +560,38 @@
 }
 
 .actionRow {
-  display: flex;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-}
-
-.rowActionBtn {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  flex-wrap: nowrap;
+}
+
+.rowActionBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
   border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 999px;
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
-  border-radius: 8px;
   cursor: pointer;
-  padding: 0.28rem 0.5rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
+  font-size: 0.95rem;
+  line-height: 0;
+  flex-shrink: 0;
   transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
 
 .rowActionBtn:hover {
   border-color: var(--msp-accent, #2b5fab);
   color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
 }
 
 .rowActionDanger {
@@ -632,44 +640,6 @@
   padding: 2.5rem 1rem !important;
   color: var(--msp-muted, #5c6b82);
 }
-
-.trashBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius-sm, 10px);
-  background: var(--msp-surface, #fff);
-  color: var(--msp-muted, #5c6b82);
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.trashBtn:hover {
-  border-color: rgba(220, 38, 38, 0.45);
-  color: #b91c1c;
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
-}
-
-.trashBtnActive {
-  border-color: rgba(220, 38, 38, 0.45);
-  color: #b91c1c;
-  background: rgba(220, 38, 38, 0.12);
-  box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.2);
-}
-
-.trashBtnActive:hover {
-  border-color: rgba(220, 38, 38, 0.55);
-  color: #991b1b;
-  background: rgba(220, 38, 38, 0.16);
-}
-
-
 
 .viewsFinder {
   flex: 1 1 auto;
@@ -734,7 +704,17 @@
 .viewsFinderPanel :global([class*="tableShell"]),
 .viewsFinderPanel :global([class*="dataTableWrap"]) {
   --fade-surface: var(--msp-surface);
+  --fade-radius: var(--msp-radius-sm, 10px);
   background: var(--msp-surface);
+}
+
+/* Entête au-dessus du fade ; fade haut sous la ligne d’en-tête */
+.viewsFinderPanel :global([class*="tableList"]) thead,
+.viewsFinderPanel :global([class*="tableList"]) thead th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
 }
 
 .viewsFinderPanel :global([class*="emptyStateInCard"]) {
@@ -965,11 +945,6 @@
   flex-shrink: 0;
 }
 
-.viewsFinderMain .trashBtn {
-  width: 34px;
-  height: 34px;
-}
-
 .viewsFinderMain :global([class*="tableSearchBar"]) {
   padding: 0;
   min-height: var(--msp-btn-h, 2.15rem);
@@ -1160,9 +1135,15 @@
   box-shadow: none;
 }
 
-:global(html.dark) .viewsFinder .viewsFinderPanel :global([class*="dataTableWrap"]) {
+:global(html.dark) .viewsFinder .viewsFinderPanel :global([class*="dataTableWrap"]),
+:global(html.dark) .viewsFinder .viewsFinderPanel :global([class*="tableShell"]) {
   --fade-surface: var(--msp-surface-2, #162338);
   background: var(--msp-surface-2, #162338);
+}
+
+:global(html.dark) .viewsFinderPanel :global([class*="tableList"]) thead,
+:global(html.dark) .viewsFinderPanel :global([class*="tableList"]) thead th {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 92%, #0f172a);
 }
 
 :global(html.dark) .viewsFinder .viewsFinderPanel :global([class*="emptyStateInCard"]) {
@@ -1188,30 +1169,6 @@
 :global(html.dark) .activeViewClearBtn:hover {
   background: rgba(255, 255, 255, 0.06);
   color: var(--msp-text, #e8edf5);
-}
-
-:global(html.dark) .trashBtn {
-  background: var(--msp-surface-2, #152035);
-  border-color: var(--msp-border, #2a3a55);
-  color: var(--msp-muted, #8fa8c4);
-}
-
-:global(html.dark) .trashBtn:hover {
-  border-color: rgba(248, 113, 113, 0.5);
-  color: #fca5a5;
-  background: rgba(248, 113, 113, 0.1);
-}
-
-:global(html.dark) .trashBtnActive {
-  border-color: rgba(248, 113, 113, 0.5);
-  color: #fca5a5;
-  background: rgba(248, 113, 113, 0.16);
-}
-
-:global(html.dark) .trashBtnActive:hover {
-  border-color: rgba(248, 113, 113, 0.65);
-  color: #fecaca;
-  background: rgba(248, 113, 113, 0.22);
 }
 
 .satisfactionRow {

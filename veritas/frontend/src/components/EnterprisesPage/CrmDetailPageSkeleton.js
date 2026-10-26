@@ -1,10 +1,11 @@
 import React from "react";
 import layout from "./EnterpriseDetailPage.module.css";
+import { uiKitLayoutsStyles as finderKit } from "../UiKit";
 import sk from "./CrmDetailPageSkeleton.module.css";
 
 /**
  * Shared CRM detail skeleton (entreprise / contact / prestataire).
- * Uses the same layout classes as the live pages to avoid visual jumps.
+ * Mirrors the live finder layout: hero + left nav + content + right aside.
  */
 export default function CrmDetailPageSkeleton({
   loadingAria = "Chargement…",
@@ -12,39 +13,114 @@ export default function CrmDetailPageSkeleton({
   /** Optional real title from navigation — avoids title flash */
   titleHint = "",
   showTitleIcon = false,
-  showMidSlot = true,
-  tabCount = 4,
-  /** "overview" | "activity" | "panels" */
-  body = "overview",
+  showMidSlot = false,
+  tabCount = 7,
+  secondaryCount = 6,
+  /** "map" | "activity" | "portal" | "panels" | "overview" */
+  body = "map",
   showAside = true,
-  asideSections = 4
+  asideSections = 7,
+  asideActionCount = 5
 }) {
   const tabs = Math.max(0, Number(tabCount) || 0);
+  const secondary = Math.max(0, Number(secondaryCount) || 0);
   const sections = Math.max(1, Number(asideSections) || 4);
+  const actions = Math.max(0, Number(asideActionCount) || 0);
   const rootClass = [
     layout.contratDetailPage,
     layout.enterpriseDetailPage,
-    className
+    className,
+    "msp-page-grid"
   ]
     .filter(Boolean)
     .join(" ");
 
+  const mainColumnExtra =
+    body === "activity" || body === "portal"
+      ? layout.mainColumnActivity
+      : body === "overview"
+        ? layout.mainColumnOverview
+        : layout.mainColumnMap;
+
   const renderBody = () => {
+    if (body === "portal") {
+      return (
+        <div className={sk.portalLayout} aria-hidden>
+          <div className={sk.portalAside}>
+            <div className={sk.portalMetaStack}>
+              <span className={`${sk.bone} ${sk.portalMetaLine}`} />
+              <span className={`${sk.bone} ${sk.portalMetaLineShort}`} />
+              <span className={`${sk.bone} ${sk.portalMetaLine}`} />
+            </div>
+            <div className={sk.portalQuickBlock}>
+              <span className={`${sk.bone} ${sk.portalQuickTitle}`} />
+              <div className={sk.portalQuickGrid}>
+                {[0, 1, 2, 3].map(i => (
+                  <div key={i} className={sk.portalQuickTile}>
+                    <span className={`${sk.bone} ${sk.portalQuickIcon}`} />
+                    <span className={`${sk.bone} ${sk.portalQuickLabel}`} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className={sk.portalMain}>
+            <div className={sk.portalLoginHead}>
+              <span className={`${sk.bone} ${sk.portalLoginTitle}`} />
+              <span className={`${sk.bone} ${sk.portalLoginHint}`} />
+            </div>
+            <div className={sk.tableShell}>
+              <div className={sk.tableHeadRow}>
+                {[0, 1, 2, 3].map(i => (
+                  <span key={i} className={`${sk.bone} ${sk.tableHeadCell}`} />
+                ))}
+              </div>
+              {Array.from({ length: 6 }, (_, row) => (
+                <div key={row} className={sk.portalLoginRow}>
+                  <span className={`${sk.bone} ${sk.statusDot}`} />
+                  <span className={`${sk.bone} ${sk.tableCellWide}`} />
+                  <span className={`${sk.bone} ${sk.tableCell}`} />
+                  <span className={`${sk.bone} ${sk.tableCell}`} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
     if (body === "activity") {
       return (
         <div className={sk.activityLayout} aria-hidden>
-          <div className={sk.kpiRow}>
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className={`${sk.bone} ${sk.kpiCard}`} />
-            ))}
-          </div>
-          <div className={sk.activitySplit}>
-            {[0, 1].map(i => (
-              <section key={i} className={sk.panel}>
-                <div className={sk.panelHead} />
-                <div className={`${sk.bone} ${sk.panelBody}`} />
-              </section>
-            ))}
+          <div className={sk.activityCard}>
+            <div className={sk.activityCardHead}>
+              <span className={`${sk.bone} ${sk.activityHeadTitle}`} />
+              <span className={`${sk.bone} ${sk.activityHeadCount}`} />
+            </div>
+            <div className={sk.activityCardBody}>
+              <div className={sk.mapToolbar}>
+                <span className={`${sk.bone} ${sk.searchBar}`} />
+                <div className={sk.mapToolbarActions}>
+                  <span className={`${sk.bone} ${sk.actionBtn}`} />
+                  <span className={`${sk.bone} ${sk.actionBtn}`} />
+                </div>
+              </div>
+              <div className={sk.tableShell}>
+                <div className={sk.tableHeadRow}>
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <span key={i} className={`${sk.bone} ${sk.tableHeadCell}`} />
+                  ))}
+                </div>
+                {Array.from({ length: 8 }, (_, row) => (
+                  <div key={row} className={sk.activityRow}>
+                    <span className={`${sk.bone} ${sk.statusDot}`} />
+                    <span className={`${sk.bone} ${sk.tableCellWide}`} />
+                    <span className={`${sk.bone} ${sk.tableCell}`} />
+                    <span className={`${sk.bone} ${sk.tableCell}`} />
+                    <span className={`${sk.bone} ${sk.tableCell}`} />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -67,14 +143,49 @@ export default function CrmDetailPageSkeleton({
         </div>
       );
     }
+    if (body === "overview") {
+      return (
+        <div className={sk.overviewGrid} aria-hidden>
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <article key={i} className={sk.overviewCard}>
+              <div className={sk.overviewCardHead} />
+              <div className={`${sk.bone} ${sk.overviewCardBody}`} />
+            </article>
+          ))}
+        </div>
+      );
+    }
+    /* Default: map / périphériques — toolbar + table */
     return (
-      <div className={sk.overviewGrid} aria-hidden>
-        {[0, 1, 2, 3, 4, 5].map(i => (
-          <article key={i} className={sk.overviewCard}>
-            <div className={sk.overviewCardHead} />
-            <div className={`${sk.bone} ${sk.overviewCardBody}`} />
-          </article>
-        ))}
+      <div className={sk.mapLayout} aria-hidden>
+        <div className={sk.mapToolbar}>
+          <span className={`${sk.bone} ${sk.searchBar}`} />
+          <div className={sk.mapToolbarActions}>
+            <span className={`${sk.bone} ${sk.actionBtn}`} />
+            <span className={`${sk.bone} ${sk.actionBtn}`} />
+          </div>
+        </div>
+        <div className={sk.tableShell}>
+          <div className={sk.tableHeadRow}>
+            {[0, 1, 2, 3, 4, 5, 6].map(i => (
+              <span key={i} className={`${sk.bone} ${sk.tableHeadCell}`} />
+            ))}
+          </div>
+          {Array.from({ length: 10 }, (_, row) => (
+            <div key={row} className={sk.tableRow}>
+              <span className={`${sk.bone} ${sk.statusDot}`} />
+              <span className={`${sk.bone} ${sk.tableCellWide}`} />
+              <span className={`${sk.bone} ${sk.tableCell}`} />
+              <span className={`${sk.bone} ${sk.tableCell}`} />
+              <span className={`${sk.bone} ${sk.tableCell}`} />
+              <span className={`${sk.bone} ${sk.tableCell}`} />
+              <div className={sk.tableRowActions}>
+                <span className={`${sk.bone} ${sk.actionBtn}`} />
+                <span className={`${sk.bone} ${sk.actionBtn}`} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
@@ -82,76 +193,63 @@ export default function CrmDetailPageSkeleton({
   return (
     <div className={rootClass} aria-busy="true" aria-label={loadingAria}>
       <header className={layout.pageHero}>
-        <div className={`${layout.heroTop} ${showMidSlot ? "" : layout.heroTopNoMid}`.trim()}>
+        <div className={layout.heroTop}>
           <div className={layout.heroIdentityBlock}>
             <div className={layout.heroCover} aria-hidden />
             <div className={layout.heroIdentityRow}>
               <div className={layout.heroMain}>
-                {showTitleIcon ? <span className={`${sk.bone} ${sk.titleIcon}`} aria-hidden style={{ width: "3.5rem", height: "3.5rem", borderRadius: 14 }} /> : null}
+                {showTitleIcon ? (
+                  <span className={`${sk.bone} ${sk.titleIconHero}`} aria-hidden />
+                ) : null}
                 <div className={layout.heroText}>
                   <div className={layout.heroTitle}>
+                    <span className={`${sk.bone} ${sk.statusDot}`} aria-hidden />
                     {titleHint ? (
                       <span className={sk.titleHint}>{titleHint}</span>
                     ) : (
                       <span className={`${sk.bone} ${sk.titleBar}`} aria-hidden />
                     )}
-                    <span className={`${sk.bone} ${sk.statusDot}`} aria-hidden />
-                  </div>
-                  <div className={`${layout.heroMeta} ${sk.metaRow}`} aria-hidden>
-                    <span className={`${sk.bone} ${sk.metaPill} ${sk.metaPillWide}`} />
-                    <span className={`${sk.bone} ${sk.metaPill}`} />
                   </div>
                 </div>
+              </div>
+              <div className={layout.heroMeta} aria-hidden>
+                <span className={`${sk.bone} ${sk.metaPill} ${sk.metaPillWide}`} />
+                <span className={`${sk.bone} ${sk.metaPill}`} />
               </div>
               {showMidSlot ? (
                 <div className={layout.heroPlanningFrise} aria-hidden>
-                  <div className={`${sk.bone} ${sk.midSlotChip}`} style={{ width: "100%", minHeight: "4.5rem", borderRadius: 12 }} />
+                  <div className={`${sk.bone} ${sk.midSlotChip}`} />
                 </div>
               ) : null}
-              <div className={layout.heroRightCluster}>
-                <div className={layout.heroActions} aria-hidden>
-                  <span className={`${sk.bone} ${sk.actionBtn}`} />
-                  <span className={`${sk.bone} ${sk.actionBtn}`} />
-                </div>
-                <div className={layout.heroKpiStrip} aria-hidden>
-                  {[0, 1, 2, 3, 4].map(i => (
-                    <span key={i} className={`${sk.bone} ${sk.kpiCard}`} style={{ minWidth: "5.4rem", height: "4.2rem", borderRadius: 12 }} />
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <div className={layout.pageBody}>
+      <div className={`${layout.pageBody} ${layout.pageBodyFill}`.trim()}>
         {showAside ? (
           <div className={layout.pageGrid}>
-            <main className={`${layout.mainColumn} ${layout.mainColumnFinder}`.trim()}>
+            <main className={`${layout.mainColumn} ${layout.mainColumnFinder} ${mainColumnExtra}`.trim()}>
               {tabs > 0 ? (
-                <div className={layout.enterpriseFinderLayout} aria-hidden>
-                  <aside className={layout.enterpriseFinderSidebar}>
-                    <nav className={layout.finderPrimaryNav}>
+                <div className={`${finderKit.finderLayout} ${layout.enterpriseFinderLayout}`}>
+                  <aside className={`${finderKit.finderSidebar} ${layout.enterpriseFinderSidebar}`} aria-hidden>
+                    <nav className={`${finderKit.finderPrimary} ${layout.finderPrimaryNav}`}>
                       {Array.from({ length: tabs }, (_, i) => (
-                        <span
-                          key={i}
-                          className={`${sk.bone} ${sk.tab}`}
-                          style={{ display: "block", width: "100%", height: "1.85rem", borderRadius: 8 }}
-                        />
+                        <span key={i} className={`${sk.bone} ${sk.finderItem}`} />
                       ))}
                     </nav>
-                    <div className={layout.finderSecondary}>
-                      <span className={`${sk.bone} ${sk.tabShort}`} style={{ display: "block", width: "4rem", height: "0.65rem", margin: "0.4rem 0.35rem" }} />
-                      {[0, 1, 2, 3].map(i => (
-                        <span
-                          key={i}
-                          className={`${sk.bone} ${sk.tab}`}
-                          style={{ display: "block", width: "100%", height: "1.6rem", borderRadius: 7, marginTop: 4 }}
-                        />
-                      ))}
-                    </div>
+                    {secondary > 0 ? (
+                      <div className={`${finderKit.finderSecondary} ${layout.finderSecondary}`}>
+                        <span className={`${sk.bone} ${sk.finderSecTitle}`} />
+                        <div className={sk.finderSecList}>
+                          {Array.from({ length: secondary }, (_, i) => (
+                            <span key={i} className={`${sk.bone} ${sk.finderSecItem}`} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </aside>
-                  <div className={layout.enterpriseFinderContent}>
+                  <div className={`${finderKit.finderContent} ${layout.enterpriseFinderContent}`}>
                     {renderBody()}
                   </div>
                 </div>
@@ -159,36 +257,29 @@ export default function CrmDetailPageSkeleton({
                 renderBody()
               )}
             </main>
-            <aside className={layout.asidePanel} aria-hidden>
+
+            <aside className={`${layout.asideStack} ${layout.asidePanel}`} aria-hidden>
               <div className={`${layout.rightSidebarContent} ${sk.asideInner}`}>
+                {actions > 0 ? (
+                  <div className={sk.asideToolbar}>
+                    {Array.from({ length: actions }, (_, i) => (
+                      <span key={i} className={`${sk.bone} ${sk.asideActionBtn}`} />
+                    ))}
+                  </div>
+                ) : null}
                 {Array.from({ length: sections }, (_, i) => (
                   <div key={i} className={sk.asideSection}>
                     <div className={sk.asideHeader}>
                       <span className={`${sk.bone} ${sk.asideTitle}`} />
                       <span className={`${sk.bone} ${sk.asideCount}`} />
                     </div>
-                    {i === 0 ? (
-                      <div className={`${sk.bone} ${sk.asideBlock} ${sk.asideBlockTall}`} />
-                    ) : null}
                   </div>
                 ))}
               </div>
             </aside>
           </div>
         ) : (
-          <main className={layout.mainColumn}>
-            {tabs > 0 ? (
-              <nav className={layout.heroTabBar} aria-hidden>
-                {Array.from({ length: tabs }, (_, i) => (
-                  <span
-                    key={i}
-                    className={`${sk.bone} ${sk.tab} ${i === tabs - 1 ? sk.tabShort : ""}`}
-                  />
-                ))}
-              </nav>
-            ) : null}
-            {renderBody()}
-          </main>
+          <main className={layout.mainColumn}>{renderBody()}</main>
         )}
       </div>
     </div>

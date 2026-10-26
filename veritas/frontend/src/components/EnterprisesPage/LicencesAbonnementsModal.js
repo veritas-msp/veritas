@@ -3,16 +3,12 @@ import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
-import { addClientLicence, updateClientLicence } from "../../api/clients";
+import { addClientLicence, updateClientLicence, deleteClientLicence } from "../../api/clients";
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./LicencesAbonnementsModal.module.css";
 import { getLicencesModalCopy } from "./licencesAbonnementsModalI18n";
-import {
-  UiKitButton,
-  UiKitModalNavSectionButton,
-  uiKitLayoutsStyles as kit,
-  useFinderNavIndicator
-} from "../UiKit";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import { UiKitButton, uiKitLayoutsStyles as kit } from "../UiKit";
 import EquipmentHoverIcon, { SECTION_ANIMATED } from "../EquipementPage/EquipmentHoverIcon";
 
 const EMPTY_FORM = {
@@ -43,24 +39,14 @@ export default function LicensesAbonnementsModal({
   const copy = useMemo(() => getLicencesModalCopy(locale), [locale]);
   const common = useCommonCopy();
 
-  const [activeSection] = useState("info");
-  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, isOpen]);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState(null);
 
   const isEditing = Boolean(editingId);
-  const formSections = useMemo(
-    () => [
-      {
-        id: "info",
-        label: copy.sections.info?.label || copy.sections.add?.label || "Informations",
-        icon: "mdi:text-box-outline"
-      }
-    ],
-    [copy]
-  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -68,6 +54,8 @@ export default function LicensesAbonnementsModal({
       setForm(EMPTY_FORM);
       setError(null);
       setSaving(false);
+      setDeleting(false);
+      setDeleteOpen(false);
       return;
     }
     if (initialItem?.id) {
@@ -83,6 +71,22 @@ export default function LicensesAbonnementsModal({
   if (!isOpen) return null;
 
   const patchForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+
+  const handleDelete = async () => {
+    if (!clientId || !editingId) return;
+    setDeleting(true);
+    try {
+      await deleteClientLicence(clientId, editingId);
+      toast.success(copy.toasts.deleted);
+      setDeleteOpen(false);
+      await onRefresh?.();
+      onClose?.();
+    } catch (err) {
+      toast.error(err?.message || copy.toasts.deleteError);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!clientId) return;
@@ -121,7 +125,6 @@ export default function LicensesAbonnementsModal({
 
   const HeaderAnimated = SECTION_ANIMATED.inventory;
   const sectionTitle = isEditing ? copy.edit.title : copy.add.title;
-  const sectionDesc = isEditing ? copy.edit.description : copy.add.description;
 
   return createPortal(
     <div className={layout.overlay} onClick={saving ? undefined : onClose} role="presentation">
@@ -159,39 +162,7 @@ export default function LicensesAbonnementsModal({
           />
         </header>
 
-        <div className={layout.body}>
-          <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={copy.navAria}>
-            <nav
-              ref={navTrackRef}
-              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
-            >
-              {navIndicator.ready ? (
-                <div
-                  className={kit.finderNavIndicator}
-                  style={{
-                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
-                    height: navIndicator.height
-                  }}
-                  aria-hidden
-                />
-              ) : null}
-              {formSections.map(section => (
-                <UiKitModalNavSectionButton
-                  key={section.id}
-                  section={section}
-                  active={activeSection === section.id}
-                  onSelect={() => {}}
-                  finderItemClass={kit.finderItem}
-                  finderItemActiveClass={kit.finderItemActive}
-                  finderItemIconClass={kit.finderItemIcon}
-                  finderItemLabelClass={kit.finderItemLabel}
-                  navBadgeClass={layout.navBadge}
-                  navBadgeSlotClass={layout.navBadgeSlot}
-                />
-              ))}
-            </nav>
-          </aside>
-
+        <div className={layout.bodySingle}>
           <div className={layout.content}>
             <div className={kit.contentFadeUp} key={`form-${editingId || "new"}`}>
               {error ? (
@@ -202,11 +173,10 @@ export default function LicensesAbonnementsModal({
               <div className={styles.sectionFill}>
                 <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
                   <h3 className={layout.sectionTitle}>{sectionTitle}</h3>
-                  <p className={layout.sectionDesc}>{sectionDesc}</p>
                 </div>
 
-                <div className={layout.fieldGrid2}>
-                  <div className={`${layout.field} ${layout.fieldFull}`}>
+                <div className={styles.addForm}>
+                  <div className={layout.field}>
                     <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="licence-nom">
                       {copy.form.name}
                     </label>
@@ -245,7 +215,7 @@ export default function LicensesAbonnementsModal({
                       placeholder={copy.form.supplierPlaceholder}
                     />
                   </div>
-                  <div className={`${layout.field} ${layout.fieldFull}`}>
+                  <div className={layout.field}>
                     <label className={layout.label} htmlFor="licence-notes">
                       {copy.form.notes}
                     </label>
@@ -267,14 +237,26 @@ export default function LicensesAbonnementsModal({
         <footer className={layout.footer}>
           <span className={layout.footerHint}>{copy.footer.nameRequired}</span>
           <div className={layout.footerActions}>
-            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
+            {isEditing ? (
+              <UiKitButton
+                type="button"
+                variant="ghost"
+                className={layout.footerDeleteBtn}
+                onClick={() => setDeleteOpen(true)}
+                disabled={saving || deleting}
+                icon="mdi:delete-outline"
+              >
+                {copy.actions.delete}
+              </UiKitButton>
+            ) : null}
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving || deleting}>
               {copy.form.cancel}
             </UiKitButton>
             <UiKitButton
               type="button"
               variant="primary"
               onClick={handleSubmit}
-              disabled={saving || !form.nom.trim()}
+              disabled={saving || deleting || !form.nom.trim()}
               icon={saving ? "mdi:loading" : isEditing ? "mdi:content-save-outline" : "mdi:plus"}
             >
               {saving ? common.saving : isEditing ? copy.primary.update : copy.primary.add}
@@ -282,6 +264,18 @@ export default function LicensesAbonnementsModal({
           </div>
         </footer>
       </div>
+      <ConfirmModal
+        open={deleteOpen}
+        variant="danger"
+        title={copy.actions.delete}
+        message={`${copy.actions.delete} « ${form.nom || copy.deleteFallback} » ?`}
+        confirmLabel={copy.actions.delete}
+        loading={deleting}
+        onClose={() => {
+          if (!deleting) setDeleteOpen(false);
+        }}
+        onConfirm={handleDelete}
+      />
     </div>,
     document.getElementById("modal-root") || document.body
   );

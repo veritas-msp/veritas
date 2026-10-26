@@ -5,15 +5,35 @@ import { buildSessionPayload, setSessionCookie, signSessionToken } from "../../u
 import { generateMfaSecret, buildOtpAuthUrl, generateQrDataUrl, verifyTotp } from "../../utils/mfa.js";
 import { normalizePortal, getPortalAccessError } from "../../utils/authPortal.js";
 import { mfaLoginRateLimit } from "../../middleware/rateLimit.js";
+import {
+  PORTAL_LOGIN_STATUS,
+  recordPortalLoginEvent,
+  touchPortalLastLogin
+} from "../../utils/portalLoginEvents.js";
 const router = express.Router();
 async function getUserMfa(userId) {
   const {
     rows
-  } = await pool.query(`SELECT id, email, username, role, profile, client_id,
+  } = await pool.query(`SELECT id, email, username, role, profile, client_id, contact_id,
             COALESCE(is_active, true) AS is_active,
             mfa_enabled, mfa_secret
      FROM v_b_users WHERE id = $1`, [userId]);
   return rows[0];
+}
+function isClientRole(role) {
+  return String(role || "").toLowerCase() === "client";
+}
+async function logClientPortalAttempt(req, user, status, failureReason = null) {
+  if (!user || !isClientRole(user.role)) return;
+  await recordPortalLoginEvent({
+    userId: user.id,
+    contactId: user.contact_id || null,
+    clientId: user.client_id || null,
+    email: user.email,
+    status,
+    failureReason,
+    req
+  });
 }
 router.post("/login", mfaLoginRateLimit, async (req, res) => {
   const {
@@ -39,6 +59,7 @@ router.post("/login", mfaLoginRateLimit, async (req, res) => {
       });
     }
     if (!verifyTotp(code, user.mfa_secret)) {
+      await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.MFA_FAILURE, "invalid_mfa_code");
       return res.status(401).json({
         error: "Invalid Code."
       });
@@ -46,14 +67,20 @@ router.post("/login", mfaLoginRateLimit, async (req, res) => {
     const portal = normalizePortal(decoded.portal);
     const portalError = getPortalAccessError(portal, user.role);
     if (portalError) {
+      await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.FAILURE, "wrong_portal");
       return res.status(403).json({
         error: portalError
       });
     }
     if (user.is_active === false) {
+      await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.BLOCKED, "account_disabled");
       return res.status(403).json({
         error: "This account is disabled. Contact your provider."
       });
+    }
+    if (isClientRole(user.role)) {
+      await touchPortalLastLogin(user.id);
+      await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.SUCCESS);
     }
     const token = signSessionToken(buildSessionPayload(user));
     setSessionCookie(req, res, token);

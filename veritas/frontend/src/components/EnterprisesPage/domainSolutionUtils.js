@@ -10,7 +10,7 @@ function formatDateForStorage(raw) {
 export function formatRenewalModeLabel(mode) {
   if (mode === "automatic") return "Automatique";
   if (mode === "manual") return "Manuel";
-  return "Unknown";
+  return "Inconnu";
 }
 export function normalizeDomainItem(item) {
   if (!item) return null;
@@ -70,24 +70,24 @@ export function mapOvhApiDomainToMonitored(ovhDomain) {
 export function formatDomainSummary(domain) {
   const normalized = normalizeDomainItem(domain);
   if (!normalized) return {
-    label: "Domain",
+    label: "Domaine",
     meta: ""
   };
   const providerId = normalized.providerId || inferProviderIdFromDomain(normalized) || "manual";
-  const providerName = providerId === "manual" ? getDnsProvider("manual")?.label || "Other registrar" : providerId === "ovh" ? "OVH" : getDnsProvider(providerId)?.label || normalized.registrar || "-";
+  const providerName = providerId === "manual" ? getDnsProvider("manual")?.label || "Autre registrar" : providerId === "ovh" ? "OVH" : getDnsProvider(providerId)?.label || normalized.registrar || "-";
   const registrarLabel = normalized.registrar && normalized.registrar !== "N/A" && providerId !== "manual" ? normalized.registrar : providerId === "manual" && normalized.registrar ? normalized.registrar : null;
   const metaParts = [registrarLabel || providerName];
   if (normalized.expiration) {
-    metaParts.push(`Expires on ${new Date(normalized.expiration).toLocaleDateString("en-GB")}`);
+    metaParts.push(`Expire le ${new Date(normalized.expiration).toLocaleDateString("fr-FR")}`);
   }
   if (normalized.autoRenew != null) {
-    metaParts.push(normalized.autoRenew ? "Auto-renewal" : "Manual renewal");
+    metaParts.push(normalized.autoRenew ? "Renouvellement auto" : "Renouvellement manuel");
   }
   if (normalized.hasDnsZone) {
-    metaParts.push("OVH DNS zone");
+    metaParts.push("Zone DNS OVH");
   }
   return {
-    label: normalized.nom || "Domain",
+    label: normalized.nom || "Domaine",
     providerName,
     providerId,
     meta: metaParts.join(" · ")

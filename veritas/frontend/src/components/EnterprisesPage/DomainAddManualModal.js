@@ -12,6 +12,7 @@ export default function DomainAddManualModal({
   onChange,
   onClose,
   onSave,
+  onDelete,
   saving,
   isEditing
 }) {
@@ -106,6 +107,18 @@ export default function DomainAddManualModal({
         <footer className={layout.footer}>
           <span className={layout.footerHint}>{copy.footer.hostRequired || copy.toasts.domainNameRequired}</span>
           <div className={layout.footerActions}>
+            {isEditing && onDelete ? (
+              <UiKitButton
+                type="button"
+                variant="ghost"
+                className={layout.footerDeleteBtn}
+                onClick={onDelete}
+                disabled={saving}
+                icon="mdi:delete-outline"
+              >
+                {copy.overview?.removeTitle || copy.actions?.remove || common.remove || "Supprimer"}
+              </UiKitButton>
+            ) : null}
             <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
               {common.cancel}
             </UiKitButton>

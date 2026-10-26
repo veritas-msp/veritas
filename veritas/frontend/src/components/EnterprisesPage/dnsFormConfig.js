@@ -2,9 +2,9 @@ import { getDnsIntegrations, getIntegrationById, isIntegrationConfigured } from 
 export const DNS_MANUAL_PROVIDER = {
   id: "manual",
   integrationId: null,
-  label: "Other registrar",
+  label: "Autre registrar",
   icon: "mdi:web-plus",
-  description: "Manual entry without API synchronization (domain name, expiration).",
+  description: "Saisie manuelle sans synchronisation API (nom de domaine, expiration).",
   status: "available",
   isManual: true,
   supportsGlobal: false

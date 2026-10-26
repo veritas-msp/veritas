@@ -133,7 +133,7 @@ export function classifyUnifiDevice(device = {}) {
   ) {
     return {
       category: "gateway",
-      moduleKey: "Firewalls"
+      moduleKey: "Routeur"
     };
   }
   if (/\b(switch)\b/.test(blob)) {

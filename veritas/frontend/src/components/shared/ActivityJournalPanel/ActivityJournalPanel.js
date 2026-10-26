@@ -20,7 +20,7 @@ import {
   DEFAULT_ENTERPRISE_LOGS_TABLE_COLUMNS,
   normalizeTicketTableColumns
 } from "../../../utils/ticketTableColumns";
-import { UiKitTable } from "../../UiKit";
+import { UiKitEmptyState, UiKitTable, uiKitTableStyles as tableKit } from "../../UiKit";
 import { getActivityJournalCopy, interpolate } from "./activityJournalI18n";
 import styles from "./ActivityJournalPanel.module.css";
 
@@ -351,14 +351,14 @@ export default function ActivityJournalPanel({
     <div className={styles.loadingState}>{copy.loading}</div>
   ) : logs.length === 0 ? (
     <div className={styles.emptyState}>
-      <Icon icon="mdi:history" className={styles.emptyIcon} aria-hidden />
-      <h5>{filtersActive ? copy.emptyFiltered : copy.empty}</h5>
-      <p className={styles.emptyHint}>
-        {filtersActive ? copy.emptyFilteredHint : copy.emptyHint}
-      </p>
+      <UiKitEmptyState
+        bare
+        icon="mdi:history"
+        text={filtersActive ? copy.emptyFiltered : copy.empty}
+      />
     </div>
   ) : (
-    <table className={`${enterpriseDetailStyles.dataTable} ${styles.table}`.trim()}>
+    <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`.trim()}>
       <thead>
         <tr>
           {tableColumns.map(columnId => {
@@ -378,11 +378,11 @@ export default function ActivityJournalPanel({
             return (
               <th
                 key={columnId}
-                className={`${styles.sortableTh} ${colClass}`.trim()}
+                className={`${tableKit.tableThSortable} ${styles.sortableTh} ${colClass}`.trim()}
                 onClick={() => handleSort(columnId)}
                 aria-sort={isSorted ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
               >
-                <span className={styles.thContent}>
+                <span className={`${tableKit.tableThContent} ${styles.thContent}`.trim()}>
                   {label}
                   {isSorted ? (
                     <SortIcon active direction={sortDirection || "asc"} className={styles.sortIndicator} />
@@ -410,7 +410,7 @@ export default function ActivityJournalPanel({
           return (
             <tr
               key={log.id || `${when}-${index}`}
-              className={enterpriseDetailStyles.dataTableRowClickable}
+              className={tableKit.tableRowClickable}
               onClick={() => setSelectedLog(log)}
               title={copy.detailTitle}
             >
@@ -578,16 +578,6 @@ export default function ActivityJournalPanel({
 
   return (
     <section className={`${enterpriseDetailStyles.panel} ${styles.logsPanel}`.trim()}>
-      <header className={enterpriseDetailStyles.panelHeader}>
-        <div className={enterpriseDetailStyles.panelHeaderMain}>
-          <h2 className={enterpriseDetailStyles.panelTitle}>
-            <Icon icon="mdi:history" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-            {copy.title}
-          </h2>
-          <p className={styles.subtitle}>{copy.subtitle}</p>
-        </div>
-      </header>
-
       <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
         {toolbar}
         {tableBlock}

@@ -5,6 +5,7 @@ import {
   BookTextIcon,
   BriefcaseBusinessIcon,
   CalendarDaysIcon,
+  ChartColumnIncreasingIcon,
   CloudIcon,
   CloudUploadIcon,
   DatabaseIcon,
@@ -12,6 +13,8 @@ import {
   FileTextIcon,
   HeartHandshakeIcon,
   LaptopMinimalCheckIcon,
+  LogoutIcon,
+  MessageSquareIcon,
   MonitorIcon,
   NetworkIcon,
   PlugIcon,
@@ -22,6 +25,7 @@ import {
   SlidersHorizontalIcon,
   SquareArrowUpIcon,
   SquarePenIcon,
+  SunIcon,
   TabletIcon,
   TagIcon,
   TicketIcon,
@@ -192,13 +196,30 @@ export const OVERVIEW_TAB_ANIMATED = {
   logs: RefreshCCWIcon,
 };
 
-/** Actions rapides (sidebar fiche entreprise) */
+/** Actions rapides (sidebar fiche entreprise / portail contact) */
 export const QUICK_ACTION_ANIMATED = {
   edit: SquarePenIcon,
   ticket: TicketIcon,
   schedule: CalendarDaysIcon,
   subscribe: BellIcon,
   export: SquareArrowUpIcon,
+  portalInvite: MessageSquareIcon,
+  portalReset: VaultIcon,
+  portalImpersonate: UsersIcon,
+  portalRevoke: LogoutIcon,
+};
+
+/** Types d’événement planning */
+export const PLANNING_EVENT_TYPE_ANIMATED = {
+  intervention: ZapIcon,
+  presentation: HeartHandshakeIcon,
+  maintenance_preventive: ShieldCheckIcon,
+  maintenance: SlidersHorizontalIcon,
+  mise_a_jour: RefreshCCWIcon,
+  conge: SunIcon,
+  integration_monitoring: ChartColumnIncreasingIcon,
+  campagne: ShieldCheckIcon,
+  other: CalendarDaysIcon,
 };
 
 /**

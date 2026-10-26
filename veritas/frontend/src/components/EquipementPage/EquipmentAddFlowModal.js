@@ -163,10 +163,11 @@ export default function EquipmentAddFlowModal({
       return (
         <div className={`${styles.sectionFill} ${flowStyles.categoryStage}`.trim()}>
           <div className={flowStyles.categoryGrid} role="listbox" aria-label={t.categoryHint || t.title}>
-            {categoryOptions.map(category => (
+            {categoryOptions.map((category, index) => (
               <EquipmentCategoryTile
                 key={category.id}
                 category={category}
+                index={index}
                 selected={selectedCategory === category.id}
                 disabled={submitting}
                 onSelect={handleCategorySelect}
@@ -255,9 +256,6 @@ export default function EquipmentAddFlowModal({
               <h2 className={styles.title} id="equipment-add-flow-title">
                 {t.title}
               </h2>
-              <p className={styles.subtitle}>
-                {t.subtitle}
-              </p>
             </div>
           </div>
           <UiKitButton

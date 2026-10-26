@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
+import { UiKitButton } from "../UiKit";
 import { fetchSettings } from "../../api/settings";
 import { createClientMailinblackTenant, fetchMailinblackCustomers, fetchMailinblackDashboard, getGlobalMailinblackStatus, listClientMailinblackTenants, syncMailinblackCustomer, testClientMailinblackTenant, testMailinblackCredentials, updateClientMailinblackTenant } from "../../api/clientMailinblack";
 import { showError, showSuccess } from "../../utils/toast";
@@ -20,10 +20,11 @@ import { listConfiguredAntispamSolutions, removeAntispamSolution, syncAndPersist
 import formStyles from "./EnterpriseFormModal.module.css";
 import avStyles from "./AntivirusConfigModal.module.css";
 import asStyles from "./AntispamConfigModal.module.css";
+import pickerStyles from "../EquipementPage/EquipmentAddFlowModal.module.css";
 import MailinblackApiGuide from "./integrationGuides/MailinblackApiGuide";
 import MailinblackApiUrlField from "../Mailinblack/MailinblackApiUrlField";
-import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
 import SolutionProviderIcon from "./SolutionProviderIcon";
+import SolutionTenantChoiceModal from "./SolutionTenantChoiceModal";
 import { normalizeMailinblackApiUrl } from "../../utils/mailinblackUrl";
 const SOLUTION_NAME = "Mailinblack Protect";
 const STORED_AUTH_KEY_MASK = "••••••••••••••••";
@@ -78,6 +79,7 @@ export default function AntispamConfigModal({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editingSolution, setEditingSolution] = useState(null);
   const [solutionTenantMode, setSolutionTenantMode] = useState(null);
+  const [tenantChoiceOpen, setTenantChoiceOpen] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
@@ -88,32 +90,26 @@ export default function AntispamConfigModal({
     expiration: ""
   });
   const registeredSolutions = useMemo(() => listConfiguredAntispamSolutions(client, [], modulesData, dedicatedTenants), [client, modulesData, dedicatedTenants]);
-  const antispamProviders = useMemo(() => getAntispamProviderOptions(), []);
+  const antispamProviders = useMemo(() => {
+    const list = getAntispamProviderOptions();
+    const rank = provider => {
+      if (provider.isManual) return 2;
+      if (provider.status === "comingSoon") return 3;
+      if (
+        resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+          mailinblack: globalMailinblackConfigured
+        })
+      ) {
+        return 0;
+      }
+      return 1;
+    };
+    return [...list].sort((a, b) => rank(a) - rank(b) || String(a.label).localeCompare(String(b.label)));
+  }, [integrationSettings, globalMailinblackConfigured]);
   const selectedGlobalConfigured = useMemo(() => resolveProviderGlobalConfigured(selectedProviderId, integrationSettings, {
     mailinblack: globalMailinblackConfigured
   }), [selectedProviderId, integrationSettings, globalMailinblackConfigured]);
   const selectedProvider = useMemo(() => getAntispamProvider(selectedProviderId), [selectedProviderId]);
-  const visibleTenantMode = useMemo(() => {
-    if (activeSection === "reseller") return "reseller";
-    if (activeSection === "dedicated" || activeSection === "guide") return "dedicated";
-    if (solutionTenantMode) return solutionTenantMode;
-    return null;
-  }, [activeSection, solutionTenantMode]);
-  const navSections = useMemo(() => copy.navSections({
-    selectedProviderId,
-    globalConfigured: selectedGlobalConfigured,
-    visibleTenantMode
-  }), [copy, selectedProviderId, selectedGlobalConfigured, visibleTenantMode]);
-  const sectionBadges = useMemo(() => {
-    const hasDedicated = registeredSolutions.some(s => (s.providerId === "mailinblack" || !s.providerId) && (s.mappingMode === "dedicated" || s.mailinblackTenantId));
-    const hasManual = registeredSolutions.some(s => s.providerId === "manual" || s.mappingMode === "manual" || s.isManual || isManualAntispamSolution(s));
-    return {
-      overview: registeredSolutions.length > 0,
-      solution: Boolean(selectedProviderId),
-      dedicated: hasDedicated || dedicatedTenants.length > 0,
-      manual: hasManual
-    };
-  }, [registeredSolutions, dedicatedTenants, selectedProviderId]);
   const loadData = useCallback(async () => {
     if (!client?.id) return;
     setLoading(true);
@@ -175,7 +171,7 @@ export default function AntispamConfigModal({
       setEditingSolution(null);
       await loadData();
       await onSaved?.();
-      setActiveSection("overview");
+      onClose?.();
     } catch (error) {
       showError(error.message || copy.toasts.saveError);
     } finally {
@@ -248,11 +244,14 @@ export default function AntispamConfigModal({
       return;
     }
     setEditingSolution(null);
-    setActiveSection(initialSection);
-    if (initialSection === "dedicated") {
+    const nextSection = !initialSection || initialSection === "overview" ? "solution" : initialSection;
+    setActiveSection(nextSection);
+    if (nextSection === "dedicated" || nextSection === "reseller") {
       setSelectedProviderId("mailinblack");
-    } else if (initialSection === "manual") {
+    } else if (nextSection === "manual") {
       setSelectedProviderId("manual");
+    } else {
+      setSelectedProviderId(null);
     }
   }, [initialSection, initialEditingSolution, client?.id, startEditingSolution]);
   useEffect(() => {
@@ -280,7 +279,7 @@ export default function AntispamConfigModal({
     setConnectionStatus(null);
     try {
       if (!dedicatedForm.authClientId?.trim() && !shouldUseStoredTenantAuthKey(dedicatedForm.apiKey, hasStoredAuthKey, selectedDedicatedTenantId)) {
-        throw new Error(copy.toasts.clientIdRequired || "Client ID required.");
+        throw new Error(copy.toasts.clientIdRequired || "Client ID requis.");
       }
       if (shouldUseStoredTenantAuthKey(dedicatedForm.apiKey, hasStoredAuthKey, selectedDedicatedTenantId)) {
         await testClientMailinblackTenant(client.id, selectedDedicatedTenantId);
@@ -314,7 +313,7 @@ export default function AntispamConfigModal({
       return;
     }
     if (!dedicatedForm.authClientId?.trim()) {
-      showError(copy.toasts.clientIdRequired || "Client ID required.");
+      showError(copy.toasts.clientIdRequired || "Client ID requis.");
       return;
     }
     if (!selectedDedicatedTenantId && !resolvedAuthKey) {
@@ -431,7 +430,7 @@ export default function AntispamConfigModal({
       dedicatedFormInitializedRef.current = false;
       await loadData();
       await onSaved?.();
-      setActiveSection("overview");
+      onClose?.();
     } catch (error) {
       console.error(error);
       showError(error.message || copy.toasts.saveError);
@@ -463,6 +462,18 @@ export default function AntispamConfigModal({
       setDeletingSolutionKey(null);
     }
   };
+  const isProviderSelectable = provider => {
+    if (!provider) return false;
+    if (provider.status === "comingSoon") return false;
+    if (isIntegrationProLocked(provider.catalogIntegration, isCommunity)) return false;
+    if (provider.isManual) return true;
+    const configured = resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+      mailinblack: globalMailinblackConfigured
+    });
+    if (configured) return true;
+    // Tenant dédié possible sans intégration globale
+    return provider.id === "mailinblack";
+  };
   const handleSelectProvider = provider => {
     if (provider.status === "comingSoon") {
       showError(copy.formatComingSoonToast(provider.label));
@@ -472,13 +483,24 @@ export default function AntispamConfigModal({
       notifyProFeature(provider.label || copy.proIntegrationFallback);
       return;
     }
+    if (!isProviderSelectable(provider)) {
+      showError(copy.solutionPicker?.notConfiguredToast || "Activez cette intégration en Administration → Intégrations.");
+      return;
+    }
     setSelectedProviderId(provider.id);
     if (provider.isManual) {
+      setTenantChoiceOpen(false);
       setActiveSection("manual");
       return;
     }
     setSolutionTenantMode(null);
     setActiveSection("solution");
+    setTenantChoiceOpen(true);
+  };
+  const handleChooseTenantMode = mode => {
+    setSolutionTenantMode(mode);
+    setTenantChoiceOpen(false);
+    setActiveSection(mode === "dedicated" ? "dedicated" : "reseller");
   };
   const handleSaveManual = async () => {
     const label = (manualForm.solution || "").trim();
@@ -539,7 +561,7 @@ export default function AntispamConfigModal({
       setEditingSolution(null);
       await loadData();
       await onSaved?.();
-      setActiveSection("overview");
+      onClose?.();
     } catch (error) {
       showError(error.message || copy.toasts.saveError);
     } finally {
@@ -550,84 +572,85 @@ export default function AntispamConfigModal({
     startEditingSolution(solution);
   };
   const renderSolutionPicker = () => <>
+      <div className={avStyles.solutionChoiceStage}>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.solutionPicker.title}</h3>
         <p className={formStyles.sectionDesc}>{copy.solutionPicker.description}</p>
       </div>
 
-      <div className={avStyles.providerList}>
-        {antispamProviders.map(provider => {
-        const isSelected = selectedProviderId === provider.id;
-        const isComingSoon = provider.status === "comingSoon";
-        const proLocked = isIntegrationProLocked(provider.catalogIntegration, isCommunity);
-        const globalAvailable = !provider.isManual && resolveProviderGlobalConfigured(provider.id, integrationSettings, {
-          mailinblack: globalMailinblackConfigured
-        });
-        return <button key={provider.id} type="button" className={`${avStyles.providerCard} ${isSelected ? avStyles.providerCardSelected : ""} ${isComingSoon || proLocked ? avStyles.providerCardDisabled : ""}`} onClick={() => handleSelectProvider(provider)} disabled={isComingSoon} title={provider.description}>
-              <span className={avStyles.providerCardIcon} style={integrationIconStyle(provider.iconColor)} aria-hidden>
-                {provider.image ? <img src={getIconPath(provider.image)} alt="" /> : <Icon icon={provider.icon} />}
+      <div
+        className={`${pickerStyles.categoryGrid} ${avStyles.solutionChoiceGrid}`}
+        role="listbox"
+        aria-label={copy.solutionPicker.title}
+      >
+        {antispamProviders.map((provider, index) => {
+          const isSelected = selectedProviderId === provider.id;
+          const isComingSoon = provider.status === "comingSoon";
+          const proLocked = isIntegrationProLocked(provider.catalogIntegration, isCommunity);
+          const globalAvailable =
+            !provider.isManual &&
+            resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+              mailinblack: globalMailinblackConfigured
+            });
+          const selectable = isProviderSelectable(provider);
+          const disabled = !selectable;
+          const badgeLabel = isComingSoon
+            ? copy.badges.soon
+            : proLocked
+              ? copy.badges.pro
+              : globalAvailable
+                ? copy.badges.global
+                : !selectable && !provider.isManual
+                  ? copy.badges?.notConfigured || "Non paramétré"
+                  : null;
+          const badgeClass = globalAvailable && !isComingSoon && !proLocked
+            ? avStyles.solutionChoiceBadgeGlobal
+            : avStyles.solutionChoiceBadgeSoon;
+          return (
+            <button
+              key={provider.id}
+              type="button"
+              role="option"
+              className={`${pickerStyles.categoryTile} ${isSelected ? pickerStyles.categoryTileActive : ""}`}
+              style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}
+              onClick={() => handleSelectProvider(provider)}
+              disabled={disabled}
+              title={
+                disabled
+                  ? copy.solutionPicker?.notConfiguredHint || provider.description
+                  : provider.description
+              }
+              aria-disabled={disabled}
+              aria-selected={isSelected}
+              aria-pressed={isSelected}
+            >
+              {isSelected ? (
+                <Icon icon="mdi:check-circle" className={pickerStyles.categoryCheck} aria-hidden />
+              ) : null}
+              {badgeLabel ? (
+                <span className={`${avStyles.solutionChoiceBadge} ${badgeClass}`}>{badgeLabel}</span>
+              ) : null}
+              <span
+                className={pickerStyles.categoryIconWrap}
+                style={integrationIconStyle(provider.iconColor)}
+                aria-hidden
+              >
+                {provider.image ? (
+                  <img src={getIconPath(provider.image)} alt="" className={avStyles.solutionChoiceIcon} />
+                ) : (
+                  <Icon icon={provider.icon} className={avStyles.solutionChoiceIcon} />
+                )}
               </span>
-              <span className={avStyles.providerCardLabel}>{provider.label}</span>
-              {isComingSoon || proLocked || globalAvailable ? <span className={avStyles.providerCardBadges}>
-                  {isComingSoon ? <span className={avStyles.providerBadgeSoon}>{copy.badges.soon}</span> : null}
-                  {proLocked ? <span className={avStyles.providerBadgeSoon}>{copy.badges.pro}</span> : null}
-                  {globalAvailable ? <span className={avStyles.providerBadgeGlobal}>{copy.badges.global}</span> : null}
-                </span> : null}
-            </button>;
-      })}
+              <span className={pickerStyles.categoryLabel}>{provider.label}</span>
+            </button>
+          );
+        })}
       </div>
-
-      {selectedProvider && selectedProvider.status === "available" && selectedProviderId === "mailinblack" ? <>
-          <div className={formStyles.contentDivider} />
-          <div className={formStyles.sectionHead}>
-            <h3 className={formStyles.sectionTitle}>
-              {copy.formatConnectionTitle(selectedProvider.label)}
-            </h3>
-            <p className={formStyles.sectionDesc}>
-              {selectedGlobalConfigured ? copy.solutionPicker.globalDetected : copy.solutionPicker.globalNotActive}
-            </p>
-          </div>
-          <div className={avStyles.modeGrid}>
-            <button type="button" className={`${avStyles.modeCard} ${!selectedGlobalConfigured ? avStyles.modeCardDisabled : ""} ${solutionTenantMode === "reseller" ? avStyles.modeCardActive : ""}`} onClick={() => {
-          if (!selectedGlobalConfigured) return;
-          setSolutionTenantMode("reseller");
-          setActiveSection("reseller");
-        }} disabled={!selectedGlobalConfigured}>
-              <span className={avStyles.modeCardIcon} aria-hidden>
-                <Icon icon="mdi:store-cog-outline" />
-              </span>
-              <span className={avStyles.modeCardTitle}>{copy.solutionPicker.modeGlobal.title}</span>
-              <span className={avStyles.modeCardDesc}>
-                {selectedGlobalConfigured ? copy.solutionPicker.modeGlobal.descConfigured : copy.solutionPicker.modeGlobal.descNotConfigured}
-              </span>
-              <span className={avStyles.modeCardAction}>
-                {selectedGlobalConfigured ? copy.solutionPicker.modeGlobal.actionConfigured : copy.solutionPicker.modeGlobal.actionNotConfigured}
-                <Icon icon="mdi:chevron-right" aria-hidden />
-              </span>
-            </button>
-            <button type="button" className={`${avStyles.modeCard} ${solutionTenantMode === "dedicated" ? avStyles.modeCardActive : ""}`} onClick={() => {
-          setSolutionTenantMode("dedicated");
-          setActiveSection("dedicated");
-        }}>
-              <span className={avStyles.modeCardIcon} aria-hidden>
-                <Icon icon="mdi:shield-key-outline" />
-              </span>
-              <span className={avStyles.modeCardTitle}>{copy.solutionPicker.modeDedicated.title}</span>
-              <span className={avStyles.modeCardDesc}>
-                {copy.solutionPicker.modeDedicated.description}
-              </span>
-              <span className={avStyles.modeCardAction}>
-                {copy.solutionPicker.modeDedicated.action}
-                <Icon icon="mdi:chevron-right" aria-hidden />
-              </span>
-            </button>
-          </div>
-        </> : null}
+      </div>
     </>;
   const renderOverview = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.overview.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.overview.description}</p>
       </div>
 
       {registeredSolutions.length === 0 ? (
@@ -680,7 +703,6 @@ export default function AntispamConfigModal({
   const renderReseller = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.reseller.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.reseller.description}</p>
       </div>
       {!selectedGlobalConfigured ? <div className={avStyles.emptyState}>{copy.reseller.globalNotActive}</div> : <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="mib-global-customer">
@@ -701,21 +723,27 @@ export default function AntispamConfigModal({
             </select>}
         </div>}
     </>;
-  const renderDedicated = () => <>
+  const renderDedicated = () => (
+    <div className={avStyles.dedicatedPanel}>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.dedicated.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.dedicated.description}</p>
       </div>
 
-      <form className={avStyles.dedicatedTenantForm} autoComplete="off" onSubmit={e => e.preventDefault()}>
+      <form
+        className={avStyles.dedicatedTenantForm}
+        autoComplete="off"
+        onSubmit={e => e.preventDefault()}
+      >
         <MailinblackApiUrlField
           id="tenant-api-url"
           variant="dedicated"
           value={dedicatedForm.apiUrl}
-          onChange={apiUrl => setDedicatedForm({
-            ...dedicatedForm,
-            apiUrl
-          })}
+          onChange={apiUrl =>
+            setDedicatedForm({
+              ...dedicatedForm,
+              apiUrl
+            })
+          }
           labels={{
             apiUrlLabel: copy.dedicated.apiUrlLabel,
             apiUrlHint: copy.dedicated.apiUrlHint,
@@ -732,42 +760,66 @@ export default function AntispamConfigModal({
           <label className={formStyles.label} htmlFor="tenant-client-id">
             {copy.dedicated.clientIdLabel}
           </label>
-          <input id="tenant-client-id" name="mailinblack-tenant-client-id" type="text" className={formStyles.input} value={dedicatedForm.authClientId} onChange={e => setDedicatedForm({
-          ...dedicatedForm,
-          authClientId: e.target.value
-        })} placeholder={copy.dedicated.clientIdPlaceholder} autoComplete="off" data-lpignore="true" data-1p-ignore />
+          <input
+            id="tenant-client-id"
+            name="mailinblack-tenant-client-id"
+            type="text"
+            className={formStyles.input}
+            value={dedicatedForm.authClientId}
+            onChange={e =>
+              setDedicatedForm({
+                ...dedicatedForm,
+                authClientId: e.target.value
+              })
+            }
+            placeholder={copy.dedicated.clientIdPlaceholder}
+            autoComplete="off"
+            data-lpignore="true"
+            data-1p-ignore
+          />
         </div>
         <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="tenant-api-key">
             {copy.dedicated.apiKeyLabel}
           </label>
-          <input id="tenant-api-key" name="mailinblack-tenant-api-key" type="password" className={formStyles.input} value={dedicatedForm.apiKey} onChange={e => {
-          setHasStoredAuthKey(false);
-          setDedicatedForm({
-            ...dedicatedForm,
-            apiKey: e.target.value
-          });
-        }} onFocus={() => {
-          if (hasStoredAuthKey) {
-            setHasStoredAuthKey(false);
-            setDedicatedForm(prev => ({
-              ...prev,
-              apiKey: ""
-            }));
-          }
-        }} placeholder={selectedDedicatedTenantId || hasStoredAuthKey ? copy.dedicated.apiKeyPlaceholderStored : copy.dedicated.apiKeyPlaceholderNew} autoComplete="new-password" data-lpignore="true" data-1p-ignore />
-          <p className={formStyles.sectionDesc}>{copy.dedicated.apiKeyHint}</p>
+          <input
+            id="tenant-api-key"
+            name="mailinblack-tenant-api-key"
+            type="password"
+            className={formStyles.input}
+            value={dedicatedForm.apiKey}
+            onChange={e => {
+              setHasStoredAuthKey(false);
+              setDedicatedForm({
+                ...dedicatedForm,
+                apiKey: e.target.value
+              });
+            }}
+            onFocus={() => {
+              if (hasStoredAuthKey) {
+                setHasStoredAuthKey(false);
+                setDedicatedForm(prev => ({
+                  ...prev,
+                  apiKey: ""
+                }));
+              }
+            }}
+            placeholder={
+              selectedDedicatedTenantId || hasStoredAuthKey
+                ? copy.dedicated.apiKeyPlaceholderStored
+                : copy.dedicated.apiKeyPlaceholderNew
+            }
+            autoComplete="new-password"
+            data-lpignore="true"
+            data-1p-ignore
+          />
         </div>
-        <button type="button" className={integrationStyles.guideLinkBtn} onClick={() => setActiveSection("guide")}>
-          <Icon icon="mdi:help-circle-outline" aria-hidden />
-          {copy.dedicated.apiKeyGuideLink}
-        </button>
       </form>
-    </>;
+    </div>
+  );
   const renderManual = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.manual.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.manual.description}</p>
       </div>
       <div className={formStyles.field}>
         <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="manual-antispam-name">
@@ -810,10 +862,14 @@ export default function AntispamConfigModal({
     </>;
   const renderSectionContent = () => {
     if (loading) {
-      return <div className={avStyles.loadingBlock}>
-          <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          {copy.loading}
-        </div>;
+      return (
+        <div className={avStyles.loadingBlock} role="status" aria-live="polite">
+          <span className={avStyles.loadingBlockIcon} aria-hidden>
+            <Icon icon="mdi:loading" className={formStyles.spinning} />
+          </span>
+          <p className={avStyles.loadingBlockText}>{copy.loading}</p>
+        </div>
+      );
     }
     if (activeSection === "dedicated" && selectedProviderId && selectedProviderId !== "mailinblack") {
       return <div className={avStyles.emptyState}>
@@ -821,8 +877,6 @@ export default function AntispamConfigModal({
         </div>;
     }
     switch (activeSection) {
-      case "solution":
-        return renderSolutionPicker();
       case "reseller":
         return renderReseller();
       case "dedicated":
@@ -831,19 +885,17 @@ export default function AntispamConfigModal({
         return <MailinblackApiGuide dedicated />;
       case "manual":
         return renderManual();
+      case "solution":
       default:
-        return renderOverview();
+        return renderSolutionPicker();
     }
   };
   const footerHint = useMemo(() => {
     if (selectedProvider) {
       return copy.formatFooterSolution(selectedProvider.label);
     }
-    if (activeSection === "overview" && registeredSolutions.length > 0) {
-      return copy.formatFooterSolutionsCount(registeredSolutions.length);
-    }
     return "";
-  }, [activeSection, registeredSolutions.length, selectedProvider, copy]);
+  }, [selectedProvider, copy]);
   const showDedicatedTenantActions = activeSection === "dedicated" && selectedProviderId === "mailinblack";
   const showResellerActions = activeSection === "reseller" && selectedProviderId === "mailinblack" && selectedGlobalConfigured;
   const showManualActions = activeSection === "manual";
@@ -863,44 +915,24 @@ export default function AntispamConfigModal({
               <h2 className={formStyles.title} id="antispam-config-modal-title">
                 {copy.title}
               </h2>
-              <p className={formStyles.subtitle}>{client.name}</p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={syncing || saving} aria-label={common.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={formStyles.closeBtn}
+            onClick={onClose}
+            disabled={syncing || saving}
+            aria-label={common.close}
+            icon="mdi:close"
+          />
         </header>
 
-        <div className={formStyles.body}>
-          <nav className={formStyles.nav} aria-label={copy.navAria}>
-            {navSections.map(section => <button key={section.id} type="button" className={`${formStyles.navItem} ${activeSection === section.id ? formStyles.navItemActive : ""} ${section.disabled ? avStyles.navItemDisabled : ""}`} onClick={() => {
-              if (section.disabled) return;
-              if (section.id === "reseller" || section.id === "dedicated") {
-                if (!selectedProviderId) {
-                  setSelectedProviderId("mailinblack");
-                }
-                setSolutionTenantMode(section.id);
-              }
-              if (section.id === "solution") {
-                setSolutionTenantMode(null);
-              }
-              if (section.id === "manual") {
-                setSelectedProviderId("manual");
-              }
-              setActiveSection(section.id);
-            }} disabled={section.disabled} title={section.disabled ? copy.navDisabledTitle : undefined} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={formStyles.navItemIcon} aria-hidden />
-                <span className={formStyles.navItemText}>
-                  <span className={formStyles.navItemLabel}>{section.label}</span>
-                  <span className={formStyles.navItemHint}>{section.description}</span>
-                </span>
-                {sectionBadges[section.id] ? <span className={formStyles.navBadge} aria-hidden>
-                    ✓
-                  </span> : null}
-              </button>)}
-          </nav>
-
-          <div className={formStyles.content}>{renderSectionContent()}</div>
+        <div className={formStyles.bodySingle}>
+          <div className={`${formStyles.content} ${activeSection === "solution" ? avStyles.contentScroll : ""}`}>
+            {renderSectionContent()}
+          </div>
         </div>
 
         <footer className={formStyles.footer}>
@@ -936,5 +968,26 @@ export default function AntispamConfigModal({
       <ConfirmModal open={Boolean(deleteTarget)} title={configCopy.confirm.deleteConfiguration.title} message={deleteTarget ? interpolate(configCopy.confirm.deleteConfiguration.message, {
       label: formatAntispamSolutionSummary(deleteTarget).label
     }) : ""} confirmLabel={common.delete} variant="danger" icon="mdi:delete-outline" loading={Boolean(deletingSolutionKey)} onClose={() => setDeleteTarget(null)} onConfirm={confirmDeleteSolution} />
+      <SolutionTenantChoiceModal
+        open={tenantChoiceOpen}
+        providerLabel={selectedProvider?.label || ""}
+        eyebrow={copy.eyebrow}
+        title={
+          selectedProvider?.label
+            ? copy.formatConnectionTitle(selectedProvider.label)
+            : copy.solutionPicker.connectionTitle
+        }
+        subtitle={
+          selectedGlobalConfigured
+            ? copy.solutionPicker.globalDetected
+            : copy.solutionPicker.globalNotActive
+        }
+        globalConfigured={selectedGlobalConfigured}
+        modeGlobal={copy.solutionPicker.modeGlobal}
+        modeDedicated={copy.solutionPicker.modeDedicated}
+        onChooseGlobal={() => handleChooseTenantMode("reseller")}
+        onChooseDedicated={() => handleChooseTenantMode("dedicated")}
+        onClose={() => setTenantChoiceOpen(false)}
+      />
     </>;
 }

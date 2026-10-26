@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { Icon, loadIcons } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { updateClient, saveClientModules, getClientLogs, purgeClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
+import { updateClient, saveClientModules, getClientLogs, purgeClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, checkClientSslCertificates, deleteClientSslCertificate, fetchClientLicences, deleteClientLicence, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
 import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { listClientOffice365Credentials } from "../../api/clientOffice365";
@@ -17,13 +17,15 @@ import { fetchUsers, fetchActiveUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
 import { fetchTickets } from "../../api/tickets";
 import { fetchEvents } from "../../api/events";
-import { filterRecentEvents, filterUpcomingEvents, mapCampaignsToBookmarkEvents } from "../../utils/eventFilters";
+import { filterRecentEvents, filterUpcomingEvents, isRecentEvent, isUpcomingEvent } from "../../utils/eventFilters";
+import { parseEventDescription } from "../PlanningPage/planningEventFormShared";
 import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
 import { getPlanningEventTypesList } from "../PlanningPage/planningEventTypes";
 import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import API_BASE_URL from "../../config";
 import StatusDot from "../shared/StatusDot/StatusDot";
+import ActivityStatusSegmented from "../shared/ActivityStatusSegmented/ActivityStatusSegmented";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import SitesModal from "./SitesModal";
@@ -31,10 +33,11 @@ import DomainsModal from "./DomainsModal";
 import DomainsConfigModal from "./DomainsConfigModal";
 import UnifiSiteLinkModal from "./UnifiSiteLinkModal";
 import UnifiImportModal from "./UnifiImportModal";
-import { getClientUnifiLink } from "../../api/unifi";
+import { getClientUnifiGlobalStatus, getClientUnifiLink } from "../../api/unifi";
 import DomainSolutionPickerModal from "./DomainSolutionPickerModal";
 import DomainOverviewModal from "./DomainOverviewModal";
 import SslCertificatesModal from "./SslCertificatesModal";
+import { getSslModalCopy } from "./sslCertificatesModalI18n";
 import LicencesAbonnementsModal from "./LicencesAbonnementsModal";
 import CustomEquipmentModal from "./CustomEquipmentModal";
 import EnterpriseEditModal from "./EnterpriseEditModal";
@@ -87,7 +90,6 @@ const ENTERPRISE_FINDER_ICONS = [
 import { getInfraMapCopy } from "./infraMapI18n";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
 import CrmDetailPageSkeleton from "./CrmDetailPageSkeleton";
-import UpcomingEventBookmarks from "./UpcomingEventBookmarks";
 import { UiKitEmptyState, UiKitScrollFadeShell, UiKitTable, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 import styles from "./EnterpriseDetailPage.module.css";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
@@ -137,7 +139,7 @@ import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { listConfiguredAntivirusSolutions, listOverviewAntivirusSolutions, mergeAntivirusSources, normalizeAntivirusItem, removeAntivirusSolution, reorderAntivirusSolutions, buildAntivirusDetailNavigationPayload } from "./antivirusSolutionUtils";
 import { listConfiguredAntispamSolutions, listOverviewAntispamSolutions, mergeAntispamSources, normalizeAntispamItem, removeAntispamSolution, reorderAntispamSolutions, buildAntispamDetailNavigationPayload } from "./antispamSolutionUtils";
 import { buildMicrosoftTenantDetailNavigationPayload, listConfiguredMicrosoftTenants, removeMicrosoftTenant } from "./microsoftTenantSolutionUtils";
-import { extractDomainsFromModules, listConfiguredDomains, removeMonitoredDomain, reorderMonitoredDomains } from "./domainSolutionUtils";
+import { extractDomainsFromModules, listConfiguredDomains, refreshMonitoredDomainsFromOvh, removeMonitoredDomain, reorderMonitoredDomains } from "./domainSolutionUtils";
 import { buildBackupInstanceDetailPayload } from "../EquipementPage/backupMspUtils";
 import { buildBitdefenderQueryParams } from "../../api/clientBitdefender";
 import PageGuideTour from "../PageGuide/PageGuideTour";
@@ -217,8 +219,28 @@ const isPrestationTicket = ticket => isSalesTicket(ticket);
 const ACTIVITY_SORT_DEFAULTS = {
   support: { key: "updated", direction: "desc" },
   prestations: { key: "created", direction: "desc" },
-  campaigns: { key: "start", direction: "desc" }
+  campaigns: { key: "start", direction: "desc" },
+  events: { key: "start", direction: "desc" }
 };
+
+const getEventStartValue = event => event?.event_start ?? event?.start ?? event?.["start"] ?? null;
+const getEventEndValue = event => event?.event_end ?? event?.end ?? event?.["end"] ?? event?.end_at ?? null;
+
+function resolveEventAssigneeLabel(event, users = []) {
+  const parsed = parseEventDescription(event?.description);
+  const ids = new Set();
+  if (event?.assigned_user_id) ids.add(String(event.assigned_user_id));
+  if (Array.isArray(parsed.meta?.assignedUserIds)) {
+    for (const id of parsed.meta.assignedUserIds) {
+      if (id) ids.add(String(id));
+    }
+  }
+  const names = [...ids].map(id => {
+    const user = users.find(row => String(row.id) === id);
+    return user?.ticket_helpdesk_display_name || user?.username || user?.name || user?.nom || user?.email || null;
+  }).filter(Boolean);
+  return names.length ? names.join(", ") : "—";
+}
 
 const compareActivitySortValues = (a, b, direction = "asc") => {
   const mul = direction === "desc" ? -1 : 1;
@@ -256,75 +278,6 @@ function getContactInitials(contact) {
 }
 
 /** Segmented Tous / Ouverts / Clos — pastille glissante comme les onglets UI Kit */
-function ActivityStatusSegmented({ value, onChange, options, ariaLabel }) {
-  const trackRef = useRef(null);
-  const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
-
-  useLayoutEffect(() => {
-    const root = trackRef.current;
-    if (!root) return undefined;
-    const update = () => {
-      const active = root.querySelector('[aria-pressed="true"]');
-      if (!active) {
-        setIndicator(prev => (prev.ready ? { ...prev, ready: false } : prev));
-        return;
-      }
-      const next = {
-        left: active.offsetLeft,
-        width: active.offsetWidth,
-        ready: true
-      };
-      setIndicator(prev =>
-        prev.left === next.left && prev.width === next.width && prev.ready ? prev : next
-      );
-    };
-    update();
-    const raf = requestAnimationFrame(() => {
-      update();
-      requestAnimationFrame(update);
-    });
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
-    ro?.observe(root);
-    window.addEventListener("resize", update);
-    return () => {
-      cancelAnimationFrame(raf);
-      ro?.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [value]);
-
-  return (
-    <div
-      ref={trackRef}
-      className={styles.macosSegmented}
-      role="group"
-      aria-label={ariaLabel}
-    >
-      {indicator.ready ? (
-        <span
-          className={styles.macosSegmentIndicator}
-          style={{
-            transform: `translateX(${indicator.left}px)`,
-            width: indicator.width
-          }}
-          aria-hidden
-        />
-      ) : null}
-      {options.map(option => (
-        <button
-          key={option.id}
-          type="button"
-          className={`${styles.macosSegment} ${value === option.id ? styles.macosSegmentActive : ""}`}
-          aria-pressed={value === option.id}
-          onClick={() => onChange(option.id)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function SidebarSectionHeader({
   title,
   icon = null,
@@ -619,14 +572,17 @@ export default function ClientDetailPage({
   const [supportSearchQuery, setSupportSearchQuery] = useState("");
   const [prestationSearchQuery, setPrestationSearchQuery] = useState("");
   const [campaignSearchQuery, setCampaignSearchQuery] = useState("");
+  const [eventsSearchQuery, setEventsSearchQuery] = useState("");
   const [supportStatusFilter, setSupportStatusFilter] = useState("all");
   const [prestationStatusFilter, setPrestationStatusFilter] = useState("all");
   const [campaignStatusFilter, setCampaignStatusFilter] = useState("all");
+  const [eventsStatusFilter, setEventsStatusFilter] = useState("all");
   const [activityPageSize, setActivityPageSize] = useState(50);
   const [activityTablePage, setActivityTablePage] = useState({
     support: 1,
     prestations: 1,
-    campaigns: 1
+    campaigns: 1,
+    events: 1
   });
   const pageRootRef = useRef(null);
   const peripheralsUiClientRef = useRef(resolvedClientId);
@@ -762,12 +718,14 @@ export default function ClientDetailPage({
   const [activeSiteFilter, setActiveSiteFilter] = useState(() => initialPeripheralsUi?.siteFilter || null);
   const [domainsModalOpen, setDomainsModalOpen] = useState(false);
   const [domainsConfigModalOpen, setDomainsConfigModalOpen] = useState(false);
+  const [unifiGlobalConfigured, setUnifiGlobalConfigured] = useState(false);
   const [unifiLinkModalOpen, setUnifiLinkModalOpen] = useState(false);
   const [unifiImportModalOpen, setUnifiImportModalOpen] = useState(false);
   const [unifiLink, setUnifiLink] = useState(null);
   const [domainsConfigInitialSection, setDomainsConfigInitialSection] = useState("inventory");
   const [domainsConfigInitialProviderId, setDomainsConfigInitialProviderId] = useState(null);
   const [domainsConfigOpenAddChoice, setDomainsConfigOpenAddChoice] = useState(false);
+  const [domainsConfigInitialEditDomain, setDomainsConfigInitialEditDomain] = useState(null);
   const [domainPickerOpen, setDomainPickerOpen] = useState(false);
   const [domainPickerDomains, setDomainPickerDomains] = useState([]);
   const [domainOverviewOpen, setDomainOverviewOpen] = useState(false);
@@ -838,10 +796,11 @@ export default function ClientDetailPage({
     setBackupConfigInitialJob(options?.job || null);
     setBackupConfigModalOpen(true);
   }, []);
-  const openDomainsConfigModal = useCallback((section = "inventory", providerId = null, { openAddChoice = false } = {}) => {
+  const openDomainsConfigModal = useCallback((section = "inventory", providerId = null, { openAddChoice = false, editDomain = null } = {}) => {
     setDomainsConfigInitialSection(section);
     setDomainsConfigInitialProviderId(providerId);
     setDomainsConfigOpenAddChoice(openAddChoice);
+    setDomainsConfigInitialEditDomain(editDomain || null);
     setDomainsConfigModalOpen(true);
   }, []);
   const [backupInstances, setBackupInstances] = useState([]);
@@ -1029,8 +988,12 @@ export default function ClientDetailPage({
   useEffect(() => {
     if (!client?.id) {
       setUnifiLink(null);
+      setUnifiGlobalConfigured(false);
       return;
     }
+    getClientUnifiGlobalStatus()
+      .then(status => setUnifiGlobalConfigured(Boolean(status?.configured || status?.enabled || status?.keys?.siteManager)))
+      .catch(() => setUnifiGlobalConfigured(false));
     getClientUnifiLink(client.id)
       .then(res => setUnifiLink(res?.link || null))
       .catch(() => setUnifiLink(null));
@@ -1306,13 +1269,32 @@ export default function ClientDetailPage({
     if (overviewTab === "logs") setLogsTabMounted(true);
   }, [overviewTab]);
   const [finderSecEnter, setFinderSecEnter] = useState(true);
+  const [mainContentEnter, setMainContentEnter] = useState(true);
   useLayoutEffect(() => {
     setFinderSecEnter(false);
+    setMainContentEnter(false);
   }, [overviewTab]);
   useEffect(() => {
-    const id = requestAnimationFrame(() => setFinderSecEnter(true));
-    return () => cancelAnimationFrame(id);
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      // Double rAF : commit opacity:0 avant de lancer le fade (évite le flash / saut).
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setFinderSecEnter(true);
+        setMainContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
   }, [overviewTab]);
+  const overviewTabPanelClass = tab => {
+    if (overviewTab !== tab) return styles.overviewTabPanel;
+    return `${styles.overviewTabPanel} ${mainContentEnter ? styles.overviewTabPanelFadeIn : styles.overviewTabPanelFadePending}`.trim();
+  };
   useEffect(() => {
     const el = pageRootRef.current;
     if (!el || !client?.id) return undefined;
@@ -1726,6 +1708,47 @@ export default function ClientDetailPage({
         return [];
       });
   }, [client?.id]);
+  const syncAllSslCertificates = useCallback(async () => {
+    if (!client?.id) return;
+    const sslCopy = getSslModalCopy(locale);
+    try {
+      const result = await checkClientSslCertificates(client.id);
+      let list = Array.isArray(result)
+        ? result
+        : Array.isArray(result?.items)
+          ? result.items
+          : null;
+      if (!list) {
+        const items = await fetchClientSslCertificates(client.id);
+        list = Array.isArray(items) ? items : [];
+      }
+      setSslData(list);
+      setEquipmentRevision(revision => revision + 1);
+      const checkedCount =
+        Number.isFinite(Number(result?.checked)) ? Number(result.checked) : list.length;
+      toast.success(
+        interpolate(sslCopy.toasts?.checkAllSuccess || "{count} certificat(s) vérifié(s)", {
+          count: String(checkedCount)
+        })
+      );
+    } catch (error) {
+      toast.error(error?.message || sslCopy.toasts?.checkAllError || "Erreur lors de la vérification SSL");
+      throw error;
+    }
+  }, [client?.id, locale]);
+  const syncAllDomains = useCallback(async () => {
+    if (!client?.id) return;
+    const infraCopy = getInfraMapCopy(locale);
+    const preview = infraCopy?.preview || {};
+    try {
+      await refreshMonitoredDomainsFromOvh(client.id);
+      await refreshDomainsState();
+      toast.success(preview.syncDomainsSuccess || "Noms de domaine synchronisés");
+    } catch (error) {
+      toast.error(error?.message || preview.syncDomainsError || "Échec de la synchronisation des domaines");
+      throw error;
+    }
+  }, [client?.id, locale, refreshDomainsState]);
   const openSslModal = useCallback((item = null) => {
     if (!client?.id) return;
     setSslModalItem(item || null);
@@ -2526,25 +2549,17 @@ export default function ClientDetailPage({
     switch (brickType) {
       case "Antivirus":
         if (selectedItem) {
-          openAntivirusConfigModal("overview", selectedItem);
+          openAntivirusConfigModal("solution", selectedItem);
           return;
         }
-        if (selectedItem === null || !configuredAntivirusSolutions.length) {
-          openAntivirusConfigModal("solution", null);
-          return;
-        }
-        openAntivirusConfigModal("overview");
+        openAntivirusConfigModal("solution", null);
         return;
       case "Antispam":
         if (selectedItem) {
-          openAntispamConfigModal("overview", selectedItem);
+          openAntispamConfigModal("solution", selectedItem);
           return;
         }
-        if (selectedItem === null || !configuredAntispamSolutions.length) {
-          openAntispamConfigModal("solution", null);
-          return;
-        }
-        openAntispamConfigModal("overview");
+        openAntispamConfigModal("solution", null);
         return;
       case "TenantMicrosoft":
         if (selectedItem) {
@@ -2583,7 +2598,11 @@ export default function ClientDetailPage({
         openBackupConfigModal("overview");
         return;
       case "NDD":
-        openDomainsConfigModal("inventory", null, { openAddChoice: configuredDomains.length === 0 });
+        if (selectedItem) {
+          openDomainsConfigModal("inventory", null, { editDomain: selectedItem });
+          return;
+        }
+        openDomainsConfigModal("inventory", null, { openAddChoice: true });
         return;
       case "CertificatsSSL":
         openSslModal(selectedItem || null);
@@ -2630,36 +2649,52 @@ export default function ClientDetailPage({
       item.logiciel,
       item.tenantName,
       item.displayName,
-      item.domain
+      item.domain,
+      item.hostname,
+      item.host
     ];
     const label = labelCandidates.find(value => typeof value === "string" && value.trim())?.trim()
       || brickType;
     setSolutionDeleteTarget({ type: brickType, item, label });
   }, []);
-  const confirmServiceBrickDelete = useCallback(async () => {
-    if (!client?.id || !solutionDeleteTarget?.item) return;
-    const { type, item } = solutionDeleteTarget;
-    setDeletingSolution(true);
-    try {
-      if (type === "Antivirus") {
-        await removeAntivirusSolution(client.id, item);
-        await refreshAntivirusState();
-        toast.success(copy.toast.antivirusAssociationRemoved);
-      } else if (type === "Antispam") {
-        await removeAntispamSolution(client.id, item);
-        await refreshAntispamState();
-        toast.success(copy.toast.antispamAssociationRemoved);
-      } else if (type === "TenantMicrosoft") {
-        await removeMicrosoftTenant(client.id, item);
-        await refreshMicrosoftTenantState();
-        toast.success(copy.toast.microsoftTenantRemoved);
-      }
-      setSolutionDeleteTarget(null);
-    } catch (error) {
-      console.error(error);
-      toast.error(error?.message || interpolate(copy.toast.saveError, { message: "suppression" }));
-    } finally {
-      setDeletingSolution(false);
+  const executeServiceBrickDelete = useCallback(async (type, item, { silent = false } = {}) => {
+    if (!client?.id || !type || !item) return;
+    if (type === "Antivirus") {
+      await removeAntivirusSolution(client.id, item);
+      await refreshAntivirusState();
+      if (!silent) toast.success(copy.toast.antivirusAssociationRemoved);
+      return;
+    }
+    if (type === "Antispam") {
+      await removeAntispamSolution(client.id, item);
+      await refreshAntispamState();
+      if (!silent) toast.success(copy.toast.antispamAssociationRemoved);
+      return;
+    }
+    if (type === "TenantMicrosoft") {
+      await removeMicrosoftTenant(client.id, item);
+      await refreshMicrosoftTenantState();
+      if (!silent) toast.success(copy.toast.microsoftTenantRemoved);
+      return;
+    }
+    if (type === "CertificatsSSL") {
+      if (!item.id) throw new Error("Certificat invalide");
+      await deleteClientSslCertificate(client.id, item.id);
+      await refreshSslData();
+      if (!silent) toast.success(copy.toast?.sslRemoved || "Certificat SSL retiré");
+      return;
+    }
+    if (type === "LicensesAbonnements") {
+      if (!item.id) throw new Error("Licence invalide");
+      await deleteClientLicence(client.id, item.id);
+      await refreshLicencesData();
+      if (!silent) toast.success(copy.toast?.licenceRemoved || "Licence supprimée");
+      return;
+    }
+    if (type === "NDD") {
+      await removeMonitoredDomain(client.id, item);
+      await refreshDomainsState();
+      if (!silent) toast.success(copy.toast.domainRemoved || copy.toast.domainRemovedMonitoring || "Domaine retiré");
     }
   }, [
     client?.id,
@@ -2667,8 +2702,24 @@ export default function ClientDetailPage({
     refreshAntivirusState,
     refreshAntispamState,
     refreshMicrosoftTenantState,
-    solutionDeleteTarget
+    refreshSslData,
+    refreshLicencesData,
+    refreshDomainsState
   ]);
+  const confirmServiceBrickDelete = useCallback(async () => {
+    if (!client?.id || !solutionDeleteTarget?.item) return;
+    const { type, item } = solutionDeleteTarget;
+    setDeletingSolution(true);
+    try {
+      await executeServiceBrickDelete(type, item);
+      setSolutionDeleteTarget(null);
+    } catch (error) {
+      console.error(error);
+      toast.error(error?.message || interpolate(copy.toast.saveError, { message: "suppression" }));
+    } finally {
+      setDeletingSolution(false);
+    }
+  }, [client?.id, copy.toast, executeServiceBrickDelete, solutionDeleteTarget]);
   const serviceBrickMenuItems = useMemo(() => {
     if (!serviceBrickMenu?.type) return [];
     const menuCopy = copy.serviceBrickMenu || {};
@@ -2776,7 +2827,7 @@ export default function ClientDetailPage({
     setActivityTableSort(prev => {
       const defaults = ACTIVITY_SORT_DEFAULTS[section] || { key: null, direction: "asc" };
       const current = prev[section] || defaults;
-      const firstDirection = ["updated", "created", "start", "progress", "sla"].includes(column) ? "desc" : "asc";
+      const firstDirection = ["updated", "created", "start", "end", "progress", "sla"].includes(column) ? "desc" : "asc";
       const next = cycleSortState({
         column,
         sortBy: current.key,
@@ -3022,6 +3073,10 @@ export default function ClientDetailPage({
     setActivityTablePage(prev => ({ ...prev, campaigns: 1 }));
   }, [campaignSearchQuery, campaignStatusFilter]);
 
+  useEffect(() => {
+    setActivityTablePage(prev => ({ ...prev, events: 1 }));
+  }, [eventsSearchQuery, eventsStatusFilter]);
+
   const renderActivityPagination = useCallback(sectionMeta => {
     const { section, total, page, totalPages, safePageSize } = sectionMeta;
     const rangeStart = total === 0 ? 0 : (page - 1) * safePageSize + 1;
@@ -3099,9 +3154,9 @@ export default function ClientDetailPage({
     </div>
   ), []);
 
-  const renderActivityToolbar = useCallback((searchValue, onSearchChange, statusFilter, onStatusFilterChange, extraActions = null) => {
+  const renderActivityToolbar = useCallback((searchValue, onSearchChange, statusFilter, onStatusFilterChange, extraActions = null, statusOptionsOverride = null) => {
     const placeholder = copy.activitySearchPlaceholder || "Rechercher";
-    const statusOptions = [
+    const statusOptions = statusOptionsOverride || [
       { id: "all", label: copy.activityFilterAll || "Tous" },
       { id: "open", label: copy.activityFilterOpen || "Ouverts" },
       { id: "closed", label: copy.activityFilterClosed || "Clos" }
@@ -3150,20 +3205,115 @@ export default function ClientDetailPage({
     copy.activityFilterStatusAria,
     copy.activitySearchPlaceholder
   ]);
-  const campaignBookmarkEvents = useMemo(
-    () => (isCommunity ? [] : mapCampaignsToBookmarkEvents(campaigns, client?.id)),
-    [campaigns, client?.id, isCommunity]
+  const allClientEvents = useMemo(() => {
+    const byId = new Map();
+    const planningOnly = [
+      ...filterUpcomingEvents(upcomingEvents),
+      ...filterRecentEvents(recentEvents)
+    ].filter(event => event && !event._isCampaign && event.type !== "campagne");
+    for (const event of planningOnly) {
+      const key = event?.id != null ? String(event.id) : `${getEventStartValue(event)}-${event?.title || ""}`;
+      if (!byId.has(key)) byId.set(key, event);
+    }
+    return [...byId.values()];
+  }, [recentEvents, upcomingEvents]);
+  const getEventStatusMeta = useCallback(event => {
+    if (isUpcomingEvent(event)) {
+      return {
+        id: "upcoming",
+        label: copy.eventStatusUpcoming || copy.eventBookmarks?.sectionUpcoming || "À venir"
+      };
+    }
+    if (isRecentEvent(event)) {
+      return {
+        id: "recent",
+        label: copy.eventStatusRecent || copy.eventBookmarks?.sectionRecent || "Récent"
+      };
+    }
+    return {
+      id: "other",
+      label: copy.table?.status || "—"
+    };
+  }, [copy.eventBookmarks?.sectionRecent, copy.eventBookmarks?.sectionUpcoming, copy.eventStatusRecent, copy.eventStatusUpcoming, copy.table?.status]);
+  const filteredClientEvents = useMemo(() => {
+    const query = eventsSearchQuery.trim().toLowerCase();
+    return allClientEvents.filter(event => {
+      const statusMeta = getEventStatusMeta(event);
+      if (eventsStatusFilter === "upcoming" && statusMeta.id !== "upcoming") return false;
+      if (eventsStatusFilter === "recent" && statusMeta.id !== "recent") return false;
+      if (!query) return true;
+      const typeLabel = eventTypeLabels[event?.type] || event?.type || "";
+      const agentLabel = resolveEventAssigneeLabel(event, users);
+      const haystack = [
+        event?.title,
+        typeLabel,
+        statusMeta.label,
+        agentLabel,
+        getEventStartValue(event),
+        getEventEndValue(event)
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [allClientEvents, eventTypeLabels, eventsSearchQuery, eventsStatusFilter, getEventStatusMeta, users]);
+  const sortedClientEvents = useMemo(() => {
+    const { key, direction } = getActivitySortMeta("events");
+    const list = [...filteredClientEvents];
+    list.sort((left, right) => {
+      let a;
+      let b;
+      switch (key) {
+        case "title":
+          a = left.title || "";
+          b = right.title || "";
+          break;
+        case "type":
+          a = eventTypeLabels[left?.type] || left?.type || "";
+          b = eventTypeLabels[right?.type] || right?.type || "";
+          break;
+        case "status":
+          a = getEventStatusMeta(left).label;
+          b = getEventStatusMeta(right).label;
+          break;
+        case "agent":
+          a = resolveEventAssigneeLabel(left, users);
+          b = resolveEventAssigneeLabel(right, users);
+          break;
+        case "end":
+          a = toActivitySortTime(getEventEndValue(left));
+          b = toActivitySortTime(getEventEndValue(right));
+          break;
+        case "start":
+        default:
+          a = toActivitySortTime(getEventStartValue(left));
+          b = toActivitySortTime(getEventStartValue(right));
+          break;
+      }
+      return compareActivitySortValues(a, b, direction);
+    });
+    return list;
+  }, [eventTypeLabels, filteredClientEvents, getActivitySortMeta, getEventStatusMeta, users]);
+  const pagedClientEvents = useMemo(
+    () => paginateActivityList("events", sortedClientEvents),
+    [paginateActivityList, sortedClientEvents]
   );
-
-  const upcomingEventsForBookmarks = useMemo(
-    () => filterUpcomingEvents([...(Array.isArray(upcomingEvents) ? upcomingEvents : []), ...campaignBookmarkEvents]),
-    [upcomingEvents, campaignBookmarkEvents]
-  );
-
-  const recentEventsForBookmarks = useMemo(
-    () => filterRecentEvents([...(Array.isArray(recentEvents) ? recentEvents : []), ...campaignBookmarkEvents]),
-    [recentEvents, campaignBookmarkEvents]
-  );
+  const handleOpenClientEvent = useCallback(event => {
+    if (!event) return;
+    if (event._isCampaign && event._campaignData) {
+      handleOpenCampaign(event._campaignData);
+      return;
+    }
+    if (canScheduleEvent) {
+      setEditingEvent(event);
+      setEventModalOpen(true);
+      return;
+    }
+    const start = getEventStartValue(event);
+    onNavigate?.("Planning", {
+      focusEventId: event.id,
+      focusDate: start,
+      clientId: event.client_id ?? client?.id ?? null
+    });
+  }, [canScheduleEvent, client?.id, handleOpenCampaign, onNavigate]);
   const handleReloadClientActivity = () => {
     if (client?.id) loadClientActivity(client.id);
   };
@@ -4475,6 +4625,20 @@ export default function ClientDetailPage({
       throw error;
     }
   };
+  const filteredBackupInstancesForTab = useMemo(
+    () => filterBySite(backupInstances, activeSiteFilter),
+    [backupInstances, activeSiteFilter]
+  );
+  const filteredBackupJobsForTab = useMemo(() => {
+    if (!activeSiteFilter) return Array.isArray(backupJobs) ? backupJobs : [];
+    const instanceIds = new Set(
+      filteredBackupInstancesForTab.map(instance => String(instance?.id)).filter(Boolean)
+    );
+    return (Array.isArray(backupJobs) ? backupJobs : []).filter(job => {
+      const instanceId = job?.instanceId != null ? String(job.instanceId) : "";
+      return instanceId && instanceIds.has(instanceId);
+    });
+  }, [backupJobs, filteredBackupInstancesForTab, activeSiteFilter]);
   const handleOpenLogDetails = log => {
     setSelectedLog(log);
     setLogDetailsModalOpen(true);
@@ -4524,9 +4688,9 @@ export default function ClientDetailPage({
           loadingAria="Chargement…"
           titleHint={titleHint}
           showTitleIcon
-          showMidSlot
-          tabCount={4}
-          body="panels"
+          tabCount={7}
+          secondaryCount={6}
+          body="map"
           showAside
           asideSections={7}
         />
@@ -4576,20 +4740,6 @@ export default function ClientDetailPage({
     overviewTab === "cyber" ||
     overviewTab === "activity" ||
     overviewTab === "vault";
-  const filteredBackupInstancesForTab = useMemo(
-    () => filterBySite(backupInstances, activeSiteFilter),
-    [backupInstances, activeSiteFilter]
-  );
-  const filteredBackupJobsForTab = useMemo(() => {
-    if (!activeSiteFilter) return Array.isArray(backupJobs) ? backupJobs : [];
-    const instanceIds = new Set(
-      filteredBackupInstancesForTab.map(instance => String(instance?.id)).filter(Boolean)
-    );
-    return (Array.isArray(backupJobs) ? backupJobs : []).filter(job => {
-      const instanceId = job?.instanceId != null ? String(job.instanceId) : "";
-      return instanceId && instanceIds.has(instanceId);
-    });
-  }, [backupJobs, filteredBackupInstancesForTab, activeSiteFilter]);
   const backupPreviewCopy = infraMapCopy.preview || {};
 
   return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${isCompanyInactive ? styles.heroInactive : ""} ${showOnboardingHero ? styles.heroInOnboarding : ""} msp-page-grid`.trim()}>
@@ -5050,7 +5200,7 @@ export default function ClientDetailPage({
             <div className={styles.mainCommunityPanels}>
             {mapTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("map")}
               hidden={overviewTab !== "map"}
               style={overviewTab === "map" ? undefined : { display: "none" }}
             >
@@ -5141,7 +5291,7 @@ export default function ClientDetailPage({
                           <Icon icon="mdi:table-arrow-right" className={styles.exportMenuItemIcon} aria-hidden />
                           <span>{copy.exportAllTables}</span>
                         </button>
-                        {canManageDevices ? (
+                        {canManageDevices && unifiGlobalConfigured ? (
                           <>
                             <button
                               type="button"
@@ -5155,7 +5305,7 @@ export default function ClientDetailPage({
                               <Icon icon="simple-icons:ubiquiti" className={styles.exportMenuItemIcon} aria-hidden />
                               <span>{copy.unifiLinkSite || "Lien UniFi"}</span>
                             </button>
-                            {unifiLink?.linked ? (
+                            {unifiLink?.linked && unifiLink?.mappingMode !== "dedicated" && unifiLink?.hostId && unifiLink?.siteId ? (
                               <button
                                 type="button"
                                 className={styles.exportMenuItem}
@@ -5200,7 +5350,7 @@ export default function ClientDetailPage({
 
             {backupTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("backup")}
               hidden={overviewTab !== "backup"}
               style={overviewTab === "backup" ? undefined : { display: "none" }}
               data-guide="enterprise-backup-panel"
@@ -5234,7 +5384,7 @@ export default function ClientDetailPage({
 
             {cyberTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("cyber")}
               hidden={overviewTab !== "cyber"}
               style={overviewTab === "cyber" ? undefined : { display: "none" }}
             >
@@ -5277,6 +5427,8 @@ export default function ClientDetailPage({
                   }}
                   onNavigate={onNavigate}
                   onSynced={() => loadCybersecurityData(client.id)}
+                  onSyncSsl={syncAllSslCertificates}
+                  onSyncDomains={syncAllDomains}
                   onBrickOpen={(brick, selectedItem = null) => {
                     if (!brick?.type) return;
                     if (!canManageSolutions && brick.type !== "Campagne") return;
@@ -5289,9 +5441,13 @@ export default function ClientDetailPage({
                     if (brick.type === "Campagne" && !canManageCampaigns) return;
                     handleServiceBrickEdit(brick.type, selectedItem);
                   }}
-                  onBrickDelete={(brick, selectedItem = null) => {
+                  onBrickDelete={async (brick, selectedItem = null, options = {}) => {
                     if (!brick?.type || !selectedItem) return;
                     if (!canManageSolutions) return;
+                    if (options.skipConfirm) {
+                      await executeServiceBrickDelete(brick.type, selectedItem, { silent: true });
+                      return;
+                    }
                     requestServiceBrickDelete(brick.type, selectedItem);
                   }}
                 />
@@ -5301,7 +5457,7 @@ export default function ClientDetailPage({
 
             {activityTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("activity")}
               hidden={overviewTab !== "activity"}
               style={overviewTab === "activity" ? undefined : { display: "none" }}
             >
@@ -5544,7 +5700,7 @@ export default function ClientDetailPage({
 
             {eventsTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("events")}
               hidden={overviewTab !== "events"}
               style={overviewTab === "events" ? undefined : { display: "none" }}
               data-guide="enterprise-events-panel"
@@ -5554,62 +5710,95 @@ export default function ClientDetailPage({
                   <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.planning} featureKey="planning" className={styles.activityUnifiedProLock} badgePosition="none">
                     <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo} ${styles.activityEventsSection}`}>
                       <div className={styles.activityUnifiedBody}>
-                        <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}>
-                          <div className={equipStyles.embeddedSearchWrap}>
-                            <div className={styles.activityEventsToolbarIntro}>
-                              <Icon icon="mdi:calendar-month-outline" aria-hidden />
-                              <span>{copy.overviewTabEvents || copy.eventsTitle || "Événements"}</span>
-                            </div>
-                            <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
-                              {canScheduleEvent ? (
-                                <button
-                                  type="button"
-                                  className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
-                                  onClick={handleQuickScheduleIntervention}
-                                  aria-label={copy.eventBookmarks?.createEventAria || "Créer un événement"}
-                                  title={copy.eventBookmarks?.createEvent || "Créer un événement"}
-                                >
-                                  <FaPlus />
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                        <div className={styles.activityEventsPanel}>
-                          <UpcomingEventBookmarks
-                            upcomingEvents={upcomingEventsForBookmarks}
-                            recentEvents={recentEventsForBookmarks}
-                            loading={loadingClientActivity}
-                            typeLabels={eventTypeLabels}
-                            labels={copy.eventBookmarks}
-                            menuLabels={copy.eventActionMenu}
-                            locale={locale}
-                            users={users}
-                            proFeatureLabel={copy.proFeatures.planning}
-                            proFeatureKey="planning"
-                            proLocked={false}
-                            defaultCollapsed={false}
-                            onEditEvent={canScheduleEvent ? event => {
-                              if (event?._isCampaign && event._campaignData) {
-                                handleOpenCampaign(event._campaignData);
-                                return;
-                              }
-                              setEditingEvent(event);
-                              setEventModalOpen(true);
-                            } : event => {
-                              if (event?._isCampaign && event._campaignData) {
-                                handleOpenCampaign(event._campaignData);
-                              }
-                            }}
-                            onGoToPlanning={event => {
-                              const start = event?.event_start ?? event?.start ?? event?.["start"];
-                              onNavigate?.("Planning", {
-                                focusEventId: event?._isCampaign ? undefined : event?.id,
-                                focusDate: start,
-                                clientId: event?.client_id ?? client?.id ?? null
-                              });
-                            }}
-                          />
+                        {renderActivityToolbar(
+                          eventsSearchQuery,
+                          setEventsSearchQuery,
+                          eventsStatusFilter,
+                          setEventsStatusFilter,
+                          canScheduleEvent ? (
+                            <button
+                              type="button"
+                              className={`${finderKit.btnSquare} ${finderKit.btnSquarePrimary} ${styles.addEquipmentButton}`}
+                              onClick={handleQuickScheduleIntervention}
+                              aria-label={copy.eventBookmarks?.createEventAria || "Créer un événement"}
+                              title={copy.eventBookmarks?.createEvent || "Créer un événement"}
+                            >
+                              <FaPlus />
+                            </button>
+                          ) : null,
+                          [
+                            { id: "all", label: copy.activityFilterAll || "Tous" },
+                            { id: "upcoming", label: copy.eventStatusUpcoming || copy.eventBookmarks?.sectionUpcoming || "À venir" },
+                            { id: "recent", label: copy.eventStatusRecent || copy.eventBookmarks?.sectionRecent || "Récents" }
+                          ]
+                        )}
+                        <div className={styles.activityTableStack}>
+                          {pagedClientEvents.total === 0 ? renderActivityEmpty(
+                            "mdi:calendar-month-outline",
+                            eventsSearchQuery.trim() && allClientEvents.length > 0
+                              ? (copy.emptyActivitySearch || copy.emptyEvents)
+                              : (copy.emptyEvents || copy.eventBookmarks?.empty || "Aucun événement")
+                          ) : (
+                            <UiKitTable
+                              fill
+                              className={styles.activityUiKitTable}
+                              deps={[
+                                pagedClientEvents.total,
+                                pagedClientEvents.page,
+                                activityTableSort.events?.key,
+                                activityTableSort.events?.direction,
+                                eventsSearchQuery,
+                                eventsStatusFilter
+                              ]}
+                            >
+                              <table className={styles.dataTable}>
+                                <thead>
+                                  <tr>
+                                    {renderActivitySortableTh("events", "title", copy.table.title)}
+                                    {renderActivitySortableTh("events", "type", copy.table.type)}
+                                    {renderActivitySortableTh("events", "status", copy.table.status)}
+                                    {renderActivitySortableTh("events", "start", copy.table.start)}
+                                    {renderActivitySortableTh("events", "end", copy.table.end || "Fin")}
+                                    {renderActivitySortableTh("events", "agent", copy.table.agent || "Agent")}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pagedClientEvents.pagedList.map(event => {
+                                    const statusMeta = getEventStatusMeta(event);
+                                    const typeLabel = eventTypeLabels[event?.type] || event?.type || "—";
+                                    const startValue = getEventStartValue(event);
+                                    const endValue = getEventEndValue(event);
+                                    const rowKey = event?.id != null ? String(event.id) : `${startValue}-${event?.title || ""}`;
+                                    return (
+                                      <tr
+                                        key={rowKey}
+                                        className={styles.dataTableRowClickable}
+                                        onClick={() => handleOpenClientEvent(event)}
+                                      >
+                                        <td className={styles.activityTitleCell}>
+                                          {event?.title || copy.eventBookmarks?.untitledEvent || "Sans titre"}
+                                        </td>
+                                        <td>{typeLabel}</td>
+                                        <td>
+                                          <span className={styles.ticketStatusBadge}>{statusMeta.label}</span>
+                                        </td>
+                                        <td>{startValue ? formatTableDateTime(startValue) : "—"}</td>
+                                        <td>{endValue ? formatTableDateTime(endValue) : "—"}</td>
+                                        <td>{resolveEventAssigneeLabel(event, users)}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </UiKitTable>
+                          )}
+                          {renderActivityPagination({
+                            section: "events",
+                            total: pagedClientEvents.total,
+                            page: pagedClientEvents.page,
+                            totalPages: pagedClientEvents.totalPages,
+                            safePageSize: pagedClientEvents.safePageSize
+                          })}
                         </div>
                       </div>
                     </section>
@@ -5621,7 +5810,7 @@ export default function ClientDetailPage({
 
             {vaultTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("vault")}
               hidden={overviewTab !== "vault"}
               style={overviewTab === "vault" ? undefined : { display: "none" }}
             >
@@ -5645,7 +5834,7 @@ export default function ClientDetailPage({
 
             {logsTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("logs")}
               hidden={overviewTab !== "logs"}
               style={overviewTab === "logs" ? undefined : { display: "none" }}
               data-guide="enterprise-logs-panel"
@@ -6409,10 +6598,11 @@ export default function ClientDetailPage({
       openDomainsConfigModal("inventory");
     }} />
 
-      {domainsConfigModalOpen && client?.id && <DomainsConfigModal client={client} initialSection={domainsConfigInitialSection} initialProviderId={domainsConfigInitialProviderId} initialOpenAddChoice={domainsConfigOpenAddChoice} isCommunity={isCommunity} onClose={() => {
+      {domainsConfigModalOpen && client?.id && <DomainsConfigModal client={client} initialSection={domainsConfigInitialSection} initialProviderId={domainsConfigInitialProviderId} initialOpenAddChoice={domainsConfigOpenAddChoice} initialEditDomain={domainsConfigInitialEditDomain} isCommunity={isCommunity} onClose={() => {
       setDomainsConfigModalOpen(false);
       setDomainsConfigInitialProviderId(null);
       setDomainsConfigOpenAddChoice(false);
+      setDomainsConfigInitialEditDomain(null);
     }} onSaved={refreshDomainsState} />}
       {unifiLinkModalOpen && client?.id ? (
         <UnifiSiteLinkModal
@@ -6527,7 +6717,7 @@ export default function ClientDetailPage({
         navigateToAntivirusDetail(overviewCandidates[0]);
         return;
       }
-      openAntivirusConfigModal("overview");
+      openAntivirusConfigModal("solution");
     }} onSaved={refreshAntivirusState} />}
 
       {antivirusPickerOpen && client?.id && <AntivirusSolutionPickerModal open={antivirusPickerOpen} client={client} solutions={antivirusPickerSolutions} onClose={() => {
@@ -6540,7 +6730,7 @@ export default function ClientDetailPage({
         navigateToAntivirusDetail(solution);
         return;
       }
-      openAntivirusConfigModal("overview");
+      openAntivirusConfigModal("solution");
     }} onAddSolution={() => {
       setAntivirusPickerOpen(false);
       setAntivirusPickerSolutions([]);
@@ -6548,7 +6738,7 @@ export default function ClientDetailPage({
     }} onEditSolution={solution => {
       setAntivirusPickerOpen(false);
       setAntivirusPickerSolutions([]);
-      openAntivirusConfigModal("overview", solution);
+      openAntivirusConfigModal("solution", solution);
     }} onDeleteSolution={async solution => {
       if (!client?.id) return;
       await removeAntivirusSolution(client.id, solution);
@@ -6616,7 +6806,7 @@ export default function ClientDetailPage({
         navigateToAntispamDetail(overviewCandidates[0]);
         return;
       }
-      openAntispamConfigModal("overview");
+      openAntispamConfigModal("solution");
     }} onSaved={refreshAntispamState} />}
 
       {antispamPickerOpen && client?.id && <AntispamSolutionPickerModal open={antispamPickerOpen} client={client} solutions={antispamPickerSolutions} onClose={() => {
@@ -6629,7 +6819,7 @@ export default function ClientDetailPage({
         navigateToAntispamDetail(solution);
         return;
       }
-      openAntispamConfigModal("overview");
+      openAntispamConfigModal("solution");
     }} onAddSolution={() => {
       setAntispamPickerOpen(false);
       setAntispamPickerSolutions([]);
@@ -6637,7 +6827,7 @@ export default function ClientDetailPage({
     }} onEditSolution={solution => {
       setAntispamPickerOpen(false);
       setAntispamPickerSolutions([]);
-      openAntispamConfigModal("overview", solution);
+      openAntispamConfigModal("solution", solution);
     }} onDeleteSolution={async solution => {
       if (!client?.id) return;
       await removeAntispamSolution(client.id, solution);

@@ -61,10 +61,10 @@ import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { buildExtensionFormValues } from "../../utils/systemFamilyExtensions";
 import UnifiSiteLinkModal from "../EnterprisesPage/UnifiSiteLinkModal";
 import UnifiImportModal from "../EnterprisesPage/UnifiImportModal";
-import { getClientUnifiLink } from "../../api/unifi";
+import { getClientUnifiGlobalStatus, getClientUnifiLink } from "../../api/unifi";
 import { mapClientHardwareEquipment } from "../../api/equipment";
 
-const UNIFI_IMPORTABLE_MODULES = new Set(["Switch", "BorneWifi", "Firewalls", "Routeur"]);
+const UNIFI_IMPORTABLE_MODULES = new Set(["Switch", "BorneWifi", "Routeur"]);
 
 export default function EquipmentFormModal({
   open,
@@ -97,6 +97,7 @@ export default function EquipmentFormModal({
   const [unifiLinkModalOpen, setUnifiLinkModalOpen] = useState(false);
   const [unifiImportModalOpen, setUnifiImportModalOpen] = useState(false);
   const [unifiOpening, setUnifiOpening] = useState(false);
+  const [unifiGlobalConfigured, setUnifiGlobalConfigured] = useState(false);
   const apiType = getApiType(moduleKey, equipment);
   const { fields: extensionFields } = useSystemFamilyExtensions(apiType || moduleKey);
   const serverType = normalizeServerType(formData.typeServer || equipment?.type || equipment?.typeServer || "");
@@ -388,7 +389,27 @@ export default function EquipmentFormModal({
     if (isAddMode || !equipment || !client?.id || saving || deleting) return;
     setDeleteConfirmOpen(true);
   };
-  const canImportFromUnifi = isAddMode && UNIFI_IMPORTABLE_MODULES.has(moduleKey) && Boolean(client?.id);
+  useEffect(() => {
+    if (!open || !isAddMode || !UNIFI_IMPORTABLE_MODULES.has(moduleKey) || !client?.id) {
+      setUnifiGlobalConfigured(false);
+      return;
+    }
+    let cancelled = false;
+    getClientUnifiGlobalStatus()
+      .then(status => {
+        if (!cancelled) {
+          setUnifiGlobalConfigured(Boolean(status?.configured || status?.enabled || status?.keys?.siteManager));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUnifiGlobalConfigured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isAddMode, moduleKey, client?.id]);
+  const canImportFromUnifi =
+    isAddMode && UNIFI_IMPORTABLE_MODULES.has(moduleKey) && Boolean(client?.id) && unifiGlobalConfigured;
   const existingUnifiEquipment = useMemo(
     () => (client ? mapClientHardwareEquipment(client) : []),
     [client]
@@ -398,7 +419,11 @@ export default function EquipmentFormModal({
     setUnifiOpening(true);
     try {
       const linkRes = await getClientUnifiLink(client.id);
-      if (linkRes?.link?.linked) {
+      const link = linkRes?.link;
+      const hasGlobalSite = Boolean(
+        link?.linked && link?.mappingMode !== "dedicated" && link?.hostId && link?.siteId
+      );
+      if (hasGlobalSite) {
         setUnifiImportModalOpen(true);
       } else {
         setUnifiLinkModalOpen(true);

@@ -994,7 +994,6 @@ export default function EquipmentFormSectionContent({
         <h3 className={`${styles.sectionTitle} ${sectionIncomplete ? styles.navItemLabelRequired : ""}`}>
           {activeSection === "extra" ? extraCopy.label : section?.label}
         </h3>
-        <p className={styles.sectionDesc}>{activeSection === "extra" ? extraCopy.description : section?.description}</p>
       </div>
       <div className={styles.sectionScroll}>{fields}</div>
     </div>;

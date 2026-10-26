@@ -93,6 +93,7 @@ export function EnterpriseQuickActionButton({
   disabled = false,
   "aria-label": ariaLabel,
   "aria-pressed": ariaPressed,
+  title,
   loading = false,
   loadingClassName,
   size = 18,
@@ -100,6 +101,7 @@ export function EnterpriseQuickActionButton({
 }) {
   const animRef = useRef(null);
   const Animated = QUICK_ACTION_ANIMATED[actionId] || null;
+  const tooltip = title ?? ariaLabel;
 
   return (
     <button
@@ -108,6 +110,7 @@ export function EnterpriseQuickActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
+      title={tooltip}
       aria-pressed={ariaPressed}
       onMouseEnter={() => !disabled && !loading && animRef.current?.startAnimation?.()}
       onMouseLeave={() => animRef.current?.stopAnimation?.()}

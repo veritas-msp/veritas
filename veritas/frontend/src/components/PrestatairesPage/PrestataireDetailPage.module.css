@@ -4,6 +4,27 @@
   isolation: isolate;
 }
 
+.heroTicketSlot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  flex: 1 1 12rem;
+  height: 100%;
+  max-height: 100%;
+  overflow: visible;
+}
+
+.heroTicketSlot > * {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: visible;
+}
+
 .panelHint {
   flex: 0 0 auto;
   margin: 0 0 0.75rem;

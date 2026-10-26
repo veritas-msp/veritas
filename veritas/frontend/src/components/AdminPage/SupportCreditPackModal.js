@@ -249,7 +249,6 @@ export default function SupportCreditPackModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{section?.label}</h3>
-              <p className={layout.sectionDesc}>{section?.description}</p>
             </div>
 
             {isEdit || lockClient ? <>
@@ -316,7 +315,6 @@ export default function SupportCreditPackModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{section?.label}</h3>
-              <p className={layout.sectionDesc}>{section?.description}</p>
             </div>
 
             <div className={layout.fieldGrid2}>
@@ -365,7 +363,6 @@ export default function SupportCreditPackModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{section?.label}</h3>
-              <p className={layout.sectionDesc}>{section?.description}</p>
             </div>
 
             <div className={layout.fieldGrid2}>

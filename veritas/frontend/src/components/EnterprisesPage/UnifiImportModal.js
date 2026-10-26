@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { createEquipment } from "../../api/equipment";
-import { fetchClientUnifiDedicatedDevices, fetchUnifiDevices, getClientUnifiLink } from "../../api/unifi";
+import { fetchUnifiDevices, getClientUnifiLink } from "../../api/unifi";
 import { showError, showSuccess } from "../../utils/toast";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import formStyles from "./EnterpriseFormModal.module.css";
@@ -20,9 +20,8 @@ const COPY = {
     import: "Importer",
     importing: "Import…",
     loading: "Chargement des devices…",
-    noLink: "Aucune configuration UniFi. Choisissez d’abord un tenant global ou dédié.",
+    noLink: "Aucun site UniFi lié. Liez d’abord un site du tenant global.",
     empty: "Aucun device trouvé sur ce site.",
-    dedicatedBadge: "Tenant dédié · Network API",
     globalBadge: "Tenant global · Site Manager",
     filterAll: "Tous",
     filterSwitch: "Switch",
@@ -46,9 +45,8 @@ const COPY = {
     import: "Import",
     importing: "Importing…",
     loading: "Loading devices…",
-    noLink: "No UniFi configuration. Choose a global or dedicated tenant first.",
+    noLink: "No UniFi site linked. Link a site from the global tenant first.",
     empty: "No devices found on this site.",
-    dedicatedBadge: "Dedicated tenant · Network API",
     globalBadge: "Global tenant · Site Manager",
     filterAll: "All",
     filterSwitch: "Switches",
@@ -80,6 +78,12 @@ function deviceKey(device) {
   return String(device.id || device.macNormalized || device.mac || "");
 }
 
+const UNIFI_IMPORTABLE_MODULES = new Set(["Switch", "BorneWifi", "Routeur"]);
+
+function isUnifiImportableDevice(device) {
+  return UNIFI_IMPORTABLE_MODULES.has(device?.moduleKey);
+}
+
 function mapDeviceToFormData(device) {
   return {
     name: device.name,
@@ -91,7 +95,6 @@ function mapDeviceToFormData(device) {
     serial: device.serial || "",
     adresseMac: device.mac || "",
     mac: device.mac || "",
-    firewallType: device.moduleKey === "Firewalls" ? "materiel" : undefined,
     routeurType: device.moduleKey === "Routeur" ? "Routeur" : undefined,
     unifiId: device.id,
     unifiMac: device.mac,
@@ -148,26 +151,16 @@ export default function UnifiImportModal({
         const current = linkRes?.link || null;
         if (cancelled) return;
         setLink(current);
-        if (!current?.linked) {
+        if (!current?.linked || current.mappingMode === "dedicated" || !current.hostId || !current.siteId) {
           setDevices([]);
           setWarning(null);
           return;
         }
-        let devicesRes;
-        if (current.mappingMode === "dedicated") {
-          devicesRes = await fetchClientUnifiDedicatedDevices(clientId);
-        } else {
-          if (!current.hostId || !current.siteId) {
-            setDevices([]);
-            setWarning(null);
-            return;
-          }
-          devicesRes = await fetchUnifiDevices({
-            hostId: current.hostId,
-            siteId: current.siteId,
-            siteName: current.siteName || undefined
-          });
-        }
+        const devicesRes = await fetchUnifiDevices({
+          hostId: current.hostId,
+          siteId: current.siteId,
+          siteName: current.siteName || undefined
+        });
         if (cancelled) return;
         setDevices(devicesRes.devices || []);
         setWarning(devicesRes.warning || null);
@@ -182,13 +175,19 @@ export default function UnifiImportModal({
     };
   }, [open, clientId, copy.loadError]);
 
+  const importableDevices = useMemo(
+    () => devices.filter(isUnifiImportableDevice),
+    [devices]
+  );
+
   const filtered = useMemo(() => {
-    if (filter === "switch") return devices.filter(d => d.category === "switch");
-    if (filter === "ap") return devices.filter(d => d.category === "ap");
-    if (filter === "gateway") return devices.filter(d => d.category === "gateway" || d.category === "router");
-    // "all" = importable equipment; fall back to any classified or unknown network gear
-    return devices.filter(d => d.moduleKey || d.category === "other" || d.mac || d.id);
-  }, [devices, filter]);
+    if (filter === "switch") return importableDevices.filter(d => d.category === "switch");
+    if (filter === "ap") return importableDevices.filter(d => d.category === "ap");
+    if (filter === "gateway") {
+      return importableDevices.filter(d => d.category === "gateway" || d.category === "router");
+    }
+    return importableDevices;
+  }, [importableDevices, filter]);
 
   if (!open) return null;
 
@@ -202,7 +201,7 @@ export default function UnifiImportModal({
   };
 
   const handleImport = async () => {
-    const toImport = filtered.filter(d => selected.has(deviceKey(d)) && (d.moduleKey || d.category));
+    const toImport = filtered.filter(d => selected.has(deviceKey(d)) && isUnifiImportableDevice(d));
     if (!toImport.length) {
       showError(copy.selectAtLeast);
       return;
@@ -216,7 +215,7 @@ export default function UnifiImportModal({
         (device.id && importedMacs.has(String(device.id)));
       if (already) continue;
       const moduleKey = device.moduleKey;
-      if (!moduleKey) {
+      if (!UNIFI_IMPORTABLE_MODULES.has(moduleKey)) {
         fail += 1;
         continue;
       }
@@ -251,11 +250,9 @@ export default function UnifiImportModal({
               <p className={formStyles.eyebrow}>{copy.eyebrow}</p>
               <h2 className={formStyles.title} id="unifi-import-title">{copy.title}</h2>
               <p className={formStyles.subtitle}>
-                {link?.mappingMode === "dedicated"
-                  ? copy.dedicatedBadge
-                  : link?.linked
-                    ? `${copy.globalBadge}${link.siteName ? ` — ${link.siteName}` : ""}`
-                    : copy.subtitle}
+                {link?.linked && link?.mappingMode !== "dedicated"
+                  ? `${copy.globalBadge}${link.siteName ? ` — ${link.siteName}` : ""}`
+                  : copy.subtitle}
               </p>
             </div>
           </div>
@@ -268,7 +265,7 @@ export default function UnifiImportModal({
           <div className={formStyles.content}>
             {loading ? (
               <p className={formStyles.sectionDesc}>{copy.loading}</p>
-            ) : !link?.linked ? (
+            ) : !link?.linked || link?.mappingMode === "dedicated" || !link?.hostId || !link?.siteId ? (
               <p className={formStyles.sectionDesc}>{copy.noLink}</p>
             ) : (
               <>
@@ -305,7 +302,7 @@ export default function UnifiImportModal({
                         (device.macNormalized && importedMacs.has(device.macNormalized)) ||
                         (device.id && importedMacs.has(String(device.id)));
                       const isSelected = selected.has(key);
-                      const canImport = Boolean(device.moduleKey);
+                      const canImport = isUnifiImportableDevice(device);
                       return (
                         <button
                           key={key}

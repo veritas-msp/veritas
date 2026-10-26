@@ -958,10 +958,6 @@ export default function SalesFormModal({
   const renderTargetsSection = () => <>
       <div className={layout.sectionHead}>
         <h3 className={layout.sectionTitle}>Ticket targets</h3>
-        <p className={layout.sectionDesc}>
-          Define one or more targets. Each target corresponds to a ticket created when its conditions
-          (field values) are met. With no conditions, the ticket is always created.
-        </p>
       </div>
       <SalesFormTargetRulesEditor rules={formDraft.ticketTargets?.rules?.length ? formDraft.ticketTargets.rules : [createEmptyTargetRule(0)]} formFields={fields} formKind={formDraft.kind} categoryOptions={categoryOptions} userOptions={userOptions} teamOptions={teamOptions} onChange={rules => setFormDraft(prev => ({
       ...prev,

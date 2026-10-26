@@ -10,7 +10,7 @@ import { interpolate } from "../../i18n/translate";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
 import { getClientHardwareEquipment } from "../../api/equipment";
 import { getIconPath } from "../../utils/assetHelper";
-import { UiKitButton } from "../UiKit";
+import { UiKitButton, UiKitModalNavSectionButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./BackupConfigModal.module.css";
 import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./backupConfigModalI18n";
@@ -21,10 +21,23 @@ import {
   productSeedDefaultJob,
   resolveBrandIdForProduct,
 } from "./backupSoftwareCatalog";
+import {
+  getStorageTypeLabel,
+  normalizeStorageType
+} from "../EquipementPage/equipmentFormConfig";
 import BackupSoftwarePicker from "./BackupSoftwarePicker";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import EquipmentMappingModal from "../EquipementPage/EquipmentMappingModal";
 import HycuJobMappingModal from "./HycuJobMappingModal";
+
+const STORAGE_DEST_PREFIX = {
+  nas: "NAS",
+  san: "SAN",
+  externe: "DISQUE",
+  cloud: "CLOUD",
+  virtuel: "VIRT",
+  robot: "ROBOT"
+};
 const EMPTY_JOB = {
   nom: "",
   regularite: "",
@@ -141,7 +154,12 @@ function hardwareToLegacyServer(eq) {
 }
 function hardwareToLegacyStorage(eq) {
   const raw = eq?.rawData && typeof eq.rawData === "object" ? eq.rawData : {};
-  const storageType = eq?.storageType || eq?.typeServer || raw.type || (eq?.type === "SAN" ? "SAN" : "NAS");
+  const storageType =
+    eq?.storageType ||
+    eq?.typeServer ||
+    raw.type ||
+    raw.storageType ||
+    (eq?.type === "SAN" ? "SAN" : "NAS");
   return {
     nom: eq?.name || eq?.nom || raw.nom || "",
     type: storageType,
@@ -149,20 +167,47 @@ function hardwareToLegacyStorage(eq) {
     modele: eq?.model || raw.modele,
     ip: eq?.ip || raw.ip,
     luns: raw.luns || eq?.luns || [],
-    numeroDisque: raw.numeroDisque
+    numeroDisque: raw.numeroDisque || raw.numero_disque
   };
+}
+function isSanStorageItem(item) {
+  return normalizeStorageType(item?.type || item?.storageType) === "san";
 }
 function mergeBackupEquipements(legacy, hardwareList) {
   const hardware = Array.isArray(hardwareList) ? hardwareList : [];
   const hwServers = hardware.filter(eq => SERVER_TYPES.has(eq?.type)).map(hardwareToLegacyServer);
   const hwStorage = hardware.filter(eq => STORAGE_TYPES.has(eq?.type)).map(hardwareToLegacyStorage);
   const legacyServers = Array.isArray(legacy?.Serveurs) && legacy.Serveurs.length > 0 ? legacy.Serveurs : Array.isArray(legacy?.Servers) ? legacy.Servers : [];
+  const legacyStorage = [...(legacy?.NAS || []), ...(legacy?.Storage || [])];
   return {
     ...legacy,
     Serveurs: mergeNamedEquipment(hwServers, legacyServers),
-    NAS: mergeNamedEquipment(hwStorage.filter(item => item.type !== "SAN"), [...(legacy?.NAS || []), ...(legacy?.Storage || [])]),
-    SAN: mergeNamedEquipment(hwStorage.filter(item => item.type === "SAN"), legacy?.SAN || [])
+    NAS: mergeNamedEquipment(
+      hwStorage.filter(item => !isSanStorageItem(item)),
+      legacyStorage
+    ),
+    SAN: mergeNamedEquipment(
+      hwStorage.filter(item => isSanStorageItem(item)),
+      legacy?.SAN || []
+    )
   };
+}
+function listClientStorageItems(equipements) {
+  return [
+    ...(Array.isArray(equipements?.NAS) ? equipements.NAS : []),
+    ...(Array.isArray(equipements?.Storage) ? equipements.Storage : []),
+    ...(Array.isArray(equipements?.SAN) ? equipements.SAN : [])
+  ];
+}
+function resolveStorageTypeLabel(typeKey, copy) {
+  const eq = copy?.equipment || {};
+  if (typeKey === "nas") return eq.nas || getStorageTypeLabel("nas") || "NAS";
+  if (typeKey === "san") return eq.san || getStorageTypeLabel("san") || "SAN";
+  if (typeKey === "externe") return eq.externalDisk || getStorageTypeLabel("externe") || "Disque externe";
+  if (typeKey === "cloud") return eq.cloud || getStorageTypeLabel("cloud") || "Cloud";
+  if (typeKey === "virtuel") return eq.virtual || getStorageTypeLabel("virtuel") || "Virtuel";
+  if (typeKey === "robot") return eq.robot || getStorageTypeLabel("robot") || "Robot";
+  return getStorageTypeLabel(typeKey) || typeKey || "Stockage";
 }
 function getServerOptions(equipements) {
   // Prefer Serveurs; fall back to Servers. Do not concat both — mirrored keys
@@ -187,57 +232,63 @@ function getServerOptions(equipements) {
 }
 function getStorageOptions(equipements, copy) {
   const options = [];
-  const eq = copy?.equipment || {};
-  const nasList = equipements?.NAS || equipements?.Storage || [];
-  if (Array.isArray(nasList)) {
-    nasList.forEach(item => {
-      if (!item?.nom) return;
-      if (item.type === "Disque dur externe") {
-        const diskNum = item.numeroDisque ? ` — ${copy.formatDiskNumber(item.numeroDisque)}` : "";
-        options.push({
-          value: `DISQUE-${item.nom}`,
-          label: `${item.nom} (${eq.externalDisk || "External"})${diskNum}`
-        });
-      } else if (item.type === "NAS" || !item.type) {
-        options.push({
-          value: `NAS-${item.nom}`,
-          label: `${item.nom} (${eq.nas || "NAS"})${item.fabricant || item.modele ? ` — ${[item.fabricant, item.modele].filter(Boolean).join(" ")}` : ""}`
-        });
-        (item.luns || []).forEach((lun, idx) => {
-          const lunName = lun.nom || lun.iqn || `LUN ${idx + 1}`;
-          options.push({
-            value: `LUN-${item.nom}-${lunName}`,
-            label: `${lunName} (${copy.formatLunOn(item.nom)})${lun.capacite ? ` — ${lun.capacite}` : ""}`
-          });
-        });
-      }
+  const seen = new Set();
+  listClientStorageItems(equipements).forEach(item => {
+    const nom = String(item?.nom || item?.name || "").trim();
+    if (!nom) return;
+    const typeKey = normalizeStorageType(item.type || item.storageType) || "nas";
+    const prefix = STORAGE_DEST_PREFIX[typeKey] || "STOR";
+    const value = `${prefix}-${nom}`;
+    if (seen.has(value)) return;
+    seen.add(value);
+
+    const typeLabel = resolveStorageTypeLabel(typeKey, copy);
+    const diskNum =
+      typeKey === "externe" && item.numeroDisque && typeof copy?.formatDiskNumber === "function"
+        ? ` — ${copy.formatDiskNumber(item.numeroDisque)}`
+        : typeKey === "externe" && item.numeroDisque
+          ? ` — #${item.numeroDisque}`
+          : "";
+    const meta = [item.fabricant, item.modele].filter(Boolean).join(" ");
+    options.push({
+      value,
+      label: `${nom} (${typeLabel})${diskNum}${meta ? ` — ${meta}` : ""}`
     });
-  }
-  const sanList = equipements?.SAN || [];
-  if (Array.isArray(sanList)) {
-    sanList.forEach(san => {
-      if (!san?.nom) return;
-      options.push({
-        value: `SAN-${san.nom}`,
-        label: `${san.nom} (${eq.san || "SAN"})${san.fabricant || san.modele ? ` — ${[san.fabricant, san.modele].filter(Boolean).join(" ")}` : ""}`
-      });
-      (san.luns || []).forEach((lun, idx) => {
+
+    if (typeKey === "nas" || typeKey === "san") {
+      (item.luns || []).forEach((lun, idx) => {
         const lunName = lun.nom || lun.iqn || `LUN ${idx + 1}`;
+        const lunValue = `LUN-${nom}-${lunName}`;
+        if (seen.has(lunValue)) return;
+        seen.add(lunValue);
         options.push({
-          value: `LUN-${san.nom}-${lunName}`,
-          label: `${lunName} (${copy.formatLunOn(san.nom)})${lun.capacite ? ` — ${lun.capacite}` : ""}`
+          value: lunValue,
+          label: `${lunName} (${
+            typeof copy?.formatLunOn === "function" ? copy.formatLunOn(nom) : `LUN · ${nom}`
+          })${lun.capacite ? ` — ${lun.capacite}` : ""}`
         });
       });
-    });
-  }
+    }
+  });
   return options;
 }
 function getNasNameOptions(equipements) {
-  const list = [...(Array.isArray(equipements?.NAS) ? equipements.NAS : []), ...(Array.isArray(equipements?.Storage) ? equipements.Storage : []), ...(Array.isArray(equipements?.SAN) ? equipements.SAN : [])];
-  return list.filter(eq => eq?.nom && (eq.type === "NAS" || eq.type === "SAN" || !eq.type)).map(eq => ({
-    value: eq.nom,
-    label: `${eq.nom}${eq.modele ? ` (${eq.modele})` : ""}${eq.ip ? ` — ${eq.ip}` : ""}`
-  }));
+  const seen = new Set();
+  return listClientStorageItems(equipements)
+    .map(eq => {
+      const nom = String(eq?.nom || eq?.name || "").trim();
+      if (!nom || seen.has(nom.toLowerCase())) return null;
+      seen.add(nom.toLowerCase());
+      const typeKey = normalizeStorageType(eq.type || eq.storageType);
+      const typeHint = typeKey ? getStorageTypeLabel(typeKey) : "";
+      return {
+        value: nom,
+        label: `${nom}${typeHint ? ` (${typeHint})` : ""}${eq.modele ? ` · ${eq.modele}` : ""}${
+          eq.ip ? ` — ${eq.ip}` : ""
+        }`
+      };
+    })
+    .filter(Boolean);
 }
 function InstanceCard({
   instance,
@@ -391,6 +442,12 @@ function JobCard({
     </article>;
 }
 const FOCUSED_SECTIONS = new Set(["add-instance", "edit-instance", "add-job", "edit-job"]);
+const JOB_FORM_SECTION_IDS = ["general", "target", "schedule"];
+const JOB_FORM_SECTION_ICONS = {
+  general: "mdi:form-select",
+  target: "mdi:server-network",
+  schedule: "mdi:calendar-clock"
+};
 
 function matchInstanceByRef(instances, target) {
   if (!target || !Array.isArray(instances)) return null;
@@ -428,6 +485,7 @@ export default function BackupConfigModal({
   const [editingJobId, setEditingJobId] = useState(null);
   const [instanceDraft, setInstanceDraft] = useState(null);
   const [jobDraft, setJobDraft] = useState(null);
+  const [jobFormSection, setJobFormSection] = useState("general");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [hardwareList, setHardwareList] = useState([]);
@@ -624,12 +682,14 @@ export default function BackupConfigModal({
     }
     setEditingJobId(null);
     setJobDraft(null);
+    setJobFormSection("general");
     setActiveSection("add-job");
   };
   const selectJobInstance = instance => {
     if (!instance || !supportsJobs(instance.logiciel)) return;
     setSelectedInstanceId(instance.id);
     setEditingJobId(null);
+    setJobFormSection("general");
     setJobDraft({
       ...EMPTY_JOB,
       stockageLie: ""
@@ -637,6 +697,7 @@ export default function BackupConfigModal({
   };
   const openEditJob = job => {
     setEditingJobId(job.id);
+    setJobFormSection("general");
     setJobDraft({
       ...EMPTY_JOB,
       ...job,
@@ -846,6 +907,25 @@ export default function BackupConfigModal({
   };
   const isInstanceForm = activeSection === "add-instance" || activeSection === "edit-instance";
   const isJobForm = activeSection === "add-job" || activeSection === "edit-job";
+  const useJobSectionNav = focusedMode && isJobForm && Boolean(jobDraft);
+  const jobSectionLabels = useMemo(() => {
+    const sectionCopy = activeSection === "edit-job" ? copy.editJob : copy.addJob;
+    return sectionCopy.sections || copy.addJob.sections || {};
+  }, [activeSection, copy]);
+  const jobNavSections = useMemo(
+    () =>
+      JOB_FORM_SECTION_IDS.map(id => ({
+        id,
+        label: jobSectionLabels[id] || id,
+        icon: JOB_FORM_SECTION_ICONS[id]
+      })),
+    [jobSectionLabels]
+  );
+  const { trackRef: jobNavTrackRef, indicator: jobNavIndicator } = useFinderNavIndicator([
+    jobFormSection,
+    useJobSectionNav,
+    jobNavSections.length
+  ]);
   const isFormSection = isInstanceForm || isJobForm;
   const primaryDisabled = (() => {
     if (!isFormSection || saving) return true;
@@ -864,7 +944,6 @@ export default function BackupConfigModal({
   const renderOverview = () => <>
       <div className={layout.sectionHead}>
         <h3 className={layout.sectionTitle}>{copy.overview.title}</h3>
-        <p className={layout.sectionDesc}>{copy.overview.description}</p>
       </div>
       <div className={styles.kpiRow}>
         <button type="button" className={styles.kpiCard} onClick={() => setActiveSection("instances")}>
@@ -914,7 +993,6 @@ export default function BackupConfigModal({
   const renderInstances = () => <>
       <div className={layout.sectionHead}>
         <h3 className={layout.sectionTitle}>{copy.instances.title}</h3>
-        <p className={layout.sectionDesc}>{copy.instances.description}</p>
       </div>
         <div className={styles.listToolbar}>
         <p className={styles.listCount}>{copy.formatInstanceCount(instances.length)}</p>
@@ -953,7 +1031,6 @@ export default function BackupConfigModal({
         {focusedMode ? null : (
           <div className={layout.sectionHead}>
             <h3 className={layout.sectionTitle}>{sectionCopy.title}</h3>
-            <p className={layout.sectionDesc}>{sectionCopy.description}</p>
           </div>
         )}
 
@@ -1236,10 +1313,10 @@ export default function BackupConfigModal({
     const softwareLabel = copy.software[selectedInstance.logiciel]?.label || selectedInstance.logiciel;
     return <>
         <div className={layout.sectionHead}>
-          <h3 className={layout.sectionTitle}>{copy.jobs.title}</h3>
-          <p className={layout.sectionDesc}>
-            {copy.jobs.description} — {softwareLabel}
-          </p>
+          <h3 className={layout.sectionTitle}>
+            {copy.jobs.title}
+            {softwareLabel ? ` · ${softwareLabel}` : ""}
+          </h3>
         </div>
         <div className={styles.listToolbar}>
           <p className={styles.listCount}>{copy.formatJobCount(jobs.length)}</p>
@@ -1261,21 +1338,228 @@ export default function BackupConfigModal({
           </div>}
       </>;
   };
-  const renderJobForm = () => {
+  const renderJobFormFields = sectionId => {
+    if (!jobDraft) return null;
     const isEdit = activeSection === "edit-job";
-    const sectionCopy = isEdit ? copy.editJob : copy.addJob;
-    const showInstancePicker = !isEdit && !jobDraft;
     const isHycu = selectedInstance?.logiciel === "HYCU Backup";
     const selectedInstanceLabel = selectedInstance
       ? `${copy.software[selectedInstance.logiciel]?.label || selectedInstance.logiciel}${selectedInstance.server ? ` — ${selectedInstance.server}` : ""}`
       : "";
+    const sectionCopy = isEdit ? copy.editJob : copy.addJob;
+    const jobSections = sectionCopy.sections || copy.addJob.sections || {};
+    const showHeading = !useJobSectionNav;
+
+    if (sectionId === "general") {
+      return (
+        <div className={layout.fieldGroupBlock}>
+          {showHeading ? <h4 className={layout.fieldGroupTitle}>{jobSections.general || "Général"}</h4> : null}
+          <div className={layout.fieldStack}>
+            {selectedInstance ? (
+              <div className={layout.field}>
+                <label className={layout.label} htmlFor="job-instance">
+                  {copy.form.jobInstance || "Instance"}
+                </label>
+                {isEdit ? (
+                  <input id="job-instance" className={layout.input} value={selectedInstanceLabel} disabled />
+                ) : (
+                  <div className={styles.selectedInstanceRow}>
+                    <input id="job-instance" className={layout.input} value={selectedInstanceLabel} disabled />
+                    <UiKitButton type="button" variant="secondary" onClick={() => setJobDraft(null)}>
+                      {copy.addJob.changeInstance || copy.form.cancel}
+                    </UiKitButton>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            <div className={layout.field}>
+              <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="job-nom">
+                {copy.form.jobName}
+              </label>
+              <input
+                id="job-nom"
+                type="text"
+                className={layout.input}
+                value={jobDraft.nom || ""}
+                onChange={e => setJobDraft(prev => ({
+                  ...prev,
+                  nom: e.target.value
+                }))}
+                placeholder={copy.form.jobNamePlaceholder}
+              />
+            </div>
+            <div className={layout.field}>
+              <label className={layout.label} htmlFor="job-type">
+                {copy.form.jobType}
+              </label>
+              <select
+                id="job-type"
+                className={layout.input}
+                value={jobDraft.type || ""}
+                onChange={e => setJobDraft(prev => ({
+                  ...prev,
+                  type: e.target.value
+                }))}
+              >
+                <option value="">{copy.form.jobTypeNone}</option>
+                {renderSelectOptions(copy.jobTypeOptions)}
+              </select>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (sectionId === "target") {
+      return (
+        <div className={layout.fieldGroupBlock}>
+          {showHeading ? <h4 className={layout.fieldGroupTitle}>{jobSections.target || "Cible et destination"}</h4> : null}
+          <div className={layout.fieldStack}>
+            <div className={layout.field}>
+              <label className={layout.label} htmlFor="job-target-search">
+                {copy.form.jobTarget}
+              </label>
+              {serverOptions.length === 0 ? (
+                <p className={layout.sectionDesc}>{copy.form.jobTargetEmpty}</p>
+              ) : (
+                <MultiSuggestPicker
+                  inputId="job-target-search"
+                  placeholder={copy.form.jobTargetSearch}
+                  emptyHint={copy.form.selectedTargetsNone}
+                  emptyResultsHint={copy.form.jobTargetEmptyResults}
+                  options={serverOptions.map(option => ({
+                    id: option.value,
+                    label: option.label,
+                    hint: option.hint
+                  }))}
+                  selectedIds={normalizeServeurLieList(jobDraft.serveurLie)}
+                  onChange={next => setJobDraft(prev => ({
+                    ...prev,
+                    serveurLie: normalizeServeurLieList(next)
+                  }))}
+                />
+              )}
+            </div>
+            <div className={layout.field}>
+              <label className={layout.label} htmlFor="job-dest">
+                {copy.form.jobDestination}
+              </label>
+              {isHycu ? (
+                <input
+                  id="job-dest"
+                  type="text"
+                  className={layout.input}
+                  value={jobDraft.stockageLie || ""}
+                  placeholder={copy.form.jobDestination || copy.form.server}
+                  onChange={e => setJobDraft(prev => ({
+                    ...prev,
+                    stockageLie: e.target.value
+                  }))}
+                />
+              ) : (
+                <select
+                  id="job-dest"
+                  className={layout.input}
+                  value={jobDraft.stockageLie || ""}
+                  onChange={e => setJobDraft(prev => ({
+                    ...prev,
+                    stockageLie: e.target.value
+                  }))}
+                >
+                  <option value="">{copy.form.jobDestinationNone}</option>
+                  {renderSelectOptions(stockageOptions)}
+                </select>
+              )}
+            </div>
+            <div className={layout.field}>
+              <label className={layout.label} htmlFor="job-replication">
+                {copy.form.jobReplication}
+              </label>
+              <select
+                id="job-replication"
+                className={layout.input}
+                value={jobDraft.replicationVers || ""}
+                onChange={e => setJobDraft(prev => ({
+                  ...prev,
+                  replicationVers: e.target.value
+                }))}
+              >
+                <option value="">{copy.form.jobDestinationNone}</option>
+                {renderSelectOptions(stockageOptions)}
+              </select>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={layout.fieldGroupBlock}>
+        {showHeading ? <h4 className={layout.fieldGroupTitle}>{jobSections.schedule || "Planification"}</h4> : null}
+        <div className={layout.fieldStack}>
+          <div className={layout.field}>
+            <label className={layout.label} htmlFor="job-reg">
+              {copy.form.jobRegularity}
+            </label>
+            <select
+              id="job-reg"
+              className={layout.input}
+              value={jobDraft.regularite || ""}
+              onChange={e => setJobDraft(prev => ({
+                ...prev,
+                regularite: e.target.value
+              }))}
+            >
+              <option value="">{copy.form.jobRegularityNone}</option>
+              {renderSelectOptions(copy.regularityOptions)}
+            </select>
+          </div>
+          <div className={layout.field}>
+            <label className={layout.label} htmlFor="job-horaire">
+              {copy.form.jobSchedule}
+            </label>
+            <input
+              id="job-horaire"
+              type="time"
+              className={layout.input}
+              value={jobDraft.horaire || ""}
+              onChange={e => setJobDraft(prev => ({
+                ...prev,
+                horaire: e.target.value
+              }))}
+            />
+          </div>
+          <div className={layout.field}>
+            <label className={layout.label} htmlFor="job-ret">
+              {copy.form.jobRetention}
+            </label>
+            <select
+              id="job-ret"
+              className={layout.input}
+              value={jobDraft.retention || ""}
+              onChange={e => setJobDraft(prev => ({
+                ...prev,
+                retention: e.target.value
+              }))}
+            >
+              <option value="">{copy.form.jobRetentionNone}</option>
+              {renderSelectOptions(copy.retentionOptions)}
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderJobForm = () => {
+    const isEdit = activeSection === "edit-job";
+    const sectionCopy = isEdit ? copy.editJob : copy.addJob;
+    const showInstancePicker = !isEdit && !jobDraft;
     if (showInstancePicker) {
       return (
         <div className={layout.sectionFill}>
           {focusedMode ? null : (
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{sectionCopy.title}</h3>
-              <p className={layout.sectionDesc}>{copy.addJob.pickDescription || sectionCopy.description}</p>
             </div>
           )}
           <div className={layout.sectionScroll}>
@@ -1324,220 +1608,36 @@ export default function BackupConfigModal({
       );
     }
     if (!jobDraft) return null;
-    const jobSections = sectionCopy.sections || copy.addJob.sections || {};
+    if (useJobSectionNav) {
+      return (
+        <div className={layout.sectionFill}>
+          <div className={layout.sectionScroll}>
+            {renderJobFormFields(jobFormSection)}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className={layout.sectionFill}>
-        {focusedMode ? null : (
-          <div className={layout.sectionHead}>
-            <h3 className={layout.sectionTitle}>{sectionCopy.title}</h3>
-            <p className={layout.sectionDesc}>{sectionCopy.description}</p>
-          </div>
-        )}
+        <div className={layout.sectionHead}>
+          <h3 className={layout.sectionTitle}>{sectionCopy.title}</h3>
+        </div>
         <div className={layout.sectionScroll}>
-          <div className={layout.fieldGroupBlock}>
-            <h4 className={layout.fieldGroupTitle}>{jobSections.general || "Général"}</h4>
-            <div className={layout.fieldGrid2}>
-              {selectedInstance ? (
-                <div className={`${layout.field} ${layout.fieldFull}`}>
-                  <label className={layout.label} htmlFor="job-instance">
-                    {copy.form.jobInstance || "Instance"}
-                  </label>
-                  {isEdit ? (
-                    <input id="job-instance" className={layout.input} value={selectedInstanceLabel} disabled />
-                  ) : (
-                    <div className={styles.selectedInstanceRow}>
-                      <input id="job-instance" className={layout.input} value={selectedInstanceLabel} disabled />
-                      <UiKitButton type="button" variant="secondary" onClick={() => setJobDraft(null)}>
-                        {copy.addJob.changeInstance || copy.form.cancel}
-                      </UiKitButton>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-              <div className={`${layout.field} ${layout.fieldFull}`}>
-                <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="job-nom">
-                  {copy.form.jobName}
-                </label>
-                <input
-                  id="job-nom"
-                  type="text"
-                  className={layout.input}
-                  value={jobDraft.nom || ""}
-                  onChange={e => setJobDraft(prev => ({
-                    ...prev,
-                    nom: e.target.value
-                  }))}
-                  placeholder={copy.form.jobNamePlaceholder}
-                />
-              </div>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="job-type">
-                  {copy.form.jobType}
-                </label>
-                <select
-                  id="job-type"
-                  className={layout.input}
-                  value={jobDraft.type || ""}
-                  onChange={e => setJobDraft(prev => ({
-                    ...prev,
-                    type: e.target.value
-                  }))}
-                >
-                  <option value="">{copy.form.jobTypeNone}</option>
-                  {renderSelectOptions(copy.jobTypeOptions)}
-                </select>
-              </div>
-            </div>
+          {renderJobFormFields("general")}
+          {renderJobFormFields("target")}
+          {renderJobFormFields("schedule")}
+          <div className={styles.formCancelRow}>
+            <UiKitButton
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                resetJobForm();
+                setActiveSection("jobs");
+              }}
+            >
+              {copy.form.cancel}
+            </UiKitButton>
           </div>
-
-          <div className={layout.fieldGroupBlock}>
-            <h4 className={layout.fieldGroupTitle}>{jobSections.target || "Cible & destination"}</h4>
-            <div className={layout.fieldGrid2}>
-              <div className={`${layout.field} ${layout.fieldFull}`}>
-                <label className={layout.label} htmlFor="job-target-search">
-                  {copy.form.jobTarget}
-                </label>
-                {serverOptions.length === 0 ? (
-                  <p className={layout.sectionDesc}>{copy.form.jobTargetEmpty}</p>
-                ) : (
-                  <MultiSuggestPicker
-                    inputId="job-target-search"
-                    placeholder={copy.form.jobTargetSearch}
-                    emptyHint={copy.form.selectedTargetsNone}
-                    emptyResultsHint={copy.form.jobTargetEmptyResults}
-                    options={serverOptions.map(option => ({
-                      id: option.value,
-                      label: option.label,
-                      hint: option.hint
-                    }))}
-                    selectedIds={normalizeServeurLieList(jobDraft.serveurLie)}
-                    onChange={next => setJobDraft(prev => ({
-                      ...prev,
-                      serveurLie: normalizeServeurLieList(next)
-                    }))}
-                  />
-                )}
-              </div>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="job-dest">
-                  {copy.form.jobDestination}
-                </label>
-                {isHycu ? (
-                  <input
-                    id="job-dest"
-                    type="text"
-                    className={layout.input}
-                    value={jobDraft.stockageLie || ""}
-                    placeholder={copy.form.jobDestination || copy.form.server}
-                    onChange={e => setJobDraft(prev => ({
-                      ...prev,
-                      stockageLie: e.target.value
-                    }))}
-                  />
-                ) : (
-                  <select
-                    id="job-dest"
-                    className={layout.input}
-                    value={jobDraft.stockageLie || ""}
-                    onChange={e => setJobDraft(prev => ({
-                      ...prev,
-                      stockageLie: e.target.value
-                    }))}
-                  >
-                    <option value="">{copy.form.jobDestinationNone}</option>
-                    {renderSelectOptions(stockageOptions)}
-                  </select>
-                )}
-              </div>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="job-replication">
-                  {copy.form.jobReplication}
-                </label>
-                <select
-                  id="job-replication"
-                  className={layout.input}
-                  value={jobDraft.replicationVers || ""}
-                  onChange={e => setJobDraft(prev => ({
-                    ...prev,
-                    replicationVers: e.target.value
-                  }))}
-                >
-                  <option value="">{copy.form.jobDestinationNone}</option>
-                  {renderSelectOptions(stockageOptions)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className={layout.fieldGroupBlock}>
-            <h4 className={layout.fieldGroupTitle}>{jobSections.schedule || "Planification"}</h4>
-            <div className={layout.fieldGrid2}>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="job-reg">
-                  {copy.form.jobRegularity}
-                </label>
-                <select
-                  id="job-reg"
-                  className={layout.input}
-                  value={jobDraft.regularite || ""}
-                  onChange={e => setJobDraft(prev => ({
-                    ...prev,
-                    regularite: e.target.value
-                  }))}
-                >
-                  <option value="">{copy.form.jobRegularityNone}</option>
-                  {renderSelectOptions(copy.regularityOptions)}
-                </select>
-              </div>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="job-horaire">
-                  {copy.form.jobSchedule}
-                </label>
-                <input
-                  id="job-horaire"
-                  type="time"
-                  className={layout.input}
-                  value={jobDraft.horaire || ""}
-                  onChange={e => setJobDraft(prev => ({
-                    ...prev,
-                    horaire: e.target.value
-                  }))}
-                />
-              </div>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="job-ret">
-                  {copy.form.jobRetention}
-                </label>
-                <select
-                  id="job-ret"
-                  className={layout.input}
-                  value={jobDraft.retention || ""}
-                  onChange={e => setJobDraft(prev => ({
-                    ...prev,
-                    retention: e.target.value
-                  }))}
-                >
-                  <option value="">{copy.form.jobRetentionNone}</option>
-                  {renderSelectOptions(copy.retentionOptions)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {focusedMode ? null : (
-            <div className={styles.formCancelRow}>
-              <UiKitButton
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  resetJobForm();
-                  setActiveSection("jobs");
-                }}
-              >
-                {copy.form.cancel}
-              </UiKitButton>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -1624,8 +1724,39 @@ export default function BackupConfigModal({
               </div>
             </header>
 
-            <div className={focusedMode ? layout.bodySingle : layout.body}>
-              {focusedMode ? null : (
+            <div className={useJobSectionNav || !focusedMode ? layout.body : layout.bodySingle}>
+              {useJobSectionNav ? (
+                <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={copy.navAria}>
+                  <nav
+                    ref={jobNavTrackRef}
+                    className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
+                  >
+                    <div
+                      className={kit.finderNavIndicator}
+                      style={{
+                        transform: `translate3d(0, ${jobNavIndicator.top}px, 0)`,
+                        height: jobNavIndicator.height,
+                        opacity: jobNavIndicator.ready ? 1 : 0
+                      }}
+                      aria-hidden
+                    />
+                    {jobNavSections.map(section => (
+                      <UiKitModalNavSectionButton
+                        key={section.id}
+                        section={section}
+                        active={jobFormSection === section.id}
+                        onSelect={() => setJobFormSection(section.id)}
+                        finderItemClass={kit.finderItem}
+                        finderItemActiveClass={kit.finderItemActive}
+                        finderItemIconClass={kit.finderItemIcon}
+                        finderItemLabelClass={kit.finderItemLabel}
+                        navBadgeClass={layout.navBadge}
+                        navBadgeSlotClass={layout.navBadgeSlot}
+                      />
+                    ))}
+                  </nav>
+                </aside>
+              ) : focusedMode ? null : (
                 <nav className={layout.nav} aria-label={copy.navAria}>
                   {navSections.map(section => {
                     let badge = null;
@@ -1654,23 +1785,29 @@ export default function BackupConfigModal({
                 </nav>
               )}
 
-              <div className={layout.content}>
-                {error ? <div className={styles.errorBanner} role="alert">
-                    {error}
-                  </div> : null}
-                {loading ? <div className={styles.loadingWrap}>
-                    <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-                    {copy.loading}
-                  </div> : focusedMode ? <>
-                    {(activeSection === "add-instance" || activeSection === "edit-instance") && renderInstanceForm()}
-                    {(activeSection === "add-job" || activeSection === "edit-job") && renderJobForm()}
-                  </> : <>
-                    {activeSection === "overview" && renderOverview()}
-                    {activeSection === "instances" && renderInstances()}
-                    {(activeSection === "add-instance" || activeSection === "edit-instance") && renderInstanceForm()}
-                    {activeSection === "jobs" && renderJobs()}
-                    {(activeSection === "add-job" || activeSection === "edit-job") && renderJobForm()}
-                  </>}
+              <div className={layout.content} key={useJobSectionNav ? jobFormSection : activeSection}>
+                <div className={kit.contentFadeUp}>
+                  {error ? <div className={styles.errorBanner} role="alert">
+                      {error}
+                    </div> : null}
+                  {loading ? (
+                    <div className={styles.loadingWrap} role="status" aria-live="polite">
+                      <span className={styles.loadingWrapIcon} aria-hidden>
+                        <Icon icon="mdi:loading" className={layout.spinning} />
+                      </span>
+                      <p style={{ margin: 0 }}>{copy.loading}</p>
+                    </div>
+                  ) : focusedMode ? <>
+                      {(activeSection === "add-instance" || activeSection === "edit-instance") && renderInstanceForm()}
+                      {(activeSection === "add-job" || activeSection === "edit-job") && renderJobForm()}
+                    </> : <>
+                      {activeSection === "overview" && renderOverview()}
+                      {activeSection === "instances" && renderInstances()}
+                      {(activeSection === "add-instance" || activeSection === "edit-instance") && renderInstanceForm()}
+                      {activeSection === "jobs" && renderJobs()}
+                      {(activeSection === "add-job" || activeSection === "edit-job") && renderJobForm()}
+                    </>}
+                </div>
               </div>
             </div>
 

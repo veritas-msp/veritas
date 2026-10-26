@@ -22,16 +22,18 @@ const FR = {
   navAria: "Sections du formulaire",
   catalog: {
     title: "Étiquettes existantes",
-    description: "Réutilisez une étiquette déjà utilisée sur une entreprise, un contact ou un périphérique pour garder des couleurs cohérentes.",
+    description: "Cliquez sur une étiquette du nuage pour l'associer à la fiche, ou créez-en une nouvelle ci-dessous.",
     search: "Rechercher",
-    searchPlaceholder: "Filtrer le catalogue…",
-    loading: "Chargement du catalogue…",
-    empty: "Aucune étiquette disponible pour cette fiche.",
-    createBtn: "Créer une étiquette"
+    searchPlaceholder: "Filtrer les étiquettes…",
+    loading: "Chargement des étiquettes…",
+    empty: "Aucune étiquette existante pour le moment.",
+    createBtn: "Créer une étiquette",
+    alreadyAssigned: "Déjà associée",
+    alreadyAssignedAria: "{label} déjà associée"
   },
   create: {
-    title: "Créer une étiquette",
-    description: "Définissez le libellé et la couleur affichés sur la fiche.",
+    title: "Nouvelle étiquette",
+    description: "Saisissez un libellé et choisissez une couleur.",
     label: "Libellé",
     labelPlaceholder: "Ex. prioritaire, vip, attention…",
     color: "Couleur",
@@ -54,7 +56,9 @@ const FR = {
   footer: {
     pickTag: "Cliquez sur une étiquette pour l'ajouter à la fiche.",
     noTags: "Aucune étiquette disponible · créez-en une nouvelle.",
-    requiredFields: "Les champs marqués * sont obligatoires."
+    requiredFields: "Les champs marqués * sont obligatoires.",
+    pickOrCreate: "Choisissez une étiquette existante ou créez-en une nouvelle.",
+    createOnly: "Créez une nouvelle étiquette pour cette fiche."
   },
   cancel: "Annuler",
   adding: "Ajout…",
@@ -83,16 +87,18 @@ const EN = {
   navAria: "Form sections",
   catalog: {
     title: "Existing tags",
-    description: "Reuse a tag already used on a company, contact, or device to keep colors consistent.",
+    description: "Click a tag in the cloud to associate it, or create a new one below.",
     search: "Search",
-    searchPlaceholder: "Filter catalog…",
-    loading: "Loading catalog…",
-    empty: "No tags available for this record.",
-    createBtn: "Create a tag"
+    searchPlaceholder: "Filter tags…",
+    loading: "Loading tags…",
+    empty: "No existing tags yet.",
+    createBtn: "Create a tag",
+    alreadyAssigned: "Already assigned",
+    alreadyAssignedAria: "{label} already assigned"
   },
   create: {
-    title: "Create a tag",
-    description: "Set the label and color shown on the record.",
+    title: "New tag",
+    description: "Enter a label and pick a color.",
     label: "Label",
     labelPlaceholder: "e.g. priority, vip, attention…",
     color: "Color",
@@ -115,7 +121,9 @@ const EN = {
   footer: {
     pickTag: "Click a tag to add it to the record.",
     noTags: "No tags available · create a new one.",
-    requiredFields: "Fields marked * are required."
+    requiredFields: "Fields marked * are required.",
+    pickOrCreate: "Pick an existing tag or create a new one.",
+    createOnly: "Create a new tag for this record."
   },
   cancel: "Cancel",
   adding: "Adding…",

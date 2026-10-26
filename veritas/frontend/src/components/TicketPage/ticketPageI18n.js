@@ -53,6 +53,8 @@ const TICKETS_COPY = {
     trashSwitchAria: "Afficher la corbeille",
     trashSwitchHideTooltip: "Quitter la corbeille",
     trashSwitchHideAria: "Quitter la corbeille",
+    viewModeActive: "Actifs",
+    viewModeAria: "Mode d'affichage",
     playModeBanner: "Mode aléatoire",
     playModeTooltip: "Ticket aléatoire · enchaîne après chaque envoi (cliquer à nouveau pour arrêter)",
     playModeAria: "Ouvrir un ticket aléatoire",
@@ -60,7 +62,7 @@ const TICKETS_COPY = {
     playModeDisableAria: "Désactiver le mode aléatoire",
     playModeDisabled: "Mode ticket aléatoire désactivé",
     satisfiedPanel: {
-      searchPlaceholder: "Ticket, client, commentaire…",
+      searchPlaceholder: "Rechercher",
       searchAria: "Rechercher un retour client",
       clearSearchAria: "Effacer la recherche",
       sentimentFilterAria: "Filtrer par sentiment",
@@ -186,7 +188,7 @@ const TICKETS_COPY = {
       expandPane: "Afficher les vues"
     },
     search: {
-      placeholder: "Ticket, client, demandeur, étiquette…",
+      placeholder: "Rechercher",
       aria: "Rechercher un ticket",
       clear: "Effacer",
       filterType: "Filtrer par type",
@@ -391,6 +393,8 @@ const TICKETS_COPY = {
     trashSwitchAria: "Show trash",
     trashSwitchHideTooltip: "Leave trash",
     trashSwitchHideAria: "Leave trash",
+    viewModeActive: "Active",
+    viewModeAria: "Display mode",
     playModeBanner: "Random mode",
     playModeTooltip: "Random ticket · continues after each reply (click again to stop)",
     playModeAria: "Open a random ticket",
@@ -398,7 +402,7 @@ const TICKETS_COPY = {
     playModeDisableAria: "Disable random mode",
     playModeDisabled: "Random ticket mode disabled",
     satisfiedPanel: {
-      searchPlaceholder: "Ticket, client, comment…",
+      searchPlaceholder: "Search",
       searchAria: "Search customer feedback",
       clearSearchAria: "Clear search",
       sentimentFilterAria: "Filter by sentiment",
@@ -524,7 +528,7 @@ const TICKETS_COPY = {
       expandPane: "Show views"
     },
     search: {
-      placeholder: "Ticket, client, requester, tag…",
+      placeholder: "Search",
       aria: "Search for a ticket",
       clear: "Clear",
       filterType: "Filter by type",
@@ -729,6 +733,8 @@ const TICKETS_COPY = {
     trashSwitchAria: "Papierkorb anzeigen",
     trashSwitchHideTooltip: "Papierkorb verlassen",
     trashSwitchHideAria: "Papierkorb verlassen",
+    viewModeActive: "Aktiv",
+    viewModeAria: "Anzeigemodus",
     playModeBanner: "Zufallsmodus",
     playModeTooltip: "Zufälliges Ticket · nach jedem Senden weiter (erneut klicken zum Stoppen)",
     playModeAria: "Zufälliges Ticket öffnen",
@@ -736,7 +742,7 @@ const TICKETS_COPY = {
     playModeDisableAria: "Zufallsmodus deaktivieren",
     playModeDisabled: "Zufallsmodus deaktiviert",
     satisfiedPanel: {
-      searchPlaceholder: "Ticket, Kunde, Kommentar…",
+      searchPlaceholder: "Suchen",
       searchAria: "Kundenfeedback suchen",
       clearSearchAria: "Suche löschen",
       sentimentFilterAria: "Nach Stimmung filtern",
@@ -862,7 +868,7 @@ const TICKETS_COPY = {
       expandPane: "Ansichten anzeigen"
     },
     search: {
-      placeholder: "Ticket, Kunde, Anfragender, Tag…",
+      placeholder: "Suchen",
       aria: "Ticket suchen",
       clear: "Löschen",
       filterType: "Nach Typ filtern",
@@ -1067,6 +1073,8 @@ const TICKETS_COPY = {
     trashSwitchAria: "Mostra cestino",
     trashSwitchHideTooltip: "Esci dal cestino",
     trashSwitchHideAria: "Esci dal cestino",
+    viewModeActive: "Attivi",
+    viewModeAria: "Modalità di visualizzazione",
     playModeBanner: "Modalità casuale",
     playModeTooltip: "Ticket casuale · continua dopo ogni invio (clicca di nuovo per fermare)",
     playModeAria: "Apri un ticket casuale",
@@ -1074,7 +1082,7 @@ const TICKETS_COPY = {
     playModeDisableAria: "Disattiva la modalità casuale",
     playModeDisabled: "Modalità ticket casuale disattivata",
     satisfiedPanel: {
-      searchPlaceholder: "Ticket, cliente, commento…",
+      searchPlaceholder: "Cerca",
       searchAria: "Cerca feedback clienti",
       clearSearchAria: "Cancella ricerca",
       sentimentFilterAria: "Filtra per sentimento",
@@ -1200,7 +1208,7 @@ const TICKETS_COPY = {
       expandPane: "Mostra viste"
     },
     search: {
-      placeholder: "Ticket, cliente, richiedente, etichetta…",
+      placeholder: "Cerca",
       aria: "Cerca un ticket",
       clear: "Cancella",
       filterType: "Filtra per tipo",
@@ -1405,6 +1413,8 @@ const TICKETS_COPY = {
     trashSwitchAria: "Mostrar papelera",
     trashSwitchHideTooltip: "Salir de la papelera",
     trashSwitchHideAria: "Salir de la papelera",
+    viewModeActive: "Activos",
+    viewModeAria: "Modo de visualización",
     playModeBanner: "Modo aleatorio",
     playModeTooltip: "Ticket aleatorio · continúa tras cada envío (haz clic de nuevo para detener)",
     playModeAria: "Abrir un ticket aleatorio",
@@ -1412,7 +1422,7 @@ const TICKETS_COPY = {
     playModeDisableAria: "Desactivar el modo aleatorio",
     playModeDisabled: "Modo ticket aleatorio desactivado",
     satisfiedPanel: {
-      searchPlaceholder: "Ticket, cliente, comentario…",
+      searchPlaceholder: "Buscar",
       searchAria: "Buscar feedback de clientes",
       clearSearchAria: "Borrar búsqueda",
       sentimentFilterAria: "Filtrar por sentimiento",
@@ -1538,7 +1548,7 @@ const TICKETS_COPY = {
       expandPane: "Mostrar vistas"
     },
     search: {
-      placeholder: "Ticket, cliente, solicitante, etiqueta…",
+      placeholder: "Buscar",
       aria: "Buscar un ticket",
       clear: "Borrar",
       filterType: "Filtrar por tipo",

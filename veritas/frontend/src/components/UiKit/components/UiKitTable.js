@@ -13,7 +13,11 @@ export default function UiKitTable({
   className = "",
   deps = [],
   empty = null,
-  fadeTop = true
+  fadeTop = true,
+  /** Sous thead sticky — typiquement hauteur ligne en-tête tableList (2.85rem) */
+  fadeTopInset = null,
+  header = null,
+  stableScrollbar = false
 }) {
   const shellClass = [
     styles.tableShell,
@@ -24,7 +28,14 @@ export default function UiKitTable({
     .join(" ");
   return (
     <div className={`${styles.tableBlock}${fill ? ` ${styles.tableBlockFill}` : ""}${className ? ` ${className}` : ""}`}>
-      <UiKitScrollFadeShell className={shellClass} deps={deps} fadeTop={fadeTop}>
+      <UiKitScrollFadeShell
+        className={shellClass}
+        deps={deps}
+        fadeTop={fadeTop}
+        fadeTopInset={fadeTopInset}
+        header={header}
+        stableScrollbar={stableScrollbar}
+      >
         {children}
         {empty}
       </UiKitScrollFadeShell>

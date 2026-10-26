@@ -50,9 +50,9 @@
 }
 
 .shellBackup {
-  width: min(1020px, 100%);
-  height: min(90vh, 860px);
-  max-height: min(90vh, 860px);
+  width: min(1120px, 100%);
+  height: min(92vh, 940px);
+  max-height: min(92vh, 940px);
 }
 
 .shellEquipment {
@@ -61,19 +61,23 @@
   max-height: min(92vh, 940px);
 }
 
+.shellBackup .body,
 .shellBackup .bodySingle,
+.shellBackup .body .content,
 .shellBackup .bodySingle .content {
   flex: 1 1 auto;
   overflow: hidden;
   min-height: 0;
 }
 
+.shellBackup .body .content,
 .shellBackup .bodySingle .content {
   padding-bottom: 0.85rem;
   display: flex;
   flex-direction: column;
 }
 
+.shellBackup .body .content > div,
 .shellBackup .bodySingle .content > div {
   flex: 1 1 auto;
   min-height: 0;
@@ -101,6 +105,16 @@
 
 .shellInternet .typeCategoryGrid .moduleTileLabel {
   font-size: 0.65rem;
+}
+
+/* Modales équipement / backup / internet : un champ par ligne */
+.shellEquipment .fieldGrid2,
+.shellEquipment .fieldGrid3,
+.shellInternet .fieldGrid2,
+.shellInternet .fieldGrid3,
+.shellBackup .fieldGrid2,
+.shellBackup .fieldGrid3 {
+  grid-template-columns: 1fr;
 }
 
 @keyframes shellIn {

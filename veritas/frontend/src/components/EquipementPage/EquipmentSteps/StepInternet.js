@@ -456,7 +456,6 @@ const StepInternet = ({
                 {INTERNET_DRAFT_FORM_SECTIONS.filter(s => s.id === activeDraftSection).map(section => <div key={section.id}>
                     <div className={formStyles.sectionHead}>
                       <h3 className={formStyles.sectionTitle}>{section.label}</h3>
-                      <p className={formStyles.sectionDesc}>{section.description}</p>
                     </div>
                     {section.id === "internetType" ? <InternetTypePicker value={draftConnection.type ?? ""} onChange={nextType => setDraftConnection(prev => ({
                 ...prev,

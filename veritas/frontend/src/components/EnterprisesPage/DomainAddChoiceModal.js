@@ -1,22 +1,31 @@
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
-import {
-  UiKitButton,
-  uiKitLayoutsStyles as kit
-} from "../UiKit";
+import { UiKitButton, uiKitLayoutsStyles as kit } from "../UiKit";
+import pickerStyles from "../EquipementPage/EquipmentAddFlowModal.module.css";
 import layout from "./EnterpriseFormModal.module.css";
-import avStyles from "./AntivirusConfigModal.module.css";
-import styles from "./DomainsConfigModal.module.css";
+import dnsStyles from "./DomainsConfigModal.module.css";
+import styles from "./ChoicePairModal.module.css";
 
-export default function DomainAddChoiceModal({ open, copy, onClose, onChooseManual, onChooseIntegration }) {
+export default function DomainAddChoiceModal({
+  open,
+  copy,
+  onClose,
+  onChooseManual,
+  onChooseIntegration,
+  integrationAvailable = false
+}) {
   const common = useCommonCopy();
   if (!open) return null;
 
   const choice = copy.addChoice || {};
 
   return createPortal(
-    <div className={`${layout.overlay} ${layout.overlayStacked}`} onClick={onClose} role="presentation">
+    <div
+      className={`${layout.overlay} ${layout.overlayStacked}`}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className={`${layout.shell} ${styles.choiceShell}`}
         onClick={e => e.stopPropagation()}
@@ -27,15 +36,17 @@ export default function DomainAddChoiceModal({ open, copy, onClose, onChooseManu
         <div className={layout.accentBar} aria-hidden />
         <header className={layout.header}>
           <div className={layout.headerMain}>
-            <div className={`${layout.headerIconWrap} ${styles.headerIconDns}`} aria-hidden>
+            <div className={`${layout.headerIconWrap} ${dnsStyles.headerIconDns}`} aria-hidden>
               <Icon icon="mdi:plus-circle-outline" />
             </div>
             <div className={layout.headerText}>
               <p className={layout.eyebrow}>{copy.eyebrow}</p>
               <h2 id="domain-add-choice-title" className={layout.title}>
-                {choice.title}
+                {choice.title || "Ajouter un nom de domaine"}
               </h2>
-              <p className={layout.subtitle}>{choice.description}</p>
+              {choice.description ? (
+                <p className={layout.subtitle}>{choice.description}</p>
+              ) : null}
             </div>
           </div>
           <UiKitButton
@@ -49,28 +60,59 @@ export default function DomainAddChoiceModal({ open, copy, onClose, onChooseManu
           />
         </header>
 
-        <div className={`${layout.content} ${styles.choiceBody}`}>
-          <div className={`${kit.contentFadeUp} ${styles.choiceGrid}`}>
-            <button type="button" className={avStyles.modeCard} onClick={onChooseManual}>
-              <span className={avStyles.modeCardIcon} aria-hidden>
-                <Icon icon="mdi:form-textbox" />
+        <div className={styles.choiceBody}>
+          <div
+            className={`${kit.contentFadeUp} ${pickerStyles.categoryGrid} ${pickerStyles.computerTypeGrid} ${styles.choiceGrid}`}
+            role="listbox"
+            aria-label={choice.title || "Mode d'ajout"}
+          >
+            <button
+              type="button"
+              role="option"
+              className={`${pickerStyles.categoryTile} ${styles.choiceTile}`}
+              style={{ animationDelay: "40ms" }}
+              onClick={onChooseManual}
+            >
+              <span className={pickerStyles.categoryIconWrap} aria-hidden>
+                <Icon icon="mdi:form-textbox" className={pickerStyles.categoryIcon} />
               </span>
-              <span className={avStyles.modeCardTitle}>{choice.manualTitle}</span>
-              <span className={avStyles.modeCardDesc}>{choice.manualDesc}</span>
-              <span className={avStyles.modeCardAction}>
-                {choice.manualAction}
-                <Icon icon="mdi:chevron-right" aria-hidden />
+              <span className={pickerStyles.categoryLabel}>
+                {choice.manualTitle || "Ajout manuel"}
+              </span>
+              <span className={styles.choiceTileDesc}>
+                {choice.manualDesc || "Saisir le nom, le registrar et la date d'expiration."}
               </span>
             </button>
-            <button type="button" className={avStyles.modeCard} onClick={onChooseIntegration}>
-              <span className={avStyles.modeCardIcon} aria-hidden>
-                <Icon icon="mdi:cloud-sync-outline" />
+
+            <button
+              type="button"
+              role="option"
+              className={`${pickerStyles.categoryTile} ${styles.choiceTile}`}
+              style={{ animationDelay: "110ms" }}
+              onClick={() => {
+                if (!integrationAvailable) return;
+                onChooseIntegration?.();
+              }}
+              disabled={!integrationAvailable}
+              aria-disabled={!integrationAvailable}
+              title={
+                integrationAvailable
+                  ? choice.integrationDesc
+                  : copy.provider?.globalNotActive ||
+                    "Activez une intégration registrar en administration"
+              }
+            >
+              <span className={pickerStyles.categoryIconWrap} aria-hidden>
+                <Icon icon="mdi:cloud-sync-outline" className={pickerStyles.categoryIcon} />
               </span>
-              <span className={avStyles.modeCardTitle}>{choice.integrationTitle}</span>
-              <span className={avStyles.modeCardDesc}>{choice.integrationDesc}</span>
-              <span className={avStyles.modeCardAction}>
-                {choice.integrationAction}
-                <Icon icon="mdi:chevron-right" aria-hidden />
+              <span className={pickerStyles.categoryLabel}>
+                {choice.integrationTitle || "Via une intégration"}
+              </span>
+              <span className={styles.choiceTileDesc}>
+                {integrationAvailable
+                  ? choice.integrationDesc ||
+                    "Importer depuis un registrar connecté (OVH…)."
+                  : copy.provider?.activateInAdmin || "À activer en administration"}
               </span>
             </button>
           </div>

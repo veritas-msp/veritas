@@ -3,6 +3,36 @@
   box-shadow: 0 6px 16px rgba(124, 58, 237, 0.28);
 }
 
+.permissionsBlock {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--msp-border, #dde3ed);
+}
+
+.permissionsTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--msp-text, #1a2332);
+}
+
+.permissionsTitle svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+.permissionsHint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--msp-text-muted, #64748b);
+}
+
 .permissionsList {
   margin: 0.65rem 0 0;
   padding: 0.75rem 0.75rem 0.75rem 1.25rem;
@@ -13,12 +43,19 @@
   background: var(--msp-surface, #fff);
   columns: 2;
   column-gap: 1rem;
+  list-style: disc;
 }
 
 .permissionsList li {
   break-inside: avoid;
   margin-bottom: 0.35rem;
   font-size: 0.78rem;
+  color: var(--msp-text, #1a2332);
+}
+
+.permissionsList code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.76rem;
 }
 
 @media (max-width: 640px) {

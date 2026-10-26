@@ -730,9 +730,7 @@ export function AntispamOverviewPanel({
             <h2 className={formStyles.title} id="antispam-overview-title">
               Antispam · {customerName}
             </h2>
-            <p className={formStyles.subtitle}>
-              {client?.name} · {mappingLabel}
-            </p>
+            {mappingLabel ? <p className={formStyles.subtitle}>{mappingLabel}</p> : null}
           </div>
         </div>
         <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Close">

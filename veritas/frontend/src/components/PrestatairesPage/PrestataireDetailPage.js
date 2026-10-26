@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchPrestataire, fetchPrestataireMentionedTickets, deletePrestataire, getPrestataireLogs, purgePrestataireLogs } from "../../api/prestataires";
 import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { fetchClientsList } from "../../api/clients";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
+import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import localStyles from "./PrestataireDetailPage.module.css";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import PrestataireFormModal from "./PrestataireFormModal";
-import ClientTicketBookmarks from "../ContactsPage/ClientTicketBookmarks";
+import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
+import { UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import {
@@ -19,7 +21,6 @@ import {
   getPrestataireStatusLocalized,
   interpolate
 } from "./prestataireDetailI18n";
-import { getTicketStatusLabels } from "../ContactsPage/contactDetailI18n";
 import { getTicketStatusLabel } from "../EnterprisesPage/enterpriseDetailI18n";
 import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
 import { isSalesTicket } from "../../utils/salesTicketUtils";
@@ -77,11 +78,6 @@ const isOpenTicket = ticket => {
   const status = normalizeTicketStatus(ticket?.status);
   return !["resolved", "closed"].includes(status);
 };
-const sortTicketsByRecent = (a, b) => {
-  const aTime = new Date(a?.last_side_conversation_at || a?.updated_at || a?.created_at || 0).getTime();
-  const bTime = new Date(b?.last_side_conversation_at || b?.updated_at || b?.created_at || 0).getTime();
-  return bTime - aTime;
-};
 
 function SidebarSectionHeader({
   title,
@@ -127,7 +123,6 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
   const { prestataireId: urlPrestataireId } = useParams();
   const locale = useAppLocale();
   const copy = useMemo(() => getPrestataireDetailCopy(locale), [locale]);
-  const ticketStatusLabels = useMemo(() => getTicketStatusLabels(locale), [locale]);
   const { can } = usePermissions();
   const canEdit = can("prestataires_detail.edit");
   const canDelete = can("prestataires_detail.delete");
@@ -151,14 +146,18 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
     () => !Array.isArray(initialCachedPrestataire?.mentionedTickets)
   );
   const [modalOpen, setModalOpen] = useState(false);
-  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [overviewTab, setOverviewTab] = useState("activity");
+  const [activitySection, setActivitySection] = useState("tickets");
+  const [ticketsSearchQuery, setTicketsSearchQuery] = useState("");
+  const [activityTabMounted, setActivityTabMounted] = useState(true);
+  const [logsTabMounted, setLogsTabMounted] = useState(false);
   const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(true);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(true);
   const loadControllerRef = useRef(null);
   const activityControllerRef = useRef(null);
   const clientsListControllerRef = useRef(null);
+  const pageRootRef = useRef(null);
   const isMountedRef = useRef(true);
   const loadRequestIdRef = useRef(0);
 
@@ -190,15 +189,27 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
     return [];
   }, [prestataire]);
 
-  const openMentionedTickets = useMemo(
-    () => mentionedTickets.filter(isOpenTicket).sort(sortTicketsByRecent),
+  const openTicketsCount = useMemo(
+    () => mentionedTickets.filter(isOpenTicket).length,
     [mentionedTickets]
   );
-  const closedMentionedTickets = useMemo(
-    () => mentionedTickets.filter(ticket => !isOpenTicket(ticket)).sort(sortTicketsByRecent),
-    [mentionedTickets]
-  );
-  const openTicketsCount = openMentionedTickets.length;
+  const filteredMentionedTickets = useMemo(() => {
+    const query = ticketsSearchQuery.trim().toLowerCase();
+    if (!query) return mentionedTickets;
+    return mentionedTickets.filter(ticket => {
+      const status = getTicketStatusLabel(normalizeTicketStatus(ticket.status), locale);
+      const haystack = [
+        ticket.ticket_number,
+        ticket.title,
+        ticket.side_conversation_subject,
+        status
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [locale, mentionedTickets, ticketsSearchQuery]);
 
   const resolveId = () =>
     prestataireData?.prestataireId || prestataireData?.id || urlPrestataireId;
@@ -376,16 +387,40 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
     return { code, label };
   };
 
+  useEffect(() => {
+    if (overviewTab === "activity") setActivityTabMounted(true);
+    if (overviewTab === "logs") setLogsTabMounted(true);
+  }, [overviewTab]);
+
+  const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
+    overviewTab
+  ]);
+  const { trackRef: finderActivityTrackRef, indicator: finderActivityIndicator } = useFinderNavIndicator([
+    overviewTab,
+    activitySection
+  ]);
+  const [finderSecEnter, setFinderSecEnter] = useState(true);
+  useLayoutEffect(() => {
+    setFinderSecEnter(false);
+  }, [overviewTab]);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setFinderSecEnter(true));
+    return () => cancelAnimationFrame(id);
+  }, [overviewTab]);
+
   if (loading && !prestataire) {
     return (
       <CrmDetailPageSkeleton
+        className={`${styles.prestataireDetailPage} ${localStyles.prestataireDetailPage}`}
         loadingAria={copy.loading || "Chargement…"}
         titleHint={prestataireData?.nom || ""}
-        showMidSlot
-        tabCount={1}
+        showTitleIcon
+        tabCount={2}
+        secondaryCount={2}
         body="activity"
         showAside
-        asideSections={3}
+        asideSections={2}
+        asideActionCount={4}
       />
     );
   }
@@ -405,103 +440,74 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
   const displayName = prestataire.nom || copy.defaultName;
   const primaryContact = contacts[0];
   const primaryEmail = primaryContact?.email || "";
-  const primaryPhone = primaryContact?.telephone || "";
   const emailHref = primaryEmail ? toMailtoHref(primaryEmail) : "";
-  const phoneHref = primaryPhone ? toTelHref(primaryPhone) : "";
   const websiteHref = prestataire.site_web
     ? prestataire.site_web.startsWith("http")
       ? prestataire.site_web
       : `https://${prestataire.site_web}`
     : "";
+  const finderSecondaryVisible = overviewTab === "activity";
+  const renderActivityEmpty = (icon, text) => (
+    <div className={styles.activityEmptyState}>
+      <UiKitEmptyState bare icon={icon} text={text} />
+    </div>
+  );
 
   return (
     <div
+      ref={pageRootRef}
       className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${styles.prestataireDetailPage} ${localStyles.prestataireDetailPage} msp-page-grid`}
     >
-      <header className={styles.pageHero}>
+      <header className={styles.pageHero} data-guide="prestataire-hero">
         <div className={styles.heroTop}>
           <div className={styles.heroIdentityBlock}>
             <div className={styles.heroCover} aria-hidden />
             <div className={styles.heroIdentityRow}>
               <div className={styles.heroMain}>
                 <span className={styles.heroBrandIcon} aria-hidden>
-                  <Icon icon="mdi:handshake-outline" width={30} height={30} />
+                  <Icon icon="mdi:handshake-outline" width={16} height={16} />
                 </span>
                 <div className={styles.heroText}>
                   <h1 className={styles.heroTitle}>
+                    <StatusDot
+                      active={status.status === "active"}
+                      label={status.label}
+                      className={styles.heroTitleStatus}
+                    />
                     <span className={styles.heroTitleName}>{displayName}</span>
-                    <span className={`${styles.heroStatusBadge} ${status.status === "active" ? "" : styles.heroStatusBadgeInactive}`.trim()}>
-                      <StatusDot
-                        active={status.status === "active"}
-                        label=""
-                        className={styles.heroTitleStatus}
-                      />
-                      {status.label}
-                    </span>
                   </h1>
-                  <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                    {prestataire.type ? (
-                      <span className={styles.heroMetaItem}>
-                        <Icon icon="mdi:tag-outline" aria-hidden />
-                        {prestataire.type}
-                      </span>
-                    ) : null}
-                    {websiteHref ? (
-                      <a
-                        href={websiteHref}
-                        className={`${styles.heroMetaItem} ${styles.heroMetaLink}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Icon icon="mdi:web" aria-hidden />
-                        {prestataire.site_web}
-                      </a>
-                    ) : null}
-                    {prestataire.adresse ? (
-                      <span className={styles.heroMetaItem}>
-                        <Icon icon="mdi:map-marker-outline" aria-hidden />
-                        {prestataire.adresse}
-                      </span>
-                    ) : null}
-                    {prestataire.notes ? (
-                      <span className={`${styles.heroMetaItem} ${localStyles.heroMetaNotes}`}>
-                        <Icon icon="mdi:note-text-outline" aria-hidden />
-                        <span>{prestataire.notes}</span>
-                      </span>
-                    ) : null}
-                    {primaryEmail ? (
-                      <a href={emailHref} className={`${styles.heroMetaItem} ${styles.heroMetaLink}`}>
-                        <Icon icon="mdi:email-outline" aria-hidden />
-                        {primaryEmail}
-                      </a>
-                    ) : null}
-                    {primaryPhone ? (
-                      <a href={phoneHref} className={`${styles.heroMetaItem} ${styles.heroMetaLink}`}>
-                        <Icon icon="mdi:phone-outline" aria-hidden />
-                        {primaryPhone}
-                      </a>
-                    ) : null}
-                    {companies.length > 0 ? (
-                      <span className={styles.heroMetaItem}>
-                        <Icon icon="mdi:domain" aria-hidden />
-                        {interpolate(copy.companiesCount, { count: companies.length })}
-                      </span>
-                    ) : null}
-                  </div>
                 </div>
               </div>
-
-              <div className={styles.heroPlanningFrise}>
-                <ClientTicketBookmarks
-                  openTickets={openMentionedTickets}
-                  closedTickets={closedMentionedTickets}
-                  loading={loadingActivity}
-                  statusLabels={ticketStatusLabels}
-                  onTicketClick={handleOpenTicket}
-                  clients={allClients}
-                  heroFrise
-                  collapseStorageKey="veritas.heroBookmarks.prestataireTickets.collapsed"
-                />
+              <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                {prestataire.type ? (
+                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock}`}>
+                    <Icon icon="mdi:tag-outline" aria-hidden />
+                    {prestataire.type}
+                  </span>
+                ) : null}
+                {websiteHref ? (
+                  <a
+                    href={websiteHref}
+                    className={`${styles.heroMetaItem} ${styles.heroMetaBlock} ${styles.heroMetaLink}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Icon icon="mdi:web" aria-hidden />
+                    {prestataire.site_web}
+                  </a>
+                ) : null}
+                {prestataire.adresse ? (
+                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock}`}>
+                    <Icon icon="mdi:map-marker-outline" aria-hidden />
+                    {prestataire.adresse}
+                  </span>
+                ) : null}
+                {prestataire.notes ? (
+                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock} ${localStyles.heroMetaNotes}`}>
+                    <Icon icon="mdi:note-text-outline" aria-hidden />
+                    <span>{prestataire.notes}</span>
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -511,291 +517,344 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
       <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
           <main
-            className={`${styles.mainColumn} ${overviewTab === "activity" || overviewTab === "logs" ? styles.mainColumnActivity : ""}`.trim()}
+            className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "activity" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}
           >
-            <nav className={styles.heroTabBar} role="tablist" aria-label={copy.overviewTabsAria}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={overviewTab === "activity"}
-                className={`${styles.heroTab} ${overviewTab === "activity" ? styles.heroTabActive : ""}`}
-                onClick={() => setOverviewTab("activity")}
-              >
-                <Icon icon="mdi:clipboard-text-clock-outline" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabActivity}</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={overviewTab === "logs"}
-                className={`${styles.heroTab} ${overviewTab === "logs" ? styles.heroTabActive : ""}`}
-                onClick={() => setOverviewTab("logs")}
-              >
-                <Icon icon="mdi:history" className={styles.heroTabIcon} aria-hidden />
-                <span className={styles.heroTabLabel}>{copy.overviewTabLogs || "Logs"}</span>
-              </button>
-            </nav>
-            {overviewTab === "activity" ? (
-              <div className={styles.overviewTabPanel}>
-              <div className={styles.activityLayout}>
-                <div className={styles.activityKpiRow}>
-                  <div className={styles.activityKpiCard}>
-                    <span className={styles.activityKpiValue}>{mentionedTickets.length}</span>
-                    <span className={styles.activityKpiLabel}>{copy.kpiTicketsTotal}</span>
-                  </div>
-                  <div className={styles.activityKpiCard}>
-                    <span className={styles.activityKpiValue}>{openTicketsCount}</span>
-                    <span className={styles.activityKpiLabel}>{copy.kpiTicketsOpen}</span>
-                  </div>
-                  <div className={styles.activityKpiCard}>
-                    <span className={styles.activityKpiValue}>{companies.length}</span>
-                    <span className={styles.activityKpiLabel}>{copy.kpiCompanies}</span>
-                  </div>
-                  <div className={styles.activityKpiCard}>
-                    <span className={styles.activityKpiValue}>{contacts.length}</span>
-                    <span className={styles.activityKpiLabel}>{copy.kpiContacts}</span>
-                  </div>
-                </div>
+            <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
+              <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria}>
+                <nav
+                  ref={finderPrimaryTrackRef}
+                  className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated}`}
+                  role="tablist"
+                  aria-label={copy.overviewTabsAria}
+                >
+                  {finderPrimaryIndicator.ready ? (
+                    <div
+                      className={finderKit.finderNavIndicator}
+                      style={{
+                        transform: `translate3d(0, ${finderPrimaryIndicator.top}px, 0)`,
+                        height: finderPrimaryIndicator.height
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <EnterpriseOverviewTabButton
+                    tabId="activity"
+                    iconify="mdi:ticket-confirmation-outline"
+                    label={copy.overviewTabActivity}
+                    active={overviewTab === "activity"}
+                    onClick={() => setOverviewTab("activity")}
+                    className={`${finderKit.finderItem} ${overviewTab === "activity" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="prestataire-activity"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="logs"
+                    iconify="mdi:history"
+                    label={copy.overviewTabLogs || "Logs"}
+                    active={overviewTab === "logs"}
+                    onClick={() => setOverviewTab("logs")}
+                    className={`${finderKit.finderItem} ${overviewTab === "logs" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="prestataire-logs"
+                  />
+                </nav>
 
-                <div className={styles.activityGridSplit}>
-                  <section className={styles.panel}>
-                    <div className={styles.panelHeader}>
-                      <div className={styles.panelHeaderMain}>
-                        <h2 className={styles.panelTitle}>
-                          <Icon icon="mdi:ticket-outline" className={styles.panelTitleIcon} aria-hidden />
-                          {copy.mentionedTicketsTitle}
-                        </h2>
-                      </div>
-                      <span className={styles.activityBlockCount}>
-                        {interpolate(copy.openCount, { count: openTicketsCount })}
-                      </span>
-                    </div>
-                    <div className={styles.panelBody}>
-                      <p className={localStyles.panelHint}>{copy.mentionedTicketsHint}</p>
-                      <div className={styles.dataTableWrapper}>
-                        <table className={styles.dataTable}>
-                          <thead>
-                            <tr>
-                              <th>{copy.table.number}</th>
-                              <th>{copy.table.title}</th>
-                              <th>{copy.table.status}</th>
-                              <th>{copy.table.sideConv}</th>
-                              <th>{copy.table.updated}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {loadingActivity && mentionedTickets.length === 0 ? (
-                              <tr className={styles.dataTableEmptyRow}>
-                                <td colSpan={5} className={styles.dataTableEmptyCell}>
-                                  {copy.loading}
-                                </td>
-                              </tr>
-                            ) : mentionedTickets.length === 0 ? (
-                              <tr className={styles.dataTableEmptyRow}>
-                                <td colSpan={5} className={styles.dataTableEmptyCell}>
-                                  {copy.emptyMentionedTickets}
-                                </td>
-                              </tr>
-                            ) : (
-                              mentionedTickets.slice(0, 12).map(ticket => {
-                                const ticketStatus = normalizeTicketStatus(ticket.status);
-                                const sideCount = Number(ticket.side_conversation_count) || 0;
-                                return (
-                                  <tr
-                                    key={ticket.id}
-                                    className={styles.dataTableRowClickable}
-                                    onClick={() => handleOpenTicket(ticket)}
-                                    onAuxClick={e => {
-                                      if (e.button === 1) {
-                                        e.preventDefault();
-                                        handleOpenTicket(ticket, true);
-                                      }
-                                    }}
-                                  >
-                                    <td>#{ticket.ticket_number || "-"}</td>
-                                    <td
-                                      className={styles.activityTitleCell}
-                                    >
-                                      {ticket.title || ticket.side_conversation_subject || "-"}
-                                    </td>
-                                    <td>
-                                      <span className={styles.ticketStatusBadge}>
-                                        {getTicketStatusLabel(ticketStatus, locale)}
-                                      </span>
-                                    </td>
-                                    <td>
-                                      {interpolate(copy.sideConversationsCount, { count: sideCount })}
-                                    </td>
-                                    <td>
-                                      {formatRelativeFrench(
-                                        ticket.last_side_conversation_at ||
-                                          ticket.updated_at ||
-                                          ticket.created_at
-                                      )}
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
+                <UiKitScrollFadeShell
+                  className={`${finderKit.finderSecondaryShell} ${styles.finderSecondaryShell}${finderSecondaryVisible ? "" : ` ${finderKit.finderSecondaryShellHidden}`}`.trim()}
+                  style={finderSecondaryVisible ? undefined : { display: "none" }}
+                  deps={[overviewTab, activitySection]}
+                >
+                  <div
+                    className={`${finderKit.finderSecondary} ${styles.finderSecondary}`}
+                    aria-hidden={!finderSecondaryVisible}
+                  >
+                    <div
+                      className={`${finderKit.finderSecReveal} ${finderSecondaryVisible && finderSecEnter ? finderKit.finderSecRevealActive : ""}`.trim()}
+                    >
+                      <div className={finderKit.finderSecPanel} hidden={overviewTab !== "activity"} aria-hidden={overviewTab !== "activity"}>
+                        <p className={finderKit.finderSecTitle}>{copy.navSectionActivity || "Sections"}</p>
+                        <nav
+                          ref={finderActivityTrackRef}
+                          className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated}`}
+                          aria-label={copy.navSectionActivity || "Sections"}
+                        >
+                          {finderActivityIndicator.ready ? (
+                            <div
+                              className={finderKit.finderNavIndicator}
+                              style={{
+                                transform: `translate3d(0, ${finderActivityIndicator.top}px, 0)`,
+                                height: finderActivityIndicator.height
+                              }}
+                              aria-hidden
+                            />
+                          ) : null}
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "tickets" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "tickets" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
+                            onClick={() => setActivitySection("tickets")}
+                          >
+                            <Icon icon="mdi:ticket-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.mentionedTicketsTitle}</span>
+                            <span className={finderKit.finderSecCount}>{openTicketsCount}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${finderKit.finderSecItem} ${activitySection === "companies" ? finderKit.finderSecItemActive : ""}`}
+                            aria-current={activitySection === "companies" ? "page" : undefined}
+                            tabIndex={overviewTab === "activity" ? undefined : -1}
+                            onClick={() => setActivitySection("companies")}
+                          >
+                            <Icon icon="mdi:domain" className={finderKit.finderSecItemIcon} aria-hidden />
+                            <span className={finderKit.finderSecItemLabel}>{copy.companies}</span>
+                            <span className={finderKit.finderSecCount}>{companies.length}</span>
+                          </button>
+                        </nav>
                       </div>
                     </div>
-                  </section>
+                  </div>
+                </UiKitScrollFadeShell>
+              </aside>
 
-                  <section className={styles.panel}>
-                    <div className={styles.panelHeader}>
-                      <div className={styles.panelHeaderMain}>
-                        <h2 className={styles.panelTitle}>
-                          <Icon icon="mdi:domain" className={styles.panelTitleIcon} aria-hidden />
-                          {copy.companies}
-                        </h2>
-                      </div>
-                      <span className={styles.activityBlockCount}>
-                        {interpolate(copy.companiesCount, { count: companies.length })}
-                      </span>
-                    </div>
-                    <div className={styles.panelBody}>
-                      {companies.length === 0 ? (
-                        <div className={styles.emptyState}>
-                          <Icon icon="mdi:domain" className={styles.emptyIcon} />
-                          <p>{copy.noCompanies}</p>
+              <div className={`${finderKit.finderContent} ${styles.enterpriseFinderContent}`}>
+                <div className={styles.mainCommunityPanels}>
+                  {activityTabMounted ? (
+                    <div
+                      className={styles.overviewTabPanel}
+                      hidden={overviewTab !== "activity"}
+                      style={overviewTab === "activity" ? undefined : { display: "none" }}
+                    >
+                      <div className={styles.activityLayout} data-guide="prestataire-activity-panel">
+                        <div className={styles.activityUnifiedCard} data-activity-section={activitySection}>
+                          {activitySection === "tickets" ? (
+                            <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="tickets">
+                              <div className={styles.activityUnifiedBody}>
+                                <div
+                                  className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}
+                                >
+                                  <div className={equipStyles.embeddedSearchWrap}>
+                                    <div className={equipStyles.embeddedSearchBox}>
+                                      <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+                                      <input
+                                        type="text"
+                                        className={equipStyles.embeddedSearchInput}
+                                        value={ticketsSearchQuery}
+                                        onChange={event => setTicketsSearchQuery(event.target.value)}
+                                        placeholder={copy.activitySearchPlaceholder || "Rechercher"}
+                                        aria-label={copy.activitySearchPlaceholder || "Rechercher"}
+                                      />
+                                      {ticketsSearchQuery ? (
+                                        <button
+                                          type="button"
+                                          className={equipStyles.embeddedSearchClear}
+                                          onClick={() => setTicketsSearchQuery("")}
+                                          aria-label={copy.activityClearSearchAria || "Effacer la recherche"}
+                                        >
+                                          <FaTimes aria-hidden />
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className={styles.activityTableStack}>
+                                  {loadingActivity && mentionedTickets.length === 0 ? (
+                                    renderActivityEmpty("mdi:ticket-outline", copy.loading)
+                                  ) : filteredMentionedTickets.length === 0 ? (
+                                    renderActivityEmpty(
+                                      "mdi:ticket-outline",
+                                      mentionedTickets.length > 0 && ticketsSearchQuery.trim()
+                                        ? (copy.emptyActivitySearch || copy.emptyMentionedTickets)
+                                        : copy.emptyMentionedTickets
+                                    )
+                                  ) : (
+                                    <div className={styles.dataTableWrapper}>
+                                      <table className={styles.dataTable}>
+                                        <thead>
+                                          <tr>
+                                            <th>{copy.table.number}</th>
+                                            <th>{copy.table.title}</th>
+                                            <th>{copy.table.status}</th>
+                                            <th>{copy.table.sideConv}</th>
+                                            <th>{copy.table.updated}</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {filteredMentionedTickets.slice(0, 12).map(ticket => {
+                                            const ticketStatus = normalizeTicketStatus(ticket.status);
+                                            const sideCount = Number(ticket.side_conversation_count) || 0;
+                                            return (
+                                              <tr
+                                                key={ticket.id}
+                                                className={styles.dataTableRowClickable}
+                                                onClick={() => handleOpenTicket(ticket)}
+                                                onAuxClick={e => {
+                                                  if (e.button === 1) {
+                                                    e.preventDefault();
+                                                    handleOpenTicket(ticket, true);
+                                                  }
+                                                }}
+                                              >
+                                                <td>#{ticket.ticket_number || "-"}</td>
+                                                <td className={styles.activityTitleCell}>
+                                                  {ticket.title || ticket.side_conversation_subject || "-"}
+                                                </td>
+                                                <td>
+                                                  <span className={styles.ticketStatusBadge}>
+                                                    {getTicketStatusLabel(ticketStatus, locale)}
+                                                  </span>
+                                                </td>
+                                                <td>
+                                                  {interpolate(copy.sideConversationsCount, { count: sideCount })}
+                                                </td>
+                                                <td>
+                                                  {formatRelativeFrench(
+                                                    ticket.last_side_conversation_at ||
+                                                      ticket.updated_at ||
+                                                      ticket.created_at
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </section>
+                          ) : null}
+
+                          {activitySection === "companies" ? (
+                            <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="companies">
+                              <div className={styles.activityUnifiedBody}>
+                                <div className={styles.activityTableStack}>
+                                  {companies.length === 0 ? (
+                                    renderActivityEmpty("mdi:domain", copy.noCompanies)
+                                  ) : (
+                                    <ul className={styles.sidebarContactsList}>
+                                      {companies.map(company => {
+                                        const { code, label } = resolveCompanyLabel(company);
+                                        return (
+                                          <li
+                                            key={company.id}
+                                            className={styles.sidebarContactItem}
+                                            onClick={() => openEnterprise(company)}
+                                          >
+                                            <div className={styles.sidebarContactAvatar} aria-hidden>
+                                              {(label || "E").slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className={styles.sidebarContactBody}>
+                                              <span className={styles.sidebarContactName}>
+                                                {code ? (
+                                                  <>
+                                                    <span className={styles.headerClientCode}>{code}</span>
+                                                    {label}
+                                                  </>
+                                                ) : (
+                                                  label
+                                                )}
+                                              </span>
+                                              {company.role ? (
+                                                <span className={styles.sidebarContactMeta}>{company.role}</span>
+                                              ) : null}
+                                            </div>
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  )}
+                                </div>
+                              </div>
+                            </section>
+                          ) : null}
                         </div>
-                      ) : (
-                        <ul className={styles.sidebarContactsList}>
-                          {companies.map(company => {
-                            const { code, label } = resolveCompanyLabel(company);
-                            return (
-                              <li
-                                key={company.id}
-                                className={styles.sidebarContactItem}
-                                onClick={() => openEnterprise(company)}
-                              >
-                                <div className={styles.sidebarContactAvatar} aria-hidden>
-                                  {(label || "E").slice(0, 2).toUpperCase()}
-                                </div>
-                                <div className={styles.sidebarContactBody}>
-                                  <span className={styles.sidebarContactName}>
-                                    {code ? (
-                                      <>
-                                        <span className={styles.headerClientCode}>{code}</span>
-                                        {label}
-                                      </>
-                                    ) : (
-                                      label
-                                    )}
-                                  </span>
-                                  {company.role ? (
-                                    <span className={styles.sidebarContactMeta}>{company.role}</span>
-                                  ) : null}
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
+                      </div>
                     </div>
-                  </section>
+                  ) : null}
+
+                  {logsTabMounted ? (
+                    <div
+                      className={styles.overviewTabPanel}
+                      hidden={overviewTab !== "logs"}
+                      style={overviewTab === "logs" ? undefined : { display: "none" }}
+                      data-guide="prestataire-logs-panel"
+                    >
+                      {prestataire?.id ? (
+                        <ActivityJournalPanel
+                          entityId={prestataire.id}
+                          embedded
+                          active={overviewTab === "logs"}
+                          fetchLogs={(page, options) =>
+                            getPrestataireLogs(prestataire.id, page, options?.limit || 25, {
+                              signal: options?.signal,
+                              sortBy: options?.sortBy,
+                              sortDir: options?.sortDir
+                            })
+                          }
+                          purgeLogs={() => purgePrestataireLogs(prestataire.id)}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              </div>
-            ) : null}
-
-            {overviewTab === "logs" && prestataire?.id ? (
-              <div className={styles.overviewTabPanel} data-guide="prestataire-logs-panel">
-                <ActivityJournalPanel
-                  entityId={prestataire.id}
-                  active={overviewTab === "logs"}
-                  fetchLogs={(page, options) =>
-                    getPrestataireLogs(prestataire.id, page, options?.limit || 25, {
-                      signal: options?.signal,
-                      sortBy: options?.sortBy,
-                      sortDir: options?.sortDir
-                    })
-                  }
-                  purgeLogs={() => purgePrestataireLogs(prestataire.id)}
-                />
-              </div>
-            ) : null}
+            </div>
           </main>
 
-          <div className={styles.asideStack}>
-            <section className={styles.quickActionsCard} data-guide="prestataire-quick-actions" aria-label={copy.quickActions?.title || "Actions rapides"}>
-              <h3 className={styles.quickActionsTitle}>{copy.quickActions?.title || "Actions rapides"}</h3>
-              <ul className={styles.quickActionsList}>
-                {canEdit ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={handleOpenEdit}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:pencil-outline" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{copy.quickActions?.editPrestataire || copy.editPrestataire}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                    </button>
-                  </li>
-                ) : null}
-                {emailHref ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={() => { window.location.href = emailHref; }}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:email-outline" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{copy.quickActions?.sendEmail || "Envoyer un email"}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                    </button>
-                  </li>
-                ) : null}
-                {websiteHref ? (
-                  <li>
-                    <button type="button" className={styles.quickActionItem} onClick={() => window.open(websiteHref, "_blank", "noopener,noreferrer")}>
-                      <span className={styles.quickActionIcon} aria-hidden>
-                        <Icon icon="mdi:web" />
-                      </span>
-                      <span className={styles.quickActionLabel}>{copy.quickActions?.openWebsite || "Ouvrir le site web"}</span>
-                      <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                    </button>
-                  </li>
-                ) : null}
-                {quickActionsExpanded ? (
-                  <>
-                    {companies.map(company => (
-                      <li key={company.id}>
-                        <button type="button" className={styles.quickActionItem} onClick={() => openEnterprise(company)}>
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:domain" />
-                          </span>
-                          <span className={styles.quickActionLabel}>{company.name || copy.viewEnterprise}</span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ))}
-                    {canDelete ? (
-                      <li>
-                        <button type="button" className={styles.quickActionItem} onClick={handleDelete} disabled={deleting}>
-                          <span className={styles.quickActionIcon} aria-hidden>
-                            <Icon icon="mdi:trash-can-outline" />
-                          </span>
-                          <span className={styles.quickActionLabel}>
-                            {deleting ? copy.deleting : copy.quickActions?.deletePrestataire || copy.deletePrestataire}
-                          </span>
-                          <Icon icon="mdi:chevron-right" className={styles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ) : null}
-                  </>
-                ) : null}
-              </ul>
-              <button
-                type="button"
-                className={styles.quickActionsSeeAll}
-                onClick={() => setQuickActionsExpanded(prev => !prev)}
-              >
-                {copy.quickActions?.seeAll || "Voir toutes les actions"}
-                <Icon icon={quickActionsExpanded ? "mdi:chevron-up" : "mdi:arrow-right"} aria-hidden />
-              </button>
-            </section>
-          <aside className={styles.asidePanel}>
+          <aside className={`${styles.asideStack} ${styles.asidePanel}`} aria-label={copy.sidebarInfo || "Informations"}>
             <div className={styles.rightSidebarContent}>
+              <section
+                className={`${styles.sidebarSection} ${styles.sidebarActionToolbarSection}`}
+                data-guide="prestataire-quick-actions"
+                aria-label={copy.quickActions?.title || "Actions rapides"}
+              >
+                <div className={styles.sidebarActionToolbar}>
+                  {canEdit ? (
+                    <EnterpriseQuickActionButton
+                      actionId="edit"
+                      iconify="mdi:square-edit-outline"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={handleOpenEdit}
+                      aria-label={copy.quickActions?.editPrestataire || copy.editPrestataire}
+                    />
+                  ) : null}
+                  {emailHref ? (
+                    <EnterpriseQuickActionButton
+                      actionId="email"
+                      iconify="mdi:email-outline"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={() => {
+                        window.location.href = emailHref;
+                      }}
+                      aria-label={copy.quickActions?.sendEmail || "Envoyer un email"}
+                    />
+                  ) : null}
+                  {websiteHref ? (
+                    <EnterpriseQuickActionButton
+                      actionId="website"
+                      iconify="mdi:web"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={() => window.open(websiteHref, "_blank", "noopener,noreferrer")}
+                      aria-label={copy.quickActions?.openWebsite || "Ouvrir le site web"}
+                    />
+                  ) : null}
+                  {canDelete ? (
+                    <EnterpriseQuickActionButton
+                      actionId="delete"
+                      iconify="mdi:trash-can-outline"
+                      className={styles.sidebarActionIconBtn}
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      aria-label={deleting ? copy.deleting : copy.quickActions?.deletePrestataire || copy.deletePrestataire}
+                    />
+                  ) : null}
+                </div>
+              </section>
+
               <section className={`${styles.sidebarSection} ${localStyles.sidebarCommSection}`}>
                 <SidebarSectionHeader
                   title={copy.contactsTitle}
@@ -806,19 +865,17 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                   panelStyles={styles}
                   actions={
                     canEdit ? (
-                      
-                        <button
-                          type="button"
-                          className={styles.editInfoButton}
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleOpenEdit();
-                          }}
-                          aria-label={copy.editPrestataire}
-                        >
-                          <FaPlus />
-                        </button>
-                      
+                      <button
+                        type="button"
+                        className={styles.editInfoButton}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleOpenEdit();
+                        }}
+                        aria-label={copy.editPrestataire}
+                      >
+                        <FaPlus />
+                      </button>
                     ) : null
                   }
                 />
@@ -913,7 +970,6 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
               </section>
             </div>
           </aside>
-          </div>
         </div>
       </div>
 

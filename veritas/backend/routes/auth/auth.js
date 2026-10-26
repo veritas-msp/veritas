@@ -12,6 +12,11 @@ import { attachUserAvatar, USER_AVATAR_SETTING_KEY } from "../../utils/userAvata
 import { loginRateLimit, forgotPasswordRateLimit, resetPasswordRateLimit } from "../../middleware/rateLimit.js";
 import { buildSessionPayload, clearImpersonatorCookie, clearSessionCookie, isImpersonationPayload, buildImpersonationClientPayload, buildImpersonationAgentPayload, setImpersonatorCookie, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
 import { isSuperAdminPresetProfile } from "../../config/permissionPresets.js";
+import {
+  PORTAL_LOGIN_STATUS,
+  recordPortalLoginEvent,
+  touchPortalLastLogin
+} from "../../utils/portalLoginEvents.js";
 const router = express.Router();
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
 router.use("/mfa", mfaRoutes);
@@ -21,12 +26,27 @@ function passwordFingerprint(passwordHash) {
 async function getUserByEmail(email) {
   const {
     rows
-  } = await pool.query(`SELECT id, email, username, password_hash AS password, role, profile, client_id,
+  } = await pool.query(`SELECT id, email, username, password_hash AS password, role, profile, client_id, contact_id,
             COALESCE(is_active, true) AS is_active,
             COALESCE(mfa_enabled, false) AS mfa_enabled, mfa_secret,
             COALESCE(password_pending, false) AS password_pending
      FROM v_b_users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`, [email]);
   return rows[0];
+}
+function isClientRole(role) {
+  return String(role || "").toLowerCase() === "client";
+}
+async function logClientPortalAttempt(req, user, status, failureReason = null) {
+  if (!user || !isClientRole(user.role)) return;
+  await recordPortalLoginEvent({
+    userId: user.id,
+    contactId: user.contact_id || null,
+    clientId: user.client_id || null,
+    email: user.email,
+    status,
+    failureReason,
+    req
+  });
 }
 router.post("/login", loginRateLimit, async (req, res) => {
   const {
@@ -46,24 +66,34 @@ router.post("/login", loginRateLimit, async (req, res) => {
         error: "Invalid credentials."
       });
     }
-    if (user.password_pending && String(user.role).toLowerCase() === "client") {
+    if (user.password_pending && isClientRole(user.role)) {
+      await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.PENDING, "password_pending");
       return res.status(403).json({
         error: "Account not activated. Use the link received by email to set your password.",
         passwordPending: true
       });
     }
     if (!(await bcrypt.compare(password, user.password))) {
+      if (isClientRole(user.role) || portal === "client") {
+        await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.FAILURE, "invalid_password");
+      }
       return res.status(401).json({
         error: "Invalid credentials."
       });
     }
     const portalError = getPortalAccessError(portal, user.role);
     if (portalError) {
+      if (isClientRole(user.role)) {
+        await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.FAILURE, "wrong_portal");
+      }
       return res.status(403).json({
         error: portalError
       });
     }
     if (user.is_active === false) {
+      if (isClientRole(user.role)) {
+        await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.BLOCKED, "account_disabled");
+      }
       return res.status(403).json({
         error: "This account is disabled. Contact your provider."
       });
@@ -87,6 +117,7 @@ router.post("/login", loginRateLimit, async (req, res) => {
         role: user.role,
         profile: user.profile ?? null,
         client_id: user.client_id ?? null,
+        contact_id: user.contact_id ?? null,
         portal,
         purpose: "mfa"
       }, "5m");
@@ -94,6 +125,10 @@ router.post("/login", loginRateLimit, async (req, res) => {
         mfaRequired: true,
         mfaToken
       });
+    }
+    if (isClientRole(user.role)) {
+      await touchPortalLastLogin(user.id);
+      await logClientPortalAttempt(req, user, PORTAL_LOGIN_STATUS.SUCCESS);
     }
     const token = signSessionToken(buildSessionPayload(user));
     setSessionCookie(req, res, token);
@@ -257,7 +292,7 @@ router.post("/activate-portal", resetPasswordRateLimit, async (req, res) => {
     }
     const {
       rows: current
-    } = await pool.query(`SELECT id, email, username, role, profile, client_id, password_hash,
+    } = await pool.query(`SELECT id, email, username, role, profile, client_id, contact_id, password_hash,
               COALESCE(is_active, true) AS is_active,
               COALESCE(password_pending, false) AS password_pending
        FROM v_b_users WHERE id = $1`, [decoded.id]);
@@ -279,6 +314,16 @@ router.post("/activate-portal", resetPasswordRateLimit, async (req, res) => {
     }
     const hashed = await bcrypt.hash(newPassword, 10);
     await pool.query("UPDATE v_b_users SET password_hash = $1, password_pending = false WHERE id = $2", [hashed, user.id]);
+    await touchPortalLastLogin(user.id);
+    await recordPortalLoginEvent({
+      userId: user.id,
+      contactId: user.contact_id || null,
+      clientId: user.client_id || null,
+      email: user.email,
+      status: PORTAL_LOGIN_STATUS.SUCCESS,
+      failureReason: "activation",
+      req
+    });
     const sessionUser = {
       ...user,
       password: hashed,

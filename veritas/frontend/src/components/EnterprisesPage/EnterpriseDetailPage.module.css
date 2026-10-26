@@ -2651,6 +2651,34 @@
   padding-bottom: 0.25rem;
 }
 
+/* Fade section (opacity seule) — pas de translateY, qui saute sur les panneaux full-height */
+.overviewTabPanelFadePending {
+  opacity: 0;
+}
+
+.overviewTabPanelFadeIn {
+  animation: enterpriseOverviewFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes enterpriseOverviewFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overviewTabPanelFadePending {
+    opacity: 1;
+  }
+
+  .overviewTabPanelFadeIn {
+    animation: none;
+  }
+}
+
 .contactOverviewBlock + .contactOverviewBlock {
   margin-top: 1.15rem;
   padding-top: 1rem;
@@ -3573,15 +3601,19 @@
 }
 
 .dataTable th {
-  padding: 0.55rem 0.85rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   text-align: left;
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--msp-muted-light);
-  border-bottom: 1px solid var(--msp-border);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--msp-muted, #5c6b82);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .sortableTh {
@@ -3595,10 +3627,18 @@
 }
 
 .dataTable td {
-  padding: 0.55rem 0.85rem;
-  border-bottom: 1px solid var(--msp-border-light);
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
   color: var(--msp-text);
   vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dataTable tbody tr {
@@ -4495,7 +4535,10 @@
 
 .activityLayout .dataTable th,
 .activityLayout .dataTable td {
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   vertical-align: middle;
   white-space: nowrap;
 }
@@ -6958,7 +7001,10 @@ button.sidebarOptionIcon:hover {
 
 .equipmentSection [class*="equipmentTableEmbedded"] th,
 .equipmentSection [class*="equipmentTableEmbedded"] td {
-  padding: 0.55rem 0.5rem;
+  padding: 0.65rem 0.6rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
   font-size: 0.8125rem;
   vertical-align: middle;
   white-space: nowrap;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { fetchClientModules } from "../../api/clients";
@@ -12,12 +12,13 @@ import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { getDomainsModalCopy } from "./domainsConfigModalI18n";
 import { interpolate } from "../../i18n/translate";
-import { getDnsProvider } from "./dnsFormConfig";
+import { getDnsProvider, getDnsProviderOptions, resolveProviderGlobalConfigured } from "./dnsFormConfig";
 import {
   extractDomainsFromModules,
   formatDomainSummary,
   isManualDomain,
   normalizeDomainItem,
+  refreshMonitoredDomainsFromOvh,
   removeMonitoredDomain,
   saveMonitoredDomains
 } from "./domainSolutionUtils";
@@ -27,12 +28,7 @@ import SolutionProviderIcon from "./SolutionProviderIcon";
 import DomainAddChoiceModal from "./DomainAddChoiceModal";
 import DomainAddManualModal from "./DomainAddManualModal";
 import DomainAddIntegrationModal from "./DomainAddIntegrationModal";
-import {
-  UiKitButton,
-  UiKitModalNavSectionButton,
-  uiKitLayoutsStyles as kit,
-  useFinderNavIndicator
-} from "../UiKit";
+import { UiKitButton, uiKitLayoutsStyles as kit } from "../UiKit";
 import EquipmentHoverIcon, { SECTION_ANIMATED } from "../EquipementPage/EquipmentHoverIcon";
 
 const EMPTY_MANUAL_FORM = {
@@ -132,6 +128,7 @@ export default function DomainsConfigModal({
   initialSection = "inventory",
   initialProviderId = null,
   initialOpenAddChoice = false,
+  initialEditDomain = null,
   isCommunity = false
 }) {
   const locale = useAppLocale();
@@ -139,8 +136,6 @@ export default function DomainsConfigModal({
   const copy = useMemo(() => getDomainsModalCopy(locale), [locale]);
   const common = useCommonCopy();
 
-  const [activeSection] = useState("inventory");
-  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, Boolean(client?.id)]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modulesData, setModulesData] = useState(null);
@@ -153,18 +148,25 @@ export default function DomainsConfigModal({
   const [integrationOpen, setIntegrationOpen] = useState(false);
   const [manualForm, setManualForm] = useState(EMPTY_MANUAL_FORM);
   const [editingDomain, setEditingDomain] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const initialAddHandledRef = useRef(false);
+  const initialEditHandledRef = useRef(false);
+  const addFlowOnly = Boolean(initialOpenAddChoice) && !initialEditDomain;
 
   const domains = useMemo(() => extractDomainsFromModules(modulesData), [modulesData]);
-
-  const navSections = useMemo(
-    () => [
-      {
-        id: "inventory",
-        label: copy.sections.inventory?.label || copy.sections.overview.label,
-        icon: "mdi:format-list-bulleted"
-      }
-    ],
-    [copy]
+  const integrationAvailable = useMemo(() => {
+    if (globalOvhConfigured) return true;
+    return getDnsProviderOptions()
+      .filter(provider => !provider.isManual)
+      .some(provider =>
+        resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+          ovh: globalOvhConfigured
+        })
+      );
+  }, [globalOvhConfigured, integrationSettings]);
+  const hasOvhDomains = useMemo(
+    () => domains.some(domain => normalizeDomainItem(domain)?.providerId === "ovh"),
+    [domains]
   );
 
   const loadData = useCallback(async () => {
@@ -191,40 +193,73 @@ export default function DomainsConfigModal({
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (!client?.id) return;
-    if (initialOpenAddChoice || initialSection === "provider" || initialSection === "add") {
-      setChoiceOpen(true);
-      return;
-    }
-    if (initialSection === "manual" || initialProviderId === "manual") {
-      setEditingDomain(null);
-      setManualForm(EMPTY_MANUAL_FORM);
-      setManualOpen(true);
-    }
-  }, [client?.id, initialOpenAddChoice, initialSection, initialProviderId]);
-
-  const openAddChoice = () => {
-    setChoiceOpen(true);
-  };
-
-  const closeChoice = () => setChoiceOpen(false);
-
-  const openManualCreate = () => {
+  const openManualCreate = useCallback(() => {
     setChoiceOpen(false);
     setEditingDomain(null);
     setManualForm(EMPTY_MANUAL_FORM);
     setManualOpen(true);
-  };
+  }, []);
 
-  const openIntegration = () => {
+  const openIntegration = useCallback(() => {
     setChoiceOpen(false);
     setIntegrationOpen(true);
+  }, []);
+
+  const openAddChoice = useCallback(() => {
+    setChoiceOpen(true);
+  }, []);
+
+  const closeChoice = useCallback(() => {
+    setChoiceOpen(false);
+    if (addFlowOnly && !manualOpen && !integrationOpen) {
+      onClose?.();
+    }
+  }, [addFlowOnly, manualOpen, integrationOpen, onClose]);
+
+  useEffect(() => {
+    if (!client?.id || initialAddHandledRef.current) return;
+    const shouldOpenChoice =
+      addFlowOnly ||
+      initialOpenAddChoice ||
+      initialSection === "provider" ||
+      initialSection === "add";
+    const shouldOpenManual = initialSection === "manual" || initialProviderId === "manual";
+    if (!shouldOpenChoice && !shouldOpenManual) return;
+    // Add-only: open choice immediately (no inventory shell).
+    // Inventory + add: wait until load finishes so badges/settings are ready.
+    if (!addFlowOnly && loading) return;
+    initialAddHandledRef.current = true;
+    if (shouldOpenManual) openManualCreate();
+    else openAddChoice();
+  }, [
+    client?.id,
+    loading,
+    addFlowOnly,
+    initialOpenAddChoice,
+    initialSection,
+    initialProviderId,
+    openAddChoice,
+    openManualCreate
+  ]);
+
+  const handleSyncDomains = async () => {
+    if (!client?.id || syncing || !hasOvhDomains) return;
+    setSyncing(true);
+    try {
+      await refreshMonitoredDomainsFromOvh(client.id);
+      showSuccess(copy.toasts?.synced || "Noms de domaine synchronisés");
+      await loadData();
+      await onSaved?.();
+    } catch (error) {
+      showError(error?.message || copy.toasts?.syncError || "Échec de la synchronisation");
+    } finally {
+      setSyncing(false);
+    }
   };
 
-  const startEditingDomain = domain => {
+  const startEditingDomain = useCallback(domain => {
     const normalized = normalizeDomainItem(domain);
-    if (!normalized || !isManualDomain(domain)) return;
+    if (!normalized || !isManualDomain(domain)) return false;
     setEditingDomain(normalized);
     setManualForm({
       nom: normalized.nom || "",
@@ -235,7 +270,26 @@ export default function DomainsConfigModal({
       expiration: normalized.expiration ? String(normalized.expiration).slice(0, 10) : ""
     });
     setManualOpen(true);
-  };
+    return true;
+  }, [copy.manualProvider.label]);
+
+  useEffect(() => {
+    if (!client?.id || loading || !initialEditDomain || initialEditHandledRef.current) return;
+    initialEditHandledRef.current = true;
+    const match =
+      domains.find(entry => {
+        const a = normalizeDomainItem(entry);
+        const b = normalizeDomainItem(initialEditDomain);
+        if (!a || !b) return false;
+        if (a.id != null && b.id != null && String(a.id) === String(b.id)) return true;
+        return String(a.nom || "").trim().toLowerCase() === String(b.nom || "").trim().toLowerCase();
+      }) || initialEditDomain;
+    if (isManualDomain(match)) {
+      startEditingDomain(match);
+      return;
+    }
+    setDeleteTarget(null);
+  }, [client?.id, domains, initialEditDomain, loading, startEditingDomain]);
 
   const handleSaveManual = async () => {
     const nom = manualForm.nom.trim();
@@ -277,6 +331,7 @@ export default function DomainsConfigModal({
       setManualOpen(false);
       await loadData();
       await onSaved?.();
+      if (addFlowOnly) onClose?.();
     } catch (error) {
       showError(error.message || copy.toasts.importError);
     } finally {
@@ -307,164 +362,188 @@ export default function DomainsConfigModal({
   const handleIntegrationSaved = async () => {
     await loadData();
     await onSaved?.();
+    if (addFlowOnly) {
+      setIntegrationOpen(false);
+      onClose?.();
+    }
   };
 
   if (!client?.id) return null;
 
   const HeaderAnimated = SECTION_ANIMATED.inventory;
   const inventoryTitle = copy.inventory?.title || copy.overview.title;
-  const inventoryDesc = copy.inventory?.description || copy.overview.description;
+
+  const closeManual = () => {
+    if (saving) return;
+    setManualOpen(false);
+    setEditingDomain(null);
+    setManualForm(EMPTY_MANUAL_FORM);
+    if (addFlowOnly) onClose?.();
+  };
+
+  const closeIntegration = () => {
+    setIntegrationOpen(false);
+    if (addFlowOnly) onClose?.();
+  };
 
   return (
     <>
-      {createPortal(
-        <div className={layout.overlay} onClick={saving ? undefined : onClose} role="presentation">
-          <div
-            className={layout.shell}
-            onClick={e => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="domains-config-title"
-          >
-            <div className={layout.accentBar} aria-hidden />
+      {!addFlowOnly
+        ? createPortal(
+            <div className={layout.overlay} onClick={saving ? undefined : onClose} role="presentation">
+              <div
+                className={layout.shell}
+                onClick={e => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="domains-config-title"
+              >
+                <div className={layout.accentBar} aria-hidden />
 
-            <header className={layout.header}>
-              <div className={layout.headerMain}>
-                <div className={`${layout.headerIconWrap} ${styles.headerIconDns}`} aria-hidden>
-                  <EquipmentHoverIcon Animated={HeaderAnimated} iconify="stash:domain" size={22} />
-                </div>
-                <div className={layout.headerText}>
-                  <p className={layout.eyebrow}>{copy.eyebrow}</p>
-                  <h2 id="domains-config-title" className={layout.title}>
-                    {copy.title}
-                  </h2>
-                  <p className={layout.subtitle}>{client?.name || copy.defaultClientName}</p>
-                </div>
-              </div>
-              <UiKitButton
-                type="button"
-                square
-                variant="secondary"
-                className={layout.closeBtn}
-                onClick={onClose}
-                disabled={saving}
-                aria-label={common.close}
-                icon="mdi:close"
-              />
-            </header>
+                <header className={layout.header}>
+                  <div className={layout.headerMain}>
+                    <div className={`${layout.headerIconWrap} ${styles.headerIconDns}`} aria-hidden>
+                      <EquipmentHoverIcon Animated={HeaderAnimated} iconify="stash:domain" size={22} />
+                    </div>
+                    <div className={layout.headerText}>
+                      <p className={layout.eyebrow}>{copy.eyebrow}</p>
+                      <h2 id="domains-config-title" className={layout.title}>
+                        {copy.title}
+                      </h2>
+                    </div>
+                  </div>
+                  <UiKitButton
+                    type="button"
+                    square
+                    variant="secondary"
+                    className={layout.closeBtn}
+                    onClick={onClose}
+                    disabled={saving}
+                    aria-label={common.close}
+                    icon="mdi:close"
+                  />
+                </header>
 
-            <div className={layout.body}>
-              <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={copy.navAria}>
-                <nav
-                  ref={navTrackRef}
-                  className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
-                >
-                  {navIndicator.ready ? (
-                    <div
-                      className={kit.finderNavIndicator}
-                      style={{
-                        transform: `translate3d(0, ${navIndicator.top}px, 0)`,
-                        height: navIndicator.height
-                      }}
-                      aria-hidden
-                    />
-                  ) : null}
-                  {navSections.map(section => (
-                    <UiKitModalNavSectionButton
-                      key={section.id}
-                      section={section}
-                      active={activeSection === section.id}
-                      badge={domains.length > 0 ? String(domains.length) : null}
-                      onSelect={() => {}}
-                      finderItemClass={kit.finderItem}
-                      finderItemActiveClass={kit.finderItemActive}
-                      finderItemIconClass={kit.finderItemIcon}
-                      finderItemLabelClass={kit.finderItemLabel}
-                      navBadgeClass={layout.navBadge}
-                      navBadgeSlotClass={layout.navBadgeSlot}
-                    />
-                  ))}
-                </nav>
-              </aside>
-
-              <div className={layout.content}>
-                <div className={kit.contentFadeUp} key="inventory">
-                  <div className={styles.sectionFill}>
-                    <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
-                      <div className={styles.sectionHeadRow}>
-                        <div>
-                          <h3 className={layout.sectionTitle}>{inventoryTitle}</h3>
-                          <p className={layout.sectionDesc}>{inventoryDesc}</p>
+                <div className={layout.bodySingle}>
+                  <div className={layout.content}>
+                    <div className={kit.contentFadeUp} key="inventory">
+                      <div className={styles.sectionFill}>
+                        <div className={`${layout.sectionHead} ${layout.sectionPinned}`}>
+                          <div className={styles.sectionHeadRow}>
+                            <div>
+                              <h3 className={layout.sectionTitle}>{inventoryTitle}</h3>
+                            </div>
+                            <div className={styles.sectionHeadActions}>
+                              <UiKitButton
+                                type="button"
+                                square
+                                variant="secondary"
+                                icon={syncing ? "mdi:loading" : "mdi:sync"}
+                                onClick={handleSyncDomains}
+                                disabled={loading || saving || syncing || !hasOvhDomains}
+                                aria-label={
+                                  syncing
+                                    ? copy.overview?.syncBusy || "Synchronisation…"
+                                    : hasOvhDomains
+                                      ? copy.overview?.syncBtn || "Synchroniser les domaines OVH"
+                                      : copy.overview?.syncEmpty || "Aucun domaine OVH à synchroniser"
+                                }
+                                title={
+                                  syncing
+                                    ? copy.overview?.syncBusy || "Synchronisation…"
+                                    : hasOvhDomains
+                                      ? copy.overview?.syncBtn || "Synchroniser les domaines OVH"
+                                      : copy.overview?.syncEmpty || "Aucun domaine OVH à synchroniser"
+                                }
+                              />
+                              <UiKitButton
+                                type="button"
+                                square
+                                variant="primary"
+                                icon="mdi:plus"
+                                onClick={openAddChoice}
+                                disabled={loading || saving || syncing}
+                                aria-label={
+                                  copy.overview?.addHostBtn || copy.empty?.addBtn || copy.addChoice?.title
+                                }
+                                title={
+                                  copy.overview?.addHostBtn || copy.empty?.addBtn || copy.addChoice?.title
+                                }
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <UiKitButton
-                          type="button"
-                          square
-                          variant="primary"
-                          icon="mdi:plus"
-                          onClick={openAddChoice}
-                          disabled={loading || saving}
-                          aria-label={copy.overview?.addHostBtn || copy.empty?.addBtn || copy.addChoice?.title}
-                          title={copy.overview?.addHostBtn || copy.empty?.addBtn || copy.addChoice?.title}
-                        />
+
+                        {loading ? (
+                          <div
+                            className={`${styles.empty} ${styles.emptyLoading}`}
+                            role="status"
+                            aria-live="polite"
+                          >
+                            <span className={styles.emptyLoadingIcon} aria-hidden>
+                              <Icon icon="mdi:loading" className={layout.spinning} />
+                            </span>
+                            <p className={styles.emptyTitle}>{copy.loading}</p>
+                          </div>
+                        ) : domains.length > 0 ? (
+                          <>
+                            <div className={styles.listToolbar}>
+                              <p className={styles.listCount}>{copy.formatMonitoredCount(domains.length)}</p>
+                            </div>
+                            <div className={styles.list}>
+                              {domains.map((domain, index) => {
+                                const normalized = normalizeDomainItem(domain);
+                                const key = `${normalized?.nom || "domain"}-${index}`;
+                                return (
+                                  <DomainRow
+                                    key={key}
+                                    domain={domain}
+                                    copy={copy}
+                                    onEdit={startEditingDomain}
+                                    onDelete={requestRemoveDomain}
+                                    deleting={
+                                      deletingDomainKey === (normalized?.nom || "").toLowerCase()
+                                    }
+                                  />
+                                );
+                              })}
+                            </div>
+                          </>
+                        ) : (
+                          <div className={styles.empty}>
+                            <Icon icon="stash:domain" className={styles.emptyIcon} aria-hidden />
+                            <p className={styles.emptyTitle}>{copy.overview.empty}</p>
+                            <p className={styles.emptyHint}>
+                              {copy.empty?.noneHint || copy.addChoice?.description}
+                            </p>
+                            <div className={styles.emptyAction}>
+                              <UiKitButton
+                                type="button"
+                                variant="primary"
+                                icon="mdi:plus"
+                                onClick={openAddChoice}
+                              >
+                                {copy.empty?.addBtn || copy.addChoice?.title || "Ajouter"}
+                              </UiKitButton>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-
-                    {loading ? (
-                      <div className={styles.empty}>
-                        <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-                        <p className={styles.emptyTitle}>{copy.loading}</p>
-                      </div>
-                    ) : domains.length > 0 ? (
-                      <>
-                        <div className={styles.listToolbar}>
-                          <p className={styles.listCount}>{copy.formatMonitoredCount(domains.length)}</p>
-                        </div>
-                        <div className={styles.list}>
-                          {domains.map((domain, index) => {
-                            const normalized = normalizeDomainItem(domain);
-                            const key = `${normalized?.nom || "domain"}-${index}`;
-                            return (
-                              <DomainRow
-                                key={key}
-                                domain={domain}
-                                copy={copy}
-                                onEdit={startEditingDomain}
-                                onDelete={requestRemoveDomain}
-                                deleting={deletingDomainKey === (normalized?.nom || "").toLowerCase()}
-                              />
-                            );
-                          })}
-                        </div>
-                      </>
-                    ) : (
-                      <div className={styles.empty}>
-                        <Icon icon="stash:domain" className={styles.emptyIcon} aria-hidden />
-                        <p className={styles.emptyTitle}>{copy.overview.empty}</p>
-                        <p className={styles.emptyHint}>
-                          {copy.empty?.noneHint || copy.addChoice?.description}
-                        </p>
-                        <div className={styles.emptyAction}>
-                          <UiKitButton type="button" variant="primary" icon="mdi:plus" onClick={openAddChoice}>
-                            {copy.empty?.addBtn || copy.addChoice?.title || "Ajouter"}
-                          </UiKitButton>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <footer className={layout.footer}>
-              <span className={layout.footerHint}>
-                {domains.length > 0 ? copy.formatMonitoredCount(domains.length) : ""}
-              </span>
-              <div className={layout.footerActions} />
-            </footer>
-          </div>
-        </div>,
-        document.getElementById("modal-root") || document.body
-      )}
+                <footer className={layout.footer}>
+                  <span className={layout.footerHint}>
+                    {domains.length > 0 ? copy.formatMonitoredCount(domains.length) : ""}
+                  </span>
+                  <div className={layout.footerActions} />
+                </footer>
+              </div>
+            </div>,
+            document.getElementById("modal-root") || document.body
+          )
+        : null}
 
       <DomainAddChoiceModal
         open={choiceOpen}
@@ -472,6 +551,7 @@ export default function DomainsConfigModal({
         onClose={closeChoice}
         onChooseManual={openManualCreate}
         onChooseIntegration={openIntegration}
+        integrationAvailable={integrationAvailable}
       />
 
       <DomainAddManualModal
@@ -479,13 +559,16 @@ export default function DomainsConfigModal({
         copy={copy}
         form={manualForm}
         onChange={setManualForm}
-        onClose={() => {
-          if (saving) return;
-          setManualOpen(false);
-          setEditingDomain(null);
-          setManualForm(EMPTY_MANUAL_FORM);
-        }}
+        onClose={closeManual}
         onSave={handleSaveManual}
+        onDelete={
+          editingDomain
+            ? () => {
+                setManualOpen(false);
+                setDeleteTarget(editingDomain);
+              }
+            : undefined
+        }
         saving={saving}
         isEditing={Boolean(editingDomain)}
       />
@@ -498,7 +581,7 @@ export default function DomainsConfigModal({
         integrationSettings={integrationSettings}
         globalOvhConfigured={globalOvhConfigured}
         isCommunity={isCommunity}
-        onClose={() => setIntegrationOpen(false)}
+        onClose={closeIntegration}
         onSaved={handleIntegrationSaved}
       />
 

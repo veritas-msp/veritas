@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const MIGRATION_FILES = ["schema/patches/20260728_client_vault_secrets.sql", "schema/patches/20260728_client_vault_secrets_grants.sql"];
 const CONTACT_ID_MIGRATION = "schema/patches/20260729_client_vault_secrets_contact_id.sql";
+const ARCHIVED_MIGRATION = "schema/patches/20261026_client_vault_secrets_archived.sql";
 let ensured = false;
 async function columnExists(client, tableName, columnName) {
   const {
@@ -41,6 +42,9 @@ export async function ensureClientVaultSecretsSchema() {
       }
     } else if (!(await columnExists(client, "v_b_client_vault_secrets", "contact_id"))) {
       await applyMigrationFile(client, CONTACT_ID_MIGRATION);
+    }
+    if (!(await columnExists(client, "v_b_client_vault_secrets", "archived_at"))) {
+      await applyMigrationFile(client, ARCHIVED_MIGRATION);
     }
     ensured = true;
     return true;

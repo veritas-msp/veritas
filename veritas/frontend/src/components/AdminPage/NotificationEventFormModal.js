@@ -288,9 +288,6 @@ export default function NotificationEventFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>Trigger</h3>
-              <p className={layout.sectionDesc}>
-                Choose the business source and event that will trigger the notification.
-              </p>
             </div>
 
             <div className={formStyles.statusRow}>
@@ -345,9 +342,6 @@ export default function NotificationEventFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>Cible</h3>
-              <p className={layout.sectionDesc}>
-                Limit the notification to one company or apply it globally.
-              </p>
             </div>
             <div className={layout.fieldGrid2}>
               <div className={layout.field}>
@@ -377,9 +371,6 @@ export default function NotificationEventFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>Canal</h3>
-              <p className={layout.sectionDesc}>
-                Enable one or more delivery channels for this event.
-              </p>
             </div>
 
             {channelOptions.map(channelItem => {
@@ -445,9 +436,6 @@ export default function NotificationEventFormModal({
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>Contenu</h3>
-              <p className={layout.sectionDesc}>
-                Use an existing template or write a custom message.
-              </p>
             </div>
 
             <div className={formStyles.statusRow}>

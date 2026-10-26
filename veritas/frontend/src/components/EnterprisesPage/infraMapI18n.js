@@ -96,7 +96,15 @@ const INFRA_MAP_COPY = {
       searchPlaceholder: "Rechercher…",
       addInstance: "Ajouter une instance",
       addJob: "Ajouter un job",
-      addJobDisabledHint: "Ajoutez d’abord une instance"
+      addJobDisabledHint: "Ajoutez d’abord une instance",
+      syncSsl: "Synchroniser tous les certificats SSL",
+      syncSslBusy: "Synchronisation en cours…",
+      syncSslEmpty: "Aucun certificat à synchroniser",
+      syncDomains: "Synchroniser les noms de domaine (OVH)",
+      syncDomainsBusy: "Synchronisation en cours…",
+      syncDomainsEmpty: "Aucun domaine OVH à synchroniser",
+      syncDomainsSuccess: "Noms de domaine synchronisés",
+      syncDomainsError: "Échec de la synchronisation des domaines"
     }
   },
   en: {
@@ -189,7 +197,15 @@ const INFRA_MAP_COPY = {
       searchPlaceholder: "Search…",
       addInstance: "Add an instance",
       addJob: "Add a job",
-      addJobDisabledHint: "Add an instance first"
+      addJobDisabledHint: "Add an instance first",
+      syncSsl: "Sync all SSL certificates",
+      syncSslBusy: "Syncing…",
+      syncSslEmpty: "No certificates to sync",
+      syncDomains: "Sync domain names (OVH)",
+      syncDomainsBusy: "Syncing…",
+      syncDomainsEmpty: "No OVH domains to sync",
+      syncDomainsSuccess: "Domain names synchronized",
+      syncDomainsError: "Domain synchronization failed"
     }
   },
   de: {
@@ -282,7 +298,15 @@ const INFRA_MAP_COPY = {
       searchPlaceholder: "Suchen…",
       addInstance: "Instanz hinzufügen",
       addJob: "Job hinzufügen",
-      addJobDisabledHint: "Zuerst eine Instanz hinzufügen"
+      addJobDisabledHint: "Zuerst eine Instanz hinzufügen",
+      syncSsl: "Alle SSL-Zertifikate synchronisieren",
+      syncSslBusy: "Synchronisierung…",
+      syncSslEmpty: "Keine Zertifikate zum Synchronisieren",
+      syncDomains: "Domainnamen synchronisieren (OVH)",
+      syncDomainsBusy: "Synchronisierung…",
+      syncDomainsEmpty: "Keine OVH-Domains zum Synchronisieren",
+      syncDomainsSuccess: "Domainnamen synchronisiert",
+      syncDomainsError: "Domain-Synchronisierung fehlgeschlagen"
     }
   },
   it: {
@@ -375,7 +399,15 @@ const INFRA_MAP_COPY = {
       searchPlaceholder: "Cerca…",
       addInstance: "Aggiungi un'istanza",
       addJob: "Aggiungi un job",
-      addJobDisabledHint: "Aggiungi prima un'istanza"
+      addJobDisabledHint: "Aggiungi prima un'istanza",
+      syncSsl: "Sincronizza tutti i certificati SSL",
+      syncSslBusy: "Sincronizzazione…",
+      syncSslEmpty: "Nessun certificato da sincronizzare",
+      syncDomains: "Sincronizza i nomi di dominio (OVH)",
+      syncDomainsBusy: "Sincronizzazione…",
+      syncDomainsEmpty: "Nessun dominio OVH da sincronizzare",
+      syncDomainsSuccess: "Nomi di dominio sincronizzati",
+      syncDomainsError: "Sincronizzazione domini non riuscita"
     }
   },
   es: {
@@ -468,7 +500,15 @@ const INFRA_MAP_COPY = {
       searchPlaceholder: "Buscar…",
       addInstance: "Añadir una instancia",
       addJob: "Añadir un job",
-      addJobDisabledHint: "Añada primero una instancia"
+      addJobDisabledHint: "Añada primero una instancia",
+      syncSsl: "Sincronizar todos los certificados SSL",
+      syncSslBusy: "Sincronizando…",
+      syncSslEmpty: "Ningún certificado que sincronizar",
+      syncDomains: "Sincronizar nombres de dominio (OVH)",
+      syncDomainsBusy: "Sincronizando…",
+      syncDomainsEmpty: "Ningún dominio OVH que sincronizar",
+      syncDomainsSuccess: "Nombres de dominio sincronizados",
+      syncDomainsError: "Error al sincronizar dominios"
     }
   }
 };

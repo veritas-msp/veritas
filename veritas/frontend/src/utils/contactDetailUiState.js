@@ -1,5 +1,6 @@
 const KEY_PREFIX = "veritas_contact_detail_ui_v1_";
 const OVERVIEW_TABS = new Set(["activity", "portal", "share", "logs"]);
+const ACTIVITY_SECTIONS = new Set(["support", "prestations"]);
 
 function storageKey(contactId) {
   return `${KEY_PREFIX}${contactId}`;
@@ -7,6 +8,10 @@ function storageKey(contactId) {
 
 export function normalizeContactOverviewTab(tab) {
   return OVERVIEW_TABS.has(tab) ? tab : "activity";
+}
+
+export function normalizeContactActivitySection(section) {
+  return ACTIVITY_SECTIONS.has(section) ? section : "support";
 }
 
 export function readContactDetailUi(contactId) {
@@ -32,6 +37,9 @@ export function writeContactDetailUi(contactId, patch = {}) {
     };
     if (Object.prototype.hasOwnProperty.call(patch, "overviewTab")) {
       next.overviewTab = normalizeContactOverviewTab(patch.overviewTab);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "activitySection")) {
+      next.activitySection = normalizeContactActivitySection(patch.activitySection);
     }
     sessionStorage.setItem(storageKey(contactId), JSON.stringify(next));
   } catch {

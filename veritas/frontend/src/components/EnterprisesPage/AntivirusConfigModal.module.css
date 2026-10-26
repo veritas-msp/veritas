@@ -294,17 +294,74 @@
 
 .loadingBlock {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1.25rem 0;
+  justify-content: center;
+  gap: 0.85rem;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 14rem;
+  padding: 2rem 1.25rem;
   color: var(--msp-muted, #5c6b82);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 550;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.loadingBlockIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.55rem;
+}
+
+.loadingBlockIcon :global(svg) {
+  width: 1.55rem;
+  height: 1.55rem;
+}
+
+.loadingBlockText {
+  margin: 0;
+  max-width: 22rem;
+}
+
+.dedicatedPanel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start !important;
+  align-items: stretch;
+  align-content: flex-start;
+  gap: 0.85rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dedicatedPanel > * {
+  flex: 0 0 auto !important;
+  margin-top: 0;
+}
+
+.dedicatedPanel :global([class*="sectionHead"]) {
+  flex: 0 0 auto !important;
+  margin: 0 0 0.15rem;
 }
 
 .dedicatedTenantForm {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1rem;
+  flex: 0 0 auto !important;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .inlineActions {
@@ -336,25 +393,127 @@
   margin-bottom: 1.1rem;
 }
 
+.bodyNoNav {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.contentFull {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+}
+
+.contentScroll {
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
 .providerList {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(6.75rem, 1fr));
   gap: 0.45rem;
 }
 
-@media (min-width: 900px) {
-  .providerList {
-    grid-template-columns: repeat(auto-fill, minmax(7.25rem, 1fr));
-  }
+/* Grille choix solution = même rythme que catégories « Ajouter un équipement » */
+.solutionChoiceStage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
-@media (max-width: 480px) {
-  .providerList {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+.solutionChoiceGrid {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 0.7rem;
+  margin-top: 0.15rem;
+  width: 100%;
+  flex: 0 0 auto !important;
+  min-height: auto !important;
+  overflow: visible !important;
+}
+
+.solutionChoiceGrid :global([class*="categoryTile"]) {
+  /* conserver le dimensionnement équipement (pas pleine largeur) */
+  width: auto;
+}
+
+.solutionChoiceGrid :global([class*="categoryTile"]:disabled) {
+  filter: grayscale(1);
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+}
+
+.solutionChoiceGrid :global([class*="categoryTile"]:disabled) img,
+.solutionChoiceGrid :global([class*="categoryTile"]:disabled) [class*="solutionChoiceIcon"] {
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.solutionChoiceGrid :global([class*="categoryTile"]:disabled) [class*="categoryIconWrap"] {
+  background: #e8eaef;
+  color: #9ca3af;
+}
+
+.solutionChoiceGrid :global([class*="categoryTile"]:disabled) [class*="categoryLabel"] {
+  color: #9ca3af;
+}
+
+.solutionChoiceIcon {
+  font-size: 1.55rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  color: var(--integration-icon-color, inherit);
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.solutionChoiceBadge {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  z-index: 2;
+  max-width: calc(100% - 2.2rem);
+  padding: 0.08rem 0.32rem;
+  border-radius: 999px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.solutionChoiceBadgeSoon {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.solutionChoiceBadgeGlobal {
+  background: rgba(43, 95, 171, 0.12);
+  color: var(--msp-accent, #2b5fab);
+}
+
+:global(html.dark) .solutionChoiceBadgeSoon,
+:global(body.dark-mode) .solutionChoiceBadgeSoon {
+  background: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
 }
 
 .providerCard {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -378,9 +537,9 @@
 }
 
 .providerCardSelected {
-  border-color: rgba(43, 95, 171, 0.45);
-  background: rgba(43, 95, 171, 0.04);
-  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.1);
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  box-shadow: 0 4px 14px rgba(43, 95, 171, 0.14);
 }
 
 .providerCardDisabled {

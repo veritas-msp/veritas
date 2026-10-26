@@ -24,7 +24,7 @@ function resolveAntispamProductName(providerId, provider) {
     return MAILINBLACK_BRAND_NAME;
   }
   if (providerId === "manual") {
-    return provider?.label || "Other solution";
+    return provider?.label || "Autre solution";
   }
   return provider?.solutionName || provider?.label || providerId || "Antispam";
 }
@@ -71,7 +71,7 @@ export function canonicalizeAntispamMappingMode(solution) {
 }
 export function getAntispamSolutionModeLabel(solution) {
   const mode = canonicalizeAntispamMappingMode(solution);
-  if (mode === "dedicated") return "Dedicated tenant";
+  if (mode === "dedicated") return "Tenant dédié";
   if (mode === "manual") return "Saisie manuelle";
   if (mode === "reseller") return "Tenant global";
   return "-";

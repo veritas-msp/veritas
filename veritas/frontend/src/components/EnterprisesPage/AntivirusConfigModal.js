@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
+import { UiKitButton } from "../UiKit";
 import { fetchSettings } from "../../api/settings";
 import { createClientBitdefenderTenant, fetchBitdefenderCompanies, getGlobalBitdefenderStatus, listClientBitdefenderTenants, syncBitdefenderCompany, testBitdefenderCredentials, testClientBitdefenderTenant } from "../../api/clientBitdefender";
 import { showError, showSuccess } from "../../utils/toast";
@@ -20,9 +20,10 @@ import { getAntivirusProvider, getAntivirusProviderOptions, inferProviderIdFromS
 import { removeAntivirusSolution, formatAntivirusSolutionSummary, formatAntivirusSyncPayload, fetchFullAntivirusSyncExtra, createAntivirusSolutionId } from "./antivirusSolutionUtils";
 import formStyles from "./EnterpriseFormModal.module.css";
 import avStyles from "./AntivirusConfigModal.module.css";
+import pickerStyles from "../EquipementPage/EquipmentAddFlowModal.module.css";
 import BitdefenderApiGuide from "./integrationGuides/BitdefenderApiGuide";
-import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
 import SolutionProviderIcon from "./SolutionProviderIcon";
+import SolutionTenantChoiceModal from "./SolutionTenantChoiceModal";
 const SOLUTION_NAME = "GravityZone BitDefender";
 export default function AntivirusConfigModal({
   client,
@@ -73,25 +74,31 @@ export default function AntivirusConfigModal({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editingSolution, setEditingSolution] = useState(null);
   const [solutionTenantMode, setSolutionTenantMode] = useState(null);
+  const [tenantChoiceOpen, setTenantChoiceOpen] = useState(false);
   const solutions = useMemo(() => {
     const list = modulesData?.equipements?.Antivirus?.solutions;
     return Array.isArray(list) ? list : [];
   }, [modulesData]);
-  const antivirusProviders = useMemo(() => getAntivirusProviderOptions(), []);
+  const antivirusProviders = useMemo(() => {
+    const list = getAntivirusProviderOptions();
+    const rank = provider => {
+      if (provider.isManual) return 2;
+      if (provider.status === "comingSoon") return 3;
+      if (
+        resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+          bitdefender: globalBitdefenderConfigured
+        })
+      ) {
+        return 0;
+      }
+      return 1;
+    };
+    return [...list].sort((a, b) => rank(a) - rank(b) || String(a.label).localeCompare(String(b.label)));
+  }, [integrationSettings, globalBitdefenderConfigured]);
   const selectedGlobalConfigured = useMemo(() => resolveProviderGlobalConfigured(selectedProviderId, integrationSettings, {
     bitdefender: globalBitdefenderConfigured
   }), [selectedProviderId, integrationSettings, globalBitdefenderConfigured]);
   const selectedProvider = useMemo(() => getAntivirusProvider(selectedProviderId), [selectedProviderId]);
-  const visibleTenantMode = useMemo(() => {
-    if (activeSection === "reseller") return "reseller";
-    if (activeSection === "dedicated" || activeSection === "guide") return "dedicated";
-    return null;
-  }, [activeSection]);
-  const navSections = useMemo(() => copy.navSections({
-    selectedProviderId,
-    globalConfigured: selectedGlobalConfigured,
-    visibleTenantMode
-  }), [copy, selectedProviderId, selectedGlobalConfigured, visibleTenantMode]);
   const filteredCompanies = useMemo(() => {
     const q = companySearch.trim().toLowerCase();
     const list = q ? companies.filter(c => (c.name || "").toLowerCase().includes(q) || String(c.id || "").toLowerCase().includes(q)) : companies;
@@ -131,18 +138,6 @@ export default function AntivirusConfigModal({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  const sectionBadges = useMemo(() => {
-    const hasReseller = solutions.some(s => (s.providerId === "bitdefender" || !s.providerId) && (s.mappingMode || "reseller") === "reseller" && s.companyId);
-    const hasDedicated = solutions.some(s => (s.providerId === "bitdefender" || !s.providerId) && s.mappingMode === "dedicated" && s.companyId);
-    const hasManual = solutions.some(s => s.providerId === "manual" || s.mappingMode === "manual" || !s.companyId && s.solution);
-    return {
-      overview: solutions.length > 0,
-      solution: Boolean(selectedProviderId),
-      reseller: hasReseller,
-      dedicated: hasDedicated || dedicatedTenants.length > 0,
-      manual: hasManual
-    };
-  }, [solutions, dedicatedTenants, selectedProviderId]);
   const loadData = useCallback(async () => {
     if (!client?.id) return;
     setLoading(true);
@@ -246,11 +241,14 @@ export default function AntivirusConfigModal({
     }
     setEditingSolution(null);
     setSolutionTenantMode(null);
-    setActiveSection(initialSection);
-    if (initialSection === "reseller" || initialSection === "dedicated") {
+    const nextSection = !initialSection || initialSection === "overview" ? "solution" : initialSection;
+    setActiveSection(nextSection);
+    if (nextSection === "reseller" || nextSection === "dedicated") {
       setSelectedProviderId("bitdefender");
-    } else if (initialSection === "manual") {
+    } else if (nextSection === "manual") {
       setSelectedProviderId("manual");
+    } else {
+      setSelectedProviderId(null);
     }
   }, [initialSection, initialEditingSolution, client?.id, startEditingSolution]);
   useEffect(() => {
@@ -417,7 +415,7 @@ export default function AntivirusConfigModal({
       setEditingSolution(null);
       await loadData();
       await onSaved?.();
-      setActiveSection("overview");
+      onClose?.();
     } catch (error) {
       console.error(error);
       showError(error.message || copy.toasts.saveError);
@@ -448,6 +446,18 @@ export default function AntivirusConfigModal({
       setDeletingSolutionKey(null);
     }
   };
+  const isProviderSelectable = provider => {
+    if (!provider) return false;
+    if (provider.status === "comingSoon") return false;
+    if (isIntegrationProLocked(provider.catalogIntegration, isCommunity)) return false;
+    if (provider.isManual) return true;
+    const configured = resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+      bitdefender: globalBitdefenderConfigured
+    });
+    if (configured) return true;
+    // Tenant dédié possible sans intégration globale
+    return provider.id === "bitdefender";
+  };
   const handleSelectProvider = provider => {
     if (provider.status === "comingSoon") {
       showError(copy.formatProviderComingSoonToast(provider.label));
@@ -457,13 +467,24 @@ export default function AntivirusConfigModal({
       notifyProFeature(provider.label || copy.toasts.proFeatureFallback);
       return;
     }
+    if (!isProviderSelectable(provider)) {
+      showError(copy.solutionPicker?.notConfiguredToast || "Activez cette intégration en Administration → Intégrations.");
+      return;
+    }
     setSelectedProviderId(provider.id);
     if (provider.isManual) {
+      setTenantChoiceOpen(false);
       setActiveSection("manual");
       return;
     }
     setSolutionTenantMode(null);
     setActiveSection("solution");
+    setTenantChoiceOpen(true);
+  };
+  const handleChooseTenantMode = mode => {
+    setSolutionTenantMode(mode);
+    setTenantChoiceOpen(false);
+    setActiveSection(mode === "dedicated" ? "dedicated" : "reseller");
   };
   const handleReconfigureSolution = solution => {
     startEditingSolution(solution);
@@ -526,7 +547,7 @@ export default function AntivirusConfigModal({
       setEditingSolution(null);
       await loadData();
       await onSaved?.();
-      setActiveSection("overview");
+      onClose?.();
     } catch (error) {
       showError(error.message || copy.toasts.saveError);
     } finally {
@@ -534,84 +555,85 @@ export default function AntivirusConfigModal({
     }
   };
   const renderSolutionPicker = () => <>
+      <div className={avStyles.solutionChoiceStage}>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.solutionPicker.title}</h3>
         <p className={formStyles.sectionDesc}>{copy.solutionPicker.description}</p>
       </div>
 
-      <div className={avStyles.providerList}>
-        {antivirusProviders.map(provider => {
-        const isSelected = selectedProviderId === provider.id;
-        const isComingSoon = provider.status === "comingSoon";
-        const proLocked = isIntegrationProLocked(provider.catalogIntegration, isCommunity);
-        const globalAvailable = !provider.isManual && resolveProviderGlobalConfigured(provider.id, integrationSettings, {
-          bitdefender: globalBitdefenderConfigured
-        });
-        return <button key={provider.id} type="button" className={`${avStyles.providerCard} ${isSelected ? avStyles.providerCardSelected : ""} ${isComingSoon || proLocked ? avStyles.providerCardDisabled : ""}`} onClick={() => handleSelectProvider(provider)} disabled={isComingSoon} title={provider.description}>
-              <span className={avStyles.providerCardIcon} style={integrationIconStyle(provider.iconColor)} aria-hidden>
-                {provider.image ? <img src={getIconPath(provider.image)} alt="" /> : <Icon icon={provider.icon} />}
+      <div
+        className={`${pickerStyles.categoryGrid} ${avStyles.solutionChoiceGrid}`}
+        role="listbox"
+        aria-label={copy.solutionPicker.title}
+      >
+        {antivirusProviders.map((provider, index) => {
+          const isSelected = selectedProviderId === provider.id;
+          const isComingSoon = provider.status === "comingSoon";
+          const proLocked = isIntegrationProLocked(provider.catalogIntegration, isCommunity);
+          const globalAvailable =
+            !provider.isManual &&
+            resolveProviderGlobalConfigured(provider.id, integrationSettings, {
+              bitdefender: globalBitdefenderConfigured
+            });
+          const selectable = isProviderSelectable(provider);
+          const disabled = !selectable;
+          const badgeLabel = isComingSoon
+            ? copy.badges.soon
+            : proLocked
+              ? copy.badges.pro
+              : globalAvailable
+                ? copy.badges.global
+                : !selectable && !provider.isManual
+                  ? copy.badges?.notConfigured || "Non paramétré"
+                  : null;
+          const badgeClass = globalAvailable && !isComingSoon && !proLocked
+            ? avStyles.solutionChoiceBadgeGlobal
+            : avStyles.solutionChoiceBadgeSoon;
+          return (
+            <button
+              key={provider.id}
+              type="button"
+              role="option"
+              className={`${pickerStyles.categoryTile} ${isSelected ? pickerStyles.categoryTileActive : ""}`}
+              style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}
+              onClick={() => handleSelectProvider(provider)}
+              disabled={disabled}
+              title={
+                disabled
+                  ? copy.solutionPicker?.notConfiguredHint || provider.description
+                  : provider.description
+              }
+              aria-disabled={disabled}
+              aria-selected={isSelected}
+              aria-pressed={isSelected}
+            >
+              {isSelected ? (
+                <Icon icon="mdi:check-circle" className={pickerStyles.categoryCheck} aria-hidden />
+              ) : null}
+              {badgeLabel ? (
+                <span className={`${avStyles.solutionChoiceBadge} ${badgeClass}`}>{badgeLabel}</span>
+              ) : null}
+              <span
+                className={pickerStyles.categoryIconWrap}
+                style={integrationIconStyle(provider.iconColor)}
+                aria-hidden
+              >
+                {provider.image ? (
+                  <img src={getIconPath(provider.image)} alt="" className={avStyles.solutionChoiceIcon} />
+                ) : (
+                  <Icon icon={provider.icon} className={avStyles.solutionChoiceIcon} />
+                )}
               </span>
-              <span className={avStyles.providerCardLabel}>{provider.label}</span>
-              {isComingSoon || proLocked || globalAvailable ? <span className={avStyles.providerCardBadges}>
-                  {isComingSoon ? <span className={avStyles.providerBadgeSoon}>{copy.badges.soon}</span> : null}
-                  {proLocked ? <span className={avStyles.providerBadgeSoon}>{copy.badges.pro}</span> : null}
-                  {globalAvailable ? <span className={avStyles.providerBadgeGlobal}>{copy.badges.global}</span> : null}
-                </span> : null}
-            </button>;
-      })}
+              <span className={pickerStyles.categoryLabel}>{provider.label}</span>
+            </button>
+          );
+        })}
       </div>
-
-      {selectedProvider && !selectedProvider.isManual && selectedProvider.status === "available" && selectedProviderId === "bitdefender" ? <>
-          <div className={formStyles.contentDivider} />
-          <div className={formStyles.sectionHead}>
-            <h3 className={formStyles.sectionTitle}>
-              {copy.formatConnectionTitle(selectedProvider.label)}
-            </h3>
-            <p className={formStyles.sectionDesc}>
-              {selectedGlobalConfigured ? copy.solutionPicker.globalIntegrationDetected : copy.solutionPicker.noGlobalIntegration}
-            </p>
-          </div>
-          <div className={avStyles.modeGrid}>
-            {(!solutionTenantMode || solutionTenantMode === "reseller") && <button type="button" className={`${avStyles.modeCard} ${!selectedGlobalConfigured ? avStyles.modeCardDisabled : ""} ${solutionTenantMode === "reseller" ? avStyles.modeCardActive : ""}`} onClick={() => {
-          if (!selectedGlobalConfigured) return;
-          setSolutionTenantMode("reseller");
-          setActiveSection("reseller");
-        }} disabled={!selectedGlobalConfigured}>
-              <span className={avStyles.modeCardIcon} aria-hidden>
-                <Icon icon="mdi:store-cog-outline" />
-              </span>
-              <span className={avStyles.modeCardTitle}>{copy.solutionPicker.modeGlobal.title}</span>
-              <span className={avStyles.modeCardDesc}>
-                {selectedGlobalConfigured ? copy.solutionPicker.modeGlobal.descConfigured : copy.solutionPicker.modeGlobal.descNotConfigured}
-              </span>
-              <span className={avStyles.modeCardAction}>
-                {selectedGlobalConfigured ? copy.solutionPicker.modeGlobal.actionConfigured : copy.solutionPicker.modeGlobal.actionNotConfigured}
-                <Icon icon="mdi:chevron-right" aria-hidden />
-              </span>
-            </button>}
-            {(!solutionTenantMode || solutionTenantMode === "dedicated") && <button type="button" className={`${avStyles.modeCard} ${solutionTenantMode === "dedicated" ? avStyles.modeCardActive : ""}`} onClick={() => {
-          setSolutionTenantMode("dedicated");
-          setActiveSection("dedicated");
-        }}>
-              <span className={avStyles.modeCardIcon} aria-hidden>
-                <Icon icon="mdi:shield-key-outline" />
-              </span>
-              <span className={avStyles.modeCardTitle}>{copy.solutionPicker.modeDedicated.title}</span>
-              <span className={avStyles.modeCardDesc}>
-                {copy.solutionPicker.modeDedicated.description}
-              </span>
-              <span className={avStyles.modeCardAction}>
-                {copy.solutionPicker.modeDedicated.action}
-                <Icon icon="mdi:chevron-right" aria-hidden />
-              </span>
-            </button>}
-          </div>
-        </> : null}
+      </div>
     </>;
   const renderManual = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.manual.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.manual.description}</p>
       </div>
       <div className={formStyles.field}>
         <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="manual-solution-name">
@@ -655,7 +677,6 @@ export default function AntivirusConfigModal({
   const renderOverview = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.overview.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.overview.description}</p>
       </div>
 
       {solutions.length === 0 ? (
@@ -760,67 +781,111 @@ export default function AntivirusConfigModal({
   const renderReseller = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.reseller.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.reseller.description}</p>
       </div>
       {!selectedGlobalConfigured ? <div className={avStyles.emptyState}>
           {copy.formatResellerNotConfigured(selectedProvider?.label)}
         </div> : renderCompanyPicker()}
     </>;
-  const renderDedicated = () => <>
+  const renderDedicated = () => (
+    <div className={avStyles.dedicatedPanel}>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.dedicated.title}</h3>
-        <p className={formStyles.sectionDesc}>{copy.dedicated.description}</p>
       </div>
 
-      {dedicatedTenants.length > 0 && !creatingDedicatedTenant && <div className={formStyles.field}>
+      {dedicatedTenants.length > 0 && !creatingDedicatedTenant ? (
+        <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="dedicated-tenant-select">
             {copy.dedicated.existingTenant}
           </label>
-          <select id="dedicated-tenant-select" className={avStyles.select} value={selectedDedicatedTenantId || ""} onChange={e => handleDedicatedTenantSelect(e.target.value)}>
+          <select
+            id="dedicated-tenant-select"
+            className={avStyles.select}
+            value={selectedDedicatedTenantId || ""}
+            onChange={e => handleDedicatedTenantSelect(e.target.value)}
+          >
             <option value="">{copy.dedicated.selectPlaceholder}</option>
-            {dedicatedTenants.map(t => <option key={t.id} value={t.id}>
+            {dedicatedTenants.map(t => (
+              <option key={t.id} value={t.id}>
                 {t.apiUrl || copy.formatDedicatedTenantLabel(t.id)}
-              </option>)}
+              </option>
+            ))}
             <option value="new">{copy.dedicated.newTenant}</option>
           </select>
-        </div>}
+        </div>
+      ) : null}
 
-      {(creatingDedicatedTenant || dedicatedTenants.length === 0) && <form className={avStyles.dedicatedTenantForm} autoComplete="off" onSubmit={e => e.preventDefault()}>
+      {creatingDedicatedTenant || dedicatedTenants.length === 0 ? (
+        <form
+          className={avStyles.dedicatedTenantForm}
+          autoComplete="off"
+          onSubmit={e => e.preventDefault()}
+        >
           <div className={formStyles.field}>
             <label className={formStyles.label} htmlFor="tenant-api-url">
               {copy.dedicated.apiUrl}
             </label>
-            <input id="tenant-api-url" name="bitdefender-tenant-api-url" type="text" inputMode="url" className={formStyles.input} value={dedicatedForm.apiUrl} onChange={e => setDedicatedForm({
-          ...dedicatedForm,
-          apiUrl: e.target.value
-        })} placeholder={copy.dedicated.apiUrlPlaceholder} autoComplete="off" data-lpignore="true" data-1p-ignore />
+            <input
+              id="tenant-api-url"
+              name="bitdefender-tenant-api-url"
+              type="text"
+              inputMode="url"
+              className={formStyles.input}
+              value={dedicatedForm.apiUrl}
+              onChange={e =>
+                setDedicatedForm({
+                  ...dedicatedForm,
+                  apiUrl: e.target.value
+                })
+              }
+              placeholder={copy.dedicated.apiUrlPlaceholder}
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore
+            />
           </div>
           <div className={formStyles.field}>
             <label className={formStyles.label} htmlFor="tenant-api-key">
               {copy.dedicated.apiKey}
             </label>
-            <input id="tenant-api-key" name="bitdefender-tenant-api-key" type="password" className={formStyles.input} value={dedicatedForm.apiKey} onChange={e => setDedicatedForm({
-          ...dedicatedForm,
-          apiKey: e.target.value
-        })} placeholder={copy.dedicated.apiKeyPlaceholder} autoComplete="new-password" data-lpignore="true" data-1p-ignore />
-            <button type="button" className={integrationStyles.guideLinkBtn} onClick={() => setActiveSection("guide")}>
-              <Icon icon="mdi:help-circle-outline" aria-hidden />
-              {copy.dedicated.apiGuideLink}
-            </button>
+            <input
+              id="tenant-api-key"
+              name="bitdefender-tenant-api-key"
+              type="password"
+              className={formStyles.input}
+              value={dedicatedForm.apiKey}
+              onChange={e =>
+                setDedicatedForm({
+                  ...dedicatedForm,
+                  apiKey: e.target.value
+                })
+              }
+              placeholder={copy.dedicated.apiKeyPlaceholder}
+              autoComplete="new-password"
+              data-lpignore="true"
+              data-1p-ignore
+            />
           </div>
-        </form>}
+        </form>
+      ) : null}
 
-      {selectedDedicatedTenantId && !creatingDedicatedTenant && <>
+      {selectedDedicatedTenantId && !creatingDedicatedTenant ? (
+        <>
           <div className={formStyles.contentDivider} />
           {renderCompanyPicker()}
-        </>}
-    </>;
+        </>
+      ) : null}
+    </div>
+  );
   const renderSectionContent = () => {
     if (loading) {
-      return <div className={avStyles.loadingBlock}>
-          <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          {copy.loading}
-        </div>;
+      return (
+        <div className={avStyles.loadingBlock} role="status" aria-live="polite">
+          <span className={avStyles.loadingBlockIcon} aria-hidden>
+            <Icon icon="mdi:loading" className={formStyles.spinning} />
+          </span>
+          <p className={avStyles.loadingBlockText}>{copy.loading}</p>
+        </div>
+      );
     }
     if ((activeSection === "reseller" || activeSection === "dedicated") && selectedProviderId && selectedProviderId !== "bitdefender" && selectedProviderId !== "manual") {
       return <div className={avStyles.emptyState}>
@@ -828,8 +893,6 @@ export default function AntivirusConfigModal({
         </div>;
     }
     switch (activeSection) {
-      case "solution":
-        return renderSolutionPicker();
       case "manual":
         return renderManual();
       case "reseller":
@@ -838,8 +901,9 @@ export default function AntivirusConfigModal({
         return renderDedicated();
       case "guide":
         return <BitdefenderApiGuide dedicated />;
+      case "solution":
       default:
-        return renderOverview();
+        return renderSolutionPicker();
     }
   };
   const footerHint = useMemo(() => {
@@ -852,11 +916,8 @@ export default function AntivirusConfigModal({
     if (activeSection === "dedicated" && selectedCompany) {
       return copy.formatFooterSelection(selectedCompany.name);
     }
-    if (activeSection === "overview" && solutions.length > 0) {
-      return copy.formatFooterConfiguredCount(solutions.length);
-    }
     return "";
-  }, [activeSection, selectedCompany, solutions.length, selectedProvider, copy]);
+  }, [activeSection, selectedCompany, selectedProvider, copy]);
   const canSaveMapping = selectedProviderId === "bitdefender" && (activeSection === "reseller" && selectedGlobalConfigured && selectedCompany || activeSection === "dedicated" && selectedDedicatedTenantId && selectedCompany);
   const canSaveManual = activeSection === "manual";
   const manualNameFilled = Boolean((manualForm.solution || "").trim());
@@ -876,44 +937,24 @@ export default function AntivirusConfigModal({
               <h2 className={formStyles.title} id="antivirus-config-modal-title">
                 {copy.title}
               </h2>
-              <p className={formStyles.subtitle}>{client.name}</p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={syncing || saving} aria-label={common.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={formStyles.closeBtn}
+            onClick={onClose}
+            disabled={syncing || saving}
+            aria-label={common.close}
+            icon="mdi:close"
+          />
         </header>
 
-        <div className={formStyles.body}>
-          <nav className={formStyles.nav} aria-label={copy.navAria}>
-            {navSections.map(section => <button key={section.id} type="button" className={`${formStyles.navItem} ${activeSection === section.id ? formStyles.navItemActive : ""} ${section.disabled ? avStyles.navItemDisabled : ""}`} onClick={() => {
-              if (section.disabled) return;
-              if (section.id === "reseller" || section.id === "dedicated") {
-                if (!selectedProviderId || selectedProviderId === "manual") {
-                  setSelectedProviderId("bitdefender");
-                }
-                setSolutionTenantMode(section.id);
-              }
-              if (section.id === "solution") {
-                setSolutionTenantMode(null);
-              }
-              if (section.id === "manual") {
-                setSelectedProviderId("manual");
-              }
-              setActiveSection(section.id);
-            }} disabled={section.disabled} title={section.disabled ? copy.nav.disabledTitle : undefined} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={formStyles.navItemIcon} aria-hidden />
-                <span className={formStyles.navItemText}>
-                  <span className={formStyles.navItemLabel}>{section.label}</span>
-                  <span className={formStyles.navItemHint}>{section.description}</span>
-                </span>
-                {sectionBadges[section.id] ? <span className={formStyles.navBadge} aria-hidden>
-                    ✓
-                  </span> : null}
-              </button>)}
-          </nav>
-
-          <div className={formStyles.content}>{renderSectionContent()}</div>
+        <div className={formStyles.bodySingle}>
+          <div className={`${formStyles.content} ${activeSection === "solution" ? avStyles.contentScroll : ""}`}>
+            {renderSectionContent()}
+          </div>
         </div>
 
         <footer className={formStyles.footer}>
@@ -949,5 +990,26 @@ export default function AntivirusConfigModal({
       <ConfirmModal open={Boolean(deleteTarget)} title={configCopy.confirm.deleteConfiguration.title} message={deleteTarget ? interpolate(configCopy.confirm.deleteConfiguration.message, {
       label: formatAntivirusSolutionSummary(deleteTarget).label
     }) : ""} confirmLabel={common.delete} variant="danger" icon="mdi:delete-outline" loading={Boolean(deletingSolutionKey)} onClose={() => setDeleteTarget(null)} onConfirm={confirmDeleteSolution} />
+      <SolutionTenantChoiceModal
+        open={tenantChoiceOpen}
+        providerLabel={selectedProvider?.label || ""}
+        eyebrow={copy.eyebrow}
+        title={
+          selectedProvider?.label
+            ? copy.formatConnectionTitle(selectedProvider.label)
+            : copy.solutionPicker.connectionTitle
+        }
+        subtitle={
+          selectedGlobalConfigured
+            ? copy.solutionPicker.globalIntegrationDetected
+            : copy.solutionPicker.noGlobalIntegration
+        }
+        globalConfigured={selectedGlobalConfigured}
+        modeGlobal={copy.solutionPicker.modeGlobal}
+        modeDedicated={copy.solutionPicker.modeDedicated}
+        onChooseGlobal={() => handleChooseTenantMode("reseller")}
+        onChooseDedicated={() => handleChooseTenantMode("dedicated")}
+        onClose={() => setTenantChoiceOpen(false)}
+      />
     </>;
 }

@@ -590,7 +590,6 @@ export default function CustomEquipmentModal({
                     <h3 className={`${styles.sectionTitle} ${sectionIncomplete ? styles.navItemLabelRequired : ""}`}>
                       {activeSectionMeta?.label}
                     </h3>
-                    <p className={styles.sectionDesc}>{activeSectionMeta?.description}</p>
                   </div>
                   <div className={styles.sectionScroll}>
                     {activeSection === "identity" ? (

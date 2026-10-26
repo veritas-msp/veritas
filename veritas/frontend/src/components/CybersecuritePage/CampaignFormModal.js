@@ -269,14 +269,9 @@ export default function CampaignFormModal({
       sectionId === "general"
         ? modalCopy.sections?.general?.title || modalCopy.sectionTitle
         : modalCopy.sections?.dates?.title || modalCopy.startDate;
-    const desc =
-      sectionId === "general"
-        ? modalCopy.sections?.general?.desc || modalCopy.sectionDesc
-        : modalCopy.sections?.dates?.desc || "";
     return (
       <div className={`${styles.sectionHead} ${styles.sectionPinned}`}>
         <h3 className={styles.sectionTitle}>{title}</h3>
-        <p className={styles.sectionDesc}>{desc}</p>
       </div>
     );
   };
