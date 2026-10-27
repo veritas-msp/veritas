@@ -78,24 +78,22 @@
 }
 
 .sidebarNotesFill {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .sidebarNotesBodyFill {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
 }
 
 .sidebarNotesBodyFill > :global([class*="emptyState"]),
 .sidebarNotesBodyFill > :global(ul) {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
 }

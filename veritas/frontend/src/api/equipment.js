@@ -1069,7 +1069,9 @@ export const getEquipmentLogs = async (equipmentId, page = 1, limit = 10, option
       limit,
       equipment_id: options.dbId || undefined,
       search: options.search && String(options.search).trim() ? String(options.search).trim() : undefined,
-      category: options.category && String(options.category).trim() && options.category !== "all" ? String(options.category).trim() : undefined
+      category: options.category && String(options.category).trim() && options.category !== "all" ? String(options.category).trim() : undefined,
+      sortBy: options.sortBy || undefined,
+      sortDir: options.sortDir || undefined
     });
     const response = await fetch(logsUrl, {
       method: 'GET',

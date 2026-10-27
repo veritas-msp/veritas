@@ -242,8 +242,79 @@ const FIELD_LABELS = {
 };
 const SECTION_FIELDS = {
   billingInstallation: ["clientName", "location", "purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"],
-  technique: ["remoteAccessSolution", "licenceMaintenance", "autresLicenses", "firewallType", "routeurType", "toipType", "alimentationType", "typeServer", "computerType", "storageType", "manufacturer", "model", "serial", "firmware", "systeme", "editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "domaine", "processeur", "memoire", "stockage", "hypervisor", "hostServerName", "role", "quickConnect", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "luns", "numeroDisque", "modeHA", "roleHA", "firewallHAName", "serverHAName", "storageHAName", "manageable", "poeSupport", "empilage", "alimentationPoE", "nombreExtensions", "domaineSip", "capaciteVA", "capaciteW", "nbPrises", "dateBatterie"],
-  reseau: ["ip", "gateway", "vlan", "mac", "adresseMac", "stormshieldWanUrl", "adminUrl", "assignedSsids", "fournisseur", "internetType", "debit", "debitDownload", "debitUpload", "categorie", "numeroLigne", "referenceContrat", "supportTelephone", "dateMiseEnService", "boxModele"],
+  administrative: [
+    "name",
+    "netbios",
+    "computerType",
+    "typeServer",
+    "storageType",
+    "firewallType",
+    "routeurType",
+    "toipType",
+    "alimentationType",
+    "manufacturer",
+    "model",
+    "serial",
+    "remoteAccessSolution",
+    "licenceMaintenance",
+    "autresLicenses",
+    "role",
+    "manageable",
+    "quickConnect"
+  ],
+  technique: [
+    "firmware",
+    "systeme",
+    "editionWindows",
+    "windowsFeatureVersion",
+    "windowsBuild",
+    "windowsLicenseStatus",
+    "domaine",
+    "processeur",
+    "memoire",
+    "stockage",
+    "hypervisor",
+    "hostServerName",
+    "raid",
+    "capacite",
+    "nbDisquesActuels",
+    "nbDisquesMax",
+    "luns",
+    "numeroDisque",
+    "modeHA",
+    "roleHA",
+    "firewallHAName",
+    "serverHAName",
+    "storageHAName",
+    "poeSupport",
+    "empilage",
+    "alimentationPoE",
+    "nombreExtensions",
+    "domaineSip",
+    "capaciteVA",
+    "capaciteW",
+    "nbPrises",
+    "dateBatterie",
+    "ip",
+    "gateway",
+    "vlan",
+    "mac",
+    "adresseMac",
+    "stormshieldWanUrl",
+    "adminUrl",
+    "assignedSsids",
+    "fournisseur",
+    "internetType",
+    "debit",
+    "debitDownload",
+    "debitUpload",
+    "categorie",
+    "numeroLigne",
+    "referenceContrat",
+    "supportTelephone",
+    "dateMiseEnService",
+    "boxModele"
+  ],
   notes: ["commentaire"]
 };
 const BILLING_ALWAYS_VISIBLE_FIELDS = new Set(["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"]);
@@ -333,10 +404,30 @@ function customFamilyCoversUnifiedKey(customFamily, unifiedKey) {
   });
 }
 const UNIFIED_DETAIL_SECTIONS = [
-  { id: "billingInstallation", label: "Facturation et installation", icon: "mdi:file-document-outline", description: "Client, site, achat et installation" },
-  { id: "technique", label: "Technique", icon: "mdi:cog-outline", description: "Prise en main, caracteristiques techniques et systeme" },
-  { id: "reseau", label: "Reseau", icon: "mdi:lan", description: "Adressage, acces et connectivite" },
-  { id: "notes", label: "Notes", icon: "mdi:note-text-outline", description: "Commentaires et informations utiles" }
+  {
+    id: "billingInstallation",
+    label: "Facturation et installation",
+    icon: "mdi:file-document-outline",
+    description: "Client, site, achat et installation"
+  },
+  {
+    id: "administrative",
+    label: "Info administrative",
+    icon: "mdi:badge-account-horizontal-outline",
+    description: "Identité, type, fabricant et licences"
+  },
+  {
+    id: "technique",
+    label: "Information technique",
+    icon: "mdi:cog-outline",
+    description: "Système, réseau et caractéristiques techniques"
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    icon: "mdi:note-text-outline",
+    description: "Commentaires et informations utiles"
+  }
 ];
 const ORDINATEUR_SECTIONS = [{
   id: "identity",
@@ -652,7 +743,7 @@ function buildSectionFields(sectionId, formData, equipment, fieldKeys, locale) {
       key: fieldKey,
       label,
       value,
-      mono: ["ip", "vlan", "mac", "adresseMac", "serial", "gateway", "adminUrl", "stormshieldWanUrl", "quickConnect", "windowsBuild", "netbios"].includes(fieldKey),
+      mono: ["mac", "adresseMac", "serial", "gateway", "adminUrl", "stormshieldWanUrl", "quickConnect", "windowsBuild", "netbios"].includes(fieldKey),
       source: resolveFieldSource(fieldKey, formData, equipment)
     });
   });

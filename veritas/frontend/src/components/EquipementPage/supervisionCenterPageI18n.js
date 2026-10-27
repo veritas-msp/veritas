@@ -265,8 +265,10 @@ const SUPERVISION_COPY = {
         }
       },
       maintenanceModal: {
+        eyebrow: "Maintenance",
         title: "Mettre en maintenance",
         subtitle: "Suspend les alertes et masque le périphérique du centre de supervision.",
+        hint: "Choisissez une durée, puis précisez le motif. Les alertes restent suspendues jusqu’à la fin de la période.",
         scope: "Portée",
         scopeService: "Ce service uniquement",
         scopeDevice: "Tous les services de ce périphérique",
@@ -285,8 +287,9 @@ const SUPERVISION_COPY = {
         forever: "Indéterminée",
         untilLabel: "Jusqu’à",
         untilInvalid: "Choisissez une date/heure dans le futur",
-        reason: "Motif (obligatoire)",
+        reason: "Motif",
         reasonPlaceholder: "Maintenance serveur planifiée par le client…",
+        footerHint: "Les champs marqués * sont obligatoires",
         cancel: "Annuler",
         confirm: "Mettre en maintenance",
         working: "En cours…"
@@ -925,8 +928,10 @@ const SUPERVISION_COPY = {
         }
       },
       maintenanceModal: {
+        eyebrow: "Maintenance",
         title: "Put in maintenance",
         subtitle: "Suspends alerts and hides the device from the supervision center.",
+        hint: "Pick a duration, then add a reason. Alerts stay suspended until the period ends.",
         scope: "Scope",
         scopeService: "This service only",
         scopeDevice: "All services on this device",
@@ -945,8 +950,9 @@ const SUPERVISION_COPY = {
         forever: "Indefinite",
         untilLabel: "Until",
         untilInvalid: "Pick a future date/time",
-        reason: "Reason (required)",
+        reason: "Reason",
         reasonPlaceholder: "Scheduled client maintenance…",
+        footerHint: "Fields marked * are required",
         cancel: "Cancel",
         confirm: "Put in maintenance",
         working: "Working…"

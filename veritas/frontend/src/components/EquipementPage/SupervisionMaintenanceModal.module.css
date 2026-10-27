@@ -1,0 +1,160 @@
+.shell {
+  width: min(520px, calc(100% - 2rem));
+  height: auto;
+  max-height: min(90vh, 760px);
+}
+
+.content {
+  flex: 0 1 auto !important;
+  overflow: auto;
+  padding-bottom: 1.1rem;
+}
+
+.content > div {
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+}
+
+.fade {
+  display: flex;
+  flex-direction: column;
+  gap: 1.05rem;
+  animation: maintFadeUp 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes maintFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hint {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #f59e0b 22%, transparent);
+  background: color-mix(in srgb, #f59e0b 10%, var(--msp-surface, #fff));
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.chipGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2.35rem;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--msp-border, #d7e0ec);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 40%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 6%, var(--msp-surface, #fff));
+}
+
+.chipActive {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, var(--msp-surface, #fff));
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+}
+
+.chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.radioList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--msp-border, #d7e0ec);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.radioRow:hover {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
+}
+
+.radioRowActive {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 50%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, var(--msp-surface, #fff));
+}
+
+.radioRow input {
+  accent-color: var(--msp-accent, #2b5fab);
+}
+
+.fieldError {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: #b42318;
+}
+
+.textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+:global(html.dark) .hint,
+:global(body.dark) .hint {
+  border-color: color-mix(in srgb, #fbbf24 28%, transparent);
+  background: color-mix(in srgb, #fbbf24 12%, var(--msp-surface, #1a2540));
+}
+
+:global(html.dark) .chip,
+:global(body.dark) .chip,
+:global(html.dark) .radioRow,
+:global(body.dark) .radioRow {
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 88%, #0b1220);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+@media (max-width: 520px) {
+  .chipGrid {
+    grid-template-columns: 1fr;
+  }
+}

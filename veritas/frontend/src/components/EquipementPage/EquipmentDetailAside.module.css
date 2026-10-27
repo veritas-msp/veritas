@@ -1,5 +1,20 @@
 /* Keep only deltas needed on top of EnterpriseDetailPage sidebar classes */
 
+.moreMenuWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 2.1rem;
+}
+
+.moreMenuPortal {
+  top: auto;
+  right: auto;
+  left: auto;
+}
+
 .asideStackFill {
   height: 100%;
   min-height: 0;
@@ -7,21 +22,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.quickActionsCardFill {
-  flex: 1 1 0 !important;
-  min-height: 0 !important;
-  height: 100%;
-  overflow: auto;
-  overscroll-behavior: contain;
-  display: flex;
-  flex-direction: column;
-}
-
-.quickActionsListFill {
-  flex: 1 1 0;
-  min-height: 0;
 }
 
 .asidePanelFill {
@@ -48,27 +48,24 @@
 }
 
 .notesFill {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .notesFill > :global([class*="sidebarNotesSection"]),
 .notesFill > :global(section) {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .notesFill :global([class*="sidebarBody"]) {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
 }
 
 .assocStatic {
@@ -104,4 +101,182 @@
 .assocStatus_down {
   background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
+}
+
+.assocMappingBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.assocMappingBtn :global(svg) {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.assocMappingBtn:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
+}
+
+.assocEmpty {
+  margin: 0;
+  padding: 0.35rem 0 0.15rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+:global(html.dark) .assocMappingBtn,
+:global(body.dark) .assocMappingBtn {
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 92%, #0b1220);
+  border-color: var(--msp-border, #2a3a55);
+  color: #7dd3fc;
+}
+
+.maintenanceSection {
+  border-left: 3px solid #f59e0b;
+  background: color-mix(in srgb, #f59e0b 6%, var(--msp-surface, #fff));
+}
+
+.maintenanceHeader {
+  align-items: center;
+  height: auto;
+  min-height: 2.6rem;
+  padding: 0.55rem 1rem;
+  box-sizing: border-box;
+}
+
+.maintenanceHeaderMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.maintenanceSectionIcon {
+  color: #d97706 !important;
+}
+
+.maintenanceBody {
+  padding: 0.75rem 1rem 1rem;
+}
+
+.maintenanceBody :global([class*="sidebarInfoFields"]) {
+  gap: 0.85rem;
+}
+
+.maintenanceBody :global([class*="sidebarInfoField"]) {
+  gap: 0.3rem;
+}
+
+.maintenanceUntilValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.maintenanceUntilIcon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.maintenanceEndBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, var(--msp-border-light, #e2e8f0));
+  border-radius: 7px;
+  background: color-mix(in srgb, #f59e0b 12%, transparent);
+  color: #b45309;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.maintenanceEndBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, #f59e0b 20%, transparent);
+}
+
+.maintenanceEndBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+:global(html.dark) .maintenanceSection,
+:global(body.dark) .maintenanceSection {
+  background: color-mix(in srgb, #f59e0b 10%, var(--msp-surface, #1a2540));
+}
+
+:global(html.dark) .maintenanceSectionIcon,
+:global(body.dark) .maintenanceSectionIcon {
+  color: #fbbf24 !important;
+}
+
+:global(html.dark) .maintenanceEndBtn,
+:global(body.dark) .maintenanceEndBtn {
+  border-color: color-mix(in srgb, #fbbf24 35%, var(--msp-border, #2a3a55));
+  background: color-mix(in srgb, #fbbf24 14%, transparent);
+  color: #fbbf24;
+}
+
+/* Alertes suspendues — orange (temporaire) / rouge (définitif) */
+.sidebarActionIconBtnWarning {
+  color: #ea580c !important;
+}
+
+.sidebarActionIconBtnWarning:hover:not(:disabled) {
+  background: rgba(234, 88, 12, 0.12);
+  color: #c2410c !important;
+}
+
+.sidebarActionIconBtnDanger {
+  color: #dc2626 !important;
+}
+
+.sidebarActionIconBtnDanger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c !important;
+}
+
+:global(html.dark) .sidebarActionIconBtnWarning,
+:global(body.dark) .sidebarActionIconBtnWarning {
+  color: #fb923c !important;
+}
+
+:global(html.dark) .sidebarActionIconBtnWarning:hover:not(:disabled),
+:global(body.dark) .sidebarActionIconBtnWarning:hover:not(:disabled) {
+  background: rgba(251, 146, 60, 0.16);
+  color: #fdba74 !important;
+}
+
+:global(html.dark) .sidebarActionIconBtnDanger,
+:global(body.dark) .sidebarActionIconBtnDanger {
+  color: #f87171 !important;
+}
+
+:global(html.dark) .sidebarActionIconBtnDanger:hover:not(:disabled),
+:global(body.dark) .sidebarActionIconBtnDanger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fca5a5 !important;
 }

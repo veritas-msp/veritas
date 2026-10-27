@@ -20,19 +20,25 @@ const DEBIT_FIELD_KEYS = new Set(["debit", "debitDownload", "debitUpload"]);
 /** Champs déjà couverts par la carte CPU/RAM/Stockage RMM — évite le doublon texte. */
 const RMM_RESOURCE_FIELD_KEYS = new Set(["processeur", "memoire", "stockage"]);
 const RMM_LIFECYCLE_FIELD_KEYS = new Set(["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"]);
-const RMM_IDENTITY_TECH_FIELD_KEYS = new Set([
+const RMM_ADMIN_FIELD_KEYS = new Set([
+  "name",
+  "netbios",
   "computerType",
+  "typeServer",
+  "storageType",
+  "firewallType",
+  "routeurType",
+  "toipType",
+  "alimentationType",
   "manufacturer",
   "model",
   "serial",
-  "systeme",
-  "editionWindows",
-  "windowsFeatureVersion",
-  "windowsBuild",
-  "windowsLicenseStatus",
-  "domaine",
-  "netbios",
-  "name"
+  "remoteAccessSolution",
+  "licenceMaintenance",
+  "autresLicenses",
+  "role",
+  "manageable",
+  "quickConnect"
 ]);
 function mergeInternetDisplaySections(sections) {
   const typeSection = sections.find(section => section.id === "internetType");
@@ -43,7 +49,7 @@ function mergeInternetDisplaySections(sections) {
     fields: [...typeSection.fields, ...section.fields]
   } : section);
 }
-/** Évite la carte Réseau isolée en bas : champs réseau rattachés à Technique. */
+/** Ancienne carte Réseau : fusionne encore les éventuels champs restants dans Technique. */
 function mergeReseauIntoTechnique(sections) {
   const reseauSection = sections.find(section => section.id === "reseau");
   const techniqueSection = sections.find(section => section.id === "technique");
@@ -155,11 +161,14 @@ function sectionMatchesFilter(sectionId, filter) {
   if (filter === "lifecycle") {
     return id === "rmm-lifecycle" || id === "billingInstallation";
   }
-  if (filter === "identity") {
-    return id === "rmm-identity" || id === "identity" || id === "technique";
+  if (filter === "identity" || filter === "administrative") {
+    return id === "rmm-administrative" || id === "rmm-identity" || id === "administrative" || id === "identity";
+  }
+  if (filter === "technique") {
+    return id === "rmm-technique" || id === "technique" || id === "reseau";
   }
   if (filter === "rest") {
-    return !["rmm-lifecycle", "rmm-identity", "billingInstallation", "identity", "technique", "notes"].includes(id);
+    return !["rmm-lifecycle", "rmm-administrative", "rmm-identity", "rmm-technique", "billingInstallation", "administrative", "identity", "technique", "reseau"].includes(id);
   }
   return true;
 }
@@ -374,10 +383,25 @@ export default function EquipmentDetailSpecsPanel({
   const rmmManagedComputer = equipment?.type === "Ordinateurs" && isRmmManagedEquipment(equipment);
   const rmmGroupedSections = useMemo(() => {
     if (!rmmManagedComputer) return [];
+    const preferredIds = ["billingInstallation", "administrative", "technique", "notes"];
+    const preferred = preferredIds
+      .map(id => sections.find(section => section.id === id))
+      .filter(section => section && (section.fields || []).length > 0);
+    if (preferred.length) {
+      const preferredSet = new Set(preferred.map(section => section.id));
+      const extras = sections.filter(section => {
+        const id = String(section.id || "");
+        if (preferredSet.has(id)) return false;
+        return id.startsWith("systemExtra") || id.startsWith("customSpecific");
+      });
+      return [...preferred, ...extras];
+    }
     const lifecycleFields = [];
-    const identityFields = [];
+    const adminFields = [];
+    const techFields = [];
     const seenLifecycle = new Set();
-    const seenIdentity = new Set();
+    const seenAdmin = new Set();
+    const seenTech = new Set();
     const otherSections = [];
     for (const section of sections) {
       const isCustom = String(section.id || "").startsWith("systemExtra") || String(section.id || "").startsWith("customSpecific");
@@ -385,7 +409,6 @@ export default function EquipmentDetailSpecsPanel({
         otherSections.push(section);
         continue;
       }
-      const remaining = [];
       for (const field of section.fields || []) {
         if (field.key === "location" || field.key === "clientName") continue;
         if (RMM_RESOURCE_FIELD_KEYS.has(field.key)) continue;
@@ -396,37 +419,42 @@ export default function EquipmentDetailSpecsPanel({
           }
           continue;
         }
-        if (RMM_IDENTITY_TECH_FIELD_KEYS.has(field.key) || section.id === "technique" || section.id === "reseau") {
-          if (!seenIdentity.has(field.key)) {
-            seenIdentity.add(field.key);
-            identityFields.push(field);
+        if (RMM_ADMIN_FIELD_KEYS.has(field.key)) {
+          if (!seenAdmin.has(field.key)) {
+            seenAdmin.add(field.key);
+            adminFields.push(field);
           }
           continue;
         }
-        remaining.push(field);
-      }
-      if (remaining.length) {
-        otherSections.push({
-          ...section,
-          fields: remaining
-        });
+        if (!seenTech.has(field.key)) {
+          seenTech.add(field.key);
+          techFields.push(field);
+        }
       }
     }
     const grouped = [];
     if (lifecycleFields.length) {
       grouped.push({
         id: "rmm-lifecycle",
-        label: copy.specs?.lifecycleTitle || (locale === "fr" ? "Facturation & installation" : "Billing & installation"),
+        label: copy.specs?.lifecycleTitle || (locale === "fr" ? "Facturation et installation" : "Billing and installation"),
         icon: "mdi:file-document-outline",
         fields: lifecycleFields
       });
     }
-    if (identityFields.length) {
+    if (adminFields.length) {
       grouped.push({
-        id: "rmm-identity",
-        label: copy.specs?.identityTitle || (locale === "fr" ? "Identité & système" : "Identity & system"),
-        icon: "mdi:laptop",
-        fields: identityFields
+        id: "rmm-administrative",
+        label: copy.specs?.administrativeTitle || copy.specs?.identityTitle || (locale === "fr" ? "Info administrative" : "Administrative info"),
+        icon: "mdi:badge-account-horizontal-outline",
+        fields: adminFields
+      });
+    }
+    if (techFields.length) {
+      grouped.push({
+        id: "rmm-technique",
+        label: copy.specs?.techniqueTitle || (locale === "fr" ? "Information technique" : "Technical information"),
+        icon: "mdi:cog-outline",
+        fields: techFields
       });
     }
     return [...grouped, ...otherSections];
@@ -523,7 +551,9 @@ export default function EquipmentDetailSpecsPanel({
         {cardsSource.map(section => {
         const isInternetLink = section.id === "internetLink";
         const hasDebitGauges = isInternetLink && (formData?.debitDownload || formData?.debitUpload || formData?.debit);
-        const showLocationMap = (section.id === "identity" || section.id === "billingInstallation") && showSiteVignette;
+        const showLocationMap =
+          (section.id === "identity" || section.id === "billingInstallation" || section.id === "rmm-lifecycle") &&
+          showSiteVignette;
         const visibleFields = (() => {
           let fields = hasDebitGauges ? (section.fields || []).filter(field => !DEBIT_FIELD_KEYS.has(field.key)) : (section.fields || []);
           if (showLocationMap) {

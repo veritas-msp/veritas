@@ -188,6 +188,18 @@ const EQUIPMENT_MODALS = {
         label: "Facturation et installation",
         description: "Achat, facture, installation et garantie"
       },
+      administrative: {
+        label: "Info administrative",
+        description: "Identité, type, fabricant et licences"
+      },
+      technique: {
+        label: "Information technique",
+        description: "Système, réseau et caractéristiques techniques"
+      },
+      reseau: {
+        label: "Réseau",
+        description: "Adressage, accès et connectivité"
+      },
       internetType: {
         label: "Type",
         description: "Technologie d'accès"
@@ -418,6 +430,18 @@ const EQUIPMENT_MODALS = {
       common: {
         label: "Billing and installation",
         description: "Purchase, invoice, installation and warranty"
+      },
+      administrative: {
+        label: "Administrative info",
+        description: "Identity, type, manufacturer and licenses"
+      },
+      technique: {
+        label: "Technical information",
+        description: "System, network and technical specs"
+      },
+      reseau: {
+        label: "Network",
+        description: "Addressing, access and connectivity"
       },
       internetType: {
         label: "Type",

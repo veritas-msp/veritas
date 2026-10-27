@@ -194,6 +194,13 @@ export const OVERVIEW_TAB_ANIMATED = {
   events: CalendarDaysIcon,
   vault: VaultIcon,
   logs: RefreshCCWIcon,
+  fiche: FileTextIcon,
+  documents: BookTextIcon,
+  synthese: ChartColumnIncreasingIcon,
+  rmm: LaptopMinimalCheckIcon,
+  operations: ShieldCheckIcon,
+  peripherals: TagIcon,
+  supervision: RadioIcon,
 };
 
 /** Actions rapides (sidebar fiche entreprise / portail contact) */
@@ -203,6 +210,7 @@ export const QUICK_ACTION_ANIMATED = {
   schedule: CalendarDaysIcon,
   subscribe: BellIcon,
   export: SquareArrowUpIcon,
+  more: EllipsisIcon,
   portalInvite: MessageSquareIcon,
   portalReset: VaultIcon,
   portalImpersonate: UsersIcon,

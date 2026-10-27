@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import { UiKitCrmListToolbar } from "../UiKit";
+import { UiKitCrmListToolbar, UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
+import ActivityStatusSegmented from "../shared/ActivityStatusSegmented/ActivityStatusSegmented";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
@@ -382,12 +383,70 @@ export default function PlanningPage({
   const [planningPreferencesLoaded, setPlanningPreferencesLoaded] = useState(false);
   const [agentFilterSearch, setAgentFilterSearch] = useState("");
   const [agentAddMode, setAgentAddMode] = useState(null);
+  const [sidebarSection, setSidebarSection] = useState("agents");
+  const [focusedAgentId, setFocusedAgentId] = useState(null);
+  const [focusedClientId, setFocusedClientId] = useState(null);
+  const [finderSecEnter, setFinderSecEnter] = useState(true);
+  const [mainContentEnter, setMainContentEnter] = useState(true);
   const [planningTeams, setPlanningTeams] = useState([]);
   const [loadingPlanningTeams, setLoadingPlanningTeams] = useState(false);
   const agentFilterAddRef = useRef(null);
   const [selectedClientsFilter, setSelectedClientsFilter] = useState(new Set());
   const [clientFilterSearch, setClientFilterSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const { trackRef: sidebarPrimaryTrackRef, indicator: sidebarPrimaryIndicator } = useFinderNavIndicator([
+    sidebarSection
+  ]);
+  const { trackRef: agentsTrackRef, indicator: agentsIndicator } = useFinderNavIndicator([
+    focusedAgentId,
+    sidebarSection,
+    pinnedAgentIds,
+    pinnedTeamIds,
+    selectedUsers
+  ]);
+  const { trackRef: clientsTrackRef, indicator: clientsIndicator } = useFinderNavIndicator([
+    focusedClientId,
+    sidebarSection,
+    selectedClientsFilter,
+    clientFilterSearch
+  ]);
+  const calendarViewKey = view === "month" ? `month-${monthsShown}` : view;
+  useLayoutEffect(() => {
+    setFinderSecEnter(false);
+  }, [sidebarSection]);
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setFinderSecEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [sidebarSection]);
+  useLayoutEffect(() => {
+    setMainContentEnter(false);
+  }, [calendarViewKey]);
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setMainContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [calendarViewKey]);
   useEffect(() => {
     if (!planningParams) return;
     const {
@@ -999,6 +1058,7 @@ export default function PlanningPage({
   const toggleUser = userId => {
     const newSelected = new Set(selectedUsers);
     const userIdStr = String(userId);
+    setFocusedAgentId(userIdStr);
     if (newSelected.has(userIdStr)) {
       newSelected.delete(userIdStr);
     } else {
@@ -1046,7 +1106,7 @@ export default function PlanningPage({
     }
   }, [planningPreferencesLoaded, pinnedTeamIds.length, planningTeams.length, loadingPlanningTeams, loadPlanningTeams]);
   const openAgentAddMode = mode => {
-    setAgentAddMode(prev => prev === mode ? null : mode);
+    setAgentAddMode(mode);
     setAgentFilterSearch("");
     if (mode === "team" && planningTeams.length === 0) {
       loadPlanningTeams();
@@ -1105,6 +1165,7 @@ export default function PlanningPage({
     const memberIds = (team?.memberUserIds || []).map(String).filter(Boolean);
     if (!memberIds.length) return;
     const allSelected = memberIds.every(id => selectedUsers.has(id));
+    setFocusedAgentId(`team:${String(team?.id || "")}`);
     setSelectedUsers(prev => {
       const next = new Set(prev);
       if (allSelected) {
@@ -1170,6 +1231,7 @@ export default function PlanningPage({
   const toggleClient = clientId => {
     const newSelected = new Set(selectedClientsFilter);
     const clientIdStr = String(clientId);
+    setFocusedClientId(clientIdStr);
     if (newSelected.has(clientIdStr)) {
       newSelected.delete(clientIdStr);
     } else {
@@ -1348,12 +1410,34 @@ export default function PlanningPage({
     if (action === "PREV") next.subtract(1, unit);else if (action === "NEXT") next.add(1, unit);
     setCurrentDate(next.toDate());
   };
+  const planningViewOptions = useMemo(() => [
+    { id: "day", label: planningCopy.toolbar.day },
+    { id: "week", label: planningCopy.toolbar.week },
+    { id: "month-1", label: planningCopy.formatMonthsButton(1) },
+    { id: "month-2", label: planningCopy.formatMonthsButton(2) },
+    { id: "month-3", label: planningCopy.formatMonthsButton(3) },
+    { id: "agenda", label: planningCopy.toolbar.agenda }
+  ], [planningCopy]);
+  const handlePlanningViewChange = useCallback(nextId => {
+    markSuppressSlotSelect(500);
+    setDaySlotAction(null);
+    if (nextId === "day" || nextId === "week" || nextId === "agenda") {
+      setView(nextId);
+      return;
+    }
+    const monthsMatch = /^month-([123])$/.exec(String(nextId || ""));
+    if (monthsMatch) {
+      setView("month");
+      setMonthsShown(Number(monthsMatch[1]));
+    }
+  }, [markSuppressSlotSelect]);
   const PlanningToolbar = toolbarProps => {
     const nav = toolbarProps?.onNavigate || handleNavigateMulti;
     const activeView = toolbarProps?.view ?? view;
     const activeDate = toolbarProps?.date ?? currentDate;
     const activeMonthsShown = activeView === "month" && view === "month" ? monthsShown : 1;
     const toolbarLabel = capitalizeLabel(planningCopy.formatToolbarLabel(activeView, activeDate, activeMonthsShown));
+    const segmentedValue = view === "month" ? `month-${monthsShown}` : view;
     return <div className={styles.planningToolbar}>
         <div className={styles.toolbarNav}>
           <button type="button" onClick={() => nav("PREV")} className={`${styles.toolbarBtn} ${styles.toolbarBtnIcon}`} aria-label={planningCopy.toolbar.prevPeriod}>
@@ -1368,30 +1452,12 @@ export default function PlanningPage({
           <button type="button" onClick={() => nav("TODAY")} className={styles.toolbarBtn}>
             {planningCopy.toolbar.today}
           </button>
-          <div className={styles.toolbarSegment} role="group" aria-label={planningCopy.toolbar.viewsAria || "Vues"}>
-            {["day", "week"].map(v => <button key={v} type="button" className={`${styles.toolbarSegBtn} ${view === v ? styles.toolbarSegBtnActive : ""}`} onClick={() => {
-            markSuppressSlotSelect(500);
-            setDaySlotAction(null);
-            setView(v);
-          }}>
-                {planningCopy.toolbar[v]}
-              </button>)}
-            {[1, 2, 3].map(n => <button key={n} type="button" className={`${styles.toolbarSegBtn} ${view === "month" && monthsShown === n ? styles.toolbarSegBtnActive : ""}`} onClick={() => {
-            markSuppressSlotSelect(500);
-            setDaySlotAction(null);
-            setView("month");
-            setMonthsShown(n);
-          }}>
-                {planningCopy.formatMonthsButton(n)}
-              </button>)}
-            <button type="button" className={`${styles.toolbarSegBtn} ${view === "agenda" ? styles.toolbarSegBtnActive : ""}`} onClick={() => {
-            markSuppressSlotSelect(500);
-            setDaySlotAction(null);
-            setView("agenda");
-          }}>
-              {planningCopy.toolbar.agenda}
-            </button>
-          </div>
+          <ActivityStatusSegmented
+            value={segmentedValue}
+            onChange={handlePlanningViewChange}
+            options={planningViewOptions}
+            ariaLabel={planningCopy.toolbar.viewsAria || "Vues"}
+          />
         </div>
       </div>;
   };
@@ -1919,12 +1985,18 @@ export default function PlanningPage({
   };
   const eventStyleGetter = planningEventStyleGetter;
   const planningTypes = eventFormCopy.planningTypes;
-  const renderFilterItem = (key, label, count, active, onClick, icon) => <button key={key} type="button" className={`${styles.filterItem} ${active ? styles.filterItemActive : ""} ${count === 0 ? styles.filterItemDisabled : ""}`} onClick={onClick} disabled={count === 0}>
-      <span className={styles.filterItemMain}>
-        <span className={styles.filterItemCount}>{count}</span>
-        {icon ? <Icon icon={icon} className={styles.filterItemIcon} aria-hidden /> : null}
-        <span className={styles.filterItemLabel}>{label}</span>
-      </span>
+  const renderFilterItem = (key, label, count, active, onClick, icon, focused = false) => <button
+      key={key}
+      type="button"
+      className={`${finderKit.finderSecItem} ${styles.planningSecItem} ${active ? `${finderKit.finderSecItemActive} ${styles.planningSecItemActive}` : ""} ${count === 0 ? styles.filterItemDisabled : ""}`}
+      onClick={onClick}
+      disabled={count === 0}
+      aria-pressed={active}
+      aria-current={focused ? "true" : undefined}
+    >
+      {icon ? <Icon icon={icon} className={finderKit.finderSecItemIcon} aria-hidden /> : null}
+      <span className={finderKit.finderSecItemLabel}>{label}</span>
+      <span className={`${styles.filterItemCount} ${styles.planningSecCount}`}>{count}</span>
     </button>;
   const renderAgentFilterRow = (userItem, {
     nested = false,
@@ -1935,20 +2007,27 @@ export default function PlanningPage({
     const userName = userItem.name || userItem.nom || userItem.username || planningCopy.defaults.user;
     const active = selectedUsers.has(userIdStr);
     const isMe = String(userItem.id) === String(user?.id);
+    const focused = focusedAgentId === userIdStr;
     return <div key={userItem.id} className={`${styles.agentFilterRow} ${nested ? styles.agentFilterRowNested : ""} ${active ? styles.agentFilterRowActive : ""}`}>
-        <button type="button" className={styles.agentFilterToggle} onClick={() => toggleUser(userItem.id)} aria-pressed={active} title={active ? planningCopy.formatHideAgentPlanning(userName) : planningCopy.formatShowAgentPlanning(userName)}>
+        <button
+          type="button"
+          className={`${finderKit.finderSecItem} ${styles.planningSecItem} ${styles.agentFilterToggle} ${active ? `${finderKit.finderSecItemActive} ${styles.planningSecItemActive}` : ""}`}
+          onClick={() => toggleUser(userItem.id)}
+          aria-pressed={active}
+          aria-current={focused ? "true" : undefined}
+          title={active ? planningCopy.formatHideAgentPlanning(userName) : planningCopy.formatShowAgentPlanning(userName)}
+        >
           <span className={`${styles.agentFilterCheck} ${active ? styles.agentFilterCheckActive : ""}`} aria-hidden>
             {active ? <Icon icon="mdi:check" /> : null}
           </span>
           <span className={styles.agentColorDot} style={{
           backgroundColor: getAgentColor(userItem.id)
         }} aria-hidden />
-          <span className={styles.filterItemCount}>{count}</span>
-          <Icon icon="mdi:account-outline" className={styles.filterItemIcon} aria-hidden />
-          <span className={styles.filterItemLabel}>
+          <span className={finderKit.finderSecItemLabel}>
             {userName}
             {isMe ? ` ${planningCopy.filters.meSuffix}` : ""}
           </span>
+          <span className={`${styles.filterItemCount} ${styles.planningSecCount}`}>{count}</span>
         </button>
         {removable ? <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedAgent(userItem.id)} aria-label={planningCopy.formatRemoveAgentFromList(userName)} title={planningCopy.filters.removeFromList}>
           <Icon icon="mdi:close" width={14} height={14} aria-hidden />
@@ -1963,9 +2042,18 @@ export default function PlanningPage({
     const partialSelected = selectedCount > 0 && !allSelected;
     const teamCount = memberIds.reduce((sum, id) => sum + (userCounts[id] || 0), 0);
     const teamName = team.name || planningCopy.defaults.team;
+    const teamFocusId = `team:${String(team.id)}`;
+    const focused = focusedAgentId === teamFocusId;
     return <div key={team.id} className={styles.teamFilterGroup}>
         <div className={`${styles.agentFilterRow} ${styles.teamFilterRow} ${allSelected || partialSelected ? styles.agentFilterRowActive : ""}`}>
-          <button type="button" className={styles.agentFilterToggle} onClick={() => toggleTeamSelection(team)} aria-pressed={allSelected} title={allSelected ? planningCopy.formatHideTeamPlanning(teamName) : planningCopy.formatShowTeamPlanning(teamName)}>
+          <button
+            type="button"
+            className={`${finderKit.finderSecItem} ${styles.planningSecItem} ${styles.agentFilterToggle} ${allSelected || partialSelected ? `${finderKit.finderSecItemActive} ${styles.planningSecItemActive}` : ""}`}
+            onClick={() => toggleTeamSelection(team)}
+            aria-pressed={allSelected}
+            aria-current={focused ? "true" : undefined}
+            title={allSelected ? planningCopy.formatHideTeamPlanning(teamName) : planningCopy.formatShowTeamPlanning(teamName)}
+          >
             <span className={`${styles.agentFilterCheck} ${allSelected ? styles.agentFilterCheckActive : ""} ${partialSelected ? styles.agentFilterCheckPartial : ""}`} aria-hidden>
               {allSelected ? <Icon icon="mdi:check" /> : partialSelected ? <Icon icon="mdi:minus" /> : null}
             </span>
@@ -1975,9 +2063,9 @@ export default function PlanningPage({
           } : undefined} aria-hidden>
               <Icon icon={team.icon || "mdi:account-group-outline"} />
             </span>
-            <span className={styles.filterItemCount}>{teamCount}</span>
-            <span className={styles.filterItemLabel}>{teamName}</span>
+            <span className={finderKit.finderSecItemLabel}>{teamName}</span>
             <span className={styles.teamFilterMeta}>{planningCopy.formatTeamMemberCount(members.length || memberIds.length)}</span>
+            <span className={`${styles.filterItemCount} ${styles.planningSecCount}`}>{teamCount}</span>
           </button>
           <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedTeam(team.id)} aria-label={planningCopy.formatRemoveTeamFromList(teamName)} title={planningCopy.filters.removeFromList}>
             <Icon icon="mdi:close" width={14} height={14} aria-hidden />
@@ -1991,183 +2079,392 @@ export default function PlanningPage({
         </div>
       </div>;
   };
+  const sidebarPrimaryOptions = useMemo(() => [
+    { id: "agents", label: planningCopy.filters.agents },
+    { id: "clients", label: planningCopy.filters.clients }
+  ], [planningCopy]);
+  const agentAddOptions = useMemo(() => [
+    { id: "agent", label: planningCopy.filters.agent },
+    { id: "team", label: planningCopy.filters.team }
+  ], [planningCopy]);
+
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
             <h1 className={layout.srOnly}>{planningCopy.title}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.planningShell}`}>
-        <div className={styles.viewsLayout}>
-          <aside className={styles.filtersPane} aria-label={planningCopy.filters.aria}>
-            <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionAgents}`}>
-              <div className={styles.filtersPaneHeader}>
-                <span className={styles.filtersPaneTitle}>{planningCopy.filters.agents}</span>
-                <div className={styles.filtersPaneHeaderActions}>
-                  {allVisibleAgentIds.length > 1 && selectedUsers.size < allVisibleAgentIds.length && <button type="button" className={styles.filtersPaneAction} onClick={selectAllPinnedAgents}>
-                      {planningCopy.filters.all}
-                    </button>}
-                  {selectedUsers.size > 0 && <button type="button" className={styles.filtersPaneAction} onClick={() => setSelectedUsers(new Set())}>
-                      {planningCopy.filters.none}
-                    </button>}
-                </div>
-              </div>
-              <div className={styles.agentAddRow} ref={agentFilterAddRef}>
-                <div className={styles.agentAddBtnGroup}>
-                  <button type="button" className={`${styles.agentAddBtn} ${agentAddMode === "agent" ? styles.agentAddBtnActive : ""}`} onClick={() => openAgentAddMode("agent")} aria-expanded={agentAddMode === "agent"}>
-                    <Icon icon="mdi:plus" aria-hidden />
-                    {planningCopy.filters.agent}
+        <div className={`${finderKit.finderLayout} ${styles.planningFinderLayout}`}>
+          <aside className={`${finderKit.finderSidebar} ${styles.planningFinderSidebar}`} aria-label={planningCopy.filters.aria}>
+            <nav
+              ref={sidebarPrimaryTrackRef}
+              className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated} ${styles.planningFinderPrimary}`}
+              role="tablist"
+              aria-label={planningCopy.filters.aria}
+            >
+              {sidebarPrimaryIndicator.ready ? (
+                <div
+                  className={finderKit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${sidebarPrimaryIndicator.top}px, 0)`,
+                    height: sidebarPrimaryIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {sidebarPrimaryOptions.map(option => {
+                const active = sidebarSection === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    aria-current={active ? "page" : undefined}
+                    className={`${finderKit.finderItem} ${active ? finderKit.finderItemActive : ""}`}
+                    onClick={() => setSidebarSection(option.id)}
+                  >
+                    <Icon
+                      icon={option.id === "agents" ? "mdi:account-group-outline" : "mdi:office-building-outline"}
+                      className={finderKit.finderItemIcon}
+                      aria-hidden
+                    />
+                    <span className={finderKit.finderItemLabel}>{option.label}</span>
                   </button>
-                  <button type="button" className={`${styles.agentAddBtn} ${styles.agentAddBtnTeam} ${agentAddMode === "team" ? styles.agentAddBtnActive : ""}`} onClick={() => openAgentAddMode("team")} aria-expanded={agentAddMode === "team"}>
-                    <Icon icon="mdi:account-group-outline" aria-hidden />
-                    {planningCopy.filters.team}
-                  </button>
-                </div>
-                {agentAddMode && <div className={styles.agentAddDropdown}>
-                    <input type="text" className={styles.agentAddSearch} value={agentFilterSearch} onChange={e => setAgentFilterSearch(e.target.value)} placeholder={agentAddMode === "team" ? planningCopy.filters.searchTeam : planningCopy.filters.searchAgent} autoComplete="off" autoFocus />
-                    <div className={styles.agentAddList}>
-                      {agentAddMode === "agent" ? availableAgentsToAdd.length === 0 ? <p className={styles.agentAddEmpty}>
-                            {agentFilterSearch.trim() ? planningCopy.filters.noAgentFound : planningCopy.filters.allAgentsPinned}
-                          </p> : availableAgentsToAdd.map(userItem => {
-                          const userName = userItem.name || userItem.nom || userItem.username || userItem.email || planningCopy.defaults.user;
-                          const isMe = String(userItem.id) === String(user?.id);
-                          return <button key={userItem.id} type="button" className={styles.agentAddOption} onClick={() => addPinnedAgent(userItem.id)}>
-                                <Icon icon="mdi:account-outline" aria-hidden />
-                                <span>
-                                  {userName}
-                                  {isMe ? ` ${planningCopy.filters.meSuffix}` : ""}
-                                </span>
-                              </button>;
-                        }) : loadingPlanningTeams ? <p className={styles.agentAddEmpty}>{planningCopy.filters.loadingTeams}</p> : availableTeamsToAdd.length === 0 ? <p className={styles.agentAddEmpty}>
-                          {agentFilterSearch.trim() ? planningCopy.filters.noTeamFound : planningCopy.filters.noActiveTeams}
-                        </p> : availableTeamsToAdd.map(team => <button key={team.id} type="button" className={styles.teamAddOption} onClick={() => addTeamToPinned(team)} style={team.color ? {
-                          "--team-color": team.color
-                        } : undefined}>
-                            <span className={styles.teamAddIcon} style={team.color ? {
-                            backgroundColor: `${team.color}22`,
-                            color: team.color
-                          } : undefined}>
-                              <Icon icon={team.icon || "mdi:account-group-outline"} aria-hidden />
-                            </span>
-                            <span className={styles.teamAddBody}>
-                              <span className={styles.teamAddName}>{team.name}</span>
-                              <span className={styles.teamAddMeta}>
-                                {planningCopy.formatTeamMemberCount(team.memberCount || 0)}
-                                {team.description ? ` · ${team.description}` : ""}
-                              </span>
-                            </span>
-                          </button>)}
-                    </div>
-                  </div>}
-              </div>
-              <div className={styles.agentsFiltersList}>
-                {pinnedTeams.length === 0 && soloPinnedAgents.length === 0 ? <p className={styles.agentFilterHint}>
-                    {planningCopy.filters.addAgentsHint}
-                  </p> : <>
-                    {pinnedTeams.map(team => renderTeamFilterGroup(team))}
-                    {soloPinnedAgents.map(userItem => renderAgentFilterRow(userItem))}
-                  </>}
-              </div>
-              {selectedUsers.size > 1 && <p className={styles.agentFilterMeta}>
-                  {planningCopy.formatAgentsSelected(selectedUsers.size)}
-                </p>}
-            </div>
+                );
+              })}
+            </nav>
 
-            <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionClients}`}>
-              <div className={styles.filtersPaneHeader}>
-                <span className={styles.filtersPaneTitle}>{planningCopy.filters.clients}</span>
-                {selectedClientsFilter.size > 0 && <button type="button" className={styles.filtersPaneAction} onClick={() => setSelectedClientsFilter(new Set())}>
-                    {planningCopy.filters.clear}
-                  </button>}
+            <UiKitScrollFadeShell className={`${finderKit.finderSecondaryShell} ${styles.planningFinderSecondaryShell}`}>
+              <div className={`${finderKit.finderSecondary} ${styles.planningFinderSecondary}`}>
+                <div className={`${finderKit.finderSecReveal} ${finderSecEnter ? finderKit.finderSecRevealActive : ""}`.trim()}>
+                  {sidebarSection === "agents" ? (
+                    <div className={finderKit.finderSecPanel}>
+                      <div className={finderKit.finderSecTitleRow}>
+                        <p className={finderKit.finderSecTitle}>{planningCopy.filters.agents}</p>
+                        <div className={styles.filtersPaneHeaderActions}>
+                          {allVisibleAgentIds.length > 1 && selectedUsers.size < allVisibleAgentIds.length && (
+                            <button type="button" className={styles.filtersPaneAction} onClick={selectAllPinnedAgents}>
+                              {planningCopy.filters.all}
+                            </button>
+                          )}
+                          {selectedUsers.size > 0 && (
+                            <button type="button" className={styles.filtersPaneAction} onClick={() => setSelectedUsers(new Set())}>
+                              {planningCopy.filters.none}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={styles.agentAddRow} ref={agentFilterAddRef}>
+                        <ActivityStatusSegmented
+                          value={agentAddMode || ""}
+                          onChange={mode => openAgentAddMode(mode)}
+                          options={agentAddOptions}
+                          ariaLabel={planningCopy.filters.agents}
+                        />
+                        {agentAddMode && (
+                          <div className={styles.agentAddDropdown}>
+                            <input
+                              type="text"
+                              className={styles.agentAddSearch}
+                              value={agentFilterSearch}
+                              onChange={e => setAgentFilterSearch(e.target.value)}
+                              placeholder={agentAddMode === "team" ? planningCopy.filters.searchTeam : planningCopy.filters.searchAgent}
+                              autoComplete="off"
+                              autoFocus
+                            />
+                            <div className={styles.agentAddList}>
+                              {agentAddMode === "agent" ? (
+                                availableAgentsToAdd.length === 0 ? (
+                                  <p className={styles.agentAddEmpty}>
+                                    {agentFilterSearch.trim() ? planningCopy.filters.noAgentFound : planningCopy.filters.allAgentsPinned}
+                                  </p>
+                                ) : (
+                                  availableAgentsToAdd.map(userItem => {
+                                    const userName = userItem.name || userItem.nom || userItem.username || userItem.email || planningCopy.defaults.user;
+                                    const isMe = String(userItem.id) === String(user?.id);
+                                    return (
+                                      <button key={userItem.id} type="button" className={styles.agentAddOption} onClick={() => addPinnedAgent(userItem.id)}>
+                                        <Icon icon="mdi:account-outline" aria-hidden />
+                                        <span>
+                                          {userName}
+                                          {isMe ? ` ${planningCopy.filters.meSuffix}` : ""}
+                                        </span>
+                                      </button>
+                                    );
+                                  })
+                                )
+                              ) : loadingPlanningTeams ? (
+                                <p className={styles.agentAddEmpty}>{planningCopy.filters.loadingTeams}</p>
+                              ) : availableTeamsToAdd.length === 0 ? (
+                                <p className={styles.agentAddEmpty}>
+                                  {agentFilterSearch.trim() ? planningCopy.filters.noTeamFound : planningCopy.filters.noActiveTeams}
+                                </p>
+                              ) : (
+                                availableTeamsToAdd.map(team => (
+                                  <button
+                                    key={team.id}
+                                    type="button"
+                                    className={styles.teamAddOption}
+                                    onClick={() => addTeamToPinned(team)}
+                                    style={team.color ? { "--team-color": team.color } : undefined}
+                                  >
+                                    <span
+                                      className={styles.teamAddIcon}
+                                      style={team.color ? { backgroundColor: `${team.color}22`, color: team.color } : undefined}
+                                    >
+                                      <Icon icon={team.icon || "mdi:account-group-outline"} aria-hidden />
+                                    </span>
+                                    <span className={styles.teamAddBody}>
+                                      <span className={styles.teamAddName}>{team.name}</span>
+                                      <span className={styles.teamAddMeta}>
+                                        {planningCopy.formatTeamMemberCount(team.memberCount || 0)}
+                                        {team.description ? ` · ${team.description}` : ""}
+                                      </span>
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        ref={agentsTrackRef}
+                        className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated} ${styles.agentsFiltersList}`}
+                      >
+                        {agentsIndicator.ready ? (
+                          <div
+                            className={finderKit.finderNavIndicator}
+                            style={{
+                              transform: `translate3d(0, ${agentsIndicator.top}px, 0)`,
+                              height: agentsIndicator.height
+                            }}
+                            aria-hidden
+                          />
+                        ) : null}
+                        {pinnedTeams.length === 0 && soloPinnedAgents.length === 0 ? (
+                          <p className={styles.agentFilterHint}>{planningCopy.filters.addAgentsHint}</p>
+                        ) : (
+                          <>
+                            {pinnedTeams.map(team => renderTeamFilterGroup(team))}
+                            {soloPinnedAgents.map(userItem => renderAgentFilterRow(userItem))}
+                          </>
+                        )}
+                      </div>
+                      {selectedUsers.size > 1 && (
+                        <p className={styles.agentFilterMeta}>{planningCopy.formatAgentsSelected(selectedUsers.size)}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={finderKit.finderSecPanel}>
+                      <div className={finderKit.finderSecTitleRow}>
+                        <p className={finderKit.finderSecTitle}>{planningCopy.filters.clients}</p>
+                        {selectedClientsFilter.size > 0 && (
+                          <button type="button" className={styles.filtersPaneAction} onClick={() => setSelectedClientsFilter(new Set())}>
+                            {planningCopy.filters.clear}
+                          </button>
+                        )}
+                      </div>
+                      <div className={styles.clientFilterSearchWrap}>
+                        <Icon icon="mdi:magnify" className={styles.clientFilterSearchIcon} aria-hidden />
+                        <input
+                          type="text"
+                          className={styles.clientFilterSearch}
+                          value={clientFilterSearch}
+                          onChange={e => setClientFilterSearch(e.target.value)}
+                          placeholder={planningCopy.filters.searchClient}
+                          autoComplete="off"
+                          aria-label={planningCopy.filters.searchClient}
+                        />
+                        {clientFilterSearch ? (
+                          <button
+                            type="button"
+                            className={styles.clientFilterSearchClear}
+                            onClick={() => setClientFilterSearch("")}
+                            aria-label={planningCopy.search.clear}
+                          >
+                            <Icon icon="mdi:close" width={14} height={14} aria-hidden />
+                          </button>
+                        ) : null}
+                      </div>
+                      <div
+                        ref={clientsTrackRef}
+                        className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated} ${styles.filtersList}`}
+                      >
+                        {clientsIndicator.ready ? (
+                          <div
+                            className={finderKit.finderNavIndicator}
+                            style={{
+                              transform: `translate3d(0, ${clientsIndicator.top}px, 0)`,
+                              height: clientsIndicator.height
+                            }}
+                            aria-hidden
+                          />
+                        ) : null}
+                        {filteredClientsForPane.length === 0 ? (
+                          <p className={styles.agentFilterHint}>
+                            {clientFilterSearch.trim()
+                              ? planningCopy.filters.noClientFound
+                              : clients.length === 0
+                                ? planningCopy.filters.noClients
+                                : planningCopy.filters.searchClientHint}
+                          </p>
+                        ) : (
+                          filteredClientsForPane.map(client => {
+                            const clientIdStr = String(client.id);
+                            const count = clientCounts[clientIdStr] || 0;
+                            const clientName = client.name || client.nom || planningCopy.defaults.client;
+                            return renderFilterItem(
+                              client.id,
+                              clientName,
+                              count,
+                              selectedClientsFilter.has(clientIdStr),
+                              () => toggleClient(client.id),
+                              "mdi:office-building-outline",
+                              focusedClientId === clientIdStr
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className={styles.clientFilterSearchWrap}>
-                <Icon icon="mdi:magnify" className={styles.clientFilterSearchIcon} aria-hidden />
-                <input type="text" className={styles.clientFilterSearch} value={clientFilterSearch} onChange={e => setClientFilterSearch(e.target.value)} placeholder={planningCopy.filters.searchClient} autoComplete="off" aria-label={planningCopy.filters.searchClient} />
-                {clientFilterSearch ? <button type="button" className={styles.clientFilterSearchClear} onClick={() => setClientFilterSearch("")} aria-label={planningCopy.search.clear}>
-                    <Icon icon="mdi:close" width={14} height={14} aria-hidden />
-                  </button> : null}
-              </div>
-              <div className={styles.filtersList}>
-                {filteredClientsForPane.length === 0 ? <p className={styles.agentFilterHint}>
-                    {clientFilterSearch.trim() ? planningCopy.filters.noClientFound : clients.length === 0 ? planningCopy.filters.noClients : planningCopy.filters.searchClientHint}
-                  </p> : filteredClientsForPane.map(client => {
-                      const clientIdStr = String(client.id);
-                      const count = clientCounts[clientIdStr] || 0;
-                      const clientName = client.name || client.nom || planningCopy.defaults.client;
-                      return renderFilterItem(client.id, clientName, count, selectedClientsFilter.has(clientIdStr), () => toggleClient(client.id), "mdi:office-building-outline");
-                    })}
-              </div>
-            </div>
+            </UiKitScrollFadeShell>
           </aside>
 
-          <div className={`${styles.mainColumn} ${view === "week" || view === "day" || view === "agenda" || view === "month" ? styles.mainColumnFill : ""}`.trim()}>
+          <div className={`${finderKit.finderContent} ${styles.planningFinderContent} ${view === "week" || view === "day" || view === "agenda" || view === "month" ? styles.mainColumnFill : ""}`.trim()}>
             {loading ? (
               <PageSkeleton variant="panels" panels={2} label={planningCopy.loading} />
-            ) : <div className={layout.listBody}>
-              <div className={layout.listArea}>
-                <div className={`${layout.panelCard} ${styles.planningPanelCard}`}>
-                  <header className={styles.planningHeader}>
-                    <UiKitCrmListToolbar
-                      className={styles.planningHeaderTop}
-                      title={planningCopy.title}
-                      titleIcon="mdi:calendar-month-outline"
-                      searchValue={searchQuery}
-                      onSearchChange={setSearchQuery}
-                      onSearchClear={() => setSearchQuery("")}
-                      searchPlaceholder={planningCopy.search.placeholder}
-                      searchAriaLabel={planningCopy.search.aria}
-                      clearSearchLabel={planningCopy.search.clear}
-                      filters={
-                        <div className={styles.planningTypeFilters} role="group" aria-label={planningCopy.filters?.types || "Types"}>
-                          {planningTypes.map(type => {
-                            const count = typeCounts[type.value] || 0;
-                            const active = selectedTypes.has(type.value);
-                            const tip = `${type.label} · ${count}`;
-                            return (
-                              <SmartTooltip key={type.value} content={tip}>
-                                <button
-                                  type="button"
-                                  className={`${styles.typeFilterChip} ${active ? styles.typeFilterChipActive : ""} ${count === 0 ? styles.typeFilterChipDisabled : ""}`}
-                                  onClick={() => toggleTypeFilter(type.value)}
-                                  disabled={count === 0}
-                                  aria-label={tip}
-                                  aria-pressed={active}
-                                >
-                                  <span className={`${styles.typeFilterIcon} ${layout[`kpiIcon_${type.kpiTone}`] || layout.kpiIcon_blue}`}>
-                                    <Icon icon={type.icon} aria-hidden />
-                                  </span>
-                                  <span className={styles.typeFilterCount}>{count}</span>
-                                </button>
-                              </SmartTooltip>
-                            );
-                          })}
-                        </div>
-                      }
-                      filtersAriaLabel={planningCopy.filters?.types || "Types"}
-                      createAction={
-                        canCreateEvent
-                          ? {
-                              label: planningCopy.newEvent,
-                              onClick: () => openCreateEventModal()
-                            }
-                          : null
-                      }
-                    />
-                    <PlanningToolbar />
-                  </header>
+            ) : (
+              <div className={`${styles.planningPanelCard} ${styles.planningFinderPanel}`}>
+                <header className={styles.planningHeader}>
+                  <UiKitCrmListToolbar
+                    className={styles.planningHeaderTop}
+                    title={planningCopy.title}
+                    titleIcon="mdi:calendar-month-outline"
+                    searchValue={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    onSearchClear={() => setSearchQuery("")}
+                    searchPlaceholder={planningCopy.search.placeholder}
+                    searchAriaLabel={planningCopy.search.aria}
+                    clearSearchLabel={planningCopy.search.clear}
+                    filters={
+                      <>
+                        {planningTypes.map(type => {
+                          const count = typeCounts[type.value] || 0;
+                          const active = selectedTypes.has(type.value);
+                          const tip = `${type.label} · ${count}`;
+                          return (
+                            <SmartTooltip key={type.value} content={tip}>
+                              <button
+                                type="button"
+                                className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`}
+                                onMouseDown={e => e.preventDefault()}
+                                onClick={() => toggleTypeFilter(type.value)}
+                                disabled={count === 0}
+                                aria-label={tip}
+                                aria-pressed={active}
+                              >
+                                <span className={layout.statusChipIcon}>
+                                  <Icon icon={type.icon} aria-hidden />
+                                </span>
+                                <span className={layout.statusChipLabel}>{type.label}</span>
+                                <span className={layout.statusChipCount}>{count}</span>
+                              </button>
+                            </SmartTooltip>
+                          );
+                        })}
+                      </>
+                    }
+                    filtersAriaLabel={planningCopy.filters?.types || "Types"}
+                    createAction={
+                      canCreateEvent
+                        ? {
+                            label: planningCopy.newEvent,
+                            onClick: () => openCreateEventModal()
+                          }
+                        : null
+                    }
+                  />
+                  <PlanningToolbar />
+                </header>
 
-                  <div className={`${styles.calendarBody} ${view === "month" ? styles.calendarBodyMonth : ""} ${view === "month" && monthsShown === 1 ? styles.calendarBodyMonthSingle : ""} ${view === "week" ? styles.calendarBodyWeek : ""} ${view === "day" ? styles.calendarBodyDay : ""} ${view === "agenda" ? styles.calendarBodyAgenda : ""}`}>
-                  {view === "month" ? <PlanningMultiMonthView currentDate={currentDate} monthsShown={monthsShown} events={displayEvents} localizer={localizer} EventComponent={EventComponent} eventPropGetter={eventStyleGetter} onSelectSlot={canClickCreate ? handleSelectSlot : undefined} onNavigate={handleNavigate} onMonthEventDrop={handleMonthEventDrop} onMonthEventResize={handleCalendarEventResize} calendarMessages={planningCopy.calendarMessages} culture={locale} /> : view === "week" ? <PlanningWeekResourceView currentDate={currentDate} events={displayEvents} agents={weekAgents} renderEvent={renderWeekEvent} onSelectSlot={canClickCreate ? handlePlanningSelectSlot : undefined} onEventMove={handleWeekEventMove} onEventResize={handleCalendarEventResize} isEventDraggable={isPlanningEventDraggable} getEventColors={(event, agentId) => getPlanningEventColors(event, agentId)} onDragInteractionEnd={() => markSuppressSlotSelect(500)} weekCopy={hoverCardCopy} /> : view === "agenda" ? <PlanningAgendaView currentDate={currentDate} events={displayEvents} renderEventPreview={renderEventPreviewCard} copy={planningCopy} /> : view === "day" ? <div className={styles.calendarDayWrapper}>
-                        <DragAndDropCalendar localizer={localizer} events={displayEvents} startAccessor="start" endAccessor="end" view="day" date={currentDate} toolbar={false} selectable={canClickCreate} draggableAccessor={isPlanningEventDraggable} resizableAccessor={isPlanningEventDraggable} resizable onEventDrop={handleCalendarEventDrop} onEventResize={handleCalendarEventResize} onNavigate={handleNavigate} onSelectSlot={canClickCreate ? handleSelectSlot : undefined} tooltipAccessor={() => ""} style={{
-                      height: "100%"
-                    }} eventPropGetter={eventStyleGetter} components={{
-                      event: EventComponent,
-                      toolbar: () => null
-                    }} messages={planningCopy.calendarMessages} culture={locale} />
-                      </div> : null}
-                  </div>
+                <div
+                  className={`${styles.calendarBody} ${mainContentEnter ? styles.planningContentEnter : styles.planningContentPending} ${view === "month" ? styles.calendarBodyMonth : ""} ${view === "month" && monthsShown === 1 ? styles.calendarBodyMonthSingle : ""} ${view === "week" ? styles.calendarBodyWeek : ""} ${view === "day" ? styles.calendarBodyDay : ""} ${view === "agenda" ? styles.calendarBodyAgenda : ""}`}
+                >
+                  {view === "month" ? (
+                    <PlanningMultiMonthView
+                      currentDate={currentDate}
+                      monthsShown={monthsShown}
+                      events={displayEvents}
+                      localizer={localizer}
+                      EventComponent={EventComponent}
+                      eventPropGetter={eventStyleGetter}
+                      onSelectSlot={canClickCreate ? handleSelectSlot : undefined}
+                      onNavigate={handleNavigate}
+                      onMonthEventDrop={handleMonthEventDrop}
+                      onMonthEventResize={handleCalendarEventResize}
+                      calendarMessages={planningCopy.calendarMessages}
+                      culture={locale}
+                    />
+                  ) : view === "week" ? (
+                    <PlanningWeekResourceView
+                      currentDate={currentDate}
+                      events={displayEvents}
+                      agents={weekAgents}
+                      renderEvent={renderWeekEvent}
+                      onSelectSlot={canClickCreate ? handlePlanningSelectSlot : undefined}
+                      onEventMove={handleWeekEventMove}
+                      onEventResize={handleCalendarEventResize}
+                      isEventDraggable={isPlanningEventDraggable}
+                      getEventColors={(event, agentId) => getPlanningEventColors(event, agentId)}
+                      onDragInteractionEnd={() => markSuppressSlotSelect(500)}
+                      weekCopy={hoverCardCopy}
+                    />
+                  ) : view === "agenda" ? (
+                    <PlanningAgendaView
+                      currentDate={currentDate}
+                      events={displayEvents}
+                      renderEventPreview={renderEventPreviewCard}
+                      copy={planningCopy}
+                    />
+                  ) : view === "day" ? (
+                    <div className={styles.calendarDayWrapper}>
+                      <DragAndDropCalendar
+                        localizer={localizer}
+                        events={displayEvents}
+                        startAccessor="start"
+                        endAccessor="end"
+                        view="day"
+                        date={currentDate}
+                        toolbar={false}
+                        selectable={canClickCreate}
+                        draggableAccessor={isPlanningEventDraggable}
+                        resizableAccessor={isPlanningEventDraggable}
+                        resizable
+                        onEventDrop={handleCalendarEventDrop}
+                        onEventResize={handleCalendarEventResize}
+                        onNavigate={handleNavigate}
+                        onSelectSlot={canClickCreate ? handleSelectSlot : undefined}
+                        tooltipAccessor={() => ""}
+                        style={{ height: "100%" }}
+                        eventPropGetter={eventStyleGetter}
+                        components={{
+                          event: EventComponent,
+                          toolbar: () => null
+                        }}
+                        messages={planningCopy.calendarMessages}
+                        culture={locale}
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
-            </div>}
+            )}
           </div>
         </div>
             </div>

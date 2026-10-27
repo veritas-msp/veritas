@@ -11,6 +11,8 @@ export default function PlanningEventModalBridge({
   initialClientId = null,
   initialClientName = "",
   initialEquipmentId = null,
+  initialEquipmentName = "",
+  initialEquipmentType = "",
   onClose,
   onSaved
 }) {
@@ -26,6 +28,8 @@ export default function PlanningEventModalBridge({
     initialClientId,
     initialClientName,
     initialEquipmentId,
+    initialEquipmentName,
+    initialEquipmentType,
     onClose,
     onSaved,
     copy,

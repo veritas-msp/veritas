@@ -1,9 +1,58 @@
 
 
 .planningShell {
-  gap: 1rem;
+  gap: 0;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.planningFinderLayout {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  grid-template-columns: minmax(14rem, 16rem) minmax(0, 1fr);
+}
+
+.planningFinderSidebar {
+  min-height: 0;
+}
+
+.planningFinderPrimary {
+  flex-shrink: 0;
+}
+
+.planningFinderSecondaryShell {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.planningFinderSecondary {
+  min-height: 0;
+}
+
+.planningFinderContent {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-surface, #fff);
+}
+
+.planningFinderPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem 0.85rem 0.65rem;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
   overflow: hidden;
 }
 
@@ -20,6 +69,23 @@
   border-bottom: 1px solid var(--msp-border-light, #eef2f7);
 }
 
+.planningContentPending {
+  opacity: 0;
+}
+
+.planningContentEnter {
+  opacity: 1;
+  transition: opacity var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planningContentPending,
+  .planningContentEnter {
+    opacity: 1;
+    transition: none;
+  }
+}
+
 .planningHeaderTop {
   display: flex;
   align-items: center;
@@ -33,67 +99,6 @@
   max-width: 22rem;
   min-width: 11rem;
   min-height: 34px;
-}
-
-.planningTypeFilters {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding: 1px 0;
-}
-
-.typeFilterChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  flex-shrink: 0;
-  height: 34px;
-  padding: 0 0.4rem 0 0.25rem;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 10px;
-  background: var(--msp-surface-2, #f7f9fc);
-  color: var(--msp-muted, #5c6b82);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
-}
-
-.typeFilterChip:hover:not(:disabled) {
-  border-color: #c5d4ea;
-  color: var(--msp-text, #0f1c2e);
-  background: #edf2f9;
-}
-
-.typeFilterChipActive {
-  border-color: rgba(43, 95, 171, 0.35);
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-  color: var(--msp-accent, #2b5fab);
-}
-
-.typeFilterChipDisabled {
-  opacity: 0.38;
-  pointer-events: none;
-}
-
-.typeFilterIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 7px;
-  font-size: 0.85rem;
-  flex-shrink: 0;
-}
-
-.typeFilterCount {
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
 }
 
 .planningCreateBtn {
@@ -112,39 +117,22 @@
     max-width: none;
   }
 
-  .planningTypeFilters {
-    order: 3;
-    width: 100%;
-  }
-
   .planningCreateBtn {
     margin-left: auto;
   }
 }
 
-.viewsLayout {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 0.65rem;
+.planningSecItem {
   flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  min-width: 0;
 }
 
-.filtersPane {
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius, 16px);
-  background: var(--msp-surface, #fff);
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
-  padding: 0.55rem 0.6rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  align-self: stretch;
-  height: 100%;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+.planningSecItemActive {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.planningSecCount {
+  margin-left: auto;
 }
 
 .filtersPaneSection {
@@ -152,20 +140,6 @@
   flex-direction: column;
   gap: 0.25rem;
   min-height: 0;
-}
-
-.filtersPaneSectionAgents {
-  flex: 0 0 auto;
-}
-
-.filtersPaneSectionClients {
-  flex: 1 1 0;
-  min-height: 0;
-}
-
-.filtersPaneSection + .filtersPaneSection {
-  padding-top: 0.45rem;
-  border-top: 1px solid var(--msp-border-light, #eef2f7);
 }
 
 .filtersPaneHeader {
@@ -206,7 +180,10 @@
 
 .agentAddRow {
   position: relative;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
 .agentAddBtnGroup {
@@ -368,20 +345,22 @@
 .agentFilterRow {
   display: flex;
   align-items: stretch;
-  gap: 0.2rem;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  gap: 0.15rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  position: relative;
+  z-index: 1;
 }
 
 .agentFilterRow:hover {
-  background: rgba(43, 95, 171, 0.04);
-  border-color: var(--msp-border-light, #eef2f7);
+  background: transparent;
+  border-color: transparent;
 }
 
 .agentFilterRowActive {
-  background: rgba(43, 95, 171, 0.1);
-  border-color: rgba(43, 95, 171, 0.28);
+  background: transparent;
+  border-color: transparent;
 }
 
 .agentFilterToggle {
@@ -392,10 +371,9 @@
   gap: 0.42rem;
   border: none;
   background: transparent;
-  padding: 0.42rem 0.35rem 0.42rem 0.48rem;
   cursor: pointer;
   text-align: left;
-  color: var(--msp-text, #0f1c2e);
+  color: inherit;
 }
 
 .agentFilterCheck {
@@ -654,44 +632,20 @@
   font-weight: 500;
 }
 
-.mainColumn {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.mainColumn > :global(.listBody) {
-  flex: 1;
-  min-height: 0;
-}
-
-.mainColumn :global(.listArea),
-.mainColumn :global(.panelCard) {
-  flex: 1;
-  min-height: 0;
-}
-
 /* Week / day / agenda / month: fill the column; scroll inside the calendar body if needed. */
 .mainColumnFill {
   overflow: hidden;
 }
 
-.mainColumnFill > :global(.listBody),
-.mainColumnFill :global(.listArea),
-.mainColumnFill :global(.panelCard),
+.mainColumnFill .planningFinderPanel,
 .mainColumnFill .planningPanelCard {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
 }
 
-.mainColumnFill .planningPanelCard .calendarBody {
+.mainColumnFill .planningPanelCard .calendarBody,
+.mainColumnFill .planningFinderPanel .calendarBody {
   flex: 1 1 0;
   min-height: 0;
 }
@@ -864,48 +818,6 @@
   flex: 1 1 auto;
   min-width: 0;
   flex-wrap: wrap;
-}
-
-.toolbarSegment {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.15rem;
-  gap: 0.1rem;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 10px;
-  background: var(--msp-surface-2, #f7f9fc);
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.toolbarSegBtn {
-  flex-shrink: 0;
-  padding: 0.38rem 0.65rem;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--msp-muted, #5c6b82);
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background 0.12s, color 0.12s;
-}
-
-.toolbarSegBtn:hover {
-  color: var(--msp-text, #0f1c2e);
-  background: rgba(15, 28, 46, 0.05);
-}
-
-.toolbarSegBtnActive {
-  background: var(--msp-accent, #2b5fab);
-  color: #fff;
-}
-
-.toolbarSegBtnActive:hover {
-  background: var(--msp-accent, #2b5fab);
-  color: #fff;
 }
 
 .toolbarLabel {
@@ -1440,13 +1352,15 @@
 }
 
 @media (max-width: 980px) {
-  .viewsLayout {
+  .planningFinderLayout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .filtersPane {
-    height: auto;
-    max-height: none;
+  .planningFinderSidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #e8edf5);
+    max-height: 42vh;
   }
 }
 

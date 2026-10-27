@@ -20,7 +20,8 @@ export default function EquipmentStatsPanel({
   onCustomEndChange,
   alertSettings,
   rmmManaged,
-  onOpenEnterprise
+  onOpenEnterprise,
+  embedded = false
 }) {
   const stats = activity?.stats || {};
   const typeLabel = getEquipmentDetailTypeLabel(equipment, locale);
@@ -104,17 +105,23 @@ export default function EquipmentStatsPanel({
     }
     return rows;
   }, [alertSettings?.alertsEnabled, copy, equipment, locale, onOpenEnterprise, rmmManaged, typeLabel]);
-  return <section className={enterpriseDetailStyles.panel}>
-      <header className={enterpriseDetailStyles.panelHeader}>
-        <div>
-          <h2 className={enterpriseDetailStyles.panelTitle}>
-            <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-            {copy.stats.title}
-          </h2>
-        </div>
-      </header>
+  const rootClass = embedded
+    ? `${styles.activityEmbeddedSection} ${styles.activityStatsSection}`.trim()
+    : enterpriseDetailStyles.panel;
 
-      <div className={enterpriseDetailStyles.panelBody}>
+  return <section className={rootClass}>
+      {!embedded ? (
+        <header className={enterpriseDetailStyles.panelHeader}>
+          <div>
+            <h2 className={enterpriseDetailStyles.panelTitle}>
+              <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
+              {copy.stats.title}
+            </h2>
+          </div>
+        </header>
+      ) : null}
+
+      <div className={embedded ? styles.activityEmbeddedBody : enterpriseDetailStyles.panelBody}>
         <EquipmentDateRangeFilter copy={copy} preset={datePreset} onPresetChange={onDatePresetChange} customStart={customStart} customEnd={customEnd} onCustomStartChange={onCustomStartChange} onCustomEndChange={onCustomEndChange} />
 
         {loading ? <div className={styles.loadingState}>{copy.loading}</div> : <>

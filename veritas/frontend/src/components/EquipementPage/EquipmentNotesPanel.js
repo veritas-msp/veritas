@@ -198,6 +198,7 @@ export default function EquipmentNotesPanel({
     <EquipmentEmptyState
       icon="mdi:note-text-outline"
       message={notesCopy.empty || "Aucune note"}
+      compact={variant === "sidebar"}
     />
   ) : (
     <ul className={enterpriseStyles.clientNotesList}>

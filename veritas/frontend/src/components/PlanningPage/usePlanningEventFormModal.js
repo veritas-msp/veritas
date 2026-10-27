@@ -6,7 +6,7 @@ import { fetchUsers } from "../../api/users";
 import { formatPlanningDateTime, planningMoment } from "../../utils/planningDateTime";
 import { syncSalesPmTaskFromPlanningEvent } from "../../utils/salesTaskPlanningEvent";
 import API_BASE_URL from "../../config";
-import { parseEventDescription, serializeEventDescription, getBusinessEndDate, getCalendarEndDate, getBusinessDaysCountInclusive, getCalendarDaysCountInclusive, getSlotDefaultTimes, loadPlanningClientsListCached, loadClientModulesCached, buildClientEquipmentLists, buildLinkableItems, buildLinkableItemsByGroup, getLinkedTypeOptions } from "./planningEventFormShared";
+import { parseEventDescription, serializeEventDescription, getBusinessEndDate, getCalendarEndDate, getBusinessDaysCountInclusive, getCalendarDaysCountInclusive, getSlotDefaultTimes, loadPlanningClientsListCached, loadClientModulesCached, buildClientEquipmentLists, buildLinkableItems, buildLinkableItemsByGroup, findLinkableItemForEquipment, getLinkedTypeOptions } from "./planningEventFormShared";
 function createDefaultEventForm(userId) {
   return {
     title: "",
@@ -66,6 +66,8 @@ export function usePlanningEventFormModal({
   initialClientId = null,
   initialClientName = "",
   initialEquipmentId = null,
+  initialEquipmentName = "",
+  initialEquipmentType = "",
   onClose,
   onSaved,
   copy,
@@ -158,6 +160,7 @@ export function usePlanningEventFormModal({
     const key = editingEvent?.id ? `edit:${editingEvent.id}` : `create:${initialClientId || ""}:${equipmentKey}`;
     if (populateKeyRef.current === key) return;
     populateKeyRef.current = key;
+    initialLinkAppliedRef.current = false;
     if (editingEvent) {
       const populated = populateFormFromEvent(editingEvent, currentUser?.id);
       setEventForm(populated.eventForm);
@@ -182,7 +185,8 @@ export function usePlanningEventFormModal({
       }
       setEventForm(defaultForm);
       setSelectedAssignedUsers(currentUser?.id ? [String(currentUser.id)] : []);
-      setSelectedLinkedItems([]);
+      // Préselectionne tout de suite ; l’effet de matching affinera l’id linkable dès que la liste est dispo.
+      setSelectedLinkedItems(initialEquipmentId ? [String(initialEquipmentId)] : []);
       setLinkedSearch("");
       setLinkedTypeFilter("all");
       setAssigneeSearch("");
@@ -364,21 +368,41 @@ export function usePlanningEventFormModal({
     if (!open || editingEvent || !initialEquipmentId || initialLinkAppliedRef.current) return;
     if (loadingLinkedItems) return;
     const eqId = String(initialEquipmentId);
-    const matchedItem = linkableItems.find(item => String(item.id) === eqId);
+    const compositeId =
+      initialEquipmentType && initialEquipmentName
+        ? `${initialEquipmentType}-${initialEquipmentName}`
+        : null;
+    const matchedItem = findLinkableItemForEquipment(linkableItems, {
+      id: [eqId, compositeId].filter(Boolean),
+      name: initialEquipmentName || null,
+      type: initialEquipmentType || null
+    });
     if (matchedItem) {
       setSelectedLinkedItems([String(matchedItem.id)]);
       setEventForm(prev => ({
         ...prev,
         equipmentId: String(matchedItem.id)
       }));
-    } else {
-      setEventForm(prev => ({
-        ...prev,
-        equipmentId: eqId
-      }));
+      initialLinkAppliedRef.current = true;
+      return;
     }
+    // Liste encore vide : on attend le prochain chargement. Sinon on garde l’id source.
+    if (linkableItems.length === 0) return;
+    setEventForm(prev => ({
+      ...prev,
+      equipmentId: eqId
+    }));
+    setSelectedLinkedItems(prev => (prev.includes(eqId) ? prev : [eqId]));
     initialLinkAppliedRef.current = true;
-  }, [open, editingEvent, initialEquipmentId, linkableItems, loadingLinkedItems]);
+  }, [
+    open,
+    editingEvent,
+    initialEquipmentId,
+    initialEquipmentName,
+    initialEquipmentType,
+    linkableItems,
+    loadingLinkedItems
+  ]);
   const toggleLinkedItem = useCallback(itemId => {
     setSelectedLinkedItems(prev => {
       const exists = prev.includes(itemId);

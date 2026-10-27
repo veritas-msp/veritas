@@ -395,6 +395,36 @@ export function getLinkedTypeOrderIndex(itemOrType) {
   if (type.includes("ndd") || type.includes("domaine")) return 12;
   return 99;
 }
+/** Résout l’entrée « matériel lié » à partir d’un équipement source (id DB, composite type-nom, nom). */
+export function findLinkableItemForEquipment(linkableItems, { id = null, name = null, type = null } = {}) {
+  const items = Array.isArray(linkableItems) ? linkableItems : [];
+  if (!items.length) return null;
+  const idCandidates = Array.isArray(id) ? id : [id];
+  for (const raw of idCandidates) {
+    if (raw == null || raw === "") continue;
+    const idStr = String(raw);
+    const byId = items.find(item => String(item.id) === idStr);
+    if (byId) return byId;
+  }
+  const typeStr = type != null && type !== "" ? String(type) : "";
+  const nameStr = name != null && name !== "" ? String(name) : "";
+  if (typeStr && nameStr) {
+    const composite = `${typeStr}-${nameStr}`;
+    const byComposite = items.find(item => String(item.id) === composite);
+    if (byComposite) return byComposite;
+  }
+  if (nameStr) {
+    const nameLower = nameStr.toLowerCase();
+    const byName = items.filter(item => String(item.label || "").toLowerCase() === nameLower);
+    if (typeStr) {
+      const typed = byName.find(item => String(item.type || "") === typeStr);
+      if (typed) return typed;
+    }
+    if (byName.length === 1) return byName[0];
+  }
+  return null;
+}
+
 export function buildLinkableItems(peripherals, cybersecurities, services) {
   const byId = new Map();
   const pushUnique = item => {

@@ -25,7 +25,9 @@ export default function EquipmentEmptyState({
       {icon ? <Icon icon={icon} className={styles.emptyStateIcon} aria-hidden /> : null}
       {heading ? <p className={styles.emptyStateTitle}>{heading}</p> : null}
       {detail ? <p className={styles.emptyStateText}>{detail}</p> : null}
-      {children}
+      {children ? <div className={styles.emptyStateActions}>{children}</div> : null}
     </div>
   );
 }
+
+export { styles as equipmentEmptyStateStyles };

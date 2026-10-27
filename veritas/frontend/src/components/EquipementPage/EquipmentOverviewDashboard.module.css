@@ -330,9 +330,9 @@
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 16px;
+  border-radius: 0 14px 14px 0;
   background: var(--msp-surface, #fff);
-  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
+  box-shadow: none;
   overflow: hidden;
 }
 

@@ -4351,23 +4351,25 @@
 }
 
 .equipmentDetailPage .pageBodyFill .pageGrid {
-  align-items: stretch;
+  align-items: start;
 }
 
-.equipmentDetailPage .pageBodyFill .asideStack {
-  height: 100%;
+.equipmentDetailPage .pageBodyFill .asideStack,
+.equipmentDetailPage .pageBodyFill .asideStack.asidePanel {
+  height: auto;
   max-height: 100%;
   min-height: 0;
-  align-self: stretch;
-  position: relative;
-  top: auto;
-  overflow: hidden;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
 .equipmentDetailPage .pageBodyFill .asidePanel {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-height: 0;
   height: auto;
   max-height: none;
@@ -5121,6 +5123,14 @@
   box-sizing: border-box;
 }
 
+.sidebarActionToolbar > .exportMenuWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 2.1rem;
+}
+
 .sidebarActionIconBtn {
   appearance: none;
   display: inline-flex;
@@ -5128,6 +5138,8 @@
   justify-content: center;
   width: 2.1rem;
   height: 2.1rem;
+  min-width: 2.1rem;
+  min-height: 2.1rem;
   margin: 0;
   padding: 0;
   border: 0;
@@ -5135,8 +5147,22 @@
   background: transparent;
   color: #808890;
   font-size: 1.15rem;
+  line-height: 0;
+  vertical-align: middle;
+  box-sizing: border-box;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebarActionIconBtn > svg,
+.sidebarActionIconBtn :global(svg) {
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  display: block;
+  flex-shrink: 0;
+  margin: 0;
 }
 
 .sidebarActionIconBtn:hover:not(:disabled) {

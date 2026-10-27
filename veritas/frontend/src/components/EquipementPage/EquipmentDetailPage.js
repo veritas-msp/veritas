@@ -9,7 +9,7 @@ import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import EquipmentFormModal from "./EquipmentFormModal";
 import CustomEquipmentModal from "../EnterprisesPage/CustomEquipmentModal";
 import { fetchClientGeneral, fetchClientCustomEquipment } from "../../api/clients";
-import { normalizeClientSites, findClientSiteByLocation, getSiteDisplayName } from "../../utils/clientSites";
+import { normalizeClientSites } from "../../utils/clientSites";
 import { updateEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
 import { requestRmmAgentSync, cancelRmmAgentSync, requestRmmAgentUpdate, cancelRmmAgentUpdate, requestRmmAgentHeartbeat, fetchRmmAgents } from "../../api/rmm";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
@@ -35,11 +35,14 @@ import EquipmentDetailSpecsPanel from "./EquipmentDetailSpecsPanel";
 import EquipmentAlertsGlance from "./EquipmentAlertsGlance";
 import EquipmentOverviewDashboard from "./EquipmentOverviewDashboard";
 import EquipmentDetailAside from "./EquipmentDetailAside";
+import { EnterpriseOverviewTabButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
+import { UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 import { resolveEquipmentRemoteAccessAction } from "./equipmentDetailRemoteAccess";
 import EquipmentDocumentsPanel from "./EquipmentDocumentsPanel";
-import EquipmentEmptyState from "./EquipmentEmptyState";
+import EquipmentEmptyState, { equipmentEmptyStateStyles } from "./EquipmentEmptyState";
 import EquipmentEventsPanel from "./EquipmentEventsPanel";
 import EquipmentStatsPanel from "./EquipmentStatsPanel";
+import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
 import { fetchEquipmentActivity } from "../../api/equipmentActivity";
 import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActivityUtils";
 import { buildDetailFormData } from "./equipmentDetailConfig";
@@ -48,7 +51,6 @@ import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
 import {
   formatAlertSettingsDateTime,
-  getEquipmentDetailTypeLabel,
   getEquipmentDetailCopy,
   formatEquipmentDetailRelative,
   getEquipmentCreatedAt
@@ -56,16 +58,13 @@ import {
 import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getLocaleTag } from "../../i18n/locales";
-import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
+import { interpolate } from "./equipmentModalsI18n";
 import {
   normalizeCheckMKEquipmentType,
   resolveEquipmentCheckmkMapping
 } from "./CheckMKMonitoringStatusBadge";
 import API_BASE_URL from "../../config";
 import { isSynologyBrand, buildQuickConnectUrl } from "./synologyEquipmentUtils";
-import { getLogActionDetails } from "./equipmentLogUtils";
-import EquipmentLogDetailModal from "./EquipmentLogDetailModal";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
@@ -87,9 +86,6 @@ import {
   formatRmmExpectedCollectionLabel,
   resolveRmmHeartbeatIntervalMinutes,
   agentSupportsImmediateFullSync,
-  getRmmInventoryFromEquipment,
-  getRmmOsEditionInfo,
-  getRmmChassisInfo,
   resolveRmmAgentOnline
 } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
@@ -102,8 +98,8 @@ import {
   setDetailCache
 } from "../../utils/detailPageCache";
 import {
-  normalizeEquipmentActivityPane,
   normalizeEquipmentDetailTab,
+  normalizeEquipmentRmmPane,
   normalizeEquipmentSupervisionPane,
   readEquipmentDetailUi,
   writeEquipmentDetailUi
@@ -119,7 +115,6 @@ export default function EquipmentDetailPage({
 }) {
   const locale = useAppLocale();
   const { fields: systemExtensionFields } = useSystemFamilyExtensions(equipment?.type);
-  const modalsCopy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
   const {
     theme
@@ -162,7 +157,6 @@ export default function EquipmentDetailPage({
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
-  const [selectedLogDetail, setSelectedLogDetail] = useState(null);
   const [equipmentTags, setEquipmentTags] = useState(() =>
     Array.isArray(initialEquipmentCache?.tags) ? initialEquipmentCache.tags : []
   );
@@ -195,11 +189,6 @@ export default function EquipmentDetailPage({
   const [lunsModalOpen, setLunsModalOpen] = useState(false);
   const [licencesModalOpen, setLicensesModalOpen] = useState(false);
   const [availableSites, setAvailableSites] = useState([]);
-  const [logs, setLogs] = useState(() =>
-    Array.isArray(initialEquipmentCache?.logs) ? initialEquipmentCache.logs : []
-  );
-  const [loadingLogs, setLoadingLogs] = useState(() => !Array.isArray(initialEquipmentCache?.logs));
-  const [logsPage, setLogsPage] = useState(() => Number(initialEquipmentCache?.logsPage) || 1);
   const [activity, setActivity] = useState(() => initialEquipmentCache?.activity ?? null);
   const [loadingActivity, setLoadingActivity] = useState(() => !initialEquipmentCache?.activity);
   const [activityDatePreset, setActivityDatePreset] = useState(
@@ -211,42 +200,11 @@ export default function EquipmentDetailPage({
   const lastActivityFetchKeyRef = useRef(null);
   const [globalSSIDs, setGlobalSSIDs] = useState([]);
   const [loadingSSIDs, setLoadingSSIDs] = useState(false);
-  const [logsTotal, setLogsTotal] = useState(() => Number(initialEquipmentCache?.logsTotal) || 0);
-  const [logsSearchDraft, setLogsSearchDraft] = useState("");
-  const [logsSearch, setLogsSearch] = useState("");
-  const [logsCategory, setLogsCategory] = useState(() => initialEquipmentUi?.logsCategory || "all");
-  const [purgeLogsConfirmOpen, setPurgeLogsConfirmOpen] = useState(false);
-  const [purgingLogs, setPurgingLogs] = useState(false);
-  const logsLimit = 25;
-  const LOG_FILTER_OPTIONS = useMemo(() => [{
-    value: "all",
-    label: copy.logs.filters.all
-  }, {
-    value: "user",
-    label: copy.logs.filters.user
-  }, {
-    value: "modifications",
-    label: copy.logs.filters.modifications
-  }, {
-    value: "rmm",
-    label: copy.logs.filters.rmm
-  }, {
-    value: "remote",
-    label: copy.logs.filters.remote
-  }], [copy]);
   const [rightPanelTab, setRightPanelTab] = useState(() =>
     normalizeEquipmentDetailTab(
-      equipment?.detailTab === "metrics"
-        ? "activity"
-        : initialEquipmentUi?.rightPanelTab
-    )
-  );
-  const [activityPane, setActivityPane] = useState(() =>
-    normalizeEquipmentActivityPane(
-      equipment?.detailTab === "metrics"
+      equipment?.detailTab === "metrics" || initialEquipmentUi?.activityPane === "metrics"
         ? "metrics"
-        : initialEquipmentUi?.activityPane,
-      { allowMetrics: true }
+        : initialEquipmentUi?.rightPanelTab
     )
   );
   const [supervisionPane, setSupervisionPane] = useState(() =>
@@ -256,7 +214,18 @@ export default function EquipmentDetailPage({
         : initialEquipmentUi?.supervisionPane
     )
   );
-  const logsControllerRef = useRef(null);
+  const [rmmPane, setRmmPane] = useState(() =>
+    normalizeEquipmentRmmPane(
+      equipment?.detailTab === "metrics"
+        ? "metrics"
+        : initialEquipmentUi?.rightPanelTab === "operations" ||
+            initialEquipmentUi?.rightPanelTab === "peripherals" ||
+            initialEquipmentUi?.rightPanelTab === "synthese" ||
+            initialEquipmentUi?.rightPanelTab === "metrics"
+          ? initialEquipmentUi.rightPanelTab
+          : initialEquipmentUi?.rmmPane
+    )
+  );
   const checkmkControllerRef = useRef(null);
   const availabilityControllerRef = useRef(null);
   const syncRequestOverrideRef = useRef(undefined);
@@ -265,10 +234,8 @@ export default function EquipmentDetailPage({
   const pageRootRef = useRef(null);
   const mainContentRef = useRef(null);
   const heroTabsRef = useRef(null);
-  const activitySwitchRef = useRef(null);
   const supervisionSwitchRef = useRef(null);
   const [heroTabIndicator, setHeroTabIndicator] = useState({ left: 0, width: 0, ready: false });
-  const [activitySwitchIndicator, setActivitySwitchIndicator] = useState({ left: 0, width: 0, ready: false });
   const [supervisionSwitchIndicator, setSupervisionSwitchIndicator] = useState({ left: 0, width: 0, ready: false });
   const equipmentUiIdRef = useRef(resolvedEquipmentId);
   const skipEquipmentUiPersistRef = useRef(false);
@@ -343,14 +310,120 @@ export default function EquipmentDetailPage({
   );
   const showRmmTabGroup = showSyntheseTab || showRmmOperationsTab || showRmmPeripheralsTab;
   const showSupervisionTabGroup = showSupervisionTab;
-  const rmmMetricsAgent = useMemo(() => showRmmMetricsTab ? buildRmmAgentRowFromEquipment(equipment) : null, [equipment, showRmmMetricsTab]);
+  const isActivityTab =
+    rightPanelTab === "activity" ||
+    rightPanelTab === "events" ||
+    rightPanelTab === "stats";
+  const isRmmTab =
+    rightPanelTab === "synthese" ||
+    rightPanelTab === "operations" ||
+    rightPanelTab === "peripherals" ||
+    rightPanelTab === "metrics";
+  useEffect(() => {
+    if (isRmmTab) setRmmPane(normalizeEquipmentRmmPane(rightPanelTab));
+  }, [isRmmTab, rightPanelTab]);
+  const finderSecondaryVisible = isRmmTab || rightPanelTab === "supervision";
+  const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
+    rightPanelTab,
+    isRmmTab,
+    showSupervisionTab
+  ]);
+  const { trackRef: finderSecondaryTrackRef, indicator: finderSecondaryIndicator } = useFinderNavIndicator([
+    rightPanelTab,
+    rmmPane,
+    supervisionPane,
+    showRmmMetricsTab,
+    finderSecondaryVisible
+  ]);
+  const selectEquipmentTab = useCallback(tabId => {
+    if (tabId === "rmm") {
+      setRightPanelTab(prev =>
+        prev === "synthese" ||
+        prev === "operations" ||
+        prev === "peripherals" ||
+        prev === "metrics"
+          ? prev
+          : rmmPane
+      );
+      return;
+    }
+    setRightPanelTab(tabId);
+  }, [rmmPane]);
+  const rmmMetricsAgent = useMemo(
+    () => (showRmmMetricsTab ? buildRmmAgentRowFromEquipment(equipment) : null),
+    [equipment, showRmmMetricsTab]
+  );
+  const renderRmmUnavailableEmpty = (requireWorkstation = false) => {
+    const wrongType = requireWorkstation && rmmManaged && equipment?.type !== "Ordinateurs";
+    return (
+      <EquipmentEmptyState
+        icon={wrongType ? "mdi:laptop-off" : "mdi:monitor-cellphone"}
+        title={
+          wrongType
+            ? copy.tabs?.unavailableRmmTypeTitle || "Section réservée aux postes"
+            : copy.tabs?.unavailableRmmTitle || "Agent RMM requis"
+        }
+        subtitle={
+          wrongType
+            ? copy.tabs?.unavailableRmmTypeHint ||
+              "Cette section est disponible uniquement pour les ordinateurs gérés par un agent RMM."
+            : copy.tabs?.unavailableRmmHint ||
+              copy.rmm?.installAgentGeneral ||
+              "Installez l’agent Veritas (RMM) sur ce matériel pour activer cette section."
+        }
+        className={`${styles.supervisionEmptyFill} ${styles.rmmEmptyCentered}`.trim()}
+      />
+    );
+  };
+  const supervisionUnavailableCopy = !checkmkIntegrationEnabled
+    ? {
+        title: copy.tabs?.unavailableSupervisionTitle || "Supervision non activée",
+        subtitle:
+          copy.tabs?.unavailableSupervisionIntegration ||
+          "L’intégration CheckMK n’est pas activée sur cette instance.",
+        showMappingAction: false
+      }
+    : equipmentMkType === "Internet"
+      ? {
+          title: copy.tabs?.unavailableSupervisionTitle || "Supervision non activée",
+          subtitle:
+            copy.tabs?.unavailableSupervisionType ||
+            "La supervision CheckMK n’est pas disponible pour ce type de matériel.",
+          showMappingAction: false
+        }
+      : {
+          title: copy.tabs?.unavailableSupervisionTitle || "Supervision non activée",
+          subtitle:
+            copy.tabs?.unavailableSupervisionHint ||
+            "Associez cet équipement à un hôte CheckMK via le mapping pour activer la supervision.",
+          showMappingAction: true
+        };
+  const supervisionUnavailableEmpty = (
+    <EquipmentEmptyState
+      icon="mdi:radar"
+      title={supervisionUnavailableCopy.title}
+      subtitle={supervisionUnavailableCopy.subtitle}
+      className={`${styles.supervisionEmptyFill} ${styles.contentFadeUp}`.trim()}
+    >
+      {supervisionUnavailableCopy.showMappingAction ? (
+        <button
+          type="button"
+          className={equipmentEmptyStateStyles.emptyStateAction}
+          onClick={() => setCheckmkMappingModal(true)}
+        >
+          <Icon icon="mdi:vector-link" aria-hidden />
+          {copy.tabs?.unavailableSupervisionAction || copy.hero?.mappingCheckmk || "Configurer le mapping"}
+        </button>
+      ) : null}
+    </EquipmentEmptyState>
+  );
   useEffect(() => {
     if (!equipment?.id) return;
-    if (equipment.detailTab === "metrics" && showRmmMetricsTab) {
-      setRightPanelTab("activity");
-      setActivityPane("metrics");
+    if (equipment.detailTab === "metrics") {
+      setRightPanelTab("metrics");
+      setRmmPane("metrics");
     }
-  }, [equipment?.id, equipment?.detailTab, showRmmMetricsTab]);
+  }, [equipment?.id, equipment?.detailTab]);
   const handleRmmFullSync = async () => {
     if (!rmmAgentId) {
       toast.error(copy.toasts.rmmAgentNotFound);
@@ -415,11 +488,6 @@ export default function EquipmentDetailPage({
       toast.success(interpolate(agentSupportsImmediateFullSync(equipment) ? copy.toasts.agentUpdateRequestedFast : copy.toasts.agentUpdateRequested, {
         version: latest
       }));
-      if (rightPanelTab === "logs") {
-        window.setTimeout(() => {
-          loadLogs(1);
-        }, 400);
-      }
       window.setTimeout(() => {
         refreshRmmEquipment();
       }, 5000);
@@ -448,11 +516,6 @@ export default function EquipmentDetailPage({
       setRmmUpdateRequestedAt(null);
       setRmmUpdateTargetVersion(null);
       toast.success(copy.toasts.agentUpdateCancelled);
-      if (rightPanelTab === "logs") {
-        window.setTimeout(() => {
-          loadLogs(1);
-        }, 400);
-      }
     } catch (error) {
       console.error("Error annulation MAJ agent RMM:", error);
       toast.error(error?.message || copy.toasts.agentUpdateCancelError);
@@ -537,7 +600,6 @@ export default function EquipmentDetailPage({
     }
   };
   const abortAllPendingFetches = () => {
-    logsControllerRef.current?.abort();
     checkmkControllerRef.current?.abort();
     availabilityControllerRef.current?.abort();
   };
@@ -776,8 +838,11 @@ export default function EquipmentDetailPage({
       skipEquipmentUiPersistRef.current = true;
       const saved = readEquipmentDetailUi(equipmentDbId);
       const savedTab = saved?.rightPanelTab;
-      setRightPanelTab(normalizeEquipmentDetailTab(savedTab));
-      setActivityPane(normalizeEquipmentActivityPane(saved?.activityPane));
+      const migratedMetrics =
+        saved?.activityPane === "metrics" &&
+        (savedTab === "activity" || savedTab === "events" || savedTab === "stats" || savedTab === "metrics");
+      const nextTab = normalizeEquipmentDetailTab(migratedMetrics ? "metrics" : savedTab);
+      setRightPanelTab(nextTab);
       setSupervisionPane(
         normalizeEquipmentSupervisionPane(
           savedTab === "history" || savedTab === "maintenance"
@@ -785,8 +850,8 @@ export default function EquipmentDetailPage({
             : saved?.supervisionPane
         )
       );
+      setRmmPane(normalizeEquipmentRmmPane(nextTab === "metrics" ? "metrics" : nextTab));
       setActivityDatePreset(saved?.activityDatePreset || "30d");
-      setLogsCategory(saved?.logsCategory || "all");
       const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
       if (Array.isArray(cached?.tags)) {
         setEquipmentTags(cached.tags);
@@ -795,12 +860,6 @@ export default function EquipmentDetailPage({
       if (cached?.activity) {
         setActivity(cached.activity);
         setLoadingActivity(false);
-      }
-      if (Array.isArray(cached?.logs)) {
-        setLogs(cached.logs);
-        setLogsTotal(Number(cached.logsTotal) || 0);
-        setLogsPage(Number(cached.logsPage) || 1);
-        setLoadingLogs(false);
       }
       if (cached?.checkmkMapping) setCheckmkMapping(cached.checkmkMapping);
       if (cached?.checkmkData) setCheckmkData(cached.checkmkData);
@@ -815,12 +874,11 @@ export default function EquipmentDetailPage({
     }
     writeEquipmentDetailUi(equipmentDbId, {
       rightPanelTab,
-      activityPane,
+      rmmPane,
       supervisionPane,
-      activityDatePreset,
-      logsCategory
+      activityDatePreset
     });
-  }, [equipmentDbId, rightPanelTab, activityPane, supervisionPane, activityDatePreset, logsCategory]);
+  }, [equipmentDbId, rightPanelTab, rmmPane, supervisionPane, activityDatePreset]);
   useEffect(() => {
     const el = mainContentRef.current;
     if (!el || !equipmentDbId) return undefined;
@@ -1041,20 +1099,6 @@ export default function EquipmentDetailPage({
     onNavigateToEquipment?.(target);
   }, [onNavigate, onNavigateToEquipment]);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setLogsSearch(logsSearchDraft.trim());
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [logsSearchDraft]);
-  useEffect(() => {
-    if (rightPanelTab !== 'logs') {
-      logsControllerRef.current?.abort();
-      return;
-    }
-    if (!equipment?.id) return;
-    loadLogs(1);
-  }, [rightPanelTab, equipment?.id, logsSearch, logsCategory]);
-  useEffect(() => {
     if (!rmmManaged || !equipment?.clientId) return undefined;
     refreshRmmEquipment();
     const intervalMs = rmmSyncPending ? 15000 : 45000;
@@ -1170,31 +1214,6 @@ export default function EquipmentDetailPage({
     };
   }, [rmmManaged, rmmAgentId, rmmUpdateRequestedAt, refreshRmmEquipment]);
   useEffect(() => {
-    setActivityPane(prev =>
-      normalizeEquipmentActivityPane(prev, { allowMetrics: showRmmMetricsTab })
-    );
-  }, [showRmmMetricsTab]);
-  useEffect(() => {
-    if (rightPanelTab === "synthese" && !showSyntheseTab) {
-      setRightPanelTab("fiche");
-    }
-  }, [rightPanelTab, showSyntheseTab]);
-  useEffect(() => {
-    if (rightPanelTab === "supervision" && !showSupervisionTab) {
-      setRightPanelTab("fiche");
-    }
-  }, [rightPanelTab, showSupervisionTab]);
-  useEffect(() => {
-    if (rightPanelTab === "peripherals" && !showRmmPeripheralsTab) {
-      setRightPanelTab(showSyntheseTab ? "synthese" : "fiche");
-    }
-  }, [rightPanelTab, showRmmPeripheralsTab, showSyntheseTab]);
-  useEffect(() => {
-    if (rightPanelTab === "operations" && !showRmmOperationsTab) {
-      setRightPanelTab(showSyntheseTab ? "synthese" : "fiche");
-    }
-  }, [rightPanelTab, showRmmOperationsTab, showSyntheseTab]);
-  useEffect(() => {
     if (
       rightPanelTab === "synthese" ||
       rightPanelTab === "fiche" ||
@@ -1255,23 +1274,6 @@ export default function EquipmentDetailPage({
     showRmmOperationsTab,
     showRmmPeripheralsTab
   ]);
-
-  useLayoutEffect(() => {
-    const root = activitySwitchRef.current;
-    if (!root) {
-      setActivitySwitchIndicator(prev => (prev.ready ? { left: 0, width: 0, ready: false } : prev));
-      return undefined;
-    }
-    const update = () => measureSlidingTabIndicator(root, setActivitySwitchIndicator);
-    update();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
-    ro?.observe(root);
-    window.addEventListener("resize", update);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [measureSlidingTabIndicator, activityPane, rightPanelTab, showRmmMetricsTab]);
 
   useLayoutEffect(() => {
     const root = supervisionSwitchRef.current;
@@ -1489,85 +1491,6 @@ export default function EquipmentDetailPage({
     setIsEditingInfo(false);
     setHasInfoChanges(false);
   };
-  const loadLogs = async (page = 1) => {
-    if (!equipment?.id) return;
-    logsControllerRef.current?.abort();
-    const controller = createTrackedAbortController();
-    logsControllerRef.current = controller;
-    const cacheId = getEquipmentDbIdLocal() || equipmentDbId;
-    const cached = cacheId ? getDetailCache(DETAIL_CACHE_NS.equipment, cacheId) : null;
-    const keepVisible = Array.isArray(cached?.logs) && page === 1 && !logsSearch && logsCategory === "all";
-    if (!keepVisible) setLoadingLogs(true);
-    try {
-      const data = await getEquipmentLogs(equipment.id, page, logsLimit, {
-        clientId: equipment.clientId,
-        type: equipment.type,
-        name: equipment.name,
-        dbId: cacheId || equipment.dbId || null,
-        familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
-        family: equipment.family || null,
-        search: logsSearch,
-        category: logsCategory,
-        signal: controller.signal
-      });
-      if (controller.signal.aborted) return;
-      const nextLogs = data.logs || [];
-      const nextTotal = data.total || 0;
-      setLogs(nextLogs);
-      setLogsTotal(nextTotal);
-      setLogsPage(page);
-      if (cacheId && !logsSearch && logsCategory === "all") {
-        patchEquipmentCache(cacheId, {
-          logs: nextLogs,
-          logsTotal: nextTotal,
-          logsPage: page
-        });
-      }
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-      console.error("Error while loading des logs:", error);
-      if (!keepVisible) {
-        setLogs([]);
-        setLogsTotal(0);
-      }
-    } finally {
-      if (!controller.signal.aborted) setLoadingLogs(false);
-    }
-  };
-  const handlePurgeLogs = async () => {
-    if (!equipment?.id || purgingLogs) return;
-    setPurgingLogs(true);
-    try {
-      const result = await purgeEquipmentLogs(equipment.id, {
-        clientId: equipment.clientId,
-        type: equipment.type,
-        name: equipment.name,
-        dbId: getEquipmentDbIdLocal() || equipment.dbId || null,
-        familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
-        family: equipment.family || null,
-        search: logsSearch,
-        category: logsCategory
-      });
-      const deleted = result?.logs_deleted ?? 0;
-      toast.success(deleted > 0 ? interpolate(copy.logs.purgeSuccess, {
-        count: deleted
-      }) : copy.logs.purgeNone);
-      setPurgeLogsConfirmOpen(false);
-      setSelectedLogDetail(null);
-      await loadLogs(1);
-    } catch (error) {
-      console.error("Error purge logs:", error);
-      toast.error(error?.message || copy.toasts.purgeError);
-    } finally {
-      setPurgingLogs(false);
-    }
-  };
-  const logsFiltersActive = Boolean(logsSearch) || logsCategory !== "all";
-  const purgeLogsMessage = logsFiltersActive ? interpolate(modalsCopy.confirm?.purgeLogs?.messageFiltered, {
-    count: logsTotal
-  }) : interpolate(modalsCopy.confirm?.purgeLogs?.messageAll, {
-    count: logsTotal
-  });
   const loadEquipmentActivity = useCallback(async () => {
     if (!equipmentDbId || !equipmentClientId) {
       setActivity(null);
@@ -1617,7 +1540,7 @@ export default function EquipmentDetailPage({
   const activityFetchKey = useMemo(() => [equipmentDbId || "", equipmentClientId || "", activityDatePreset, activityCustomStart, activityCustomEnd].join("|"), [equipmentDbId, equipmentClientId, activityDatePreset, activityCustomStart, activityCustomEnd]);
   useEffect(() => {
     const onActivityTab = rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats";
-    const needsVeritasData = onActivityTab && (!showRmmMetricsTab || activityPane === "veritas");
+    const needsVeritasData = onActivityTab;
     if (!needsVeritasData) {
       activityControllerRef.current?.abort();
       return;
@@ -1631,7 +1554,7 @@ export default function EquipmentDetailPage({
     if (lastActivityFetchKeyRef.current === activityFetchKey) return;
     lastActivityFetchKeyRef.current = activityFetchKey;
     loadEquipmentActivity();
-  }, [rightPanelTab, activityPane, showRmmMetricsTab, activityFetchKey, equipmentDbId, equipmentClientId, loadEquipmentActivity]);
+  }, [rightPanelTab, activityFetchKey, equipmentDbId, equipmentClientId, loadEquipmentActivity]);
   const handleOpenLinkedTicket = ticket => {
     if (!ticket?.id || !onNavigate) return;
     onNavigate("TicketDetail", {
@@ -1651,14 +1574,17 @@ export default function EquipmentDetailPage({
   };
   const refreshActivityAfterEventChange = () => {
     const onActivityTab = rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats";
-    if (onActivityTab && (!showRmmMetricsTab || activityPane === "veritas")) {
+    if (onActivityTab) {
       lastActivityFetchKeyRef.current = null;
       loadEquipmentActivity();
     }
   };
   const openActivityTab = pane => {
-    if (pane === "metrics" && showRmmMetricsTab) setActivityPane("metrics");
-    else setActivityPane("veritas");
+    if (pane === "metrics") {
+      setRmmPane("metrics");
+      setRightPanelTab("metrics");
+      return;
+    }
     setRightPanelTab("activity");
   };
   const loadPhotos = async () => {
@@ -1922,7 +1848,6 @@ export default function EquipmentDetailPage({
   const storageTypeValue = (formData.type || equipment?.rawData?.type || equipment?.type || '').toString().toLowerCase();
   const isNasOrSanStorage = equipment?.type === 'NAS' && (storageTypeValue.includes('nas') || storageTypeValue.includes('san'));
   const isSynologyNasStorage = isNasOrSanStorage && isSynologyBrand(formData.manufacturer);
-  const typeDisplayLabel = useMemo(() => getEquipmentDetailTypeLabel(equipment, locale), [equipment, locale]);
   const raidOptions = ["RAID 0", "RAID 1", "RAID 5", "RAID 6", "RAID 10", "RAID 50", "RAID 60", "SHR (Synology)", "SHR-2 (Synology)", "RAID F1", "Qtier (QNAP)", "RAID-TP (QNAP)", "RAID-Z (ZFS)", "RAID-Z2 (ZFS)", "RAID-Z3 (ZFS)", "Autre"];
   const lunRoleOptions = [{
     value: "stockage",
@@ -1935,12 +1860,6 @@ export default function EquipmentDetailPage({
   const internetTypeOptions = ["Fibre", "ADSL", "SDSL", "VDSL", "4G", "5G", "Satellite", "Câble", "Radio", "SD-WAN", "Autre"];
   const nasRoleOptions = ["Storage de sauvegarde", "Storage de fichiers communs", "Storage principal", "Storage d'archivage", "Storage de réplication", "Autre"];
   const osOptions = ["Windows Server 2012 R2 Standard", "Windows Server 2012 R2 Datacenter", "Windows Server 2016 Standard", "Windows Server 2016 Datacenter", "Windows Server 2019 Standard", "Windows Server 2019 Datacenter", "Windows Server 2022 Standard", "Windows Server 2022 Datacenter", "Windows Server 2025 Standard", "Windows Server 2025 Datacenter", "Windows 10 Pro", "Windows 10 Enterprise", "Windows 11 Pro", "Windows 11 Enterprise", "Ubuntu Server 18.04 LTS", "Ubuntu Server 20.04 LTS", "Ubuntu Server 22.04 LTS", "Ubuntu Server 24.04 LTS", "Ubuntu Desktop 20.04 LTS", "Ubuntu Desktop 22.04 LTS", "Ubuntu Desktop 24.04 LTS", "Debian 10 (Buster)", "Debian 11 (Bullseye)", "Debian 12 (Bookworm)", "Debian 13 (Trixie)", "CentOS 6", "CentOS 7", "CentOS 8", "CentOS Stream 8", "CentOS Stream 9", "CentOS Stream 10", "Red Hat Enterprise Linux 6", "Red Hat Enterprise Linux 7", "Red Hat Enterprise Linux 8", "Red Hat Enterprise Linux 9", "Red Hat Enterprise Linux 10", "SUSE Linux Enterprise Server 12", "SUSE Linux Enterprise Server 15", "SUSE Linux Enterprise Server 16", "openSUSE Leap 15", "openSUSE Leap 16", "openSUSE Tumbleweed", "VMware ESXi 6.5", "VMware ESXi 6.7", "VMware ESXi 7.0", "VMware ESXi 8.0", "VMware ESXi 8.1", "VMware ESXi 8.2", "VMware vCenter Server 6.7", "VMware vCenter Server 7.0", "VMware vCenter Server 8.0", "Proxmox VE 6.x", "Proxmox VE 7.x", "Proxmox VE 8.x", "AlmaLinux 8", "AlmaLinux 9", "Rocky Linux 8", "Rocky Linux 9", "Oracle Linux 7", "Oracle Linux 8", "Oracle Linux 9", "Fedora Server 37", "Fedora Server 38", "Fedora Server 39", "Fedora Server 40", "FreeBSD 12", "FreeBSD 13", "FreeBSD 14", "TrueNAS Core", "TrueNAS Scale", "Citrix XenServer 7.1", "Citrix XenServer 8.0", "Citrix XenServer 8.2", "Microsoft Hyper-V Server 2019", "Microsoft Hyper-V Server 2022", "Autre"];
-  const handleLogClick = log => {
-    setSelectedLogDetail(log);
-  };
-  const closeLogModal = () => {
-    setSelectedLogDetail(null);
-  };
   const handleAddEquipmentTag = async ({
     label,
     color
@@ -2069,32 +1988,9 @@ export default function EquipmentDetailPage({
     equipment?.type,
     equipment?.familyIcon || equipment?.customFamily?.icon
   );
-  const rmmInventory = getRmmInventoryFromEquipment(equipmentWithRmmLive || equipment);
-  const rmmOsInfo = getRmmOsEditionInfo(rmmInventory, equipment);
-  const rmmChassis = getRmmChassisInfo(rmmInventory);
-  const heroOsLabel = rmmOsInfo.osCaption || formData.systeme || equipment?.systeme || null;
-  const heroManufacturer = rmmChassis.manufacturer || formData.manufacturer || equipment?.manufacturer || null;
-  const heroModel = rmmChassis.model || formData.model || equipment?.model || null;
-  const heroIp = equipment?.ip || formData.ip || rmmInventory?.network?.ip || rmmInventory?.ip || null;
-  const heroSite = findClientSiteByLocation(clientSites, formData.location || equipment?.location);
-  const heroSiteLabel = getSiteDisplayName(heroSite) || formData.location || equipment?.location || null;
-  const heroSerial = rmmChassis.serial || formData.serial || equipment?.serial || null;
   const deviceNote = String(formData.commentaire || equipment?.commentaire || "").trim();
   const deviceNotePreview =
     deviceNote.length > 96 ? `${deviceNote.slice(0, 96).trimEnd()}…` : deviceNote;
-  const heroFacts = [
-    typeDisplayLabel
-      ? { key: "family", icon: heroIcon || "mdi:devices", label: copy.hero.factType || copy.hero.factFamily || "Type", value: typeDisplayLabel }
-      : null,
-    heroOsLabel
-      ? { key: "os", icon: "mdi:monitor-screenshot", label: copy.hero.factOs || "OS", value: heroOsLabel }
-      : null,
-    heroSiteLabel ? { key: "site", icon: "mdi:map-marker-outline", label: copy.hero.factSite || "Site", value: heroSiteLabel } : null,
-    heroManufacturer ? { key: "mfr", icon: "mdi:domain", label: copy.hero.factManufacturer, value: heroManufacturer } : null,
-    heroModel ? { key: "model", icon: "mdi:tag-outline", label: copy.hero.factModel, value: heroModel } : null,
-    heroSerial ? { key: "serial", icon: "mdi:barcode", label: copy.hero.factSerial || "N° de série", value: heroSerial } : null,
-    heroIp ? { key: "ip", icon: "mdi:ip-network-outline", label: copy.hero.factIp, value: heroIp } : null
-  ].filter(Boolean);
   if (!equipment) {
     return <div className={styles.detailPage}>
         <div className={styles.error}>{copy.notFound}</div>
@@ -2105,252 +2001,418 @@ export default function EquipmentDetailPage({
       <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
         <div className={enterpriseDetailStyles.heroTop}>
           <div className={enterpriseDetailStyles.heroIdentityBlock}>
-              <div
-                className={`${enterpriseDetailStyles.heroCover} ${inMaintenance ? styles.heroCoverMaintenance : ""}`.trim()}
-                aria-hidden
-              />
-              <div className={`${enterpriseDetailStyles.heroIdentityRow} ${styles.heroIdentityRowEquip}`.trim()}>
-                <div className={enterpriseDetailStyles.heroMain}>
-                  <span className={`${enterpriseDetailStyles.heroBrandIcon} ${inMaintenance ? styles.heroBrandIconMaintenance : ""}`.trim()} aria-hidden>
-                    <Icon icon={inMaintenance ? "mdi:traffic-cone" : heroIcon} width={30} height={30} />
-                  </span>
-                  <div className={enterpriseDetailStyles.heroText}>
-                    <h1 className={enterpriseDetailStyles.heroTitle}>
-                      <span className={enterpriseDetailStyles.heroTitleName}>{equipmentHeroTitle}</span>
-                      <span className={`${enterpriseDetailStyles.heroStatusBadge} ${equipmentStatusActive ? "" : enterpriseDetailStyles.heroStatusBadgeInactive}`.trim()}>
-                        <StatusDot active={equipmentStatusActive} label="" className={enterpriseDetailStyles.heroTitleStatus} />
-                        {equipmentStatusLabel}
+            <div
+              className={`${enterpriseDetailStyles.heroCover} ${inMaintenance ? styles.heroCoverMaintenance : ""}`.trim()}
+              aria-hidden
+            />
+            <div className={enterpriseDetailStyles.heroIdentityRow}>
+              <div className={enterpriseDetailStyles.heroMain}>
+                <span
+                  className={`${enterpriseDetailStyles.heroBrandIcon} ${inMaintenance ? styles.heroBrandIconMaintenance : ""}`.trim()}
+                  aria-hidden
+                >
+                  <Icon icon={inMaintenance ? "mdi:traffic-cone" : heroIcon} width={16} height={16} />
+                </span>
+                <div className={enterpriseDetailStyles.heroText}>
+                  <h1 className={enterpriseDetailStyles.heroTitle}>
+                    <StatusDot
+                      active={equipmentStatusActive}
+                      label={equipmentStatusLabel}
+                      className={enterpriseDetailStyles.heroTitleStatus}
+                    />
+                    <span className={enterpriseDetailStyles.heroTitleName}>{equipmentHeroTitle}</span>
+                    {inMaintenance ? (
+                      <span
+                        className={styles.heroMaintenanceBadge}
+                        title={maintenanceBadgeTitle}
+                        aria-label={copy.hero.maintenanceBadge || "En maintenance"}
+                      >
+                        <Icon icon="mdi:traffic-cone" width={12} height={12} aria-hidden />
+                        {copy.hero.maintenanceBadge || "En maintenance"}
                       </span>
-                      {inMaintenance ? (
-                        <span
-                          className={styles.heroMaintenanceBadge}
-                          title={maintenanceBadgeTitle}
-                          aria-label={copy.hero.maintenanceBadge || "En maintenance"}
-                        >
-                          <Icon icon="mdi:traffic-cone" width={12} height={12} aria-hidden />
-                          {copy.hero.maintenanceBadge || "En maintenance"}
-                        </span>
-                      ) : null}
-                    </h1>
-                    {inMaintenance && maintenanceReason ? (
-                      <p className={styles.heroMaintenanceReason} title={maintenanceReason}>
-                        <span className={styles.heroMaintenanceReasonLabel}>{maintenanceReasonLabel}</span>
-                        <span className={styles.heroMaintenanceReasonText}>{maintenanceReason}</span>
-                      </p>
                     ) : null}
-                    <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
-                      {(() => {
-                  const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
-                  const enterpriseName = equipment?.clientName || modalClient?.name || "";
-                  if (!enterpriseName && !enterpriseId) return null;
-                  const enterpriseClient = modalClient && String(modalClient.id) === String(enterpriseId) ? modalClient : {
-                    id: enterpriseId,
-                    name: enterpriseName,
-                    client_number: equipment?.clientNumber ?? equipment?.client_number,
-                    clientNumber: equipment?.clientNumber ?? equipment?.client_number
-                  };
-                  const code = getClientNumber(enterpriseClient);
-                  const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
-                  if (!label && !code) return null;
-                  const companyContent = <>
-                        <Icon icon="mdi:domain" aria-hidden />
-                        {code ? <>
-                            <span className={enterpriseDetailStyles.headerClientCode}>{code}</span>
-                            {label}
-                          </> : label}
-                      </>;
-                  if (!enterpriseId || !onNavigate) {
-                    return <span className={enterpriseDetailStyles.heroMetaItem}>
-                          {companyContent}
-                        </span>;
-                  }
-                  return <button type="button" className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaLink}`} onClick={() => openEnterprise()} onMouseDown={e => {
-                    if (e.button === 1) {
-                      e.preventDefault();
-                      openEnterprise({
-                        background: true
-                      });
-                    }
-                  }} onAuxClick={e => {
-                    if (e.button === 1) {
-                      e.preventDefault();
-                      openEnterprise({
-                        background: true
-                      });
-                    }
-                  }} title={copy.hero.viewEnterprise} aria-label={copy.hero.viewEnterprise}>
-                        {companyContent}
-                      </button>;
-                })()}
-                      {createdAtLabel ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.stats.createdInVeritas}>
-                          <Icon icon="mdi:calendar-plus" aria-hidden />
-                          {createdAtLabel}
-                        </span> : null}
-                      {loadingEquipmentTags ? <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                          {equipmentTags.map(tag => <span key={tag.id} className={enterpriseDetailStyles.heroTagChip} style={{
-                    backgroundColor: `${tag.color || "#2b5fab"}18`,
-                    borderColor: `${tag.color || "#2b5fab"}55`,
-                    color: tag.color || "#2b5fab"
-                  }}>
-                              {tag.label}
-                              {canManageEquipmentTags ? <button type="button" className={enterpriseDetailStyles.heroTagRemove} onClick={() => handleRemoveEquipmentTag(tag.id)} aria-label={interpolate(copy.hero.removeTag, {
-                      label: tag.label
-                    })}>
+                    {loadingEquipmentTags ? (
+                      <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span>
+                    ) : equipmentTags.length > 0 || canManageEquipmentTags ? (
+                      <span className={enterpriseDetailStyles.heroTitleTags} aria-label={copy.hero.metaAria}>
+                        {equipmentTags.map(tag => (
+                          <span
+                            key={tag.id}
+                            className={enterpriseDetailStyles.heroTagChip}
+                            style={{
+                              backgroundColor: `${tag.color || "#2b5fab"}18`,
+                              borderColor: `${tag.color || "#2b5fab"}55`,
+                              color: tag.color || "#2b5fab"
+                            }}
+                          >
+                            {tag.label}
+                            {canManageEquipmentTags ? (
+                              <button
+                                type="button"
+                                className={enterpriseDetailStyles.heroTagRemove}
+                                onClick={() => handleRemoveEquipmentTag(tag.id)}
+                                aria-label={interpolate(copy.hero.removeTag, { label: tag.label })}
+                              >
                                 <FaTimes />
-                              </button> : null}
-                            </span>)}
-                          {canManageEquipmentTags ? <div className={enterpriseDetailStyles.heroTagAddWrap}>
+                              </button>
+                            ) : null}
+                          </span>
+                        ))}
+                        {canManageEquipmentTags ? (
+                          <span className={enterpriseDetailStyles.heroTagAddWrap}>
                             <SmartTooltip content={copy.hero.addTag}>
-                              <button type="button" className={enterpriseDetailStyles.heroTagAddTrigger} onClick={() => setEquipmentTagModalOpen(true)} aria-label={copy.hero.addTag}>
+                              <button
+                                type="button"
+                                className={enterpriseDetailStyles.heroTagAddTrigger}
+                                onClick={() => setEquipmentTagModalOpen(true)}
+                                aria-label={copy.hero.addTag}
+                              >
                                 <FaPlus />
                               </button>
                             </SmartTooltip>
-                          </div> : null}
-                        </>}
-                    </div>
-                    {showRmmHeroStatus ? <RmmCollectionStatusLine equipment={equipmentWithRmmLive} heartbeatIntervalMinutes={rmmHeartbeatMinutes} locale={locale} copy={copy} compact className={enterpriseDetailStyles.heroMetaItemRmm} /> : null}
-                  </div>
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
+                  </h1>
+                  {inMaintenance && maintenanceReason ? (
+                    <p className={styles.heroMaintenanceReason} title={maintenanceReason}>
+                      <span className={styles.heroMaintenanceReasonLabel}>{maintenanceReasonLabel}</span>
+                      <span className={styles.heroMaintenanceReasonText}>{maintenanceReason}</span>
+                    </p>
+                  ) : null}
                 </div>
-                {deviceNote ? (
-                  <div className={styles.heroRightCluster}>
-                    <SmartTooltip
-                      content={
-                        <div className={styles.heroNoteTooltip}>
-                          <strong className={styles.heroNoteTooltipTitle}>{copy.hero.factNote || "Note"}</strong>
-                          <p className={styles.heroNoteTooltipBody}>{deviceNote}</p>
-                        </div>
-                      }
-                      data-tooltip-position="bottom-end"
+              </div>
+              <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
+                {(() => {
+                  const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
+                  const enterpriseName = equipment?.clientName || modalClient?.name || "";
+                  if (!enterpriseName && !enterpriseId) return null;
+                  const enterpriseClient =
+                    modalClient && String(modalClient.id) === String(enterpriseId)
+                      ? modalClient
+                      : {
+                          id: enterpriseId,
+                          name: enterpriseName,
+                          client_number: equipment?.clientNumber ?? equipment?.client_number,
+                          clientNumber: equipment?.clientNumber ?? equipment?.client_number
+                        };
+                  const code = getClientNumber(enterpriseClient);
+                  const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
+                  if (!label && !code) return null;
+                  const companyContent = (
+                    <>
+                      <Icon icon="mdi:domain" aria-hidden />
+                      {code ? (
+                        <>
+                          <span className={styles.heroClientCode}>{code}</span>
+                          {label}
+                        </>
+                      ) : (
+                        label
+                      )}
+                    </>
+                  );
+                  if (!enterpriseId || !onNavigate) {
+                    return (
+                      <span className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock}`}>
+                        {companyContent}
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      type="button"
+                      className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock} ${enterpriseDetailStyles.heroMetaLink}`}
+                      onClick={() => openEnterprise()}
+                      onMouseDown={e => {
+                        if (e.button === 1) {
+                          e.preventDefault();
+                          openEnterprise({ background: true });
+                        }
+                      }}
+                      onAuxClick={e => {
+                        if (e.button === 1) {
+                          e.preventDefault();
+                          openEnterprise({ background: true });
+                        }
+                      }}
+                      title={copy.hero.viewEnterprise}
+                      aria-label={copy.hero.viewEnterprise}
                     >
-                      <div
-                        className={styles.heroNoteChip}
-                        tabIndex={0}
-                        aria-label={`${copy.hero.factNote || "Note"}: ${deviceNote}`}
-                      >
-                        <Icon icon="mdi:note-text-outline" className={styles.heroNoteIcon} aria-hidden />
-                        <div className={styles.heroNoteText}>
-                          <span className={styles.heroNoteLabel}>{copy.hero.factNote || "Note"}</span>
-                          <span className={styles.heroNotePreview}>{deviceNotePreview}</span>
-                        </div>
+                      {companyContent}
+                    </button>
+                  );
+                })()}
+                {createdAtLabel ? (
+                  <span
+                    className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock}`}
+                    title={copy.stats.createdInVeritas}
+                  >
+                    <Icon icon="mdi:calendar-plus" aria-hidden />
+                    {createdAtLabel}
+                  </span>
+                ) : null}
+                {showRmmHeroStatus ? (
+                  <RmmCollectionStatusLine
+                    equipment={equipmentWithRmmLive}
+                    heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+                    locale={locale}
+                    copy={copy}
+                    compact
+                    className={`${enterpriseDetailStyles.heroMetaItemRmm} ${enterpriseDetailStyles.heroMetaBlock}`}
+                  />
+                ) : null}
+                {deviceNote ? (
+                  <SmartTooltip
+                    content={
+                      <div className={styles.heroNoteTooltip}>
+                        <strong className={styles.heroNoteTooltipTitle}>{copy.hero.factNote || "Note"}</strong>
+                        <p className={styles.heroNoteTooltipBody}>{deviceNote}</p>
                       </div>
-                    </SmartTooltip>
-                  </div>
+                    }
+                    data-tooltip-position="bottom-end"
+                  >
+                    <div
+                      className={`${styles.heroNoteChip} ${enterpriseDetailStyles.heroMetaBlock}`}
+                      tabIndex={0}
+                      aria-label={`${copy.hero.factNote || "Note"}: ${deviceNote}`}
+                    >
+                      <Icon icon="mdi:note-text-outline" className={styles.heroNoteIcon} aria-hidden />
+                      <div className={styles.heroNoteText}>
+                        <span className={styles.heroNoteLabel}>{copy.hero.factNote || "Note"}</span>
+                        <span className={styles.heroNotePreview}>{deviceNotePreview}</span>
+                      </div>
+                    </div>
+                  </SmartTooltip>
                 ) : null}
               </div>
-
-            {heroFacts.length ? <div
-              className={enterpriseDetailStyles.heroFactStrip}
-              aria-label={copy.hero.factsAria}
-            >
-                {heroFacts.map(fact => <div key={fact.key} className={enterpriseDetailStyles.heroFactItem}>
-                    <span className={enterpriseDetailStyles.heroFactIcon} aria-hidden>
-                      <Icon icon={fact.icon} />
-                    </span>
-                    <div className={enterpriseDetailStyles.heroFactText}>
-                      <span className={enterpriseDetailStyles.heroFactLabel}>{fact.label}</span>
-                      <span className={enterpriseDetailStyles.heroFactValue} title={String(fact.value)}>{fact.value}</span>
-                    </div>
-                  </div>)}
-              </div> : null}
+            </div>
           </div>
         </div>
       </header>
 
       <div className={`${enterpriseDetailStyles.pageBody} ${enterpriseDetailStyles.pageBodyFill} ${styles.shell}`.trim()}>
         <div className={`${enterpriseDetailStyles.pageGrid} ${styles.pageGridEquip}`.trim()}>
-        <div className={`${enterpriseDetailStyles.mainColumn} ${enterpriseDetailStyles.mainColumnEquipmentFill} ${styles.mainColumnEquip}`.trim()}>
-        <nav
-          ref={heroTabsRef}
-          className={`${enterpriseDetailStyles.heroTabBar} ${styles.heroTabBarGrouped} ${styles.heroTabBarAnimated}`.trim()}
-          data-indicator-ready={heroTabIndicator.ready ? "true" : "false"}
-          role="tablist"
-          aria-label={copy.tabs.aria}
-        >
-          <span
-            className={styles.heroTabIndicator}
-            style={{
-              transform: `translateX(${heroTabIndicator.left}px)`,
-              width: heroTabIndicator.width,
-              opacity: heroTabIndicator.ready ? 1 : 0
-            }}
-            aria-hidden
-          />
-          <div className={styles.heroTabGroup} role="presentation">
-            <button type="button" role="tab" aria-selected={rightPanelTab === "fiche"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "fiche" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("fiche")}>
-              <Icon icon="mdi:clipboard-text-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.fiche || "Informations matériel"}</span>
-            </button>
-            <button type="button" role="tab" aria-selected={rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "metrics" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => openActivityTab()}>
-              <Icon icon="mdi:chart-timeline-variant" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.activity}</span>
-            </button>
-            <button type="button" role="tab" aria-selected={rightPanelTab === "documents"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "documents" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("documents")}>
-              <Icon icon="mdi:file-document-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.documents}</span>
-            </button>
-            <button type="button" role="tab" aria-selected={rightPanelTab === "logs"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "logs" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("logs")}>
-              <Icon icon="mdi:history" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-              <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.logs}</span>
-            </button>
-          </div>
+        <div className={`${enterpriseDetailStyles.mainColumn} ${enterpriseDetailStyles.mainColumnEquipmentFill} ${enterpriseDetailStyles.mainColumnFinder} ${styles.mainColumnEquip}`.trim()}>
+        <div className={`${finderKit.finderLayout} ${enterpriseDetailStyles.enterpriseFinderLayout} ${styles.equipmentFinderLayout}`.trim()}>
+          <aside className={`${finderKit.finderSidebar} ${enterpriseDetailStyles.enterpriseFinderSidebar}`} aria-label={copy.tabs.aria}>
+            <nav
+              ref={finderPrimaryTrackRef}
+              className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated}`}
+              role="tablist"
+              aria-label={copy.tabs.aria}
+            >
+              {finderPrimaryIndicator.ready ? (
+                <div
+                  className={finderKit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${finderPrimaryIndicator.top}px, 0)`,
+                    height: finderPrimaryIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
 
-          {showRmmTabGroup ? (
-            <>
-              <span className={styles.heroTabSep} aria-hidden />
-              <div className={styles.heroTabGroup} role="presentation" data-tab-group="rmm">
-                {showSyntheseTab ? (
-                  <button type="button" role="tab" aria-selected={rightPanelTab === "synthese"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "synthese" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("synthese")}>
-                    <Icon icon="mdi:chart-box-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-                    <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.synthese || "Synthèse RMM"}</span>
-                  </button>
-                ) : null}
-                {showRmmOperationsTab ? (
-                  <button type="button" role="tab" aria-selected={rightPanelTab === "operations"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "operations" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("operations")}>
-                    <Icon icon="mdi:shield-lock-outline" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-                    <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.cybersecurity || copy.tabs.system}</span>
-                  </button>
-                ) : null}
-                {showRmmPeripheralsTab ? (
-                  <button type="button" role="tab" aria-selected={rightPanelTab === "peripherals"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "peripherals" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("peripherals")}>
-                    <Icon icon="mdi:package-variant-closed" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-                    <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.inventory || copy.tabs.peripherals}</span>
-                  </button>
-                ) : null}
+              <div className={finderKit.finderNavGroup}>
+                <p className={finderKit.finderNavGroupTitle}>{copy.tabs.groupGeneral || "Général"}</p>
+                <EnterpriseOverviewTabButton
+                  tabId="fiche"
+                  iconify="mdi:clipboard-text-outline"
+                  label={copy.tabs.fiche || "Informations matériel"}
+                  active={rightPanelTab === "fiche"}
+                  onClick={() => selectEquipmentTab("fiche")}
+                  className={`${finderKit.finderItem} ${rightPanelTab === "fiche" ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="activity"
+                  iconify="mdi:chart-timeline-variant"
+                  label={copy.tabs.activity}
+                  active={isActivityTab}
+                  onClick={() => selectEquipmentTab("activity")}
+                  className={`${finderKit.finderItem} ${isActivityTab ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="documents"
+                  iconify="mdi:file-document-outline"
+                  label={copy.tabs.documents}
+                  active={rightPanelTab === "documents"}
+                  onClick={() => selectEquipmentTab("documents")}
+                  className={`${finderKit.finderItem} ${rightPanelTab === "documents" ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="logs"
+                  iconify="mdi:history"
+                  label={copy.tabs.logs}
+                  active={rightPanelTab === "logs"}
+                  onClick={() => selectEquipmentTab("logs")}
+                  className={`${finderKit.finderItem} ${rightPanelTab === "logs" ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="rmm"
+                  iconify="mdi:monitor-dashboard"
+                  label={copy.tabs.rmm || copy.tabs.groupRmm || "Agent RMM"}
+                  active={isRmmTab}
+                  onClick={() => selectEquipmentTab("rmm")}
+                  className={`${finderKit.finderItem} ${isRmmTab ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="supervision"
+                  iconify="mdi:radar"
+                  label={copy.tabs.supervision}
+                  active={rightPanelTab === "supervision"}
+                  onClick={() => selectEquipmentTab("supervision")}
+                  className={`${finderKit.finderItem} ${rightPanelTab === "supervision" ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
               </div>
-            </>
-          ) : null}
+            </nav>
 
-          {showSupervisionTabGroup ? (
-            <>
-              <span className={styles.heroTabSep} aria-hidden />
-              <div className={styles.heroTabGroup} role="presentation" data-tab-group="supervision">
-                <button type="button" role="tab" aria-selected={rightPanelTab === "supervision"} className={`${enterpriseDetailStyles.heroTab} ${rightPanelTab === "supervision" ? enterpriseDetailStyles.heroTabActive : ""}`} onClick={() => setRightPanelTab("supervision")}>
-                  <Icon icon="mdi:radar" className={enterpriseDetailStyles.heroTabIcon} aria-hidden />
-                  <span className={enterpriseDetailStyles.heroTabLabel}>{copy.tabs.supervision}</span>
-                </button>
+            <UiKitScrollFadeShell
+              className={`${finderKit.finderSecondaryShell}${finderSecondaryVisible ? "" : ` ${finderKit.finderSecondaryShellHidden}`}`.trim()}
+              style={finderSecondaryVisible ? undefined : { display: "none" }}
+              deps={[rightPanelTab, rmmPane, supervisionPane, showRmmMetricsTab]}
+            >
+              <div className={finderKit.finderSecondary} aria-hidden={!finderSecondaryVisible}>
+                <div className={finderKit.finderSecRevealActive}>
+                  <div className={finderKit.finderSecPanel} hidden={!isRmmTab} aria-hidden={!isRmmTab}>
+                    <p className={finderKit.finderSecTitle}>{copy.tabs.rmm || copy.tabs.groupRmm || "Agent RMM"}</p>
+                    <nav
+                      ref={isRmmTab ? finderSecondaryTrackRef : undefined}
+                      className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated}`}
+                      aria-label={copy.rmmPane?.aria || copy.tabs.groupRmm || "Agent RMM"}
+                    >
+                      {isRmmTab && finderSecondaryIndicator.ready ? (
+                        <div
+                          className={finderKit.finderNavIndicator}
+                          style={{
+                            transform: `translate3d(0, ${finderSecondaryIndicator.top}px, 0)`,
+                            height: finderSecondaryIndicator.height
+                          }}
+                          aria-hidden
+                        />
+                      ) : null}
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${rmmPane === "synthese" ? finderKit.finderSecItemActive : ""}`.trim()}
+                        aria-current={rmmPane === "synthese" ? "page" : undefined}
+                        tabIndex={isRmmTab ? undefined : -1}
+                        onClick={() => selectEquipmentTab("synthese")}
+                      >
+                        <Icon icon="mdi:chart-box-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>
+                          {copy.rmmPane?.synthese || copy.tabs.synthese || "Synthèse RMM"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${rmmPane === "operations" ? finderKit.finderSecItemActive : ""}`.trim()}
+                        aria-current={rmmPane === "operations" ? "page" : undefined}
+                        tabIndex={isRmmTab ? undefined : -1}
+                        onClick={() => selectEquipmentTab("operations")}
+                      >
+                        <Icon icon="mdi:shield-lock-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>
+                          {copy.rmmPane?.operations || copy.tabs.cybersecurity || copy.tabs.system}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${rmmPane === "peripherals" ? finderKit.finderSecItemActive : ""}`.trim()}
+                        aria-current={rmmPane === "peripherals" ? "page" : undefined}
+                        tabIndex={isRmmTab ? undefined : -1}
+                        onClick={() => selectEquipmentTab("peripherals")}
+                      >
+                        <Icon icon="mdi:package-variant-closed" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>
+                          {copy.rmmPane?.peripherals || copy.tabs.inventory || copy.tabs.peripherals}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${rmmPane === "metrics" ? finderKit.finderSecItemActive : ""}`.trim()}
+                        aria-current={rmmPane === "metrics" ? "page" : undefined}
+                        tabIndex={isRmmTab ? undefined : -1}
+                        onClick={() => selectEquipmentTab("metrics")}
+                      >
+                        <Icon icon="mdi:chart-areaspline" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>
+                          {copy.rmmPane?.metrics || copy.tabs.metrics || "Métriques"}
+                        </span>
+                      </button>
+                    </nav>
+                  </div>
+
+                  <div className={finderKit.finderSecPanel} hidden={rightPanelTab !== "supervision"} aria-hidden={rightPanelTab !== "supervision"}>
+                    <p className={finderKit.finderSecTitle}>{copy.tabs.supervision}</p>
+                    <nav
+                      className={finderKit.finderSecNav}
+                      aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}
+                    >
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${supervisionPane === "main" ? finderKit.finderSecItemActive : ""}`}
+                        aria-current={supervisionPane === "main" ? "page" : undefined}
+                        tabIndex={rightPanelTab === "supervision" ? undefined : -1}
+                        onClick={() => setSupervisionPane("main")}
+                      >
+                        <Icon icon="mdi:radar" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>{copy.supervisionPane?.main || "Main"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${supervisionPane === "history" ? finderKit.finderSecItemActive : ""}`}
+                        aria-current={supervisionPane === "history" ? "page" : undefined}
+                        tabIndex={rightPanelTab === "supervision" ? undefined : -1}
+                        onClick={() => setSupervisionPane("history")}
+                      >
+                        <Icon icon="mdi:clipboard-text-clock-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>{copy.supervisionPane?.history || copy.tabs.history || "Historique"}</span>
+                      </button>
+                    </nav>
+                  </div>
+                </div>
               </div>
-            </>
-          ) : null}
-        </nav>
+            </UiKitScrollFadeShell>
+          </aside>
+
+          <div className={`${finderKit.finderContent} ${styles.equipmentFinderContent}`.trim()}>
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
         <div ref={mainContentRef} className={styles.mainContent}>
-          {rightPanelTab === "synthese" && showSyntheseTab ? (
-              <div key="synthese" className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}>
-                <div className={styles.dashboardMain}>
-                  <EquipmentOverviewDashboard
-                    equipment={equipmentWithRmmLive || equipment}
-                    checkmkData={checkmkData}
-                    checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
-                    loadingCheckMK={loadingCheckMK}
-                    maintenanceHistoryKey={maintenanceHistoryKey}
-                    showRmmTab={rmmManaged}
-                    showSupervisionTab={hasCheckmkHost}
-                    forcedPane={rmmManaged ? "rmm" : "supervision"}
-                    hidePaneSwitch
-                  />
+          {rightPanelTab === "synthese" ? (
+              showSyntheseTab ? (
+                <div key="synthese" className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}>
+                  <div className={styles.dashboardMain}>
+                    <EquipmentOverviewDashboard
+                      equipment={equipmentWithRmmLive || equipment}
+                      checkmkData={checkmkData}
+                      checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
+                      loadingCheckMK={loadingCheckMK}
+                      maintenanceHistoryKey={maintenanceHistoryKey}
+                      showRmmTab={rmmManaged}
+                      showSupervisionTab={hasCheckmkHost}
+                      forcedPane={rmmManaged ? "rmm" : "supervision"}
+                      hidePaneSwitch
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div key="synthese-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
+                  {renderRmmUnavailableEmpty(false)}
+                </div>
+              )
             ) : null}
 
           {rightPanelTab === "fiche" ? (
@@ -2361,8 +2423,8 @@ export default function EquipmentDetailPage({
                   <EquipmentDetailSpecsPanel
                     bare
                     column
-                    hideResources
-                    sectionFilter="lifecycle"
+                    hideResources={false}
+                    sectionFilter="all"
                     equipment={equipment}
                     formData={formData}
                     clientSites={clientSites}
@@ -2395,259 +2457,224 @@ export default function EquipmentDetailPage({
                     </div>
                   ) : null}
                 </div>
-                <div className={styles.ficheSecondaryRow}>
-                  <EquipmentDetailSpecsPanel
-                    bare
-                    hideResources={false}
-                    sectionFilter="rest"
-                    equipment={equipment}
-                    formData={formData}
-                    clientSites={clientSites}
-                    clientSsids={clientSsids}
-                    peerFirewalls={peerFirewalls}
-                    peerServers={peerServers}
-                    peerStorage={peerStorage}
-                    onOpenEquipment={openLinkedEquipment}
-                  />
-                </div>
               </div>
             ) : null}
 
-          {rightPanelTab === "supervision" && showSupervisionTab ? <div key="supervision" className={`${styles.supervisionStack} ${styles.contentFadeUp}`.trim()}>
-              <div
-                ref={supervisionSwitchRef}
-                className={`${styles.activitySwitch} ${styles.activitySwitchAnimated}`.trim()}
-                data-indicator-ready={supervisionSwitchIndicator.ready ? "true" : "false"}
-                role="tablist"
-                aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}
-              >
-                <span
-                  className={styles.activitySwitchIndicator}
-                  style={{
-                    transform: `translateX(${supervisionSwitchIndicator.left}px)`,
-                    width: supervisionSwitchIndicator.width,
-                    opacity: supervisionSwitchIndicator.ready ? 1 : 0
-                  }}
-                  aria-hidden
-                />
-                <button type="button" role="tab" aria-selected={supervisionPane === "main"} className={`${styles.activitySwitchBtn} ${supervisionPane === "main" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setSupervisionPane("main")}>
-                  <Icon icon="mdi:radar" aria-hidden />
-                  {copy.supervisionPane?.main || "Main"}
-                </button>
-                <button type="button" role="tab" aria-selected={supervisionPane === "history"} className={`${styles.activitySwitchBtn} ${supervisionPane === "history" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setSupervisionPane("history")}>
-                  <Icon icon="mdi:clipboard-text-clock-outline" aria-hidden />
-                  {copy.supervisionPane?.history || copy.tabs.history || "Historique"}
-                </button>
-              </div>
-
-              {supervisionPane === "main" ? <section key="supervision-main" className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel} ${styles.contentFadeUp}`.trim()}>
-                  <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
-                    <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} lastSyncedAt={checkmkLastSyncedAt} layout="tab" onAvailabilityPeriodChange={period => {
-                setCheckmkAvailabilityPeriod(period);
-                loadCheckMKAvailabilityOnly(period);
-              }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
+          {rightPanelTab === "supervision" ? (
+            <div
+              key={`supervision-${supervisionPane}-${showSupervisionTab ? "on" : "off"}`}
+              className={`${styles.supervisionStack} ${styles.contentFadeUp}`.trim()}
+            >
+              {showSupervisionTab ? (
+                supervisionPane === "main" ? (
+                  <section className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel}`.trim()}>
+                    <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
+                      <CheckMKMonitoringPanel
+                        equipment={equipment}
+                        checkmkMapping={checkmkMapping}
+                        checkmkData={checkmkData}
+                        checkmkHostDetails={checkmkHostDetails}
+                        loadingCheckMK={loadingCheckMK}
+                        loadingAvailability={loadingAvailability}
+                        checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
+                        lastSyncedAt={checkmkLastSyncedAt}
+                        layout="tab"
+                        onAvailabilityPeriodChange={period => {
+                          setCheckmkAvailabilityPeriod(period);
+                          loadCheckMKAvailabilityOnly(period);
+                        }}
+                        onOpenService={openCheckMKService}
+                        onOpenEvent={openCheckMKEvent}
+                        onOpenMapping={() => setCheckmkMappingModal(true)}
+                      />
+                    </div>
+                  </section>
+                ) : (
+                  <div className={styles.historyTabLayout}>
+                    <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
+                    {equipmentDbId ? (
+                      <EquipmentMaintenanceHistoryPanel
+                        copy={copy}
+                        locale={locale}
+                        equipmentId={equipmentDbId}
+                        clientId={equipmentClientId}
+                        refreshKey={maintenanceHistoryKey}
+                      />
+                    ) : (
+                      <EquipmentEmptyState
+                        icon="mdi:wrench-clock"
+                        title={copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}
+                        subtitle={copy.maintenanceHistory?.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
+                      />
+                    )}
                   </div>
-                </section> : (
-                <div key="supervision-history" className={`${styles.historyTabLayout} ${styles.contentFadeUp}`.trim()}>
-                  <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
-                  {equipmentDbId ? (
-                    <EquipmentMaintenanceHistoryPanel
-                      copy={copy}
-                      locale={locale}
-                      equipmentId={equipmentDbId}
-                      clientId={equipmentClientId}
-                      refreshKey={maintenanceHistoryKey}
-                    />
-                  ) : (
-                    <EquipmentEmptyState
-                      icon="mdi:wrench-clock"
-                      title={copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}
-                      subtitle={copy.maintenanceHistory?.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
-                    />
-                  )}
-                </div>
+                )
+              ) : (
+                supervisionUnavailableEmpty
               )}
-            </div> : null}
-
-          {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div key="activity" className={`${styles.activityStack} ${styles.contentFadeUp}`.trim()}>
-              {showRmmMetricsTab ? <div
-                ref={activitySwitchRef}
-                className={`${styles.activitySwitch} ${styles.activitySwitchAnimated}`.trim()}
-                data-indicator-ready={activitySwitchIndicator.ready ? "true" : "false"}
-                role="tablist"
-                aria-label={copy.activityPane?.aria || copy.tabs.activity}
-              >
-                  <span
-                    className={styles.activitySwitchIndicator}
-                    style={{
-                      transform: `translateX(${activitySwitchIndicator.left}px)`,
-                      width: activitySwitchIndicator.width,
-                      opacity: activitySwitchIndicator.ready ? 1 : 0
-                    }}
-                    aria-hidden
-                  />
-                  <button type="button" role="tab" aria-selected={activityPane === "metrics"} className={`${styles.activitySwitchBtn} ${activityPane === "metrics" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("metrics")}>
-                    <Icon icon="mdi:chart-areaspline" aria-hidden />
-                    {copy.activityPane?.metrics || copy.tabs.metrics}
-                  </button>
-                  <button type="button" role="tab" aria-selected={activityPane === "veritas"} className={`${styles.activitySwitchBtn} ${activityPane === "veritas" ? styles.activitySwitchBtnActive : ""}`} onClick={() => setActivityPane("veritas")}>
-                    <Icon icon="mdi:ticket-confirmation-outline" aria-hidden />
-                    {copy.activityPane?.veritas || "Interventions"}
-                  </button>
-                </div> : null}
-
-              {showRmmMetricsTab && activityPane === "metrics" ? rmmMetricsAgent ? (
-                <div key="activity-metrics" className={styles.contentFadeUp}>
-                  <RmmMetricHistoryPanel agent={rmmMetricsAgent} active={rightPanelTab === "activity" || rightPanelTab === "metrics"} embedded />
-                </div>
-              ) : (
-                <EquipmentEmptyState
-                  key="activity-metrics-empty"
-                  icon="mdi:chart-timeline-variant"
-                  message={copy.metrics.unavailableTitle || copy.metrics.unavailableHint}
-                  className={`${styles.supervisionEmptyFill} ${styles.contentFadeUp}`.trim()}
-                />
-              ) : (
-                  <div key="activity-veritas" className={`${styles.activityVeritasLayout} ${styles.contentFadeUp}`.trim()}>
-                    <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
-                    <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} hideDateFilter />
-                  </div>
-                )}
-            </div>}
-
-          {rightPanelTab === 'documents' && <section key="documents" className={`${enterpriseDetailStyles.panel} ${styles.contentFadeUp}`.trim()}>
-              <header className={enterpriseDetailStyles.panelHeader}>
-                <div>
-                  <h2 className={enterpriseDetailStyles.panelTitle}>
-                    <Icon icon="mdi:file-document-multiple-outline" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-                    {copy.tabs.documents}
-                  </h2>
-                </div>
-              </header>
-              <div className={enterpriseDetailStyles.panelBody}>
-                <EquipmentDocumentsPanel equipment={equipment} embedded />
-              </div>
-            </section>}
-
-          {rightPanelTab === "peripherals" && showRmmPeripheralsTab ? (
-            <div key="peripherals" className={styles.contentFadeUp}>
-              <RmmMonitoringPanel equipment={equipment} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="peripherals" agentStatusInHero={showRmmHeroStatus} />
             </div>
           ) : null}
 
-          {rightPanelTab === "operations" && showRmmOperationsTab ? <div key="operations" className={`${styles.dashboardSplit} ${styles.contentFadeUp}`.trim()}>
-              <div className={styles.dashboardMain}>
-                <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="operations" agentStatusInHero={showRmmHeroStatus} />
+          {(rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats") && (
+            <div key="activity" className={`${styles.activityStack} ${styles.contentFadeUp}`.trim()}>
+              <div className={`${styles.activityUnifiedCard} ${styles.contentFadeUp}`.trim()}>
+                <EquipmentStatsPanel
+                  copy={copy}
+                  locale={locale}
+                  equipment={equipment}
+                  loading={loadingActivity}
+                  activity={activity}
+                  datePreset={activityDatePreset}
+                  onDatePresetChange={setActivityDatePreset}
+                  customStart={activityCustomStart}
+                  customEnd={activityCustomEnd}
+                  onCustomStartChange={setActivityCustomStart}
+                  onCustomEndChange={setActivityCustomEnd}
+                  alertSettings={alertSettings}
+                  rmmManaged={rmmManaged}
+                  onOpenEnterprise={openEnterprise}
+                  embedded
+                />
+                <EquipmentEventsPanel
+                  copy={copy}
+                  locale={locale}
+                  loading={loadingActivity}
+                  activity={activity}
+                  datePreset={activityDatePreset}
+                  onDatePresetChange={setActivityDatePreset}
+                  customStart={activityCustomStart}
+                  customEnd={activityCustomEnd}
+                  onCustomStartChange={setActivityCustomStart}
+                  onCustomEndChange={setActivityCustomEnd}
+                  onOpenPlanningEvent={handleOpenPlanningEvent}
+                  onOpenTicket={handleOpenLinkedTicket}
+                  hideDateFilter
+                  embedded
+                />
               </div>
-              <div className={styles.dashboardAside}>
-                {showRmmHeroStatus && rmmDeviceHealth ? <ScoreAside health={rmmDeviceHealth} copy={{
-              scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
-              breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
-              breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
-              breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
-              statusOk: copy.rmm.overview?.scoreStatusOk,
-              statusBad: copy.rmm.overview?.scoreStatusBad,
-              statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
-              statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
-              statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
-              checks: copy.rmm.overview?.scoreChecks,
-              formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
-                points: String(points)
-              })
-            }} /> : null}
+            </div>
+          )}
+
+          {rightPanelTab === "metrics" ? (
+            showRmmMetricsTab && rmmMetricsAgent ? (
+              <div key="rmm-metrics" className={`${styles.contentFadeUp}`.trim()}>
+                <RmmMetricHistoryPanel
+                  agent={rmmMetricsAgent}
+                  active={rightPanelTab === "metrics"}
+                  embedded
+                />
               </div>
-            </div> : null}
+            ) : (
+              <div key="rmm-metrics-empty" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
+                {renderRmmUnavailableEmpty(true)}
+              </div>
+            )
+          ) : null}
 
-          {rightPanelTab === "logs" ? <section key="logs" className={`${enterpriseDetailStyles.panel} ${styles.logsPanel} ${styles.contentFadeUp}`.trim()}>
-              <header className={enterpriseDetailStyles.panelHeader}>
-                <div className={enterpriseDetailStyles.panelHeaderMain}>
-                  <h2 className={enterpriseDetailStyles.panelTitle}>
-                    <Icon icon="mdi:history" className={enterpriseDetailStyles.panelTitleIcon} aria-hidden />
-                    {copy.logs.title}
-                  </h2>
-                </div>
-              </header>
-              <div className={`${enterpriseDetailStyles.panelBody} ${styles.logsPanelBody}`.trim()}>
-                <div className={styles.logsToolbar}>
-                  <div className={styles.logsSearchWrap}>
-                    <Icon icon="mdi:magnify" className={styles.logsSearchIcon} aria-hidden />
-                    <input type="search" className={styles.logsSearchInput} value={logsSearchDraft} onChange={event => setLogsSearchDraft(event.target.value)} placeholder={copy.logs.searchPlaceholder} aria-label={copy.logs.searchAria} />
-                    {logsSearchDraft ? <button type="button" className={styles.logsSearchClear} onClick={() => setLogsSearchDraft("")} aria-label={copy.logs.clearSearch}>
-                        <Icon icon="mdi:close" aria-hidden />
-                      </button> : null}
-                  </div>
-                  <select className={styles.logsFilterSelect} value={logsCategory} onChange={event => setLogsCategory(event.target.value)} aria-label={copy.logs.filterAria}>
-                    {LOG_FILTER_OPTIONS.map(option => <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>)}
-                  </select>
-                  <button type="button" className={styles.logsPurgeBtn} onClick={() => setPurgeLogsConfirmOpen(true)} disabled={loadingLogs || purgingLogs || logsTotal === 0} title={copy.logs.purgeTitle}>
-                    <Icon icon="mdi:delete-sweep" aria-hidden />
-                    {copy.logs.purge}
-                  </button>
-                </div>
+          {rightPanelTab === "documents" ? (
+            <div key="documents" className={`${styles.documentsPanelFill} ${styles.contentFadeUp}`.trim()}>
+              <EquipmentDocumentsPanel equipment={equipment} embedded title={copy.tabs.documents} />
+            </div>
+          ) : null}
 
-                <div className={styles.logsTableFill}>
-                  {loadingLogs ? <div className={styles.loadingState}>{copy.loading}</div> : logs.length === 0 ? (
-                    <EquipmentEmptyState
-                      icon="mdi:history"
-                      message={logsFiltersActive ? copy.logs.emptyFiltered : copy.logs.empty}
+          {rightPanelTab === "peripherals" ? (
+            showRmmPeripheralsTab ? (
+              <div key="peripherals" className={styles.contentFadeUp}>
+                <RmmMonitoringPanel
+                  equipment={equipment}
+                  heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+                  variant="peripherals"
+                  agentStatusInHero={showRmmHeroStatus}
+                />
+              </div>
+            ) : (
+              <div key="peripherals-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
+                {renderRmmUnavailableEmpty(true)}
+              </div>
+            )
+          ) : null}
+
+          {rightPanelTab === "operations" ? (
+            showRmmOperationsTab ? (
+              <div key="operations" className={`${styles.dashboardSplit} ${styles.contentFadeUp}`.trim()}>
+                <div className={styles.dashboardMain}>
+                  <RmmMonitoringPanel
+                    equipment={equipmentWithRmmLive}
+                    syncPending={rmmSyncPending}
+                    syncRequestedAt={rmmSyncRequestedAt}
+                    heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+                    variant="operations"
+                    agentStatusInHero={showRmmHeroStatus}
+                  />
+                </div>
+                <div className={styles.dashboardAside}>
+                  {showRmmHeroStatus && rmmDeviceHealth ? (
+                    <ScoreAside
+                      health={rmmDeviceHealth}
+                      copy={{
+                        scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+                        breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
+                        breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
+                        breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+                        statusOk: copy.rmm.overview?.scoreStatusOk,
+                        statusBad: copy.rmm.overview?.scoreStatusBad,
+                        statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+                        statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+                        statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+                        checks: copy.rmm.overview?.scoreChecks,
+                        formatPenalty: points =>
+                          interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                            points: String(points)
+                          })
+                      }}
                     />
-                  ) : <div className={`${enterpriseDetailStyles.dataTableWrapper} ${styles.logsTableWrapper}`.trim()}>
-                      <table className={`${enterpriseDetailStyles.dataTable} ${styles.logsTable}`.trim()}>
-                        <thead>
-                          <tr>
-                            <th>{copy.logs.colAction}</th>
-                            <th>{copy.logs.colUser}</th>
-                            <th>{copy.logs.colDate}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {logs.map((log, index) => {
-                            const logMeta = getLogActionDetails(log);
-                            const logUser = log.user_name || log.user || copy.logs.systemUser;
-                            const when = log.created_at || log.timestamp;
-                            return <tr key={log.id || index} className={enterpriseDetailStyles.dataTableRowClickable} onClick={() => handleLogClick(log)} title={copy.logs.detailTitle}>
-                              <td>
-                                <span className={styles.logActionInline} style={{ color: logMeta.color }}>
-                                  <Icon icon={logMeta.icon} aria-hidden />
-                                  {log.action || logMeta.label}
-                                </span>
-                              </td>
-                              <td>{logUser}</td>
-                              <td className={styles.eventMetaCell}>
-                                {when ? new Date(when).toLocaleString(getLocaleTag(locale), {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit"
-                                }) : "—"}
-                              </td>
-                            </tr>;
-                          })}
-                        </tbody>
-                      </table>
-                    </div>}
+                  ) : null}
                 </div>
-
-                {logsTotal > logsLimit ? <div className={styles.logsPagination}>
-                    <button type="button" className={styles.paginationButton} onClick={() => loadLogs(logsPage - 1)} disabled={logsPage <= 1 || loadingLogs} aria-label="Page précédente">
-                      <Icon icon="mdi:chevron-left" aria-hidden />
-                    </button>
-                    <span className={styles.paginationInfo}>
-                      {interpolate(copy.logs.pagination, {
-                        page: logsPage,
-                        pages: Math.ceil(logsTotal / logsLimit),
-                        total: logsTotal
-                      })}
-                    </span>
-                    <button type="button" className={styles.paginationButton} onClick={() => loadLogs(logsPage + 1)} disabled={logsPage >= Math.ceil(logsTotal / logsLimit) || loadingLogs} aria-label="Page suivante">
-                      <Icon icon="mdi:chevron-right" aria-hidden />
-                    </button>
-                  </div> : null}
               </div>
-            </section> : null}
+            ) : (
+              <div key="operations-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
+                {renderRmmUnavailableEmpty(true)}
+              </div>
+            )
+          ) : null}
+
+          {rightPanelTab === "logs" ? (
+            <div key="logs" className={`${styles.logsPanelFill} ${styles.contentFadeUp}`.trim()}>
+              {equipment?.id ? (
+                <ActivityJournalPanel
+                  entityId={equipmentDbId || equipment.id}
+                  embedded
+                  active={rightPanelTab === "logs"}
+                  fetchLogs={(page, options) =>
+                    getEquipmentLogs(equipment.id, page, options?.limit || 25, {
+                      clientId: equipment.clientId,
+                      type: equipment.type,
+                      name: equipment.name,
+                      dbId: equipmentDbId || equipment.dbId || null,
+                      familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
+                      family: equipment.family || null,
+                      search: options?.search,
+                      signal: options?.signal,
+                      sortBy: options?.sortBy,
+                      sortDir: options?.sortDir
+                    })
+                  }
+                  purgeLogs={() =>
+                    purgeEquipmentLogs(equipment.id, {
+                      clientId: equipment.clientId,
+                      type: equipment.type,
+                      name: equipment.name,
+                      dbId: equipmentDbId || equipment.dbId || null,
+                      familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
+                      family: equipment.family || null
+                    })
+                  }
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+          </div>
         </div>
         </div>
 
@@ -2695,6 +2722,21 @@ export default function EquipmentDetailPage({
           onMaintenance={() => (inMaintenance ? setEndMaintenanceOpen(true) : setMaintenanceModalOpen(true))}
           showAlerts={Boolean(alertSettings.available)}
           onAlerts={() => setAlertModalOpen(true)}
+          alertsSuspended={Boolean(alertSettings.suspended)}
+          alertsSuspensionType={
+            alertSettings.suspended
+              ? alertSettings.mode === "permanent" || alertSettings.settings?.suspensionType === "permanent"
+                ? "permanent"
+                : "temporary"
+              : null
+          }
+          alertsStatusLabel={
+            alertSettings.suspended
+              ? alertSettings.mode === "permanent" || alertSettings.settings?.suspensionType === "permanent"
+                ? copy.alertSettings?.modal?.modePermanent || "Suspendre définitivement"
+                : copy.alertSettings?.modal?.modeTemporary || "Suspendre temporairement"
+              : alertSettings.statusLabel || ""
+          }
         />
         </div>
       </div>
@@ -3212,17 +3254,24 @@ export default function EquipmentDetailPage({
         </div>}
 
       {}
-      <PlanningEventModalBridge open={eventModalOpen} editingEvent={editingEvent} initialClientId={equipment?.clientId || null} initialClientName={equipment?.clientName || ""} initialEquipmentId={getEquipmentDbIdLocal() || equipment?.id || (equipment?.type && equipment?.name ? `${equipment.type}-${equipment.name}` : null)} onClose={() => {
-      setEventModalOpen(false);
-      setEditingEvent(null);
-    }} onSaved={refreshActivityAfterEventChange} />
-
-      <EquipmentLogDetailModal log={selectedLogDetail} onClose={closeLogModal} />
-
-      <ConfirmModal open={purgeLogsConfirmOpen} onClose={() => {
-      if (purgingLogs) return;
-      setPurgeLogsConfirmOpen(false);
-    }} onConfirm={handlePurgeLogs} title={modalsCopy.confirm?.purgeLogs?.title} message={purgeLogsMessage} icon="mdi:delete-sweep" confirmLabel={modalsCopy.confirm?.purgeLogs?.confirm} confirmVariant="dangerSolid" confirmLoading={purgingLogs} />
+      <PlanningEventModalBridge
+        open={eventModalOpen}
+        editingEvent={editingEvent}
+        initialClientId={equipment?.clientId || null}
+        initialClientName={equipment?.clientName || ""}
+        initialEquipmentId={
+          getEquipmentDbIdLocal() ||
+          equipment?.id ||
+          (equipment?.type && equipment?.name ? `${equipment.type}-${equipment.name}` : null)
+        }
+        initialEquipmentName={equipment?.name || equipment?.rawData?.nom || ""}
+        initialEquipmentType={equipment?.type || equipment?.rawData?.type || ""}
+        onClose={() => {
+          setEventModalOpen(false);
+          setEditingEvent(null);
+        }}
+        onSaved={refreshActivityAfterEventChange}
+      />
 
       {editModalOpen && modalClient ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey || equipment?.type || "Servers"} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} peerBorneWifi={peerBorneWifi} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
 

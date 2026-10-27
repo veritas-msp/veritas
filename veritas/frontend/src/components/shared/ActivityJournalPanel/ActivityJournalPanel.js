@@ -460,6 +460,8 @@ export default function ActivityJournalPanel({
         <UiKitTable
           fill={embedded}
           className={styles.logsUiKitTable}
+          fadeTop
+          fadeTopInset="2.85rem"
           deps={[logs.length, page, sortBy, sortDirection, search, tableColumns.join("|")]}
         >
           {tableInner}

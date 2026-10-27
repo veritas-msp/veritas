@@ -468,7 +468,7 @@ export default function SupervisionOpsQueue({
           clearSearchLabel={copy.clearSearch || "Effacer"}
           filtersAriaLabel={copy.triage?.aria || copy.kpi?.aria}
           filters={
-            <div data-guide="supervision-kpis">
+            <div data-guide="supervision-kpis" style={{ display: "contents" }}>
               {triageChips.map(chip => (
                 <FilterChip
                   key={chip.id}

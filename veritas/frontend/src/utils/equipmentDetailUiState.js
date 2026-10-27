@@ -13,7 +13,8 @@ const DETAIL_TABS = new Set([
   "stats",
   "metrics"
 ]);
-const ACTIVITY_PANES = new Set(["metrics", "veritas"]);
+const ACTIVITY_PANES = new Set(["veritas"]);
+const RMM_PANES = new Set(["synthese", "operations", "peripherals", "metrics"]);
 const OVERVIEW_PANES = new Set(["fiche", "rmm", "supervision"]);
 const SUPERVISION_PANES = new Set(["main", "history"]);
 
@@ -22,7 +23,8 @@ function storageKey(equipmentId) {
 }
 
 export function normalizeEquipmentDetailTab(tab) {
-  if (tab === "events" || tab === "stats" || tab === "metrics") return "activity";
+  if (tab === "events" || tab === "stats") return "activity";
+  if (tab === "metrics") return "metrics";
   if (tab === "notes" || tab === "fiche" || tab === "hardware") return "fiche";
   if (tab === "history" || tab === "maintenance") return "supervision";
   if (tab === "dashboard" || tab === "overview" || tab === "general") return "synthese";
@@ -30,11 +32,16 @@ export function normalizeEquipmentDetailTab(tab) {
   return DETAIL_TABS.has(tab) ? tab : "synthese";
 }
 
-export function normalizeEquipmentActivityPane(pane, { allowMetrics = true } = {}) {
-  if (pane === "maintenance") return "veritas";
-  if (pane === "veritas") return "veritas";
-  if (pane === "metrics" && allowMetrics) return "metrics";
-  return allowMetrics ? "metrics" : "veritas";
+export function normalizeEquipmentActivityPane(pane) {
+  if (pane === "maintenance" || pane === "veritas" || pane === "metrics") return "veritas";
+  return "veritas";
+}
+
+export function normalizeEquipmentRmmPane(pane) {
+  if (pane === "operations" || pane === "peripherals" || pane === "metrics" || pane === "synthese") {
+    return pane;
+  }
+  return "synthese";
 }
 
 export function normalizeEquipmentSupervisionPane(pane) {
@@ -84,6 +91,9 @@ export function writeEquipmentDetailUi(equipmentId, patch = {}) {
     }
     if (Object.prototype.hasOwnProperty.call(patch, "supervisionPane")) {
       next.supervisionPane = normalizeEquipmentSupervisionPane(patch.supervisionPane);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "rmmPane")) {
+      next.rmmPane = normalizeEquipmentRmmPane(patch.rmmPane);
     }
     sessionStorage.setItem(storageKey(equipmentId), JSON.stringify(next));
   } catch {

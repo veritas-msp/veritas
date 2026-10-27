@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.1",
+    date: "2026-10-27",
+    highlights: [
+      "Fiche matériel : navigation RMM / Supervision aplatie, fade des sous-sections, aside Associations avec mapping CheckMK.",
+      "Fiche matériel : menu « plus » en portal (plus de découpe), section Maintenance aérée, typo IP/VLAN unifiée.",
+      "Modals maintenance et ajout de document alignés sur le style Enterprise (animations, icônes animées, hauteur adaptée).",
+      "Planning : préselection automatique du matériel lié quand on planifie depuis une fiche.",
+      "Documents et activité : placeholder recherche « Rechercher » ; plage personnalisée sans décalage de layout."
+    ]
+  },
+  {
     version: "2.0.0",
     date: "2026-10-27",
     highlights: [
