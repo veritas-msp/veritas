@@ -49,28 +49,37 @@ export const MODULE_LABELS = {
   Backup: "Sauvegarde",
   Antivirus: "Antivirus",
   Antispam: "Antispam",
-  Office365: "Office 365",
+  Office365: "Microsoft Entra ID",
+  GoogleWorkspace: "Google Workspace",
   NDD: "Noms de domaine",
+  CertificatsSSL: "Certificats SSL",
+  LicensesAbonnements: "Licences & abonnements",
   support: "Support technique",
   summary: "Synthèse"
 };
 
+/** Aligné sur les icônes InfrastructureMap / détail entreprise. */
 export const MODULE_ICONS = {
-  Internet: "mdi:wan",
-  Firewall: "mdi:firewall",
+  Internet: "mdi:web",
+  Firewall: "mdi:shield-outline",
   Servers: "mdi:server",
   Storage: "mdi:harddisk",
-  Switch: "mdi:switch",
+  Switch: "mdi:lan",
   BorneWifi: "mdi:wifi",
   TOIP: "mdi:phone-voip",
   Backup: "mdi:backup-restore",
   Antivirus: "mdi:shield-bug-outline",
   Antispam: "mdi:email-lock-outline",
-  Office365: "mdi:microsoft-office",
-  NDD: "mdi:web",
+  Office365: "mdi:microsoft-azure",
+  GoogleWorkspace: "mdi:google",
+  NDD: "mdi:web-box",
+  CertificatsSSL: "mdi:certificate-outline",
+  LicensesAbonnements: "mdi:license",
   support: "mdi:headset",
   summary: "mdi:file-chart-outline"
 };
+
+export const REPORT_TOPIC_COMING_SOON = new Set(["GoogleWorkspace"]);
 
 const INFRASTRUCTURE_TOPIC_KEYS = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"];
 
@@ -85,8 +94,10 @@ export const REPORT_TOPIC_GROUPS = [{
 }, {
   key: "cloud",
   icon: "mdi:cloud-outline",
-  topics: ["Office365", "NDD"]
+  topics: ["Office365", "GoogleWorkspace", "NDD", "CertificatsSSL", "LicensesAbonnements"]
 }];
+
+export const REPORT_TOPIC_KEYS = REPORT_TOPIC_GROUPS.flatMap(group => group.topics);
 
 export function getClientMonitoringModules(client) {
   if (!client) return {};
@@ -151,8 +162,14 @@ export function isMonitoringModuleAvailable(client, stepKey) {
       return getSolutionsList(eq.Antispam).length > 0;
     case "Office365":
       return hasOffice365Equipment(client);
+    case "GoogleWorkspace":
+      return false;
     case "NDD":
       return getEquipementList(eq, "NDD").length > 0;
+    case "CertificatsSSL":
+      return getEquipementList(eq, "CertificatsSSL").length > 0;
+    case "LicensesAbonnements":
+      return getEquipementList(eq, "LicensesAbonnements").length > 0;
     default:
       return false;
   }
@@ -184,8 +201,14 @@ export function countMonitoringModuleItems(client, stepKey) {
       return getSolutionsList(eq.Antispam).length;
     case "Office365":
       return hasOffice365Equipment(client) ? 1 : 0;
+    case "GoogleWorkspace":
+      return 0;
     case "NDD":
       return getEquipementList(eq, "NDD").length;
+    case "CertificatsSSL":
+      return getEquipementList(eq, "CertificatsSSL").length;
+    case "LicensesAbonnements":
+      return getEquipementList(eq, "LicensesAbonnements").length;
     default:
       return 0;
   }

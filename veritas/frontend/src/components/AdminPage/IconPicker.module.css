@@ -151,12 +151,18 @@
   border-radius: 10px;
   background: var(--msp-surface);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .tile:hover {
   background: var(--msp-surface-3);
   border-color: var(--msp-border);
+  transform: translateY(-1px);
+}
+
+.tile:hover .tileIcon {
+  transform: scale(1.14) rotate(-4deg);
+  color: var(--msp-accent);
 }
 
 .tileSelected {
@@ -168,6 +174,7 @@
 .tileIcon {
   font-size: 1.25rem;
   color: var(--msp-muted);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), color 0.15s ease;
 }
 
 .tileSelected .tileIcon {
@@ -191,6 +198,7 @@
   background: var(--msp-surface-2, #f8fafc);
   color: var(--msp-accent, #2b5fab);
   cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .triggerBare {
@@ -238,10 +246,17 @@
 .triggerOpen {
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.16);
+  transform: translateY(-1px);
+}
+
+.trigger:hover .triggerIcon,
+.triggerOpen .triggerIcon {
+  transform: scale(1.1) rotate(-5deg);
 }
 
 .triggerIcon {
   font-size: 1.7rem;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .triggerHint {

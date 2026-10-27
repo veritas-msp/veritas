@@ -5,7 +5,12 @@ import { pool } from "../database/db.js";
 import { canRunAutoSchemaMigrations } from "../utils/setupState.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
-const MIGRATION_FILES = ["schema/patches/20260617_ticket_views_core.sql", "schema/patches/20260618_profiles_inheritance_ticket_view_profiles.sql", "schema/patches/20260619_ticket_view_assignments.sql"];
+const MIGRATION_FILES = [
+  "schema/patches/20260617_ticket_views_core.sql",
+  "schema/patches/20260618_profiles_inheritance_ticket_view_profiles.sql",
+  "schema/patches/20260619_ticket_view_assignments.sql",
+  "schema/patches/20261027_ticket_view_builtin_overrides.sql"
+];
 let ensured = false;
 async function tableExists(client, tableName) {
   const result = await client.query(`SELECT 1 FROM information_schema.tables
@@ -29,10 +34,7 @@ export async function ensureTicketViewsSchema() {
     const hasProfilesLink = await tableExists(client, "v_b_ticket_view_profiles");
     const hasUsersLink = await tableExists(client, "v_b_ticket_view_users");
     const hasTeamsLink = await tableExists(client, "v_b_ticket_view_teams");
-    if (hasViewsTable && hasProfilesLink && hasUsersLink && hasTeamsLink) {
-      ensured = true;
-      return;
-    }
+    const hasBuiltinOverrides = await tableExists(client, "v_b_ticket_view_builtin_overrides");
     if (!hasViewsTable) {
       await runSqlFile(client, MIGRATION_FILES[0]);
     }
@@ -41,6 +43,9 @@ export async function ensureTicketViewsSchema() {
     }
     if (!hasUsersLink || !hasTeamsLink) {
       await runSqlFile(client, MIGRATION_FILES[2]);
+    }
+    if (!hasBuiltinOverrides) {
+      await runSqlFile(client, MIGRATION_FILES[3]);
     }
     ensured = true;
   } catch (err) {

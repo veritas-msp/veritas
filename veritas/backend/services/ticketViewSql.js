@@ -357,11 +357,133 @@ function buildFieldExpr(field, ctx) {
 function isIdField(field) {
   return ["client_id", "assigned_user_id", "requester_contact_id", "requester_user_id"].includes(String(field || "").trim());
 }
+function isTruthyFlagValue(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return !normalized || ["1", "true", "yes", "oui", "y"].includes(normalized);
+}
+function jsonFlagTrueSql(jsonExpr) {
+  // Avoid `::boolean` on '' which aborts the whole COUNT query.
+  return `LOWER(COALESCE(${jsonExpr}, '')) IN ('true', 't', '1', 'yes')`;
+}
+function jsonNumericSql(jsonExpr) {
+  return `CASE
+    WHEN COALESCE(${jsonExpr}, '') ~ '^[0-9]+(\\.[0-9]+)?$' THEN (${jsonExpr})::numeric
+    ELSE NULL
+  END`;
+}
+function jsonTimestampSql(jsonExpr) {
+  return `CASE
+    WHEN COALESCE(${jsonExpr}, '') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN (${jsonExpr})::timestamptz
+    ELSE NULL
+  END`;
+}
+function jsonTimestampPastSql(jsonExpr) {
+  return `(${jsonTimestampSql(jsonExpr)} IS NOT NULL AND ${jsonTimestampSql(jsonExpr)} < NOW())`;
+}
+function buildSlaPriorityHoursSql(phase) {
+  // phase: 'firstResponseHours' | 'resolutionHours' — matches frontend defaults
+  const defaults = {
+    firstResponseHours: {
+      urgent: 1,
+      high: 2,
+      normal: 4,
+      low: 8
+    },
+    resolutionHours: {
+      urgent: 4,
+      high: 8,
+      normal: 24,
+      low: 48
+    }
+  };
+  const d = defaults[phase] || defaults.firstResponseHours;
+  const p = `LOWER(COALESCE(NULLIF(TRIM(t.priority), ''), 'normal'))`;
+  const fromContrat = key => jsonNumericSql(`c.contrat->'sla'->'byPriority'->'${key}'->>'${phase}'`);
+  return `CASE ${p}
+    WHEN 'urgent' THEN COALESCE(${fromContrat("urgent")}, ${d.urgent})
+    WHEN 'high' THEN COALESCE(${fromContrat("high")}, ${d.high})
+    WHEN 'low' THEN COALESCE(${fromContrat("low")}, ${d.low})
+    ELSE COALESCE(${fromContrat("normal")}, ${d.normal})
+  END`;
+}
+function buildSlaBreachedSql(ctx) {
+  if (!ctx.hasSlaInfo) return "FALSE";
+  const statusExpr = `LOWER(COALESCE(t.status, ''))`;
+  const normalizedStatus = `LOWER(CASE WHEN t.status = 'open' THEN 'new' ELSE COALESCE(t.status, '') END)`;
+  const openSql = `${statusExpr} NOT IN ('resolved', 'closed')`;
+  const firstDueStored = jsonTimestampSql("t.sla_info->>'firstResponseDueAt'");
+  const resolutionDueStored = jsonTimestampSql("t.sla_info->>'resolutionDueAt'");
+  const firstAtStored = jsonTimestampSql("t.sla_info->>'firstResponseAt'");
+  const frHours = buildSlaPriorityHoursSql("firstResponseHours");
+  const resHours = buildSlaPriorityHoursSql("resolutionHours");
+  // UI synthesizes deadlines from contrat/defaults when sla_info is incomplete.
+  const firstDueEffective = `COALESCE(${firstDueStored}, t.created_at + (${frHours}) * INTERVAL '1 hour')`;
+  const resolutionDueEffective = `COALESCE(
+    ${resolutionDueStored},
+    CASE
+      WHEN ${firstAtStored} IS NOT NULL
+      THEN ${firstAtStored} + (${resHours}) * INTERVAL '1 hour'
+      ELSE NULL
+    END
+  )`;
+  return `(
+    ${openSql}
+    AND (
+      ${jsonFlagTrueSql("t.sla_info->>'firstResponseBreached'")}
+      OR ${jsonFlagTrueSql("t.sla_info->>'resolutionBreached'")}
+      OR (
+        ${normalizedStatus} = 'new'
+        AND ${firstDueEffective} < NOW()
+      )
+      OR (
+        ${normalizedStatus} <> 'new'
+        AND ${resolutionDueEffective} IS NOT NULL
+        AND ${resolutionDueEffective} < NOW()
+      )
+      OR (
+        -- Encore sans 1re réponse alors que le statut a déjà avancé
+        ${normalizedStatus} <> 'new'
+        AND ${firstAtStored} IS NULL
+        AND ${firstDueEffective} < NOW()
+      )
+    )
+  )`;
+}
+function buildNeedsPlanningSql(ctx) {
+  const openSql = `LOWER(COALESCE(t.status, '')) NOT IN ('resolved', 'closed')`;
+  if (!ctx.hasEventsTicketId) return openSql;
+  return `(
+    ${openSql}
+    AND NOT EXISTS (
+      SELECT 1 FROM v_b_events e
+      WHERE e.ticket_id = t.id
+    )
+  )`;
+}
+function buildBooleanFlagCriterionSql(actualSql, operator, criterion) {
+  const expected = isTruthyFlagValue(criterion?.value);
+  if (operator === "is_empty") return `NOT (${actualSql})`;
+  if (operator === "is_not_empty") return `(${actualSql})`;
+  if (operator === "not_equals") return expected ? `NOT (${actualSql})` : `(${actualSql})`;
+  return expected ? `(${actualSql})` : `NOT (${actualSql})`;
+}
 function buildCriterionSql(criterion, values, ctx) {
   const operator = String(criterion?.operator || "contains").trim();
   const rawField = String(criterion?.field || "").trim();
   if (rawField === "tags") {
     return buildTagsCriterionSql(operator, criterion, values);
+  }
+  if (rawField === "is_major_incident") {
+    const actualSql = ctx.hasMajorIncident
+      ? `COALESCE(t.is_major_incident, false) = true`
+      : "FALSE";
+    return buildBooleanFlagCriterionSql(actualSql, operator, criterion);
+  }
+  if (rawField === "sla_breached") {
+    return buildBooleanFlagCriterionSql(buildSlaBreachedSql(ctx), operator, criterion);
+  }
+  if (rawField === "needs_planning") {
+    return buildBooleanFlagCriterionSql(buildNeedsPlanningSql(ctx), operator, criterion);
   }
   if (rawField === "assigned_user_id") {
     if (operator === "is_empty") {

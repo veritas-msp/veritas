@@ -73,21 +73,20 @@
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
 }
 
-.iconWrap {
-  width: 3.25rem;
-  height: 3.25rem;
-  margin: 0 auto 1rem;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: rgba(220, 38, 38, 0.1);
-  color: #dc2626;
-  font-size: 1.65rem;
+.emojiWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.85rem;
 }
 
-.shell[data-wizard-theme="dark"] .iconWrap {
-  background: rgba(248, 113, 113, 0.12);
-  color: #f87171;
+.emoji {
+  width: 3.5rem;
+  height: 3.5rem;
+  display: block;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
 }
 
 .title {

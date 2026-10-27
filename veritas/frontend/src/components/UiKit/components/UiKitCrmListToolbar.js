@@ -203,6 +203,7 @@ export default function UiKitCrmListToolbar({
                 className={`${kit.btnSquare} ${kit.btnSquarePrimary}`}
                 onClick={createAction.onClick}
                 disabled={createAction.disabled}
+                title={disableTooltips ? createAction.label : undefined}
                 aria-label={createAction.ariaLabel || createAction.label}
               >
                 <Icon icon={createAction.icon || "mdi:plus"} aria-hidden />

@@ -1,5 +1,81 @@
-const TICKET_VIEW_FIELDS = new Set(["title", "description", "type", "category", "status", "priority", "channel", "client_id", "assigned", "assigned_user_id", "pending_validator_user_id", "requester_contact_id", "requester_user_id", "ticket_number", "tags"]);
+const TICKET_VIEW_FIELDS = new Set(["title", "description", "type", "category", "status", "priority", "channel", "client_id", "assigned", "assigned_user_id", "pending_validator_user_id", "requester_contact_id", "requester_user_id", "ticket_number", "tags", "is_major_incident", "sla_breached", "needs_planning"]);
 const TICKET_VIEW_OPERATORS = new Set(["contains", "not_contains", "equals", "not_equals", "starts_with", "ends_with", "in", "not_in", "is_empty", "is_not_empty"]);
+function isTruthyFlag(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return !normalized || ["1", "true", "yes", "oui", "y"].includes(normalized);
+}
+function isTicketOpenStatus(ticket) {
+  const status = String(ticket?.status || "").trim().toLowerCase();
+  return !["resolved", "closed"].includes(status);
+}
+function defaultSlaHours(priority) {
+  const key = String(priority || "normal").trim().toLowerCase();
+  const first = {
+    urgent: 1,
+    high: 2,
+    normal: 4,
+    low: 8
+  };
+  const resolution = {
+    urgent: 4,
+    high: 8,
+    normal: 24,
+    low: 48
+  };
+  const normalized = Object.prototype.hasOwnProperty.call(first, key) ? key : "normal";
+  return {
+    firstResponseHours: first[normalized],
+    resolutionHours: resolution[normalized]
+  };
+}
+function readContratSlaHours(ticket, phase) {
+  const defaults = defaultSlaHours(ticket?.priority);
+  const contrat = ticket?.client_contrat;
+  let contratObj = contrat;
+  if (typeof contrat === "string") {
+    try {
+      contratObj = JSON.parse(contrat);
+    } catch {
+      contratObj = null;
+    }
+  }
+  const byPriority = contratObj?.sla?.byPriority;
+  const key = String(ticket?.priority || "normal").trim().toLowerCase();
+  const normalized = ["urgent", "high", "normal", "low"].includes(key) ? key : "normal";
+  const fromContrat = Number(byPriority?.[normalized]?.[phase]);
+  if (Number.isFinite(fromContrat) && fromContrat > 0) return fromContrat;
+  return phase === "resolutionHours" ? defaults.resolutionHours : defaults.firstResponseHours;
+}
+function isSlaBreachedTicket(ticket) {
+  if (!isTicketOpenStatus(ticket)) return false;
+  const sla = ticket?.sla_info && typeof ticket.sla_info === "object" ? ticket.sla_info : {};
+  if (sla.firstResponseBreached === true || sla.resolutionBreached === true) return true;
+  const now = Date.now();
+  const status = String(ticket?.status || "").trim().toLowerCase();
+  const isNew = status === "new" || status === "open";
+  const createdMs = ticket?.created_at ? new Date(ticket.created_at).getTime() : NaN;
+  const firstDueStored = sla.firstResponseDueAt ? new Date(sla.firstResponseDueAt).getTime() : NaN;
+  const firstAt = sla.firstResponseAt ? new Date(sla.firstResponseAt).getTime() : NaN;
+  const resDueStored = sla.resolutionDueAt ? new Date(sla.resolutionDueAt).getTime() : NaN;
+  const firstDue = Number.isFinite(firstDueStored)
+    ? firstDueStored
+    : Number.isFinite(createdMs)
+      ? createdMs + readContratSlaHours(ticket, "firstResponseHours") * 60 * 60 * 1000
+      : NaN;
+  const resDue = Number.isFinite(resDueStored)
+    ? resDueStored
+    : Number.isFinite(firstAt)
+      ? firstAt + readContratSlaHours(ticket, "resolutionHours") * 60 * 60 * 1000
+      : NaN;
+  if (isNew && Number.isFinite(firstDue) && firstDue < now) return true;
+  if (!isNew && Number.isFinite(resDue) && resDue < now) return true;
+  if (!isNew && !Number.isFinite(firstAt) && Number.isFinite(firstDue) && firstDue < now) return true;
+  return false;
+}
+function needsPlanningTicket(ticket) {
+  if (!isTicketOpenStatus(ticket)) return false;
+  return !(ticket?.planning_event_id || ticket?.planningEventId);
+}
 import { normalizeFilterRoot, ticketMatchesFilterRoot, validateFilterTreeNodes, collectRuleNodes } from "./ticketViewFilterTree.js";
 function normalizeRules(rules = {}) {
   const raw = rules && typeof rules === "object" ? rules : {};
@@ -120,6 +196,30 @@ function evaluateCriterion(criterion = {}, ticket = {}, context = {}) {
   const operator = String(criterion?.operator || "contains").trim();
   if (field === "tags") {
     return evaluateTagsCriterion(criterion, ticket);
+  }
+  if (field === "is_major_incident") {
+    const actual = Boolean(ticket?.is_major_incident);
+    if (operator === "is_empty") return !actual;
+    if (operator === "is_not_empty") return actual;
+    const expected = isTruthyFlag(criterion?.value);
+    if (operator === "not_equals") return actual !== expected;
+    return actual === expected;
+  }
+  if (field === "sla_breached") {
+    const actual = isSlaBreachedTicket(ticket);
+    if (operator === "is_empty") return !actual;
+    if (operator === "is_not_empty") return actual;
+    const expected = isTruthyFlag(criterion?.value);
+    if (operator === "not_equals") return actual !== expected;
+    return actual === expected;
+  }
+  if (field === "needs_planning") {
+    const actual = needsPlanningTicket(ticket);
+    if (operator === "is_empty") return !actual;
+    if (operator === "is_not_empty") return actual;
+    const expected = isTruthyFlag(criterion?.value);
+    if (operator === "not_equals") return actual !== expected;
+    return actual === expected;
   }
   const actualRaw = getFieldValue(ticket, field, context);
   const actual = String(actualRaw).toLowerCase().trim();

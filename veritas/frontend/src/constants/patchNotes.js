@@ -5,6 +5,19 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.0",
+    date: "2026-10-27",
+    highlights: [
+      "Version majeure 2.0.0 — refonte UX des hubs Documents, rapports de supervision et vues tickets.",
+      "Coffre / Documents : filtre type en pastilles, visibilité en icônes œil, dates avec heure, édition de masse reconstruite.",
+      "Rapports supervision : sujets par catégories (on/off), retour wizard vers l’étape client, Entra ID + modules bientôt (SSL, Licences, Google Workspace).",
+      "Modals confirmation et sync rapport : style plat thématisé, en-tête compact et animations progressives.",
+      "Écrans de disponibilité : greyscale + melting face ; écrans indisponibles plus clairs.",
+      "Tickets Support / Prestations : vues personnalisées enrichies (overrides builtin, règles SQL), listes et modals de vues modernisés.",
+      "Fiches contact et prestataire alignées ; boot gate pages et polish sidebar / UiKit."
+    ]
+  },
+  {
     version: "1.0.101",
     date: "2026-10-15",
     highlights: [

@@ -17,7 +17,6 @@ export default function SetupAvailabilityScreen({
   const isDatabase = reason === "database";
   const title = isDatabase ? copy.databaseTitle : copy.serverTitle;
   const body = isDatabase ? copy.databaseBody : copy.serverBody;
-  const icon = isDatabase ? "mdi:database-off-outline" : "mdi:cloud-off-outline";
   const themeAria = theme === "dark" ? copy.themeUseLight : copy.themeUseDark;
 
   return (
@@ -40,8 +39,14 @@ export default function SetupAvailabilityScreen({
 
       <main className={styles.main}>
         <div className={styles.card} role="alert">
-          <div className={styles.iconWrap} aria-hidden>
-            <Icon icon={icon} />
+          <div className={styles.emojiWrap} aria-hidden>
+            {/* Noto Emoji Animation, CC BY 4.0 — https://googlefonts.github.io/noto-emoji-animation/ */}
+            <img
+              className={styles.emoji}
+              src="/assets/emoji/melting-face.webp"
+              alt=""
+              draggable={false}
+            />
           </div>
           <h1 className={styles.title}>{title}</h1>
           <p className={styles.body}>{body}</p>

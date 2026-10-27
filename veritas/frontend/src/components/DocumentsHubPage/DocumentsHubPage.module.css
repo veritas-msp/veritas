@@ -3,6 +3,148 @@
   flex-wrap: wrap;
 }
 
+.macosPillSelectWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.macosPillSelectTrigger {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  min-width: 10.5rem;
+  max-width: 14rem;
+  margin: 0;
+  padding: 0.3rem 0.55rem;
+  border: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-surface-2, #eef2f7) 85%, #d5dbe6);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent);
+  color: var(--msp-text, #1e2d42);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.macosPillSelectTrigger:hover {
+  background: color-mix(in srgb, var(--msp-surface-2, #eef2f7) 70%, #d5dbe6);
+}
+
+.macosPillSelectTrigger:focus-visible {
+  outline: 2px solid var(--msp-accent, #2b5fab);
+  outline-offset: 1px;
+}
+
+.macosPillSelectIcon,
+.macosPillSelectChevron {
+  font-size: 0.95rem;
+  color: var(--msp-muted, #5c6b82);
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.macosPillSelectChevronOpen {
+  transform: rotate(180deg);
+}
+
+.macosPillSelectValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.macosPillSelectMenu {
+  position: fixed;
+  z-index: 1200;
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 1.5rem));
+  max-height: min(16rem, calc(100vh - 2rem));
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light, #d7e0ec);
+  background: var(--msp-surface, #fff);
+  box-shadow:
+    0 4px 6px rgba(15, 28, 46, 0.04),
+    0 14px 28px rgba(15, 28, 46, 0.12);
+  box-sizing: border-box;
+}
+
+.macosPillSelectOption {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-text, #1e2d42);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.macosPillSelectOption:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, transparent);
+}
+
+.macosPillSelectOptionActive,
+.macosPillSelectOptionActive:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 650;
+}
+
+:global(html.dark) .macosPillSelectTrigger,
+:global(body.dark) .macosPillSelectTrigger {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, #0b1220);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-border, #2a3a55) 70%, transparent);
+}
+
+:global(html.dark) .macosPillSelectMenu,
+:global(body.dark) .macosPillSelectMenu {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.2),
+    0 14px 28px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .macosPillSelectOption,
+:global(body.dark) .macosPillSelectOption {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .macosPillSelectOption:hover,
+:global(body.dark) .macosPillSelectOption:hover {
+  background: color-mix(in srgb, var(--msp-accent, #4a8fd4) 14%, transparent);
+}
+
+:global(html.dark) .macosPillSelectOptionActive,
+:global(html.dark) .macosPillSelectOptionActive:hover,
+:global(body.dark) .macosPillSelectOptionActive,
+:global(body.dark) .macosPillSelectOptionActive:hover {
+  background: color-mix(in srgb, var(--msp-accent, #4a8fd4) 20%, transparent);
+  color: var(--msp-accent, #5a9de0);
+}
+
 .toolbarSearch {
   flex: 1 1 14rem;
   min-width: 12rem;
@@ -15,10 +157,6 @@
 .bulkBarWrap {
   padding: 0;
   flex-shrink: 0;
-}
-
-.companySuggest {
-  min-width: 0;
 }
 
 .select,
@@ -439,24 +577,10 @@
   color: #cbd5e1;
 }
 
-.visibilityShared,
-.visibilityInternal {
+.visibilityIcon {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.visibilityShared {
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
-  color: var(--msp-accent, #2b5fab);
-}
-
-.visibilityInternal {
-  background: rgba(100, 116, 139, 0.12);
   color: var(--msp-muted, #5c6b82);
+  font-size: 1.1rem;
+  line-height: 1;
 }

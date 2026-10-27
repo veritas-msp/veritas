@@ -387,7 +387,7 @@ export default function ReportPage({
     const leavingStartedBuilder = draftReport?.type?.id && draftReport.type.id !== REPORT_TYPE_IDS.SUPERVISION_ETAT;
     const leaveDraft = () => {
       setDraftReport(null);
-      setCreateWizardStep("type");
+      setCreateWizardStep(selectedReportTypeId ? "client" : "type");
     };
     if (leavingStartedBuilder) {
       requestLeaveBuilder(leaveDraft);

@@ -15,7 +15,35 @@ function formatPersonTabName(data) {
   if (prenom && nom) return `${cap(prenom)} ${nom.toUpperCase()}`;
   if (nom) return nom.toUpperCase();
   if (prenom) return cap(prenom);
-  return null;
+  const fallback = String(data?.name || data?.label || data?.full_name || data?.fullName || "").trim();
+  return fallback || null;
+}
+function formatEnterpriseTabName(data) {
+  return (
+    getClientNameWithoutCode(data?.name || data?.clientName || data?.client_name || "") ||
+    getClientNameWithoutCode(data) ||
+    null
+  );
+}
+function formatPrestataireTabName(data) {
+  return String(data?.nom || data?.name || data?.label || "").trim() || null;
+}
+/** Titre provisoire (sans nom chargé) — ne doit pas écraser un vrai nom déjà affiché. */
+export function isPlaceholderDetailTabTitle(type, title, locale = "fr") {
+  const copy = resolveCopy(locale);
+  const d = copy.defaults;
+  const t = String(title || "").trim();
+  if (!t) return true;
+  if (type === "ContactDetail") {
+    return t === d.contact || t.startsWith(d.contactPrefix);
+  }
+  if (type === "ContratDetail") {
+    return t === d.enterprise || t.startsWith(d.clientPrefix);
+  }
+  if (type === "PrestataireDetail") {
+    return t === d.prestataire || t.startsWith(d.prestatairePrefix);
+  }
+  return false;
 }
 function truncateLabel(value, max = 28) {
   const text = String(value || "").trim();
@@ -39,22 +67,16 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
   const copy = resolveCopy(locale);
   const d = copy.defaults;
   if (type === "ContratDetail") {
-    const label = formatClientShortLabel(data);
-    if (label) return label;
-    const clientId = data?.clientId || data?.id;
-    return clientId ? `${d.clientPrefix}${clientId}` : d.enterprise;
+    // Toujours le nom (sans n° client / sans Client #id)
+    return formatEnterpriseTabName(data) || d.enterprise;
   }
   if (type === "ContactDetail") {
-    const person = formatPersonTabName(data);
-    if (person) return person;
-    const contactId = data?.contactId || data?.id;
-    return contactId ? `${d.contactPrefix}${contactId}` : d.contact;
+    // Toujours le nom (sans Contact #id)
+    return formatPersonTabName(data) || d.contact;
   }
   if (type === "PrestataireDetail") {
-    const name = (data?.nom || "").trim();
-    if (name) return name;
-    const prestataireId = data?.prestataireId || data?.id;
-    return prestataireId ? `${d.prestatairePrefix}${prestataireId}` : d.prestataire;
+    // Toujours le nom (sans Prestataire #id)
+    return formatPrestataireTabName(data) || d.prestataire;
   }
   if (type === "Equipment" && data?.equipmentType) {
     const clientLabel = formatClientShortLabel({

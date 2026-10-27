@@ -34,7 +34,7 @@ function shouldUseSpaNavigation(event) {
   return true;
 }
 
-export default function SidebarAccessNavItem({
+const SidebarAccessNavItem = React.forwardRef(function SidebarAccessNavItem({
   showTooltip,
   tooltip,
   className,
@@ -42,7 +42,7 @@ export default function SidebarAccessNavItem({
   href,
   icon,
   label
-}) {
+}, ref) {
   const iconRef = useRef(null);
   const renderedIcon = React.isValidElement(icon) && icon.type?.lucideAnimated
     ? React.cloneElement(icon, { ref: iconRef })
@@ -84,9 +84,11 @@ export default function SidebarAccessNavItem({
     </>;
   const MotionTag = href ? motion.a : motion.li;
   if (showTooltip && tooltip) {
-    return <SidebarTooltip as={MotionTag} content={tooltip} {...motionProps}>
+    return <SidebarTooltip as={MotionTag} content={tooltip} ref={ref} {...motionProps}>
         {content}
       </SidebarTooltip>;
   }
-  return <MotionTag {...motionProps}>{content}</MotionTag>;
-}
+  return <MotionTag ref={ref} {...motionProps}>{content}</MotionTag>;
+});
+
+export default SidebarAccessNavItem;

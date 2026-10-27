@@ -80,51 +80,48 @@ export default function BackupOverviewPanel({
 
   return (
     <div className={mapStyles.backupOverview}>
-      <div className={mapStyles.metricsTopBar}>
-        <div className={mapStyles.metricsTopBarLeft}>
-          <div className={equipStyles.embeddedSearchBox}>
-            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
-            <input
-              type="search"
-              className={equipStyles.embeddedSearchInput}
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-            />
-            {search ? (
-              <button
-                type="button"
-                className={equipStyles.embeddedSearchClear}
-                onClick={() => setSearch("")}
-                aria-label="Effacer la recherche"
-              >
-                <Icon icon="mdi:close" aria-hidden />
-              </button>
-            ) : null}
-          </div>
-        </div>
-        {toolbar ? <div className={mapStyles.metricsTopBarActions}>{toolbar}</div> : null}
-      </div>
-
       <div className={mapStyles.backupTablesSplit}>
         <section className={mapStyles.backupTableBlock} aria-label="Instances de sauvegarde">
-          <div className={mapStyles.backupTableHead}>
+          <div className={`${mapStyles.backupTableHead} ${mapStyles.backupTableHeadToolbar}`.trim()}>
+            <div className={equipStyles.embeddedSearchBox}>
+              <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+              <input
+                type="search"
+                className={equipStyles.embeddedSearchInput}
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder={searchPlaceholder}
+                aria-label={searchPlaceholder}
+              />
+              {search ? (
+                <button
+                  type="button"
+                  className={equipStyles.embeddedSearchClear}
+                  onClick={() => setSearch("")}
+                  aria-label="Effacer la recherche"
+                >
+                  <Icon icon="mdi:close" aria-hidden />
+                </button>
+              ) : null}
+            </div>
             <h3 className={mapStyles.backupTableTitle}>
               Instances
               <span className={mapStyles.backupTableCount}>{filteredInstances.length}</span>
             </h3>
-            {onAddInstance ? (
-              <button
-                type="button"
-                className={mapStyles.backupTableAddBtn}
-                onClick={onAddInstance}
-                title={addInstanceLabel}
-                aria-label={addInstanceLabel}
-              >
-                <Icon icon="mdi:plus" aria-hidden />
-              </button>
-            ) : null}
+            <div className={mapStyles.backupTableHeadActions}>
+              {toolbar}
+              {onAddInstance ? (
+                <button
+                  type="button"
+                  className={mapStyles.backupTableAddBtn}
+                  onClick={onAddInstance}
+                  title={addInstanceLabel}
+                  aria-label={addInstanceLabel}
+                >
+                  <Icon icon="mdi:plus" aria-hidden />
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className={mapStyles.backupTableHost}>
             <CyberBrickItemsTable

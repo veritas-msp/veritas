@@ -25,7 +25,7 @@ import TicketDetailPage from "../components/TicketPage/TicketDetailPage";
 import EnterprisesPage from "../components/EnterprisesPage/EnterprisesPage";
 import EnterpriseDetailPage from "../components/EnterprisesPage/EnterpriseDetailPage";
 import ComputerFleetStatsPage from "../components/EnterprisesPage/ComputerFleetStatsPage";
-import { generateTabTitle } from "../utils/tabLabels";
+import { generateTabTitle, isPlaceholderDetailTabTitle } from "../utils/tabLabels";
 import { sortTabsByType } from "../utils/tabSort";
 import ContactPage from "../components/ContactsPage/ContactPage";
 import ContactDetailPage from "../components/ContactsPage/ContactDetailPage";
@@ -1070,11 +1070,29 @@ export default function MainApp() {
           targetTab = findTenantDetailTab(prevTabs, data);
         }
         if (!targetTab) return prevTabs;
-        const newTitle = title || generateTabTitle(type, data || {}, appLocale);
-        return prevTabs.map(tab => tab.id === targetTab.id ? {
+        const mergedData = {
+          ...(targetTab.data || {}),
+          ...(data || {})
+        };
+        const newTitle = title || generateTabTitle(type, mergedData, appLocale);
+        // Ne jamais écraser un vrai nom par un titre provisoire (Contact #… / Entreprise / …)
+        if (
+          isPlaceholderDetailTabTitle(type, newTitle, appLocale) &&
+          !isPlaceholderDetailTabTitle(type, targetTab.title, appLocale)
+        ) {
+          return prevTabs;
+        }
+        const newTabs = prevTabs.map(tab => tab.id === targetTab.id ? {
           ...tab,
-          title: newTitle
+          title: newTitle,
+          data: mergedData
         } : tab);
+        try {
+          localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
+        } catch (error) {
+          console.error("Error lors de la sauvegarde des onglets:", error);
+        }
+        return newTabs;
       });
     };
     return () => {
@@ -1082,26 +1100,26 @@ export default function MainApp() {
     };
   }, [generateTabId, appLocale]);
   useEffect(() => {
-    if (currentDocType === "ContratDetail" && contratDetailData?.name) {
-      const tabId = generateTabId("ContratDetail", contratDetailData);
-      const newTitle = generateTabTitle("ContratDetail", contratDetailData, appLocale);
-      updateTabTitle(tabId, newTitle);
-    }
-  }, [contratDetailData]);
+    if (currentDocType !== "ContratDetail" || !contratDetailData) return;
+    const newTitle = generateTabTitle("ContratDetail", contratDetailData, appLocale);
+    if (isPlaceholderDetailTabTitle("ContratDetail", newTitle, appLocale)) return;
+    const tabId = generateTabId("ContratDetail", contratDetailData);
+    updateTabTitle(tabId, newTitle);
+  }, [contratDetailData, appLocale, currentDocType, generateTabId]);
   useEffect(() => {
-    if (currentDocType === "ContactDetail" && contactDetailData) {
-      const tabId = generateTabId("ContactDetail", contactDetailData);
-      const newTitle = generateTabTitle("ContactDetail", contactDetailData, appLocale);
-      updateTabTitle(tabId, newTitle);
-    }
-  }, [contactDetailData]);
+    if (currentDocType !== "ContactDetail" || !contactDetailData) return;
+    const newTitle = generateTabTitle("ContactDetail", contactDetailData, appLocale);
+    if (isPlaceholderDetailTabTitle("ContactDetail", newTitle, appLocale)) return;
+    const tabId = generateTabId("ContactDetail", contactDetailData);
+    updateTabTitle(tabId, newTitle);
+  }, [contactDetailData, appLocale, currentDocType, generateTabId]);
   useEffect(() => {
-    if (currentDocType === "PrestataireDetail" && prestataireDetailData) {
-      const tabId = generateTabId("PrestataireDetail", prestataireDetailData);
-      const newTitle = generateTabTitle("PrestataireDetail", prestataireDetailData, appLocale);
-      updateTabTitle(tabId, newTitle);
-    }
-  }, [prestataireDetailData]);
+    if (currentDocType !== "PrestataireDetail" || !prestataireDetailData) return;
+    const newTitle = generateTabTitle("PrestataireDetail", prestataireDetailData, appLocale);
+    if (isPlaceholderDetailTabTitle("PrestataireDetail", newTitle, appLocale)) return;
+    const tabId = generateTabId("PrestataireDetail", prestataireDetailData);
+    updateTabTitle(tabId, newTitle);
+  }, [prestataireDetailData, appLocale, currentDocType, generateTabId]);
   const renderCurrentPage = () => {
     if (isCommunity && isProOnlyDocType(currentDocType)) {
       return <ComingSoonPage title="Veritas Pro" description="This module is reserved for the Pro edition. See pricing to unlock all features." showProPricing />;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { FaPlus, FaTimes } from "react-icons/fa";
+import { FaPlus, FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchPrestataire, fetchPrestataireMentionedTickets, deletePrestataire, getPrestataireLogs, purgePrestataireLogs } from "../../api/prestataires";
 import ActivityJournalPanel from "../shared/ActivityJournalPanel/ActivityJournalPanel";
@@ -14,6 +14,7 @@ import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDis
 import PrestataireFormModal from "./PrestataireFormModal";
 import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
 import { UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
+import ActivityStatusSegmented from "../shared/ActivityStatusSegmented/ActivityStatusSegmented";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import {
@@ -150,6 +151,9 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
   const [overviewTab, setOverviewTab] = useState("activity");
   const [activitySection, setActivitySection] = useState("tickets");
   const [ticketsSearchQuery, setTicketsSearchQuery] = useState("");
+  const [ticketsStatusFilter, setTicketsStatusFilter] = useState("all");
+  const [activityPageSize, setActivityPageSize] = useState(50);
+  const [ticketsTablePage, setTicketsTablePage] = useState(1);
   const [activityTabMounted, setActivityTabMounted] = useState(true);
   const [logsTabMounted, setLogsTabMounted] = useState(false);
   const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(true);
@@ -193,10 +197,16 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
     () => mentionedTickets.filter(isOpenTicket).length,
     [mentionedTickets]
   );
+  const matchesTicketsStatusFilter = useCallback((ticket, statusFilter) => {
+    if (statusFilter === "open") return isOpenTicket(ticket);
+    if (statusFilter === "closed") return !isOpenTicket(ticket);
+    return true;
+  }, []);
   const filteredMentionedTickets = useMemo(() => {
     const query = ticketsSearchQuery.trim().toLowerCase();
-    if (!query) return mentionedTickets;
     return mentionedTickets.filter(ticket => {
+      if (!matchesTicketsStatusFilter(ticket, ticketsStatusFilter)) return false;
+      if (!query) return true;
       const status = getTicketStatusLabel(normalizeTicketStatus(ticket.status), locale);
       const haystack = [
         ticket.ticket_number,
@@ -209,7 +219,98 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [locale, mentionedTickets, ticketsSearchQuery]);
+  }, [locale, matchesTicketsStatusFilter, mentionedTickets, ticketsSearchQuery, ticketsStatusFilter]);
+  const pagedMentionedTickets = useMemo(() => {
+    const total = filteredMentionedTickets.length;
+    const safePageSize = Math.max(1, Number(activityPageSize) || 50);
+    const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / safePageSize));
+    const page = Math.min(Math.max(1, Number(ticketsTablePage) || 1), totalPages);
+    const start = (page - 1) * safePageSize;
+    return {
+      page,
+      totalPages,
+      total,
+      safePageSize,
+      pagedList: total === 0 ? [] : filteredMentionedTickets.slice(start, start + safePageSize)
+    };
+  }, [activityPageSize, filteredMentionedTickets, ticketsTablePage]);
+  useEffect(() => {
+    setTicketsTablePage(1);
+  }, [ticketsSearchQuery, ticketsStatusFilter]);
+  const ticketsStatusOptions = useMemo(
+    () => [
+      { id: "all", label: copy.activityFilterAll || "Tous" },
+      { id: "open", label: copy.activityFilterOpen || "Ouverts" },
+      { id: "closed", label: copy.activityFilterClosed || "Clos" }
+    ],
+    [copy.activityFilterAll, copy.activityFilterClosed, copy.activityFilterOpen]
+  );
+  const renderTicketsPagination = useCallback(() => {
+    const { total, page, totalPages, safePageSize } = pagedMentionedTickets;
+    const rangeStart = total === 0 ? 0 : (page - 1) * safePageSize + 1;
+    const rangeEnd = total === 0 ? 0 : Math.min(page * safePageSize, total);
+    return (
+      <div className={`${equipStyles.pagination} ${equipStyles.paginationEmbedded} ${styles.activityPagination}`}>
+        <div className={equipStyles.paginationLeft}>
+          <span className={equipStyles.paginationLabel}>{copy.activityPerPage || "Par page"}</span>
+          <select
+            className={equipStyles.paginationSelect}
+            value={safePageSize}
+            onChange={e => {
+              setActivityPageSize(Number(e.target.value));
+              setTicketsTablePage(1);
+            }}
+            aria-label={copy.activityPerPage || "Par page"}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className={equipStyles.paginationInfo}>
+            {interpolate(copy.activityRangeInfo || "{start}–{end} sur {total}", {
+              start: String(rangeStart),
+              end: String(rangeEnd),
+              total: String(total)
+            })}
+          </span>
+        </div>
+        <div className={equipStyles.paginationRight}>
+          <button
+            type="button"
+            className={equipStyles.pageBtn}
+            onClick={() => setTicketsTablePage(page - 1)}
+            disabled={page <= 1 || total === 0}
+            aria-label={copy.activityPrevPage || "Page précédente"}
+          >
+            <FaChevronLeft />
+          </button>
+          <span className={equipStyles.paginationInfo}>
+            {interpolate(copy.activityPageInfo || "Page {current} / {total}", {
+              current: String(total === 0 ? 0 : page),
+              total: String(total === 0 ? 0 : totalPages)
+            })}
+          </span>
+          <button
+            type="button"
+            className={equipStyles.pageBtn}
+            onClick={() => setTicketsTablePage(page + 1)}
+            disabled={page >= totalPages || total === 0}
+            aria-label={copy.activityNextPage || "Page suivante"}
+          >
+            <FaChevronRight />
+          </button>
+        </div>
+      </div>
+    );
+  }, [
+    copy.activityNextPage,
+    copy.activityPageInfo,
+    copy.activityPerPage,
+    copy.activityPrevPage,
+    copy.activityRangeInfo,
+    pagedMentionedTickets
+  ]);
 
   const resolveId = () =>
     prestataireData?.prestataireId || prestataireData?.id || urlPrestataireId;
@@ -291,10 +392,11 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
       setPrestataire(cached.prestataire);
       if (Array.isArray(cached.mentionedTickets)) setMentionedTickets(cached.mentionedTickets);
       setLoading(false);
-      if (window.updateTabTitle && cached.prestataire.nom) {
+      if (window.updateTabTitle && (cached.prestataire.nom || cached.prestataire.name)) {
         window.updateTabTitle("PrestataireDetail", {
           prestataireId: id,
-          nom: cached.prestataire.nom
+          id,
+          nom: cached.prestataire.nom || cached.prestataire.name
         });
       }
     } else {
@@ -311,10 +413,11 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
         prestataire: fetched,
         mentionedTickets: Array.isArray(cached?.mentionedTickets) ? cached.mentionedTickets : []
       });
-      if (window.updateTabTitle && fetched.nom) {
+      if (window.updateTabTitle && (fetched.nom || fetched.name)) {
         window.updateTabTitle("PrestataireDetail", {
           prestataireId: id,
-          nom: fetched.nom
+          id,
+          nom: fetched.nom || fetched.name
         });
       }
       activityControllerRef.current?.abort();
@@ -657,15 +760,23 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                                         </button>
                                       ) : null}
                                     </div>
+                                    <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
+                                      <ActivityStatusSegmented
+                                        value={ticketsStatusFilter}
+                                        onChange={setTicketsStatusFilter}
+                                        options={ticketsStatusOptions}
+                                        ariaLabel={copy.activityFilterStatusAria || "Filtrer par statut"}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                                 <div className={styles.activityTableStack}>
                                   {loadingActivity && mentionedTickets.length === 0 ? (
                                     renderActivityEmpty("mdi:ticket-outline", copy.loading)
-                                  ) : filteredMentionedTickets.length === 0 ? (
+                                  ) : pagedMentionedTickets.total === 0 ? (
                                     renderActivityEmpty(
                                       "mdi:ticket-outline",
-                                      mentionedTickets.length > 0 && ticketsSearchQuery.trim()
+                                      mentionedTickets.length > 0 && (ticketsSearchQuery.trim() || ticketsStatusFilter !== "all")
                                         ? (copy.emptyActivitySearch || copy.emptyMentionedTickets)
                                         : copy.emptyMentionedTickets
                                     )
@@ -682,7 +793,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                                           </tr>
                                         </thead>
                                         <tbody>
-                                          {filteredMentionedTickets.slice(0, 12).map(ticket => {
+                                          {pagedMentionedTickets.pagedList.map(ticket => {
                                             const ticketStatus = normalizeTicketStatus(ticket.status);
                                             const sideCount = Number(ticket.side_conversation_count) || 0;
                                             return (
@@ -723,6 +834,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                                       </table>
                                     </div>
                                   )}
+                                  {renderTicketsPagination()}
                                 </div>
                               </div>
                             </section>

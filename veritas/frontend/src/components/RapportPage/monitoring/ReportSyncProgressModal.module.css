@@ -5,9 +5,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background: rgba(12, 24, 42, 0.48);
-  backdrop-filter: blur(14px);
+  padding: 1.25rem;
+  background: rgba(230, 237, 246, 0.42);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
   animation: overlayIn 0.22s ease-out;
 }
 
@@ -19,7 +20,7 @@
 @keyframes shellIn {
   from {
     opacity: 0;
-    transform: translateY(18px) scale(0.97);
+    transform: translateY(14px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -31,105 +32,97 @@
   to { transform: rotate(360deg); }
 }
 
-@keyframes pulseRing {
-  0% { transform: scale(0.86); opacity: 0.55; }
-  70% { transform: scale(1.08); opacity: 0; }
-  100% { transform: scale(1.08); opacity: 0; }
+@keyframes progressShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
-@keyframes bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+@keyframes itemIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
 }
 
 .shell {
   position: relative;
-  width: min(880px, calc(100vw - 2.5rem));
-  max-height: min(92vh, 900px);
-  min-height: min(580px, 92vh);
+  width: min(720px, calc(100vw - 2rem));
+  max-height: min(88vh, 760px);
   display: flex;
   flex-direction: column;
-  border-radius: 28px;
+  border-radius: 18px;
   overflow: hidden;
   background: var(--msp-surface, #fff);
   border: 1px solid var(--msp-border, #dde3ed);
   box-shadow:
-    0 32px 80px rgba(10, 22, 40, 0.22),
-    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-  animation: shellIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 24px 64px rgba(10, 22, 40, 0.22);
+  animation: shellIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.hero {
+.accentBar {
+  height: 3px;
+  flex-shrink: 0;
+  background: var(--msp-accent, #2b5fab);
+}
+
+.header {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 1.75rem 2rem 1.35rem;
-  background:
-    radial-gradient(1200px 280px at 12% -40%, rgba(43, 95, 171, 0.14), transparent 60%),
-    var(--msp-surface-2, #f6f8fb);
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.95rem 1.25rem;
   border-bottom: 1px solid var(--msp-border-light, #eef2f7);
-}
-
-.loader {
-  position: relative;
-  width: 118px;
-  height: 118px;
+  background: var(--msp-surface, #fff);
   flex-shrink: 0;
 }
 
-.loaderRing {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid rgba(43, 95, 171, 0.18);
+.headerMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
 }
 
-.loaderLive .loaderRing:nth-child(1) {
-  animation: pulseRing 2.2s ease-out infinite;
-}
-
-.loaderLive .loaderRing:nth-child(2) {
-  inset: 10px;
-  animation: pulseRing 2.2s ease-out 0.45s infinite;
-}
-
-.loaderLive .loaderRing:nth-child(3) {
-  inset: 20px;
-  animation: pulseRing 2.2s ease-out 0.9s infinite;
-}
-
-.loaderDone .loaderRing {
-  opacity: 0.28;
-}
-
-.loaderCore {
-  position: absolute;
-  inset: 28px;
+.iconWrap {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: #fff;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(43, 95, 171, 0.1);
+  border: 1px solid rgba(43, 95, 171, 0.16);
   color: var(--msp-accent, #2b5fab);
-  box-shadow: 0 10px 24px rgba(43, 95, 171, 0.16);
-  font-size: 2.1rem;
+  font-size: 1.15rem;
 }
 
-.loaderLive .loaderCore {
-  animation: bob 2.4s ease-in-out infinite;
+.iconWrapLive {
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.08);
 }
 
-.loaderIconSpin {
-  animation: spin 1.4s linear infinite;
+.iconSpin {
+  animation: spin 1s linear infinite;
 }
 
-.heroCopy {
+.headerText {
   min-width: 0;
+  flex: 1;
 }
 
 .kicker {
-  margin: 0 0 0.35rem;
-  font-size: 0.74rem;
+  margin: 0 0 0.15rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -138,26 +131,25 @@
 
 .title {
   margin: 0;
-  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+  font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   color: var(--msp-text, #0f1c2e);
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .subtitle {
-  margin: 0.45rem 0 0;
-  max-width: 36rem;
-  font-size: 0.98rem;
-  line-height: 1.45;
-  color: var(--msp-muted, #5b6f8a);
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
 }
 
 .body {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
-  padding: 1.35rem 2rem 0.4rem;
+  gap: 0.95rem;
+  padding: 1rem 1.25rem 0.35rem;
   min-height: 0;
   flex: 1;
 }
@@ -165,7 +157,8 @@
 .progressBlock {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .metaRow {
@@ -176,19 +169,19 @@
 }
 
 .stepCount {
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
 }
 
 .eta {
-  font-size: 0.88rem;
-  color: var(--msp-muted, #5b6f8a);
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
   text-align: right;
 }
 
 .progressTrack {
-  height: 12px;
+  height: 8px;
   border-radius: 999px;
   background: var(--msp-surface-2, #eef2f7);
   overflow: hidden;
@@ -197,73 +190,97 @@
 .progressFill {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--msp-accent, #2b5fab), #5aa0e8);
-  transition: width 0.4s ease;
+  background: var(--msp-accent, #2b5fab);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.progressFillLive {
+  background-image: linear-gradient(
+    90deg,
+    var(--msp-accent, #2b5fab) 0%,
+    #4a8fd4 45%,
+    var(--msp-accent, #2b5fab) 90%
+  );
+  background-size: 200% 100%;
+  animation: progressShimmer 1.6s linear infinite;
 }
 
 .currentStatus {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 650;
   color: var(--msp-text, #0f1c2e);
+}
+
+.progressFillLive + .currentStatus,
+.body:has(.progressFillLive) .currentStatus {
+  animation: statusPulse 1.8s ease-in-out infinite;
 }
 
 .log {
   flex: 1;
-  min-height: 220px;
-  max-height: none;
+  min-height: 11rem;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 0.5rem;
   align-content: start;
-  padding: 0.15rem 0 0.5rem;
+  padding: 0.1rem 0 0.45rem;
+  scrollbar-width: thin;
 }
 
 .logItem {
   display: grid;
-  grid-template-columns: 2rem 1fr;
-  gap: 0.65rem;
+  grid-template-columns: 1.75rem 1fr;
+  gap: 0.55rem;
   align-items: start;
-  padding: 0.8rem 0.9rem;
-  border-radius: 16px;
-  border: 1px solid var(--msp-border-light, #e8eef6);
-  background: var(--msp-surface-2, #f7f9fc);
-  font-size: 0.88rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--msp-border, #c5d0df) 75%, transparent);
+  background: var(--msp-surface, #fff);
+  font-size: 0.78rem;
   line-height: 1.35;
-  color: var(--msp-muted, #5b6f8a);
+  color: var(--msp-muted, #5c6b82);
+  opacity: 0;
+  animation: itemIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--item-i, 0) * 35ms);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .logItemRunning {
-  background: rgba(43, 95, 171, 0.08);
-  border-color: rgba(43, 95, 171, 0.22);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 45%, transparent);
   color: var(--msp-text, #0f1c2e);
   font-weight: 650;
-  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.08);
+  box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.08);
 }
 
 .logItemOk {
   color: var(--msp-text, #0f1c2e);
   background: rgba(22, 163, 74, 0.06);
-  border-color: rgba(22, 163, 74, 0.16);
+  border-color: rgba(22, 163, 74, 0.18);
 }
 
 .logItemError {
   color: #b91c1c;
   background: rgba(220, 38, 38, 0.06);
-  border-color: rgba(220, 38, 38, 0.16);
+  border-color: rgba(220, 38, 38, 0.18);
 }
 
 .logIconWrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-  background: #fff;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 8px;
+  background: transparent;
   color: #94a3b8;
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .logItemRunning .logIconWrap {
@@ -278,20 +295,16 @@
   color: #dc2626;
 }
 
-.logIconSpin {
-  animation: spin 0.9s linear infinite;
-}
-
 .logLabel {
   min-width: 0;
-  padding-top: 0.28rem;
+  padding-top: 0.2rem;
   word-break: break-word;
 }
 
 .logError {
   display: block;
   margin-top: 0.2rem;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   opacity: 0.85;
 }
@@ -300,16 +313,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1.1rem 2rem 1.25rem;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
   border-top: 1px solid var(--msp-border-light, #eef2f7);
-  background: var(--msp-surface, #fff);
+  background: var(--msp-surface-2, #f8fafc);
+  flex-shrink: 0;
 }
 
 .footerHint {
   margin: 0;
-  font-size: 0.84rem;
-  color: var(--msp-muted, #5b6f8a);
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
 }
 
 .cancelBtn,
@@ -317,13 +331,16 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  min-height: 42px;
-  padding: 0.45rem 1.15rem;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  gap: 0.35rem;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.84rem;
   font-weight: 650;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .cancelBtn {
@@ -333,7 +350,8 @@
 }
 
 .cancelBtn:hover {
-  background: var(--msp-surface-2, #f1f5f9);
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
 }
 
 .closeBtn {
@@ -349,58 +367,68 @@
 @media (max-width: 720px) {
   .shell {
     width: 100%;
-    min-height: 0;
     max-height: 94vh;
-    border-radius: 22px;
-  }
-
-  .hero {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1.35rem 1.25rem 1.1rem;
-  }
-
-  .loader {
-    width: 88px;
-    height: 88px;
-  }
-
-  .loaderCore {
-    inset: 20px;
-    font-size: 1.6rem;
-  }
-
-  .body,
-  .footer {
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
   }
 
   .log {
     grid-template-columns: 1fr;
-    min-height: 160px;
+    min-height: 9rem;
   }
 
   .footer {
     flex-direction: column;
     align-items: stretch;
   }
+
+  .cancelBtn,
+  .closeBtn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .shell,
+  .logItem,
+  .progressFillLive,
+  .iconSpin,
+  .body:has(.progressFillLive) .currentStatus {
+    animation: none !important;
+  }
+
+  .logItem {
+    opacity: 1;
+    transform: none;
+  }
+
+  .progressFill {
+    transition: none;
+  }
+}
+
+:global(html.dark) .overlay {
+  background: rgba(2, 5, 10, 0.55);
 }
 
 :global(html.dark) .shell {
   background: var(--msp-surface, #111b2e);
   border-color: var(--msp-border, #2a3a55);
-  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.55);
 }
 
-:global(html.dark) .hero,
+:global(html.dark) .header {
+  background: var(--msp-surface, #111b2e);
+  border-color: var(--msp-border, #2a3a55);
+}
+
 :global(html.dark) .footer {
   background: var(--msp-surface-2, #152035);
   border-color: var(--msp-border, #2a3a55);
 }
 
-:global(html.dark) .loaderCore {
-  background: #1a2740;
+:global(html.dark) .iconWrap {
+  background: rgba(90, 143, 212, 0.12);
+  border-color: rgba(90, 143, 212, 0.22);
   color: #7eb3e8;
 }
 
@@ -419,14 +447,18 @@
   color: var(--msp-muted, #8fa8c4);
 }
 
-:global(html.dark) .progressTrack,
-:global(html.dark) .logItem {
+:global(html.dark) .progressTrack {
   background: rgba(15, 28, 46, 0.55);
+}
+
+:global(html.dark) .logItem {
+  background: var(--msp-surface, #111b2e);
   border-color: var(--msp-border, #2a3a55);
 }
 
 :global(html.dark) .logItemRunning {
   background: rgba(90, 143, 212, 0.12);
+  border-color: rgba(90, 143, 212, 0.28);
 }
 
 :global(html.dark) .logItemOk {
@@ -436,10 +468,6 @@
 :global(html.dark) .logItemError {
   color: #f87171;
   background: rgba(248, 113, 113, 0.1);
-}
-
-:global(html.dark) .logIconWrap {
-  background: #111b2e;
 }
 
 :global(html.dark) .cancelBtn {

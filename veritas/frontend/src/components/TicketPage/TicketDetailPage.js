@@ -6111,9 +6111,16 @@ export default function TicketDetailPage({
               <div className={`${styles.contextLine} ${styles.contextLineWithAction}`.trim()}>
                 <div className={styles.contextLineMain}>
                   <strong>{copy.rightPane.name}</strong>{" "}
-                  {(editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id) && requesterDisplayName !== "-" ? <button type="button" className={styles.contextLinkBtn} onClick={() => onNavigate?.("ContactDetail", {
-                    contactId: editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id
-                  })}>
+                  {(editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id) && requesterDisplayName !== "-" ? <button type="button" className={styles.contextLinkBtn} onClick={() => {
+                    const contactId = editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id;
+                    onNavigate?.("ContactDetail", {
+                      contactId,
+                      id: contactId,
+                      nom: requesterContact?.nom,
+                      prenom: requesterContact?.prenom,
+                      name: requesterDisplayName
+                    });
+                  }}>
                       {requesterDisplayName}
                     </button> : requesterDisplayName}
                 </div>

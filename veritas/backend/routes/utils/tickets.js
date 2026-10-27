@@ -2960,9 +2960,7 @@ router.put("/table-columns/public", verifyJWT, async (req, res) => {
       ticket_sales: "sales.public_views",
       enterprises: "clients.public_views",
       contacts: "contacts.public_views",
-      prestataires: "prestataires.public_views",
-      enterprise_vault: "clients.public_views",
-      enterprise_logs: "clients.public_views"
+      prestataires: "prestataires.public_views"
     };
     const publicViewsKey = publicViewsKeyByScope[pageScope] || "tickets.public_views";
     if (!(await userHasAnyPermission(req.user, [publicViewsKey]))) {

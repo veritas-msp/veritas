@@ -71,41 +71,60 @@ export default function ReportSyncProgressModal({
     : phase === "cancelled"
       ? copy.cancelled
       : copy.done;
+  const headerIcon = running
+    ? "mdi:sync"
+    : phase === "cancelled"
+      ? "mdi:pause-circle-outline"
+      : "mdi:check";
 
   return createPortal(
     <div className={styles.overlay} role="presentation">
-      <div className={styles.shell} onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleId}>
-        <div className={styles.hero}>
-          <div className={`${styles.loader} ${running ? styles.loaderLive : styles.loaderDone}`} aria-hidden>
-            <span className={styles.loaderRing} />
-            <span className={styles.loaderRing} />
-            <span className={styles.loaderRing} />
-            <span className={styles.loaderCore}>
-              <Icon
-                icon={running ? "mdi:sync" : phase === "cancelled" ? "mdi:pause-circle-outline" : "mdi:check"}
-                className={running ? styles.loaderIconSpin : undefined}
-              />
-            </span>
+      <div
+        className={styles.shell}
+        onClick={event => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        <div className={styles.accentBar} aria-hidden />
+
+        <header className={styles.header}>
+          <div className={styles.headerMain}>
+            <div className={`${styles.iconWrap} ${running ? styles.iconWrapLive : ""}`} aria-hidden>
+              <Icon icon={headerIcon} className={running ? styles.iconSpin : undefined} />
+            </div>
+            <div className={styles.headerText}>
+              <p className={styles.kicker}>{copy.kicker || copy.preparing}</p>
+              <h2 id={titleId} className={styles.title}>{copy.title}</h2>
+              <p className={styles.subtitle}>{subtitle}</p>
+            </div>
           </div>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>{copy.kicker || copy.preparing}</p>
-            <h2 id={titleId} className={styles.title}>{copy.title}</h2>
-            <p className={styles.subtitle}>{subtitle}</p>
-          </div>
-        </div>
+        </header>
 
         <div className={styles.body}>
           <div className={styles.progressBlock}>
             <div className={styles.metaRow}>
               <span className={styles.stepCount}>
-                {fillSyncCopy(copy.stepOf, { current: Math.min(completed + (running ? 1 : 0), total), total })}
+                {fillSyncCopy(copy.stepOf, {
+                  current: Math.min(completed + (running ? 1 : 0), total),
+                  total
+                })}
               </span>
               <span className={styles.eta}>
                 {running ? formatEta(etaMs, copy) : fillSyncCopy(copy.stepOf, { current: completed, total })}
               </span>
             </div>
-            <div className={styles.progressTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}>
-              <div className={styles.progressFill} style={{ width: `${percent}%` }} />
+            <div
+              className={styles.progressTrack}
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+            >
+              <div
+                className={`${styles.progressFill} ${running ? styles.progressFillLive : ""}`}
+                style={{ width: `${percent}%` }}
+              />
             </div>
             <p className={styles.currentStatus}>
               {running ? (copy.nowWorking || "En cours") : null}
@@ -115,7 +134,7 @@ export default function ReportSyncProgressModal({
           </div>
 
           <div className={styles.log} ref={logRef}>
-            {items.map(item => (
+            {items.map((item, index) => (
               <div
                 key={item.id}
                 data-sync-active={item.state === "running" ? "true" : undefined}
@@ -125,20 +144,27 @@ export default function ReportSyncProgressModal({
                   item.state === "ok" ? styles.logItemOk : "",
                   item.state === "error" ? styles.logItemError : ""
                 ].filter(Boolean).join(" ")}
+                style={{ "--item-i": index }}
               >
                 <span className={styles.logIconWrap}>
-                  <Icon icon={itemIcon(item.state)} className={item.state === "running" ? styles.logIconSpin : undefined} aria-hidden />
+                  <Icon
+                    icon={itemIcon(item.state)}
+                    className={item.state === "running" ? styles.iconSpin : undefined}
+                    aria-hidden
+                  />
                 </span>
                 <div className={styles.logLabel}>
                   {item.label}
-                  {item.state === "error" && item.error ? <span className={styles.logError}>{item.error}</span> : null}
+                  {item.state === "error" && item.error ? (
+                    <span className={styles.logError}>{item.error}</span>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className={styles.footer}>
+        <footer className={styles.footer}>
           <p className={styles.footerHint}>{running ? copy.footerHint : copy.footerDone}</p>
           {running ? (
             <button type="button" className={styles.cancelBtn} onClick={onCancel}>
@@ -146,10 +172,11 @@ export default function ReportSyncProgressModal({
             </button>
           ) : (
             <button type="button" className={styles.closeBtn} onClick={onClose}>
+              <Icon icon="mdi:check" aria-hidden />
               {copy.close}
             </button>
           )}
-        </div>
+        </footer>
       </div>
     </div>,
     document.body

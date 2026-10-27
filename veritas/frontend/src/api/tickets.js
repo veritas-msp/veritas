@@ -894,6 +894,19 @@ export async function fetchAdminTicketViews(pageScope = "ticket") {
   });
   return handleJsonResponse(response, "Error fetching ticket views");
 }
+export async function fetchBuiltinTicketViews(pageScope = "ticket", options = {}) {
+  const response = await fetch(`${API_BASE_URL}/tickets/views/builtins${buildQuery({
+    pageScope
+  })}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  return handleJsonResponse(response, "Error fetching builtin ticket views");
+}
 export async function createTicketView(payload) {
   const response = await fetch(`${API_BASE_URL}/tickets/views`, {
     method: "POST",
@@ -906,7 +919,11 @@ export async function createTicketView(payload) {
   return handleJsonResponse(response, "Error creating view");
 }
 export async function updateTicketView(viewId, payload) {
-  const response = await fetch(`${API_BASE_URL}/tickets/views/${viewId}`, {
+  const isBuiltin = String(viewId || "").startsWith("__builtin_");
+  const url = isBuiltin
+    ? `${API_BASE_URL}/tickets/views/builtins/${encodeURIComponent(viewId)}`
+    : `${API_BASE_URL}/tickets/views/${viewId}`;
+  const response = await fetch(url, {
     method: "PUT",
     credentials: "include",
     headers: {
@@ -915,6 +932,18 @@ export async function updateTicketView(viewId, payload) {
     body: JSON.stringify(payload || {})
   });
   return handleJsonResponse(response, "Error updating view");
+}
+export async function resetBuiltinTicketView(builtinId, pageScope = "ticket") {
+  const response = await fetch(`${API_BASE_URL}/tickets/views/builtins/${encodeURIComponent(builtinId)}${buildQuery({
+    pageScope
+  })}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleJsonResponse(response, "Error resetting builtin view");
 }
 export async function deleteTicketView(viewId) {
   const response = await fetch(`${API_BASE_URL}/tickets/views/${viewId}`, {

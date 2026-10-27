@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import SmartTooltip from "../SmartTooltip";
@@ -17,7 +18,6 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getDocumentsHubGuide } from "../PageGuide/documentsHubGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import DocumentsBulkEditModal from "./DocumentsBulkEditModal";
-import SuggestionAutocomplete from "../shared/SuggestionAutocomplete/SuggestionAutocomplete";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import styles from "./DocumentsHubPage.module.css";
@@ -36,10 +36,12 @@ function formatDate(value, locale) {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString(locale === "en" ? "en-GB" : locale === "de" ? "de-DE" : locale === "it" ? "it-IT" : locale === "es" ? "es-ES" : "en-US", {
+  return d.toLocaleString(locale === "en" ? "en-GB" : locale === "de" ? "de-DE" : locale === "it" ? "it-IT" : locale === "es" ? "es-ES" : "fr-FR", {
     day: "2-digit",
-    month: "short",
-    year: "numeric"
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
   });
 }
 function fileIcon(mimeType) {
@@ -84,8 +86,11 @@ export default function DocumentsHubPage() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [companyFilter, setCompanyFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [categoryMenuCoords, setCategoryMenuCoords] = useState(null);
+  const categoryMenuRef = useRef(null);
+  const categoryTriggerRef = useRef(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -118,16 +123,14 @@ export default function DocumentsHubPage() {
     load();
     return () => loadAbortRef.current?.abort();
   }, [load]);
-  const companies = useMemo(() => [...new Set(files.map(f => f.client_name || "-"))].sort((a, b) => a.localeCompare(b)), [files]);
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return files.filter(f => {
-      if (companyFilter && (f.client_name || "-") !== companyFilter) return false;
       if (categoryFilter !== "all" && f.category !== categoryFilter) return false;
       if (!q) return true;
       return String(f.file_name || "").toLowerCase().includes(q) || String(f.client_name || "").toLowerCase().includes(q) || String(f.category || "").toLowerCase().includes(q) || String(f.description || "").toLowerCase().includes(q);
     });
-  }, [files, search, companyFilter, categoryFilter]);
+  }, [files, search, categoryFilter]);
   const sorted = useMemo(() => {
     const rows = [...filtered];
     const dir = sortDirection === "asc" ? 1 : -1;
@@ -189,6 +192,55 @@ export default function DocumentsHubPage() {
     setSortDirection(next.sortDirection);
   };
   const categoryLabel = key => copy.categories?.[key] || key;
+  const categoryOptions = useMemo(
+    () => [
+      { value: "all", label: copy.filterCategory },
+      ...CATEGORY_KEYS.map(cat => ({
+        value: cat,
+        label: categoryLabel(cat)
+      }))
+    ],
+    [copy.filterCategory, copy.categories]
+  );
+  const categoryFilterLabel = useMemo(() => {
+    const match = categoryOptions.find(opt => opt.value === categoryFilter);
+    return match?.label || copy.filterCategory;
+  }, [categoryOptions, categoryFilter, copy.filterCategory]);
+  useEffect(() => {
+    if (!categoryMenuOpen) {
+      setCategoryMenuCoords(null);
+      return undefined;
+    }
+    const updateCoords = () => {
+      const trigger = categoryTriggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      setCategoryMenuCoords({
+        top: rect.bottom + 6,
+        left: rect.left,
+        minWidth: Math.max(rect.width, 180)
+      });
+    };
+    updateCoords();
+    const onPointerDown = event => {
+      const inTrigger = categoryTriggerRef.current?.contains(event.target);
+      const inMenu = categoryMenuRef.current?.contains(event.target);
+      if (!inTrigger && !inMenu) setCategoryMenuOpen(false);
+    };
+    const onKeyDown = event => {
+      if (event.key === "Escape") setCategoryMenuOpen(false);
+    };
+    window.addEventListener("resize", updateCoords);
+    window.addEventListener("scroll", updateCoords, true);
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("resize", updateCoords);
+      window.removeEventListener("scroll", updateCoords, true);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [categoryMenuOpen]);
   const handleDelete = file => {
     setDeleteTarget(file);
   };
@@ -271,29 +323,58 @@ export default function DocumentsHubPage() {
                       searchAriaLabel={copy.searchPlaceholder}
                       clearSearchLabel={copy.clearSearch}
                       filters={
-                        <>
-                          <SuggestionAutocomplete
-                            id="documents-hub-company-filter"
-                            className={styles.companySuggest}
-                            variant="toolbar"
-                            placeholder={copy.filterCompanyPlaceholder || copy.filterCompany}
-                            value={companyFilter}
-                            options={companies}
-                            onChange={setCompanyFilter}
-                            minQueryLength={1}
-                            hintMessage={copy.filterCompanyHint}
-                            emptyMessage={copy.filterCompanyEmpty || copy.emptyFiltered}
-                            clearLabel={copy.clearSearch}
-                          />
-                          <select className={layout.sortSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} aria-label={copy.filterCategory}>
-                            <option value="all">{copy.filterCategory}</option>
-                            {CATEGORY_KEYS.map(cat => (
-                              <option key={cat} value={cat}>
-                                {categoryLabel(cat)}
-                              </option>
-                            ))}
-                          </select>
-                        </>
+                        <div className={styles.macosPillSelectWrap}>
+                          <button
+                            type="button"
+                            ref={categoryTriggerRef}
+                            className={styles.macosPillSelectTrigger}
+                            onClick={() => setCategoryMenuOpen(open => !open)}
+                            aria-label={copy.filterCategory}
+                            aria-haspopup="listbox"
+                            aria-expanded={categoryMenuOpen}
+                          >
+                            <Icon icon="mdi:filter-variant" className={styles.macosPillSelectIcon} aria-hidden />
+                            <span className={styles.macosPillSelectValue}>{categoryFilterLabel}</span>
+                            <Icon
+                              icon="mdi:chevron-down"
+                              className={`${styles.macosPillSelectChevron} ${categoryMenuOpen ? styles.macosPillSelectChevronOpen : ""}`.trim()}
+                              aria-hidden
+                            />
+                          </button>
+                          {categoryMenuOpen && categoryMenuCoords && typeof document !== "undefined"
+                            ? createPortal(
+                                <ul
+                                  ref={categoryMenuRef}
+                                  className={styles.macosPillSelectMenu}
+                                  role="listbox"
+                                  aria-label={copy.filterCategory}
+                                  style={{
+                                    top: categoryMenuCoords.top,
+                                    left: categoryMenuCoords.left,
+                                    minWidth: categoryMenuCoords.minWidth
+                                  }}
+                                >
+                                  {categoryOptions.map(option => (
+                                    <li key={option.value} role="none">
+                                      <button
+                                        type="button"
+                                        role="option"
+                                        aria-selected={categoryFilter === option.value}
+                                        className={`${styles.macosPillSelectOption} ${categoryFilter === option.value ? styles.macosPillSelectOptionActive : ""}`.trim()}
+                                        onClick={() => {
+                                          setCategoryFilter(option.value);
+                                          setCategoryMenuOpen(false);
+                                        }}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>,
+                                document.body
+                              )
+                            : null}
+                        </div>
                       }
                       filtersAriaLabel={copy.filterCategory}
                     />
@@ -315,7 +396,7 @@ export default function DocumentsHubPage() {
                         <div data-guide="docs-table">
                         <UiKitScrollFadeShell
                           className={layout.dataTableWrap}
-                          deps={[sorted.length, sortBy, sortDirection, search, companyFilter, categoryFilter]}
+                          deps={[sorted.length, sortBy, sortDirection, search, categoryFilter]}
                         >
                             <table className={styles.table}>
                               <thead>
@@ -368,21 +449,15 @@ export default function DocumentsHubPage() {
                                         </button>
                                       </td>
                                       <td className={styles.companyCell}>{file.client_name || "-"}</td>
-                                      <td>
-                                        <span className={`${styles.badge} ${categoryTone(file.category)}`}>
-                                          {categoryLabel(file.category)}
-                                        </span>
-                                      </td>
+                                      <td>{categoryLabel(file.category)}</td>
                                       <td>
                                         {file.visible_to_client ? (
-                                          <span className={styles.visibilityShared} title={copy.visiblePortal}>
-                                            <Icon icon="mdi:account-eye-outline" aria-hidden />
-                                            {copy.visiblePortal}
+                                          <span className={styles.visibilityIcon} title={copy.visiblePortal} aria-label={copy.visiblePortal}>
+                                            <Icon icon="mdi:eye-outline" aria-hidden />
                                           </span>
                                         ) : (
-                                          <span className={styles.visibilityInternal} title={copy.notSharedTitle}>
-                                            <Icon icon="mdi:account-eye-off-outline" aria-hidden />
-                                            {copy.notShared}
+                                          <span className={styles.visibilityIcon} title={copy.notSharedTitle} aria-label={copy.notSharedTitle}>
+                                            <Icon icon="mdi:eye-off-outline" aria-hidden />
                                           </span>
                                         )}
                                       </td>
@@ -390,9 +465,6 @@ export default function DocumentsHubPage() {
                                       <td className={styles.mutedCell}>{formatSize(file.size_bytes, locale)}</td>
                                       <td>
                                         <div className={styles.rowActions}>
-                                          <button type="button" className={styles.iconAction} title={copy.preview} onClick={() => setPreviewFile(file)}>
-                                            <Icon icon="mdi:eye-outline" />
-                                          </button>
                                           <a href={getDownloadUrl(file.id)} download={file.file_name} className={styles.iconAction} title={copy.download}>
                                             <Icon icon="mdi:download-outline" />
                                           </a>

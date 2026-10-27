@@ -11,7 +11,7 @@ import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import { useEntitySubscription } from "../../hooks/useEntitySubscription";
 import { getContactSexeIcon, normalizeContactSexe } from "../../utils/contactSexe";
-import { FaTimes, FaPlus } from "react-icons/fa";
+import { FaTimes, FaPlus, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import API_BASE_URL from "../../config";
 import ContactPortalSection from "./ContactPortalSection";
 import VaultSecretsPanel from "../EnterprisesPage/VaultSecretsPanel";
@@ -366,6 +366,11 @@ export default function ContactDetailPage({
   const [prestationSearchQuery, setPrestationSearchQuery] = useState("");
   const [supportStatusFilter, setSupportStatusFilter] = useState("all");
   const [prestationStatusFilter, setPrestationStatusFilter] = useState("all");
+  const [activityPageSize, setActivityPageSize] = useState(50);
+  const [activityTablePage, setActivityTablePage] = useState({
+    support: 1,
+    prestations: 1
+  });
   const activityControllerRef = useRef(null);
   const displayCommunications = useMemo(() => sortCommunicationsByType(normalizeContactCommunications(contact || {})), [contact]);
   const emailCommunications = useMemo(() => displayCommunications.filter(entry => entry.type === "email"), [displayCommunications]);
@@ -459,6 +464,110 @@ export default function ContactDetailPage({
     prestationSearchQuery,
     prestationStatusFilter,
     prestationTicketsSource
+  ]);
+  const getActivityTablePage = useCallback(section => {
+    const page = Number(activityTablePage[section]) || 1;
+    return page < 1 ? 1 : page;
+  }, [activityTablePage]);
+  const setActivitySectionPage = useCallback((section, nextPage) => {
+    setActivityTablePage(prev => ({
+      ...prev,
+      [section]: Math.max(1, Number(nextPage) || 1)
+    }));
+  }, []);
+  const paginateActivityList = useCallback((section, list) => {
+    const total = Array.isArray(list) ? list.length : 0;
+    const safePageSize = Math.max(1, Number(activityPageSize) || 50);
+    const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / safePageSize));
+    const page = Math.min(getActivityTablePage(section), totalPages);
+    const start = (page - 1) * safePageSize;
+    return {
+      page,
+      totalPages,
+      total,
+      safePageSize,
+      pagedList: total === 0 ? [] : list.slice(start, start + safePageSize)
+    };
+  }, [activityPageSize, getActivityTablePage]);
+  const pagedSupportTickets = useMemo(
+    () => paginateActivityList("support", filteredSupportTickets),
+    [paginateActivityList, filteredSupportTickets]
+  );
+  const pagedPrestationTickets = useMemo(
+    () => paginateActivityList("prestations", filteredPrestationTickets),
+    [paginateActivityList, filteredPrestationTickets]
+  );
+  useEffect(() => {
+    setActivityTablePage(prev => ({ ...prev, support: 1 }));
+  }, [supportSearchQuery, supportStatusFilter]);
+  useEffect(() => {
+    setActivityTablePage(prev => ({ ...prev, prestations: 1 }));
+  }, [prestationSearchQuery, prestationStatusFilter]);
+  const renderActivityPagination = useCallback(sectionMeta => {
+    const { section, total, page, totalPages, safePageSize } = sectionMeta;
+    const rangeStart = total === 0 ? 0 : (page - 1) * safePageSize + 1;
+    const rangeEnd = total === 0 ? 0 : Math.min(page * safePageSize, total);
+    return (
+      <div className={`${equipStyles.pagination} ${equipStyles.paginationEmbedded} ${styles.activityPagination}`}>
+        <div className={equipStyles.paginationLeft}>
+          <span className={equipStyles.paginationLabel}>{copy.activityPerPage || "Par page"}</span>
+          <select
+            className={equipStyles.paginationSelect}
+            value={safePageSize}
+            onChange={e => {
+              setActivityPageSize(Number(e.target.value));
+              setActivitySectionPage(section, 1);
+            }}
+            aria-label={copy.activityPerPage || "Par page"}
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className={equipStyles.paginationInfo}>
+            {interpolate(copy.activityRangeInfo || "{start}–{end} sur {total}", {
+              start: String(rangeStart),
+              end: String(rangeEnd),
+              total: String(total)
+            })}
+          </span>
+        </div>
+        <div className={equipStyles.paginationRight}>
+          <button
+            type="button"
+            className={equipStyles.pageBtn}
+            onClick={() => setActivitySectionPage(section, page - 1)}
+            disabled={page <= 1 || total === 0}
+            aria-label={copy.activityPrevPage || "Page précédente"}
+          >
+            <FaChevronLeft />
+          </button>
+          <span className={equipStyles.paginationInfo}>
+            {interpolate(copy.activityPageInfo || "Page {current} / {total}", {
+              current: String(total === 0 ? 0 : page),
+              total: String(total === 0 ? 0 : totalPages)
+            })}
+          </span>
+          <button
+            type="button"
+            className={equipStyles.pageBtn}
+            onClick={() => setActivitySectionPage(section, page + 1)}
+            disabled={page >= totalPages || total === 0}
+            aria-label={copy.activityNextPage || "Page suivante"}
+          >
+            <FaChevronRight />
+          </button>
+        </div>
+      </div>
+    );
+  }, [
+    copy.activityNextPage,
+    copy.activityPageInfo,
+    copy.activityPerPage,
+    copy.activityPrevPage,
+    copy.activityRangeInfo,
+    setActivitySectionPage
   ]);
   const renderActivityToolbar = useCallback(
     (searchValue, onSearchChange, statusFilter, onStatusFilterChange) => {
@@ -857,11 +966,13 @@ export default function ContactDetailPage({
     setClient(associatedClient);
     if (Array.isArray(extras.supportTickets)) setSupportTickets(extras.supportTickets);
     if (Array.isArray(extras.prestationTickets)) setPrestationTickets(extras.prestationTickets);
-    if (window.updateTabTitle && fetchedContact.nom) {
+    if (window.updateTabTitle && (fetchedContact.nom || fetchedContact.prenom || fetchedContact.name)) {
       window.updateTabTitle("ContactDetail", {
         contactId: fetchedContact.id,
+        id: fetchedContact.id,
         nom: fetchedContact.nom,
-        prenom: fetchedContact.prenom
+        prenom: fetchedContact.prenom,
+        name: fetchedContact.name || undefined
       });
     }
   }, []);
@@ -1500,7 +1611,7 @@ export default function ContactDetailPage({
                         setSupportStatusFilter
                       )}
                       <div className={styles.activityTableStack}>
-                        {filteredSupportTickets.length === 0 ? renderActivityEmpty(
+                        {pagedSupportTickets.total === 0 ? renderActivityEmpty(
                           "mdi:ticket-outline",
                           supportTickets.length > 0 && (supportSearchQuery.trim() || supportStatusFilter !== "all")
                             ? (copy.emptyActivitySearch || copy.emptySupportTickets)
@@ -1518,7 +1629,7 @@ export default function ContactDetailPage({
                                 </tr>
                               </thead>
                               <tbody>
-                                {filteredSupportTickets.map(ticket => {
+                                {pagedSupportTickets.pagedList.map(ticket => {
                                   const status = normalizeTicketStatus(ticket.status);
                                   const sla = getTicketSlaDisplay(ticket, {
                                     clients: allClients.length ? allClients : client ? [client] : [],
@@ -1552,6 +1663,13 @@ export default function ContactDetailPage({
                             </table>
                           </div>
                         )}
+                        {renderActivityPagination({
+                          section: "support",
+                          total: pagedSupportTickets.total,
+                          page: pagedSupportTickets.page,
+                          totalPages: pagedSupportTickets.totalPages,
+                          safePageSize: pagedSupportTickets.safePageSize
+                        })}
                       </div>
                     </div>
                   </section>
@@ -1568,7 +1686,7 @@ export default function ContactDetailPage({
                           setPrestationStatusFilter
                         )}
                         <div className={styles.activityTableStack}>
-                          {filteredPrestationTickets.length === 0 ? renderActivityEmpty(
+                          {pagedPrestationTickets.total === 0 ? renderActivityEmpty(
                             "mdi:briefcase-outline",
                             prestationTicketsSource.length > 0 && (prestationSearchQuery.trim() || prestationStatusFilter !== "all")
                               ? (copy.emptyActivitySearch || copy.emptyPrestationTickets)
@@ -1585,7 +1703,7 @@ export default function ContactDetailPage({
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {filteredPrestationTickets.map(ticket => {
+                                  {pagedPrestationTickets.pagedList.map(ticket => {
                                     const status = normalizeTicketStatus(ticket.status);
                                     return (
                                       <tr
@@ -1616,6 +1734,13 @@ export default function ContactDetailPage({
                               </table>
                             </div>
                           )}
+                          {renderActivityPagination({
+                            section: "prestations",
+                            total: pagedPrestationTickets.total,
+                            page: pagedPrestationTickets.page,
+                            totalPages: pagedPrestationTickets.totalPages,
+                            safePageSize: pagedPrestationTickets.safePageSize
+                          })}
                         </div>
                       </div>
                     </section>

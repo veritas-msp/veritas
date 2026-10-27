@@ -333,6 +333,30 @@
   min-width: 0;
 }
 
+/* Même hauteur / structure que .serviceTableToolbar des autres onglets */
+.backupTableHeadToolbar {
+  gap: 0.55rem;
+}
+
+.backupTableHeadToolbar :global([class*="embeddedSearchBox"]) {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 22rem;
+  margin: 0;
+}
+
+.backupTableHeadToolbar .backupTableTitle {
+  flex: 0 1 auto;
+}
+
+.backupTableHeadActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .backupTableTitle {
   display: inline-flex;
   align-items: center;

@@ -8,6 +8,12 @@ import { countTickets, countTicketsByStatus, resolveTicketListSchema } from "../
 import { BUILTIN_TICKET_VIEWS, BUILTIN_TICKET_VIEW_IDS, resolveBuiltinViewRules } from "../../utils/builtinTicketViews.js";
 import { isCommunity } from "../../utils/edition.js";
 import { loadAssignmentsByViewIds, syncViewAssignments, getUserTeamIds, isAssignedVisibility, hasAssignmentTargets, userCanAccessAssignedView, mapViewAssignments } from "../../services/ticketViewAssignments.js";
+import {
+  listMergedBuiltinViews,
+  upsertBuiltinOverride,
+  deleteBuiltinOverride,
+  ensureBuiltinOverridesTable
+} from "../../services/ticketViewBuiltinOverrides.js";
 import { userHasAnyPermission } from "../../services/permissionService.js";
 import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 const router = express.Router();
@@ -271,6 +277,111 @@ const viewBodyValidators = [body("name").optional().isString().trim().isLength({
 }).isString(), body("pageScope").optional().isIn(["ticket", "ticket_sales"]), body("visibility").optional().isIn(["private", "public", "profile", "assigned"]), body("profileNames").optional().isArray(), body("userIds").optional().isArray(), body("teamIds").optional().isArray(), body("icon").optional().isString(), body("color").optional({
   nullable: true
 }).isString(), body("rules").optional().isObject(), body("sortBy").optional().isString(), body("sortDirection").optional().isIn(["asc", "desc"]), body("displayOrder").optional().isInt()];
+router.get("/builtins", verifyJWT, [query("pageScope").optional().isIn(["ticket", "ticket_sales"])], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  try {
+    await ensureTicketViewsSchema();
+    await ensureBuiltinOverridesTable();
+    const pageScope = String(req.query.pageScope || "ticket");
+    const merged = await listMergedBuiltinViews(pageScope);
+    return res.json(merged.map(view => ({
+      id: view.id,
+      name: view.name || view.id,
+      description: view.description || "",
+      pageScope,
+      visibility: "public",
+      icon: view.icon || "mdi:view-list",
+      rules: normalizeRules(view.rules),
+      sortBy: view.sortBy || "updated_at",
+      sortDirection: view.sortDirection || "desc",
+      section: view.section || "general",
+      isBuiltin: true,
+      hasOverride: Boolean(view.hasOverride)
+    })));
+  } catch (err) {
+    console.error("Failed to load builtin ticket views:", err);
+    return res.status(500).json({
+      error: "Error loading builtin views"
+    });
+  }
+});
+router.put("/builtins/:builtinId", verifyJWT, [param("builtinId").isString().trim().isLength({
+  min: 3,
+  max: 80
+}), ...viewBodyValidators], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  try {
+    await ensureTicketViewsSchema();
+    const pageScope = String(req.body.pageScope || "ticket");
+    if (!(await userCanManageViews(req, pageScope))) {
+      return res.status(403).json({
+        error: "Only administrators can edit default views.",
+        code: "PERMISSION_DENIED"
+      });
+    }
+    const rules = req.body.rules !== undefined ? normalizeRules(req.body.rules) : undefined;
+    if (rules) {
+      const rulesError = validateViewRules(rules);
+      if (rulesError) return res.status(400).json({
+        error: rulesError
+      });
+    }
+    const merged = await upsertBuiltinOverride(req.params.builtinId, pageScope, {
+      name: req.body.name,
+      description: req.body.description,
+      icon: req.body.icon,
+      rules,
+      sortBy: req.body.sortBy,
+      sortDirection: req.body.sortDirection
+    }, req.user?.id);
+    return res.json({
+      id: merged.id,
+      name: merged.name || merged.id,
+      description: merged.description || "",
+      pageScope,
+      visibility: "public",
+      icon: merged.icon || "mdi:view-list",
+      rules: normalizeRules(merged.rules),
+      sortBy: merged.sortBy || "updated_at",
+      sortDirection: merged.sortDirection || "desc",
+      section: merged.section || "general",
+      isBuiltin: true,
+      hasOverride: true
+    });
+  } catch (err) {
+    if (err?.status === 404) {
+      return res.status(404).json({
+        error: err.message || "Builtin view not found"
+      });
+    }
+    console.error("Failed to update builtin ticket view:", err);
+    return res.status(500).json({
+      error: "Error updating builtin view"
+    });
+  }
+});
+router.delete("/builtins/:builtinId", verifyJWT, [param("builtinId").isString().trim().isLength({
+  min: 3,
+  max: 80
+}), query("pageScope").optional().isIn(["ticket", "ticket_sales"])], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  try {
+    const pageScope = String(req.query.pageScope || req.body?.pageScope || "ticket");
+    if (!(await userCanManageViews(req, pageScope))) {
+      return res.status(403).json({
+        error: "Only administrators can reset default views.",
+        code: "PERMISSION_DENIED"
+      });
+    }
+    await deleteBuiltinOverride(req.params.builtinId, pageScope);
+    return res.status(204).send();
+  } catch (err) {
+    console.error("Failed to reset builtin ticket view:", err);
+    return res.status(500).json({
+      error: "Error resetting builtin view"
+    });
+  }
+});
 router.post("/", verifyJWT, [body("name").isString().trim().isLength({
   min: 1,
   max: 120
@@ -282,16 +393,12 @@ router.post("/", verifyJWT, [body("name").isString().trim().isLength({
   if (validationErrorOrNull(req, res)) return;
   try {
     const pageScope = String(req.body.pageScope || "ticket");
-    if (!(await userCanManageViews(req, pageScope))) {
-      return res.status(403).json({
-        error: "You do not have permission to create views.",
-        code: "PERMISSION_DENIED"
-      });
-    }
+    const canManage = await userCanManageViews(req, pageScope);
     const visibility = normalizeVisibility(req.body.visibility || "private");
-    if ((visibility === "public" || visibility === "assigned") && !(await userCanManageViews(req, pageScope))) {
+    if (visibility !== "private" && !canManage) {
       return res.status(403).json({
-        error: "Only users with manage views permission can create an assigned or public view"
+        error: "Only users with manage views permission can create an assigned or public view",
+        code: "PERMISSION_DENIED"
       });
     }
     const assignments = extractAssignmentsFromBody(req.body);

@@ -5,7 +5,7 @@ const OPERATOR_KEYS = ["contains", "not_contains", "equals", "not_equals", "star
 const MATCH_MODE_KEYS = ["all", "any"];
 const VISIBILITY_KEYS = ["private", "public", "assigned"];
 const FORM_SECTION_IDS = ["general", "visibility", "filters"];
-const BUILTIN_VIEW_IDS = ["__builtin_mine__", "__builtin_to_validate__", "__builtin_new__", "__builtin_in_progress__", "__builtin_pending__", "__builtin_open__", "__builtin_all__"];
+const BUILTIN_VIEW_IDS = ["__builtin_mine__", "__builtin_new__", "__builtin_unassigned__", "__builtin_in_progress__", "__builtin_pending__", "__builtin_critical__", "__builtin_sla_overdue__", "__builtin_to_plan__", "__builtin_all__"];
 const TICKET_VIEW_COPY = {
   fr: {
     fields: {
@@ -79,27 +79,35 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "Mes tickets",
-        description: "Tickets qui vous sont assignés (ouverts uniquement)"
-      },
-      __builtin_to_validate__: {
-        name: "À valider",
-        description: "Tickets en attente de votre validation"
+        description: "Tickets support qui vous sont assignés (non clos)"
       },
       __builtin_new__: {
         name: "Nouveaux tickets",
-        description: "Tickets au statut nouveau"
+        description: "Tickets support au statut nouveau"
+      },
+      __builtin_unassigned__: {
+        name: "Tickets non attribués",
+        description: "Tickets support sans attribution (non clos)"
       },
       __builtin_in_progress__: {
         name: "Tickets en cours",
-        description: "Tickets en cours de traitement"
+        description: "Tickets support au statut en cours (non clos)"
       },
       __builtin_pending__: {
         name: "Tickets en attente",
-        description: "Tickets en attente de retour"
+        description: "Tickets support au statut en attente (non clos)"
       },
-      __builtin_open__: {
-        name: "Tous les tickets ouverts",
-        description: "Tickets ouverts (nouveau, en cours, en attente)"
+      __builtin_critical__: {
+        name: "Tickets prioritaires",
+        description: "Incidents majeurs ou priorité haute / urgente (ouverts)"
+      },
+      __builtin_sla_overdue__: {
+        name: "Tickets en retard",
+        description: "Tickets support avec SLA client dépassé"
+      },
+      __builtin_to_plan__: {
+        name: "Interventions à planifier",
+        description: "Tickets ouverts sans intervention planifiée"
       },
       __builtin_all__: {
         name: "Tous les tickets",
@@ -192,27 +200,35 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "My tickets",
-        description: "Open tickets assigned to you"
-      },
-      __builtin_to_validate__: {
-        name: "To validate",
-        description: "Tickets waiting for your validation"
+        description: "Support tickets assigned to you (not closed)"
       },
       __builtin_new__: {
         name: "New tickets",
-        description: "Tickets with new status"
+        description: "Support tickets with new status"
+      },
+      __builtin_unassigned__: {
+        name: "Unassigned tickets",
+        description: "Support tickets with no assignee (not closed)"
       },
       __builtin_in_progress__: {
-        name: "In progress tickets",
-        description: "Tickets being handled"
+        name: "In progress",
+        description: "Support tickets in progress (not closed)"
       },
       __builtin_pending__: {
         name: "Pending tickets",
-        description: "Tickets awaiting response"
+        description: "Support tickets pending (not closed)"
       },
-      __builtin_open__: {
-        name: "All open tickets",
-        description: "Open tickets (new, in progress, pending)"
+      __builtin_critical__: {
+        name: "Priority tickets",
+        description: "Major incidents or high/urgent priority (open)"
+      },
+      __builtin_sla_overdue__: {
+        name: "Overdue tickets",
+        description: "Support tickets with breached client SLA"
+      },
+      __builtin_to_plan__: {
+        name: "Interventions to schedule",
+        description: "Open tickets without a planned intervention"
       },
       __builtin_all__: {
         name: "All tickets",
@@ -305,27 +321,35 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "Meine Tickets",
-        description: "Ihnen zugewiesene offene Tickets"
-      },
-      __builtin_to_validate__: {
-        name: "Zu validieren",
-        description: "Tickets, die auf Ihre Validierung warten"
+        description: "Ihnen zugewiesene offene Support-Tickets"
       },
       __builtin_new__: {
         name: "Neue Tickets",
-        description: "Tickets mit Status neu"
+        description: "Support-Tickets mit Status neu"
+      },
+      __builtin_unassigned__: {
+        name: "Nicht zugewiesen",
+        description: "Offene Support-Tickets ohne Zuweisung"
       },
       __builtin_in_progress__: {
-        name: "Tickets in Bearbeitung",
-        description: "Tickets in Bearbeitung"
+        name: "In Bearbeitung",
+        description: "Support-Tickets in Bearbeitung"
       },
       __builtin_pending__: {
         name: "Wartende Tickets",
-        description: "Tickets warten auf Rückmeldung"
+        description: "Support-Tickets in Wartestellung"
       },
-      __builtin_open__: {
-        name: "Alle offenen Tickets",
-        description: "Offene Tickets (neu, in Bearbeitung, wartend)"
+      __builtin_critical__: {
+        name: "Prioritäre Tickets",
+        description: "Major Incidents oder hohe/dringende Priorität"
+      },
+      __builtin_sla_overdue__: {
+        name: "Überfällige Tickets",
+        description: "Support-Tickets mit überschrittenem SLA"
+      },
+      __builtin_to_plan__: {
+        name: "Einsätze zu planen",
+        description: "Offene Tickets ohne geplante Intervention"
       },
       __builtin_all__: {
         name: "Alle Tickets",
@@ -418,27 +442,35 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "I miei ticket",
-        description: "Ticket aperti assegnati a te"
-      },
-      __builtin_to_validate__: {
-        name: "Da validare",
-        description: "Ticket in attesa della tua validazione"
+        description: "Ticket support assegnati a te (non chiusi)"
       },
       __builtin_new__: {
         name: "Nuovi ticket",
-        description: "Ticket con stato nuovo"
+        description: "Ticket support con stato nuovo"
+      },
+      __builtin_unassigned__: {
+        name: "Non assegnati",
+        description: "Ticket support senza assegnatario (non chiusi)"
       },
       __builtin_in_progress__: {
-        name: "Ticket in corso",
-        description: "Ticket in lavorazione"
+        name: "In corso",
+        description: "Ticket support in corso (non chiusi)"
       },
       __builtin_pending__: {
-        name: "Ticket in attesa",
-        description: "Ticket in attesa di risposta"
+        name: "In attesa",
+        description: "Ticket support in attesa (non chiusi)"
       },
-      __builtin_open__: {
-        name: "Tutti i ticket aperti",
-        description: "Ticket aperti (nuovo, in corso, in attesa)"
+      __builtin_critical__: {
+        name: "Ticket prioritari",
+        description: "Incidenti maggiori o priorità alta/urgente"
+      },
+      __builtin_sla_overdue__: {
+        name: "Ticket in ritardo",
+        description: "Ticket support con SLA cliente superato"
+      },
+      __builtin_to_plan__: {
+        name: "Interventi da pianificare",
+        description: "Ticket aperti senza intervento pianificato"
       },
       __builtin_all__: {
         name: "Tutti i ticket",
@@ -531,27 +563,35 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "Mis tickets",
-        description: "Tickets abiertos asignados a ti"
-      },
-      __builtin_to_validate__: {
-        name: "Por validar",
-        description: "Tickets pendientes de tu validación"
+        description: "Tickets de soporte asignados a ti (no cerrados)"
       },
       __builtin_new__: {
         name: "Tickets nuevos",
-        description: "Tickets con estado nuevo"
+        description: "Tickets de soporte con estado nuevo"
+      },
+      __builtin_unassigned__: {
+        name: "Sin asignar",
+        description: "Tickets de soporte sin asignatario (no cerrados)"
       },
       __builtin_in_progress__: {
-        name: "Tickets en curso",
-        description: "Tickets en tratamiento"
+        name: "En curso",
+        description: "Tickets de soporte en curso (no cerrados)"
       },
       __builtin_pending__: {
-        name: "Tickets en espera",
-        description: "Tickets pendientes de respuesta"
+        name: "En espera",
+        description: "Tickets de soporte en espera (no cerrados)"
       },
-      __builtin_open__: {
-        name: "Todos los tickets abiertos",
-        description: "Tickets abiertos (nuevo, en curso, en espera)"
+      __builtin_critical__: {
+        name: "Tickets prioritarios",
+        description: "Incidentes mayores o prioridad alta/urgente"
+      },
+      __builtin_sla_overdue__: {
+        name: "Tickets en retraso",
+        description: "Tickets de soporte con SLA de cliente vencido"
+      },
+      __builtin_to_plan__: {
+        name: "Intervenciones a planificar",
+        description: "Tickets abiertos sin intervención planificada"
       },
       __builtin_all__: {
         name: "Todos los tickets",

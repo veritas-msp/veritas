@@ -31,7 +31,7 @@ export default function UiKitPageHero({
         ) : null}
         <div className={styles.pageHeroText}>
           <h1 className={styles.pageHeroTitle}>{title}</h1>
-          {subtitle ? <p className={styles.pageHeroSubtitle}>{subtitle}</p> : null}
+          {subtitle ? <div className={styles.pageHeroSubtitle}>{subtitle}</div> : null}
           {children}
         </div>
       </div>

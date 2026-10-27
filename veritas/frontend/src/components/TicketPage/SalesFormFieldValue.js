@@ -40,7 +40,7 @@ export default function SalesFormFieldValue({
   const openEntity = () => {
     if (!onNavigate || !entityId) return;
     if (fieldType === "contact") {
-      onNavigate("ContactDetail", { contactId: entityId });
+      onNavigate("ContactDetail", { contactId: entityId, id: entityId, name: label || undefined });
       return;
     }
     if (fieldType === "client") {

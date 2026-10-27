@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getUserSetting, saveUserSetting } from "../api/userSettings";
 
 const STORAGE_PREFIX = "veritas_last_ticket_view";
+const SERVER_PERSIST_DEBOUNCE_MS = 450;
 
 export const LAST_TICKET_VIEW_SETTING_KEYS = {
   ticket: "ticket_last_view_id",
@@ -54,13 +55,6 @@ export function writeLastTicketViewId(pageScope, viewId, userId) {
   } catch {}
 }
 
-function persistLastTicketView(pageScope, viewId, userId) {
-  const value = String(viewId || "").trim();
-  if (!value) return;
-  writeLastTicketViewId(pageScope, value, userId);
-  saveUserSetting(settingKeyFor(pageScope), value).catch(() => {});
-}
-
 export function usePersistedTicketViewId(pageScope, userId, fallbackId) {
   const [activeViewId, setActiveViewIdState] = useState(
     () => readLastTicketViewId(pageScope, userId) || fallbackId
@@ -68,6 +62,11 @@ export function usePersistedTicketViewId(pageScope, userId, fallbackId) {
   const [prefsReady, setPrefsReady] = useState(false);
   const userPickedRef = useRef(false);
   const lastPersistedRef = useRef(String(activeViewId || ""));
+  const persistTimerRef = useRef(null);
+  const activeViewIdRef = useRef(activeViewId);
+  const pageScopeRef = useRef(pageScope);
+  activeViewIdRef.current = activeViewId;
+  pageScopeRef.current = pageScope;
 
   useEffect(() => {
     let cancelled = false;
@@ -93,20 +92,45 @@ export function usePersistedTicketViewId(pageScope, userId, fallbackId) {
   }, [pageScope, userId]);
 
   useEffect(() => {
-    if (!prefsReady) return;
+    if (!prefsReady) return undefined;
     const value = String(activeViewId || "").trim();
+    if (!value || value === lastPersistedRef.current) return undefined;
+    writeLastTicketViewId(pageScope, value, userId);
+    if (persistTimerRef.current != null) {
+      window.clearTimeout(persistTimerRef.current);
+    }
+    persistTimerRef.current = window.setTimeout(() => {
+      persistTimerRef.current = null;
+      if (value === lastPersistedRef.current) return;
+      lastPersistedRef.current = value;
+      saveUserSetting(settingKeyFor(pageScope), value).catch(() => {});
+    }, SERVER_PERSIST_DEBOUNCE_MS);
+    return () => {
+      if (persistTimerRef.current != null) {
+        window.clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    };
+  }, [prefsReady, activeViewId, pageScope, userId]);
+
+  // Flush uniquement au démontage réel (pas à chaque clic de vue).
+  useEffect(() => () => {
+    if (persistTimerRef.current != null) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    const value = String(activeViewIdRef.current || "").trim();
     if (!value || value === lastPersistedRef.current) return;
     lastPersistedRef.current = value;
-    persistLastTicketView(pageScope, value, userId);
-  }, [prefsReady, activeViewId, pageScope, userId]);
+    saveUserSetting(settingKeyFor(pageScopeRef.current), value).catch(() => {});
+  }, []);
 
   const setActiveViewId = useCallback(next => {
     userPickedRef.current = true;
     setActiveViewIdState(prev => {
       const value = typeof next === "function" ? next(prev) : next;
       const normalized = String(value || "").trim();
-      if (normalized) persistLastTicketView(pageScope, normalized, userId);
-      lastPersistedRef.current = normalized;
+      if (normalized) writeLastTicketViewId(pageScope, normalized, userId);
       return value;
     });
   }, [pageScope, userId]);

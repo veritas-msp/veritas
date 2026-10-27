@@ -38,7 +38,7 @@ function resolvePlacement(explicit) {
   return "right";
 }
 
-export default function SidebarTooltip({
+const SidebarTooltip = React.forwardRef(function SidebarTooltip({
   as: Component = "span",
   content,
   className = "",
@@ -46,11 +46,16 @@ export default function SidebarTooltip({
   placement: placementProp,
   children,
   ...rest
-}) {
+}, forwardedRef) {
   const triggerRef = useRef(null);
   const showTimerRef = useRef(null);
   const ownerRef = useRef(null);
   if (ownerRef.current == null) ownerRef.current = {};
+  const setTriggerRef = useCallback(node => {
+    triggerRef.current = node;
+    if (typeof forwardedRef === "function") forwardedRef(node);
+    else if (forwardedRef) forwardedRef.current = node;
+  }, [forwardedRef]);
   const [visible, setVisible] = useState(false);
   const [placement, setPlacement] = useState(() => resolvePlacement(placementProp));
   const [pos, setPos] = useState({
@@ -178,7 +183,7 @@ export default function SidebarTooltip({
 
   if (!content) {
     return (
-      <Component ref={triggerRef} className={className} {...rest}>
+      <Component ref={setTriggerRef} className={className} {...rest}>
         {children}
       </Component>
     );
@@ -222,7 +227,7 @@ export default function SidebarTooltip({
   return (
     <>
       <Component
-        ref={triggerRef}
+        ref={setTriggerRef}
         className={className}
         {...domRest}
         onMouseEnter={e => {
@@ -273,4 +278,6 @@ export default function SidebarTooltip({
         )}
     </>
   );
-}
+});
+
+export default SidebarTooltip;

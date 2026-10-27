@@ -150,16 +150,33 @@ export function getTicketViewVisibilityOptions(locale) {
 export function getTicketViewFormSections(locale) {
   return getTicketViewConstantsCopy(locale).formSections;
 }
-export function getBuiltinTicketViews(locale) {
+export function getBuiltinTicketViews(locale, { pageScope = "ticket" } = {}) {
   const copy = getTicketViewConstantsCopy(locale);
-  return BUILTIN_TICKET_VIEWS.map(view => {
-    const labels = copy.getBuiltinViewLabels(view.id);
-    return {
-      ...view,
-      name: labels.name || view.name,
-      description: labels.description || view.description
-    };
+  const scope = String(pageScope || "ticket");
+  return BUILTIN_TICKET_VIEWS
+    .filter(view => scope !== "ticket_sales" || !BUILTIN_TICKET_MSP_VIEW_IDS.has(view.id))
+    .map(view => {
+      const labels = copy.getBuiltinViewLabels(view.id);
+      return {
+        ...view,
+        name: labels.name || view.name,
+        description: labels.description || view.description
+      };
+    });
+}
+export function getBuiltinTicketViewsBySection(locale, { pageScope = "ticket" } = {}) {
+  const views = getBuiltinTicketViews(locale, { pageScope });
+  const groups = {
+    general: [],
+    msp: [],
+    history: []
+  };
+  views.forEach(view => {
+    const section = view.section || "general";
+    if (groups[section]) groups[section].push(view);
+    else groups.general.push(view);
   });
+  return groups;
 }
 export function describeViewAssignments(view = {}, locale = "fr") {
   const copy = getTicketViewConstantsCopy(locale);
@@ -182,20 +199,41 @@ export function describeViewAssignments(view = {}, locale = "fr") {
 }
 export const BUILTIN_TICKET_VIEW_IDS = {
   MINE: "__builtin_mine__",
-  TO_VALIDATE: "__builtin_to_validate__",
   NEW: "__builtin_new__",
+  UNASSIGNED: "__builtin_unassigned__",
   IN_PROGRESS: "__builtin_in_progress__",
   PENDING: "__builtin_pending__",
-  OPEN: "__builtin_open__",
-  ALL: "__builtin_all__"
+  CRITICAL: "__builtin_critical__",
+  SLA_OVERDUE: "__builtin_sla_overdue__",
+  TO_PLAN: "__builtin_to_plan__",
+  ALL: "__builtin_all__",
+  /** @deprecated compatibility with old saved tabs */
+  TO_VALIDATE: "__builtin_to_validate__",
+  OPEN: "__builtin_open__"
 };
+export const BUILTIN_TICKET_VIEW_SECTION_IDS = {
+  GENERAL: "general",
+  MSP: "msp",
+  HISTORY: "history"
+};
+export const BUILTIN_TICKET_MSP_VIEW_IDS = new Set([
+  BUILTIN_TICKET_VIEW_IDS.CRITICAL,
+  BUILTIN_TICKET_VIEW_IDS.SLA_OVERDUE,
+  BUILTIN_TICKET_VIEW_IDS.TO_PLAN
+]);
 export const CURRENT_USER_ASSIGNEE_VALUE = "__current_user__";
-export const DEFAULT_TICKET_VIEW_ID = BUILTIN_TICKET_VIEW_IDS.ALL;
+export const DEFAULT_TICKET_VIEW_ID = BUILTIN_TICKET_VIEW_IDS.MINE;
+const OPEN_STATUS_RULE = {
+  field: "status",
+  operator: "equals",
+  value: "open"
+};
 export const BUILTIN_TICKET_VIEWS = [{
   id: BUILTIN_TICKET_VIEW_IDS.MINE,
   name: "My tickets",
   icon: "mdi:account-circle-outline",
   description: "Open tickets assigned to me",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.GENERAL,
   visibility: "public",
   isBuiltin: true,
   rules: {
@@ -205,29 +243,7 @@ export const BUILTIN_TICKET_VIEWS = [{
       field: "assigned_user_id",
       operator: "equals",
       value: CURRENT_USER_ASSIGNEE_VALUE
-    }, {
-      field: "status",
-      operator: "equals",
-      value: "open"
-    }]
-  },
-  sortBy: "updated_at",
-  sortDirection: "desc"
-}, {
-  id: BUILTIN_TICKET_VIEW_IDS.TO_VALIDATE,
-  name: "To validate",
-  icon: "mdi:clipboard-check-outline",
-  description: "Tickets waiting for my validation",
-  visibility: "public",
-  isBuiltin: true,
-  rules: {
-    matchMode: "all",
-    viewMode: "active",
-    criteria: [{
-      field: "pending_validator_user_id",
-      operator: "equals",
-      value: CURRENT_USER_ASSIGNEE_VALUE
-    }]
+    }, OPEN_STATUS_RULE]
   },
   sortBy: "updated_at",
   sortDirection: "desc"
@@ -236,6 +252,7 @@ export const BUILTIN_TICKET_VIEWS = [{
   name: "New tickets",
   icon: "mdi:inbox-arrow-down",
   description: "Tickets with new status",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.GENERAL,
   visibility: "public",
   isBuiltin: true,
   rules: {
@@ -254,6 +271,7 @@ export const BUILTIN_TICKET_VIEWS = [{
   name: "Tickets in progress",
   icon: "mdi:progress-clock",
   description: "Tickets currently being handled",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.GENERAL,
   visibility: "public",
   isBuiltin: true,
   rules: {
@@ -272,6 +290,7 @@ export const BUILTIN_TICKET_VIEWS = [{
   name: "Pending tickets",
   icon: "mdi:pause-circle-outline",
   description: "Tickets awaiting a reply",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.GENERAL,
   visibility: "public",
   isBuiltin: true,
   rules: {
@@ -286,19 +305,96 @@ export const BUILTIN_TICKET_VIEWS = [{
   sortBy: "updated_at",
   sortDirection: "desc"
 }, {
-  id: BUILTIN_TICKET_VIEW_IDS.OPEN,
-  name: "All open tickets",
-  icon: "mdi:ticket-confirmation-outline",
-  description: "Open tickets (new, in progress, pending)",
+  id: BUILTIN_TICKET_VIEW_IDS.UNASSIGNED,
+  name: "Unassigned tickets",
+  icon: "mdi:account-off-outline",
+  description: "Open tickets without assignee",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.GENERAL,
   visibility: "public",
   isBuiltin: true,
   rules: {
     matchMode: "all",
     viewMode: "active",
     criteria: [{
-      field: "status",
+      field: "assigned_user_id",
+      operator: "is_empty",
+      value: ""
+    }, OPEN_STATUS_RULE]
+  },
+  sortBy: "updated_at",
+  sortDirection: "desc"
+}, {
+  id: BUILTIN_TICKET_VIEW_IDS.CRITICAL,
+  name: "Priority tickets",
+  icon: "mdi:alert-decagram-outline",
+  description: "Open major or high/urgent priority tickets",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.MSP,
+  visibility: "public",
+  isBuiltin: true,
+  rules: {
+    matchMode: "all",
+    viewMode: "active",
+    criteria: [],
+    filterRoot: {
+      type: "group",
+      id: "root-critical",
+      children: [
+        { type: "rule", id: "critical-open", field: "status", operator: "equals", value: "open" },
+        {
+          type: "group",
+          id: "critical-or",
+          connector: "and",
+          children: [
+            { type: "rule", id: "critical-major", field: "is_major_incident", operator: "equals", value: "true" },
+            {
+              type: "rule",
+              id: "critical-priority",
+              connector: "or",
+              field: "priority",
+              operator: "in",
+              value: "high,urgent"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  sortBy: "updated_at",
+  sortDirection: "desc"
+}, {
+  id: BUILTIN_TICKET_VIEW_IDS.SLA_OVERDUE,
+  name: "Overdue tickets",
+  icon: "mdi:timer-alert-outline",
+  description: "Open tickets with breached client SLA",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.MSP,
+  visibility: "public",
+  isBuiltin: true,
+  rules: {
+    matchMode: "all",
+    viewMode: "active",
+    criteria: [{
+      field: "sla_breached",
       operator: "equals",
-      value: "open"
+      value: "true"
+    }]
+  },
+  sortBy: "updated_at",
+  sortDirection: "desc"
+}, {
+  id: BUILTIN_TICKET_VIEW_IDS.TO_PLAN,
+  name: "Interventions to schedule",
+  icon: "mdi:calendar-clock",
+  description: "Open tickets without a planned intervention",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.MSP,
+  visibility: "public",
+  isBuiltin: true,
+  rules: {
+    matchMode: "all",
+    viewMode: "active",
+    criteria: [{
+      field: "needs_planning",
+      operator: "equals",
+      value: "true"
     }]
   },
   sortBy: "updated_at",
@@ -308,6 +404,7 @@ export const BUILTIN_TICKET_VIEWS = [{
   name: "All tickets",
   icon: "mdi:ticket-outline",
   description: "All active tickets (excluding trash)",
+  section: BUILTIN_TICKET_VIEW_SECTION_IDS.HISTORY,
   visibility: "public",
   isBuiltin: true,
   rules: {
@@ -384,13 +481,36 @@ export function canUserEditTicketView(view, {
   userId,
   isAdmin = false
 } = {}) {
-  if (!view || view.isBuiltin) return false;
+  if (!view) return false;
+  // Vues système : réservées aux admins / manage_views
+  if (view.isBuiltin) return Boolean(isAdmin);
   const ownerId = view.ownerUserId ?? view.owner_user_id;
   const isOwner = ownerId && userId && String(ownerId) === String(userId);
   const visibility = view.visibility === "profile" ? "assigned" : view.visibility;
-  if (visibility === "private") return isOwner;
-  if (visibility === "public") return isOwner || isAdmin;
-  if (visibility === "assigned") return isAdmin;
+  if (visibility === "private") return isOwner || Boolean(isAdmin);
+  if (visibility === "public") return isOwner || Boolean(isAdmin);
+  if (visibility === "assigned") return Boolean(isAdmin);
   return false;
+}
+export function applyBuiltinViewOverrides(baseViews = [], apiViews = []) {
+  const byId = new Map((Array.isArray(apiViews) ? apiViews : []).map(view => [String(view.id), view]));
+  return (Array.isArray(baseViews) ? baseViews : []).map(base => {
+    const override = byId.get(String(base.id));
+    if (!override) return { ...base, isBuiltin: true };
+    const hasOverride = Boolean(override.hasOverride);
+    return {
+      ...base,
+      isBuiltin: true,
+      hasOverride,
+      name: hasOverride && override.name ? override.name : base.name,
+      description: hasOverride && override.description != null ? override.description : base.description,
+      icon: hasOverride && override.icon ? override.icon : base.icon,
+      // Ne jamais remplacer les règles builtin par un payload API sans override réel
+      // (sinon critères vides → liste non filtrée / totaux incohérents).
+      rules: hasOverride && override.rules ? override.rules : base.rules,
+      sortBy: hasOverride && override.sortBy ? override.sortBy : base.sortBy,
+      sortDirection: hasOverride && override.sortDirection ? override.sortDirection : base.sortDirection
+    };
+  });
 }
 export { countRulesInTree, legacyRulesToFilterRoot, normalizeFilterRoot };

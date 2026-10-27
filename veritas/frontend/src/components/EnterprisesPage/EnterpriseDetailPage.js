@@ -6150,7 +6150,11 @@ export default function ClientDetailPage({
                         onClick={() => {
                           if (onNavigate) {
                             onNavigate("ContactDetail", {
-                              contactId: contact.id
+                              contactId: contact.id,
+                              id: contact.id,
+                              nom: contact.nom,
+                              prenom: contact.prenom,
+                              name: [contact.prenom, contact.nom].filter(Boolean).join(" ") || undefined
                             });
                           }
                         }}
