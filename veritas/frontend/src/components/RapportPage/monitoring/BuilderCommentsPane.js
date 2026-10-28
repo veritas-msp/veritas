@@ -54,7 +54,6 @@ export default function BuilderCommentsPane({
   pendingText = "",
   onPendingChange,
   onPublish,
-  onSelectStep,
   onClearTarget,
   editingComment,
   onStartEdit,
@@ -66,34 +65,16 @@ export default function BuilderCommentsPane({
   const textareaRef = useRef(null);
   const paneRef = useRef(null);
   const targetingItem = Boolean(target?.equipmentKey && target.equipmentKey !== stepKey);
+  const targetName = targetingItem ? targetLabel(target, stepLabel) : null;
+
   const itemComments = useMemo(() => {
-    if (!targetingItem) {
-      return comments.filter(comment => comment.moduleKey === stepKey || comment.equipmentKey === stepKey || comment.scope === "general" && !comment.moduleKey);
-    }
-    return comments.filter(comment => comment.equipmentKey === target.equipmentKey);
-  }, [comments, targetingItem, target, stepKey]);
-  const otherCommentedItems = useMemo(() => {
-    const seen = new Map();
-    comments.forEach(comment => {
-      if (comment.isTicketComment) return;
-      if (!comment.equipmentKey || comment.equipmentKey === stepKey) return;
-      if (comment.moduleKey && comment.moduleKey !== stepKey) return;
-      if (!seen.has(comment.equipmentKey)) {
-        seen.set(comment.equipmentKey, {
-          equipmentKey: comment.equipmentKey,
-          moduleKey: comment.moduleKey || stepKey,
-          label: comment.referenceLabel || comment.equipmentKey,
-          count: 0
-        });
-      }
-      seen.get(comment.equipmentKey).count += 1;
-    });
-    return Array.from(seen.values());
+    return comments.filter(
+      comment =>
+        comment.moduleKey === stepKey ||
+        comment.equipmentKey === stepKey ||
+        (comment.scope === "general" && !comment.moduleKey)
+    );
   }, [comments, stepKey]);
-  const heading = targetingItem ? targetLabel(target, stepLabel) : stepLabel;
-  const hint = targetingItem
-    ? "Cette note sera liée à cet élément et apparaîtra dans le rapport final."
-    : `Note pour l’étape ${stepLabel}. Elle apparaîtra dans le rapport final.`;
 
   useEffect(() => {
     paneRef.current?.classList.remove(styles.commentsPanePulse);
@@ -111,22 +92,6 @@ export default function BuilderCommentsPane({
     onPublish?.();
   };
 
-  const selectItem = (comment) => {
-    if (!comment?.equipmentKey) return;
-    if (comment.equipmentKey === stepKey) {
-      onClearTarget?.();
-      return;
-    }
-    onSelectStep?.({
-      moduleKey: comment.moduleKey || stepKey,
-      equipmentKey: comment.equipmentKey,
-      equipment: {
-        nom: itemDisplayName(comment.referenceLabel) || comment.equipmentKey,
-        name: itemDisplayName(comment.referenceLabel) || comment.equipmentKey
-      }
-    });
-  };
-
   return (
     <aside
       ref={paneRef}
@@ -135,46 +100,34 @@ export default function BuilderCommentsPane({
     >
       <header className={styles.commentsPaneHeader}>
         <div className={styles.commentsPaneHeading}>
-          <p className={styles.commentsPaneEyebrow}>{targetingItem ? "Note liée" : "Notes du rapport"}</p>
-          <h3 className={styles.commentsPaneTitle}>{heading}</h3>
+          <p className={styles.commentsPaneEyebrow}>Notes du rapport</p>
+          <h3 className={styles.commentsPaneTitle}>{stepLabel}</h3>
         </div>
         <span className={styles.commentsPaneBadge}>{itemComments.length}</span>
       </header>
 
       {targetingItem ? (
-        <button type="button" className={styles.commentsPaneBack} onClick={onClearTarget}>
-          <Icon icon="mdi:arrow-left" aria-hidden />
-          Toute l’étape {stepLabel}
-        </button>
+        <div className={styles.commentsPaneContext}>
+          <Icon icon="mdi:link-variant" aria-hidden />
+          <div className={styles.commentsPaneContextBody}>
+            <span className={styles.commentsPaneContextLabel}>Note liée à</span>
+            <strong className={styles.commentsPaneContextName}>{targetName}</strong>
+          </div>
+          <button
+            type="button"
+            className={styles.commentsPaneContextClear}
+            onClick={onClearTarget}
+            title="Retirer le lien"
+            aria-label="Retirer le lien matériel"
+          >
+            <Icon icon="mdi:close" aria-hidden />
+          </button>
+        </div>
       ) : (
         <p className={styles.commentsPaneLead}>
-          Cliquez sur l’icône commentaire d’un périphérique ou d’une solution, ou ajoutez une note pour toute l’étape.
+          Ajoutez une note pour l’étape, ou cliquez sur l’icône commentaire d’un élément pour l’y lier.
         </p>
       )}
-
-      {otherCommentedItems.length > 0 ? (
-        <div className={styles.commentsPaneChips} aria-label="Éléments déjà commentés">
-          {otherCommentedItems.map(item => {
-            const isActive = target?.equipmentKey === item.equipmentKey;
-            return (
-              <button
-                key={item.equipmentKey}
-                type="button"
-                className={`${styles.commentsPaneChip} ${isActive ? styles.commentsPaneChipActive : ""}`.trim()}
-                onClick={() => onSelectStep?.({
-                  moduleKey: item.moduleKey,
-                  equipmentKey: item.equipmentKey,
-                  equipment: { nom: itemDisplayName(item.label), name: itemDisplayName(item.label) }
-                })}
-              >
-                <Icon icon="mdi:comment-text-outline" aria-hidden />
-                <span>{itemDisplayName(item.label)}</span>
-                <em>{item.count}</em>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
 
       <div className={styles.commentsPaneList}>
         {itemComments.length === 0 ? (
@@ -182,90 +135,145 @@ export default function BuilderCommentsPane({
             <Icon icon="mdi:comment-plus-outline" aria-hidden />
             <p>Aucune note pour le moment.</p>
           </div>
-        ) : itemComments.map(comment => {
-          const isEquipment = comment.scope === "equipment";
-          const isEditing = editingComment
-            && editingComment.id === comment.id
-            && (isEquipment ? editingComment.equipmentKey === comment.equipmentKey : editingComment.scope === "general");
-          const isActive = targetingItem && comment.equipmentKey === target?.equipmentKey;
-          const canSelect = isEquipment && comment.equipmentKey && comment.equipmentKey !== stepKey && !isEditing;
-          const isTicket = Boolean(comment.isTicketComment);
-          const ticket = isTicket ? ticketCardDetails(comment) : null;
-          return (
-            <article
-              key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`}
-              className={`${styles.commentsPaneCard} ${isActive ? styles.commentsPaneCardActive : ""} ${canSelect ? styles.commentsPaneCardClickable : ""}`.trim()}
-              onClick={canSelect ? () => selectItem(comment) : undefined}
-            >
-              {isTicket ? (
-                <>
-                  <p className={styles.commentsPaneTicketTitle}>{ticket.title}</p>
-                  {ticket.subject ? <p className={styles.commentsPaneTicketSubject}>{ticket.subject}</p> : null}
-                  <div className={styles.commentsPaneMeta}>
-                    <span>{ticket.category}</span>
-                    {ticket.when ? <time dateTime={comment.createdAt}>{ticket.when}</time> : null}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={styles.commentsPaneMeta}>
-                    <span>{comment.author || "Vous"}</span>
-                    <time>{formatCommentDate(comment.createdAt)}</time>
-                  </div>
-                  {isEquipment && !targetingItem && comment.referenceLabel ? <p className={styles.commentsPaneRef}>{itemDisplayName(comment.referenceLabel)}</p> : null}
-                  {isEditing ? (
-                    <>
-                      <textarea
-                        rows={3}
-                        className={styles.commentsPaneTextarea}
-                        value={editingComment.text ?? ""}
-                        onChange={event => onChangeEditingText?.(event.target.value)}
-                        onClick={event => event.stopPropagation()}
-                      />
-                      <div className={styles.commentsPaneActions} onClick={event => event.stopPropagation()}>
-                        <button type="button" className={styles.commentsPanePrimary} onClick={onSaveEdit} disabled={!(editingComment.text || "").trim()}>
-                          Enregistrer
-                        </button>
-                        <button type="button" className={styles.commentsPaneGhost} onClick={onCancelEdit}>
-                          Annuler
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className={styles.commentsPaneText}>{comment.text}</p>
-                      <div className={styles.commentsPaneActions} onClick={event => event.stopPropagation()}>
-                        <button type="button" className={styles.commentsPaneGhost} onClick={() => onStartEdit?.(comment)}>
-                          Modifier
-                        </button>
-                        <button type="button" className={styles.commentsPaneGhost} onClick={() => onDelete?.(comment)}>
-                          Supprimer
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-            </article>
-          );
-        })}
+        ) : (
+          itemComments.map(comment => {
+            const isEquipment = comment.scope === "equipment";
+            const isEditing =
+              editingComment &&
+              editingComment.id === comment.id &&
+              (isEquipment
+                ? editingComment.equipmentKey === comment.equipmentKey
+                : editingComment.scope === "general");
+            const isTicket = Boolean(comment.isTicketComment);
+            const ticket = isTicket ? ticketCardDetails(comment) : null;
+            const linkedToStep =
+              !comment.equipmentKey || comment.equipmentKey === stepKey || comment.scope === "general";
+            const scopeLabel = linkedToStep
+              ? `Étape · ${stepLabel}`
+              : itemDisplayName(comment.referenceLabel) || "Matériel";
+            return (
+              <article
+                key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`}
+                className={`${styles.commentsPaneCard} ${isTicket ? styles.commentsPaneCardTicket : ""}`.trim()}
+              >
+                {isTicket ? (
+                  <>
+                    <div className={styles.commentsPaneCardTop}>
+                      <span className={`${styles.commentsPaneScope} ${styles.commentsPaneScopeTicket}`}>
+                        <Icon icon="mdi:ticket-outline" aria-hidden />
+                        Ticket
+                      </span>
+                      {ticket.when ? (
+                        <time className={styles.commentsPaneWhen} dateTime={comment.createdAt}>
+                          {ticket.when}
+                        </time>
+                      ) : null}
+                    </div>
+                    <p className={styles.commentsPaneTicketTitle}>{ticket.title}</p>
+                    {ticket.subject ? (
+                      <p className={styles.commentsPaneTicketSubject}>{ticket.subject}</p>
+                    ) : null}
+                    <div className={styles.commentsPaneMeta}>
+                      <span>{ticket.category}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.commentsPaneCardTop}>
+                      <span
+                        className={`${styles.commentsPaneScope} ${
+                          linkedToStep ? styles.commentsPaneScopeStep : styles.commentsPaneScopeItem
+                        }`}
+                      >
+                        <Icon
+                          icon={linkedToStep ? "mdi:layers-outline" : "mdi:cube-outline"}
+                          aria-hidden
+                        />
+                        {scopeLabel}
+                      </span>
+                      <time className={styles.commentsPaneWhen}>{formatCommentDate(comment.createdAt)}</time>
+                    </div>
+                    <p className={styles.commentsPaneAuthor}>{comment.author || "Vous"}</p>
+                    {isEditing ? (
+                      <>
+                        <textarea
+                          rows={3}
+                          className={styles.commentsPaneTextarea}
+                          value={editingComment.text ?? ""}
+                          onChange={event => onChangeEditingText?.(event.target.value)}
+                        />
+                        <div className={styles.commentsPaneActions}>
+                          <button
+                            type="button"
+                            className={styles.commentsPanePrimary}
+                            onClick={onSaveEdit}
+                            disabled={!(editingComment.text || "").trim()}
+                          >
+                            Enregistrer
+                          </button>
+                          <button type="button" className={styles.commentsPaneGhost} onClick={onCancelEdit}>
+                            Annuler
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className={styles.commentsPaneText}>{comment.text}</p>
+                        <div className={styles.commentsPaneActions}>
+                          <button
+                            type="button"
+                            className={styles.commentsPaneActionBtn}
+                            onClick={() => onStartEdit?.(comment)}
+                          >
+                            <Icon icon="mdi:pencil-outline" aria-hidden />
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.commentsPaneActionBtn} ${styles.commentsPaneActionDanger}`}
+                            onClick={() => onDelete?.(comment)}
+                          >
+                            <Icon icon="mdi:trash-can-outline" aria-hidden />
+                            Supprimer
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </article>
+            );
+          })
+        )}
       </div>
 
       <form className={styles.commentsPaneComposer} onSubmit={handleSubmit}>
-        <label className={styles.commentsPaneHint} htmlFor="builder-comment-input">{hint}</label>
         <textarea
           id="builder-comment-input"
           ref={textareaRef}
           rows={3}
           className={styles.commentsPaneTextarea}
-          placeholder="Écrire une note pour le rapport…"
+          aria-label={
+            targetingItem
+              ? `Écrire une note liée à ${targetName}`
+              : "Écrire une note pour le rapport"
+          }
+          placeholder={
+            targetingItem
+              ? `Note liée à ${targetName}…`
+              : "Écrire une note pour le rapport…"
+          }
           value={pendingText}
           onChange={event => onPendingChange?.(event.target.value)}
           onKeyDown={event => {
             if ((event.metaKey || event.ctrlKey) && event.key === "Enter") handleSubmit(event);
           }}
         />
-        <button type="submit" className={styles.commentsPanePrimary} disabled={!String(pendingText || "").trim()}>
+        <button
+          type="submit"
+          className={styles.commentsPanePrimary}
+          disabled={!String(pendingText || "").trim()}
+        >
           <Icon icon="mdi:plus" aria-hidden />
           Ajouter au rapport
         </button>

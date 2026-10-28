@@ -1,14 +1,10 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
+import { formatTableDate } from "../../../../utils/tableDateFormat";
 function formatExpiration(raw) {
   if (!raw) return "-";
-  try {
-    const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("en-US");
-  } catch {
-    return String(raw);
-  }
+  return formatTableDate(raw) || "-";
 }
 function getDomainName(domaine) {
   return domaine?.nom || domaine?.name || domaine?.fqdn || "";
@@ -17,6 +13,7 @@ export default function NDDStep({
   client,
   onOpenComments,
   onTicketCreatedForEquipment,
+  onOpenEquipmentTickets,
   commentCounts,
   ticketCounts,
   alertCounts,
@@ -47,7 +44,7 @@ export default function NDDStep({
     label: "Expiration",
     render: domaine => formatExpiration(domaine.expiration || domaine.expirationDate)
   }];
-  return <InfrastructureEquipmentTable title="Domain names" moduleKey="NDD" equipments={domaines} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={clientId} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} showSearch={false} externalLink={{
+  return <InfrastructureEquipmentTable title="Domain names" moduleKey="NDD" equipments={domaines} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenEquipmentTickets={onOpenEquipmentTickets} clientId={clientId} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} showSearch={false} externalLink={{
     url: "https://www.ovh.com/manager/#/web/domain",
     title: "Open l'espace domaines OVH"
   }} />;

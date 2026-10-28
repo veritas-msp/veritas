@@ -2,6 +2,67 @@
   position: relative;
   z-index: 1;
   isolation: isolate;
+  /* Padding / gaps unifiés Activité · Portail · Partage · Logs */
+  --crm-section-content-pad: 0.75rem 1rem 0.85rem;
+  --crm-section-toolbar-gap: 0.65rem;
+  --contact-search-max: 280px;
+}
+
+.contactTabBody {
+  padding: var(--crm-section-content-pad) !important;
+  gap: var(--crm-section-toolbar-gap) !important;
+  box-sizing: border-box;
+}
+
+.contactToolbar {
+  padding: 0 !important;
+  min-height: var(--msp-btn-h, 2.15rem);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.contactDetailPage :global([class*="embeddedSearchBox"]) {
+  width: min(var(--contact-search-max), 100%);
+  min-width: 200px;
+  max-width: var(--contact-search-max);
+  height: var(--msp-btn-h, 2.15rem);
+  min-height: var(--msp-btn-h, 2.15rem);
+  padding: 0 0.85rem;
+  box-sizing: border-box;
+}
+
+.contactDetailPage :global([class*="embeddedSearchWrap"]) {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+/* Logs : le shell contactTabBody porte déjà le padding */
+.contactTabBody :global([class*="logsPanelBodyEmbedded"]) {
+  padding: 0 !important;
+  gap: var(--crm-section-toolbar-gap);
+}
+
+.contactTabBody :global([class*="logsPanelEmbedded"]),
+.contactTabBody :global([class*="logsPanel"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Portail : pas de padding interne en plus du shell */
+.contactTabBody :global([class*="portalAside"]) {
+  padding: 0;
+}
+
+.contactTabBody :global([class*="portalSection"]) {
+  gap: 0.85rem;
+}
+
+.contactTabBody :global([class*="portalLayout"]) {
+  gap: 0.85rem;
 }
 
 .heroTicketSlot {

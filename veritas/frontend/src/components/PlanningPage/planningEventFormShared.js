@@ -1,8 +1,36 @@
 import moment from "moment";
 import { fetchClientsList, fetchClientModules } from "../../api/clients";
-export const INFRASTRUCTURE_TYPES = ["Servers", "Ordinateurs", "NAS", "SAN", "Firewalls", "Internet", "Switch", "BorneWifi"];
-export const CYBERSECURITY_TYPES = ["Antispam", "Antivirus", "Backup"];
+/** Clés modules (FR) + alias UI (EN) — aligné sur equipements client / COMMUNITY_HARDWARE_FAMILIES. */
+export const INFRASTRUCTURE_TYPES = [
+  "Serveurs",
+  "Servers",
+  "Server",
+  "Serveur",
+  "Ordinateurs",
+  "Workstations",
+  "NAS",
+  "SAN",
+  "Stockage",
+  "Storage",
+  "Firewalls",
+  "Firewall",
+  "Internet",
+  "Switch",
+  "Switches",
+  "BorneWifi",
+  "Wifi",
+  "WiFi",
+  "Routeur",
+  "Router",
+  "Alimentation",
+  "TOIP",
+  "Videosurveillance",
+  "Cameras",
+  "Camera"
+];
+export const CYBERSECURITY_TYPES = ["Antispam", "Antivirus", "Backup", "Sauvegarde"];
 export const SERVICE_TYPES = ["Office365", "NDD"];
+const INFRASTRUCTURE_TYPE_SET = new Set(INFRASTRUCTURE_TYPES.map(t => String(t).toLowerCase()));
 const PLANNING_CLIENTS_CACHE_KEY = "planning_clients_list_cache_v1";
 const PLANNING_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const PLANNING_CLIENT_MODULES_CACHE_KEY = "planning_client_modules_cache_v1";
@@ -284,22 +312,41 @@ export function buildClientEquipmentLists(client, equipmentMappings = {}) {
     };
   }
   Object.keys(client.equipements).forEach(type => {
-    if (INFRASTRUCTURE_TYPES.includes(type)) {
-      const equipmentsOfType = client.equipements[type] || [];
-      equipmentsOfType.forEach(eq => {
-        const equipmentName = eq.name || eq.nom || "Sans nom";
-        const mappingKey = `${type}-${equipmentName}`;
-        const mapping = equipmentMappings[mappingKey];
-        peripheralsList.push({
-          id: eq.id || `${type}-${equipmentName}`,
-          name: equipmentName,
-          type,
-          isMapped: mapping && mapping.checkmk_host_name && mapping.is_active !== false,
-          mapping,
-          ip: eq.ip || eq.adresseIP || eq.adresse_ip || null
-        });
+    if (!isInfrastructureEquipmentType(type)) return;
+    const equipmentsOfType = Array.isArray(client.equipements[type])
+      ? client.equipements[type]
+      : client.equipements[type]
+        ? [client.equipements[type]]
+        : [];
+    const displayType = normalizeLinkableType(type) || type;
+    equipmentsOfType.forEach(eq => {
+      if (!eq || typeof eq !== "object") return;
+      const equipmentName = eq.name || eq.nom || "Sans nom";
+      const mappingKey = `${type}-${equipmentName}`;
+      const mapping =
+        equipmentMappings[mappingKey] ||
+        equipmentMappings[`${displayType}-${equipmentName}`] ||
+        null;
+      const compositeId = `${type}-${equipmentName}`;
+      const normalizedCompositeId = `${displayType}-${equipmentName}`;
+      const rawId = eq.id != null && eq.id !== "" ? String(eq.id) : null;
+      const dbCandidate = eq.dbId != null && eq.dbId !== "" ? String(eq.dbId) : null;
+      const primaryId = rawId || compositeId;
+      peripheralsList.push({
+        id: primaryId,
+        aliasIds: [
+          ...new Set(
+            [primaryId, rawId, dbCandidate, compositeId, normalizedCompositeId].filter(Boolean)
+          )
+        ],
+        name: equipmentName,
+        type: displayType,
+        sourceType: type,
+        isMapped: mapping && mapping.checkmk_host_name && mapping.is_active !== false,
+        mapping,
+        ip: eq.ip || eq.adresseIP || eq.adresse_ip || null
       });
-    }
+    });
   });
   Object.keys(client.equipements).forEach(type => {
     if (!CYBERSECURITY_TYPES.includes(type)) return;
@@ -382,19 +429,69 @@ export function getLinkedTypeOrderIndex(itemOrType) {
   const type = String(typeValue).toLowerCase();
   if (type.includes("internet")) return 0;
   if (type.includes("firewall")) return 1;
-  if (type.includes("serveur")) return 2;
-  if (type.includes("ordinateur")) return 3;
-  if (type.includes("stock")) return 4;
+  if (type.includes("serveur") || type === "servers" || type === "server") return 2;
+  if (type.includes("ordinateur") || type.includes("workstation")) return 3;
+  if (type.includes("stock") || type === "nas" || type === "san") return 4;
   if (type.includes("switch")) return 5;
   if (type.includes("borne") || type.includes("wifi")) return 6;
-  if (type.includes("camera") || type.includes("cam")) return 7;
-  if (type.includes("antivirus")) return 8;
-  if (type.includes("antispam")) return 9;
-  if (type.includes("sauveg")) return 10;
-  if (type.includes("office365") || type.includes("tenant")) return 11;
-  if (type.includes("ndd") || type.includes("domaine")) return 12;
+  if (type.includes("routeur") || type.includes("router")) return 7;
+  if (type.includes("alimentation") || type.includes("ups")) return 8;
+  if (type.includes("toip") || type.includes("voip")) return 9;
+  if (type.includes("camera") || type.includes("cam") || type.includes("video")) return 10;
+  if (type.includes("antivirus")) return 11;
+  if (type.includes("antispam")) return 12;
+  if (type.includes("sauveg") || type.includes("backup")) return 13;
+  if (type.includes("office365") || type.includes("tenant")) return 14;
+  if (type.includes("ndd") || type.includes("domaine")) return 15;
   return 99;
 }
+/** Normalise les alias de type matériel vers les clés modules (FR). */
+export function normalizeLinkableType(type) {
+  const raw = String(type || "").trim();
+  if (!raw) return "";
+  const lower = raw.toLowerCase();
+  if (lower === "stockage" || lower === "storage" || lower === "nas" || lower === "san") return "NAS";
+  if (lower === "serveur" || lower === "serveurs" || lower === "server" || lower === "servers") return "Serveurs";
+  if (lower === "ordinateur" || lower === "ordinateurs" || lower === "workstation" || lower === "workstations") {
+    return "Ordinateurs";
+  }
+  if (lower === "firewall" || lower === "firewalls") return "Firewalls";
+  if (lower === "switch" || lower === "switches") return "Switch";
+  if (lower === "bornewifi" || lower === "borne-wifi" || lower === "borne wifi" || lower === "wifi") {
+    return "BorneWifi";
+  }
+  if (lower === "routeur" || lower === "router" || lower === "sd-wan" || lower === "sdwan") return "Routeur";
+  if (lower === "alimentation" || lower === "power" || lower === "ups") return "Alimentation";
+  if (lower === "toip" || lower === "voip" || lower === "téléphonie") return "TOIP";
+  if (
+    lower === "videosurveillance" ||
+    lower === "vidéosurveillance" ||
+    lower === "camera" ||
+    lower === "cameras" ||
+    lower === "caméra" ||
+    lower === "caméras"
+  ) {
+    return "Videosurveillance";
+  }
+  if (lower === "sauvegarde" || lower === "backup") return "Sauvegarde";
+  return raw;
+}
+
+export function isInfrastructureEquipmentType(type) {
+  const raw = String(type || "").trim();
+  if (!raw) return false;
+  if (INFRASTRUCTURE_TYPE_SET.has(raw.toLowerCase())) return true;
+  const norm = normalizeLinkableType(raw);
+  return Boolean(norm && INFRASTRUCTURE_TYPE_SET.has(String(norm).toLowerCase()));
+}
+
+function itemMatchesLinkableId(item, idStr) {
+  if (!item || idStr == null || idStr === "") return false;
+  if (String(item.id) === idStr) return true;
+  const aliases = Array.isArray(item.aliasIds) ? item.aliasIds : [];
+  return aliases.some(alias => String(alias) === idStr);
+}
+
 /** Résout l’entrée « matériel lié » à partir d’un équipement source (id DB, composite type-nom, nom). */
 export function findLinkableItemForEquipment(linkableItems, { id = null, name = null, type = null } = {}) {
   const items = Array.isArray(linkableItems) ? linkableItems : [];
@@ -403,21 +500,28 @@ export function findLinkableItemForEquipment(linkableItems, { id = null, name = 
   for (const raw of idCandidates) {
     if (raw == null || raw === "") continue;
     const idStr = String(raw);
-    const byId = items.find(item => String(item.id) === idStr);
+    const byId = items.find(item => itemMatchesLinkableId(item, idStr));
     if (byId) return byId;
   }
   const typeStr = type != null && type !== "" ? String(type) : "";
+  const typeNorm = normalizeLinkableType(typeStr);
   const nameStr = name != null && name !== "" ? String(name) : "";
   if (typeStr && nameStr) {
-    const composite = `${typeStr}-${nameStr}`;
-    const byComposite = items.find(item => String(item.id) === composite);
-    if (byComposite) return byComposite;
+    const typeVariants = [...new Set([typeStr, typeNorm, "Servers", "Serveurs", "NAS", "Stockage", "Storage"].filter(Boolean))];
+    const composites = typeVariants.map(t => `${t}-${nameStr}`);
+    for (const composite of composites) {
+      const byComposite = items.find(item => itemMatchesLinkableId(item, composite));
+      if (byComposite) return byComposite;
+    }
   }
   if (nameStr) {
     const nameLower = nameStr.toLowerCase();
-    const byName = items.filter(item => String(item.label || "").toLowerCase() === nameLower);
-    if (typeStr) {
-      const typed = byName.find(item => String(item.type || "") === typeStr);
+    const byName = items.filter(item => String(item.label || item.name || "").toLowerCase() === nameLower);
+    if (typeNorm || typeStr) {
+      const typed = byName.find(item => {
+        const itemType = String(item.type || "");
+        return itemType === typeStr || normalizeLinkableType(itemType) === typeNorm;
+      });
       if (typed) return typed;
     }
     if (byName.length === 1) return byName[0];
@@ -434,24 +538,31 @@ export function buildLinkableItems(peripherals, cybersecurities, services) {
     byId.set(key, item);
   };
   peripherals.forEach(p => {
+    const id = String(p.id);
+    const aliases = Array.isArray(p.aliasIds) ? p.aliasIds.map(String) : [];
     pushUnique({
-      id: String(p.id),
+      id,
+      aliasIds: [...new Set([id, ...aliases].filter(Boolean))],
       label: p.name,
       type: p.type,
       group: "Infrastructure"
     });
   });
   cybersecurities.forEach(c => {
+    const id = String(c.id);
     pushUnique({
-      id: String(c.id),
+      id,
+      aliasIds: [id],
       label: c.name,
       type: c.type,
       group: c.type === "Antivirus" || c.type === "Antispam" ? c.type : "Cybersecurity"
     });
   });
   services.forEach(s => {
+    const id = String(s.id);
     pushUnique({
-      id: String(s.id),
+      id,
+      aliasIds: [id],
       label: s.name,
       type: s.type,
       group: s.type === "Office365" ? "Tenant" : "NDD"

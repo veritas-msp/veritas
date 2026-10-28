@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
 const TEAMS_SORT_KEYS = {
   displayName: 'displayName',
   memberCount: 'memberCount',
@@ -172,10 +173,9 @@ export default function TeamsTab({
   }
   if (embedded) {
     return <div className={styles.tabFill}>
-        <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
         <div className={styles.kpiSectionBlock}>
           <h3 className={styles.kpiSectionBlockTitle}>Users</h3>
-          <div className={styles.metricsRow4}>
+          <div className={styles.metricsRowFlat}>
             <div className={styles.metricItem}>
               <div className={styles.metricLabel}>Number of users</div>
               <div className={styles.metricValue}>{licensedUsers}</div>
@@ -196,7 +196,7 @@ export default function TeamsTab({
         </div>
         <div className={styles.kpiSectionBlock}>
           <h3 className={styles.kpiSectionBlockTitle}>Messages</h3>
-          <div className={styles.metricsRow4}>
+          <div className={styles.metricsRowFlat}>
             <div className={styles.metricItem}>
               <div className={styles.metricLabel}>Total messages</div>
               <div className={styles.metricValue}>{(messageStats.total || 0).toLocaleString()}</div>
@@ -217,7 +217,7 @@ export default function TeamsTab({
         </div>
         <div className={styles.kpiSectionBlock}>
           <h3 className={styles.kpiSectionBlockTitle}>Meetings</h3>
-          <div className={styles.metricsRow4}>
+          <div className={styles.metricsRowFlat}>
             <div className={styles.metricItem}>
               <div className={styles.metricLabel}>Total meetings</div>
               <div className={styles.metricValue}>{(meetingsStats.total || 0).toLocaleString()}</div>
@@ -238,7 +238,7 @@ export default function TeamsTab({
         </div>
         <div className={styles.kpiSectionBlock}>
           <h3 className={styles.kpiSectionBlockTitle}>Calls</h3>
-          <div className={styles.metricsRow4}>
+          <div className={styles.metricsRowFlat}>
             <div className={styles.metricItem}>
               <div className={styles.metricLabel}>Total calls</div>
               <div className={styles.metricValue}>{(callsStats.total || 0).toLocaleString()}</div>
@@ -257,28 +257,42 @@ export default function TeamsTab({
             </div>
           </div>
         </div>
-        <div className={`${styles.licensesTableContainer} ${styles.tableFill}`}>
-          <table className={styles.licensesTable}>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Visibility</th>
-                <th>Membres</th>
-                <th>Canaux</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allTeams.length === 0 ? <tr>
-                  <td colSpan={4}>No Teams teams available.</td>
-                </tr> : allTeams.map((team, idx) => <tr key={team.id || idx}>
-                  <td>{team.displayName || team.name || "N/A"}</td>
-                  <td>{team.visibility || team.accessType || "-"}</td>
-                  <td>{team.memberCount ?? team.membersCount ?? (Array.isArray(team.members) ? team.members.length : "-")}</td>
-                  <td>{team.channelCount ?? team.channelsCount ?? (Array.isArray(team.channels) ? team.channels.length : "-")}</td>
-                </tr>)}
-            </tbody>
-          </table>
-        </div>
+        <MonitoringStepSearchBar
+          value={teamsSearchQuery}
+          onChange={value => {
+            setTeamsSearchQuery(value);
+            setTeamsCurrentPage(1);
+          }}
+          onClear={() => {
+            setTeamsSearchQuery('');
+            setTeamsCurrentPage(1);
+          }}
+          placeholder="Rechercher une équipe"
+        />
+        <MonitoringStepTableWrap scrollable deps={[filteredTeams.length, teamsSearchQuery]}>
+          <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
+            <table className={styles.licensesTable}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Visibility</th>
+                  <th>Membres</th>
+                  <th>Canaux</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTeams.length === 0 ? <tr>
+                    <td colSpan={4}>No Teams teams available.</td>
+                  </tr> : filteredTeams.map((team, idx) => <tr key={team.id || idx}>
+                    <td>{team.displayName || team.name || "N/A"}</td>
+                    <td>{team.visibility || team.accessType || "-"}</td>
+                    <td>{team.memberCount ?? team.membersCount ?? (Array.isArray(team.members) ? team.members.length : "-")}</td>
+                    <td>{team.channelCount ?? team.channelsCount ?? (Array.isArray(team.channels) ? team.channels.length : "-")}</td>
+                  </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </MonitoringStepTableWrap>
       </div>;
   }
 

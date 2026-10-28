@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import { FaTimes } from "react-icons/fa";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import CyberBrickItemsTable from "./CyberBrickItemsTable";
+import BackupAddChoiceModal from "./BackupAddChoiceModal";
 import mapStyles from "./InfrastructureMap.module.css";
 
 function formatDateTime(value) {
@@ -31,9 +33,10 @@ export default function BackupOverviewPanel({
   editLabel = "Éditer"
 }) {
   const [search, setSearch] = useState("");
+  const [choiceOpen, setChoiceOpen] = useState(false);
   const instanceList = Array.isArray(instances) ? instances : [];
   const jobList = Array.isArray(jobs) ? jobs : [];
-  const jobAddDisabled = !canAddJob;
+  const canAddAnything = Boolean(onAddInstance || onAddJob);
 
   const filteredJobs = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -79,49 +82,56 @@ export default function BackupOverviewPanel({
   }, [instanceList, search]);
 
   return (
-    <div className={mapStyles.backupOverview}>
+    <div className={`${mapStyles.backupOverview} ${mapStyles.backupOverviewInfraSearch}`.trim()}>
+      <div
+        className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${mapStyles.backupInfraToolbar}`.trim()}
+      >
+        <div className={equipStyles.embeddedSearchWrap}>
+          <div className={equipStyles.embeddedSearchBox}>
+            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
+            <input
+              type="text"
+              className={equipStyles.embeddedSearchInput}
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
+            />
+            {search ? (
+              <button
+                type="button"
+                className={equipStyles.embeddedSearchClear}
+                onClick={() => setSearch("")}
+                aria-label="Effacer la recherche"
+              >
+                <FaTimes aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <div className={equipStyles.embeddedSearchActions}>
+            {toolbar}
+            {canAddAnything ? (
+              <button
+                type="button"
+                className={mapStyles.backupTableAddBtn}
+                onClick={() => setChoiceOpen(true)}
+                title="Ajouter"
+                aria-label="Ajouter une instance ou un job"
+              >
+                <Icon icon="mdi:plus" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <div className={mapStyles.backupTablesSplit}>
         <section className={mapStyles.backupTableBlock} aria-label="Instances de sauvegarde">
-          <div className={`${mapStyles.backupTableHead} ${mapStyles.backupTableHeadToolbar}`.trim()}>
-            <div className={equipStyles.embeddedSearchBox}>
-              <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
-              <input
-                type="search"
-                className={equipStyles.embeddedSearchInput}
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder={searchPlaceholder}
-                aria-label={searchPlaceholder}
-              />
-              {search ? (
-                <button
-                  type="button"
-                  className={equipStyles.embeddedSearchClear}
-                  onClick={() => setSearch("")}
-                  aria-label="Effacer la recherche"
-                >
-                  <Icon icon="mdi:close" aria-hidden />
-                </button>
-              ) : null}
-            </div>
+          <div className={mapStyles.backupTableHead}>
             <h3 className={mapStyles.backupTableTitle}>
               Instances
               <span className={mapStyles.backupTableCount}>{filteredInstances.length}</span>
             </h3>
-            <div className={mapStyles.backupTableHeadActions}>
-              {toolbar}
-              {onAddInstance ? (
-                <button
-                  type="button"
-                  className={mapStyles.backupTableAddBtn}
-                  onClick={onAddInstance}
-                  title={addInstanceLabel}
-                  aria-label={addInstanceLabel}
-                >
-                  <Icon icon="mdi:plus" aria-hidden />
-                </button>
-              ) : null}
-            </div>
           </div>
           <div className={mapStyles.backupTableHost}>
             <CyberBrickItemsTable
@@ -142,24 +152,12 @@ export default function BackupOverviewPanel({
               Jobs
               <span className={mapStyles.backupTableCount}>{filteredJobs.length}</span>
             </h3>
-            {onAddJob ? (
-              <button
-                type="button"
-                className={mapStyles.backupTableAddBtn}
-                onClick={onAddJob}
-                disabled={jobAddDisabled}
-                title={jobAddDisabled ? addJobDisabledHint : addJobLabel}
-                aria-label={jobAddDisabled ? addJobDisabledHint : addJobLabel}
-              >
-                <Icon icon="mdi:plus" aria-hidden />
-              </button>
-            ) : null}
           </div>
           <div className={mapStyles.backupTableHost}>
             <CyberBrickItemsTable
               brickType="BackupJobs"
               items={filteredJobs}
-              emptyLabel={jobAddDisabled ? "Ajoutez d’abord une instance" : "Aucun job"}
+              emptyLabel={!canAddJob ? "Ajoutez d’abord une instance" : "Aucun job"}
               hideSearchBar
               sortable
               onEditItem={onEditJob}
@@ -168,6 +166,21 @@ export default function BackupOverviewPanel({
           </div>
         </section>
       </div>
+
+      <BackupAddChoiceModal
+        open={choiceOpen}
+        onClose={() => setChoiceOpen(false)}
+        canAddJob={Boolean(canAddJob && onAddJob)}
+        addInstanceLabel="Instance"
+        addJobLabel="Job"
+        addJobDisabledHint={addJobDisabledHint}
+        onChooseInstance={() => {
+          if (onAddInstance) onAddInstance();
+        }}
+        onChooseJob={() => {
+          if (onAddJob) onAddJob();
+        }}
+      />
     </div>
   );
 }

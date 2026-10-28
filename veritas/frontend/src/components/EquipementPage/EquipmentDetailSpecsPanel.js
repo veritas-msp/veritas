@@ -145,7 +145,10 @@ function SiteLocationVignette({
 }) {
   const address = buildSiteAddress(site);
   const label = getSiteDisplayName(site) || locationLabel;
-  return <div className={`${styles.siteVignette} ${size === "large" ? styles.siteVignetteLarge : ""}`.trim()}>
+  const sizeClass =
+    size === "banner" ? styles.siteVignetteBanner : size === "large" ? styles.siteVignetteLarge : "";
+  return (
+    <div className={`${styles.siteVignette} ${sizeClass}`.trim()}>
       <div className={styles.siteVignetteMap}>
         <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={label} address={address} compact />
       </div>
@@ -153,7 +156,8 @@ function SiteLocationVignette({
         <span className={styles.siteVignetteName}>{label}</span>
         {address ? <span className={styles.siteVignetteAddress}>{address}</span> : null}
       </div>
-    </div>;
+    </div>
+  );
 }
 function sectionMatchesFilter(sectionId, filter) {
   if (!filter || filter === "all") return true;
@@ -572,15 +576,32 @@ export default function EquipmentDetailSpecsPanel({
                 </div>
               </header>
 
-              {showLocationMap ? <SiteLocationVignette site={resolvedSite || {
-            name: locationName
-          }} locationLabel={locationName} size={bare ? "large" : "default"} /> : null}
-
               {hasDebitGauges ? <InternetDebitCounters download={formData?.debitDownload} upload={formData?.debitUpload} combined={formData?.debit} /> : null}
 
-              {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${bare ? "" : styles.fieldGridCompact}`.trim()}>
-                  {visibleFields.map(field => <SpecField key={field.key} field={field} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
-                </div> : null}
+              {showLocationMap ? (
+                <div className={styles.billingStack}>
+                  <div className={styles.billingSiteRow}>
+                    <SiteLocationVignette
+                      site={resolvedSite || { name: locationName }}
+                      locationLabel={locationName}
+                      size="banner"
+                    />
+                  </div>
+                  {visibleFields.length > 0 ? (
+                    <div className={`${styles.fieldGrid} ${styles.billingFieldGrid} ${styles.fieldGridDense} ${bare ? "" : styles.fieldGridCompact}`.trim()}>
+                      {visibleFields.map(field => (
+                        <SpecField key={field.key} field={field} equipmentLink={resolveEquipmentLink(field)} copy={copy} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : visibleFields.length > 0 ? (
+                <div className={`${styles.fieldGrid} ${bare ? "" : styles.fieldGridCompact}`.trim()}>
+                  {visibleFields.map(field => (
+                    <SpecField key={field.key} field={field} equipmentLink={resolveEquipmentLink(field)} copy={copy} />
+                  ))}
+                </div>
+              ) : null}
 
               {section.id === "storage" && showStorageDiskBays ? <div className={styles.storageDiskDisplay}>
                   <StorageDiskBayDisplay formData={displayFormData} widgetsCopy={diskBayCopy} />

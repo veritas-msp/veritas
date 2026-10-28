@@ -204,6 +204,8 @@ const FR = {
     actionMapCheckmk: "Mapper CheckMK",
     actionSupervision: "Voir la supervision",
     actionEdit: "Modifier la fiche",
+    actionDelete: "Supprimer",
+    moreActions: "Plus d'actions",
     actionMaintenance: "Mettre en maintenance",
     actionEndMaintenance: "Terminer la maintenance",
     actionEndMaintenanceShort: "Terminer",
@@ -250,7 +252,7 @@ const FR = {
     create: "Créer un événement",
     emptyTitle: "Aucun événement ni ticket",
     emptyHint: "Planifiez une intervention ou consultez les tickets liés à ce matériel sur la période choisie.",
-    searchPlaceholder: "Rechercher un événement ou ticket…",
+    searchPlaceholder: "Rechercher",
     searchAria: "Rechercher dans les événements liés",
     clearSearch: "Effacer la recherche",
     noMatch: "Aucun résultat pour « {query} »",
@@ -385,11 +387,28 @@ const FR = {
       Procédure: "Procédure",
       Autre: "Autre"
     },
+    bulk: {
+      selected: "sélectionné",
+      selectedPlural: "sélectionnés",
+      selectAll: "Tout sélectionner",
+      selectAllFiltered: "Tout sélectionner ({count})",
+      selectRow: "Sélectionner {name}",
+      clearSelection: "Effacer",
+      delete: "Supprimer",
+      deleteTitle: "Supprimer la sélection",
+      deleteMessage: "Supprimer {count} document ? Cette action est irréversible.",
+      deleteMessagePlural: "Supprimer {count} documents ? Cette action est irréversible.",
+      deleteConfirm: "Supprimer"
+    },
     toasts: {
       loadError: "Impossible de charger les documents",
       added: "Document ajouté",
       uploadError: "Erreur lors de l'upload",
       deleted: "Document supprimé",
+      bulkDeleted: "{count} document supprimé",
+      bulkDeletedPlural: "{count} documents supprimés",
+      bulkDeletePartial: "{deleted} supprimé(s), {failed} en échec",
+      bulkDeleteError: "Impossible de supprimer la sélection",
       deleteError: "Erreur lors de la suppression"
     }
   },
@@ -1157,6 +1176,8 @@ const EN = {
     actionMapCheckmk: "Map CheckMK",
     actionSupervision: "View supervision",
     actionEdit: "Edit record",
+    actionDelete: "Delete",
+    moreActions: "More actions",
     actionMaintenance: "Put in maintenance",
     actionEndMaintenance: "End maintenance",
     actionEndMaintenanceShort: "End",
@@ -1203,7 +1224,7 @@ const EN = {
     create: "Create event",
     emptyTitle: "No events or tickets",
     emptyHint: "Schedule maintenance or review tickets linked to this device for the selected period.",
-    searchPlaceholder: "Search event or ticket…",
+    searchPlaceholder: "Search",
     searchAria: "Search related events",
     clearSearch: "Clear search",
     noMatch: "No results for “{query}”",
@@ -1338,11 +1359,28 @@ const EN = {
       Procédure: "Procedure",
       Autre: "Other"
     },
+    bulk: {
+      selected: "selected",
+      selectedPlural: "selected",
+      selectAll: "Select all",
+      selectAllFiltered: "Select all ({count})",
+      selectRow: "Select {name}",
+      clearSelection: "Clear",
+      delete: "Delete",
+      deleteTitle: "Delete selection",
+      deleteMessage: "Delete {count} document? This cannot be undone.",
+      deleteMessagePlural: "Delete {count} documents? This cannot be undone.",
+      deleteConfirm: "Delete"
+    },
     toasts: {
       loadError: "Unable to load documents",
       added: "Document added",
       uploadError: "Upload failed",
       deleted: "Document deleted",
+      bulkDeleted: "{count} document deleted",
+      bulkDeletedPlural: "{count} documents deleted",
+      bulkDeletePartial: "{deleted} deleted, {failed} failed",
+      bulkDeleteError: "Unable to delete selection",
       deleteError: "Unable to delete document"
     }
   },
@@ -2007,6 +2045,7 @@ const DE = {
     create: "Ereignis erstellen",
     emptyTitle: "Keine Ereignisse",
     emptyHint: "Planen Sie eine Wartung oder Intervention für dieses Gerät.",
+    searchPlaceholder: "Suchen",
     colTitle: "Titel",
     colDate: "Datum",
     fallbackTitle: "Ereignis"
@@ -2240,11 +2279,29 @@ const DE = {
       Procédure: "Prozedur",
       Autre: "Sonstiges"
     },
+    bulk: {
+      ...EN.documents.bulk,
+      selected: "ausgewählt",
+      selectedPlural: "ausgewählt",
+      selectAll: "Alle auswählen",
+      selectAllFiltered: "Alle auswählen ({count})",
+      selectRow: "{name} auswählen",
+      clearSelection: "Auswahl aufheben",
+      delete: "Löschen",
+      deleteTitle: "Auswahl löschen",
+      deleteMessage: "{count} Dokument löschen? Dies kann nicht rückgängig gemacht werden.",
+      deleteMessagePlural: "{count} Dokumente löschen? Dies kann nicht rückgängig gemacht werden.",
+      deleteConfirm: "Löschen"
+    },
     toasts: {
       loadError: "Dokumente konnten nicht geladen werden",
       added: "Dokument hinzugefügt",
       uploadError: "Upload fehlgeschlagen",
       deleted: "Dokument gelöscht",
+      bulkDeleted: "{count} Dokument gelöscht",
+      bulkDeletedPlural: "{count} Dokumente gelöscht",
+      bulkDeletePartial: "{deleted} gelöscht, {failed} fehlgeschlagen",
+      bulkDeleteError: "Auswahl konnte nicht gelöscht werden",
       deleteError: "Dokument konnte nicht gelöscht werden"
     }
   },
@@ -2390,6 +2447,7 @@ const IT = {
     create: "Crea evento",
     emptyTitle: "Nessun evento",
     emptyHint: "Pianifica un intervento o manutenzione per questo dispositivo.",
+    searchPlaceholder: "Cerca",
     colTitle: "Titolo",
     colDate: "Data",
     fallbackTitle: "Evento"
@@ -2622,11 +2680,29 @@ const IT = {
       Procédure: "Procedura",
       Autre: "Altro"
     },
+    bulk: {
+      ...EN.documents.bulk,
+      selected: "selezionato",
+      selectedPlural: "selezionati",
+      selectAll: "Seleziona tutto",
+      selectAllFiltered: "Seleziona tutto ({count})",
+      selectRow: "Seleziona {name}",
+      clearSelection: "Deseleziona",
+      delete: "Elimina",
+      deleteTitle: "Elimina selezione",
+      deleteMessage: "Eliminare {count} documento? L'azione è irreversibile.",
+      deleteMessagePlural: "Eliminare {count} documenti? L'azione è irreversibile.",
+      deleteConfirm: "Elimina"
+    },
     toasts: {
       loadError: "Impossibile caricare i documenti",
       added: "Documento aggiunto",
       uploadError: "Caricamento non riuscito",
       deleted: "Documento eliminato",
+      bulkDeleted: "{count} documento eliminato",
+      bulkDeletedPlural: "{count} documenti eliminati",
+      bulkDeletePartial: "{deleted} eliminato/i, {failed} non riusciti",
+      bulkDeleteError: "Impossibile eliminare la selezione",
       deleteError: "Impossibile eliminare il documento"
     }
   },
@@ -2772,6 +2848,7 @@ const ES = {
     create: "Crear evento",
     emptyTitle: "Ningún evento",
     emptyHint: "Planifique una intervención o mantenimiento para este equipo.",
+    searchPlaceholder: "Buscar",
     colTitle: "Título",
     colDate: "Fecha",
     fallbackTitle: "Evento"
@@ -3004,11 +3081,29 @@ const ES = {
       Procédure: "Procedimiento",
       Autre: "Otro"
     },
+    bulk: {
+      ...EN.documents.bulk,
+      selected: "seleccionado",
+      selectedPlural: "seleccionados",
+      selectAll: "Seleccionar todo",
+      selectAllFiltered: "Seleccionar todo ({count})",
+      selectRow: "Seleccionar {name}",
+      clearSelection: "Borrar",
+      delete: "Eliminar",
+      deleteTitle: "Eliminar selección",
+      deleteMessage: "¿Eliminar {count} documento? Esta acción no se puede deshacer.",
+      deleteMessagePlural: "¿Eliminar {count} documentos? Esta acción no se puede deshacer.",
+      deleteConfirm: "Eliminar"
+    },
     toasts: {
       loadError: "No se pudieron cargar los documentos",
       added: "Documento añadido",
       uploadError: "Error al subir el archivo",
       deleted: "Documento eliminado",
+      bulkDeleted: "{count} documento eliminado",
+      bulkDeletedPlural: "{count} documentos eliminados",
+      bulkDeletePartial: "{deleted} eliminado(s), {failed} fallido(s)",
+      bulkDeleteError: "No se pudo eliminar la selección",
       deleteError: "No se pudo eliminar el documento"
     }
   },

@@ -20,7 +20,14 @@ import ContactCompanyModal from "./ContactCompanyModal";
 import ContactDeleteModal from "./ContactDeleteModal";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
 import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
-import { UiKitEmptyState, UiKitScrollFadeShell, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
+import {
+  UiKitEmptyState,
+  UiKitScrollFadeShell,
+  UiKitTable,
+  uiKitLayoutsStyles as finderKit,
+  uiKitTableStyles as tableKit,
+  useFinderNavIndicator
+} from "../UiKit";
 import { formatTableDate } from "../../utils/tableDateFormat";
 import { getTicketSlaDisplay } from "../../utils/ticketSlaUtils";
 import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
@@ -579,7 +586,7 @@ export default function ContactDetailPage({
       ];
       return (
         <div
-          className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}
+          className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar} ${contactStyles.contactToolbar}`.trim()}
         >
           <div className={equipStyles.embeddedSearchWrap}>
             <div className={equipStyles.embeddedSearchBox}>
@@ -795,13 +802,32 @@ export default function ContactDetailPage({
     activitySection
   ]);
   const [finderSecEnter, setFinderSecEnter] = useState(true);
+  const [mainContentEnter, setMainContentEnter] = useState(true);
   useLayoutEffect(() => {
     setFinderSecEnter(false);
-  }, [overviewTab]);
+    setMainContentEnter(false);
+  }, [overviewTab, activitySection]);
   useEffect(() => {
-    const id = requestAnimationFrame(() => setFinderSecEnter(true));
-    return () => cancelAnimationFrame(id);
-  }, [overviewTab]);
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      // Double rAF : commit opacity:0 avant le fade (évite le flash).
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setFinderSecEnter(true);
+        setMainContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [overviewTab, activitySection]);
+  const overviewTabPanelClass = tab => {
+    if (overviewTab !== tab) return styles.overviewTabPanel;
+    return `${styles.overviewTabPanel} ${mainContentEnter ? styles.overviewTabPanelFadeIn : styles.overviewTabPanelFadePending}`.trim();
+  };
   useEffect(() => {
     const el = pageRootRef.current;
     if (!el || !contact?.id) return undefined;
@@ -1465,7 +1491,7 @@ export default function ContactDetailPage({
 
       <div className={`${styles.pageBody} ${styles.pageBodyFill}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "activity" || overviewTab === "portal" || overviewTab === "share" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
+          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "activity" || overviewTab === "portal" || overviewTab === "share" || overviewTab === "logs" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
             <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
               <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria || copy.activityTitle}>
                 <nav
@@ -1595,7 +1621,7 @@ export default function ContactDetailPage({
             <div className={styles.mainCommunityPanels}>
             {activityTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("activity")}
               hidden={overviewTab !== "activity"}
               style={overviewTab === "activity" ? undefined : { display: "none" }}
             >
@@ -1603,7 +1629,7 @@ export default function ContactDetailPage({
               <div className={styles.activityUnifiedCard} data-guide="contact-activity-sections" data-activity-section={activitySection}>
                 {activitySection === "support" ? (
                   <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="support">
-                    <div className={styles.activityUnifiedBody}>
+                    <div className={`${styles.activityUnifiedBody} ${contactStyles.contactTabBody}`.trim()}>
                       {renderActivityToolbar(
                         supportSearchQuery,
                         setSupportSearchQuery,
@@ -1617,15 +1643,49 @@ export default function ContactDetailPage({
                             ? (copy.emptyActivitySearch || copy.emptySupportTickets)
                             : copy.emptySupportTickets
                         ) : (
-                          <div className={styles.dataTableWrapper}>
-                            <table className={styles.dataTable}>
+                          <UiKitTable
+                            fill
+                            className={styles.activityUiKitTable}
+                            fadeTop
+                            fadeTopInset="2.85rem"
+                            deps={[
+                              pagedSupportTickets.total,
+                              pagedSupportTickets.page,
+                              supportSearchQuery,
+                              supportStatusFilter,
+                              activityPageSize
+                            ]}
+                          >
+                            <table className={`${tableKit.table} ${tableKit.tableList} ${styles.dataTable}`.trim()}>
                               <thead>
                                 <tr>
-                                  <th>{copy.table.number}</th>
-                                  <th>{copy.table.title}</th>
-                                  <th>{copy.table.status}</th>
-                                  {!isCommunity && <th>{copy.table.sla}</th>}
-                                  <th>{copy.table.updated}</th>
+                                  <th>
+                                    <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                      {copy.table.number}
+                                    </span>
+                                  </th>
+                                  <th>
+                                    <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                      {copy.table.title}
+                                    </span>
+                                  </th>
+                                  <th>
+                                    <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                      {copy.table.status}
+                                    </span>
+                                  </th>
+                                  {!isCommunity && (
+                                    <th>
+                                      <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                        {copy.table.sla}
+                                      </span>
+                                    </th>
+                                  )}
+                                  <th>
+                                    <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                      {copy.table.updated}
+                                    </span>
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1638,7 +1698,7 @@ export default function ContactDetailPage({
                                   return (
                                     <tr
                                       key={ticket.id}
-                                      className={styles.dataTableRowClickable}
+                                      className={`${tableKit.tableRowClickable} ${styles.dataTableRowClickable}`.trim()}
                                       onClick={() => handleOpenTicket(ticket)}
                                       onAuxClick={e => {
                                         if (e.button === 1) {
@@ -1655,13 +1715,15 @@ export default function ContactDetailPage({
                                         </span>
                                       </td>
                                       {!isCommunity && <td>{sla.label}</td>}
-                                      <td>{formatRelativeFrench(ticket.updated_at || ticket.created_at)}</td>
+                                      <td className={styles.activityMutedCell}>
+                                        {formatRelativeFrench(ticket.updated_at || ticket.created_at)}
+                                      </td>
                                     </tr>
                                   );
                                 })}
                               </tbody>
                             </table>
-                          </div>
+                          </UiKitTable>
                         )}
                         {renderActivityPagination({
                           section: "support",
@@ -1678,7 +1740,7 @@ export default function ContactDetailPage({
                 {activitySection === "prestations" ? (
                   <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityUnifiedProLock} badgePosition="none">
                     <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="prestations">
-                      <div className={styles.activityUnifiedBody}>
+                      <div className={`${styles.activityUnifiedBody} ${contactStyles.contactTabBody}`.trim()}>
                         {renderActivityToolbar(
                           prestationSearchQuery,
                           setPrestationSearchQuery,
@@ -1692,14 +1754,42 @@ export default function ContactDetailPage({
                               ? (copy.emptyActivitySearch || copy.emptyPrestationTickets)
                               : copy.emptyPrestationTickets
                           ) : (
-                            <div className={styles.dataTableWrapper}>
-                              <table className={styles.dataTable}>
+                            <UiKitTable
+                              fill
+                              className={styles.activityUiKitTable}
+                              fadeTop
+                              fadeTopInset="2.85rem"
+                              deps={[
+                                pagedPrestationTickets.total,
+                                pagedPrestationTickets.page,
+                                prestationSearchQuery,
+                                prestationStatusFilter,
+                                activityPageSize
+                              ]}
+                            >
+                              <table className={`${tableKit.table} ${tableKit.tableList} ${styles.dataTable}`.trim()}>
                                 <thead>
                                   <tr>
-                                    <th>{copy.table.number}</th>
-                                    <th>{copy.table.type}</th>
-                                    <th>{copy.table.status}</th>
-                                    <th>{copy.table.created}</th>
+                                    <th>
+                                      <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                        {copy.table.number}
+                                      </span>
+                                    </th>
+                                    <th>
+                                      <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                        {copy.table.type}
+                                      </span>
+                                    </th>
+                                    <th>
+                                      <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                        {copy.table.status}
+                                      </span>
+                                    </th>
+                                    <th>
+                                      <span className={`${tableKit.tableThContent} ${styles.activityThContent}`.trim()}>
+                                        {copy.table.created}
+                                      </span>
+                                    </th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1708,7 +1798,11 @@ export default function ContactDetailPage({
                                     return (
                                       <tr
                                         key={ticket.id}
-                                        className={isCommunity ? undefined : styles.dataTableRowClickable}
+                                        className={
+                                          isCommunity
+                                            ? undefined
+                                            : `${tableKit.tableRowClickable} ${styles.dataTableRowClickable}`.trim()
+                                        }
                                         onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)}
                                         onAuxClick={isCommunity ? undefined : e => {
                                           if (e.button === 1) {
@@ -1726,13 +1820,15 @@ export default function ContactDetailPage({
                                             {getTicketStatusLabel(status, locale)}
                                           </span>
                                         </td>
-                                        <td>{formatTableDate(ticket.created_at)}</td>
+                                        <td className={styles.activityMutedCell}>
+                                          {formatTableDate(ticket.created_at)}
+                                        </td>
                                       </tr>
                                     );
                                   })}
                                 </tbody>
                               </table>
-                            </div>
+                            </UiKitTable>
                           )}
                           {renderActivityPagination({
                             section: "prestations",
@@ -1753,14 +1849,14 @@ export default function ContactDetailPage({
 
             {portalTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("portal")}
               hidden={overviewTab !== "portal"}
               style={overviewTab === "portal" ? undefined : { display: "none" }}
             >
             <div className={styles.activityLayout} data-guide="contact-portal-panel">
               <div className={styles.activityUnifiedCard}>
                 <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
-                  <div className={`${styles.activityUnifiedBody} ${contactStyles.portalTabContent}`}>
+                  <div className={`${styles.activityUnifiedBody} ${contactStyles.contactTabBody} ${contactStyles.portalTabContent}`.trim()}>
                     <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
                       const controller = createTrackedAbortController();
                       loadControllerRef.current?.abort();
@@ -1776,17 +1872,17 @@ export default function ContactDetailPage({
 
             {shareTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("share")}
               hidden={overviewTab !== "share"}
               style={overviewTab === "share" ? undefined : { display: "none" }}
             >
             <div className={styles.activityLayout} data-guide="contact-share-panel">
               <div className={styles.activityUnifiedCard}>
                 <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
-                  <div className={styles.activityUnifiedBody}>
+                  <div className={`${styles.activityUnifiedBody} ${contactStyles.contactTabBody}`.trim()}>
                     {contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? (
                       <div
-                        className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}
+                        className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar} ${contactStyles.contactToolbar}`.trim()}
                       >
                         <div className={equipStyles.embeddedSearchWrap}>
                           <div className={equipStyles.embeddedSearchBox}>
@@ -1882,28 +1978,36 @@ export default function ContactDetailPage({
 
             {logsTabMounted ? (
             <div
-              className={styles.overviewTabPanel}
+              className={overviewTabPanelClass("logs")}
               hidden={overviewTab !== "logs"}
               style={overviewTab === "logs" ? undefined : { display: "none" }}
               data-guide="contact-logs-panel"
             >
-              {contact?.id ? (
-                <ActivityJournalPanel
-                  entityId={contact.id}
-                  embedded
-                  active={overviewTab === "logs"}
-                  fetchLogs={(page, options) =>
-                    fetchContactLogs(contact.id, {
-                      page,
-                      limit: options?.limit || 25,
-                      signal: options?.signal,
-                      sortBy: options?.sortBy,
-                      sortDir: options?.sortDir
-                    })
-                  }
-                  purgeLogs={() => purgeContactLogs(contact.id)}
-                />
-              ) : null}
+              <div className={styles.activityLayout}>
+                <div className={styles.activityUnifiedCard}>
+                  <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
+                    <div className={`${styles.activityUnifiedBody} ${contactStyles.contactTabBody}`.trim()}>
+                      {contact?.id ? (
+                        <ActivityJournalPanel
+                          entityId={contact.id}
+                          embedded
+                          active={overviewTab === "logs"}
+                          fetchLogs={(page, options) =>
+                            fetchContactLogs(contact.id, {
+                              page,
+                              limit: options?.limit || 25,
+                              signal: options?.signal,
+                              sortBy: options?.sortBy,
+                              sortDir: options?.sortDir
+                            })
+                          }
+                          purgeLogs={() => purgeContactLogs(contact.id)}
+                        />
+                      ) : null}
+                    </div>
+                  </section>
+                </div>
+              </div>
             </div>
             ) : null}
             </div>

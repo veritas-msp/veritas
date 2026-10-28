@@ -240,6 +240,53 @@
   color: #fbbf24;
 }
 
+.exportMenuItemDanger {
+  color: #dc2626;
+}
+
+.exportMenuItemDanger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.exportMenuItemDangerIcon {
+  color: #dc2626 !important;
+}
+
+.exportMenuItemDanger:hover:not(:disabled) .exportMenuItemDangerIcon {
+  color: #b91c1c !important;
+}
+
+:global(html.dark) .exportMenuItemDanger,
+:global(body.dark) .exportMenuItemDanger {
+  color: #f87171;
+}
+
+:global(html.dark) .exportMenuItemDanger:hover:not(:disabled),
+:global(body.dark) .exportMenuItemDanger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
+}
+
+:global(html.dark) .exportMenuItemDangerIcon,
+:global(body.dark) .exportMenuItemDangerIcon {
+  color: #f87171 !important;
+}
+
+:global(html.dark) .exportMenuItemDanger:hover:not(:disabled) .exportMenuItemDangerIcon,
+:global(body.dark) .exportMenuItemDanger:hover:not(:disabled) .exportMenuItemDangerIcon {
+  color: #fecaca !important;
+}
+
+.sidebarActionIconBtnBrand {
+  color: #15d1a0;
+}
+
+.sidebarActionIconBtnBrand:hover:not(:disabled) {
+  color: #10b981;
+  background: color-mix(in srgb, #15d1a0 14%, transparent);
+}
+
 /* Alertes suspendues — orange (temporaire) / rouge (définitif) */
 .sidebarActionIconBtnWarning {
   color: #ea580c !important;

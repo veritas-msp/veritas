@@ -6,26 +6,18 @@ import BackupConfigModal from "../../../EnterprisesPage/BackupConfigModal";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import { runMappedBackupJobsSyncForClient } from "../supervisionReportSync";
 import styles from "../RapportMonitoringBuilder.module.css";
-import { MonitoringStepShell, MonitoringStepSection, MonitoringStepTableWrap } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepSection, MonitoringStepTableWrap, MonitoringPagedBlock, MonitoringTextCell } from "../MonitoringStepLayout";
 import { formatServeurLieLabel, pickBackupJobType, pickBackupJobDestination } from "../../../EnterprisesPage/backupJobUtils";
-import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, getBackupJobRowStyle, normalizeBackupJobForStatus } from "../../../CybersecuritePage/backupJobStatusUtils";
+import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, getBackupJobRowClassName, getBackupJobRowStyle, normalizeBackupJobForStatus } from "../../../CybersecuritePage/backupJobStatusUtils";
+import { formatTableDate, formatTableDateTime } from "../../../../utils/tableDateFormat";
+
 function formatDate(raw) {
   if (!raw) return "-";
-  try {
-    const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? `${raw}` : d.toLocaleDateString("en-US");
-  } catch {
-    return `${raw}`;
-  }
+  return formatTableDate(raw) || "-";
 }
 function formatDateTime(raw) {
   if (!raw) return "-";
-  try {
-    const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? `${raw}` : d.toLocaleString("en-US");
-  } catch {
-    return `${raw}`;
-  }
+  return formatTableDateTime(raw) || "-";
 }
 function renderInstanceIcon(inst) {
   if (inst.logiciel === "Veeam") {
@@ -172,24 +164,25 @@ export default function BackupStep({
   const renderStandardInstanceTable = (list, title) => {
     if (!list || list.length === 0) return null;
     return <MonitoringStepSection title={title} count={list.length}>
-        <MonitoringStepTableWrap scrollable>
+        <MonitoringPagedBlock items={list} resetDeps={[title, list.length]}>
+          {pageItems => <MonitoringStepTableWrap scrollable>
           <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
-                {["Solution", "Name", "Server", "Expiration", "Number of jobs", "Actions"].map(label => <th key={label}>
+                {["Solution", "Nom", "Serveur", "Expiration", "Nb jobs", "Actions"].map(label => <th key={label}>
                       <span className={equipmentStyles.thContent}>{label}</span>
                     </th>)}
               </tr>
             </thead>
             <tbody>
-              {list.map((inst, idx) => {
+              {pageItems.map((inst, idx) => {
               const jobs = Array.isArray(inst.jobs) ? inst.jobs : [];
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const server = inst.server || inst.serveur || inst.serveurLie || "-";
               const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
               const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
               return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
-                    <td>
+                    <MonitoringTextCell title={inst.logiciel || undefined}>
                       <span style={{
                     display: "inline-flex",
                     alignItems: "center"
@@ -197,11 +190,11 @@ export default function BackupStep({
                         {renderInstanceIcon(inst)}
                         {inst.logiciel || "-"}
                       </span>
-                    </td>
-                    <td>{instanceLabel}</td>
-                    <td>{server}</td>
-                    <td>{inst.expiration ? formatDate(inst.expiration) : "-"}</td>
-                    <td>{jobs.length}</td>
+                    </MonitoringTextCell>
+                    <MonitoringTextCell>{instanceLabel}</MonitoringTextCell>
+                    <MonitoringTextCell>{server}</MonitoringTextCell>
+                    <MonitoringTextCell>{inst.expiration ? formatDate(inst.expiration) : "-"}</MonitoringTextCell>
+                    <MonitoringTextCell>{jobs.length}</MonitoringTextCell>
                     <td onClick={e => e.stopPropagation()}>
                       {renderInstanceActions(inst)}
                     </td>
@@ -209,30 +202,32 @@ export default function BackupStep({
             })}
             </tbody>
           </table>
-        </MonitoringStepTableWrap>
+        </MonitoringStepTableWrap>}
+        </MonitoringPagedBlock>
       </MonitoringStepSection>;
   };
   const renderActiveBackupInstanceTable = (list, title) => {
     if (!list || list.length === 0) return null;
     return <MonitoringStepSection title={title} count={list.length}>
-        <MonitoringStepTableWrap scrollable>
+        <MonitoringPagedBlock items={list} resetDeps={[title, list.length]}>
+          {pageItems => <MonitoringStepTableWrap scrollable>
           <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
-                {["Name", "Enabled modules", "Destination storage", "Actions"].map(label => <th key={label}>
+                {["Nom", "Modules activés", "Stockage destination", "Actions"].map(label => <th key={label}>
                     <span className={equipmentStyles.thContent}>{label}</span>
                   </th>)}
               </tr>
             </thead>
             <tbody>
-              {list.map((inst, idx) => {
+              {pageItems.map((inst, idx) => {
               const modules = inst.activeBackupModules || {};
               const storage = inst.activeBackupStorage || "-";
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
               const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
               return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
-                    <td>{instanceLabel}</td>
+                    <MonitoringTextCell>{instanceLabel}</MonitoringTextCell>
                     <td>
                       <span style={{
                     display: "inline-flex",
@@ -242,7 +237,7 @@ export default function BackupStep({
                   }}>
                         {ACTIVE_BACKUP_MODULES.map(m => {
                       const isActive = !!modules[m.key];
-                      return <span key={m.key} title={`${m.label} : ${isActive ? "enabled" : "inactive"}`} style={{
+                      return <span key={m.key} title={`${m.label} : ${isActive ? "activé" : "inactif"}`} style={{
                         opacity: isActive ? 1 : 0.35,
                         display: "inline-flex"
                       }}>
@@ -251,7 +246,7 @@ export default function BackupStep({
                     })}
                       </span>
                     </td>
-                    <td>{storage}</td>
+                    <MonitoringTextCell>{storage}</MonitoringTextCell>
                     <td onClick={e => e.stopPropagation()}>
                       {renderInstanceActions(inst)}
                     </td>
@@ -259,7 +254,8 @@ export default function BackupStep({
             })}
             </tbody>
           </table>
-        </MonitoringStepTableWrap>
+        </MonitoringStepTableWrap>}
+        </MonitoringPagedBlock>
       </MonitoringStepSection>;
   };
   const renderHyperBackupInstanceTable = (list, title) => {
@@ -269,17 +265,18 @@ export default function BackupStep({
       return v.replace(/^(NAS|SAN|DISQUE)-/, "").replace(/-\d+$/, "") || v;
     };
     return <MonitoringStepSection title={title} count={list.length}>
-        <MonitoringStepTableWrap scrollable>
+        <MonitoringPagedBlock items={list} resetDeps={[title, list.length]}>
+          {pageItems => <MonitoringStepTableWrap scrollable>
           <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
-                {["Name", "Source NAS", "Destination NAS", "Number of jobs", "Actions"].map(label => <th key={label}>
+                {["Nom", "NAS source", "NAS destination", "Nb jobs", "Actions"].map(label => <th key={label}>
                       <span className={equipmentStyles.thContent}>{label}</span>
                     </th>)}
               </tr>
             </thead>
             <tbody>
-              {list.map((inst, idx) => {
+              {pageItems.map((inst, idx) => {
               const jobs = Array.isArray(inst.jobs) ? inst.jobs : [];
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const source = formatNas(inst.hyperbackupSource);
@@ -287,10 +284,10 @@ export default function BackupStep({
               const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
               const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
               return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
-                    <td>{instanceLabel}</td>
-                    <td>{source}</td>
-                    <td>{dest}</td>
-                    <td>{jobs.length}</td>
+                    <MonitoringTextCell>{instanceLabel}</MonitoringTextCell>
+                    <MonitoringTextCell>{source}</MonitoringTextCell>
+                    <MonitoringTextCell>{dest}</MonitoringTextCell>
+                    <MonitoringTextCell>{jobs.length}</MonitoringTextCell>
                     <td onClick={e => e.stopPropagation()}>
                       {renderInstanceActions(inst)}
                     </td>
@@ -298,29 +295,31 @@ export default function BackupStep({
             })}
             </tbody>
           </table>
-        </MonitoringStepTableWrap>
+        </MonitoringStepTableWrap>}
+        </MonitoringPagedBlock>
       </MonitoringStepSection>;
   };
   return <MonitoringStepShell>
       {standardInstances.length > 0 && renderStandardInstanceTable(standardInstances, "Instances")}
-      {instances.length === 0 && <MonitoringStepSection title="Instances" isEmpty emptyMessage="No backup instance." />}
+      {instances.length === 0 && <MonitoringStepSection title="Instances" isEmpty emptyMessage="Aucune instance de sauvegarde." />}
 
       {renderActiveBackupInstanceTable(activeBackupInstances, "Active Backup for Microsoft 365")}
 
       {renderHyperBackupInstanceTable(hyperBackupInstances, "HyperBackup")}
 
-      <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="No backup jobs.">
-        <MonitoringStepTableWrap scrollable>
+      <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="Aucun job de sauvegarde.">
+        <MonitoringPagedBlock items={allJobs} resetDeps={[allJobs.length]}>
+          {pageItems => <MonitoringStepTableWrap scrollable>
           <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
-                {["Name", "Backup type", "Instance", "Server", "Destination", "Frequency", "Schedule", "Retention", "Last backup", "Last sync", "Last status", "Actions"].map(label => <th key={label}>
+                {["Nom", "Type", "Instance", "Serveur", "Destination", "Fréquence", "Horaires", "Rétention", "Dernière sauvegarde", "Dernière sync", "Statut", "Actions"].map(label => <th key={label}>
                     <span className={equipmentStyles.thContent}>{label}</span>
                   </th>)}
               </tr>
             </thead>
             <tbody>
-                {allJobs.map((job, index) => {
+                {pageItems.map((job, index) => {
               const jobName = job.nom || job.jobName || `job-${index}`;
               const instanceName = job._instanceKey;
               const equipmentKey = `Backup:job:${instanceName}:${jobName}`;
@@ -339,35 +338,36 @@ export default function BackupStep({
               const destination = pickBackupJobDestination(job, job._instance || { logiciel: job._instanceLogiciel }, "-");
               const statusJob = normalizeBackupJobForStatus(job, job._instance || { logiciel: job._instanceLogiciel });
               const jobStatus = getBackupJobStatus(statusJob);
+              const rowStatusClass = getBackupJobRowClassName(jobStatus);
               const rowAlertStyle = getBackupJobRowStyle(jobStatus);
-              return <tr key={`${instanceName}-${jobName}-${index}`} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`} style={rowAlertStyle}>
-                      <td>{jobName}</td>
-                      <td>{typeLabel}</td>
-                      <td>{job._instanceLabel}</td>
-                      <td>{formatServeurLieLabel(job.serveurLie || job.source, "-")}</td>
-                      <td>{destination}</td>
-                      <td>{job.regularite || "-"}</td>
-                      <td>{job.horaire || "-"}</td>
-                      <td>{job.retention || "-"}</td>
-                      <td>
-                        {lastBackupStart ? (() => {
-                    try {
-                      return formatDateTime(lastBackupStart);
-                    } catch {
-                      return String(lastBackupStart);
-                    }
-                  })() : "-"}
-                      </td>
-                      <td>
-                        {lastBackupSync ? (() => {
-                    try {
-                      return formatDateTime(lastBackupSync);
-                    } catch {
-                      return String(lastBackupSync);
-                    }
-                  })() : "-"}
-                      </td>
-                      <td title={getBackupJobStatusTitle(jobStatus)}>{getBackupJobStatusLabel(jobStatus)}</td>
+              const serverLabel = formatServeurLieLabel(job.serveurLie || job.source, "-");
+              const lastBackupStartLabel = lastBackupStart ? (() => {
+                try {
+                  return formatDateTime(lastBackupStart);
+                } catch {
+                  return String(lastBackupStart);
+                }
+              })() : "-";
+              const lastBackupSyncLabel = lastBackupSync ? (() => {
+                try {
+                  return formatDateTime(lastBackupSync);
+                } catch {
+                  return String(lastBackupSync);
+                }
+              })() : "-";
+              const statusLabel = getBackupJobStatusLabel(jobStatus);
+              return <tr key={`${instanceName}-${jobName}-${index}`} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${rowStatusClass ? styles[rowStatusClass] || "" : ""} ${isHighlighted ? styles.infraTableRowHighlight : ""}`.trim()} style={rowAlertStyle}>
+                      <MonitoringTextCell>{jobName}</MonitoringTextCell>
+                      <MonitoringTextCell>{typeLabel}</MonitoringTextCell>
+                      <MonitoringTextCell>{job._instanceLabel}</MonitoringTextCell>
+                      <MonitoringTextCell>{serverLabel}</MonitoringTextCell>
+                      <MonitoringTextCell>{destination}</MonitoringTextCell>
+                      <MonitoringTextCell>{job.regularite || "-"}</MonitoringTextCell>
+                      <MonitoringTextCell>{job.horaire || "-"}</MonitoringTextCell>
+                      <MonitoringTextCell>{job.retention || "-"}</MonitoringTextCell>
+                      <MonitoringTextCell>{lastBackupStartLabel}</MonitoringTextCell>
+                      <MonitoringTextCell>{lastBackupSyncLabel}</MonitoringTextCell>
+                      <MonitoringTextCell title={getBackupJobStatusTitle(jobStatus) || statusLabel}>{statusLabel}</MonitoringTextCell>
                       <td onClick={e => e.stopPropagation()}>
                         <div className={equipmentStyles.mappingActions}>
                           <div className={equipmentStyles.mappingActionsGroup}>
@@ -398,7 +398,8 @@ export default function BackupStep({
             })}
               </tbody>
           </table>
-        </MonitoringStepTableWrap>
+        </MonitoringStepTableWrap>}
+        </MonitoringPagedBlock>
       </MonitoringStepSection>
 
       {backupConfigModal.open && clientId ? <BackupConfigModal

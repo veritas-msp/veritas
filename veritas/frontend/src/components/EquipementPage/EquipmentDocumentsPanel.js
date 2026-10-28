@@ -15,8 +15,10 @@ import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
-import { UiKitButton, uiKitLayoutsStyles as kit } from "../UiKit";
+import { UiKitButton, UiKitTable, uiKitLayoutsStyles as kit, uiKitTableStyles as tableKit } from "../UiKit";
 import { CloudUploadIcon, FileTextIcon } from "../Misc/Sidebar/lucideAnimated";
+import CyberBulkBar from "../CybersecuritePage/CyberBulkBar";
+import { useCyberBulkSelection } from "../CybersecuritePage/useCyberBulkSelection";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
@@ -298,6 +300,8 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
   const [previewDoc, setPreviewDoc] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const hasExternalFiles = useCallback(dataTransfer => {
     if (!dataTransfer) return false;
@@ -374,6 +378,39 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
     return filteredDocuments.slice(start, start + pageSize);
   }, [filteredDocuments, currentPage, pageSize]);
 
+  const {
+    selectedIds,
+    selectedItems,
+    selectedCount,
+    allSelected,
+    clearSelection,
+    toggleItem,
+    toggleAll,
+    selectAll
+  } = useCyberBulkSelection(filteredDocuments);
+
+  const bulkCopy = useMemo(
+    () => ({
+      bulk: docCopy.bulk || {},
+      formatBulkSelectAllFiltered: count =>
+        interpolate(docCopy.bulk?.selectAllFiltered || "Tout sélectionner ({count})", {
+          count: String(count)
+        }),
+      formatBulkSelectRow: name =>
+        interpolate(docCopy.bulk?.selectRow || "Sélectionner {name}", {
+          name: name || ""
+        }),
+      formatBulkDeleteMessage: count =>
+        interpolate(
+          count === 1
+            ? docCopy.bulk?.deleteMessage || "Supprimer {count} document ?"
+            : docCopy.bulk?.deleteMessagePlural || "Supprimer {count} documents ?",
+          { count: String(count) }
+        )
+    }),
+    [docCopy.bulk]
+  );
+
   const rangeStart = filteredDocuments.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const rangeEnd = filteredDocuments.length === 0 ? 0 : Math.min(currentPage * pageSize, filteredDocuments.length);
 
@@ -425,12 +462,59 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
       await deleteEquipmentDocument(deleteTarget.id);
       setDocuments(prev => prev.filter(item => item.id !== deleteTarget.id));
       if (previewDoc?.id === deleteTarget.id) setPreviewDoc(null);
+      clearSelection();
       toast.success(docCopy.toasts.deleted);
       setDeleteTarget(null);
     } catch (err) {
       toast.error(err.message || docCopy.toasts.deleteError);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedItems.length) return;
+    setBulkBusy(true);
+    let deleted = 0;
+    let failed = 0;
+    const removedIds = new Set();
+    try {
+      for (const item of selectedItems) {
+        try {
+          await deleteEquipmentDocument(item.id);
+          deleted += 1;
+          removedIds.add(item.id);
+        } catch {
+          failed += 1;
+        }
+      }
+      if (deleted > 0) {
+        setDocuments(prev => prev.filter(item => !removedIds.has(item.id)));
+        if (previewDoc && removedIds.has(previewDoc.id)) setPreviewDoc(null);
+      }
+      if (deleted > 0 && failed === 0) {
+        toast.success(
+          interpolate(
+            deleted > 1 ? docCopy.toasts.bulkDeletedPlural : docCopy.toasts.bulkDeleted,
+            { count: String(deleted) }
+          )
+        );
+      } else if (deleted > 0) {
+        toast.warn(
+          interpolate(docCopy.toasts.bulkDeletePartial, {
+            deleted: String(deleted),
+            failed: String(failed)
+          })
+        );
+      } else {
+        toast.error(docCopy.toasts.bulkDeleteError);
+      }
+      clearSelection();
+      setBulkDeleteOpen(false);
+    } catch (err) {
+      toast.error(err.message || docCopy.toasts.bulkDeleteError);
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -520,24 +604,81 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
         </div>
       ) : (
         <>
-          <div className={styles.tableScrollShell}>
-            <div className={styles.tableWrap}>
-              <table className={styles.docsTable}>
+          <div className={styles.docsTableHost}>
+            <UiKitTable
+              fill
+              className={styles.docsUiKitTable}
+              fadeTop
+              fadeTopInset="2.85rem"
+              deps={[pageRows.length, currentPage, pageSize, searchQuery, selectedCount]}
+            >
+              <table className={`${tableKit.table} ${tableKit.tableList} ${styles.docsTable}`.trim()}>
                 <thead>
                   <tr>
-                    <th>{docCopy.colName || "Nom"}</th>
-                    <th>{docCopy.colCategory || "Catégorie"}</th>
-                    <th className={styles.colSize}>{docCopy.colSize || "Taille"}</th>
-                    <th>{docCopy.colDate || "Date"}</th>
-                    <th className={styles.colActions}>{docCopy.colActions || "Actions"}</th>
+                    <th className={styles.colCheckbox} scope="col">
+                      <input
+                        type="checkbox"
+                        className={styles.rowCheckbox}
+                        checked={allSelected && filteredDocuments.length > 0}
+                        onChange={toggleAll}
+                        disabled={bulkBusy}
+                        aria-label={docCopy.bulk?.selectAll}
+                      />
+                    </th>
+                    <th className={styles.colName} scope="col">
+                      <span className={`${tableKit.tableThContent} ${styles.thContent}`.trim()}>
+                        {docCopy.colName || "Nom"}
+                      </span>
+                    </th>
+                    <th className={styles.colCategory} scope="col">
+                      <span className={`${tableKit.tableThContent} ${styles.thContent}`.trim()}>
+                        {docCopy.colCategory || "Catégorie"}
+                      </span>
+                    </th>
+                    <th className={styles.colSize} scope="col">
+                      <span className={`${tableKit.tableThContent} ${styles.thContent}`.trim()}>
+                        {docCopy.colSize || "Taille"}
+                      </span>
+                    </th>
+                    <th className={styles.colDate} scope="col">
+                      <span className={`${tableKit.tableThContent} ${styles.thContent}`.trim()}>
+                        {docCopy.colDate || "Date"}
+                      </span>
+                    </th>
+                    <th className={styles.colActions} scope="col">
+                      <span className={`${tableKit.tableThContent} ${styles.thContent}`.trim()}>
+                        {docCopy.colActions || "Actions"}
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageRows.map(doc => {
                     const categoryLabel = getCategoryLabel(doc.category, copy);
+                    const isSelected = selectedIds.has(doc.id);
                     return (
-                      <tr key={doc.id} className={styles.rowClickable} onClick={() => setPreviewDoc(doc)}>
-                        <td>
+                      <tr
+                        key={doc.id}
+                        className={[
+                          tableKit.tableRowClickable,
+                          isSelected ? styles.selectedRow : undefined
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        onClick={() => setPreviewDoc(doc)}
+                      >
+                        <td className={styles.colCheckbox} onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className={styles.rowCheckbox}
+                            checked={isSelected}
+                            disabled={bulkBusy}
+                            onChange={e => toggleItem(doc.id, e.target.checked)}
+                            onClick={e => e.stopPropagation()}
+                            aria-label={bulkCopy.formatBulkSelectRow(doc.file_name)}
+                          />
+                        </td>
+                        <td className={styles.colName}>
                           <button
                             type="button"
                             className={styles.rowNameBtn}
@@ -551,11 +692,13 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
                             <span className={styles.rowName}>{doc.file_name}</span>
                           </button>
                         </td>
-                        <td>
+                        <td className={styles.colCategory}>
                           <span className={styles.categoryBadge}>{categoryLabel}</span>
                         </td>
-                        <td className={styles.colSize}>{formatSize(doc.size_bytes)}</td>
-                        <td>{formatDate(doc.created_at, locale)}</td>
+                        <td className={`${styles.colSize} ${styles.sizeCell}`}>{formatSize(doc.size_bytes)}</td>
+                        <td className={`${styles.colDate} ${styles.dateCell}`}>
+                          {formatDate(doc.created_at, locale)}
+                        </td>
                         <td className={styles.colActions} onClick={e => e.stopPropagation()}>
                           <div className={styles.rowActions}>
                             <button
@@ -592,7 +735,22 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
                   })}
                 </tbody>
               </table>
-            </div>
+            </UiKitTable>
+
+            {selectedCount > 0 ? (
+              <div className={styles.bulkBarWrap}>
+                <CyberBulkBar
+                  copy={bulkCopy}
+                  selectedCount={selectedCount}
+                  allSelected={allSelected}
+                  filteredCount={filteredDocuments.length}
+                  busy={bulkBusy}
+                  onSelectAll={selectAll}
+                  onDelete={() => setBulkDeleteOpen(true)}
+                  onClear={clearSelection}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className={`${equipStyles.pagination} ${equipStyles.paginationEmbedded} ${styles.docsPagination}`}>
@@ -689,6 +847,20 @@ export default function EquipmentDocumentsPanel({ equipment, embedded = false, t
         onConfirm={handleConfirmDelete}
         onClose={() => {
           if (!deleting) setDeleteTarget(null);
+        }}
+      />
+
+      <ConfirmModal
+        open={bulkDeleteOpen}
+        title={docCopy.bulk?.deleteTitle}
+        message={bulkCopy.formatBulkDeleteMessage(selectedCount)}
+        icon="mdi:delete-alert-outline"
+        confirmLabel={docCopy.bulk?.deleteConfirm}
+        confirmVariant="dangerSolid"
+        confirmLoading={bulkBusy}
+        onConfirm={handleBulkDelete}
+        onClose={() => {
+          if (!bulkBusy) setBulkDeleteOpen(false);
         }}
       />
     </div>

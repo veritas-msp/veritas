@@ -1,9 +1,11 @@
-import React, { useMemo, useState, lazy, Suspense } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { Icon } from "@iconify/react";
 import styles from "./RapportMonitoringBuilder.module.css";
 import shellStyles from "../RapportBuilderPlaceholder.module.css";
 import CheckMKMonitoringModal from "./CheckMKMonitoringModal";
+import EquipmentTicketsModal from "./EquipmentTicketsModal";
 import InternetStep from "./steps/InternetStep";
+import { getEquipmentDbId } from "../../../utils/equipmentIdentity";
 import FirewallStep from "./steps/FirewallStep";
 import ServersStep from "./steps/ServeursStep";
 import StorageStep from "./steps/StockageStep";
@@ -18,7 +20,69 @@ import SummaryStep from "./steps/SummaryStep";
 import SupportStep from "./steps/SupportStep";
 import EquipmentEditModal from "./EquipmentEditModal";
 import { findEquipmentLocation } from "./equipmentPatchUtils";
+import EquipmentHoverIcon, {
+  CATEGORY_ANIMATED,
+  CYBER_BRICK_ANIMATED,
+  OVERVIEW_TAB_ANIMATED,
+  QUICK_ACTION_ANIMATED,
+} from "../../EquipementPage/EquipmentHoverIcon";
+import { uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../../UiKit";
 const AntivirusStepLazy = lazy(() => import("./steps/AntivirusStep"));
+
+/** Icônes Lucide animées alignées sur la fiche entreprise. */
+const MODULE_ANIMATED = {
+  Internet: CATEGORY_ANIMATED.Internet,
+  Firewall: CATEGORY_ANIMATED.Firewalls,
+  Servers: CATEGORY_ANIMATED.Servers,
+  Storage: CATEGORY_ANIMATED.Storage,
+  Switch: CATEGORY_ANIMATED.Switch,
+  BorneWifi: CATEGORY_ANIMATED.BorneWifi,
+  TOIP: CATEGORY_ANIMATED.TOIP,
+  Backup: CATEGORY_ANIMATED.Backup,
+  Antivirus: CYBER_BRICK_ANIMATED.Antivirus,
+  Antispam: CYBER_BRICK_ANIMATED.Antispam,
+  Office365: CYBER_BRICK_ANIMATED.TenantMicrosoft,
+  GoogleWorkspace: CYBER_BRICK_ANIMATED.GoogleWorkspace,
+  NDD: CYBER_BRICK_ANIMATED.NDD,
+  CertificatsSSL: CYBER_BRICK_ANIMATED.CertificatsSSL,
+  LicensesAbonnements: CYBER_BRICK_ANIMATED.LicensesAbonnements,
+  support: QUICK_ACTION_ANIMATED.ticket,
+  summary: OVERVIEW_TAB_ANIMATED.synthese,
+};
+
+function MonitoringStepNavItem({
+  stepKey,
+  index,
+  isActive,
+  isDone,
+  label,
+  onSelect,
+}) {
+  const animRef = useRef(null);
+  return (
+    <button
+      type="button"
+      className={`${shellStyles.stepNavItem} ${isActive ? shellStyles.stepNavItemActive : ""} ${isDone ? shellStyles.stepNavItemDone : ""}`.trim()}
+      aria-current={isActive ? "page" : undefined}
+      onClick={onSelect}
+      onMouseEnter={() => animRef.current?.startAnimation?.()}
+      onMouseLeave={() => animRef.current?.stopAnimation?.()}
+    >
+      <span className={shellStyles.stepNavIndex} aria-hidden>
+        {isDone && !isActive ? <Icon icon="mdi:check" width={12} height={12} /> : index + 1}
+      </span>
+      <span className={shellStyles.stepNavIcon} aria-hidden>
+        <EquipmentHoverIcon
+          Animated={MODULE_ANIMATED[stepKey] || null}
+          iconify={MODULE_ICONS[stepKey] || "mdi:checkbox-marked-outline"}
+          size={16}
+          animRef={animRef}
+        />
+      </span>
+      <span className={shellStyles.stepNavLabel}>{label}</span>
+    </button>
+  );
+}
 
 export const MONITORING_MODULE_STEP_ORDER = [
   "Internet",
@@ -242,6 +306,7 @@ export default function MonitoringSteps({
   onEquipmentSaved,
   equipmentCommentCounts,
   equipmentTicketCounts,
+  equipmentTicketsByKey = {},
   equipmentAlertCounts = {},
   equipmentComments = {},
   highlightedEquipmentKey,
@@ -265,6 +330,13 @@ export default function MonitoringSteps({
     moduleKey: null,
     equipmentKey: null,
     preLoadedData: null
+  });
+  const [ticketsModal, setTicketsModal] = useState({
+    isOpen: false,
+    equipment: null,
+    moduleKey: null,
+    equipmentKey: null,
+    tickets: []
   });
   const [editEquipmentModal, setEditEquipmentModal] = useState({
     open: false,
@@ -293,6 +365,39 @@ export default function MonitoringSteps({
 
   const handleCloseCheckMKModal = () => {
     setCheckMKModal({ isOpen: false, equipment: null, moduleKey: null, equipmentKey: null, preLoadedData: null });
+  };
+
+  const resolveTicketsForEquipment = (item, equipmentKey) => {
+    const map = equipmentTicketsByKey && typeof equipmentTicketsByKey === "object" ? equipmentTicketsByKey : {};
+    const candidates = [
+      equipmentKey,
+      item?.commentKey,
+      getEquipmentDbId(item),
+      item?.id,
+      item?.uuid,
+      item?.glpi_id
+    ]
+      .filter(value => value != null && String(value).trim() !== "")
+      .map(value => String(value));
+    for (const key of candidates) {
+      const list = map[key];
+      if (Array.isArray(list) && list.length > 0) return list;
+    }
+    return [];
+  };
+
+  const handleOpenEquipmentTickets = (item, { moduleKey, equipmentKey } = {}) => {
+    setTicketsModal({
+      isOpen: true,
+      equipment: item,
+      moduleKey: moduleKey || null,
+      equipmentKey: equipmentKey != null ? String(equipmentKey) : null,
+      tickets: resolveTicketsForEquipment(item, equipmentKey)
+    });
+  };
+
+  const handleCloseEquipmentTicketsModal = () => {
+    setTicketsModal({ isOpen: false, equipment: null, moduleKey: null, equipmentKey: null, tickets: [] });
   };
 
   const handleRefreshCheckMKModal = async () => {
@@ -327,6 +432,7 @@ export default function MonitoringSteps({
   const infraStepProps = useMemo(() => ({
     reportPeriod,
     onOpenCheckMKDetail: handleOpenCheckMKDetail,
+    onOpenEquipmentTickets: handleOpenEquipmentTickets,
     onOpenComments,
     onTicketCreatedForEquipment,
     onRefreshClient,
@@ -341,7 +447,7 @@ export default function MonitoringSteps({
     isSyncingMonitoring,
     onSyncCheckMK,
     syncingEquipmentKey
-  }), [reportPeriod, onOpenComments, onTicketCreatedForEquipment, onRefreshClient, equipmentCommentCounts, equipmentTicketCounts, equipmentAlertCounts, highlightedEquipmentKey, monitoringSyncStatus, equipmentCheckMKData, isSyncingMonitoring, onSyncCheckMK, syncingEquipmentKey]);
+  }), [reportPeriod, onOpenComments, onTicketCreatedForEquipment, onRefreshClient, equipmentCommentCounts, equipmentTicketCounts, equipmentTicketsByKey, equipmentAlertCounts, highlightedEquipmentKey, monitoringSyncStatus, equipmentCheckMKData, isSyncingMonitoring, onSyncCheckMK, syncingEquipmentKey]);
 
   const setCurrentIndex = updater => {
     setInternalIndex(prev => {
@@ -353,6 +459,35 @@ export default function MonitoringSteps({
 
   const steps = useMemo(() => getEnabledMonitoringSteps(client), [client]);
   const hasSteps = steps.length > 0;
+  const currentIndex = typeof activeStepIndex === "number" ? activeStepIndex : internalIndex;
+  const safeIndex = steps.length === 0 ? 0 : Math.min(Math.max(0, currentIndex), steps.length - 1);
+  const fadeStepKey = steps[safeIndex] || "none";
+  const [stepContentEnter, setStepContentEnter] = useState(true);
+  const { trackRef: stepNavTrackRef, indicator: stepNavIndicator } = useFinderNavIndicator([
+    safeIndex,
+    steps.length,
+  ]);
+
+  useLayoutEffect(() => {
+    setStepContentEnter(false);
+  }, [fadeStepKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      // Double rAF : commit opacity:0 avant le fade (comme EnterpriseDetailPage).
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setStepContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [fadeStepKey]);
 
   if (!client) {
     return <div className={styles.rapportListSection}><div className={styles.rapportListEmpty}>Sélectionnez un client pour construire le rapport de supervision.</div></div>;
@@ -361,8 +496,6 @@ export default function MonitoringSteps({
     return <div className={styles.builderSection}><div className={styles.builderSubtitle}>Aucun équipement ou service configuré pour ce client.</div></div>;
   }
 
-  const currentIndex = typeof activeStepIndex === "number" ? activeStepIndex : internalIndex;
-  const safeIndex = Math.min(Math.max(0, currentIndex), steps.length - 1);
   const currentStepKey = steps[safeIndex];
   const getStepLabel = stepKey => MODULE_LABELS[stepKey] || stepKey;
 
@@ -391,7 +524,7 @@ export default function MonitoringSteps({
       case "Office365":
         return <Office365Step client={client} reportPeriod={reportPeriod} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "NDD":
-        return <NDDStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
+        return <NDDStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} onOpenEquipmentTickets={handleOpenEquipmentTickets} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "support":
         return <SupportStep client={client} reportPeriod={reportPeriod} />;
       case "summary":
@@ -418,30 +551,36 @@ export default function MonitoringSteps({
       <div className={`${shellStyles.layout} ${commentsPane ? shellStyles.layoutWithComments : ""}`.trim()}>
         <aside className={shellStyles.stepNav} aria-label="Étapes du rapport">
           <div className={shellStyles.stepNavTitle}>Parcours</div>
-          {steps.map((stepKey, index) => {
-            const isActive = index === safeIndex;
-            const isDone = index < safeIndex;
-            return (
-              <button key={stepKey} type="button" className={`${shellStyles.stepNavItem} ${isActive ? shellStyles.stepNavItemActive : ""} ${isDone ? shellStyles.stepNavItemDone : ""}`} onClick={() => setCurrentIndex(index)}>
-                <span className={shellStyles.stepNavIndex} aria-hidden>
-                  {isDone && !isActive ? (
-                    <Icon icon="mdi:check" width={12} height={12} />
-                  ) : (
-                    index + 1
-                  )}
-                </span>
-                <Icon icon={MODULE_ICONS[stepKey] || "mdi:checkbox-marked-outline"} className={shellStyles.stepNavIcon} width={16} height={16} aria-hidden />
-                <span className={shellStyles.stepNavLabel}>{getStepLabel(stepKey)}</span>
-              </button>
-            );
-          })}
+          <nav
+            ref={stepNavTrackRef}
+            className={`${shellStyles.stepNavTrack} ${shellStyles.stepNavAnimated} ${finderKit.finderSecNavAnimated}`}
+            aria-label="Parcours"
+          >
+            {stepNavIndicator.ready ? (
+              <div
+                className={finderKit.finderNavIndicator}
+                style={{
+                  transform: `translate3d(0, ${stepNavIndicator.top}px, 0)`,
+                  height: stepNavIndicator.height,
+                }}
+                aria-hidden
+              />
+            ) : null}
+            {steps.map((stepKey, index) => (
+              <MonitoringStepNavItem
+                key={stepKey}
+                stepKey={stepKey}
+                index={index}
+                isActive={index === safeIndex}
+                isDone={index < safeIndex}
+                label={getStepLabel(stepKey)}
+                onSelect={() => setCurrentIndex(index)}
+              />
+            ))}
+          </nav>
         </aside>
 
         <section className={shellStyles.stepPanel}>
-          <div className={shellStyles.stepPanelHead}>
-            <h2 className={shellStyles.stepPanelTitle}>{getStepLabel(currentStepKey)}</h2>
-            <span className={shellStyles.stepPanelMeta}>Étape {safeIndex + 1} sur {steps.length}</span>
-          </div>
           <div className={shellStyles.stepPanelBody}>
             {(isSyncingMonitoring || isSyncingAntivirus || isSyncingOffice365Report) && (
               <div className={styles.syncSkeleton}>
@@ -449,13 +588,27 @@ export default function MonitoringSteps({
                 <div className={styles.syncSkeletonBarShort} />
               </div>
             )}
-            {renderCurrentStep()}
+            <div
+              key={fadeStepKey}
+              className={`${shellStyles.stepPanelContent} ${
+                stepContentEnter ? shellStyles.stepPanelContentFadeIn : shellStyles.stepPanelContentFadePending
+              }`.trim()}
+            >
+              {renderCurrentStep()}
+            </div>
           </div>
         </section>
         {commentsPane}
       </div>
 
       <CheckMKMonitoringModal isOpen={checkMKModal.isOpen} onClose={handleCloseCheckMKModal} equipment={checkMKModal.equipment} moduleKey={checkMKModal.moduleKey} clientId={client?.id ?? client?.uuid} onRefresh={handleRefreshCheckMKModal} refreshing={syncingEquipmentKey === checkMKModal.equipmentKey} />
+      <EquipmentTicketsModal
+        isOpen={ticketsModal.isOpen}
+        onClose={handleCloseEquipmentTicketsModal}
+        equipment={ticketsModal.equipment}
+        moduleKey={ticketsModal.moduleKey}
+        tickets={ticketsModal.tickets}
+      />
       <EquipmentEditModal open={editEquipmentModal.open} onClose={handleCloseEditEquipmentModal} client={client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} onSaved={handleEquipmentSaved} onDeleted={onRefreshClient} backgroundSave />
     </>
   );

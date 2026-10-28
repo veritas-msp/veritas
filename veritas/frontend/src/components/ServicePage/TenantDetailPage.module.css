@@ -1668,3 +1668,232 @@
 :global(html.dark) .expiringLicensesBox ul {
   color: #fca5a5;
 }
+
+/* —— Embedded rapport : une carte, onglets toggle animés —— */
+.embeddedShell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  border: 1px solid var(--msp-border-light, #e8edf5);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.embeddedTabs {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--msp-border-light, #e8edf5);
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 88%, var(--msp-surface, #fff));
+}
+
+.embeddedTabIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 8px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+  pointer-events: none;
+  z-index: 0;
+  transition:
+    transform var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1)),
+    width var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    height var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform, width, height;
+}
+
+.embeddedTab {
+  appearance: none;
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.42rem 0.72rem;
+  min-height: 2.15rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  cursor: pointer;
+  transition:
+    color var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    background var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.embeddedTab:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 70%, transparent);
+}
+
+.embeddedTabActive,
+.embeddedTabActive:hover {
+  color: var(--msp-accent, #2b5fab);
+  background: transparent;
+}
+
+.embeddedTabIcon {
+  font-size: 1.05rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.embeddedTabActive .embeddedTabIcon {
+  opacity: 1;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.embeddedTabLabel {
+  white-space: nowrap;
+}
+
+.embeddedBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.85rem 1rem 0.9rem;
+}
+
+.embeddedBodyInner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.embeddedFadePending {
+  opacity: 0;
+}
+
+.embeddedFadeIn {
+  animation: tenantEmbeddedFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes tenantEmbeddedFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .embeddedFadePending {
+    opacity: 1;
+  }
+
+  .embeddedFadeIn {
+    animation: none;
+  }
+
+  .embeddedTabIndicator {
+    transition: none;
+  }
+}
+
+.embeddedFooter {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.45rem 1rem 0.55rem;
+  border-top: 1px solid var(--msp-border-light, #e8edf5);
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
+.embeddedLoading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-height: 8rem;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.embeddedKpiStrip {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.tablePlain {
+  margin-top: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.tablePlain .licensesTable thead,
+.tablePlain .licensesTable thead th {
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
+}
+
+.metricsRowFlat {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  flex-shrink: 0;
+  padding: 0.2rem;
+  border-radius: var(--msp-radius-sm, 10px);
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 92%, var(--msp-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 80%, transparent);
+}
+
+.metricsRowFlat .metricItem {
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--msp-radius-sm, 10px) - 2px);
+  padding: 0.5rem 0.35rem;
+  box-shadow: none;
+}
+
+.metricsRowFlat .metricItem:hover {
+  border-color: transparent;
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow-sm, 0 1px 2px rgba(15, 28, 46, 0.06));
+}
+
+@media (max-width: 1100px) {
+  .metricsRowFlat {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+:global(html.dark) .embeddedShell {
+  border-color: color-mix(in srgb, var(--msp-border, #2f4260) 80%, transparent);
+}
+
+:global(html.dark) .embeddedTabs {
+  background: color-mix(in srgb, var(--msp-surface-2, #1a2540) 88%, var(--msp-surface, #152038));
+}
+
+:global(html.dark) .tablePlain .licensesTable thead,
+:global(html.dark) .tablePlain .licensesTable thead th {
+  background: color-mix(in srgb, var(--msp-surface-2, #1a2540) 92%, #152038);
+}

@@ -4,8 +4,39 @@ import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import { EnterpriseQuickActionButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
 import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
+import EquipmentHoverIcon, { QUICK_ACTION_ANIMATED } from "./EquipmentHoverIcon";
 import EquipmentNotesPanel from "./EquipmentNotesPanel";
 import styles from "./EquipmentDetailAside.module.css";
+
+function isBrandIconify(icon) {
+  return String(icon || "").startsWith("simple-icons:");
+}
+
+function ContextMenuActionItem({ action, actionId, itemClassName, iconClassName, onSelect }) {
+  const animRef = useRef(null);
+  const brandIcon = isBrandIconify(action.icon);
+  const Animated = brandIcon ? null : QUICK_ACTION_ANIMATED[actionId] || null;
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className={itemClassName}
+      disabled={action.disabled}
+      onClick={onSelect}
+      onMouseEnter={() => !action.disabled && animRef.current?.startAnimation?.()}
+      onMouseLeave={() => animRef.current?.stopAnimation?.()}
+    >
+      <EquipmentHoverIcon
+        Animated={Animated}
+        iconify={action.icon}
+        size={18}
+        className={iconClassName}
+        animRef={animRef}
+      />
+      {action.label}
+    </button>
+  );
+}
 
 const MORE_MENU_GAP = 6;
 const MORE_MENU_VIEWPORT_PAD = 8;
@@ -78,7 +109,16 @@ const ACTION_ANIM_IDS = {
   ticket: "ticket",
   event: "schedule",
   subscribe: "subscribe",
-  edit: "edit"
+  edit: "edit",
+  remote: "remote",
+  qc: "qc",
+  alerts: "alerts",
+  rmm: "rmm",
+  rmmUpdate: "rmmUpdate",
+  maintenance: "maintenance",
+  supervision: "supervision",
+  checkmkMap: "checkmkMap",
+  more: "more"
 };
 
 export default function EquipmentDetailAside({
@@ -91,6 +131,7 @@ export default function EquipmentDetailAside({
   remoteAccessAction = null,
   showQuickConnect = false,
   onEdit,
+  onDelete,
   onCreateEvent,
   onCreateTicket,
   onOpenEnterprise: _onOpenEnterprise,
@@ -244,6 +285,15 @@ export default function EquipmentDetailAside({
           onClick: onMaintenance,
           disabled: maintenanceBusy
         }
+      : null,
+    onDelete
+      ? {
+          key: "delete",
+          icon: "mdi:trash-can-outline",
+          label: aside.actionDelete || "Supprimer",
+          onClick: onDelete,
+          danger: true
+        }
       : null
   ].filter(Boolean);
 
@@ -334,28 +384,53 @@ export default function EquipmentDetailAside({
     </button>
   ) : null;
 
-  const renderActionButton = action => (
-    <EnterpriseQuickActionButton
-      key={action.key}
-      actionId={ACTION_ANIM_IDS[action.key] || action.key}
-      iconify={action.icon}
-      className={[
-        s.sidebarActionIconBtn,
-        action.pressed && action.key !== "alerts" ? s.sidebarActionIconBtnActive : "",
-        action.tone === "warning" ? styles.sidebarActionIconBtnWarning : "",
-        action.tone === "danger" ? styles.sidebarActionIconBtnDanger : ""
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      onClick={action.onClick}
-      disabled={action.disabled}
-      aria-pressed={action.pressed}
-      aria-label={action.label}
-      title={action.label}
-      loading={Boolean(action.loading)}
-      loadingClassName={s.spinning}
-    />
-  );
+  const renderActionButton = action => {
+    const brandIcon = isBrandIconify(action.icon);
+    return (
+      <EnterpriseQuickActionButton
+        key={action.key}
+        actionId={brandIcon ? null : ACTION_ANIM_IDS[action.key] || action.key}
+        iconify={action.icon}
+        className={[
+          s.sidebarActionIconBtn,
+          action.pressed && action.key !== "alerts" ? s.sidebarActionIconBtnActive : "",
+          action.tone === "warning" ? styles.sidebarActionIconBtnWarning : "",
+          action.tone === "danger" ? styles.sidebarActionIconBtnDanger : "",
+          brandIcon ? styles.sidebarActionIconBtnBrand : ""
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onClick={action.onClick}
+        disabled={action.disabled}
+        aria-pressed={action.pressed}
+        aria-label={action.label}
+        title={action.label}
+        loading={Boolean(action.loading)}
+        loadingClassName={s.spinning}
+      />
+    );
+  };
+
+  const renderContextMenuItem = action => {
+    const actionId = ACTION_ANIM_IDS[action.key] || action.key;
+    return (
+      <ContextMenuActionItem
+        key={action.key}
+        action={action}
+        actionId={actionId}
+        itemClassName={[s.exportMenuItem, action.danger ? styles.exportMenuItemDanger : ""]
+          .filter(Boolean)
+          .join(" ")}
+        iconClassName={[s.exportMenuItemIcon, action.danger ? styles.exportMenuItemDangerIcon : ""]
+          .filter(Boolean)
+          .join(" ")}
+        onSelect={() => {
+          setMoreMenuOpen(false);
+          action.onClick?.();
+        }}
+      />
+    );
+  };
 
   const quickActionsSection = (
     <section
@@ -385,22 +460,7 @@ export default function EquipmentDetailAside({
                     style={moreMenuStyle || undefined}
                     role="menu"
                   >
-                    {contextMenuActions.map(action => (
-                      <button
-                        key={action.key}
-                        type="button"
-                        role="menuitem"
-                        className={s.exportMenuItem}
-                        disabled={action.disabled}
-                        onClick={() => {
-                          setMoreMenuOpen(false);
-                          action.onClick?.();
-                        }}
-                      >
-                        <Icon icon={action.icon} className={s.exportMenuItemIcon} aria-hidden />
-                        {action.label}
-                      </button>
-                    ))}
+                    {contextMenuActions.map(renderContextMenuItem)}
                   </div>,
                   document.body
                 )

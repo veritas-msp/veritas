@@ -10,7 +10,7 @@ import EquipmentFormModal from "./EquipmentFormModal";
 import CustomEquipmentModal from "../EnterprisesPage/CustomEquipmentModal";
 import { fetchClientGeneral, fetchClientCustomEquipment } from "../../api/clients";
 import { normalizeClientSites } from "../../utils/clientSites";
-import { updateEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
+import { updateEquipment, deleteEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
 import { requestRmmAgentSync, cancelRmmAgentSync, requestRmmAgentUpdate, cancelRmmAgentUpdate, requestRmmAgentHeartbeat, fetchRmmAgents } from "../../api/rmm";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
 import EquipmentMappingModal from "./EquipmentMappingModal";
@@ -55,10 +55,10 @@ import {
   formatEquipmentDetailRelative,
   getEquipmentCreatedAt
 } from "./equipmentDetailPageI18n";
-import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
+import { buildEquipmentForUpdate, canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { interpolate } from "./equipmentModalsI18n";
+import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
 import {
   normalizeCheckMKEquipmentType,
   resolveEquipmentCheckmkMapping
@@ -116,6 +116,7 @@ export default function EquipmentDetailPage({
   const locale = useAppLocale();
   const { fields: systemExtensionFields } = useSystemFamilyExtensions(equipment?.type);
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
+  const modalsCopy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
   const {
     theme
   } = useTheme();
@@ -172,6 +173,8 @@ export default function EquipmentDetailPage({
   const [maintenanceModalOpen, setMaintenanceModalOpen] = useState(false);
   const [maintenanceBusy, setMaintenanceBusy] = useState(false);
   const [endMaintenanceOpen, setEndMaintenanceOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingEquipment, setDeletingEquipment] = useState(false);
   const [activeMaintenance, setActiveMaintenance] = useState(null);
   const [maintenanceHistoryKey, setMaintenanceHistoryKey] = useState(0);
   const [proPromoFeature, setProPromoFeature] = useState(null);
@@ -1411,6 +1414,28 @@ export default function EquipmentDetailPage({
     onUpdate?.(null);
     onBack?.();
   };
+  const handleConfirmDeleteEquipment = async () => {
+    if (!equipment || deletingEquipment) return;
+    const clientId = getEquipmentClientId(equipment) || equipment.clientId || modalClient?.id;
+    if (!clientId) {
+      toast.error(modalsCopy.form?.errorDelete || modalsCopy.form?.toastDeleteError);
+      return;
+    }
+    setDeletingEquipment(true);
+    try {
+      const moduleKey = equipmentModuleKey || equipment?.type || "Servers";
+      const equipmentForDelete = buildEquipmentForUpdate(clientId, moduleKey, equipment);
+      await deleteEquipment(equipmentForDelete);
+      toast.success(modalsCopy.form?.toastDeleted);
+      setDeleteConfirmOpen(false);
+      handleEquipmentModalDeleted();
+    } catch (err) {
+      toast.error(err.message || modalsCopy.form?.toastDeleteError || modalsCopy.form?.errorDelete);
+      setDeleteConfirmOpen(false);
+    } finally {
+      setDeletingEquipment(false);
+    }
+  };
   const handleCustomEquipmentRefresh = async savedRow => {
     if (!savedRow) {
       handleEquipmentModalDeleted();
@@ -2215,7 +2240,6 @@ export default function EquipmentDetailPage({
               ) : null}
 
               <div className={finderKit.finderNavGroup}>
-                <p className={finderKit.finderNavGroupTitle}>{copy.tabs.groupGeneral || "Général"}</p>
                 <EnterpriseOverviewTabButton
                   tabId="fiche"
                   iconify="mdi:clipboard-text-outline"
@@ -2688,6 +2712,7 @@ export default function EquipmentDetailPage({
           remoteAccessAction={remoteAccessAction}
           showQuickConnect={showQuickConnectHero}
           onEdit={openEditEquipmentModal}
+          onDelete={() => setDeleteConfirmOpen(true)}
           onCreateEvent={openCreateEventModal}
           onCreateTicket={handleQuickCreateTicket}
           onOpenEnterprise={() => openEnterprise()}
@@ -3311,6 +3336,26 @@ export default function EquipmentDetailPage({
         confirmLabel={copy.hero.maintenanceEndConfirm || "Terminer"}
         confirmVariant="dangerSolid"
         confirmLoading={maintenanceBusy}
+      />
+
+      <ConfirmModal
+        open={deleteConfirmOpen}
+        onClose={() => {
+          if (!deletingEquipment) setDeleteConfirmOpen(false);
+        }}
+        onConfirm={handleConfirmDeleteEquipment}
+        title={
+          equipmentModuleKey === "Internet"
+            ? modalsCopy.form?.deleteInternetTitle
+            : modalsCopy.form?.deleteEquipmentTitle
+        }
+        message={interpolate(modalsCopy.form?.deleteMessage || "", {
+          name: equipment?.name || equipment?.nom || ""
+        })}
+        icon="mdi:delete-alert-outline"
+        confirmLabel={copy.aside?.actionDelete || modalsCopy.form?.delete || "Supprimer"}
+        confirmVariant="dangerSolid"
+        confirmLoading={deletingEquipment}
       />
 
       <ClientTagModal open={equipmentTagModalOpen} entityKind="equipment" entityName={equipmentHeroTitle || equipment?.name || ""} assignedTags={equipmentTags} saving={addingEquipmentTag} onClose={() => {

@@ -11,13 +11,13 @@ export default function useFinderNavIndicator(deps = []) {
   const trackRef = useCallback(node => {
     setTrackEl(node);
   }, []);
-  const [indicator, setIndicator] = useState({ top: 0, height: 0, ready: false });
+  const [indicator, setIndicator] = useState({ top: 0, left: 0, width: 0, height: 0, ready: false });
   const depsKey = deps.map(d => String(d)).join("|");
 
   useLayoutEffect(() => {
     const root = trackEl;
     if (!root) {
-      setIndicator(prev => (prev.ready ? { top: 0, height: 0, ready: false } : prev));
+      setIndicator(prev => (prev.ready ? { top: 0, left: 0, width: 0, height: 0, ready: false } : prev));
       return undefined;
     }
 
@@ -26,23 +26,31 @@ export default function useFinderNavIndicator(deps = []) {
         root.querySelector('[aria-current="page"]') ||
         root.querySelector('[aria-current="true"]');
       if (!active) {
-        setIndicator(prev => (prev.ready ? { ...prev, ready: false, height: 0 } : prev));
+        setIndicator(prev => (prev.ready ? { ...prev, ready: false, height: 0, width: 0 } : prev));
         return;
       }
       const rootRect = root.getBoundingClientRect();
       const r = active.getBoundingClientRect();
       // Modale / portal : parfois 1er paint à hauteur 0 — ne pas figer ready trop tôt
-      if (r.height < 1) {
-        setIndicator(prev => (prev.ready ? { ...prev, ready: false, height: 0 } : prev));
+      if (r.height < 1 && r.width < 1) {
+        setIndicator(prev => (prev.ready ? { ...prev, ready: false, height: 0, width: 0 } : prev));
         return;
       }
       const next = {
         top: Math.round(r.top - rootRect.top + root.scrollTop),
+        left: Math.round(r.left - rootRect.left + root.scrollLeft),
+        width: Math.round(r.width),
         height: Math.round(r.height),
         ready: true
       };
       setIndicator(prev =>
-        prev.top === next.top && prev.height === next.height && prev.ready ? prev : next
+        prev.top === next.top &&
+        prev.left === next.left &&
+        prev.width === next.width &&
+        prev.height === next.height &&
+        prev.ready
+          ? prev
+          : next
       );
     };
 

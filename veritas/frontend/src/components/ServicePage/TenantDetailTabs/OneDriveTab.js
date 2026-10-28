@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from '../TenantDetailPage.module.css';
+import { MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
 export default function OneDriveTab({
   onedriveData,
   theme,
@@ -29,10 +30,10 @@ export default function OneDriveTab({
         </div>
       </div>;
   }
-  return <div>
-      <h2 className={styles.sectionTitle}>OneDrive</h2>
+  return <div className={embedded ? styles.tabFill : undefined}>
+      {!embedded ? <h2 className={styles.sectionTitle}>OneDrive</h2> : null}
       
-      <div className={embedded ? styles.metricsRow4 : styles.metricsRow}>
+      <div className={embedded ? styles.metricsRowFlat : styles.metricsRow}>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Total space used</div>
           <div className={styles.metricValue} style={{
@@ -95,33 +96,36 @@ export default function OneDriveTab({
 
       {}
       {onedriveData.topUsers && onedriveData.topUsers.length > 0 && <div className={styles.sectionSpacing}>
-          <h3 className={styles.subsectionTitle}>Top users</h3>
-          <div className={styles.licensesTableContainer}>
-            <table className={styles.licensesTable}>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th className={styles.textRight}>Storage used</th>
-                  <th className={styles.textRight}>Files</th>
-                  <th className={styles.textRight}>Shared</th>
-                </tr>
-              </thead>
-              <tbody>
-                {onedriveData.topUsers.slice(0, 10).map((user, idx) => <tr key={idx}>
-                    <td>{user.name || user.userPrincipalName || 'N/A'}</td>
-                    <td className={styles.textRight}>
-                      {user.storageUsed ? `${(user.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB` : '0 GB'}
-                    </td>
-                    <td className={styles.textRight}>{user.fileCount?.toLocaleString() || '0'}</td>
-                    <td className={styles.textRight}>{user.sharedCount?.toLocaleString() || '0'}</td>
-                  </tr>)}
-              </tbody>
-            </table>
-          </div>
+          {!embedded ? <h3 className={styles.subsectionTitle}>Top users</h3> : null}
+          {(() => {
+            const table = <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`}>
+              <table className={styles.licensesTable}>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th className={styles.textRight}>Storage used</th>
+                    <th className={styles.textRight}>Files</th>
+                    <th className={styles.textRight}>Shared</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {onedriveData.topUsers.slice(0, 10).map((user, idx) => <tr key={idx}>
+                      <td>{user.name || user.userPrincipalName || 'N/A'}</td>
+                      <td className={styles.textRight}>
+                        {user.storageUsed ? `${(user.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB` : '0 GB'}
+                      </td>
+                      <td className={styles.textRight}>{user.fileCount?.toLocaleString() || '0'}</td>
+                      <td className={styles.textRight}>{user.sharedCount?.toLocaleString() || '0'}</td>
+                    </tr>)}
+                </tbody>
+              </table>
+            </div>;
+            return embedded ? <MonitoringStepTableWrap scrollable deps={[onedriveData.topUsers.length]}>{table}</MonitoringStepTableWrap> : table;
+          })()}
         </div>}
 
       {}
-      {onedriveData.usersNearQuota && onedriveData.usersNearQuota.length > 0 && <div className={styles.sectionSpacing}>
+      {onedriveData.usersNearQuota && onedriveData.usersNearQuota.length > 0 && !embedded && <div className={styles.sectionSpacing}>
           <h3 className={styles.subsectionTitle}>Users near quota (&gt;90%)</h3>
           <div className={styles.licensesTableContainer}>
             <table className={styles.licensesTable}>

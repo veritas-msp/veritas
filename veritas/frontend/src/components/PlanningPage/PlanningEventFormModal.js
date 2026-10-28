@@ -207,14 +207,27 @@ export default function PlanningEventFormModal({
     const current = eventForm?.type;
     return list.filter(t => t.formSelectable !== false && t.value !== "campagne" || current && t.value === current);
   }, [planningTypes, eventForm?.type]);
+  const resolvedSelectedLinkedIds = useMemo(() => {
+    const selected = new Set((selectedLinkedItems || []).map(id => String(id)));
+    const resolved = new Set(selected);
+    (linkableItems || []).forEach(item => {
+      const ids = [item?.id, ...(Array.isArray(item?.aliasIds) ? item.aliasIds : [])]
+        .filter(Boolean)
+        .map(String);
+      if (ids.some(id => selected.has(id))) {
+        resolved.add(String(item.id));
+      }
+    });
+    return resolved;
+  }, [selectedLinkedItems, linkableItems]);
   const sectionBadges = useMemo(() => ({
-    objects: selectedLinkedItems?.length || 0
-  }), [selectedLinkedItems]);
+    objects: resolvedSelectedLinkedIds.size || selectedLinkedItems?.length || 0
+  }), [resolvedSelectedLinkedIds, selectedLinkedItems]);
   const sectionMeta = useMemo(() => ({
     general: Boolean(eventForm?.title?.trim() || eventForm?.clientId),
     schedule: Boolean(eventForm?.startDate && eventForm?.endDate && selectedAssignedUsers?.length > 0),
-    objects: (selectedLinkedItems?.length || 0) > 0
-  }), [eventForm, selectedAssignedUsers, selectedLinkedItems]);
+    objects: resolvedSelectedLinkedIds.size > 0 || (selectedLinkedItems?.length || 0) > 0
+  }), [eventForm, selectedAssignedUsers, selectedLinkedItems, resolvedSelectedLinkedIds]);
   if (!open || !eventForm || !copy) return null;
   const modalTitle = isEditing ? copy.editTitle : copy.createTitle;
   const modalSubtitle = isEditing ? copy.editSubtitle : copy.createSubtitle;
@@ -513,9 +526,12 @@ export default function PlanningEventFormModal({
                 {Object.entries(linkableItemsByGroup).flatMap(([groupName, items]) =>
                   items.map(item => {
                     const itemId = String(item.id);
-                    const checked = selectedLinkedItems.includes(itemId);
+                    const checked = resolvedSelectedLinkedIds.has(itemId);
                     return (
-                      <label key={`${groupName}-${itemId}`} className={eventStyles.objectRow}>
+                      <label
+                        key={`${groupName}-${itemId}`}
+                        className={`${eventStyles.objectRow}${checked ? ` ${eventStyles.objectRowSelected}` : ""}`.trim()}
+                      >
                         <input type="checkbox" checked={checked} onChange={() => toggleLinkedItem(itemId)} />
                         <span className={eventStyles.objectRowIcon}>
                           <Icon icon={getLinkedItemIcon(item)} aria-hidden />

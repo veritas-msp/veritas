@@ -523,6 +523,29 @@
   background: transparent !important;
 }
 
+/* Jobs sauvegarde : scrollbar horizontale visible (colonnes nombreuses) */
+.tableWrapperEmbeddedScroll.tableWrapperBackupJobs {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+  scrollbar-color: color-mix(in srgb, var(--eq-muted, var(--msp-muted, #5c6b82)) 45%, transparent) transparent;
+}
+
+.tableWrapperEmbeddedScroll.tableWrapperBackupJobs::-webkit-scrollbar {
+  width: 0 !important;
+  height: 6px !important;
+  display: block !important;
+  background: transparent !important;
+}
+
+.tableWrapperEmbeddedScroll.tableWrapperBackupJobs::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--eq-muted, var(--msp-muted, #5c6b82)) 45%, transparent);
+  border-radius: 999px;
+}
+
+.tableWrapperEmbeddedScroll.tableWrapperBackupJobs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 
 .embeddedFilterBar {
   display: flex;
@@ -2499,6 +2522,96 @@
   padding-left: 0.35rem !important;
 }
 
+/* Jobs de sauvegarde : nom prioritaire sans écraser les autres colonnes */
+.embeddedColJobName {
+  width: 16%;
+  min-width: 10.5rem;
+}
+
+.equipmentTableBackupJobs {
+  /* Largeur mini pour respecter les .embeddedColJob* (scroll horizontal si panneau étroit) */
+  min-width: 62rem !important;
+}
+
+.embeddedColJobInstance {
+  width: 5.5rem;
+  min-width: 5rem;
+  max-width: 6.5rem;
+}
+
+.embeddedColJobType {
+  width: 4.25rem;
+  min-width: 3.75rem;
+  max-width: 5.25rem;
+}
+
+.embeddedColJobHost {
+  width: 7.5rem;
+  min-width: 6.5rem;
+  max-width: 9rem;
+}
+
+.embeddedColJobSchedule {
+  width: 6rem;
+  min-width: 5.25rem;
+  max-width: 7.25rem;
+}
+
+.embeddedColJobTime {
+  width: 4.5rem;
+  min-width: 4rem;
+  max-width: 5rem;
+}
+
+.embeddedColJobRetention {
+  width: 5.5rem;
+  min-width: 4.75rem;
+  max-width: 6.5rem;
+}
+
+.embeddedColJobMapped {
+  width: 3.5rem;
+  min-width: 3.25rem;
+  max-width: 3.75rem;
+  text-align: center !important;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
+.equipmentTableEmbedded th.embeddedColJobMapped .thContent,
+.hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColJobMapped .thContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}
+
+.equipmentTableEmbedded td.embeddedColJobMapped,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColJobMapped {
+  text-align: center !important;
+}
+
+.equipmentTableEmbedded td.embeddedColJobMapped > *,
+.hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColJobMapped > * {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.embeddedColJobLast {
+  width: 8rem;
+  min-width: 7.25rem;
+  max-width: 9.5rem;
+}
+
+.embeddedCellEllipsis {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .equipmentTableEmbedded td.embeddedColName .nameCell,
 .hardwarePageEmbedded .equipmentTableEmbedded td.embeddedColName .nameCell {
   gap: 0.35rem;
@@ -3665,7 +3778,8 @@
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:nth-child(even):hover td,
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:hover td,
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:nth-child(even):hover td {
-  background: var(--msp-accent-soft, rgba(74, 143, 212, 0.15));
+  /* Opaque : un accent-soft transparent laissait voir d’éventuels fonds clairs de <tr> */
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 22%, var(--msp-surface, #1a2540));
 }
 
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded th.embeddedColActions {
@@ -3686,7 +3800,7 @@
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRow:nth-child(even):hover td.embeddedColActions,
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:hover td.embeddedColActions,
 :global(html.dark) .hardwarePageEmbedded .equipmentTableEmbedded tbody tr.equipmentRowEmbedded:nth-child(even):hover td.embeddedColActions {
-  background: var(--msp-accent-soft, rgba(74, 143, 212, 0.15));
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 22%, var(--msp-surface, #1a2540));
 }
 
 :global(html.dark) .hardwarePageEmbedded .embeddedTableTitle {

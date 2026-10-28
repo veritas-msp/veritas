@@ -4,6 +4,7 @@ import API_BASE_URL from '../../../config';
 import { sanitizeRemediationHtml } from '../../../utils/sanitizeHtml';
 import styles from '../TenantDetailPage.module.css';
 import { getMfaUserForUser, getMfaMethods, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
+import { MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
 function isLikelyServiceAccountFromUser(user) {
   const name = (user.name || user.displayName || '').toString();
   const upn = (user.userPrincipalName || user.email || '').toString();
@@ -269,9 +270,7 @@ export default function SecuriteTab({
   const rate = (withMfa, total) => total > 0 ? `${Math.round(withMfa / total * 100)}%` : "-";
   const recs = paginatedSecureRecommendations;
 
-  return <div className={embedded ? styles.tabFill : undefined}>
-      <h2 className={styles.sectionTitle}>Security</h2>
-      <div className={styles.metricsRow4}>
+  const metricsRow = <div className={embedded ? styles.metricsRowFlat : styles.metricsRow4}>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Secure Score</div>
           <div className={styles.metricValue}>
@@ -282,24 +281,21 @@ export default function SecuriteTab({
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Global MFA</div>
           <div className={styles.metricValue}>{rate(kpiStats.usersWithMFA, globalTotal)}</div>
-          <div className={styles.mutedHint}>{kpiStats.usersWithMFA} with Â· {kpiStats.usersWithoutMFA} without</div>
+          <div className={styles.mutedHint}>{kpiStats.usersWithMFA} with · {kpiStats.usersWithoutMFA} without</div>
         </div>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Admin MFA</div>
           <div className={styles.metricValue}>{rate(kpiStats.adminsWithMFA, adminTotal)}</div>
-          <div className={styles.mutedHint}>{kpiStats.adminsWithMFA} with Â· {kpiStats.adminsWithoutMFA} without</div>
+          <div className={styles.mutedHint}>{kpiStats.adminsWithMFA} with · {kpiStats.adminsWithoutMFA} without</div>
         </div>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Non-admin MFA</div>
           <div className={styles.metricValue}>{rate(kpiStats.nonAdminWithMFA, nonAdminTotal)}</div>
-          <div className={styles.mutedHint}>{kpiStats.nonAdminWithMFA} with Â· {kpiStats.nonAdminWithoutMFA} without</div>
+          <div className={styles.mutedHint}>{kpiStats.nonAdminWithMFA} with · {kpiStats.nonAdminWithoutMFA} without</div>
         </div>
-      </div>
+      </div>;
 
-      <h3 className={styles.kpiSectionBlockTitle}>Recommendations</h3>
-      {!clientId ? <p className={styles.mutedHint}>Client not identified Â· unable to load Graph recommendations.</p> : null}
-      {clientId && recsError && !recsLoading ? <p className={styles.mutedHint} style={{ color: '#b45309' }}>{recsError}</p> : null}
-      <div className={`${styles.licensesTableContainer} ${embedded ? styles.tableFill : ""}`}>
+  const recommendationsTable = <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`}>
         <table className={styles.licensesTable}>
           <thead>
             <tr>
@@ -332,12 +328,11 @@ export default function SecuriteTab({
           </thead>
           <tbody>
             {recsLoading ? <tr>
-                <td colSpan={5}>Loading Microsoft recommendationsâ€¦</td>
+                <td colSpan={5}>Loading Microsoft recommendations…</td>
               </tr> : recs.length === 0 ? <tr>
                 <td colSpan={5}>{recsError || "No recommendations returned for this tenant."}</td>
               </tr> : recs.map((rec, idx) => {
             const max = Number(rec.maxScore) || 0;
-            const cur = Number(rec.currentScore) ?? 0;
             const title = rec.titleFr || rec.title || rec.displayName || "-";
             const remediation = rec.remediationFr || rec.remediation || '';
             const rowKey = rec.id ?? `rec-${(recPage - 1) * recPageSize + idx}`;
@@ -365,9 +360,9 @@ export default function SecuriteTab({
           })}
           </tbody>
         </table>
-      </div>
+      </div>;
 
-      {clientId && !recsLoading && sortedSecureRecommendations.length > recPageSize ? <div className={styles.pagination}>
+  const pagination = clientId && !recsLoading && sortedSecureRecommendations.length > recPageSize ? <div className={styles.pagination}>
           <button type="button" className={styles.paginationButton} onClick={() => setRecPage(p => Math.max(1, p - 1))} disabled={recPage <= 1} aria-label="Previous page">
             <FaChevronLeft />
           </button>
@@ -377,6 +372,15 @@ export default function SecuriteTab({
           <button type="button" className={styles.paginationButton} onClick={() => setRecPage(p => Math.min(recTotalPages, p + 1))} disabled={recPage >= recTotalPages} aria-label="Next page">
             <FaChevronRight />
           </button>
-        </div> : null}
+        </div> : null;
+
+  return <div className={embedded ? styles.tabFill : undefined}>
+      {!embedded ? <h2 className={styles.sectionTitle}>Security</h2> : null}
+      {metricsRow}
+      {!embedded ? <h3 className={styles.kpiSectionBlockTitle}>Recommendations</h3> : null}
+      {!clientId ? <p className={styles.mutedHint}>Client not identified · unable to load Graph recommendations.</p> : null}
+      {clientId && recsError && !recsLoading ? <p className={styles.mutedHint} style={{ color: '#b45309' }}>{recsError}</p> : null}
+      {embedded ? <MonitoringStepTableWrap scrollable deps={[recs.length, recsLoading, recSortColumn, recSortOrder]}>{recommendationsTable}</MonitoringStepTableWrap> : recommendationsTable}
+      {!embedded ? pagination : null}
     </div>;
 }

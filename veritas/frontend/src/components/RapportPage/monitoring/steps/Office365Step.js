@@ -7,7 +7,8 @@ import { getClientMfaDetails } from "../../../../api/clientOffice365";
 import { buildMicrosoftTenantDetailNavigationPayload } from "../../../EnterprisesPage/microsoftTenantSolutionUtils";
 import TenantDetailPage from "../../../ServicePage/TenantDetailPage";
 import styles from "../RapportMonitoringBuilder.module.css";
-import { MonitoringStepShell, MonitoringStepHeader } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepHeader, MonitoringPagedBlock, MonitoringStepTableWrap } from "../MonitoringStepLayout";
+import { formatTableDate } from "../../../../utils/tableDateFormat";
 const licenseNameMapping = {
   ENTERPRISEPACK: "Microsoft 365 E3",
   ENTERPRISEPREMIUM: "Microsoft 365 E5",
@@ -1059,7 +1060,8 @@ function Office365LegacyStep({
                 <h4 className={styles.antivirusDetailBlockTitle}>
                   Licenses
                 </h4>
-                <div className={styles.antivirusModalEndpointsScroll}>
+                <MonitoringPagedBlock items={sortedLicenses} resetDeps={[licencesSort.column, licencesSort.direction, sortedLicenses.length]}>
+                  {pageItems => <MonitoringStepTableWrap scrollable deps={[pageItems.length]}>
                   <table className={styles.antivirusModalTable}>
                     <thead>
                       <tr>
@@ -1146,7 +1148,7 @@ function Office365LegacyStep({
                     <tbody>
                       {licences.length === 0 ? <tr>
                           <td colSpan={6}>No license found.</td>
-                        </tr> : sortedLicenses.map((lic, idx) => {
+                        </tr> : pageItems.map((lic, idx) => {
                   const total = lic.total || 0;
                   const used = lic.utilisees || 0;
                   const available = Math.max(0, total - used);
@@ -1200,12 +1202,14 @@ function Office365LegacyStep({
                 })}
                     </tbody>
                   </table>
-                </div>
+                </MonitoringStepTableWrap>}
+                </MonitoringPagedBlock>
               </div>}
 
             {activeTab === "utilisateurs" && <div className={styles.o365TabPane}>
-                <h4 className={styles.antivirusDetailBlockTitle}>Users</h4>
-                <div className={styles.o365TableFill}>
+                <h4 className={styles.antivirusDetailBlockTitle}>Utilisateurs</h4>
+                <MonitoringPagedBlock items={sortedUsers} resetDeps={[usersSort.column, usersSort.direction, sortedUsers.length]}>
+                  {pageItems => <MonitoringStepTableWrap deps={[pageItems.length]}>
                   <table className={styles.antivirusModalTable}>
                     <thead>
                       <tr>
@@ -1255,7 +1259,7 @@ function Office365LegacyStep({
                       gap: 4,
                       alignItems: "center"
                     }}>
-                            Created date
+                            Date de création
                             {getSortIcon(usersSort.column === "created", usersSort.direction)}
                           </span>
                         </th>
@@ -1271,7 +1275,7 @@ function Office365LegacyStep({
                       gap: 4,
                       alignItems: "center"
                     }}>
-                            Status
+                            Statut
                             {getSortIcon(usersSort.column === "status", usersSort.direction)}
                           </span>
                         </th>
@@ -1287,7 +1291,7 @@ function Office365LegacyStep({
                       gap: 4,
                       alignItems: "center"
                     }}>
-                            License
+                            Licence
                             {getSortIcon(usersSort.column === "license", usersSort.direction)}
                           </span>
                         </th>
@@ -1303,7 +1307,7 @@ function Office365LegacyStep({
                       gap: 4,
                       alignItems: "center"
                     }}>
-                            Admin role
+                            Rôle admin
                             {getSortIcon(usersSort.column === "adminRole", usersSort.direction)}
                           </span>
                         </th>
@@ -1351,7 +1355,7 @@ function Office365LegacyStep({
                       gap: 4,
                       alignItems: "center"
                     }}>
-                            Methods
+                            Méthodes
                             {getSortIcon(usersSort.column === "methods", usersSort.direction)}
                           </span>
                         </th>
@@ -1360,8 +1364,8 @@ function Office365LegacyStep({
                     </thead>
                     <tbody>
                       {sortedUsers.length === 0 ? <tr>
-                          <td colSpan={10}>No user found.</td>
-                        </tr> : sortedUsers.map((u, idx) => {
+                          <td colSpan={10}>Aucun utilisateur trouvé.</td>
+                        </tr> : pageItems.map((u, idx) => {
                   const createdDate = u.createdDate ? new Date(u.createdDate) : null;
                   const lastLogin = u.lastLoginDate ? new Date(u.lastLoginDate) : null;
                   const period90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
@@ -1409,7 +1413,7 @@ function Office365LegacyStep({
                               <td style={{
                       whiteSpace: "nowrap"
                     }}>
-                                {createdDate ? createdDate.toLocaleDateString("en-US") : "-"}
+                                {createdDate ? formatTableDate(createdDate) || "-" : "-"}
                               </td>
                               <td style={{
                       whiteSpace: "nowrap"
@@ -1420,7 +1424,7 @@ function Office365LegacyStep({
                       textOverflow: "ellipsis",
                       overflow: "hidden"
                     }}>
-                                {licenseNames || "None"}
+                                {licenseNames || "Aucune"}
                               </td>
                               <td>
                                 {(() => {
@@ -1513,7 +1517,8 @@ function Office365LegacyStep({
                 })}
                     </tbody>
                   </table>
-                </div>
+                </MonitoringStepTableWrap>}
+                </MonitoringPagedBlock>
               </div>}
 
             {activeTab === "exchange" && <div>
@@ -1780,7 +1785,7 @@ function Office365LegacyStep({
                           <h5 className={styles.antivirusModalSubtitle}>
                             Top 5 users (email activity)
                           </h5>
-                          <div className={styles.antivirusModalEndpointsScroll}>
+                          <MonitoringStepTableWrap scrollable>
                             <table className={styles.antivirusModalTable}>
                               <thead>
                                 <tr>
@@ -1823,7 +1828,7 @@ function Office365LegacyStep({
                                   </tr>)}
                               </tbody>
                             </table>
-                          </div>
+                          </MonitoringStepTableWrap>
                         </div>}
                   </>}
               </div>}
@@ -2013,36 +2018,34 @@ function Office365LegacyStep({
                         </>;
             })()}
 
-                    {}
-                    <div className={styles.o365TableFill}>
+                    {(() => {
+                    const rawTeams = teamsData.teams;
+                    const teamsList = Array.isArray(rawTeams?.teamsList) ? rawTeams.teamsList : Array.isArray(rawTeams) ? rawTeams : [];
+                    return <MonitoringPagedBlock items={teamsList} resetDeps={[teamsList.length]}>
+                      {pageItems => <MonitoringStepTableWrap deps={[pageItems.length]}>
                       <table className={styles.antivirusModalTable}>
                         <thead>
                           <tr>
-                            <th className={styles.antivirusStickyTh}>Name</th>
-                            <th className={styles.antivirusStickyTh}>Visibility</th>
+                            <th className={styles.antivirusStickyTh}>Nom</th>
+                            <th className={styles.antivirusStickyTh}>Visibilité</th>
                             <th className={styles.antivirusStickyTh}>Membres</th>
                             <th className={styles.antivirusStickyTh}>Canaux</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {(() => {
-                    const rawTeams = teamsData.teams;
-                    const teamsList = Array.isArray(rawTeams?.teamsList) ? rawTeams.teamsList : Array.isArray(rawTeams) ? rawTeams : [];
-                    if (!teamsList.length) {
-                      return <tr>
-                                  <td colSpan={4}>No Teams teams available.</td>
-                                </tr>;
-                    }
-                    return teamsList.map((t, idx) => <tr key={t.id || t.displayName || idx}>
+                          {!teamsList.length ? <tr>
+                                  <td colSpan={4}>Aucune équipe Teams disponible.</td>
+                                </tr> : pageItems.map((t, idx) => <tr key={t.id || t.displayName || idx}>
                                 <td>{t.displayName || t.name || "-"}</td>
                                 <td>{t.visibility || t.accessType || "-"}</td>
                                 <td>{t.memberCount ?? t.membersCount ?? (Array.isArray(t.members) ? t.members.length : "-")}</td>
                                 <td>{t.channelCount ?? t.channelsCount ?? (Array.isArray(t.channels) ? t.channels.length : "-")}</td>
-                              </tr>);
-                  })()}
+                              </tr>)}
                         </tbody>
                       </table>
-                    </div>
+                    </MonitoringStepTableWrap>}
+                    </MonitoringPagedBlock>;
+                  })()}
                   </>}
               </div>}
 
@@ -2175,7 +2178,7 @@ function Office365LegacyStep({
                           <h5 className={styles.antivirusModalSubtitle}>
                             Top users
                           </h5>
-                          <div className={styles.antivirusModalEndpointsScroll}>
+                          <MonitoringStepTableWrap scrollable>
                             <table className={styles.antivirusModalTable}>
                               <thead>
                                 <tr>
@@ -2210,7 +2213,7 @@ function Office365LegacyStep({
                                     </tr>)}
                               </tbody>
                             </table>
-                          </div>
+                          </MonitoringStepTableWrap>
                         </div>}
 
                     {}
@@ -2220,7 +2223,7 @@ function Office365LegacyStep({
                           <h5 className={styles.antivirusModalSubtitle}>
                             Users near quota (&gt;90%)
                           </h5>
-                          <div className={styles.antivirusModalEndpointsScroll}>
+                          <MonitoringStepTableWrap scrollable>
                             <table className={styles.antivirusModalTable}>
                               <thead>
                                 <tr>
@@ -2263,7 +2266,7 @@ function Office365LegacyStep({
                                     </tr>)}
                               </tbody>
                             </table>
-                          </div>
+                          </MonitoringStepTableWrap>
                         </div>}
                   </>}
               </div>}
@@ -2314,7 +2317,8 @@ function Office365LegacyStep({
                   </div>}
 
                 {sharepointData && sharepointData.success !== false && <>
-                    {Array.isArray(sharepointData.sites) && sharepointData.sites.length > 0 && <div className={styles.o365TableFill}>
+                    {Array.isArray(sharepointData.sites) && sharepointData.sites.length > 0 && <MonitoringPagedBlock items={sharepointData.sites} resetDeps={[sharepointData.sites.length]}>
+                      {pageItems => <MonitoringStepTableWrap deps={[pageItems.length]}>
                           <table className={styles.antivirusModalTable}>
                             <thead>
                               <tr>
@@ -2336,7 +2340,7 @@ function Office365LegacyStep({
                               </tr>
                             </thead>
                             <tbody>
-                              {sharepointData.sites.map((site, idx) => <tr key={site.id || idx}>
+                              {pageItems.map((site, idx) => <tr key={site.id || idx}>
                                   <td>
                                     <span style={{
                         fontWeight: 600
@@ -2369,7 +2373,8 @@ function Office365LegacyStep({
                                 </tr>)}
                             </tbody>
                           </table>
-                        </div>}
+                        </MonitoringStepTableWrap>}
+                    </MonitoringPagedBlock>}
 
                     {(!sharepointData.sites || !Array.isArray(sharepointData.sites) || sharepointData.sites.length === 0) && <div className={styles.antivirusModalNoData}>
                         No SharePoint site available.
@@ -2439,30 +2444,30 @@ function Office365LegacyStep({
                     sub: `${securityKpiStats.usersWithMFA} with · ${securityKpiStats.usersWithoutMFA} without`
                   }, {
                     icon: "mdi:account-supervisor",
-                    label: "Admin MFA",
+                    label: "MFA admins",
                     value: rate(securityKpiStats.adminsWithMFA, adminTotal),
-                    sub: `${securityKpiStats.adminsWithMFA} with · ${securityKpiStats.adminsWithoutMFA} without`
+                    sub: `${securityKpiStats.adminsWithMFA} avec · ${securityKpiStats.adminsWithoutMFA} sans`
                   }, {
                     icon: "mdi:account-group-outline",
-                    label: "Non-admin MFA",
+                    label: "MFA non-admins",
                     value: rate(securityKpiStats.nonAdminWithMFA, nonAdminTotal),
-                    sub: `${securityKpiStats.nonAdminWithMFA} with · ${securityKpiStats.nonAdminWithoutMFA} without`
+                    sub: `${securityKpiStats.nonAdminWithMFA} avec · ${securityKpiStats.nonAdminWithoutMFA} sans`
                   }], styles)}
-                          <h5 className={styles.o365KpiSectionTitle}>Recommendations</h5>
-                          <div className={styles.o365TableFill}>
+                          <h5 className={styles.o365KpiSectionTitle}>Recommandations</h5>
+                          <MonitoringStepTableWrap>
                             <table className={styles.antivirusModalTable}>
                               <thead>
                                 <tr>
-                                  <th className={styles.antivirusStickyTh}>Recommendation</th>
-                                  <th className={styles.antivirusStickyTh}>Category</th>
-                                  <th className={styles.antivirusStickyTh}>Priority</th>
+                                  <th className={styles.antivirusStickyTh}>Recommandation</th>
+                                  <th className={styles.antivirusStickyTh}>Catégorie</th>
+                                  <th className={styles.antivirusStickyTh}>Priorité</th>
                                   <th className={styles.antivirusStickyTh}>Points</th>
-                                  <th className={styles.antivirusStickyTh}>Status</th>
+                                  <th className={styles.antivirusStickyTh}>Statut</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {recs.length === 0 ? <tr>
-                                    <td colSpan={5}>No recommendations returned for this tenant.</td>
+                                    <td colSpan={5}>Aucune recommandation pour ce tenant.</td>
                                   </tr> : recs.map((rec, idx) => <tr key={rec.id || idx}>
                                     <td>{rec.titleFr || rec.title || rec.displayName || "-"}</td>
                                     <td>{rec.categoryFr || rec.category || "-"}</td>
@@ -2472,7 +2477,7 @@ function Office365LegacyStep({
                                   </tr>)}
                               </tbody>
                             </table>
-                          </div>
+                          </MonitoringStepTableWrap>
                         </>;
             })()}
                   </>}

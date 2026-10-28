@@ -8,6 +8,7 @@ export default function SwitchStep({
   onOpenComments,
   onTicketCreatedForEquipment,
   onOpenCheckMKDetail,
+  onOpenEquipmentTickets,
   onSyncCheckMK,
   onEditEquipment,
   commentCounts,
@@ -62,5 +63,5 @@ export default function SwitchStep({
     label: "MAC",
     render: sw => sw.adresseMac || sw.mac || "-"
   }, buildHaColumn(switches, "Switch")];
-  return <InfrastructureEquipmentTable title="Switches" moduleKey="Switch" equipments={switches} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
+  return <InfrastructureEquipmentTable title="Switches" moduleKey="Switch" equipments={switches} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onOpenEquipmentTickets={onOpenEquipmentTickets} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
 }

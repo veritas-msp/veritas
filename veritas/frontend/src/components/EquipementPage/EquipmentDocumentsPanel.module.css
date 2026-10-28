@@ -113,40 +113,36 @@
   background: transparent;
 }
 
-.tableScrollShell {
-  position: relative;
+.docsTableHost {
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin: 0;
-  border-radius: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  gap: 0;
 }
 
-.tableWrap {
+.docsUiKitTable {
   flex: 1 1 auto;
   min-height: 0;
-  min-width: 0;
-  width: 100%;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  height: 100%;
+}
+
+.docsUiKitTable :global([class*="tableShell"]) {
+  height: 100%;
+  max-height: none;
+  --fade-surface: var(--msp-surface, #fff);
+}
+
+:global(html.dark) .docsUiKitTable :global([class*="tableShell"]),
+:global(body.dark) .docsUiKitTable :global([class*="tableShell"]) {
+  --fade-surface: var(--msp-surface, #1a2540);
 }
 
 .docsTable {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8125rem;
-}
-
-.docsTable thead {
-  position: sticky;
-  top: 0;
-  z-index: 6;
+  table-layout: fixed;
 }
 
 .docsTable th,
@@ -157,37 +153,118 @@
   box-sizing: border-box;
   text-align: left;
   vertical-align: middle;
+  font-size: 0.8125rem;
   line-height: 1.35;
 }
 
-.docsTable th {
+.docsTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.docsTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
   background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 92%, #fff);
   color: var(--msp-muted, #5c6b82);
   font-size: 0.72rem;
   font-weight: 650;
+  font-family: inherit;
   letter-spacing: 0.02em;
+  text-transform: none;
   border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
   white-space: nowrap;
 }
 
-.docsTable td {
-  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
-  background: var(--msp-surface, #fff);
-  color: var(--msp-text, #0f1c2e);
-  font-size: 0.8125rem;
-  font-weight: 400;
+:global(html.dark) .docsTable thead th,
+:global(body.dark) .docsTable thead th {
+  background: var(--msp-surface-2, #152035);
+  color: var(--msp-muted-light, #6a88a8);
+  border-bottom-color: var(--msp-border, #2a3a55);
 }
 
-.docsTable tbody tr:nth-child(even) td {
-  background: var(--msp-surface-2, #f7f9fc);
+.thContent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
 }
 
-.docsTable tbody tr:hover td {
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+.colCheckbox {
+  width: 2.5rem;
+  min-width: 2.5rem;
+  max-width: 2.5rem;
+  text-align: center;
+  padding-left: 0.45rem !important;
+  padding-right: 0.35rem !important;
 }
 
-.rowClickable {
+.rowCheckbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--msp-accent, #2b5fab);
   cursor: pointer;
+  vertical-align: middle;
+}
+
+.colName {
+  width: auto;
+  min-width: 0;
+}
+
+.colCategory {
+  width: 8.5rem;
+}
+
+.colSize {
+  width: 5.5rem;
+  white-space: nowrap;
+}
+
+.colDate {
+  width: 7.25rem;
+  white-space: nowrap;
+}
+
+.colActions {
+  width: 7.25rem;
+  text-align: right;
+}
+
+.sizeCell {
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.dateCell {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.selectedRow td,
+.docsTable tbody tr.selectedRow td,
+.docsTable tbody tr.selectedRow:nth-child(even) td {
+  background: rgba(43, 95, 171, 0.1);
+}
+
+.docsTable tbody tr.selectedRow:hover td,
+.docsTable tbody tr.selectedRow:nth-child(even):hover td {
+  background: rgba(43, 95, 171, 0.12);
+}
+
+.bulkBarWrap {
+  flex: 0 0 auto;
+  padding: 0;
+  margin-top: 0.35rem;
 }
 
 .rowNameBtn {
@@ -212,33 +289,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .rowFileIcon {
   color: var(--msp-accent, #2b5fab);
   flex-shrink: 0;
-  width: 1.25rem;
-  height: 1.25rem;
-  font-size: 1.25rem;
-}
-
-.colSize {
-  width: 5.5rem;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.colActions {
-  width: 7.5rem;
-  text-align: right;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 1.15rem;
 }
 
 .docsPagination {
   flex: 0 0 auto;
-  padding: 0.55rem 0 0.1rem;
+  padding: 0.55rem 0.2rem 0.1rem;
   margin-top: 0.25rem;
+  border-top: none;
+  background: transparent;
+  justify-content: space-between;
 }
 
 .uploadFields {

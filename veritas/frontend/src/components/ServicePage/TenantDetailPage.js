@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
@@ -25,6 +25,7 @@ import { getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { normalizeMfaList, pickMfaDetailsFromSnapshot } from "./mfaDetailsUtils";
 import { filterExchangeDataByPeriod, filterTeamsDataByPeriod } from "./TenantDetailTabs/office365Period";
+import { useFinderNavIndicator } from "../UiKit";
 
 const TENANT_GROUPS = [
   { id: "identity" },
@@ -92,9 +93,36 @@ export default function TenantDetailPage({
   const [selectedPeriod] = useState("D30");
   const [deletingTenant, setDeletingTenant] = useState(false);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
+  const [sectionContentEnter, setSectionContentEnter] = useState(true);
   const currentTenantKeyRef = useRef(tenantTargetKey(tenantData));
   const abortControllerRef = useRef(null);
   const heroActionsMenuRef = useRef(null);
+  const { trackRef: embeddedTabsTrackRef, indicator: embeddedTabsIndicator } = useFinderNavIndicator([
+    viewMode,
+    embedded
+  ]);
+
+  useLayoutEffect(() => {
+    if (!embedded) return;
+    setSectionContentEnter(false);
+  }, [viewMode, embedded]);
+
+  useEffect(() => {
+    if (!embedded) return undefined;
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setSectionContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [viewMode, embedded]);
 
   useEffect(() => {
     const incomingKey = tenantTargetKey(tenantData);
@@ -670,15 +698,52 @@ export default function TenantDetailPage({
         </div> : null}
     </div>;
 
-  return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={embedded ? undefined : handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
-      <div className={`${styles.tenantVars} ${embedded ? styles.tenantVarsFill : ""}`} key={viewMode}>
-        {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
-        {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" embedded={embedded} /> : null}
-        {viewMode === "exchange" ? <ExchangeTab exchangeData={periodExchangeData} theme="light" /> : null}
-        {viewMode === "teams" ? <TeamsTab teamsData={periodTeamsData} theme="light" embedded={embedded} /> : null}
-        {viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" embedded={embedded} /> : null}
-        {viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" embedded={embedded} /> : null}
-        {viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" embedded={embedded} /> : null}
+  const renderSectionContent = () => <>
+      {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} embedded={embedded} /> : null}
+      {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" embedded={embedded} /> : null}
+      {viewMode === "exchange" ? <ExchangeTab exchangeData={periodExchangeData} theme="light" embedded={embedded} /> : null}
+      {viewMode === "teams" ? <TeamsTab teamsData={periodTeamsData} theme="light" embedded={embedded} /> : null}
+      {viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" embedded={embedded} /> : null}
+      {viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" embedded={embedded} /> : null}
+      {viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" embedded={embedded} /> : null}
+    </>;
+
+  if (embedded) {
+    const tabSections = TENANT_SECTIONS.map((section) => ({
+      id: section.id,
+      icon: section.icon,
+      label: copy.tabs[section.id]
+    }));
+    return <div className={`${styles.tenantVars} ${styles.tenantVarsFill} ${styles.embeddedShell}`}>
+        <nav ref={embeddedTabsTrackRef} className={styles.embeddedTabs} aria-label={copy.tabs.aria}>
+          {embeddedTabsIndicator.ready ? <div className={styles.embeddedTabIndicator} style={{
+          transform: `translate3d(${embeddedTabsIndicator.left}px, ${embeddedTabsIndicator.top}px, 0)`,
+          width: embeddedTabsIndicator.width,
+          height: embeddedTabsIndicator.height
+        }} aria-hidden /> : null}
+          {tabSections.map((section) => {
+          const active = viewMode === section.id;
+          return <button key={section.id} type="button" className={`${styles.embeddedTab} ${active ? styles.embeddedTabActive : ""}`} aria-current={active ? "page" : undefined} onClick={() => setViewMode(section.id)}>
+                <Icon icon={section.icon} className={styles.embeddedTabIcon} aria-hidden />
+                <span className={styles.embeddedTabLabel}>{section.label}</span>
+              </button>;
+        })}
+        </nav>
+        <div className={styles.embeddedBody}>
+          {loading && !syncing ? <div className={styles.embeddedLoading}>
+              <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
+              <span>{syncStatus || copy.loading}</span>
+            </div> : <div key={viewMode} className={`${styles.embeddedBodyInner} ${sectionContentEnter ? styles.embeddedFadeIn : styles.embeddedFadePending}`}>
+              {renderSectionContent()}
+            </div>}
+        </div>
+        {footerHint ? <p className={styles.embeddedFooter}>{footerHint}</p> : null}
+      </div>;
+  }
+
+  return <SolutionDetailPageLayout accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
+      <div className={styles.tenantVars} key={viewMode}>
+        {renderSectionContent()}
       </div>
     </SolutionDetailPageLayout>;
 }

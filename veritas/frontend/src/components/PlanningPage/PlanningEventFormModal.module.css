@@ -433,6 +433,14 @@
   background: var(--msp-surface-2, #f8fafc);
 }
 
+.objectRowSelected {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+}
+
+.objectRowSelected:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
+}
+
 .objectRowIcon {
   display: inline-flex;
   align-items: center;
@@ -886,6 +894,18 @@
 :global(.dark) .typeBtnActive,
 :global(.dark) .objectTypeButtonActive {
   background: rgba(43, 95, 171, 0.22);
+}
+
+:global(.dark) .objectRowSelected,
+:global(html.dark) .objectRowSelected,
+:global(body.dark) .objectRowSelected {
+  background: rgba(43, 95, 171, 0.2);
+}
+
+:global(.dark) .objectRowSelected:hover,
+:global(html.dark) .objectRowSelected:hover,
+:global(body.dark) .objectRowSelected:hover {
+  background: rgba(43, 95, 171, 0.28);
 }
 
 :global(.dark) .assigneeTag {

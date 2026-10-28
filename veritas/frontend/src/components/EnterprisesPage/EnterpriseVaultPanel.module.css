@@ -1142,9 +1142,11 @@
   gap: 0.4rem;
   flex: 0 1 auto;
   min-width: 200px;
-  max-width: 280px;
-  width: min(280px, 36vw);
-  min-height: 34px;
+  max-width: var(--enterprise-search-max, 280px);
+  width: min(var(--enterprise-search-max, 280px), 100%);
+  min-height: var(--msp-btn-h, 2.15rem);
+  height: var(--msp-btn-h, 2.15rem);
+  box-sizing: border-box;
   padding: 0 0.85rem;
   border: 1px solid var(--msp-border, #dde3ed);
   border-radius: 999px;

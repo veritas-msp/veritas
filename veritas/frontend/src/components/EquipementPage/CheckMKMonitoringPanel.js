@@ -7,6 +7,7 @@ import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./CheckMKMonitoringPanel.module.css";
+import equipmentStyles from "./EquipmentPage.module.css";
 import EquipmentEmptyState from "./EquipmentEmptyState";
 import {
   CHECKMK_DATE_FILTER_OPTIONS,
@@ -142,6 +143,8 @@ export default function CheckMKMonitoringPanel({
   checkmkAvailabilityPeriod,
   lastSyncedAt = null,
   layout = "default",
+  /** "services" | "events" | null — filtre la vue (modale supervision). */
+  section = null,
   onAvailabilityPeriodChange,
   onOpenService,
   onOpenEvent,
@@ -159,7 +162,11 @@ export default function CheckMKMonitoringPanel({
   const [loadingCentre, setLoadingCentre] = useState(false);
 
   const equipmentId = useMemo(() => getEquipmentDbId(equipment), [equipment]);
-  const panelClass = layout === "tab" ? `${styles.panel} ${styles.panelTab}` : styles.panel;
+  const isReport = layout === "report";
+  const panelClass =
+    layout === "tab" || isReport
+      ? `${styles.panel} ${styles.panelTab}${isReport ? ` ${styles.panelReport}` : ""}`
+      : styles.panel;
   const services = checkmkData?.services?.services || [];
 
   const allEvents = useMemo(() => {
@@ -353,17 +360,19 @@ export default function CheckMKMonitoringPanel({
   if (loadingCheckMK && !checkmkData) {
     return (
       <section className={`${panelClass} ${styles.panelCompact}`}>
-        <div className={styles.hostHeader}>
-          <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
-          <div className={styles.kpiGrid}>
-            {[1, 2, 3].map(i => (
-              <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />
-            ))}
+        {!isReport ? (
+          <div className={styles.hostHeader}>
+            <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
+            <div className={styles.kpiGrid}>
+              {[1, 2, 3].map(i => (
+                <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
         <div className={styles.splitLayout}>
           <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
-          <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
+          {!isReport ? <div className={`${styles.skeleton} ${styles.skeletonSection}`} /> : null}
         </div>
       </section>
     );
@@ -393,54 +402,143 @@ export default function CheckMKMonitoringPanel({
   const cmkEventTotal = allEvents.length + allNotifications.length;
   const eventTotal = centreAlerts.length + cmkEventTotal;
 
+  const showServices = !section || section === "services";
+  const showEvents = !section || section === "events";
+  const splitClass =
+    section === "services" || section === "events"
+      ? `${styles.splitLayout} ${styles.splitLayoutSingle}`
+      : styles.splitLayout;
+
+  const serviceFilterPills = (
+    <div className={styles.filterPills}>
+      <button
+        type="button"
+        className={`${styles.filterPill} ${serviceStateFilter === null ? styles.filterPillActive : ""}`}
+        onClick={() => setServiceStateFilter(null)}
+      >
+        Tous
+      </button>
+      {SERVICE_STATE_META.filter(m => m.state !== 3).map(({ state, label, color }) => (
+        <button
+          key={state}
+          type="button"
+          className={`${styles.filterPill} ${serviceStateFilter === state ? styles.filterPillActive : ""}`}
+          style={serviceStateFilter === state ? { borderColor: color, color } : undefined}
+          onClick={() => setServiceStateFilter(serviceStateFilter === state ? null : state)}
+        >
+          {label} ({serviceCounts[state] || 0})
+        </button>
+      ))}
+    </div>
+  );
+
+  const servicesTableBody = (
+    <tbody>
+      {filteredServices.length === 0 ? (
+        <tr>
+          <td colSpan={4} className={styles.emptyMsg}>
+            Aucun service
+          </td>
+        </tr>
+      ) : (
+        filteredServices.map((service, idx) => {
+          const state = service.state ?? 3;
+          const meta = SERVICE_STATE_META[state] || SERVICE_STATE_META[3];
+          const output = getServiceOutput(service);
+          return (
+            <tr key={service.id || idx} className={styles.dataRow} onClick={() => onOpenService(service)}>
+              <td>
+                <span className={styles.statusBadge} style={{ backgroundColor: meta.color }}>
+                  {meta.label}
+                </span>
+              </td>
+              <td className={styles.serviceName} title={getServiceLabel(service)}>
+                {getServiceLabel(service)}
+              </td>
+              <td className={styles.messageCell} title={output || undefined}>
+                {output || "—"}
+              </td>
+              <td className={styles.timeCell}>{formatServiceAge(service)}</td>
+            </tr>
+          );
+        })
+      )}
+    </tbody>
+  );
+
   return (
     <section className={`${panelClass} ${styles.panelCompact}`}>
+      {!isReport ? (
       <header className={styles.hostHeader}>
-        <div className={styles.hostIdentity}>
-          <Icon icon="simple-icons:checkmk" className={styles.hostIdentityIcon} aria-hidden />
-          <div className={styles.hostIdentityBody}>
-            <div className={styles.hostIdentityPrimary}>
-              <span className={styles.hostName}>{hostName}</span>
-              {hostState ? (
-                <span
-                  className={styles.hostStateBadge}
-                  style={{
-                    background: `${hostStateColor}22`,
-                    color: hostStateColor,
-                    border: `1px solid ${hostStateColor}55`
-                  }}
-                >
-                  <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} aria-hidden />
-                  {hostState}
-                </span>
-              ) : null}
+        {!section ? (
+          <div className={styles.hostIdentity}>
+            <Icon icon="simple-icons:checkmk" className={styles.hostIdentityIcon} aria-hidden />
+            <div className={styles.hostIdentityBody}>
+              <div className={styles.hostIdentityPrimary}>
+                <span className={styles.hostName}>{hostName}</span>
+                {hostState ? (
+                  <span
+                    className={styles.hostStateBadge}
+                    style={{
+                      background: `${hostStateColor}22`,
+                      color: hostStateColor,
+                      border: `1px solid ${hostStateColor}55`
+                    }}
+                  >
+                    <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} aria-hidden />
+                    {hostState}
+                  </span>
+                ) : null}
+              </div>
+              <div className={styles.hostIdentityMeta}>
+                {[
+                  showAlias ? { key: "alias", label: hostAlias } : null,
+                  checkmkHostDetails?.ipAddress
+                    ? { key: "ip", label: checkmkHostDetails.ipAddress, mono: true }
+                    : null,
+                  checkmkMapping.checkmk_site
+                    ? { key: "site", label: `Site ${checkmkMapping.checkmk_site}` }
+                    : null
+                ]
+                  .filter(Boolean)
+                  .map((part, index) => (
+                    <React.Fragment key={part.key}>
+                      {index > 0 ? <span className={styles.hostMetaSep} aria-hidden>·</span> : null}
+                      <span className={part.mono ? styles.ipText : undefined}>{part.label}</span>
+                    </React.Fragment>
+                  ))}
+              </div>
             </div>
-            <div className={styles.hostIdentityMeta}>
-              {[
-                showAlias ? { key: "alias", label: hostAlias } : null,
-                checkmkHostDetails?.ipAddress
-                  ? { key: "ip", label: checkmkHostDetails.ipAddress, mono: true }
-                  : null,
-                checkmkMapping.checkmk_site
-                  ? { key: "site", label: `Site ${checkmkMapping.checkmk_site}` }
-                  : null
-              ]
-                .filter(Boolean)
-                .map((part, index) => (
-                  <React.Fragment key={part.key}>
-                    {index > 0 ? <span className={styles.hostMetaSep} aria-hidden>·</span> : null}
-                    <span className={part.mono ? styles.ipText : undefined}>{part.label}</span>
-                  </React.Fragment>
-                ))}
-            </div>
+            {syncedLabel ? (
+              <span className={styles.hostSync} title={lastSyncedAt || undefined}>
+                <Icon icon="mdi:update" aria-hidden />
+                {syncedLabel}
+              </span>
+            ) : null}
           </div>
-          {syncedLabel ? (
-            <span className={styles.hostSync} title={lastSyncedAt || undefined}>
-              <Icon icon="mdi:update" aria-hidden />
-              {syncedLabel}
-            </span>
-          ) : null}
-        </div>
+        ) : (
+          <div className={styles.hostIdentityCompact}>
+            {hostState ? (
+              <span
+                className={styles.hostStateBadge}
+                style={{
+                  background: `${hostStateColor}22`,
+                  color: hostStateColor,
+                  border: `1px solid ${hostStateColor}55`
+                }}
+              >
+                <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} aria-hidden />
+                {hostState}
+              </span>
+            ) : null}
+            {syncedLabel ? (
+              <span className={styles.hostSync} title={lastSyncedAt || undefined}>
+                <Icon icon="mdi:update" aria-hidden />
+                {syncedLabel}
+              </span>
+            ) : null}
+          </div>
+        )}
 
         <div className={styles.kpiGrid} role="group" aria-label="Indicateurs CheckMK">
           <div className={styles.kpiCard}>
@@ -491,138 +589,224 @@ export default function CheckMKMonitoringPanel({
           </div>
         </div>
       </header>
+      ) : null}
 
-      <div className={styles.splitLayout}>
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <Icon icon="mdi:server-network" className={styles.sectionTitleIcon} />
-              Services monitorés
-            </h3>
-            <span className={styles.sectionCount}>
-              {filteredServices.length}/{services.length}
-            </span>
-          </div>
-          <div className={styles.toolbar}>
-            <input
-              type="text"
-              className={styles.searchInput}
-              placeholder="Rechercher…"
-              value={serviceSearch}
-              onChange={e => setServiceSearch(e.target.value)}
-            />
-            <div className={styles.filterPills}>
-              <button
-                type="button"
-                className={`${styles.filterPill} ${serviceStateFilter === null ? styles.filterPillActive : ""}`}
-                onClick={() => setServiceStateFilter(null)}
-              >
-                Tous
-              </button>
-              {SERVICE_STATE_META.filter(m => m.state !== 3).map(({ state, label, color }) => (
-                <button
-                  key={state}
-                  type="button"
-                  className={`${styles.filterPill} ${serviceStateFilter === state ? styles.filterPillActive : ""}`}
-                  style={serviceStateFilter === state ? { borderColor: color, color } : undefined}
-                  onClick={() => setServiceStateFilter(serviceStateFilter === state ? null : state)}
-                >
-                  {label} ({serviceCounts[state] || 0})
-                </button>
-              ))}
+      <div className={`${splitClass}${isReport ? ` ${styles.splitLayoutReport}` : ""}`}>
+        {showServices ? (
+        <div className={`${styles.section}${isReport ? ` ${styles.sectionReport}` : ""}`}>
+          {!isReport ? (
+            <div className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>
+                <Icon icon="mdi:server-network" className={styles.sectionTitleIcon} />
+                Services monitorés
+              </h3>
+              <span className={styles.sectionCount}>
+                {filteredServices.length}/{services.length}
+              </span>
             </div>
-          </div>
-          <div className={`${styles.tableWrap} ${styles.tableWrapFill}`}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th onClick={() => toggleServiceSort("state")}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-                      Statut
-                      <SortIcon active={serviceSort.col === "state"} direction={serviceSort.dir} />
-                    </span>
-                  </th>
-                  <th onClick={() => toggleServiceSort("service")}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-                      Service
-                      <SortIcon active={serviceSort.col === "service"} direction={serviceSort.dir} />
-                    </span>
-                  </th>
-                  <th>Sortie</th>
-                  <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel">
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
-                      Âge
-                      <SortIcon active={serviceSort.col === "age"} direction={serviceSort.dir} />
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredServices.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className={styles.emptyMsg}>
-                      Aucun service
-                    </td>
-                  </tr>
-                ) : (
-                  filteredServices.map((service, idx) => {
-                    const state = service.state ?? 3;
-                    const meta = SERVICE_STATE_META[state] || SERVICE_STATE_META[3];
-                    const output = getServiceOutput(service);
-                    return (
-                      <tr key={service.id || idx} className={styles.dataRow} onClick={() => onOpenService(service)}>
-                        <td>
-                          <span className={styles.statusBadge} style={{ backgroundColor: meta.color }}>
-                            {meta.label}
-                          </span>
-                        </td>
-                        <td className={styles.serviceName} title={getServiceLabel(service)}>
-                          {getServiceLabel(service)}
-                        </td>
-                        <td className={styles.messageCell} title={output || undefined}>
-                          {output || "—"}
-                        </td>
-                        <td className={styles.timeCell}>{formatServiceAge(service)}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+          ) : null}
+          {isReport ? (
+            <div className={`${equipmentStyles.hardwarePageEmbedded} ${styles.reportTableHost}`}>
+              <div className={`${equipmentStyles.embeddedFilterBar} ${equipmentStyles.embeddedFilterBarToolbar}`}>
+                <div className={equipmentStyles.embeddedSearchWrap}>
+                  <div className={equipmentStyles.embeddedSearchBox}>
+                    <Icon icon="mdi:magnify" className={equipmentStyles.embeddedSearchIcon} aria-hidden />
+                    <input
+                      type="search"
+                      className={equipmentStyles.embeddedSearchInput}
+                      value={serviceSearch}
+                      onChange={e => setServiceSearch(e.target.value)}
+                      placeholder="Rechercher"
+                      aria-label="Rechercher un service"
+                    />
+                    {serviceSearch ? (
+                      <button
+                        type="button"
+                        className={equipmentStyles.embeddedSearchClear}
+                        onClick={() => setServiceSearch("")}
+                        aria-label="Effacer la recherche"
+                      >
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className={equipmentStyles.embeddedSearchActions}>{serviceFilterPills}</div>
+                </div>
+              </div>
+              <div className={equipmentStyles.equipmentTableSectionEmbedded}>
+                <div className={`${equipmentStyles.tableScrollShell} ${styles.reportTableShell}`}>
+                  <div className={`${equipmentStyles.tableWrapper} ${equipmentStyles.tableWrapperEmbedded} ${styles.reportTableScroll}`}>
+                    <div className={equipmentStyles.tableCardSurface}>
+                      <table className={`${equipmentStyles.equipmentTableEmbedded} ${styles.reportTable}`}>
+                        <thead>
+                          <tr>
+                            <th onClick={() => toggleServiceSort("state")}>
+                              <span className={equipmentStyles.thContent}>
+                                Statut
+                                <SortIcon active={serviceSort.col === "state"} direction={serviceSort.dir} />
+                              </span>
+                            </th>
+                            <th onClick={() => toggleServiceSort("service")}>
+                              <span className={equipmentStyles.thContent}>
+                                Service
+                                <SortIcon active={serviceSort.col === "service"} direction={serviceSort.dir} />
+                              </span>
+                            </th>
+                            <th>
+                              <span className={equipmentStyles.thContent}>Sortie</span>
+                            </th>
+                            <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel">
+                              <span className={equipmentStyles.thContent}>
+                                Âge
+                                <SortIcon active={serviceSort.col === "age"} direction={serviceSort.dir} />
+                              </span>
+                            </th>
+                          </tr>
+                        </thead>
+                        {servicesTableBody}
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className={styles.toolbar}>
+                <input
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder="Rechercher…"
+                  value={serviceSearch}
+                  onChange={e => setServiceSearch(e.target.value)}
+                />
+                {serviceFilterPills}
+              </div>
+              <div className={`${styles.tableWrap} ${styles.tableWrapFill}`}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th onClick={() => toggleServiceSort("state")}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                          Statut
+                          <SortIcon active={serviceSort.col === "state"} direction={serviceSort.dir} />
+                        </span>
+                      </th>
+                      <th onClick={() => toggleServiceSort("service")}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                          Service
+                          <SortIcon active={serviceSort.col === "service"} direction={serviceSort.dir} />
+                        </span>
+                      </th>
+                      <th>Sortie</th>
+                      <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel">
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}>
+                          Âge
+                          <SortIcon active={serviceSort.col === "age"} direction={serviceSort.dir} />
+                        </span>
+                      </th>
+                    </tr>
+                  </thead>
+                  {servicesTableBody}
+                </table>
+              </div>
+            </>
+          )}
         </div>
+        ) : null}
 
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <Icon icon="mdi:bell-ring" className={styles.sectionTitleIcon} />
-              Events & notifications
-            </h3>
-            <div className={styles.rightTabs}>
-              <button
-                type="button"
-                className={`${styles.rightTab} ${eventsSource === "centre" ? styles.rightTabActive : ""}`}
-                onClick={() => {
-                  setEventsSource("centre");
-                  setHistoryPage(1);
-                }}
-              >
-                Centre ({centreAlerts.length})
-              </button>
-              <button
-                type="button"
-                className={`${styles.rightTab} ${eventsSource === "checkmk" ? styles.rightTabActive : ""}`}
-                onClick={() => {
-                  setEventsSource("checkmk");
-                  setHistoryPage(1);
-                }}
-              >
-                CheckMK ({allEvents.length + allNotifications.length})
-              </button>
+        {showEvents ? (
+        <div className={`${styles.section}${isReport ? ` ${styles.sectionReport}` : ""}`}>
+          {!isReport ? (
+            <div className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>
+                <Icon icon="mdi:bell-ring" className={styles.sectionTitleIcon} />
+                Événements
+              </h3>
+              <div className={styles.rightTabs}>
+                <button
+                  type="button"
+                  className={`${styles.rightTab} ${eventsSource === "centre" ? styles.rightTabActive : ""}`}
+                  onClick={() => {
+                    setEventsSource("centre");
+                    setHistoryPage(1);
+                  }}
+                >
+                  Centre ({centreAlerts.length})
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.rightTab} ${eventsSource === "checkmk" ? styles.rightTabActive : ""}`}
+                  onClick={() => {
+                    setEventsSource("checkmk");
+                    setHistoryPage(1);
+                  }}
+                >
+                  CheckMK ({allEvents.length + allNotifications.length})
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className={`${equipmentStyles.hardwarePageEmbedded} ${styles.reportEventsToolbar}`}>
+              <div className={`${equipmentStyles.embeddedFilterBar} ${equipmentStyles.embeddedFilterBarToolbar}`}>
+                <div className={equipmentStyles.embeddedSearchWrap}>
+                  <div className={equipmentStyles.embeddedSearchBox}>
+                    <Icon icon="mdi:magnify" className={equipmentStyles.embeddedSearchIcon} aria-hidden />
+                    <input
+                      type="search"
+                      className={equipmentStyles.embeddedSearchInput}
+                      value={historySearch}
+                      onChange={e => {
+                        setHistorySearch(e.target.value);
+                        setHistoryPage(1);
+                      }}
+                      placeholder="Rechercher"
+                      aria-label="Rechercher un événement"
+                    />
+                    {historySearch ? (
+                      <button
+                        type="button"
+                        className={equipmentStyles.embeddedSearchClear}
+                        onClick={() => {
+                          setHistorySearch("");
+                          setHistoryPage(1);
+                        }}
+                        aria-label="Effacer la recherche"
+                      >
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className={equipmentStyles.embeddedSearchActions}>
+                    <div className={styles.rightTabs}>
+                      <button
+                        type="button"
+                        className={`${styles.rightTab} ${eventsSource === "centre" ? styles.rightTabActive : ""}`}
+                        onClick={() => {
+                          setEventsSource("centre");
+                          setHistoryPage(1);
+                        }}
+                      >
+                        Centre ({centreAlerts.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.rightTab} ${eventsSource === "checkmk" ? styles.rightTabActive : ""}`}
+                        onClick={() => {
+                          setEventsSource("checkmk");
+                          setHistoryPage(1);
+                        }}
+                      >
+                        CheckMK ({allEvents.length + allNotifications.length})
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className={styles.periodBar}>
+          <div className={`${styles.periodBar}${isReport ? ` ${styles.periodBarReport}` : ""}`}>
             {CHECKMK_DATE_FILTER_OPTIONS.map(({ value, shortLabel, label }) => (
               <button
                 key={value}
@@ -638,6 +822,7 @@ export default function CheckMKMonitoringPanel({
               </button>
             ))}
           </div>
+          {!isReport ? (
           <div className={styles.toolbar}>
             <input
               type="text"
@@ -650,9 +835,36 @@ export default function CheckMKMonitoringPanel({
               }}
             />
           </div>
+          ) : null}
 
           {loadingCentre && eventsSource === "centre" && !paginatedHistory.length ? (
             <EquipmentEmptyState message="Chargement…" icon={null} compact />
+          ) : isReport ? (
+            <div className={`${equipmentStyles.hardwarePageEmbedded} ${styles.reportEventsHost}`}>
+              <div className={equipmentStyles.equipmentTableSectionEmbedded}>
+                <div className={`${equipmentStyles.tableScrollShell} ${styles.reportTableShell}`}>
+                  <div className={`${equipmentStyles.tableWrapper} ${equipmentStyles.tableWrapperEmbedded} ${styles.reportEventsScroll}`}>
+                    <div className={equipmentStyles.tableCardSurface}>
+                      <CompactAlertList
+                        rows={paginatedHistory}
+                        locale={locale}
+                        emptyLabel={
+                          eventsSource === "centre"
+                            ? "Aucun événement du centre de supervision sur cette période."
+                            : allEvents.length + allNotifications.length === 0
+                              ? "Aucun event / notification CheckMK synchronisé."
+                              : "Aucun événement CheckMK sur cette période."
+                        }
+                        onOpenRow={row => {
+                          if (row?._origin === "centre") return;
+                          onOpenEvent?.(row._raw || row);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <CompactAlertList
               rows={paginatedHistory}
@@ -695,6 +907,7 @@ export default function CheckMKMonitoringPanel({
             </div>
           ) : null}
         </div>
+        ) : null}
       </div>
     </section>
   );

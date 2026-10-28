@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react';
 import { toast } from 'react-toastify';
 import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
 export default function SharePointTab({
   sharepointData,
   theme,
@@ -93,51 +94,64 @@ export default function SharePointTab({
   };
   if (embedded) {
     return <div className={styles.tabFill}>
-        <h2 className={styles.sectionTitle}>SharePoint</h2>
-        <div className={`${styles.licensesTableContainer} ${styles.tableFill}`}>
-          <table className={styles.licensesTable}>
-            <thead>
-              <tr>
-                <th>Site name</th>
-                <th>URL</th>
-                <th>Created on</th>
-                <th>Last activity</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {allSites.length === 0 ? <tr>
-                  <td colSpan={5}>No SharePoint site available.</td>
-                </tr> : allSites.map((site, idx) => <tr key={site.id || idx}>
-                  <td style={{ fontWeight: 600 }}>{site.name || site.displayName || "N/A"}</td>
-                  <td>{site.webUrl || site.url || "N/A"}</td>
-                  <td>
-                    {site.createdDateTime ? new Date(site.createdDateTime).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
-              }) : "-"}
-                  </td>
-                  <td>
-                    {site.lastActivityDate ? new Date(site.lastActivityDate).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
-              }) : site.lastModifiedDateTime ? new Date(site.lastModifiedDateTime).toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric"
-              }) : "-"}
-                  </td>
-                  <td>
-                    <span className={`${styles.badge} ${site.isActive !== false ? styles.badgeSuccess : styles.badgeDanger}`}>
-                      {site.isActive !== false ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                </tr>)}
-            </tbody>
-          </table>
-        </div>
+        <MonitoringStepSearchBar
+          value={siteSearchQuery}
+          onChange={value => {
+            setSiteSearchQuery(value);
+            setSitesCurrentPage(1);
+          }}
+          onClear={() => {
+            setSiteSearchQuery('');
+            setSitesCurrentPage(1);
+          }}
+          placeholder="Rechercher un site"
+        />
+        <MonitoringStepTableWrap scrollable deps={[filteredSites.length, siteSearchQuery]}>
+          <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
+            <table className={styles.licensesTable}>
+              <thead>
+                <tr>
+                  <th>Site name</th>
+                  <th>URL</th>
+                  <th>Created on</th>
+                  <th>Last activity</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSites.length === 0 ? <tr>
+                    <td colSpan={5}>No SharePoint site available.</td>
+                  </tr> : filteredSites.map((site, idx) => <tr key={site.id || idx}>
+                    <td style={{ fontWeight: 600 }}>{site.name || site.displayName || "N/A"}</td>
+                    <td>{site.webUrl || site.url || "N/A"}</td>
+                    <td>
+                      {site.createdDateTime ? new Date(site.createdDateTime).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric"
+                }) : "-"}
+                    </td>
+                    <td>
+                      {site.lastActivityDate ? new Date(site.lastActivityDate).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric"
+                }) : site.lastModifiedDateTime ? new Date(site.lastModifiedDateTime).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric"
+                }) : "-"}
+                    </td>
+                    <td>
+                      <span className={`${styles.badge} ${site.isActive !== false ? styles.badgeSuccess : styles.badgeDanger}`}>
+                        {site.isActive !== false ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                  </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </MonitoringStepTableWrap>
       </div>;
   }
 

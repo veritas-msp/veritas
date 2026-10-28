@@ -8,6 +8,12 @@
   padding: 1rem;
   background: rgba(10, 22, 40, 0.55);
   backdrop-filter: blur(10px);
+  animation: siteMapOverlayIn 0.2s ease forwards;
+}
+
+.overlayOut {
+  animation: siteMapOverlayOut 0.18s ease forwards;
+  pointer-events: none;
 }
 
 .shell {
@@ -20,6 +26,43 @@
   background: var(--msp-surface, #fff);
   border: 1px solid var(--msp-border, #dde3ed);
   box-shadow: 0 24px 64px rgba(10, 22, 40, 0.24);
+  animation: siteMapShellIn 0.22s ease forwards;
+}
+
+.shellOut {
+  animation: siteMapShellOut 0.18s ease forwards;
+}
+
+@keyframes siteMapOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes siteMapOverlayOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes siteMapShellIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes siteMapShellOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
 }
 
 .header {

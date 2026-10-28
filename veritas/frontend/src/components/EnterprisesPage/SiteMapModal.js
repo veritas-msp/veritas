@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -7,6 +7,9 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { getSitesModalCopy } from "./sitesModalI18n";
 import styles from "./SiteMapModal.module.css";
+
+const CLOSE_MS = 180;
+
 export default function SiteMapModal({
   latitude,
   longitude,
@@ -25,15 +28,42 @@ export default function SiteMapModal({
     zoom: 16
   });
   const osmUrl = buildOpenStreetMapUrl(latitude, longitude, 16);
+  const [exiting, setExiting] = useState(false);
+  const closeTimerRef = useRef(null);
+
+  const requestClose = useCallback(() => {
+    if (exiting) return;
+    setExiting(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      onClose();
+    }, CLOSE_MS);
+  }, [exiting, onClose]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = event => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") requestClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-  return createPortal(<div className={styles.overlay} onClick={onClose} role="presentation">
-      <div className={styles.shell} onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="site-map-modal-title">
+  }, [requestClose]);
+
+  return createPortal(
+    <div
+      className={`${styles.overlay}${exiting ? ` ${styles.overlayOut}` : ""}`}
+      onClick={requestClose}
+      role="presentation"
+    >
+      <div
+        className={`${styles.shell}${exiting ? ` ${styles.shellOut}` : ""}`}
+        onClick={event => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="site-map-modal-title"
+      >
         <header className={styles.header}>
           <div className={styles.headerMain}>
             <div className={styles.headerIconWrap} aria-hidden>
@@ -46,7 +76,7 @@ export default function SiteMapModal({
               {address ? <p className={styles.subtitle}>{address}</p> : null}
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={editor.closeMap}>
+          <button type="button" className={styles.closeBtn} onClick={requestClose} aria-label={editor.closeMap}>
             <FaTimes />
           </button>
         </header>
@@ -62,5 +92,7 @@ export default function SiteMapModal({
           </a>
         </footer>
       </div>
-    </div>, document.body);
+    </div>,
+    document.body
+  );
 }

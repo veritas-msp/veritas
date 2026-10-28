@@ -1049,8 +1049,9 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
 }
 
 .stepHeaderBlock {
@@ -1290,7 +1291,7 @@
 .stepTableScroll,
 .antivirusModalEndpointsScroll,
 .antivirusEndpointsTableWrapper {
-  max-height: 50vh;
+  max-height: min(50vh, 28rem);
   overflow: auto;
 }
 
@@ -1314,10 +1315,100 @@
 }
 
 
+.infraPagedBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
 .infraTableSection {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.infraTableHost {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+}
+
+/* Tables empilées (ex. Jobs sauvegarde) : hauteur plafonnée + scroll interne */
+.infraTableHostCapped {
+  flex: 0 1 auto;
+  height: auto;
+  max-height: none;
+}
+
+.infraTableShell {
+  flex: 1 1 auto;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+
+.infraTableShellCapped {
+  flex: 0 1 auto;
+  height: auto;
+  max-height: min(50vh, 28rem);
+}
+
+.infraTableScroll {
+  flex: 1 1 auto;
+  max-height: none;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--msp-muted, #5c6b82) 45%, transparent) transparent;
+}
+
+/* Doit passer après .infraTableScroll pour écraser max-height: none */
+.infraTableScroll.stepTableScroll {
+  max-height: min(50vh, 28rem);
+}
+
+.infraTableScroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.infraTableScroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 45%, transparent);
+  border-radius: 999px;
+}
+
+.infraTableScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.infraEquipmentTable {
+  table-layout: auto !important;
+  width: max(100%, 56rem);
+  min-width: 56rem;
+}
+
+.infraEquipmentTable th,
+.infraEquipmentTable td {
+  min-width: 5.5rem;
+}
+
+.infraEquipmentTable th:first-child,
+.infraEquipmentTable td:first-child {
+  min-width: 9rem;
 }
 
 .infraTableHeader {
@@ -1394,10 +1485,61 @@
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14)) !important;
 }
 
+/* Jobs sauvegarde — tons adaptés clair / sombre (évite fonds #fee2e2 etc. en dark) */
+.backupJobRowCritical td {
+  background: color-mix(in srgb, #ef4444 14%, var(--eq-surface, var(--msp-surface, #fff))) !important;
+}
+.backupJobRowWarning td {
+  background: color-mix(in srgb, #f97316 14%, var(--eq-surface, var(--msp-surface, #fff))) !important;
+}
+.backupJobRowOk td {
+  background: color-mix(in srgb, #22c55e 12%, var(--eq-surface, var(--msp-surface, #fff))) !important;
+}
+.backupJobRowPending td {
+  background: color-mix(in srgb, #94a3b8 10%, var(--eq-surface, var(--msp-surface, #fff))) !important;
+}
+.backupJobRowInactive td {
+  background: color-mix(in srgb, #94a3b8 8%, var(--eq-surface, var(--msp-surface, #fff))) !important;
+  opacity: 0.85;
+}
+
+.backupJobRowCritical:hover td,
+.backupJobRowWarning:hover td,
+.backupJobRowOk:hover td,
+.backupJobRowPending:hover td,
+.backupJobRowInactive:hover td {
+  filter: brightness(0.97);
+}
+
+:global(html.dark) .backupJobRowCritical td {
+  background: color-mix(in srgb, #ef4444 22%, var(--msp-surface, #1a2540)) !important;
+}
+:global(html.dark) .backupJobRowWarning td {
+  background: color-mix(in srgb, #f97316 20%, var(--msp-surface, #1a2540)) !important;
+}
+:global(html.dark) .backupJobRowOk td {
+  background: color-mix(in srgb, #22c55e 16%, var(--msp-surface, #1a2540)) !important;
+}
+:global(html.dark) .backupJobRowPending td {
+  background: color-mix(in srgb, #94a3b8 12%, var(--msp-surface, #1a2540)) !important;
+}
+:global(html.dark) .backupJobRowInactive td {
+  background: color-mix(in srgb, #64748b 10%, var(--msp-surface, #1a2540)) !important;
+}
+
+:global(html.dark) .backupJobRowCritical:hover td,
+:global(html.dark) .backupJobRowWarning:hover td,
+:global(html.dark) .backupJobRowOk:hover td,
+:global(html.dark) .backupJobRowPending:hover td,
+:global(html.dark) .backupJobRowInactive:hover td {
+  filter: brightness(1.12);
+}
+
 .infraTableActions {
   width: 1%;
   white-space: nowrap;
   vertical-align: middle;
+  text-align: right;
 }
 
 .storageUsageCell {
@@ -1715,6 +1857,24 @@
 .insightCount_ticket {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.insightCountButton {
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+}
+
+.insightCountButton:hover {
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 1px 4px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.insightCountButton:focus-visible {
+  outline: 2px solid color-mix(in srgb, currentColor 45%, transparent);
+  outline-offset: 2px;
 }
 
 .insightCount_service {

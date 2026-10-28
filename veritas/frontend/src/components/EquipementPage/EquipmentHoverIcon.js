@@ -203,7 +203,7 @@ export const OVERVIEW_TAB_ANIMATED = {
   supervision: RadioIcon,
 };
 
-/** Actions rapides (sidebar fiche entreprise / portail contact) */
+/** Actions rapides (sidebar fiche entreprise / équipement / portail contact) */
 export const QUICK_ACTION_ANIMATED = {
   edit: SquarePenIcon,
   ticket: TicketIcon,
@@ -211,6 +211,14 @@ export const QUICK_ACTION_ANIMATED = {
   subscribe: BellIcon,
   export: SquareArrowUpIcon,
   more: EllipsisIcon,
+  remote: LaptopMinimalCheckIcon,
+  qc: NetworkIcon,
+  alerts: ZapIcon,
+  rmm: RefreshCCWIcon,
+  rmmUpdate: CloudUploadIcon,
+  maintenance: SlidersHorizontalIcon,
+  supervision: RadioIcon,
+  checkmkMap: ChartColumnIncreasingIcon,
   portalInvite: MessageSquareIcon,
   portalReset: VaultIcon,
   portalImpersonate: UsersIcon,

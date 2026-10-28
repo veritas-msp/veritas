@@ -365,34 +365,57 @@ export function usePlanningEventFormModal({
   const linkedTypeButtons = useMemo(() => copy?.linkedTypeButtons ? copy.linkedTypeButtons(linkedTypeOptions) : [], [copy, linkedTypeOptions]);
   const linkableItemsByGroup = useMemo(() => buildLinkableItemsByGroup(linkableItems, linkedSearch, linkedTypeFilter, copy?.locale || "fr"), [linkableItems, linkedSearch, linkedTypeFilter, copy?.locale]);
   useEffect(() => {
-    if (!open || editingEvent || !initialEquipmentId || initialLinkAppliedRef.current) return;
+    if (!open || editingEvent || !initialEquipmentId) return;
     if (loadingLinkedItems) return;
+    if (linkableItems.length === 0) return;
     const eqId = String(initialEquipmentId);
-    const compositeId =
-      initialEquipmentType && initialEquipmentName
-        ? `${initialEquipmentType}-${initialEquipmentName}`
-        : null;
+    const typeRaw = initialEquipmentType || "";
+    const nameRaw = initialEquipmentName || "";
+    const idCandidates = [eqId];
+    if (typeRaw && nameRaw) {
+      idCandidates.push(`${typeRaw}-${nameRaw}`);
+      // Alias FR/EN fréquents (Serveurs/Servers, NAS/Stockage…)
+      const typeAliases = [
+        typeRaw,
+        typeRaw === "Servers" ? "Serveurs" : null,
+        typeRaw === "Serveurs" ? "Servers" : null,
+        typeRaw === "NAS" ? "Stockage" : null,
+        typeRaw === "Stockage" ? "NAS" : null,
+        typeRaw === "Storage" ? "NAS" : null
+      ].filter(Boolean);
+      typeAliases.forEach(t => idCandidates.push(`${t}-${nameRaw}`));
+    }
     const matchedItem = findLinkableItemForEquipment(linkableItems, {
-      id: [eqId, compositeId].filter(Boolean),
-      name: initialEquipmentName || null,
-      type: initialEquipmentType || null
+      id: [...new Set(idCandidates)],
+      name: nameRaw || null,
+      type: typeRaw || null
     });
-    if (matchedItem) {
-      setSelectedLinkedItems([String(matchedItem.id)]);
-      setEventForm(prev => ({
-        ...prev,
-        equipmentId: String(matchedItem.id)
-      }));
-      initialLinkAppliedRef.current = true;
+    if (!matchedItem) {
+      // Liste chargée mais pas encore résolu : on garde le badge via l’id source,
+      // sans figer le matching (réessai si la liste / le nom évolue).
+      setSelectedLinkedItems(prev => {
+        const hasResolved = prev.some(id =>
+          linkableItems.some(
+            item =>
+              String(item.id) === String(id) ||
+              (Array.isArray(item.aliasIds) && item.aliasIds.some(a => String(a) === String(id)))
+          )
+        );
+        if (hasResolved) return prev;
+        return prev.includes(eqId) ? prev : [eqId];
+      });
       return;
     }
-    // Liste encore vide : on attend le prochain chargement. Sinon on garde l’id source.
-    if (linkableItems.length === 0) return;
-    setEventForm(prev => ({
-      ...prev,
-      equipmentId: eqId
-    }));
-    setSelectedLinkedItems(prev => (prev.includes(eqId) ? prev : [eqId]));
+    const matchedId = String(matchedItem.id);
+    setSelectedLinkedItems(prev => (prev.length === 1 && prev[0] === matchedId ? prev : [matchedId]));
+    setEventForm(prev =>
+      String(prev.equipmentId || "") === matchedId
+        ? prev
+        : {
+            ...prev,
+            equipmentId: matchedId
+          }
+    );
     initialLinkAppliedRef.current = true;
   }, [
     open,
@@ -403,13 +426,22 @@ export function usePlanningEventFormModal({
     linkableItems,
     loadingLinkedItems
   ]);
-  const toggleLinkedItem = useCallback(itemId => {
-    setSelectedLinkedItems(prev => {
-      const exists = prev.includes(itemId);
-      if (exists) return prev.filter(id => id !== itemId);
-      return [...prev, itemId];
-    });
-  }, []);
+  const toggleLinkedItem = useCallback(
+    itemId => {
+      const target = String(itemId);
+      const item = linkableItems.find(entry => String(entry.id) === target);
+      const related = new Set([
+        target,
+        ...(Array.isArray(item?.aliasIds) ? item.aliasIds.map(String) : [])
+      ]);
+      setSelectedLinkedItems(prev => {
+        const exists = prev.some(id => related.has(String(id)));
+        if (exists) return prev.filter(id => !related.has(String(id)));
+        return [...prev, target];
+      });
+    },
+    [linkableItems]
+  );
   const resetForm = useCallback(() => {
     setEventForm(createDefaultEventForm(currentUser?.id));
     setSelectedClient("");

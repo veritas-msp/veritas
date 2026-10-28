@@ -7,7 +7,7 @@ import { AntispamOverviewPanel } from "../../../EnterprisesPage/AntispamOverview
 import SolutionDetailPageLayout from "../../../EnterprisesPage/SolutionDetailPageLayout";
 import { isManualAntispamSolution, normalizeAntispamItem } from "../../../EnterprisesPage/antispamSolutionUtils";
 import styles from "../RapportMonitoringBuilder.module.css";
-import { MonitoringStepShell, MonitoringStepSubsectionHeader, MonitoringStepToolbarButton } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepSubsectionHeader, MonitoringStepToolbarButton, MonitoringPagedBlock, MonitoringStepTableWrap } from "../MonitoringStepLayout";
 function normalizeAntispam(sol) {
   if (!sol) return sol;
   const name = sol.logiciel || sol.solution || sol.nom || sol.name || "Solution antispam";
@@ -347,7 +347,8 @@ export default function AntispamStep(props) {
             ...prev,
             [solutionKey]: ""
           }))} searchPlaceholder="Search (name, email, status, alias)..." />
-                <div className={styles.antivirusModalEndpointsScroll}>
+                <MonitoringPagedBlock items={sortedUsers} resetDeps={[solutionKey, usersSearch, usersSort.column, usersSort.direction, sortedUsers.length]}>
+                  {pageItems => <MonitoringStepTableWrap scrollable deps={[pageItems.length, usersSearch, usersSort.column, usersSort.direction]}>
                   <table className={styles.antivirusModalTable}>
                     <thead>
                       <tr>
@@ -379,7 +380,7 @@ export default function AntispamStep(props) {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedUsers.map((u, idx) => <tr key={`${u.mainEmail || idx}`}>
+                      {pageItems.map((u, idx) => <tr key={`${u.mainEmail || idx}`}>
                           <td>{`${u.firstName || ""} ${u.lastName || ""}`.trim() || "-"}</td>
                           <td>{u.mainEmail || "-"}</td>
                           <td>{u.protectionStatus || "-"}</td>
@@ -387,7 +388,8 @@ export default function AntispamStep(props) {
                         </tr>)}
                     </tbody>
                   </table>
-                </div>
+                </MonitoringStepTableWrap>}
+                </MonitoringPagedBlock>
               </div> : <div className={styles.antivirusModalNoData}>Aucun utilisateur importé. Importez un CSV pour afficher la liste.</div> : null}
 
             {section === "stats" ? statsData.length > 0 ? <div>

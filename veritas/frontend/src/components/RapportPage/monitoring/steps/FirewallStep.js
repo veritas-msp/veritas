@@ -70,6 +70,7 @@ export default function FirewallStep({
   onOpenComments,
   onTicketCreatedForEquipment,
   onOpenCheckMKDetail,
+  onOpenEquipmentTickets,
   onSyncCheckMK,
   onEditEquipment,
   commentCounts,
@@ -131,5 +132,5 @@ export default function FirewallStep({
     label: "Licence de maintenance",
     render: fw => <ExpirationDateCell value={getMaintenanceLicenseExpiration(fw.licences)} formatFn={v => formatMaintenanceDateFr(v) || "-"} />
   }];
-  return <InfrastructureEquipmentTable title="Firewalls" moduleKey="Firewall" equipments={firewalls} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
+  return <InfrastructureEquipmentTable title="Firewalls" moduleKey="Firewall" equipments={firewalls} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onOpenEquipmentTickets={onOpenEquipmentTickets} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
 }

@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.2",
+    date: "2026-10-27",
+    highlights: [
+      "Rapports de supervision : tables arrondies avec fondu haut/bas, fade au changement d’étape, colonnes et dates en français.",
+      "Tenant Microsoft (Office 365) dans le builder : une carte, onglets animés, KPI plats, recherche et tables unifiées.",
+      "Modal CheckMK et panneau commentaires du builder modernisés ; tickets équipement cliquables avec modal dédié.",
+      "Sauvegarde / jobs : libellés de statut clarifiés ; cartographie et aperçu sauvegarde entreprise peaufinés.",
+      "Fiches contact, matériel et planning : polish UI (modals, documents, préselection matériel)."
+    ]
+  },
+  {
     version: "2.0.1",
     date: "2026-10-27",
     highlights: [

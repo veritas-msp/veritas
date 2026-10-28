@@ -70,6 +70,37 @@ const EMPTY_STORAGE_VOLUME = () => ({
 function sanitizeCount(value) {
   return String(value ?? "").replace(/[^0-9]/g, "");
 }
+
+/** Anciens placeholders « .. », leaders Unicode, etc. devant les valeurs vCPU. */
+const VCPU_LEADING_JUNK =
+  /^[\s.·∙⋅•・․‥…\u2024\u2025\u2026\u22EF\u3002\uFF0E]+/;
+
+/**
+ * Affiche une valeur processeur/vCPU propre (sans préfixe « .. »).
+ * Ex. « .. 4 vCPU » → « 4 vCPU », « .. » / « .. - » → « - ».
+ */
+export function formatServerVcpuLabel(value) {
+  let raw = String(value ?? "").trim();
+  if (!raw) return "-";
+  // Répéter le strip au cas où plusieurs familles de points se suivent
+  for (let i = 0; i < 4; i += 1) {
+    const next = raw.replace(VCPU_LEADING_JUNK, "").trim();
+    if (next === raw) break;
+    raw = next;
+  }
+  raw = raw.replace(/^\.{2,}\s*/g, "").trim();
+  if (!raw || raw === "-" || raw === "—" || /^\.+$/.test(raw)) return "-";
+
+  const numeric = raw.match(/(\d+(?:[.,]\d+)?)/);
+  if (numeric) {
+    const withoutNumber = raw
+      .replace(numeric[1], "")
+      .replace(/v\s*cpu/gi, "")
+      .replace(/[\s.·∙⋅•・․‥…×xX*\u2024\u2025\u2026\u2013\u2014-]+/g, "");
+    if (!withoutNumber) return `${numeric[1]} vCPU`;
+  }
+  return raw;
+}
 export function sanitizeDecimalInput(value) {
   const raw = String(value ?? "").replace(/[^\d.,]/g, "");
   if (!raw) return "";

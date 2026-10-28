@@ -7,6 +7,7 @@ export default function BorneWifiStep({
   onOpenComments,
   onTicketCreatedForEquipment,
   onOpenCheckMKDetail,
+  onOpenEquipmentTickets,
   onSyncCheckMK,
   onEditEquipment,
   commentCounts,
@@ -61,5 +62,5 @@ export default function BorneWifiStep({
     label: "MAC",
     render: ap => ap.adresseMac || ap.mac || "-"
   }];
-  return <InfrastructureEquipmentTable title="Wi-Fi APs" moduleKey="BorneWifi" equipments={bornes} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
+  return <InfrastructureEquipmentTable title="Wi-Fi APs" moduleKey="BorneWifi" equipments={bornes} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onOpenEquipmentTickets={onOpenEquipmentTickets} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
 }

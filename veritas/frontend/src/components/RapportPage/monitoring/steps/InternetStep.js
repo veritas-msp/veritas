@@ -42,6 +42,7 @@ export default function InternetStep({
   onOpenComments,
   onTicketCreatedForEquipment,
   onOpenCheckMKDetail,
+  onOpenEquipmentTickets,
   onSyncCheckMK,
   onEditEquipment,
   commentCounts,
@@ -86,5 +87,5 @@ export default function InternetStep({
     label: "Débit",
     render: item => formatInternetDebitDisplay(item) || item.debit || item.bandwidth || "-"
   }, buildHaColumn(connexions, "Internet")];
-  return <InfrastructureEquipmentTable title="Connexions Internet" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
+  return <InfrastructureEquipmentTable title="Connexions Internet" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onOpenEquipmentTickets={onOpenEquipmentTickets} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
 }

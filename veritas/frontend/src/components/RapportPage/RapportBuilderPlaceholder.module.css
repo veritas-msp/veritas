@@ -301,29 +301,6 @@
   flex-shrink: 0;
 }
 
-.commentsPaneBack,
-.commentsPaneChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0.65rem 1rem 0;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid var(--msp-border, #c5d0df);
-  border-radius: 999px;
-  background: var(--msp-surface-2, #f7f9fc);
-  color: var(--msp-muted, #5c6b82);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.commentsPaneBack:hover,
-.commentsPaneChip:hover {
-  border-color: var(--msp-accent, #2b5fab);
-  color: var(--msp-accent, #2b5fab);
-}
-
 .commentsPaneLead {
   margin: 0.7rem 1rem 0;
   font-size: 0.78rem;
@@ -331,35 +308,67 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-.commentsPaneChips {
+.commentsPaneContext {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  padding: 0.65rem 1rem 0;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.7rem 1rem 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 28%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, var(--msp-surface, #fff));
+  color: var(--msp-accent, #2b5fab);
 }
 
-.commentsPaneChip {
-  margin: 0;
+.commentsPaneContext :global(svg) {
+  flex-shrink: 0;
+  font-size: 1.05rem;
 }
 
-.commentsPaneChip em {
-  font-style: normal;
-  min-width: 1.05rem;
-  height: 1.05rem;
-  padding: 0 0.25rem;
-  border-radius: 999px;
-  background: var(--msp-accent, #2b5fab);
-  color: #fff;
-  font-size: 0.65rem;
+.commentsPaneContextBody {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.commentsPaneContextLabel {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.commentsPaneContextName {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commentsPaneContextClear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.commentsPaneChipActive {
-  border-color: var(--msp-accent, #2b5fab);
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
-  color: var(--msp-accent, #2b5fab);
+.commentsPaneContextClear:hover {
+  border-color: var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
 }
 
 .commentsPaneList {
@@ -368,7 +377,7 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.65rem;
   padding: 0.85rem 1rem;
 }
 
@@ -396,48 +405,98 @@
 }
 
 .commentsPaneCard {
-  padding: 0.7rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.8rem 0.85rem;
   border: 1px solid var(--msp-border-light, #eef2f7);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--msp-surface-2, #f7f9fc);
+  box-shadow: 0 1px 0 rgba(15, 28, 46, 0.03);
 }
 
-.commentsPaneCardClickable {
-  cursor: pointer;
+.commentsPaneCardTicket {
+  border-left: 3px solid var(--msp-accent, #2b5fab);
 }
 
-.commentsPaneCardClickable:hover,
-.commentsPaneCardActive {
-  border-color: var(--msp-accent, #2b5fab);
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+.commentsPaneCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.commentsPaneScope {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commentsPaneScope :global(svg) {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.commentsPaneScopeStep {
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.commentsPaneScopeItem {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.commentsPaneScopeTicket {
+  background: color-mix(in srgb, #0f766e 14%, transparent);
+  color: #0f766e;
+}
+
+.commentsPaneWhen {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--msp-muted-light, #8b9bb5);
+  white-space: nowrap;
+}
+
+.commentsPaneAuthor {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--msp-muted, #5c6b82);
 }
 
 .commentsPaneMeta {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
+  margin-top: 0.15rem;
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--msp-muted, #5c6b82);
 }
 
-.commentsPaneRef {
-  margin: 0.3rem 0 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--msp-accent, #2b5fab);
-}
-
 .commentsPaneTicketTitle {
-  margin: 0;
-  font-size: 0.88rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
   font-weight: 700;
   line-height: 1.35;
   color: var(--msp-text, #0f1c2e);
 }
 
 .commentsPaneTicketSubject {
-  margin: 0.3rem 0 0;
+  margin: 0;
   font-size: 0.78rem;
   line-height: 1.4;
   color: var(--msp-muted, #5c6b82);
@@ -447,15 +506,10 @@
   overflow: hidden;
 }
 
-.commentsPaneTicketTitle + .commentsPaneMeta,
-.commentsPaneTicketSubject + .commentsPaneMeta {
-  margin-top: 0.5rem;
-}
-
 .commentsPaneText {
-  margin: 0.4rem 0 0;
-  font-size: 0.84rem;
-  line-height: 1.45;
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
   color: var(--msp-text, #0f1c2e);
   white-space: pre-wrap;
   word-break: break-word;
@@ -463,8 +517,38 @@
 
 .commentsPaneActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.45rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.commentsPaneActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-height: 1.7rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.commentsPaneActionBtn:hover {
+  border-color: var(--msp-border, #c5d0df);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.commentsPaneActionDanger:hover {
+  border-color: color-mix(in srgb, #ef4444 35%, transparent);
+  color: #b91c1c;
+  background: color-mix(in srgb, #ef4444 8%, var(--msp-surface, #fff));
 }
 
 .commentsPaneComposer {
@@ -557,6 +641,15 @@
   scrollbar-width: thin;
 }
 
+.stepNavTrack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .stepNavTitle {
   margin: 0.1rem 0.55rem 0.55rem;
   font-size: 0.68rem;
@@ -567,6 +660,8 @@
 }
 
 .stepNavItem {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -596,6 +691,14 @@
   color: var(--msp-text, #0f1c2e);
   box-shadow: 0 1px 4px rgba(15, 28, 46, 0.05);
   font-weight: 600;
+}
+
+/* Indicateur glissant (finder) : l’actif ne double pas le fond */
+.stepNavAnimated .stepNavItemActive,
+.stepNavAnimated .stepNavItemActive:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .stepNavItemDone {
@@ -628,6 +731,9 @@
 }
 
 .stepNavIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 1rem;
   height: 1rem;
@@ -672,6 +778,41 @@
   padding: 1rem;
   display: flex;
   flex-direction: column;
+}
+
+.stepPanelContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fade section (opacity seule) — même principe qu’EnterpriseDetailPage */
+.stepPanelContentFadePending {
+  opacity: 0;
+}
+
+.stepPanelContentFadeIn {
+  animation: rapportBuilderStepFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes rapportBuilderStepFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stepPanelContentFadePending {
+    opacity: 1;
+  }
+
+  .stepPanelContentFadeIn {
+    animation: none;
+  }
 }
 
 .headerRow {
@@ -905,6 +1046,13 @@
   color: var(--msp-text, #e8edf5);
 }
 
+:global(html.dark) .stepNavAnimated .stepNavItemActive,
+:global(html.dark) .stepNavAnimated .stepNavItemActive:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 :global(html.dark) .stepNavIndex {
   background: rgba(232, 237, 245, 0.06);
 }
@@ -917,8 +1065,28 @@
 }
 
 :global(html.dark) .commentsPaneCard,
-:global(html.dark) .commentsPaneTextarea {
+:global(html.dark) .commentsPaneTextarea,
+:global(html.dark) .commentsPaneActionBtn,
+:global(html.dark) .commentsPaneContextClear:hover {
   background: var(--msp-surface-2, #152038);
   border-color: var(--msp-border, #2f4260);
   color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .commentsPaneContext {
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 12%, var(--msp-surface, #1a2540));
+  border-color: color-mix(in srgb, var(--msp-accent, #5a9de0) 30%, transparent);
+}
+
+:global(html.dark) .commentsPaneContextName {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .commentsPaneActions {
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .commentsPaneScopeTicket {
+  background: color-mix(in srgb, #14b8a6 16%, transparent);
+  color: #5eead4;
 }

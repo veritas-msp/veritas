@@ -5,7 +5,8 @@ import styles from "../RapportMonitoringBuilder.module.css";
 import { AntivirusOverviewPanel } from "../../../EnterprisesPage/AntivirusOverviewModal";
 import SolutionDetailPageLayout from "../../../EnterprisesPage/SolutionDetailPageLayout";
 import { formatAntivirusEndpointType, normalizeAntivirusItem } from "../../../EnterprisesPage/antivirusSolutionUtils";
-import { MonitoringStepShell, MonitoringStepSubsectionHeader } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepSubsectionHeader, MonitoringPagedBlock, MonitoringStepTableWrap } from "../MonitoringStepLayout";
+import { formatTableDate, formatTableDateTime } from "../../../../utils/tableDateFormat";
 function normalizeAntivirus(sol) {
   if (!sol) return sol;
   const name = sol.solution || sol.logiciel || sol.nom || sol.name || "Solution antivirus";
@@ -53,7 +54,7 @@ function parseLastSeen(raw) {
 }
 function formatLastSeen(raw) {
   const d = parseLastSeen(raw);
-  return d ? d.toLocaleString("en-US") : "-";
+  return d ? formatTableDateTime(d) || "-" : "-";
 }
 function isLastSeenOver24h(raw) {
   const d = parseLastSeen(raw);
@@ -62,12 +63,7 @@ function isLastSeenOver24h(raw) {
 }
 function formatPolicyDate(dateStr) {
   if (!dateStr) return "-";
-  try {
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? String(dateStr) : d.toLocaleDateString("en-US");
-  } catch {
-    return String(dateStr);
-  }
+  return formatTableDate(dateStr) || "-";
 }
 function extractPoliciesList(raw) {
   if (Array.isArray(raw)) return raw;
@@ -148,7 +144,7 @@ const ANTIVIRUS_POLICY_COLUMNS = [{
   render: row => row.endpoints ?? "-"
 }, {
   id: "applied",
-  label: "Applied",
+  label: "Appliquée",
   render: row => row.applied == null ? "-" : <span style={{
     padding: "0.2rem 0.45rem",
     borderRadius: "4px",
@@ -161,15 +157,15 @@ const ANTIVIRUS_POLICY_COLUMNS = [{
         </span>
 }, {
   id: "createdAt",
-  label: "Created on",
+  label: "Créée le",
   render: row => formatPolicyDate(row.createdAt)
 }, {
   id: "modifiedAt",
-  label: "Modified on",
+  label: "Modifiée le",
   render: row => formatPolicyDate(row.modifiedAt)
 }, {
   id: "createdBy",
-  label: "Created by",
+  label: "Créée par",
   render: row => row.createdBy || "-"
 }];
 function SolutionDetailBlock({
@@ -325,8 +321,8 @@ function SolutionDetailBlock({
     if (policyEquipments.length === 0) {
       return <div className={styles.antivirusModalNoData}>Aucune politique à afficher.</div>;
     }
-    return <div className={equipmentStyles.hardwarePageEmbedded}>
-            <div className={`${equipmentStyles.tableWrapperEmbedded} ${styles.antivirusEndpointsTableWrapper}`}>
+    return <MonitoringPagedBlock items={policyEquipments} resetDeps={[policyEquipments.length]}>
+      {pageItems => <MonitoringStepTableWrap scrollable deps={[pageItems.length, policyEquipments.length]}>
               <table className={equipmentStyles.equipmentTableEmbedded}>
                 <thead>
                   <tr>
@@ -336,27 +332,27 @@ function SolutionDetailBlock({
                   </tr>
                 </thead>
                 <tbody>
-                  {policyEquipments.map(row => <tr key={row.id}>
+                  {pageItems.map(row => <tr key={row.id}>
                       {ANTIVIRUS_POLICY_COLUMNS.map(col => <td key={col.id}>{col.render(row)}</td>)}
                     </tr>)}
                 </tbody>
               </table>
-            </div>
-          </div>;
+          </MonitoringStepTableWrap>}
+    </MonitoringPagedBlock>;
   }
   if (endpointList.length === 0) {
     return <div className={styles.antivirusModalNoData}>Aucun endpoint à afficher.</div>;
   }
   return <section className={styles.antivirusEndpointsSection}>
-          <MonitoringStepSubsectionHeader title={`Endpoints (${sortedEndpoints.length}${endpointList.length !== sortedEndpoints.length ? ` / ${endpointList.length}` : ""})`} searchValue={endpointSearch} onSearchChange={setEndpointSearch} onSearchClear={() => setEndpointSearch("")} searchPlaceholder="Search (name, FQDN, IP, OS, type)..." />
-          <div className={equipmentStyles.hardwarePageEmbedded}>
-            <div className={`${equipmentStyles.tableWrapperEmbedded} ${styles.antivirusEndpointsTableWrapper}`}>
+          <MonitoringStepSubsectionHeader title={`Endpoints (${sortedEndpoints.length}${endpointList.length !== sortedEndpoints.length ? ` / ${endpointList.length}` : ""})`} searchValue={endpointSearch} onSearchChange={setEndpointSearch} onSearchClear={() => setEndpointSearch("")} searchPlaceholder="Rechercher (nom, FQDN, IP, OS, type)..." />
+          <MonitoringPagedBlock items={sortedEndpoints} resetDeps={[endpointSearch, endpointSort.column, endpointSort.direction, sortedEndpoints.length]}>
+            {pageItems => <MonitoringStepTableWrap scrollable deps={[pageItems.length, endpointSearch, endpointSort.column, endpointSort.direction]}>
             <table className={equipmentStyles.equipmentTableEmbedded}>
               <thead>
                 <tr>
                   {[{
                   key: "name",
-                  label: "Name"
+                  label: "Nom"
                 }, {
                   key: "fqdn",
                   label: "FQDN"
@@ -365,10 +361,10 @@ function SolutionDetailBlock({
                   label: "Type"
                 }, {
                   key: "status",
-                  label: "Status"
+                  label: "Statut"
                 }, {
                   key: "managed",
-                  label: "Managed"
+                  label: "Géré"
                 }, {
                   key: "ip",
                   label: "IP"
@@ -377,7 +373,7 @@ function SolutionDetailBlock({
                   label: "OS"
                 }, {
                   key: "lastSeen",
-                  label: "Last connection"
+                  label: "Dernière connexion"
                 }].map(({
                   key,
                   label
@@ -395,12 +391,12 @@ function SolutionDetailBlock({
                     <span className={equipmentStyles.thContent}>Politique</span>
                   </th>
                   <th>
-                    <span className={equipmentStyles.thContent}>Infected</span>
+                    <span className={equipmentStyles.thContent}>Infecté</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {sortedEndpoints.map((ep, idx) => {
+                {pageItems.map((ep, idx) => {
                 const typeIcon = getEndpointTypeIcon(ep.type);
                 const osIcon = getEndpointOsIcon(ep.operatingSystem);
                 const fallbackKey = `${ep.name ?? ""}|${ep.ip ?? ""}|${ep.fqdn ?? ""}`.trim();
@@ -533,8 +529,8 @@ function SolutionDetailBlock({
               })}
               </tbody>
             </table>
-            </div>
-          </div>
+          </MonitoringStepTableWrap>}
+          </MonitoringPagedBlock>
         </section>;
 }
 

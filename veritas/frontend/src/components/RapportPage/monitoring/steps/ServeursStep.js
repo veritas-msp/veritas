@@ -4,6 +4,7 @@ import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import { getExpirationStatus, getExpirationStatusColor } from "../../../EquipementPage/constants/firewallLicenceUtils";
 import { buildHaColumn } from "../reportHaColumn";
+import { formatServerVcpuLabel } from "../../../EquipementPage/serverSpecUtils";
 
 function formatDateFr(value) {
   if (!value) return "-";
@@ -79,6 +80,7 @@ export default function ServersStep({
   onOpenComments,
   onTicketCreatedForEquipment,
   onOpenCheckMKDetail,
+  onOpenEquipmentTickets,
   onSyncCheckMK,
   onEditEquipment,
   commentCounts,
@@ -144,8 +146,12 @@ export default function ServersStep({
     buildHaColumn(serveurs, "Servers"),
     {
       id: "processeur",
-      label: "Proc.",
-      render: srv => srv.processeur || srv.vcpu || srv.vCpu || "-"
+      label: "vCPU",
+      render: srv => formatServerVcpuLabel(srv.processeur || srv.vcpu || srv.vCpu),
+      getTitle: srv => {
+        const label = formatServerVcpuLabel(srv.processeur || srv.vcpu || srv.vCpu);
+        return label === "-" ? undefined : label;
+      }
     },
     {
       id: "memoire",
@@ -176,6 +182,7 @@ export default function ServersStep({
       onOpenComments={onOpenComments}
       onCreateTicket={onTicketCreatedForEquipment}
       onOpenCheckMKDetail={onOpenCheckMKDetail}
+      onOpenEquipmentTickets={onOpenEquipmentTickets}
       clientId={client?.id ?? client?.uuid}
       onSyncCheckMK={onSyncCheckMK}
       syncingEquipmentKey={syncingEquipmentKey}

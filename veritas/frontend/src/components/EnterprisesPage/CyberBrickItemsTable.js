@@ -61,6 +61,23 @@ function formatDateTimeValue(value) {
   }
 }
 
+function formatCompactDateTimeValue(value) {
+  if (value == null || value === "") return "—";
+  try {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return String(value);
+  }
+}
+
 function formatCheckIntervalHours(hours) {
   const value = Number(hours);
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -120,12 +137,28 @@ function getColumns(brickType) {
       ];
     case "BackupJobs":
       return [
-        { key: "nom", label: "Job", get: item => item?.nom || "—" },
-        { key: "instance", label: "Instance", get: item => item?.instanceLogiciel || "—" },
-        { key: "type", label: "Type", get: item => item?.typeBackup || item?.type || "—" },
+        {
+          key: "nom",
+          label: "Job",
+          className: equipStyles.embeddedColJobName,
+          get: item => item?.nom || "—"
+        },
+        {
+          key: "instance",
+          label: "Instance",
+          className: equipStyles.embeddedColJobInstance,
+          get: item => item?.instanceLogiciel || "—"
+        },
+        {
+          key: "type",
+          label: "Type",
+          className: equipStyles.embeddedColJobType,
+          get: item => item?.typeBackup || item?.type || "—"
+        },
         {
           key: "serveur",
           label: "Serveur",
+          className: equipStyles.embeddedColJobHost,
           get: item => {
             if (Array.isArray(item?.serveurLie) && item.serveurLie.length) {
               return item.serveurLie.join(", ");
@@ -136,14 +169,31 @@ function getColumns(brickType) {
         {
           key: "destination",
           label: "Destination",
+          className: equipStyles.embeddedColJobHost,
           get: item => item?.destination || item?.stockageLie || "—"
         },
-        { key: "regularite", label: "Régularité", get: item => item?.regularite || "—" },
-        { key: "horaire", label: "Horaire", get: item => item?.horaire || "—" },
-        { key: "retention", label: "Rétention", get: item => item?.retention || "—" },
+        {
+          key: "regularite",
+          label: "Régularité",
+          className: equipStyles.embeddedColJobSchedule,
+          get: item => item?.regularite || "—"
+        },
+        {
+          key: "horaire",
+          label: "Horaire",
+          className: equipStyles.embeddedColJobTime,
+          get: item => item?.horaire || "—"
+        },
+        {
+          key: "retention",
+          label: "Rétention",
+          className: equipStyles.embeddedColJobRetention,
+          get: item => item?.retention || "—"
+        },
         {
           key: "mapped",
           label: "Mappé",
+          className: equipStyles.embeddedColJobMapped,
           get: item => (item?.isMapped ? "Oui" : "Non"),
           sortValue: item => (item?.isMapped ? 1 : 0),
           render: item => {
@@ -163,8 +213,10 @@ function getColumns(brickType) {
         },
         {
           key: "lastBackup",
-          label: "Dernière sauvegarde",
-          get: item => formatDateTimeValue(item?.last_backup_date || item?.last_backup_start),
+          label: "Dernière",
+          headerTitle: "Dernière sauvegarde",
+          className: equipStyles.embeddedColJobLast,
+          get: item => formatCompactDateTimeValue(item?.last_backup_date || item?.last_backup_start),
           sortValue: item => {
             const raw = item?.last_backup_date || item?.last_backup_start;
             if (!raw) return 0;
@@ -561,10 +613,24 @@ export default function CyberBrickItemsTable({
         <div className={equipStyles.tableScrollShell}>
           <div
             ref={scrollRef}
-            className={`${equipStyles.tableWrapper} ${equipStyles.tableWrapperEmbedded} ${equipStyles.tableWrapperEmbeddedScroll}`}
+            className={[
+              equipStyles.tableWrapper,
+              equipStyles.tableWrapperEmbedded,
+              equipStyles.tableWrapperEmbeddedScroll,
+              brickType === "BackupJobs" ? equipStyles.tableWrapperBackupJobs : undefined
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
             <div className={equipStyles.tableCardSurface}>
-              <table className={equipStyles.equipmentTableEmbedded}>
+              <table
+                className={[
+                  equipStyles.equipmentTableEmbedded,
+                  brickType === "BackupJobs" ? equipStyles.equipmentTableBackupJobs : undefined
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
                 <thead ref={theadRef}>
                   <tr>
                     {columns.map(col => {
@@ -572,6 +638,7 @@ export default function CyberBrickItemsTable({
                       const isSelect = col.key === "select";
                       const canSort = sortable && col.sortable !== false && !isActions && !isSelect;
                       const isSorted = canSort && sortBy === col.key;
+                      const headerLabel = col.headerTitle || col.label;
                       return (
                         <th
                           key={col.key}
@@ -579,7 +646,8 @@ export default function CyberBrickItemsTable({
                           className={[
                             canSort ? equipStyles.sortableTh : undefined,
                             isActions ? equipStyles.embeddedColActions : undefined,
-                            isSelect ? equipStyles.embeddedColCheckbox : undefined
+                            isSelect ? equipStyles.embeddedColCheckbox : undefined,
+                            col.className
                           ].filter(Boolean).join(" ") || undefined}
                           onClick={canSort ? () => handleSort(col.key) : undefined}
                           aria-sort={
@@ -591,7 +659,13 @@ export default function CyberBrickItemsTable({
                                 : "none"
                               : undefined
                           }
-                          title={canSort ? `Trier par ${col.label}` : undefined}
+                          title={
+                            isActions || isSelect
+                              ? undefined
+                              : canSort
+                                ? `Trier par ${headerLabel}`
+                                : headerLabel
+                          }
                         >
                           {isSelect ? (
                             <input
@@ -634,17 +708,28 @@ export default function CyberBrickItemsTable({
                           {columns.map(col => {
                             const isActions = col.key === "actions";
                             const isSelect = col.key === "select";
+                            const hasCustomRender = typeof col.render === "function";
                             const text = String(col.get(item) ?? "");
+                            const showTitle = !isActions && !isSelect && !hasCustomRender && text && text !== "—";
                             return (
                               <td
                                 key={col.key}
                                 className={[
                                   isActions ? equipStyles.embeddedColActions : undefined,
-                                  isSelect ? equipStyles.embeddedColCheckbox : undefined
+                                  isSelect ? equipStyles.embeddedColCheckbox : undefined,
+                                  col.className
                                 ].filter(Boolean).join(" ") || undefined}
-                                title={isActions || isSelect ? undefined : text}
+                                title={showTitle ? text : undefined}
                               >
-                                {typeof col.render === "function" ? col.render(item) : col.get(item)}
+                                {hasCustomRender ? (
+                                  col.render(item)
+                                ) : showTitle ? (
+                                  <span className={equipStyles.embeddedCellEllipsis} title={text}>
+                                    {col.get(item)}
+                                  </span>
+                                ) : (
+                                  col.get(item)
+                                )}
                               </td>
                             );
                           })}

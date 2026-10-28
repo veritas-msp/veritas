@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { fetchTickets, fetchTicketCategories } from "../../../../api/tickets";
 import { fetchClientSupportCredits } from "../../../../api/clients";
-import { MonitoringStepShell, MonitoringStepSection } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepSection, MonitoringPagedBlock, MonitoringStepTableWrap } from "../MonitoringStepLayout";
 import { isDateWithinPeriod } from "../supervisionReportBuilder";
 import { isSalesTicket } from "../../../../utils/salesTicketUtils";
 import { getLocalizedEquipmentTypeLabel } from "../../../TicketPage/ticketEquipmentUtils";
@@ -531,7 +531,9 @@ export default function SupportStep({ client, reportPeriod = {} }) {
         {createdInPeriod.length === 0 && !loading ? (
           <p className={styles.supportEmpty}>Aucun ticket support créé sur cette période.</p>
         ) : (
-          <div className={styles.supportTableWrap}>
+          <MonitoringPagedBlock items={createdInPeriod} resetDeps={[createdInPeriod.length]}>
+            {pageItems => (
+          <MonitoringStepTableWrap scrollable deps={[pageItems.length, createdInPeriod.length]}>
             <table className={styles.supportTable}>
               <thead>
                 <tr>
@@ -546,7 +548,7 @@ export default function SupportStep({ client, reportPeriod = {} }) {
                 </tr>
               </thead>
               <tbody>
-                {createdInPeriod.map(t => {
+                {pageItems.map(t => {
                   const eq = getTicketEquipmentInfo(t);
                   const typeKey = String(t.type || "").trim().toLowerCase();
                   const statusKey = normalizeStatus(t.status || t.etat);
@@ -572,7 +574,9 @@ export default function SupportStep({ client, reportPeriod = {} }) {
                 })}
               </tbody>
             </table>
-          </div>
+          </MonitoringStepTableWrap>
+            )}
+          </MonitoringPagedBlock>
         )}
       </MonitoringStepSection>
     </MonitoringStepShell>

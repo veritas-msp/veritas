@@ -28,10 +28,11 @@ import ServerBrandIcon, { getEquipmentServerBrandId } from "./constants/serverBr
 import EquipmentBrandIcon from "./constants/EquipmentBrandIcon";
 import { canonicalizeComputerType, normalizeServerType, storageTypeToLegacyType, getComputerTypeLabel, readEquipmentIsActive } from "./equipmentFormConfig";
 import { getFormFields } from "./equipmentFormFieldsI18n";
-import { getServerRemoteAccessActionIcon, getServerRemoteAccessSolutionDef, hasServerRemoteAccessConfigured, openServerRemoteAccess, readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
+import { getServerRemoteAccessIcon, getServerRemoteAccessSolutionDef, hasServerRemoteAccessConfigured, openServerRemoteAccess, readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
 import { isSynologyStorage, hasQuickConnectConfigured as hasSynologyQuickConnectConfigured, getQuickConnectValue as getSynologyQuickConnectValue, openQuickConnectUrl } from "./synologyEquipmentUtils";
 import EquipmentFormModal from "./EquipmentFormModal";
 import { formatInternetDebitDisplay } from "./internetConnectionUtils";
+import { formatServerVcpuLabel } from "./serverSpecUtils";
 import { formatDateFr, toDateInputValue } from "./constants/firewallLicenceUtils";
 import EmbeddedEquipmentActionsMenu from "./EmbeddedEquipmentActionsMenu";
 import SupervisionCenterPage from "./SupervisionCenterPage";
@@ -174,11 +175,11 @@ function isColumnSortable(colKey) {
 
 /** Affiche vCPU / RAM / Stockage tels que stockés (déjà formatés, ex. « 4 vCPU », « 64 Go »). */
 function formatServerSpecCell(colKey, value) {
+  if (colKey === "processeur") return formatServerVcpuLabel(value);
   const raw = value == null ? "" : String(value).trim();
   if (!raw) return "-";
   // Anciennes valeurs numériques nues → unité par défaut
   if (/^\d+([.,]\d+)?$/.test(raw)) {
-    if (colKey === "processeur") return `${raw} vCPU`;
     if (colKey === "memoire" || colKey === "stockage") return `${raw} Go`;
   }
   return raw;
@@ -3000,7 +3001,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       e.stopPropagation();
       openServerRemoteAccess(equipment);
     }}>
-        <Icon icon={getServerRemoteAccessActionIcon()} width={16} height={16} />
+        <Icon icon={getServerRemoteAccessIcon(equipment)} width={16} height={16} />
       </button>;
   };
   const renderEmbeddedRemoteAccessButton = equipment => {
@@ -4073,7 +4074,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                       e.stopPropagation();
                                       openServerRemoteAccess(equipment);
                                     }}>
-                                              <Icon icon={getServerRemoteAccessActionIcon()} width={16} height={16} />
+                                              <Icon icon={getServerRemoteAccessIcon(equipment)} width={16} height={16} />
                                             </button> : null}
                                         </div>
                                         {renderEditEquipmentActionGroup(equipment, type)}
@@ -4321,7 +4322,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                 e.stopPropagation();
                                 openServerRemoteAccess(equipment);
                               }}>
-                                        <Icon icon={getServerRemoteAccessActionIcon()} width={16} height={16} />
+                                        <Icon icon={getServerRemoteAccessIcon(equipment)} width={16} height={16} />
                                       </button> : null}
                                   </div>
                                   {renderEditEquipmentActionGroup(equipment, type)}

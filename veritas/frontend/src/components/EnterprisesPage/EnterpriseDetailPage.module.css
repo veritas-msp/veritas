@@ -16,6 +16,10 @@
   --msp-radius: 16px;
   --msp-radius-sm: 10px;
   --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 8px 24px rgba(15, 28, 46, 0.08);
+  /* Padding / gap unifiés : Infra · Tickets · Événements · Sauvegarde · Coffre · Logs */
+  --crm-section-content-pad: 0.75rem 1rem 0.85rem;
+  --crm-section-toolbar-gap: 0.65rem;
+  --enterprise-search-max: 280px;
 
   display: flex;
   flex-direction: column;
@@ -40,6 +44,37 @@
 .enterpriseDetailPage {
   position: relative;
   z-index: 1;
+}
+
+/* Barres de recherche homogènes (tous onglets finder) */
+.enterpriseDetailPage :global([class*="embeddedSearchBox"]),
+.contratDetailPage :global([class*="embeddedSearchBox"]) {
+  width: min(var(--enterprise-search-max), 100%);
+  min-width: 200px;
+  max-width: var(--enterprise-search-max);
+  height: var(--msp-btn-h, 2.15rem);
+  min-height: var(--msp-btn-h, 2.15rem);
+  padding: 0 0.85rem;
+  box-sizing: border-box;
+}
+
+.enterpriseDetailPage :global([class*="logsPanelBodyEmbedded"]),
+.contratDetailPage :global([class*="logsPanelBodyEmbedded"]) {
+  padding: var(--crm-section-content-pad) !important;
+  gap: var(--crm-section-toolbar-gap);
+  box-sizing: border-box;
+}
+
+/* Logs dans le shell activité : éviter le double padding */
+.enterpriseTabBody :global([class*="logsPanelBodyEmbedded"]) {
+  padding: 0 !important;
+  gap: var(--crm-section-toolbar-gap);
+}
+
+.enterpriseTabBody {
+  padding: var(--crm-section-content-pad) !important;
+  gap: var(--crm-section-toolbar-gap) !important;
+  box-sizing: border-box;
 }
 
 
@@ -4198,16 +4233,25 @@
   height: 100%;
 }
 
+/* Même chrome arrondi que la table Logs (UiKit tableShell) */
 .activityUiKitTable :global([class*="tableShell"]) {
   height: 100%;
   max-height: none;
   --fade-surface: var(--msp-surface, #fff);
   --fade-radius: var(--msp-radius-sm, 10px);
-  border: 1px solid var(--msp-border, #d0dae8);
+  border: 1px solid var(--msp-border, #dde3ed);
   border-radius: var(--msp-radius-sm, 10px);
   background: var(--msp-surface, #fff);
   box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   overflow: hidden;
+}
+
+:global(html.dark) .activityUiKitTable :global([class*="tableShell"]),
+:global(body.dark) .activityUiKitTable :global([class*="tableShell"]) {
+  --fade-surface: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .activityPagination {
@@ -4654,6 +4698,12 @@
   padding: 1.25rem 1rem !important;
   background: transparent !important;
   white-space: normal;
+}
+
+.activityMutedCell {
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+  font-size: 0.8125rem;
 }
 
 .activityLayout .activityTitleCell {

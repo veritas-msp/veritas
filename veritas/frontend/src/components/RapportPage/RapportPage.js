@@ -154,6 +154,7 @@ export default function ReportPage({
   const [startingSupervisionBuilder, setStartingSupervisionBuilder] = useState(false);
   const [equipmentAlertCounts, setEquipmentAlertCounts] = useState({});
   const [equipmentTicketInsightCounts, setEquipmentTicketInsightCounts] = useState({});
+  const [equipmentTicketsByKey, setEquipmentTicketsByKey] = useState({});
   const periodInsightsAbortRef = useRef(null);
   const userInitial = useMemo(() => {
     if (typeof window === "undefined") return "L";
@@ -305,6 +306,7 @@ export default function ReportPage({
     if (!clientId || !startDate || !endDate) {
       setEquipmentAlertCounts({});
       setEquipmentTicketInsightCounts({});
+      setEquipmentTicketsByKey({});
       return;
     }
     if (periodInsightsAbortRef.current) {
@@ -333,6 +335,7 @@ export default function ReportPage({
         endDate
       });
       setEquipmentTicketInsightCounts(insights.ticketCounts || {});
+      setEquipmentTicketsByKey(insights.ticketsByEquipmentKey || {});
       setEquipmentAlertCounts(insights.alertCounts || {});
       setEquipmentComments(prev => mergeSeededTicketComments(prev, insights.seededCommentsByEquipmentKey));
     } catch (err) {
@@ -1258,7 +1261,6 @@ export default function ReportPage({
       pendingText={pendingEquipmentComment}
       onPendingChange={setPendingEquipmentComment}
       onPublish={handlePublishFromCommentsPane}
-      onSelectStep={next => handleOpenEquipmentComments(next.equipment, next)}
       onClearTarget={handleClearCommentsTarget}
       editingComment={editingComment}
       onStartEdit={handleStartEditFromPane}
@@ -1400,6 +1402,7 @@ export default function ReportPage({
                     onEquipmentSaved={handleReportEquipmentSaved}
                     equipmentCommentCounts={equipmentCommentCounts}
                     equipmentTicketCounts={equipmentTicketCounts}
+                    equipmentTicketsByKey={equipmentTicketsByKey}
                     equipmentAlertCounts={equipmentAlertCounts}
                     equipmentComments={equipmentComments}
                     highlightedEquipmentKey={highlightedEquipmentKey}

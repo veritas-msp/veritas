@@ -744,7 +744,22 @@ export default function PlanningPage({
     loadEvents();
     return () => controller.abort();
   }, []);
-  const infrastructureTypes = ['Serveurs', 'NAS', 'SAN', 'Firewalls', 'Internet', 'Switch', 'BorneWifi'];
+  const infrastructureTypes = [
+    "Serveurs",
+    "Servers",
+    "Ordinateurs",
+    "NAS",
+    "SAN",
+    "Stockage",
+    "Firewalls",
+    "Internet",
+    "Switch",
+    "BorneWifi",
+    "Routeur",
+    "Alimentation",
+    "TOIP",
+    "Videosurveillance"
+  ];
   const cybersecurityTypes = ['Antispam', 'Antivirus', 'Backup'];
   const serviceTypes = ['Office365', 'NDD'];
   useEffect(() => {

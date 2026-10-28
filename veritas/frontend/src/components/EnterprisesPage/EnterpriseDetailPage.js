@@ -90,7 +90,14 @@ const ENTERPRISE_FINDER_ICONS = [
 import { getInfraMapCopy } from "./infraMapI18n";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
 import CrmDetailPageSkeleton from "./CrmDetailPageSkeleton";
-import { UiKitEmptyState, UiKitScrollFadeShell, UiKitTable, uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
+import {
+  UiKitEmptyState,
+  UiKitScrollFadeShell,
+  UiKitTable,
+  uiKitLayoutsStyles as finderKit,
+  uiKitTableStyles as tableKit,
+  useFinderNavIndicator
+} from "../UiKit";
 import styles from "./EnterpriseDetailPage.module.css";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
@@ -4940,7 +4947,7 @@ export default function ClientDetailPage({
 
       <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "cyber" || overviewTab === "backup" || overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
           <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" || overviewTab === "backup" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" || overviewTab === "events" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
+          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" || overviewTab === "backup" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
             <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
               <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
                 <nav
@@ -5465,7 +5472,7 @@ export default function ClientDetailPage({
                     <div className={styles.activityUnifiedCard} data-guide="enterprise-activity-sections" data-activity-section={activitySection}>
                       {activitySection === "support" ? (
                       <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="support">
-                        <div className={styles.activityUnifiedBody}>
+                        <div className={`${styles.activityUnifiedBody} ${styles.enterpriseTabBody}`.trim()}>
                           {renderActivityToolbar(supportSearchQuery, setSupportSearchQuery, supportStatusFilter, setSupportStatusFilter)}
                           <div className={styles.activityTableStack}>
                             {pagedSupportTickets.total === 0 ? renderActivityEmpty(
@@ -5477,6 +5484,8 @@ export default function ClientDetailPage({
                             <UiKitTable
                               fill
                               className={styles.activityUiKitTable}
+                              fadeTop
+                              fadeTopInset="2.85rem"
                               deps={[
                                 pagedSupportTickets.total,
                                 pagedSupportTickets.page,
@@ -5486,7 +5495,7 @@ export default function ClientDetailPage({
                                 supportStatusFilter
                               ]}
                             >
-                            <table className={styles.dataTable}>
+                            <table className={`${tableKit.table} ${tableKit.tableList} ${styles.dataTable}`.trim()}>
                               <thead>
                                 <tr>
                                         {renderActivitySortableTh("support", "number", copy.table.number)}
@@ -5543,7 +5552,7 @@ export default function ClientDetailPage({
                       {activitySection === "prestations" ? (
                       <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityUnifiedProLock} badgePosition="none">
                         <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="prestations">
-                          <div className={styles.activityUnifiedBody}>
+                          <div className={`${styles.activityUnifiedBody} ${styles.enterpriseTabBody}`.trim()}>
                             {renderActivityToolbar(prestationSearchQuery, setPrestationSearchQuery, prestationStatusFilter, setPrestationStatusFilter)}
                             <div className={styles.activityTableStack}>
                               {pagedPrestationTickets.total === 0 ? renderActivityEmpty(
@@ -5555,6 +5564,8 @@ export default function ClientDetailPage({
                               <UiKitTable
                                 fill
                                 className={styles.activityUiKitTable}
+                                fadeTop
+                                fadeTopInset="2.85rem"
                                 deps={[
                                   pagedPrestationTickets.total,
                                   pagedPrestationTickets.page,
@@ -5564,7 +5575,7 @@ export default function ClientDetailPage({
                                   prestationStatusFilter
                                 ]}
                               >
-                              <table className={styles.dataTable}>
+                              <table className={`${tableKit.table} ${tableKit.tableList} ${styles.dataTable}`.trim()}>
                                 <thead>
                                   <tr>
                                           {renderActivitySortableTh("prestations", "number", copy.table.number)}
@@ -5616,7 +5627,7 @@ export default function ClientDetailPage({
                       {activitySection === "campaigns" ? (
                       <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.campaigns} featureKey="cyberCampaigns" className={styles.activityUnifiedProLock} badgePosition="none">
                         <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`} data-activity-section="campaigns">
-                          <div className={styles.activityUnifiedBody}>
+                          <div className={`${styles.activityUnifiedBody} ${styles.enterpriseTabBody}`.trim()}>
                             {renderActivityToolbar(
                               campaignSearchQuery,
                               setCampaignSearchQuery,
@@ -5709,7 +5720,7 @@ export default function ClientDetailPage({
                 <div className={styles.activityUnifiedCard}>
                   <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.planning} featureKey="planning" className={styles.activityUnifiedProLock} badgePosition="none">
                     <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo} ${styles.activityEventsSection}`}>
-                      <div className={styles.activityUnifiedBody}>
+                      <div className={`${styles.activityUnifiedBody} ${styles.enterpriseTabBody}`.trim()}>
                         {renderActivityToolbar(
                           eventsSearchQuery,
                           setEventsSearchQuery,
@@ -5839,19 +5850,27 @@ export default function ClientDetailPage({
               style={overviewTab === "logs" ? undefined : { display: "none" }}
               data-guide="enterprise-logs-panel"
             >
-              {client?.id ? (
-                <ActivityJournalPanel
-                  entityId={client.id}
-                  embedded
-                  active={overviewTab === "logs"}
-                  fetchLogs={(page, options) => getClientLogs(client.id, page, options?.limit || 25, {
-                    signal: options?.signal,
-                    sortBy: options?.sortBy,
-                    sortDir: options?.sortDir
-                  })}
-                  purgeLogs={() => purgeClientLogs(client.id)}
-                />
-              ) : null}
+              <div className={styles.activityLayout}>
+                <div className={styles.activityUnifiedCard}>
+                  <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
+                    <div className={`${styles.activityUnifiedBody} ${styles.enterpriseTabBody}`.trim()}>
+                      {client?.id ? (
+                        <ActivityJournalPanel
+                          entityId={client.id}
+                          embedded
+                          active={overviewTab === "logs"}
+                          fetchLogs={(page, options) => getClientLogs(client.id, page, options?.limit || 25, {
+                            signal: options?.signal,
+                            sortBy: options?.sortBy,
+                            sortDir: options?.sortDir
+                          })}
+                          purgeLogs={() => purgeClientLogs(client.id)}
+                        />
+                      ) : null}
+                    </div>
+                  </section>
+                </div>
+              </div>
             </div>
             ) : null}
             </div>

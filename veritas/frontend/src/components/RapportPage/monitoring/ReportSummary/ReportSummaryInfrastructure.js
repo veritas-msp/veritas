@@ -6,6 +6,7 @@ import { FaEthernet } from "react-icons/fa";
 import { mdiWifiMarker } from "@mdi/js";
 import styles from "./ReportSummaryInfrastructure.module.css";
 import { REPORT_INFRA_MODULES, sumEquipmentCountsForModules } from "./reportCategoryCounts";
+import { formatServerVcpuLabel } from "../../../EquipementPage/serverSpecUtils";
 const HEALTH_COLORS = {
   ok: "#10b981",
   warn: "#f59e0b",
@@ -713,7 +714,9 @@ function ServersTopologySection({
                 const serverSerialLine = isPhysicalServer && serialLabel ? `SN: ${serialLabel}` : null;
                 const isVirtualServer = String(raw.type || "").toLowerCase() === "virtuel" || String(raw.type || "").toLowerCase() === "virtual";
                 const isPhysicalServerType = String(raw.type || "").toLowerCase() === "physique" || String(raw.type || "").toLowerCase() === "physical";
-                const vcpuLabel = raw.processeur || raw.vcpu || raw.vCpu || null;
+                const vcpuRaw = raw.processeur || raw.vcpu || raw.vCpu || null;
+                const vcpuFormatted = vcpuRaw != null ? formatServerVcpuLabel(vcpuRaw) : "-";
+                const vcpuLabel = vcpuFormatted !== "-" ? vcpuFormatted : null;
                 const ramLabel = raw.memoire || raw.ram || null;
                 const storageLabel = raw.stockage || null;
                 const osIcon = getOsIcon(raw);
@@ -882,7 +885,7 @@ function CardsSection({
           value: r.systeme || r.os || "-"
         }, {
           label: "vCPU",
-          value: r.processeur || r.vcpu || r.vCpu || "-"
+          value: formatServerVcpuLabel(r.processeur || r.vcpu || r.vCpu)
         }, {
           label: "RAM",
           value: r.memoire || r.ram || "-"

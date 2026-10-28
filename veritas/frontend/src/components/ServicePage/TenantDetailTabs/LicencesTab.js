@@ -3,13 +3,18 @@ import { FaSort, FaSortUp, FaSortDown, FaGift } from 'react-icons/fa';
 import SmartTooltip from '../../SmartTooltip';
 import styles from '../TenantDetailPage.module.css';
 import { getLicenseDisplayName, isFreeLicense } from './utils';
+import { UiKitKpiStrip } from '../../UiKit';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
+
 export default function LicensesTab({
   licences,
   dashboardMetrics,
-  theme
+  theme,
+  embedded = false
 }) {
   const [sortColumn, setSortColumn] = useState('total');
   const [sortDirection, setSortDirection] = useState('desc');
+  const [searchQuery, setSearchQuery] = useState('');
   const totalLicenses = dashboardMetrics?.totalLicenses ?? 0;
   const usedLicenses = dashboardMetrics?.usedLicenses ?? 0;
   const usageRate = totalLicenses > 0 ? Math.round(usedLicenses / totalLicenses * 100) : 0;
@@ -41,9 +46,13 @@ export default function LicensesTab({
     }} />;
   };
   const filteredAndSortedLicenses = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     const filtered = licences.filter(lic => {
       const total = lic.total || 0;
-      return total < 10000 && total > 0;
+      if (!(total < 10000 && total > 0)) return false;
+      if (!q) return true;
+      const name = (getLicenseDisplayName(lic.nom || lic.displayName) || '').toLowerCase();
+      return name.includes(q);
     });
     const dir = sortDirection === 'asc' ? 1 : -1;
     return [...filtered].sort((a, b) => {
@@ -79,11 +88,175 @@ export default function LicensesTab({
       }
       return cmp * dir;
     });
-  }, [licences, sortColumn, sortDirection]);
+  }, [licences, sortColumn, sortDirection, searchQuery]);
+
+  const kpiCards = useMemo(() => [{
+    key: 'total',
+    label: 'Total licenses',
+    value: totalLicenses
+  }, {
+    key: 'used',
+    label: 'Licenses used',
+    value: usedLicenses
+  }, {
+    key: 'available',
+    label: 'Licenses available',
+    value: availableLicenses
+  }, {
+    key: 'rate',
+    label: 'Usage rate',
+    value: usageRate
+  }], [totalLicenses, usedLicenses, availableLicenses, usageRate]);
+
+  const renderTable = () => <table className={styles.licensesTable}>
+      <thead>
+        <tr>
+          <th onClick={() => handleLicenseSort('type')} style={{
+          cursor: 'pointer'
+        }}>
+            License type {getSortIcon('type')}
+          </th>
+          <th onClick={() => handleLicenseSort('used')} style={{
+          cursor: 'pointer'
+        }}>
+            Used {getSortIcon('used')}
+          </th>
+          <th onClick={() => handleLicenseSort('total')} style={{
+          cursor: 'pointer'
+        }}>
+            Total {getSortIcon('total')}
+          </th>
+          <th onClick={() => handleLicenseSort('available')} style={{
+          cursor: 'pointer'
+        }}>
+            Available {getSortIcon('available')}
+          </th>
+          <th onClick={() => handleLicenseSort('usageRate')} style={{
+          cursor: 'pointer'
+        }}>
+            Usage rate {getSortIcon('usageRate')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {filteredAndSortedLicenses.map((lic, idx) => {
+        const total = lic.total || 0;
+        const used = lic.utilisees || 0;
+        const available = Math.max(0, total - used);
+        const rowUsageRate = total > 0 ? Math.round(used / total * 100) : 0;
+        const freeLicense = isFreeLicense(lic);
+        let statusColor = '#10b981';
+        if (!freeLicense) {
+          if (available >= 3) {
+            statusColor = '#f59e0b';
+          } else if (rowUsageRate >= 90) {
+            statusColor = '#10b981';
+          } else if (rowUsageRate < 50 && total > 0) {
+            statusColor = '#ef4444';
+          }
+        }
+        return <tr key={idx}>
+                  <td>
+                    <div style={{
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+                      {getLicenseDisplayName(lic.nom || lic.displayName)}
+                      {freeLicense && <SmartTooltip as="span" content="Free license">
+                          <span style={{
+                  display: 'inline-flex'
+                }}>
+                            <FaGift style={{
+                    fontSize: '0.875rem',
+                    color: '#15D1A0',
+                    flexShrink: 0
+                  }} />
+                          </span>
+                        </SmartTooltip>}
+                    </div>
+                  </td>
+                  <td>
+                    <span style={{
+              color: statusColor,
+              fontWeight: 500
+            }}>
+                      {used.toLocaleString()}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{
+              fontWeight: 500
+            }}>
+                      {total.toLocaleString()}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{
+              fontWeight: 500
+            }}>
+                      {available.toLocaleString()}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.progressBarContainer}>
+                      <div className={styles.progressBarFill} style={{
+                width: `${Math.max(rowUsageRate, 0)}%`,
+                background: statusColor
+              }} />
+                      <span className={styles.progressTextInside}>{rowUsageRate}%</span>
+                    </div>
+                  </td>
+                </tr>;
+      })}
+      </tbody>
+    </table>;
+
+  const expiringBlock = (() => {
+    const expiringLicenses = licences.filter(lic => {
+      if (!lic.expirationDate) return false;
+      const expDate = new Date(lic.expirationDate);
+      if (Number.isNaN(expDate.getTime())) return false;
+      const daysUntilExpiry = (expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+      return daysUntilExpiry > 0 && daysUntilExpiry <= 90;
+    });
+    if (expiringLicenses.length === 0) return null;
+    return <div className={styles.expiringLicensesBox}>
+            <h3>
+              Licenses expiring soon
+            </h3>
+            <ul>
+              {expiringLicenses.map((lic, idx) => <li key={idx}>
+                  {getLicenseDisplayName(lic.nom || lic.displayName)} - Expires on{' '}
+                  {new Date(lic.expirationDate).toLocaleDateString('en-GB')}
+                </li>)}
+            </ul>
+          </div>;
+  })();
+
+  if (embedded) {
+    return <section className={`${styles.kpiSection} ${styles.tabFill}`}>
+        {licences.length > 0 ? <>
+            {dashboardMetrics ? <div className={styles.embeddedKpiStrip}>
+                <UiKitKpiStrip variant="segments" cards={kpiCards} ariaLabel="License KPIs" />
+              </div> : null}
+            <MonitoringStepSearchBar value={searchQuery} onChange={setSearchQuery} onClear={() => setSearchQuery('')} placeholder="Rechercher une licence" />
+            <MonitoringStepTableWrap scrollable deps={[filteredAndSortedLicenses.length, searchQuery, sortColumn, sortDirection]}>
+              <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
+                {renderTable()}
+              </div>
+            </MonitoringStepTableWrap>
+            {expiringBlock}
+          </> : <div className={styles.noDataMessage}>
+            <p>No licenses available. Please sync the data.</p>
+          </div>}
+      </section>;
+  }
+
   return <section className={styles.kpiSection}>
       <h2 className={styles.sectionTitle}>License information</h2>
       {licences.length > 0 ? <>
-          {}
           {dashboardMetrics && <div className={styles.statsCards} style={{
         marginBottom: '1rem'
       }}>
@@ -115,136 +288,11 @@ export default function LicensesTab({
               </div>
             </div>}
 
-          {}
           <div className={styles.licensesTableContainer}>
-            <table className={styles.licensesTable}>
-              <thead>
-                <tr>
-                  <th onClick={() => handleLicenseSort('type')} style={{
-                cursor: 'pointer'
-              }}>
-                    License type {getSortIcon('type')}
-                  </th>
-                  <th onClick={() => handleLicenseSort('used')} style={{
-                cursor: 'pointer'
-              }}>
-                    Used {getSortIcon('used')}
-                  </th>
-                  <th onClick={() => handleLicenseSort('total')} style={{
-                cursor: 'pointer'
-              }}>
-                    Total {getSortIcon('total')}
-                  </th>
-                  <th onClick={() => handleLicenseSort('available')} style={{
-                cursor: 'pointer'
-              }}>
-                    Available {getSortIcon('available')}
-                  </th>
-                  <th onClick={() => handleLicenseSort('usageRate')} style={{
-                cursor: 'pointer'
-              }}>
-                    Usage rate {getSortIcon('usageRate')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAndSortedLicenses.map((lic, idx) => {
-              const total = lic.total || 0;
-              const used = lic.utilisees || 0;
-              const available = Math.max(0, total - used);
-              const usageRate = total > 0 ? Math.round(used / total * 100) : 0;
-              const freeLicense = isFreeLicense(lic);
-              let statusColor = '#10b981';
-              if (!freeLicense) {
-                if (available >= 3) {
-                  statusColor = '#f59e0b';
-                } else if (usageRate >= 90) {
-                  statusColor = '#10b981';
-                } else if (usageRate < 50 && total > 0) {
-                  statusColor = '#ef4444';
-                }
-              }
-              return <tr key={idx}>
-                        <td>
-                          <div style={{
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                            {getLicenseDisplayName(lic.nom || lic.displayName)}
-                            {freeLicense && <SmartTooltip as="span" content="Free license">
-                                <span style={{
-                        display: 'inline-flex'
-                      }}>
-                                  <FaGift style={{
-                          fontSize: '0.875rem',
-                          color: '#15D1A0',
-                          flexShrink: 0
-                        }} />
-                                </span>
-                              </SmartTooltip>}
-                          </div>
-                        </td>
-                        <td>
-                          <span style={{
-                    color: statusColor,
-                    fontWeight: 500
-                  }}>
-                            {used.toLocaleString()}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{
-                    fontWeight: 500
-                  }}>
-                            {total.toLocaleString()}
-                          </span>
-                        </td>
-                        <td>
-                          <span style={{
-                    fontWeight: 500
-                  }}>
-                            {available.toLocaleString()}
-                          </span>
-                        </td>
-                        <td>
-                          <div className={styles.progressBarContainer}>
-                            <div className={styles.progressBarFill} style={{
-                      width: `${Math.max(usageRate, 0)}%`,
-                      background: statusColor
-                    }} />
-                            <span className={styles.progressTextInside}>{usageRate}%</span>
-                          </div>
-                        </td>
-                      </tr>;
-            })}
-              </tbody>
-            </table>
+            {renderTable()}
           </div>
 
-          {}
-          {(() => {
-        const expiringLicenses = licences.filter(lic => {
-          if (!lic.expirationDate) return false;
-          const expDate = new Date(lic.expirationDate);
-          if (Number.isNaN(expDate.getTime())) return false;
-          const daysUntilExpiry = (expDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-          return daysUntilExpiry > 0 && daysUntilExpiry <= 90;
-        });
-        if (expiringLicenses.length === 0) return null;
-        return <div className={styles.expiringLicensesBox}>
-                <h3>
-                  Licenses expiring soon
-                </h3>
-                <ul>
-                  {expiringLicenses.map((lic, idx) => <li key={idx}>
-                      {getLicenseDisplayName(lic.nom || lic.displayName)} - Expires on{' '}
-                      {new Date(lic.expirationDate).toLocaleDateString('en-GB')}
-                    </li>)}
-                </ul>
-              </div>;
-      })()}
+          {expiringBlock}
         </> : <div className={styles.noDataMessage}>
           <p>No licenses available. Please sync the data.</p>
         </div>}

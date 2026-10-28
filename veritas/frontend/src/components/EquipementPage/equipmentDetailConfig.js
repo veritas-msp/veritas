@@ -37,6 +37,22 @@ function formatBool(value, {
   if (value === null || value === undefined || value === "") return null;
   return value ? yes : no;
 }
+
+const BOOL_FIELD_KEYS = new Set([
+  "modeHA",
+  "manageable",
+  "poeSupport",
+  "empilage",
+  "alimentationPoE"
+]);
+
+function getLocalizedBoolLabels(locale) {
+  const fv = locale ? getEquipmentDetailCopy(locale)?.formatValues : null;
+  return {
+    yes: fv?.yes || "Yes",
+    no: fv?.no || "No"
+  };
+}
 function formatList(value, separator = ", ") {
   if (!value) return null;
   if (Array.isArray(value)) {
@@ -688,7 +704,12 @@ function formatField(fieldKey, formData, equipment, locale) {
     return formatExtensionFieldValue(customField, raw, labels);
   }
   const formatter = FIELD_FORMATTERS[fieldKey];
-  let raw = formatter ? formatter(formData, equipment) : formData[fieldKey];
+  let raw;
+  if (BOOL_FIELD_KEYS.has(fieldKey)) {
+    raw = formatBool(formData[fieldKey], getLocalizedBoolLabels(locale));
+  } else {
+    raw = formatter ? formatter(formData, equipment) : formData[fieldKey];
+  }
   if (fieldKey === "roleHA" && raw) {
     raw = formatHaRole(raw, locale);
   }

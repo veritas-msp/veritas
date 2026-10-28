@@ -6,6 +6,7 @@ import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
 import { getLicenseDisplayName } from './utils';
 import { getMfaMethods, getMfaUserFromIndex, buildMfaLookupIndex, userHasMethod, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
 function getMfaMethodLabel(methodType) {
   const labels = {
     microsoftauthenticatorauthenticationmethod: 'Microsoft Authenticator',
@@ -553,7 +554,7 @@ export default function UsersTab({
     })).sort((a, b) => b.count - a.count || (a.domain === NO_DOMAIN_KEY ? 1 : b.domain === NO_DOMAIN_KEY ? -1 : a.domain.localeCompare(b.domain)));
   }, [displayUsers]);
   return <section className={`${styles.kpiSection} ${embedded ? styles.tabFill : ""}`}>
-      <h2 className={styles.sectionTitle}>Users</h2>
+      {!embedded ? <h2 className={styles.sectionTitle}>Users</h2> : null}
       {users.length > 0 ? <>
           {}
           {!embedded && domainCounts.length > 0 && <>
@@ -725,7 +726,13 @@ export default function UsersTab({
             Users table
           </h3> : null}
 
-          {!embedded ? <div className={styles.serviceAccountsRow}>
+          {embedded ? <MonitoringStepSearchBar value={userSearchQuery} onChange={value => {
+        setUserSearchQuery(value);
+        setCurrentPage(1);
+      }} onClear={() => {
+        setUserSearchQuery('');
+        setCurrentPage(1);
+      }} placeholder="Rechercher un utilisateur" /> : <div className={styles.serviceAccountsRow}>
             <div className={styles.serviceAccountsLeft}>
               <div className={styles.serviceAccountsSearchContainer}>
                 <div className={styles.serviceAccountsSearchBox}>
@@ -762,8 +769,9 @@ export default function UsersTab({
                 <Icon icon="mdi:file-export" className={styles.headerActionIcon} />
               </button>
             </SmartTooltip>
-          </div> : null}
-          <div className={`${styles.licensesTableContainer} ${embedded ? styles.tableFill : ""}`} style={embedded ? undefined : {
+          </div>}
+          {(() => {
+            const tableEl = <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`} style={embedded ? undefined : {
         overflowY: 'hidden',
         maxHeight: 'none'
       }}>
@@ -1034,7 +1042,9 @@ export default function UsersTab({
             })}
               </tbody>
             </table>
-          </div>
+          </div>;
+            return embedded ? <MonitoringStepTableWrap scrollable deps={[paginatedUsers.length, userSearchQuery, sortColumn, sortDirection]}>{tableEl}</MonitoringStepTableWrap> : tableEl;
+          })()}
 
           {}
           {!embedded && totalPages > 1 && <div className={styles.pagination}>

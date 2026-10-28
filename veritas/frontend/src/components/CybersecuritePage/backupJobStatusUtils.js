@@ -83,7 +83,7 @@ export function getBackupJobStatus(job) {
 export function getBackupJobStatusLabel(status) {
   switch (status) {
     case 'critical':
-      return 'Error';
+      return 'Erreur';
     case 'warning':
       return 'Retard';
     case 'ok':
@@ -93,7 +93,7 @@ export function getBackupJobStatusLabel(status) {
     case 'hycu':
       return 'HYCU';
     case 'unmapped':
-      return 'Unmapped';
+      return 'Non mappé';
     case 'inactive':
       return 'Inactif';
     default:
@@ -103,52 +103,54 @@ export function getBackupJobStatusLabel(status) {
 export function getBackupJobStatusTitle(status) {
   switch (status) {
     case 'critical':
-      return 'Last backup more than 48 h ago';
+      return 'Dernière sauvegarde il y a plus de 48 h';
     case 'warning':
-      return 'Last backup more than 24 h ago';
+      return 'Dernière sauvegarde il y a plus de 24 h';
     case 'ok':
-      return 'Last backup less than 24 h ago';
+      return 'Dernière sauvegarde il y a moins de 24 h';
     case 'pending':
-      return 'No backup data yet · waiting for sync';
+      return 'Pas encore de données · en attente de synchronisation';
     case 'hycu':
-      return 'HYCU job · map to HYCU to sync status';
+      return 'Job HYCU · mappez HYCU pour synchroniser le statut';
     case 'unmapped':
-      return 'Job not mapped · no alerts until mapping is configured';
+      return 'Job non mappé · aucune alerte tant que le mapping n’est pas configuré';
     case 'inactive':
-      return 'Inactive job · excluded from backup alerts';
+      return 'Job inactif · exclu des alertes de sauvegarde';
     default:
       return '';
   }
 }
+/** Classe CSS thématisée (clair / sombre) — préférer à getBackupJobRowStyle. */
+export function getBackupJobRowClassName(status) {
+  switch (status) {
+    case "critical":
+      return "backupJobRowCritical";
+    case "warning":
+      return "backupJobRowWarning";
+    case "ok":
+      return "backupJobRowOk";
+    case "pending":
+      return "backupJobRowPending";
+    case "inactive":
+      return "backupJobRowInactive";
+    default:
+      return "";
+  }
+}
+
+/**
+ * Styles inline legacy — ne force plus de fonds clairs (cassait le dark mode + hover).
+ * Préférer getBackupJobRowClassName + CSS.
+ */
 export function getBackupJobRowStyle(status) {
   switch (status) {
-    case 'critical':
-      return {
-        backgroundColor: '#fee2e2',
-        fontWeight: 'bold'
-      };
-    case 'warning':
-      return {
-        backgroundColor: '#ffedd5',
-        fontWeight: 'bold'
-      };
-    case 'ok':
-      return {
-        backgroundColor: '#dcfce7'
-      };
-    case 'pending':
-      return {
-        backgroundColor: '#f1f5f9'
-      };
-    case 'inactive':
-      return {
-        backgroundColor: '#f3f4f6',
-        opacity: 0.78
-      };
+    case "critical":
+    case "warning":
+      return { fontWeight: "bold" };
+    case "inactive":
+      return { opacity: 0.78 };
     default:
-      return {
-        backgroundColor: '#f9fafb'
-      };
+      return {};
   }
 }
 export function compareBackupJobsByStatus(a, b) {
