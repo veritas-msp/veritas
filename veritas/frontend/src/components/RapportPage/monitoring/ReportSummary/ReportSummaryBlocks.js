@@ -94,13 +94,13 @@ export function ReportTableBlock({
     return <div className={infraStyles.infraTableEmpty}>{emptyMessage}</div>;
   }
   return (
-    <div className={infraStyles.tableBlock}>
-      {title && (
+    <div className={title ? infraStyles.tableBlock : undefined}>
+      {title ? (
         <h5 className={infraStyles.tableBlockTitle}>
           {title}
           {count != null && <span className={infraStyles.tableBlockCount}>({count})</span>}
         </h5>
-      )}
+      ) : null}
       <div className={`${infraStyles.infraTableWrapper} ${wrapperClassName}`.trim()}>
         <table className={infraStyles.infraTable}>
           <thead>

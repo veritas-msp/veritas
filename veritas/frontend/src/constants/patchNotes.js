@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.3",
+    date: "2026-10-28",
+    highlights: [
+      "Rapports de supervision : synthèses éditables (mise en forme + IA) pour Supervision et Sauvegardes, espacements unifiés.",
+      "Onglet Services : structure KPI → synthèse → détail par service (Microsoft 365, antispam, antivirus), tables arrondies.",
+      "Header builder : actions Synchroniser / Exporter / Enregistrer en boutons circulaires à icônes animées.",
+      "Modal d’enregistrement allégé (une seule vue, nom + visibilité), refus des noms déjà utilisés, bouton fermer circulaire."
+    ]
+  },
+  {
     version: "2.0.2",
     date: "2026-10-27",
     highlights: [

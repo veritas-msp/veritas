@@ -1,15 +1,18 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Icon as IconifyIcon } from "@iconify/react";
 import {
   formatServeurLieLabel,
   normalizeServeurLieList,
-  pickBackupJobDestination
+  pickBackupJobDestination,
+  pickBackupJobType
 } from "../../../EnterprisesPage/backupJobUtils";
 import {
   getBackupJobStatus,
+  getBackupJobStatusLabel,
   normalizeBackupJobForStatus
 } from "../../../CybersecuritePage/backupJobStatusUtils";
 import { ReportTableBlock } from "./ReportSummaryBlocks";
+import ReportSynthesisEditor from "./ReportSynthesisEditor";
 import execStyles from "./ReportSummarySupervision.module.css";
 import styles from "./ReportSummaryBackup.module.css";
 
@@ -17,6 +20,29 @@ function listBackupInstances(client) {
   const raw = client?.equipements?.Sauvegarde || client?.equipements?.Backup;
   if (!raw) return [];
   return Array.isArray(raw.instances) ? raw.instances : [];
+}
+
+function getBackupInstanceEquipmentKey(inst, instances = []) {
+  const idx = Array.isArray(instances) ? instances.indexOf(inst) : -1;
+  const instanceName = inst?.nom || inst?.logiciel || (idx >= 0 ? `instance-${idx}` : inst?.id || "instance");
+  return inst?.commentKey || (inst?.id != null ? `Backup:instance:${inst.id}` : `Backup:instance:${instanceName}`);
+}
+
+function formatCommentsPreview(items = []) {
+  const texts = items.map(item => String(item?.text || "").trim()).filter(Boolean);
+  return texts.length ? texts.join(" · ") : "—";
+}
+
+function CommentCell({ value }) {
+  const hasComment = Boolean(value) && value !== "—";
+  return (
+    <span
+      className={hasComment ? execStyles.eqComment : execStyles.eqCommentEmpty}
+      title={hasComment ? value : undefined}
+    >
+      {value || "—"}
+    </span>
+  );
 }
 
 function formatDateFr(value) {
@@ -31,17 +57,6 @@ function formatDateTimeFr(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString("fr-FR");
-}
-
-function formatCollectionDateFr(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
 }
 
 function statusLabelFr(status) {
@@ -61,11 +76,6 @@ function statusToneClass(status) {
   if (s === "warning") return styles.statusWarn;
   if (s === "critical" || s === "fail" || s === "failed" || s === "error") return styles.statusError;
   return styles.statusNeutral;
-}
-
-function isOkStatus(status) {
-  const s = String(status || "").toLowerCase();
-  return s === "ok" || s === "success";
 }
 
 function isIssueStatus(status) {
@@ -90,62 +100,47 @@ function formatRetentionLabel(raw) {
   return `${days} jour${days > 1 ? "s" : ""}`;
 }
 
-function mostCommonRetention(jobs) {
-  const counts = new Map();
-  jobs.forEach(job => {
-    const label = formatRetentionLabel(job.retention);
-    if (!label || label === "—") return;
-    counts.set(label, (counts.get(label) || 0) + 1);
-  });
-  let best = null;
-  let bestCount = 0;
-  counts.forEach((count, label) => {
-    if (count > bestCount) {
-      best = label;
-      bestCount = count;
-    }
-  });
-  return best;
-}
-
-function shortenServerLabel(name) {
-  return String(name || "")
-    .replace(/^EPG-/i, "")
-    .replace(/^SRV-/i, "")
-    .trim();
-}
-
-function formatCoveredServersSummary(servers) {
-  if (!servers.length) return "Aucun serveur source renseigné sur les jobs.";
-  if (servers.length <= 8) return `${servers.join(", ")}.`;
-  const shortened = servers.map(shortenServerLabel);
-  return `${shortened.join(", ")}.`;
-}
-
-function buildClientLine(client, clientPrefix = "", clientMainLabel = "") {
-  if (clientPrefix || clientMainLabel) {
-    return [clientPrefix, clientMainLabel].filter(Boolean).join(" — ");
-  }
-  return client?.name || client?.nom || "Client";
-}
-
-function StatusBadge({ status }) {
+function StatusBadge({ status, label }) {
   return (
     <span className={`${styles.statusBadge} ${statusToneClass(status)}`}>
-      {statusLabelFr(status)}
+      {label || statusLabelFr(status)}
     </span>
   );
 }
 
-const DETAIL_COLUMNS = [
+const INSTANCE_COLUMNS = [
   {
     id: "name",
-    label: "Job",
+    label: "Instance",
     render: row => <span className={execStyles.equipmentChip}>{row.name || "—"}</span>
   },
-  { id: "serveurLie", label: "Serveur(s) source" },
+  { id: "logiciel", label: "Solution" },
+  { id: "server", label: "Serveur" },
+  { id: "jobsCount", label: "Jobs" },
+  {
+    id: "expiration",
+    label: "Expiration licence",
+    render: row => formatDateFr(row.expiration)
+  },
+  {
+    id: "commentPreview",
+    label: "Commentaires",
+    render: row => <CommentCell value={row.commentPreview} />
+  }
+];
+
+const JOB_COLUMNS = [
+  {
+    id: "name",
+    label: "Nom",
+    render: row => <span className={execStyles.equipmentChip}>{row.name || "—"}</span>
+  },
+  { id: "typeLabel", label: "Type" },
+  { id: "instanceName", label: "Instance" },
+  { id: "serveurLie", label: "Serveur" },
   { id: "destination", label: "Destination" },
   { id: "regularite", label: "Fréquence" },
+  { id: "horaire", label: "Horaires" },
   { id: "retention", label: "Rétention", render: row => formatRetentionLabel(row.retention) },
   {
     id: "lastBackupStart",
@@ -153,45 +148,74 @@ const DETAIL_COLUMNS = [
     render: row => formatDateTimeFr(row.lastBackupStart)
   },
   {
+    id: "lastBackupSync",
+    label: "Dernière sync",
+    render: row => formatDateTimeFr(row.lastBackupSync)
+  },
+  {
     id: "lastStatus",
     label: "Statut",
-    render: row => <StatusBadge status={row.lastStatus} />
+    render: row => <StatusBadge status={row.lastStatus} label={row.statusLabel} />
+  },
+  {
+    id: "commentPreview",
+    label: "Commentaires",
+    render: row => <CommentCell value={row.commentPreview} />
   }
 ];
 
-const WATCH_COLUMNS = [
-  {
-    id: "name",
-    label: "Job",
-    render: row => <span className={execStyles.equipmentChip}>{row.name || "—"}</span>
-  },
-  { id: "serveurLie", label: "Serveur(s)" },
-  {
-    id: "lastBackupStart",
-    label: "Dernière sauvegarde",
-    render: row => formatDateTimeFr(row.lastBackupStart)
-  },
-  {
-    id: "lastStatus",
-    label: "Statut",
-    render: row => <StatusBadge status={row.lastStatus} />
-  },
-  { id: "reason", label: "Constat" }
-];
+function buildBackupSynthesis({ totalJobs, issueCount, criticalCount, instanceCount }) {
+  if (instanceCount === 0 && totalJobs === 0) {
+    return "Aucune solution de sauvegarde n'est référencée pour ce client.";
+  }
+  if (totalJobs === 0) {
+    return "Des instances sont présentes, mais aucun job de sauvegarde n'est suivi.";
+  }
+  if (criticalCount > 0) {
+    return `Les sauvegardes présentent ${criticalCount} job${criticalCount > 1 ? "s" : ""} en erreur.`;
+  }
+  if (issueCount > 0) {
+    return "Les sauvegardes sont globalement opérationnelles, avec des points à vérifier.";
+  }
+  return "Les jobs de sauvegarde suivis sont en bon état.";
+}
 
 export default function ReportSummaryBackup({
   client,
-  clientPrefix = "",
-  clientMainLabel = "",
-  reportEndDate = null
+  comments = [],
+  synthesisHtml = null,
+  onSynthesisChange = null
 }) {
-  const [showTechnicalDetail, setShowTechnicalDetail] = useState(false);
-
   const instances = useMemo(() => listBackupInstances(client), [client]);
   const standardInstances = useMemo(
     () => instances.filter(inst => Boolean(String(inst?.logiciel || "").trim())),
     [instances]
   );
+
+  const reportComments = useMemo(
+    () =>
+      (Array.isArray(comments) ? comments : []).filter(comment => {
+        if (!String(comment?.text || "").trim()) return false;
+        const key = String(comment.equipmentKey || "");
+        return (
+          comment.moduleKey === "Backup" ||
+          key === "Backup" ||
+          key.startsWith("Backup:")
+        );
+      }),
+    [comments]
+  );
+
+  const commentsByEquipmentKey = useMemo(() => {
+    const map = {};
+    reportComments.forEach(comment => {
+      const key = comment.equipmentKey ? String(comment.equipmentKey) : "";
+      if (!key) return;
+      if (!map[key]) map[key] = [];
+      map[key].push(comment);
+    });
+    return map;
+  }, [reportComments]);
 
   const jobRows = useMemo(() => {
     const source = standardInstances.length ? standardInstances : instances;
@@ -201,30 +225,43 @@ export default function ReportSummaryBackup({
       return jobs.map((job, jobIdx) => {
         const statusJob = normalizeBackupJobForStatus(job, inst);
         const lastStatus = getBackupJobStatus(statusJob);
+        const typeBackup = pickBackupJobType(job);
+        const typeLabel = typeBackup
+          ? typeBackup.charAt(0).toUpperCase() + typeBackup.slice(1)
+          : "—";
         const lastBackupStart =
           job.last_backup_start ??
           job.lastBackupStart ??
           job.last_backup_date ??
           job.lastBackupDate ??
           null;
+        const lastBackupSync = job.last_backup_date ?? job.lastBackupDate ?? null;
+        const jobName = job.nom || job.jobName || `Job ${jobIdx + 1}`;
+        const equipmentKey = `Backup:job:${instanceName}:${jobName}`;
         return {
-          _rowKey: `${instanceName}-${job.id || job.nom || job.jobName || jobIdx}-${jobIdx}`,
+          _rowKey: `${instanceName}-${job.id || jobName}-${jobIdx}`,
+          equipmentKey,
           instanceName,
           logiciel: inst.logiciel || "",
           server: inst.server || inst.serveur || inst.serveurLie || "",
           expiration: inst.expiration || null,
-          name: job.nom || job.jobName || `Job ${jobIdx + 1}`,
+          name: jobName,
+          typeLabel,
           serveurLie: formatServeurLieLabel(job.serveurLie || job.source, "—"),
           serveurList: normalizeServeurLieList(job.serveurLie || job.source),
           destination: pickBackupJobDestination(job, inst, "—"),
           regularite: job.regularite || "—",
+          horaire: job.horaire || "—",
           retention: job.retention || "",
           lastBackupStart,
-          lastStatus
+          lastBackupSync,
+          lastStatus,
+          statusLabel: getBackupJobStatusLabel(lastStatus) || statusLabelFr(lastStatus),
+          commentPreview: formatCommentsPreview(commentsByEquipmentKey[equipmentKey])
         };
       });
     });
-  }, [instances, standardInstances]);
+  }, [instances, standardInstances, commentsByEquipmentKey]);
 
   const activeJobs = useMemo(
     () => jobRows.filter(job => String(job.lastStatus).toLowerCase() !== "inactive"),
@@ -234,131 +271,33 @@ export default function ReportSummaryBackup({
     () => activeJobs.filter(job => String(job.lastStatus).toLowerCase() !== "unmapped"),
     [activeJobs]
   );
-  const okJobs = useMemo(() => evaluatedJobs.filter(job => isOkStatus(job.lastStatus)), [evaluatedJobs]);
   const issueJobs = useMemo(() => evaluatedJobs.filter(job => isIssueStatus(job.lastStatus)), [evaluatedJobs]);
 
   const totalJobs = activeJobs.length;
-  const okCount = okJobs.length;
-  const evaluatedCount = evaluatedJobs.length || totalJobs;
-  const retentionLabel = mostCommonRetention(activeJobs) || "—";
 
-  const lastSuccessfulBackup = useMemo(() => {
-    let latest = null;
-    okJobs.forEach(job => {
-      if (!job.lastBackupStart) return;
-      const ts = new Date(job.lastBackupStart).getTime();
-      if (Number.isNaN(ts)) return;
-      if (latest == null || ts > latest) latest = ts;
-    });
-    if (latest == null) {
-      activeJobs.forEach(job => {
-        if (!job.lastBackupStart) return;
-        const ts = new Date(job.lastBackupStart).getTime();
-        if (Number.isNaN(ts)) return;
-        if (latest == null || ts > latest) latest = ts;
-      });
-    }
-    return latest != null ? new Date(latest).toISOString() : null;
-  }, [okJobs, activeJobs]);
-
-  const globalState = useMemo(() => {
-    if (totalJobs === 0) {
+  const instanceRows = useMemo(() => {
+    const source = standardInstances.length ? standardInstances : instances;
+    return source.map((inst, idx) => {
+      const jobs = Array.isArray(inst.jobs) ? inst.jobs : [];
+      const activeCount = jobs.filter(job => {
+        const status = getBackupJobStatus(normalizeBackupJobForStatus(job, inst));
+        return String(status).toLowerCase() !== "inactive";
+      }).length;
+      const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
       return {
-        label: "Non configuré",
-        valueClass: "",
-        icon: "mdi:database-off",
-        iconColor: "#6b7280",
-        hint: "Aucun job de sauvegarde suivi",
-        badgeClass: styles.solutionBadgeWarn,
-        badgeLabel: "À configurer"
+        _rowKey: inst.id || `${inst.nom || inst.logiciel || "inst"}-${idx}`,
+        equipmentKey,
+        name: inst.nom || inst.logiciel || `Instance ${idx + 1}`,
+        logiciel: inst.logiciel || "—",
+        server: inst.server || inst.serveur || inst.serveurLie || "—",
+        jobsCount: activeCount || jobs.length,
+        expiration: inst.expiration || null,
+        commentPreview: formatCommentsPreview(commentsByEquipmentKey[equipmentKey])
       };
-    }
-    if (issueJobs.some(job => String(job.lastStatus).toLowerCase() === "critical")) {
-      return {
-        label: "En erreur",
-        valueClass: execStyles.overviewCardValueCritical,
-        icon: "mdi:alert-octagon",
-        iconColor: "#dc2626",
-        hint: `${issueJobs.length} job${issueJobs.length > 1 ? "s" : ""} en anomalie`,
-        badgeClass: styles.solutionBadgeCritical,
-        badgeLabel: "En erreur"
-      };
-    }
-    if (issueJobs.length > 0) {
-      return {
-        label: "À surveiller",
-        valueClass: execStyles.overviewCardValueWarn,
-        icon: "mdi:alert",
-        iconColor: "#d97706",
-        hint: `${okCount} / ${evaluatedCount} jobs en dernier statut OK`,
-        badgeClass: styles.solutionBadgeWarn,
-        badgeLabel: "À surveiller"
-      };
-    }
-    return {
-      label: "Opérationnelles",
-      valueClass: execStyles.overviewCardValueOk,
-      icon: "mdi:check-circle",
-      iconColor: "#059669",
-      hint: `${okCount} jobs sur ${evaluatedCount} en dernier statut OK`,
-      badgeClass: styles.solutionBadgeOk,
-      badgeLabel: "Opérationnelle"
-    };
-  }, [totalJobs, issueJobs, okCount, evaluatedCount]);
-
-  const primaryInstance = useMemo(() => {
-    if (standardInstances.length) return standardInstances[0];
-    return instances[0] || null;
-  }, [instances, standardInstances]);
-
-  const solutionName = primaryInstance?.logiciel || primaryInstance?.nom || "Sauvegarde";
-  const backupServer =
-    primaryInstance?.server ||
-    primaryInstance?.serveur ||
-    primaryInstance?.serveurLie ||
-    primaryInstance?.nom ||
-    "—";
-  const mainDestination = useMemo(() => {
-    const counts = new Map();
-    activeJobs.forEach(job => {
-      const dest = job.destination && job.destination !== "—" ? job.destination : null;
-      if (!dest) return;
-      counts.set(dest, (counts.get(dest) || 0) + 1);
     });
-    let best = null;
-    let bestCount = 0;
-    counts.forEach((count, dest) => {
-      if (count > bestCount) {
-        best = dest;
-        bestCount = count;
-      }
-    });
-    return best || "—";
-  }, [activeJobs]);
+  }, [instances, standardInstances, commentsByEquipmentKey]);
 
-  const coveredServers = useMemo(() => {
-    const set = new Set();
-    activeJobs.forEach(job => {
-      (job.serveurList || []).forEach(server => {
-        if (server) set.add(server);
-      });
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "fr"));
-  }, [activeJobs]);
-
-  const watchRows = useMemo(
-    () =>
-      issueJobs.map(job => ({
-        ...job,
-        reason:
-          String(job.lastStatus).toLowerCase() === "warning"
-            ? "Dernière exécution en retard (> 24 h)"
-            : !job.lastBackupStart
-              ? "Aucune dernière exécution connue"
-              : "Dernière exécution en erreur ou trop ancienne (> 48 h)"
-      })),
-    [issueJobs]
-  );
+  const instanceCount = (standardInstances.length ? standardInstances : instances).length;
 
   const licenseRows = useMemo(() => {
     const rows = [];
@@ -374,194 +313,127 @@ export default function ReportSummaryBackup({
     return rows;
   }, [instances, standardInstances]);
 
-  const collectionDate =
-    formatCollectionDateFr(lastSuccessfulBackup) ||
-    formatCollectionDateFr(reportEndDate) ||
-    formatDateFr(reportEndDate);
-  const clientLine = buildClientLine(client, clientPrefix, clientMainLabel);
+  const licenseExpiration = useMemo(() => {
+    let earliest = null;
+    licenseRows.forEach(row => {
+      if (!row.expiration) return;
+      const ts = new Date(row.expiration).getTime();
+      if (Number.isNaN(ts)) return;
+      if (earliest == null || ts < earliest) earliest = ts;
+    });
+    if (earliest != null) return new Date(earliest).toISOString();
+    const primary = standardInstances[0] || instances[0];
+    return primary?.expiration || null;
+  }, [licenseRows, standardInstances, instances]);
+
+  const criticalCount = useMemo(
+    () =>
+      issueJobs.filter(job => {
+        const s = String(job.lastStatus || "").toLowerCase();
+        return s === "critical" || s === "fail" || s === "failed" || s === "error";
+      }).length,
+    [issueJobs]
+  );
+
+  const synthesis = useMemo(
+    () =>
+      buildBackupSynthesis({
+        totalJobs,
+        issueCount: issueJobs.length,
+        criticalCount,
+        instanceCount
+      }),
+    [totalJobs, issueJobs.length, criticalCount, instanceCount]
+  );
 
   return (
     <div className={execStyles.executiveRoot}>
-      <header className={execStyles.executiveHeader}>
-        <h3 className={execStyles.executiveTitle}>Synthèse des sauvegardes</h3>
-        <p className={execStyles.executiveClient}>{clientLine}</p>
-        <div className={execStyles.executiveMeta}>
-          {collectionDate ? <span className={execStyles.executivePeriod}>{collectionDate}</span> : null}
-          <span className={execStyles.executiveBadge}>État à la dernière collecte</span>
-        </div>
-      </header>
-
-      <section>
-        <h4 className={execStyles.overviewTitle}>Vue d&apos;ensemble</h4>
-        <div className={execStyles.overviewGrid}>
-          <article className={execStyles.overviewCard}>
-            <div className={execStyles.overviewCardHead}>
-              <IconifyIcon icon={globalState.icon} width={16} height={16} color={globalState.iconColor} />
-              État des sauvegardes
-            </div>
-            <div className={`${execStyles.overviewCardValue} ${globalState.valueClass}`.trim()}>
-              {globalState.label}
-            </div>
-            <div className={execStyles.overviewCardHint}>{globalState.hint}</div>
-          </article>
-
-          <article className={execStyles.overviewCard}>
-            <div className={execStyles.overviewCardHead}>
-              <IconifyIcon icon="mdi:database-sync" width={16} height={16} />
-              Jobs de sauvegarde
-            </div>
-            <div className={execStyles.overviewCardValue}>{totalJobs}</div>
-            <div className={execStyles.overviewCardHint}>Jobs configurés et suivis</div>
-          </article>
-
-          <article className={execStyles.overviewCard}>
-            <div className={execStyles.overviewCardHead}>
-              <IconifyIcon icon="mdi:history" width={16} height={16} />
-              Rétention
-            </div>
-            <div className={execStyles.overviewCardValue}>{retentionLabel}</div>
-            <div className={execStyles.overviewCardHint}>Rétention configurée sur les jobs présentés</div>
-          </article>
-
-          <article className={execStyles.overviewCard}>
-            <div className={execStyles.overviewCardHead}>
-              <IconifyIcon icon="mdi:clock-outline" width={16} height={16} />
-              Dernière sauvegarde
-            </div>
-            <div className={execStyles.overviewCardValue}>{formatDateFr(lastSuccessfulBackup)}</div>
-            <div className={execStyles.overviewCardHint}>Dernières exécutions réussies enregistrées</div>
-          </article>
-        </div>
-      </section>
-
       <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Solution de sauvegarde</h4>
-        <div className={styles.solutionCard}>
-          <div className={styles.solutionHead}>
-            <div className={styles.solutionIdentity}>
-              <span className={styles.solutionIcon}>
-                <IconifyIcon icon="mdi:database-sync" width={22} height={22} />
-              </span>
-              <div>
-                <p className={styles.solutionName}>{solutionName}</p>
-                <p className={styles.solutionSubtitle}>Solution de sauvegarde</p>
-              </div>
-            </div>
-            <span className={globalState.badgeClass}>{globalState.badgeLabel}</span>
+        <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs sauvegarde">
+          <div className={execStyles.kpiItem} role="listitem">
+            <span className={execStyles.kpiLabel}>Instances</span>
+            <span className={execStyles.kpiValue}>{instanceCount}</span>
+            <span className={execStyles.kpiHint}>solutions de sauvegarde</span>
           </div>
-          <div className={styles.solutionGrid}>
-            <div>
-              <span className={styles.solutionFieldLabel}>Serveur de sauvegarde</span>
-              <div className={styles.solutionFieldValue}>{backupServer}</div>
-            </div>
-            <div>
-              <span className={styles.solutionFieldLabel}>Nombre de jobs</span>
-              <div className={styles.solutionFieldValue}>{totalJobs}</div>
-            </div>
-            <div>
-              <span className={styles.solutionFieldLabel}>Destination principale</span>
-              <div className={styles.solutionFieldValue}>{mainDestination}</div>
-            </div>
-            <div>
-              <span className={styles.solutionFieldLabel}>Rétention configurée</span>
-              <div className={styles.solutionFieldValue}>{retentionLabel}</div>
-            </div>
+          <div className={execStyles.kpiItem} role="listitem">
+            <span className={execStyles.kpiLabel}>Jobs</span>
+            <span className={execStyles.kpiValue}>{totalJobs}</span>
+            <span className={execStyles.kpiHint}>configurés et suivis</span>
+          </div>
+          <div className={execStyles.kpiItem} role="listitem">
+            <span className={execStyles.kpiLabel}>Expiration licence</span>
+            <span className={execStyles.kpiValue}>{formatDateFr(licenseExpiration)}</span>
+            <span className={execStyles.kpiHint}>
+              {licenseRows.length > 1 ? `${licenseRows.length} licences suivies` : "licence sauvegarde"}
+            </span>
           </div>
         </div>
       </section>
 
       <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Couverture des sauvegardes</h4>
-        <p className={execStyles.perimeterLead}>
-          {totalJobs} job{totalJobs > 1 ? "s" : ""} de sauvegarde configuré{totalJobs > 1 ? "s" : ""}
-        </p>
-        <div className={execStyles.familyCard}>
-          <h5 className={execStyles.familyCardTitle}>
-            Serveurs couverts — {coveredServers.length || totalJobs}{" "}
-            {coveredServers.length > 0 ? `serveur${coveredServers.length > 1 ? "s" : ""}` : `job${totalJobs > 1 ? "s" : ""}`}
-          </h5>
-          <p className={execStyles.familySummaryLine}>
-            {coveredServers.length > 0
-              ? formatCoveredServersSummary(coveredServers)
-              : `${totalJobs} job${totalJobs > 1 ? "s" : ""} configuré${totalJobs > 1 ? "s" : ""} (cibles non renseignées).`}
-          </p>
-          {coveredServers.length > 0 && coveredServers.length !== totalJobs ? (
-            <p className={execStyles.sectionFootnote}>
-              Note : cette liste représente les cibles des jobs. Nombre de jobs ({totalJobs}) et nombre de serveurs
-              protégés ({coveredServers.length}) peuvent différer.
-            </p>
+        <h4 className={execStyles.sectionHeading}>Synthèse</h4>
+        <div
+          className={
+            typeof onSynthesisChange === "function"
+              ? execStyles.synthesisEditorHost
+              : execStyles.synthesisPanel
+          }
+        >
+          {typeof onSynthesisChange === "function" ? (
+            <ReportSynthesisEditor
+              value={synthesisHtml != null ? synthesisHtml : synthesis}
+              onChange={onSynthesisChange}
+              placeholder="Rédigez la synthèse des sauvegardes…"
+            />
+          ) : (
+            <p className={execStyles.synthesis}>{synthesis}</p>
+          )}
+        </div>
+      </section>
+
+      <section className={execStyles.sectionBlock}>
+        <h4 className={execStyles.sectionHeading}>Instances</h4>
+        <ReportTableBlock
+          title={null}
+          columns={INSTANCE_COLUMNS}
+          rows={instanceRows}
+          emptyMessage="Aucune instance de sauvegarde."
+        />
+      </section>
+
+      <section className={execStyles.sectionBlock}>
+        <h4 className={execStyles.sectionHeading}>Jobs de sauvegarde</h4>
+        <ReportTableBlock
+          title={null}
+          columns={JOB_COLUMNS}
+          rows={activeJobs}
+          emptyMessage="Aucun job de sauvegarde à afficher."
+        />
+      </section>
+
+      <section className={execStyles.sectionBlock} data-export-comments="true">
+        <div className={execStyles.commentsHeader}>
+          <IconifyIcon icon="mdi:comment-text-outline" width={18} height={18} aria-hidden />
+          <h4 className={execStyles.sectionHeading}>Commentaires</h4>
+          {reportComments.length > 0 ? (
+            <span className={execStyles.commentsCount}>{reportComments.length}</span>
           ) : null}
         </div>
-      </section>
-
-      <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Points à surveiller</h4>
-        <p
-          className={`${execStyles.sectionLead} ${watchRows.length === 0 ? execStyles.sectionLeadOk : ""}`.trim()}
-        >
-          <IconifyIcon
-            icon={watchRows.length > 0 ? "mdi:alert" : "mdi:check-circle"}
-            width={16}
-            height={16}
-          />
-          {watchRows.length > 0
-            ? `${watchRows.length} job${watchRows.length > 1 ? "s" : ""} nécessite${watchRows.length > 1 ? "nt" : ""} une vérification`
-            : "Aucun point de vigilance détecté"}
-        </p>
-
-        {watchRows.length > 0 ? (
-          <ReportTableBlock
-            title={null}
-            columns={WATCH_COLUMNS}
-            rows={watchRows}
-            emptyMessage={null}
-          />
+        {reportComments.length === 0 ? (
+          <p className={execStyles.commentsEmpty}>Aucun commentaire ajouté sur ce rapport.</p>
         ) : (
-          <p className={execStyles.synthesisBlock}>
-            Les {evaluatedCount || totalJobs} jobs présentent un dernier statut connu « OK » basé sur la dernière
-            exécution. Aucune erreur de sauvegarde n&apos;est signalée dans les données collectées.
-          </p>
+          <ul className={execStyles.commentsList}>
+            {reportComments.map(comment => (
+              <li key={comment.id || `${comment.linkedLabel}-${comment.createdAt}`} className={execStyles.commentCard}>
+                <div className={execStyles.commentMeta}>
+                  <span className={execStyles.commentLink}>{comment.linkedLabel || "Note"}</span>
+                  {comment.dateLabel ? <span className={execStyles.commentDate}>{comment.dateLabel}</span> : null}
+                </div>
+                <p className={execStyles.commentBody}>{comment.text}</p>
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
-
-      {licenseRows.length > 0 ? (
-        <section className={execStyles.sectionBlock}>
-          <h4 className={execStyles.sectionHeading}>Information licence</h4>
-          {licenseRows.map(row => (
-            <div key={row.key} className={styles.licenseCard}>
-              <div>
-                <div className={styles.licenseLabel}>{row.label}</div>
-                <div className={styles.licenseServer}>{row.server}</div>
-              </div>
-              <div className={styles.licenseDate}>{formatDateFr(row.expiration)}</div>
-            </div>
-          ))}
-        </section>
-      ) : null}
-
-      <section className={execStyles.sectionBlock} data-export-hide="true">
-        <button
-          type="button"
-          className={execStyles.detailToggle}
-          onClick={() => setShowTechnicalDetail(prev => !prev)}
-          aria-expanded={showTechnicalDetail}
-        >
-          <IconifyIcon icon={showTechnicalDetail ? "mdi:chevron-up" : "mdi:chevron-down"} width={18} height={18} />
-          {showTechnicalDetail ? "Masquer le détail des jobs" : "Voir le détail des jobs de sauvegarde"}
-        </button>
-
-        {showTechnicalDetail ? (
-          <div className={execStyles.detailPanel}>
-            <h5 className={execStyles.detailSectionTitle}>Détail des jobs de sauvegarde</h5>
-            <ReportTableBlock
-              title={null}
-              count={activeJobs.length}
-              columns={DETAIL_COLUMNS}
-              rows={activeJobs}
-              emptyMessage="Aucun job de sauvegarde à afficher."
-            />
-          </div>
-        ) : null}
       </section>
     </div>
   );

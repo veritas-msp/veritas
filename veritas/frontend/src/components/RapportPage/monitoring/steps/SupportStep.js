@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Icon } from "@iconify/react";
 import {
   ResponsiveContainer,
   PieChart,
@@ -14,11 +13,18 @@ import {
 } from "recharts";
 import { fetchTickets, fetchTicketCategories } from "../../../../api/tickets";
 import { fetchClientSupportCredits } from "../../../../api/clients";
-import { MonitoringStepShell, MonitoringStepSection, MonitoringPagedBlock, MonitoringStepTableWrap } from "../MonitoringStepLayout";
+import {
+  MonitoringStepShell,
+  MonitoringPagedBlock,
+  MonitoringStepTableWrap,
+  MonitoringStepSearchBar,
+  MonitoringTextCell
+} from "../MonitoringStepLayout";
 import { isDateWithinPeriod } from "../supervisionReportBuilder";
 import { isSalesTicket } from "../../../../utils/salesTicketUtils";
 import { getLocalizedEquipmentTypeLabel } from "../../../TicketPage/ticketEquipmentUtils";
 import { computeSupportCreditTotals } from "../../../TicketPage/ticketClientSummaryUtils";
+import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import styles from "../RapportMonitoringBuilder.module.css";
 
 const CHART_PALETTE = ["#2b5fab", "#0f766e", "#b45309", "#b91c1c", "#6366f1", "#0891b2", "#7c3aed", "#64748b"];
@@ -39,6 +45,7 @@ const STATUS_LABELS = {
   closed: "Clôturé"
 };
 
+const PRIORITY_ORDER = ["urgent", "high", "normal", "low"];
 const PRIORITY_LABELS = {
   urgent: "Urgente",
   high: "Haute",
@@ -46,6 +53,8 @@ const PRIORITY_LABELS = {
   low: "Basse"
 };
 
+/** Types ITIL support (alignés TicketPage) */
+const TYPE_ORDER = ["incident", "demande", "probleme", "changement"];
 const TYPE_LABELS = {
   incident: "Incident",
   demande: "Demande",
@@ -54,14 +63,8 @@ const TYPE_LABELS = {
   changement: "Changement"
 };
 
-const CHANNEL_LABELS = {
-  web: "Web",
-  phone: "Téléphone",
-  email: "Email",
-  chat: "Chat",
-  api: "API",
-  whatsapp: "WhatsApp"
-};
+const TYPE_COLORS = ["#b91c1c", "#2b5fab", "#b45309", "#0f766e"];
+const PRIORITY_COLORS = ["#b91c1c", "#b45309", "#64748b", "#0f766e"];
 
 function formatDateTime(value, locale = "fr-FR") {
   if (!value) return "—";
@@ -91,6 +94,22 @@ function normalizeStatus(status) {
   const value = String(status || "").toLowerCase();
   if (value === "open") return "new";
   return value;
+}
+
+function normalizeTypeKey(type) {
+  const raw = String(type || "").trim().toLowerCase();
+  if (raw === "request") return "demande";
+  return raw;
+}
+
+function typeLabel(type) {
+  const key = normalizeTypeKey(type);
+  return TYPE_LABELS[key] || key || "Non renseigné";
+}
+
+function priorityLabel(priority) {
+  const key = String(priority || "normal").toLowerCase();
+  return PRIORITY_LABELS[key] || key || "Normale";
 }
 
 function parseTicketList(payload) {
@@ -147,9 +166,20 @@ function countMap(items, keyFn) {
     if (!key) return;
     map[key] = (map[key] || 0) + 1;
   });
+  return map;
+}
+
+function mapToSortedList(map) {
   return Object.entries(map)
     .map(([key, count]) => ({ key, count }))
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key, "fr"));
+}
+
+function ensureSeries(map, order, labelFn) {
+  return order.map(key => ({
+    key: labelFn(key),
+    count: Number(map[key] || 0)
+  }));
 }
 
 function percent(part, total) {
@@ -204,10 +234,6 @@ function toChartData(items) {
   return items.map(item => ({ name: item.key, value: item.count }));
 }
 
-function ChartEmpty({ label }) {
-  return <p className={styles.supportEmpty}>{label}</p>;
-}
-
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const row = payload[0];
@@ -223,34 +249,40 @@ function ChartTooltip({ active, payload }) {
   );
 }
 
-function DonutChart({ items, emptyLabel, colors = CHART_PALETTE }) {
-  if (!items.length) return <ChartEmpty label={emptyLabel} />;
+function DonutChart({ items, colors = CHART_PALETTE }) {
   const data = toChartData(items);
   const total = data.reduce((sum, d) => sum + d.value, 0);
+  const displayData = total > 0 ? data : [{ name: "Aucun", value: 1 }];
+  const displayColors = total > 0 ? colors : ["#e2e8f0"];
+
   return (
     <div className={styles.supportChartBlock}>
       <div className={styles.supportChartCanvas}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
-              data={data}
+              data={displayData}
               dataKey="value"
               nameKey="name"
               cx="50%"
               cy="50%"
               innerRadius="52%"
               outerRadius="78%"
-              paddingAngle={data.length > 1 ? 2 : 0}
+              paddingAngle={displayData.length > 1 && total > 0 ? 2 : 0}
               stroke="var(--msp-surface, #fff)"
               strokeWidth={2}
             >
-              {data.map((entry, index) => (
-                <Cell key={entry.name} fill={colors[index % colors.length]} />
+              {displayData.map((entry, index) => (
+                <Cell key={entry.name} fill={displayColors[index % displayColors.length]} />
               ))}
             </Pie>
-            <RechartsTooltip content={<ChartTooltip />} />
+            {total > 0 ? <RechartsTooltip content={<ChartTooltip />} /> : null}
           </PieChart>
         </ResponsiveContainer>
+        <div className={styles.supportChartCenter}>
+          <span className={styles.supportChartCenterValue}>{total}</span>
+          <span className={styles.supportChartCenterLabel}>tickets</span>
+        </div>
       </div>
       <ul className={styles.supportChartLegend}>
         {data.map((entry, index) => (
@@ -268,13 +300,13 @@ function DonutChart({ items, emptyLabel, colors = CHART_PALETTE }) {
   );
 }
 
-function VerticalBarsChart({ items, emptyLabel, color = "#2b5fab" }) {
-  if (!items.length) return <ChartEmpty label={emptyLabel} />;
+function VerticalBarsChart({ items, color = "#2b5fab" }) {
   const data = toChartData(items).slice(0, 8);
+  const chartData = data.length ? data : [{ name: "—", value: 0 }];
   return (
     <div className={styles.supportChartSolo}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 28 }}>
+        <BarChart data={chartData} margin={{ top: 8, right: 8, left: -8, bottom: 28 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--msp-border, #e2e8f0)" />
           <XAxis
             dataKey="name"
@@ -285,7 +317,7 @@ function VerticalBarsChart({ items, emptyLabel, color = "#2b5fab" }) {
             height={48}
             tickFormatter={value => (String(value).length > 12 ? `${String(value).slice(0, 11)}…` : value)}
           />
-          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }} width={28} />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }} width={28} domain={[0, "auto"]} />
           <RechartsTooltip content={<ChartTooltip />} />
           <Bar dataKey="value" name="Tickets" fill={color} radius={[6, 6, 0, 0]} maxBarSize={36} />
         </BarChart>
@@ -294,16 +326,15 @@ function VerticalBarsChart({ items, emptyLabel, color = "#2b5fab" }) {
   );
 }
 
-function HorizontalBarsChart({ items, emptyLabel, color = "#6366f1" }) {
-  if (!items.length) return <ChartEmpty label={emptyLabel} />;
+function HorizontalBarsChart({ items, color = "#6366f1" }) {
   const data = toChartData(items).slice(0, 8);
-  const height = Math.max(160, data.length * 36 + 24);
+  const chartData = data.length ? data : [{ name: "Aucun", value: 0 }];
   return (
-    <div className={styles.supportChartSolo} style={{ height }}>
+    <div className={styles.supportChartSolo}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--msp-border, #e2e8f0)" />
-          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }} />
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }} domain={[0, "auto"]} />
           <YAxis
             type="category"
             dataKey="name"
@@ -312,10 +343,24 @@ function HorizontalBarsChart({ items, emptyLabel, color = "#6366f1" }) {
             tickFormatter={value => (String(value).length > 14 ? `${String(value).slice(0, 13)}…` : value)}
           />
           <RechartsTooltip content={<ChartTooltip />} />
-          <Bar dataKey="value" name="Tickets" fill={color} radius={[0, 6, 6, 0]} maxBarSize={18} />
+          <Bar dataKey="value" name="Tickets" fill={color} radius={[0, 6, 6, 0]} maxBarSize={22} />
         </BarChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+function SupportBlock({ title, count = null, children, className = "" }) {
+  return (
+    <section className={`${styles.supportBlock} ${className}`.trim()}>
+      <header className={styles.supportBlockHead}>
+        <h4 className={styles.supportBlockTitle}>
+          {title}
+          {count != null ? <span className={styles.supportBlockCount}>{count}</span> : null}
+        </h4>
+      </header>
+      <div className={styles.supportBlockBody}>{children}</div>
+    </section>
   );
 }
 
@@ -328,6 +373,7 @@ export default function SupportStep({ client, reportPeriod = {} }) {
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [ticketSearch, setTicketSearch] = useState("");
 
   useEffect(() => {
     if (!clientId) {
@@ -382,60 +428,75 @@ export default function SupportStep({ client, reportPeriod = {} }) {
     return categoryNames[raw] || raw;
   };
 
-  const byCategory = useMemo(
-    () => countMap(createdInPeriod, t => categoryLabel(t.category)),
-    [createdInPeriod, categoryNames]
-  );
+  const byCategory = useMemo(() => {
+    const map = countMap(createdInPeriod, t => categoryLabel(t.category));
+    const list = mapToSortedList(map);
+    return list.length ? list : [{ key: "Non catégorisé", count: 0 }];
+  }, [createdInPeriod, categoryNames]);
 
-  const byType = useMemo(
-    () =>
-      countMap(createdInPeriod, t => {
-        const raw = String(t.type || "").trim().toLowerCase();
-        const key = raw === "request" ? "demande" : raw;
-        return TYPE_LABELS[key] || key || "Non renseigné";
-      }),
-    [createdInPeriod]
-  );
+  const byType = useMemo(() => {
+    const map = {};
+    createdInPeriod.forEach(t => {
+      const key = normalizeTypeKey(t.type);
+      if (!TYPE_ORDER.includes(key)) {
+        map._other = (map._other || 0) + 1;
+        return;
+      }
+      map[key] = (map[key] || 0) + 1;
+    });
+    const series = ensureSeries(map, TYPE_ORDER, k => TYPE_LABELS[k]);
+    if (map._other) series.push({ key: "Autre", count: map._other });
+    return series;
+  }, [createdInPeriod]);
 
-  const byStatus = useMemo(
-    () =>
-      countMap(createdInPeriod, t => {
-        const key = normalizeStatus(t.status || t.etat || "autre");
-        return STATUS_LABELS[key] || key;
-      }),
-    [createdInPeriod]
-  );
+  const byPriority = useMemo(() => {
+    const map = {};
+    createdInPeriod.forEach(t => {
+      let key = String(t.priority || t.priorite || "normal").toLowerCase();
+      if (!PRIORITY_ORDER.includes(key)) key = "normal";
+      map[key] = (map[key] || 0) + 1;
+    });
+    return ensureSeries(map, PRIORITY_ORDER, k => PRIORITY_LABELS[k]);
+  }, [createdInPeriod]);
 
-  const byPriority = useMemo(
-    () =>
-      countMap(createdInPeriod, t => {
-        const key = String(t.priority || t.priorite || "normal").toLowerCase();
-        return PRIORITY_LABELS[key] || key;
-      }),
-    [createdInPeriod]
-  );
+  const byEquipmentType = useMemo(() => {
+    const withEq = createdInPeriod.filter(t => getTicketEquipmentInfo(t).concerned);
+    const map = countMap(withEq, t => {
+      const eq = getTicketEquipmentInfo(t);
+      if (eq.source === "external") return "Matériel externe";
+      return getLocalizedEquipmentTypeLabel(eq.type, "fr") || eq.type || "Type inconnu";
+    });
+    const list = mapToSortedList(map);
+    return list.length ? list : [{ key: "Aucun matériel", count: 0 }];
+  }, [createdInPeriod]);
 
-  const byChannel = useMemo(
-    () =>
-      countMap(createdInPeriod, t => {
-        const key = String(t.channel || t.canal || "").toLowerCase();
-        return CHANNEL_LABELS[key] || key || "Non renseigné";
-      }),
-    [createdInPeriod]
-  );
-
-  const byEquipmentType = useMemo(
-    () =>
-      countMap(
-        createdInPeriod.filter(t => getTicketEquipmentInfo(t).concerned),
-        t => {
-          const eq = getTicketEquipmentInfo(t);
-          if (eq.source === "external") return "Matériel externe";
-          return getLocalizedEquipmentTypeLabel(eq.type, "fr") || eq.type || "Type inconnu";
-        }
-      ),
-    [createdInPeriod]
-  );
+  const filteredTickets = useMemo(() => {
+    const q = ticketSearch.trim().toLowerCase();
+    if (!q) return createdInPeriod;
+    return createdInPeriod.filter(t => {
+      const eq = getTicketEquipmentInfo(t);
+      const statusKey = normalizeStatus(t.status || t.etat);
+      const haystack = [
+        t.ticket_number,
+        t.ticketNumber,
+        t.reference,
+        t.ref,
+        t.title,
+        t.subject,
+        t.sujet,
+        categoryLabel(t.category),
+        typeLabel(t.type),
+        STATUS_LABELS[statusKey] || t.status,
+        priorityLabel(t.priority || t.priorite),
+        eq.concerned ? eq.name : "",
+        eq.concerned ? eq.type : ""
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [createdInPeriod, ticketSearch, categoryNames]);
 
   const periodLabel =
     start && end ? `${formatDateFr(start)} → ${formatDateFr(end)}` : "Période non définie";
@@ -449,11 +510,12 @@ export default function SupportStep({ client, reportPeriod = {} }) {
   const hasCreditData = Boolean(credits) && (creditTotals.total > 0 || creditTotals.remaining > 0 || consumedOnPeriod > 0 || packs.length > 0);
 
   const contractRows = [
-    contrat.type ? { label: "Type", value: contrat.type } : null,
-    contrat.debut ? { label: "Début", value: formatDateFr(contrat.debut) } : null,
+    { label: "Type", value: contrat.type || "—" },
+    { label: "Début", value: formatDateFr(contrat.debut) },
     { label: "Expiration", value: formatDateFr(contrat.expiration) },
+    { label: "Statut", value: validity.label, badge: validity.className },
     {
-      label: "Crédits consommés",
+      label: "Crédits période",
       value: hasCreditData ? String(consumedOnPeriod) : "—",
       hint: periodLabel
     },
@@ -466,119 +528,149 @@ export default function SupportStep({ client, reportPeriod = {} }) {
       label: "Total crédits",
       value: hasCreditData ? String(creditTotals.total) : "—",
       hint: hasCreditData && consumedAllTime > 0 ? `${consumedAllTime} consommés au global` : null
+    },
+    {
+      label: "Tickets période",
+      value: String(createdInPeriod.length)
     }
-  ].filter(Boolean);
+  ];
 
   return (
     <MonitoringStepShell className={styles.supportStepShell}>
-      <MonitoringStepSection title="Contrat et crédits">
-        <article className={styles.supportContractCard}>
-          <div className={styles.supportContractHead}>
-            <span className={styles.supportContractIcon}>
-              <Icon icon="mdi:file-document-outline" width={18} height={18} />
-            </span>
-            <div>
-              <div className={styles.supportContractTitle}>Contrat support</div>
-              <div className={styles.supportContractSubtitle}>{periodLabel}</div>
-            </div>
-            <span className={`${styles.supportBadge} ${validity.className}`}>{validity.label}</span>
-          </div>
-          <dl className={styles.supportContractGrid}>
-            {contractRows.map(row => (
-              <div key={row.label} className={styles.supportContractItem}>
-                <dt>{row.label}</dt>
-                <dd>
+      <SupportBlock title="Contrat et crédits">
+        <dl className={styles.supportContractGrid}>
+          {contractRows.map(row => (
+            <div key={row.label} className={styles.supportContractItem}>
+              <dt>{row.label}</dt>
+              <dd>
+                {row.badge ? (
+                  <span className={`${styles.supportBadge} ${row.badge}`}>{row.value}</span>
+                ) : (
                   <span>{row.value}</span>
-                  {row.hint ? <span className={styles.supportContractHint}>{row.hint}</span> : null}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </article>
-      </MonitoringStepSection>
+                )}
+                {row.hint ? <span className={styles.supportContractHint}>{row.hint}</span> : null}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </SupportBlock>
 
-      {loading ? (
-        <div className={styles.supportState}>Chargement des tickets support…</div>
-      ) : null}
+      {loading ? <div className={styles.supportState}>Chargement des tickets support…</div> : null}
       {error ? <div className={styles.supportError}>{error}</div> : null}
 
-      <div className={styles.supportBreakdownGrid}>
-        <MonitoringStepSection title="Catégories" count={byCategory.length}>
-          <VerticalBarsChart items={byCategory} emptyLabel="Aucune catégorie sur cette période." color="#2b5fab" />
-        </MonitoringStepSection>
-        <MonitoringStepSection title="Types de tickets" count={byType.length}>
-          <DonutChart items={byType} emptyLabel="Aucun type renseigné." colors={["#0f766e", "#2b5fab", "#6366f1", "#b45309"]} />
-        </MonitoringStepSection>
-        <MonitoringStepSection title="Statuts" count={byStatus.length}>
-          <HorizontalBarsChart items={byStatus} emptyLabel="Aucun statut." color="#b45309" />
-        </MonitoringStepSection>
-        <MonitoringStepSection title="Priorités" count={byPriority.length}>
-          <DonutChart items={byPriority} emptyLabel="Aucune priorité." colors={["#64748b", "#b45309", "#b91c1c", "#0f766e"]} />
-        </MonitoringStepSection>
-        <MonitoringStepSection title="Canaux" count={byChannel.length}>
-          <VerticalBarsChart items={byChannel} emptyLabel="Aucun canal renseigné." color="#6366f1" />
-        </MonitoringStepSection>
-        <MonitoringStepSection title="Matériel concerné" count={byEquipmentType.length}>
-          <HorizontalBarsChart
-            items={byEquipmentType}
-            emptyLabel="Aucun ticket lié à du matériel sur cette période."
-            color="#2b5fab"
-          />
-        </MonitoringStepSection>
+      <div className={styles.supportStatsGrid}>
+        <SupportBlock title="Type de ticket" count={createdInPeriod.length}>
+          <DonutChart items={byType} colors={TYPE_COLORS} />
+        </SupportBlock>
+        <SupportBlock title="Priorité" count={createdInPeriod.length}>
+          <DonutChart items={byPriority} colors={PRIORITY_COLORS} />
+        </SupportBlock>
+        <SupportBlock title="Catégories" count={createdInPeriod.length}>
+          <VerticalBarsChart items={byCategory} color="#2b5fab" />
+        </SupportBlock>
+        <SupportBlock title="Matériel concerné" count={byEquipmentType.reduce((s, i) => s + i.count, 0)}>
+          <HorizontalBarsChart items={byEquipmentType} color="#2b5fab" />
+        </SupportBlock>
       </div>
 
-      <MonitoringStepSection title="Tickets de la période" count={createdInPeriod.length} className={styles.supportTicketsSection}>
-        {createdInPeriod.length === 0 && !loading ? (
-          <p className={styles.supportEmpty}>Aucun ticket support créé sur cette période.</p>
-        ) : (
-          <MonitoringPagedBlock items={createdInPeriod} resetDeps={[createdInPeriod.length]}>
-            {pageItems => (
-          <MonitoringStepTableWrap scrollable deps={[pageItems.length, createdInPeriod.length]}>
-            <table className={styles.supportTable}>
-              <thead>
-                <tr>
-                  <th>Réf.</th>
-                  <th>Sujet</th>
-                  <th>Catégorie</th>
-                  <th>Type</th>
-                  <th>Statut</th>
-                  <th>Priorité</th>
-                  <th>Matériel</th>
-                  <th>Créé</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageItems.map(t => {
-                  const eq = getTicketEquipmentInfo(t);
-                  const typeKey = String(t.type || "").trim().toLowerCase();
-                  const statusKey = normalizeStatus(t.status || t.etat);
-                  const priorityKey = String(t.priority || t.priorite || "").toLowerCase();
-                  const typeLabel = TYPE_LABELS[typeKey === "request" ? "demande" : typeKey] || t.type || "—";
-                  const equipmentLabel = eq.concerned
-                    ? [eq.source === "external" ? "Externe" : getLocalizedEquipmentTypeLabel(eq.type, "fr") || eq.type, eq.name]
-                        .filter(Boolean)
-                        .join(" · ")
-                    : "—";
-                  return (
-                    <tr key={t.id || t.uuid || ticketCreatedAt(t)}>
-                      <td>{t.ticket_number || t.ticketNumber || t.reference || t.ref || "—"}</td>
-                      <td>{t.title || t.subject || t.sujet || "—"}</td>
-                      <td>{categoryLabel(t.category)}</td>
-                      <td>{typeLabel}</td>
-                      <td>{STATUS_LABELS[statusKey] || t.status || "—"}</td>
-                      <td>{PRIORITY_LABELS[priorityKey] || t.priority || "—"}</td>
-                      <td>{equipmentLabel}</td>
-                      <td>{formatDateTime(ticketCreatedAt(t))}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </MonitoringStepTableWrap>
-            )}
-          </MonitoringPagedBlock>
-        )}
-      </MonitoringStepSection>
+      <SupportBlock
+        title="Tickets de la période"
+        count={filteredTickets.length}
+        className={`${styles.supportTicketsSection} ${styles.stepSectionFill}`}
+      >
+        <div className={styles.supportTableStack}>
+          <MonitoringStepSearchBar
+            value={ticketSearch}
+            onChange={setTicketSearch}
+            onClear={() => setTicketSearch("")}
+          />
+          <div className={styles.supportPagedFill}>
+            <MonitoringPagedBlock
+              items={filteredTickets}
+              resetDeps={[filteredTickets.length, ticketSearch]}
+              initialPageSize={25}
+            >
+              {pageItems => {
+                const ticketColumns = ["Réf.", "Sujet", "Catégorie", "Type", "Statut", "Priorité", "Matériel", "Créé"];
+                const emptyLabel = ticketSearch.trim()
+                  ? "Aucun ticket ne correspond à la recherche."
+                  : "Aucun ticket support créé sur cette période.";
+                return (
+                  <MonitoringStepTableWrap
+                    scrollable
+                    fill
+                    deps={[pageItems.length, ticketSearch, filteredTickets.length]}
+                  >
+                    {pageItems.length === 0 ? (
+                      <div className={styles.supportTicketsEmptyHost}>
+                        <table className={equipmentStyles.equipmentTableEmbedded}>
+                          <thead>
+                            <tr>
+                              {ticketColumns.map(label => (
+                                <th key={label}>
+                                  <span className={equipmentStyles.thContent}>{label}</span>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                        </table>
+                        <div className={styles.supportTicketsEmpty} role="status">
+                          {emptyLabel}
+                        </div>
+                      </div>
+                    ) : (
+                      <table className={equipmentStyles.equipmentTableEmbedded}>
+                        <thead>
+                          <tr>
+                            {ticketColumns.map(label => (
+                              <th key={label}>
+                                <span className={equipmentStyles.thContent}>{label}</span>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pageItems.map(t => {
+                            const eq = getTicketEquipmentInfo(t);
+                            const statusKey = normalizeStatus(t.status || t.etat);
+                            const equipmentLabel = eq.concerned
+                              ? [
+                                  eq.source === "external"
+                                    ? "Externe"
+                                    : getLocalizedEquipmentTypeLabel(eq.type, "fr") || eq.type,
+                                  eq.name
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")
+                              : "—";
+                            return (
+                              <tr
+                                key={t.id || t.uuid || ticketCreatedAt(t)}
+                                className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}
+                              >
+                                <MonitoringTextCell>
+                                  {t.ticket_number || t.ticketNumber || t.reference || t.ref || "—"}
+                                </MonitoringTextCell>
+                                <MonitoringTextCell>{t.title || t.subject || t.sujet || "—"}</MonitoringTextCell>
+                                <MonitoringTextCell>{categoryLabel(t.category)}</MonitoringTextCell>
+                                <MonitoringTextCell>{typeLabel(t.type)}</MonitoringTextCell>
+                                <MonitoringTextCell>{STATUS_LABELS[statusKey] || t.status || "—"}</MonitoringTextCell>
+                                <MonitoringTextCell>{priorityLabel(t.priority || t.priorite)}</MonitoringTextCell>
+                                <MonitoringTextCell>{equipmentLabel}</MonitoringTextCell>
+                                <MonitoringTextCell>{formatDateTime(ticketCreatedAt(t))}</MonitoringTextCell>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </MonitoringStepTableWrap>
+                );
+              }}
+            </MonitoringPagedBlock>
+          </div>
+        </div>
+      </SupportBlock>
     </MonitoringStepShell>
   );
 }

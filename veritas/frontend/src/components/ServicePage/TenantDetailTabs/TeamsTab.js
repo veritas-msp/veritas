@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
-import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap, MonitoringPagedBlock } from '../../RapportPage/monitoring/MonitoringStepLayout';
 const TEAMS_SORT_KEYS = {
   displayName: 'displayName',
   memberCount: 'memberCount',
@@ -85,24 +85,24 @@ export default function TeamsTab({
     URL.revokeObjectURL(url);
     toast.success(`CSV export successful: ${sorted.length} team(s) exported`);
   };
-  const rawUsage = teamsData.activity?.usage;
+  const rawUsage = teamsData?.activity?.usage;
   const usageStats = rawUsage && typeof rawUsage === 'object' && !Array.isArray(rawUsage) ? rawUsage : {};
   const licensedUsers = usageStats.licensedUsers || 0;
-  const activeUsers = usageStats.activeUsers ?? teamsData.teams?.activeUsers ?? 0;
+  const activeUsers = usageStats.activeUsers ?? teamsData?.teams?.activeUsers ?? 0;
   const inactiveUsers = Math.max(0, licensedUsers - activeUsers);
-  const rawMessages = teamsData.activity?.messages;
+  const rawMessages = teamsData?.activity?.messages;
   const messageStats = rawMessages && typeof rawMessages === 'object' && !Array.isArray(rawMessages) ? rawMessages : {
     total: typeof rawMessages === 'number' ? rawMessages : 0
   };
-  const rawMeetings = teamsData.activity?.meetings;
+  const rawMeetings = teamsData?.activity?.meetings;
   const meetingsStats = rawMeetings && typeof rawMeetings === 'object' && !Array.isArray(rawMeetings) ? rawMeetings : {
     total: typeof rawMeetings === 'number' ? rawMeetings : 0
   };
-  const rawCalls = teamsData.activity?.calls || teamsData.calls;
+  const rawCalls = teamsData?.activity?.calls || teamsData?.calls;
   const callsStats = rawCalls && typeof rawCalls === 'object' && !Array.isArray(rawCalls) ? rawCalls : {
     total: typeof rawCalls === 'number' ? rawCalls : 0
   };
-  const allTeams = teamsData.teams?.teamsList || [];
+  const allTeams = teamsData?.teams?.teamsList || [];
   const sortedTeams = useMemo(() => {
     const filtered = allTeams.filter(team => {
       const name = (team.displayName || team.name || '').toLowerCase();
@@ -112,7 +112,7 @@ export default function TeamsTab({
   }, [allTeams, teamsSearchQuery, teamsSortKey, teamsSortDir]);
   const filteredTeams = sortedTeams;
   const teamsPerPage = 20;
-  const totalTeamsPages = Math.max(1, Math.ceil(sortedTeams.length / teamsPerPage));
+  const totalTeamsPages = Math.max(1, Math.ceil(sortedTeams.length / teamsPerPage) || 1);
   const safeTeamsPage = Math.min(teamsCurrentPage, totalTeamsPages);
   const teamsStartIndex = (safeTeamsPage - 1) * teamsPerPage;
   const visibleTeams = sortedTeams.slice(teamsStartIndex, teamsStartIndex + teamsPerPage);
@@ -147,32 +147,12 @@ export default function TeamsTab({
   const handleNextTeamsPage = () => {
     setTeamsCurrentPage(prev => Math.min(totalTeamsPages, prev + 1));
   };
-  if (!teamsData) {
-    return <div>
-        <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
-        <div className={styles.noDataMessage}>
-          <p>No Teams data available.</p>
-          <p className={styles.mutedHint}>
-            Teams data is not present in the snapshot. Please run a <strong>full sync</strong> using the sync button to load and save this data.
-          </p>
-        </div>
-      </div>;
-  }
-  if (teamsData.success === false) {
-    return <div>
-        <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
-        <div className={styles.noDataMessage}>
-          <p style={{
-          color: '#ef4444'
-        }}>❌ Error loading Teams data</p>
-          <p className={styles.textSecondary}>
-            {teamsData.error || 'Unknown error'}
-          </p>
-        </div>
-      </div>;
-  }
   if (embedded) {
     return <div className={styles.tabFill}>
+        {teamsData?.success === false ? <p className={styles.mutedHint} style={{ color: '#b91c1c', margin: '0 0 0.5rem' }}>
+            {teamsData.error || 'Erreur chargement Teams'}
+          </p> : null}
+        <div className={`${styles.embeddedKpiStrip} ${styles.embeddedKpiGrid2}`}>
         <div className={styles.kpiSectionBlock}>
           <h3 className={styles.kpiSectionBlockTitle}>Users</h3>
           <div className={styles.metricsRowFlat}>
@@ -257,42 +237,73 @@ export default function TeamsTab({
             </div>
           </div>
         </div>
-        <MonitoringStepSearchBar
-          value={teamsSearchQuery}
-          onChange={value => {
-            setTeamsSearchQuery(value);
-            setTeamsCurrentPage(1);
-          }}
-          onClear={() => {
-            setTeamsSearchQuery('');
-            setTeamsCurrentPage(1);
-          }}
-          placeholder="Rechercher une équipe"
-        />
-        <MonitoringStepTableWrap scrollable deps={[filteredTeams.length, teamsSearchQuery]}>
-          <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
-            <table className={styles.licensesTable}>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Visibility</th>
-                  <th>Membres</th>
-                  <th>Canaux</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTeams.length === 0 ? <tr>
-                    <td colSpan={4}>No Teams teams available.</td>
-                  </tr> : filteredTeams.map((team, idx) => <tr key={team.id || idx}>
-                    <td>{team.displayName || team.name || "N/A"}</td>
-                    <td>{team.visibility || team.accessType || "-"}</td>
-                    <td>{team.memberCount ?? team.membersCount ?? (Array.isArray(team.members) ? team.members.length : "-")}</td>
-                    <td>{team.channelCount ?? team.channelsCount ?? (Array.isArray(team.channels) ? team.channels.length : "-")}</td>
-                  </tr>)}
-              </tbody>
-            </table>
+        </div>
+        <div className={styles.embeddedTableStack}>
+          <MonitoringStepSearchBar
+            value={teamsSearchQuery}
+            onChange={value => {
+              setTeamsSearchQuery(value);
+              setTeamsCurrentPage(1);
+            }}
+            onClear={() => {
+              setTeamsSearchQuery('');
+              setTeamsCurrentPage(1);
+            }}
+          />
+          <div className={styles.embeddedPagedFill}>
+            <MonitoringPagedBlock items={filteredTeams} resetDeps={[teamsSearchQuery, teamsSortKey, teamsSortDir]} initialPageSize={25}>
+              {pageItems => <MonitoringStepTableWrap scrollable fill hostClassName={styles.embeddedTableFill} deps={[pageItems.length, teamsSearchQuery]}>
+                <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
+                  <table className={styles.licensesTable}>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Visibility</th>
+                        <th>Membres</th>
+                        <th>Canaux</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageItems.length === 0 ? <tr>
+                          <td colSpan={4}>Aucune équipe Teams disponible.</td>
+                        </tr> : pageItems.map((team, idx) => <tr key={team.id || idx}>
+                          <td>{team.displayName || team.name || "N/A"}</td>
+                          <td>{team.visibility || team.accessType || "-"}</td>
+                          <td>{team.memberCount ?? team.membersCount ?? (Array.isArray(team.members) ? team.members.length : "-")}</td>
+                          <td>{team.channelCount ?? team.channelsCount ?? (Array.isArray(team.channels) ? team.channels.length : "-")}</td>
+                        </tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              </MonitoringStepTableWrap>}
+            </MonitoringPagedBlock>
           </div>
-        </MonitoringStepTableWrap>
+        </div>
+      </div>;
+  }
+
+  if (!teamsData) {
+    return <div>
+        <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
+        <div className={styles.noDataMessage}>
+          <p>No Teams data available.</p>
+          <p className={styles.mutedHint}>
+            Teams data is not present in the snapshot. Please run a <strong>full sync</strong> using the sync button to load and save this data.
+          </p>
+        </div>
+      </div>;
+  }
+  if (teamsData.success === false) {
+    return <div>
+        <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
+        <div className={styles.noDataMessage}>
+          <p style={{
+          color: '#ef4444'
+        }}>❌ Error loading Teams data</p>
+          <p className={styles.textSecondary}>
+            {teamsData.error || 'Unknown error'}
+          </p>
+        </div>
       </div>;
   }
 

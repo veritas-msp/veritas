@@ -4,7 +4,7 @@ import API_BASE_URL from '../../../config';
 import { sanitizeRemediationHtml } from '../../../utils/sanitizeHtml';
 import styles from '../TenantDetailPage.module.css';
 import { getMfaUserForUser, getMfaMethods, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
-import { MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
+import { MonitoringStepTableWrap, MonitoringPagedBlock } from '../../RapportPage/monitoring/MonitoringStepLayout';
 function isLikelyServiceAccountFromUser(user) {
   const name = (user.name || user.displayName || '').toString();
   const upn = (user.userPrincipalName || user.email || '').toString();
@@ -243,7 +243,7 @@ export default function SecuriteTab({
       top3NonAdmin
     };
   }, [users, mfaDetails]);
-  if (!securityData) {
+  if (!embedded && !securityData) {
     return <div>
         <h2 className={styles.sectionTitle}>Security</h2>
         <div className={styles.noDataMessage}>
@@ -251,13 +251,13 @@ export default function SecuriteTab({
         </div>
       </div>;
   }
-  if (securityData.success === false) {
+  if (!embedded && securityData?.success === false) {
     return <div>
         <h2 className={styles.sectionTitle}>Security</h2>
         <div className={styles.noDataMessage}>
           <p style={{
           color: '#ef4444'
-        }}>âŒ Error loading security data</p>
+        }}>❌ Error loading security data</p>
           <p className={styles.textSecondary}>
             {securityData.error || 'Unknown error'}
           </p>
@@ -295,7 +295,7 @@ export default function SecuriteTab({
         </div>
       </div>;
 
-  const recommendationsTable = <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`}>
+  const buildRecommendationsTable = (rows, neutral = false) => <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`}>
         <table className={styles.licensesTable}>
           <thead>
             <tr>
@@ -329,18 +329,18 @@ export default function SecuriteTab({
           <tbody>
             {recsLoading ? <tr>
                 <td colSpan={5}>Loading Microsoft recommendations…</td>
-              </tr> : recs.length === 0 ? <tr>
+              </tr> : rows.length === 0 ? <tr>
                 <td colSpan={5}>{recsError || "No recommendations returned for this tenant."}</td>
-              </tr> : recs.map((rec, idx) => {
+              </tr> : rows.map((rec, idx) => {
             const max = Number(rec.maxScore) || 0;
             const title = rec.titleFr || rec.title || rec.displayName || "-";
             const remediation = rec.remediationFr || rec.remediation || '';
-            const rowKey = rec.id ?? `rec-${(recPage - 1) * recPageSize + idx}`;
+            const rowKey = rec.id ?? `rec-${idx}`;
             return <tr key={rowKey}>
                     <td>
                       <span style={{
                 fontWeight: 600,
-                color: priorityColor(rec.priorityLabel),
+                color: neutral ? 'var(--msp-text, #0f1c2e)' : priorityColor(rec.priorityLabel),
                 fontSize: '0.8125rem'
               }}>
                         {rec.priorityLabel || '-'}
@@ -380,7 +380,15 @@ export default function SecuriteTab({
       {!embedded ? <h3 className={styles.kpiSectionBlockTitle}>Recommendations</h3> : null}
       {!clientId ? <p className={styles.mutedHint}>Client not identified · unable to load Graph recommendations.</p> : null}
       {clientId && recsError && !recsLoading ? <p className={styles.mutedHint} style={{ color: '#b45309' }}>{recsError}</p> : null}
-      {embedded ? <MonitoringStepTableWrap scrollable deps={[recs.length, recsLoading, recSortColumn, recSortOrder]}>{recommendationsTable}</MonitoringStepTableWrap> : recommendationsTable}
-      {!embedded ? pagination : null}
+      {embedded ? <div className={styles.embeddedPagedFill}>
+          <MonitoringPagedBlock items={sortedSecureRecommendations} resetDeps={[recSortColumn, recSortOrder, recsLoading]} initialPageSize={25}>
+            {pageItems => <MonitoringStepTableWrap scrollable fill hostClassName={styles.embeddedTableFill} deps={[pageItems.length, recsLoading, recSortColumn, recSortOrder]}>
+                {buildRecommendationsTable(pageItems, true)}
+              </MonitoringStepTableWrap>}
+          </MonitoringPagedBlock>
+        </div> : <>
+          {buildRecommendationsTable(recs, false)}
+          {pagination}
+        </>}
     </div>;
 }

@@ -101,24 +101,75 @@
 .heroActions {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .heroBtn,
-.heroBtnPrimary {
+.heroBtnPrimary,
+.heroIconBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  min-height: 40px;
-  padding: 0 0.9rem;
-  border-radius: 10px;
   font: inherit;
   font-size: 0.82rem;
   font-weight: 550;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.heroBtn,
+.heroBtnPrimary {
+  min-height: 40px;
+  padding: 0 0.9rem;
+  border-radius: 10px;
+}
+
+.heroIconBtn {
+  width: 2.4rem;
+  height: 2.4rem;
+  min-width: 2.4rem;
+  min-height: 2.4rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.heroIconBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 45%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, var(--msp-surface, #fff));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(43, 95, 171, 0.12);
+}
+
+.heroIconBtn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.heroIconBtnPrimary {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.heroIconBtnPrimary:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  filter: brightness(1.06);
+  box-shadow: 0 4px 14px rgba(43, 95, 171, 0.28);
 }
 
 .heroBtn {
@@ -149,9 +200,12 @@
 }
 
 .heroBtn:disabled,
-.heroBtnPrimary:disabled {
+.heroBtnPrimary:disabled,
+.heroIconBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .heroBtnBadge {
@@ -308,11 +362,32 @@
   color: var(--msp-muted, #5c6b82);
 }
 
+.commentsPaneComposerWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+}
+
+.commentsPaneSectionHint {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.commentsPaneSectionHint strong {
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+}
+
 .commentsPaneContext {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  margin: 0.7rem 1rem 0;
+  margin: 0;
   padding: 0.55rem 0.65rem;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 28%, transparent);
@@ -555,9 +630,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  padding: 0.85rem 1rem 1rem;
-  border-top: 1px solid var(--msp-border-light, #eef2f7);
-  background: var(--msp-surface, #fff);
+  padding: 0;
+  border-top: none;
+  background: transparent;
 }
 
 .commentsPaneHint {
@@ -771,6 +846,15 @@
   overflow: hidden;
 }
 
+/* Tenant Microsoft : une seule carte (pas de cadre stepPanel autour) */
+.stepPanel:has([data-tenant-embed="microsoft"]) {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: visible;
+}
+
 .stepPanelBody {
   flex: 1;
   min-height: 0;
@@ -778,6 +862,11 @@
   padding: 1rem;
   display: flex;
   flex-direction: column;
+}
+
+.stepPanel:has([data-tenant-embed="microsoft"]) .stepPanelBody {
+  padding: 0;
+  overflow: hidden;
 }
 
 .stepPanelContent {
@@ -1006,13 +1095,42 @@
 :global(html.dark) .builderToolbar,
 :global(html.dark) .stepPanel,
 :global(html.dark) .commentsPane,
-:global(html.dark) .commentsPaneComposer,
+:global(html.dark) .commentsPaneComposerWrap,
 :global(html.dark) .backBtn,
 :global(html.dark) .heroBtn,
+:global(html.dark) .heroIconBtn,
 :global(html.dark) .secondaryBtn {
   background: var(--msp-surface, #1a2540);
   border-color: var(--msp-border, #2f4260);
   color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .heroIconBtn {
+  color: var(--msp-muted, #9aabbf);
+}
+
+:global(html.dark) .heroIconBtn:hover:not(:disabled) {
+  color: var(--msp-accent, #5a9de0);
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 12%, var(--msp-surface, #1a2540));
+  border-color: color-mix(in srgb, var(--msp-accent, #5a9de0) 40%, transparent);
+}
+
+:global(html.dark) .heroIconBtnPrimary {
+  background: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+:global(html.dark) .heroIconBtnPrimary:hover:not(:disabled) {
+  background: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+:global(html.dark) .stepPanel:has([data-tenant-embed="microsoft"]) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 :global(html.dark) .builderToolbarTitle,
@@ -1060,7 +1178,7 @@
 :global(html.dark) .stepPanelHead,
 :global(html.dark) .stepActions,
 :global(html.dark) .commentsPaneHeader,
-:global(html.dark) .commentsPaneComposer {
+:global(html.dark) .commentsPaneComposerWrap {
   border-color: var(--msp-border, #2f4260);
 }
 

@@ -1,6 +1,42 @@
 .saveShell {
-  width: min(920px, calc(100vw - 2rem));
+  width: min(560px, calc(100vw - 2rem));
+  height: auto;
   max-height: min(860px, calc(100vh - 2rem));
+}
+
+.closeBtn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem !important;
+  height: 2.35rem !important;
+  min-width: 2.35rem;
+  min-height: 2.35rem;
+  padding: 0 !important;
+  border: 1px solid var(--msp-border, #d7e0ec) !important;
+  border-radius: 999px !important;
+  background: var(--msp-surface, #fff) !important;
+  color: var(--msp-muted, #5c6b82) !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.closeBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 45%, transparent) !important;
+  color: var(--msp-accent, #2b5fab) !important;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, var(--msp-surface, #fff)) !important;
+}
+
+.closeBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.saveBody {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .saveContent {
@@ -11,6 +47,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .fieldLabel {
@@ -27,6 +66,7 @@
   font-size: 0.95rem;
   background: var(--msp-surface, #fff);
   color: var(--msp-text, #1a2b3c);
+  box-sizing: border-box;
 }
 
 .nameInput:focus {
@@ -35,42 +75,37 @@
   box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
 }
 
-.infoCard {
-  display: flex;
-  gap: 0.65rem;
+.nameInputError {
+  border-color: color-mix(in srgb, #dc2626 55%, transparent);
+  background: color-mix(in srgb, #dc2626 5%, var(--msp-surface, #fff));
+}
+
+.nameInputError:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+}
+
+.nameError {
+  display: inline-flex;
   align-items: flex-start;
-  padding: 0.85rem 1rem;
-  border-radius: 12px;
-  background: rgba(43, 95, 171, 0.06);
-  border: 1px solid rgba(43, 95, 171, 0.14);
-  color: var(--msp-text, #1a2b3c);
-}
-
-.infoCard strong {
-  display: block;
-  font-size: 0.88rem;
-  margin-bottom: 0.2rem;
-}
-
-.infoCard p {
-  margin: 0;
+  gap: 0.4rem;
+  margin: -0.25rem 0 0;
   font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--msp-muted, #5b6b80);
+  font-weight: 550;
+  line-height: 1.4;
+  color: #b91c1c;
 }
 
-.infoCard svg {
+.nameError svg {
   flex-shrink: 0;
-  margin-top: 0.15rem;
-  color: var(--msp-accent, #2b5fab);
-  font-size: 1.2rem;
+  margin-top: 0.1rem;
 }
 
-.hint {
-  margin: 0;
-  font-size: 0.84rem;
-  color: var(--msp-muted, #5b6b80);
-  line-height: 1.45;
+.visibilityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding-top: 0.15rem;
 }
 
 .spinning {
@@ -80,3 +115,35 @@
 @keyframes saveSpin {
   to { transform: rotate(360deg); }
 }
+
+:global(html.dark) .closeBtn {
+  background: color-mix(in srgb, var(--msp-surface, #1e293b) 92%, #0f172a) !important;
+  border-color: var(--msp-border, #334155) !important;
+  color: var(--msp-muted, #9aabbf) !important;
+}
+
+:global(html.dark) .closeBtn:hover:not(:disabled) {
+  color: var(--msp-accent, #5a9de0) !important;
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 12%, var(--msp-surface, #1a2540)) !important;
+  border-color: color-mix(in srgb, var(--msp-accent, #5a9de0) 40%, transparent) !important;
+}
+
+:global(html.dark) .fieldLabel {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .nameInput {
+  background: var(--msp-surface, #121a28);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .nameInputError {
+  border-color: color-mix(in srgb, #f87171 55%, transparent);
+  background: color-mix(in srgb, #dc2626 12%, var(--msp-surface, #121a28));
+}
+
+:global(html.dark) .nameError {
+  color: #fecaca;
+}
+

@@ -9,6 +9,7 @@ import {
 } from "./reportCyberTableUtils";
 import { formatAntivirusEndpointType } from "../../../EnterprisesPage/antivirusSolutionUtils";
 import { ReportTableBlock } from "./ReportSummaryBlocks";
+import ReportSynthesisEditor from "./ReportSynthesisEditor";
 import execStyles from "./ReportSummarySupervision.module.css";
 import styles from "./ReportSummaryServicesCyber.module.css";
 
@@ -47,13 +48,6 @@ function formatDateFr(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleDateString("fr-FR");
-}
-
-function formatCollectionDateFr(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function parsePeriodDate(value) {
@@ -119,11 +113,6 @@ function daysUntil(dateValue) {
   return Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function buildClientLine(client, clientPrefix = "", clientMainLabel = "") {
-  if (clientPrefix || clientMainLabel) return [clientPrefix, clientMainLabel].filter(Boolean).join(" — ");
-  return client?.name || client?.nom || "Client";
-}
-
 function Metric({ label, value, hint }) {
   return (
     <div className={styles.metricItem}>
@@ -136,10 +125,10 @@ function Metric({ label, value, hint }) {
 
 export default function ReportSummaryServicesCyber({
   client,
-  clientPrefix = "",
-  clientMainLabel = "",
   reportStartDate = null,
-  reportEndDate = null
+  reportEndDate = null,
+  synthesisByService = null,
+  onSynthesisChange = null
 }) {
   const [showTechnicalDetail, setShowTechnicalDetail] = useState(false);
   const [mfaDetailsFromApi, setMfaDetailsFromApi] = useState([]);
@@ -326,80 +315,120 @@ export default function ReportSummaryServicesCyber({
   const hasOffice = !!modules.Office365 || Boolean(client?.equipements?.Office365);
   const hasDomains = !!modules.NDD || domains.length > 0;
 
-  const watchPoints = useMemo(() => {
-    const points = [];
-    if (hasAntivirus && antivirusStats.unmanaged > 0) {
-      points.push({
-        id: "av-unmanaged",
-        title: "Couverture antivirus incomplète",
-        body: `${antivirusStats.unmanaged} poste${antivirusStats.unmanaged > 1 ? "s" : ""} sur ${antivirusStats.totalEndpoints} ${antivirusStats.unmanaged > 1 ? "sont identifiés" : "est identifié"} comme non géré${antivirusStats.unmanaged > 1 ? "s" : ""}.`,
-        action: "Action suggérée : vérifier l'installation et la remontée de l'agent antivirus."
-      });
-    }
-    if (hasAntivirus && antivirusStats.disconnected > 0) {
-      points.push({
-        id: "av-disconnected",
-        title: "Remontée des agents antivirus",
-        body: `${antivirusStats.disconnected} agent${antivirusStats.disconnected > 1 ? "s sont" : " est"} indiqué${antivirusStats.disconnected > 1 ? "s" : ""} comme non vu${antivirusStats.disconnected > 1 ? "s" : ""} depuis plus de 24 h.`,
-        action: "Action suggérée : vérifier la connectivité des agents et la remontée des données GravityZone."
-      });
-    }
-    if (hasOffice && o365Data?.mfa && o365Data.mfa.nonAdminTotal > 0 && (o365Data.mfa.userRate ?? 100) < 50) {
-      points.push({
-        id: "mfa-users",
-        title: "Authentification multifacteur Microsoft 365",
-        body: `${o365Data.mfa.nonAdminWithMFA} utilisateur${o365Data.mfa.nonAdminWithMFA > 1 ? "s" : ""} sur ${o365Data.mfa.nonAdminTotal} dispose${o365Data.mfa.nonAdminWithMFA > 1 ? "nt" : ""} du MFA, soit ${formatPct(o365Data.mfa.userRate)} des comptes non administrateurs.`,
-        action:
-          o365Data.mfa.adminsTotal > 0
-            ? `Les ${o365Data.mfa.adminsTotal} compte${o365Data.mfa.adminsTotal > 1 ? "s" : ""} administrateur${o365Data.mfa.adminsTotal > 1 ? "s" : ""} ${o365Data.mfa.adminRate === 100 ? "sont couverts à 100 %" : `sont couverts à ${formatPct(o365Data.mfa.adminRate)}`}.`
-            : null
-      });
-    }
-    domains.forEach((domain, idx) => {
-      const name = domain.nom || domain.name || domain.domaine || "";
-      const expiration = domain.expiration || domain.expiry || domain.dateExpiration;
-      const remaining = daysUntil(expiration);
-      if (!name || remaining == null || remaining > 90) return;
-      points.push({
-        id: `domain-${idx}-${name}`,
-        title: "Expiration du nom de domaine",
-        body: `Le domaine ${name} arrive à expiration le ${formatDateFr(expiration)}.`,
-        action: domain.registrar || domain.registrarName ? `Registrar : ${domain.registrar || domain.registrarName}.` : null
-      });
-    });
-    return points;
-  }, [hasAntivirus, hasOffice, antivirusStats, o365Data, domains]);
-
   const showAgentConsistencyNote =
     hasAntivirus &&
     antivirusStats.managed > 0 &&
     antivirusStats.disconnected >= antivirusStats.totalEndpoints &&
     antivirusStats.totalEndpoints > 0;
 
-  const synthesisText = useMemo(() => {
+  const microsoftSynthesis = useMemo(() => {
+    if (!hasOffice || !o365Data) return "";
     const parts = [];
-    parts.push("Les services antivirus, antispam et Microsoft 365 sont référencés et suivis.");
-    if (hasAntivirus && antivirusStats.unmanaged > 0) {
-      parts.push(
-        `La couverture antivirus présente ${antivirusStats.unmanaged} poste${antivirusStats.unmanaged > 1 ? "s" : ""} non géré${antivirusStats.unmanaged > 1 ? "s" : ""}.`
-      );
-    } else if (hasAntivirus) {
-      parts.push("La couverture antivirus est complète sur les postes inventoriés.");
-    }
-    if (hasOffice && o365Data?.mfa) {
+    parts.push(
+      `Le tenant Microsoft 365 compte ${formatInt(o365Data.usersCount)} utilisateur${o365Data.usersCount > 1 ? "s" : ""} et ${formatInt(o365Data.licenseTypes)} type${o365Data.licenseTypes > 1 ? "s" : ""} de licence.`
+    );
+    if (o365Data.mfa) {
       if ((o365Data.mfa.adminRate ?? 0) >= 100 && (o365Data.mfa.userRate ?? 100) < 50) {
         parts.push(
-          "L'authentification multifacteur est activée sur les comptes administrateurs, mais reste peu déployée sur les comptes utilisateurs."
+          `L'authentification multifacteur est activée sur les comptes administrateurs (${formatPct(o365Data.mfa.adminRate)}), mais reste peu déployée sur les comptes utilisateurs (${formatInt(o365Data.mfa.nonAdminWithMFA)}/${formatInt(o365Data.mfa.nonAdminTotal)}, soit ${formatPct(o365Data.mfa.userRate)}).`
         );
       } else if ((o365Data.mfa.globalRate ?? 0) >= 80) {
-        parts.push("L'authentification multifacteur Microsoft 365 est largement déployée.");
+        parts.push(
+          `L'authentification multifacteur est largement déployée (${formatPct(o365Data.mfa.globalRate)} des comptes).`
+        );
+      } else if (o365Data.mfa.nonAdminTotal > 0 && (o365Data.mfa.userRate ?? 100) < 50) {
+        parts.push(
+          `Le MFA utilisateurs est à surveiller : ${formatInt(o365Data.mfa.nonAdminWithMFA)} compte${o365Data.mfa.nonAdminWithMFA > 1 ? "s" : ""} sur ${formatInt(o365Data.mfa.nonAdminTotal)} (${formatPct(o365Data.mfa.userRate)}).`
+        );
       }
     }
-    if (hasAntispam && !antispamStats.hasStats) {
-      parts.push("Les statistiques antispam ne sont pas disponibles sur la période.");
+    return parts.join(" ");
+  }, [hasOffice, o365Data]);
+
+  const antispamSynthesis = useMemo(() => {
+    if (!hasAntispam) return "";
+    const parts = [];
+    parts.push(
+      `La solution ${antispamStats.solutionName} protège ${formatInt(antispamStats.protectedUsers)} utilisateur${antispamStats.protectedUsers > 1 ? "s" : ""} sur ${formatInt(antispamStats.domainsOrLicenses)} domaine${antispamStats.domainsOrLicenses > 1 ? "s" : ""} / licence${antispamStats.domainsOrLicenses > 1 ? "s" : ""}.`
+    );
+    if (!antispamStats.hasStats) {
+      parts.push("Les statistiques de filtrage des e-mails ne sont pas disponibles sur la période.");
+    } else {
+      parts.push("Le suivi antispam est actif sur la période.");
     }
     return parts.join(" ");
-  }, [hasAntivirus, hasOffice, hasAntispam, antivirusStats, o365Data, antispamStats]);
+  }, [hasAntispam, antispamStats]);
+
+  const antivirusSynthesis = useMemo(() => {
+    if (!hasAntivirus) return "";
+    const parts = [];
+    if (antivirusStats.unmanaged > 0) {
+      parts.push(
+        `La couverture antivirus présente ${antivirusStats.unmanaged} poste${antivirusStats.unmanaged > 1 ? "s" : ""} non géré${antivirusStats.unmanaged > 1 ? "s" : ""} sur ${formatInt(antivirusStats.totalEndpoints)} (${formatPct(antivirusStats.managementRate)} de couverture). Vérifier l'installation et la remontée de l'agent.`
+      );
+    } else {
+      parts.push(
+        `La couverture antivirus est complète sur les ${formatInt(antivirusStats.totalEndpoints)} poste${antivirusStats.totalEndpoints > 1 ? "s" : ""} inventorié${antivirusStats.totalEndpoints > 1 ? "s" : ""}.`
+      );
+    }
+    if (antivirusStats.disconnected > 0) {
+      parts.push(
+        `${formatInt(antivirusStats.disconnected)} agent${antivirusStats.disconnected > 1 ? "s" : ""} sans remontée depuis plus de 24 h — vérifier la connectivité des agents.`
+      );
+    }
+    if (showAgentConsistencyNote) {
+      parts.push(
+        `Attention : ${formatInt(antivirusStats.managed)} postes gérés sont indiqués, mais tous les agents apparaissent non vus depuis plus de 24 h ; cette combinaison peut signaler un problème de collecte.`
+      );
+    }
+    return parts.join(" ");
+  }, [hasAntivirus, antivirusStats, showAgentConsistencyNote]);
+
+  const domainsSynthesis = useMemo(() => {
+    if (!hasDomains || domains.length === 0) return "";
+    const nearExpiry = [];
+    domains.forEach(domain => {
+      const name = domain.nom || domain.name || domain.domaine || "";
+      const expiration = domain.expiration || domain.expiry || domain.dateExpiration;
+      const remaining = daysUntil(expiration);
+      if (!name || remaining == null || remaining > 90) return;
+      nearExpiry.push(`${name} (expiration le ${formatDateFr(expiration)})`);
+    });
+    if (nearExpiry.length > 0) {
+      return `Les domaines suivants arrivent à expiration sous 90 jours : ${nearExpiry.join(", ")}.`;
+    }
+    return `${formatInt(domains.length)} nom${domains.length > 1 ? "s" : ""} de domaine suivi${domains.length > 1 ? "s" : ""}, sans échéance proche.`;
+  }, [hasDomains, domains]);
+
+  function renderSynthesis(serviceKey, fallback, placeholder) {
+    const html = synthesisByService?.[serviceKey];
+    const onChange =
+      typeof onSynthesisChange === "function"
+        ? value => onSynthesisChange(serviceKey, value)
+        : null;
+    return (
+      <section className={execStyles.sectionBlock}>
+        <h4 className={execStyles.sectionHeading}>Synthèse</h4>
+        <div
+          className={
+            typeof onChange === "function"
+              ? execStyles.synthesisEditorHost
+              : execStyles.synthesisPanel
+          }
+        >
+          {typeof onChange === "function" ? (
+            <ReportSynthesisEditor
+              value={html != null ? html : fallback}
+              onChange={onChange}
+              placeholder={placeholder}
+            />
+          ) : (
+            <p className={execStyles.synthesis}>{fallback}</p>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   const exchange = o365Data?.exchangeData || null;
   const teams = o365Data?.teamsData || null;
@@ -455,450 +484,409 @@ export default function ReportSummaryServicesCyber({
     }
   ];
 
-  const collectionDate = formatCollectionDateFr(reportEndDate || client?.reportEndDate);
-  const clientLine = buildClientLine(client, clientPrefix, clientMainLabel);
-
   return (
     <div className={execStyles.executiveRoot}>
-      <header className={execStyles.executiveHeader}>
-        <h3 className={execStyles.executiveTitle}>Synthèse des services & cybersécurité</h3>
-        <p className={execStyles.executiveClient}>{clientLine}</p>
-        <div className={execStyles.executiveMeta}>
-          {collectionDate ? <span className={execStyles.executivePeriod}>{collectionDate}</span> : null}
-          <span className={execStyles.executiveBadge}>État à la dernière collecte</span>
-        </div>
-      </header>
-
-      <section>
-        <h4 className={execStyles.overviewTitle}>Vue d&apos;ensemble</h4>
-        <div className={execStyles.overviewGrid}>
-          {hasAntivirus ? (
-            <article className={execStyles.overviewCard}>
-              <div className={execStyles.overviewCardHead}>
-                <IconifyIcon icon="mdi:shield-check" width={16} height={16} color="#059669" />
-                Antivirus
+      {hasOffice && o365Data ? (
+        <>
+          <section className={execStyles.sectionBlock}>
+            <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs Microsoft 365">
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Utilisateurs</span>
+                <span className={execStyles.kpiValue}>{formatInt(o365Data.usersCount)}</span>
+                <span className={execStyles.kpiHint}>{formatInt(o365Data.licenseTypes)} types de licences</span>
               </div>
-              <div className={`${execStyles.overviewCardValue} ${antivirusStats.unmanaged > 0 ? execStyles.overviewCardValueWarn : execStyles.overviewCardValueOk}`}>
-                {formatPct(antivirusStats.managementRate)}
-              </div>
-              <div className={execStyles.overviewCardHint}>
-                {antivirusStats.managed} postes gérés sur {antivirusStats.totalEndpoints} inventoriés
-              </div>
-            </article>
-          ) : null}
-
-          {hasAntispam ? (
-            <article className={execStyles.overviewCard}>
-              <div className={execStyles.overviewCardHead}>
-                <IconifyIcon icon="mdi:email-alert" width={16} height={16} color="#ea580c" />
-                Antispam
-              </div>
-              <div className={execStyles.overviewCardValue}>{antispamStats.solutionName}</div>
-              <div className={execStyles.overviewCardHint}>
-                {antispamStats.hasStats ? `${formatInt(antispamStats.protectedUsers)} utilisateurs protégés` : "Statistiques non disponibles"}
-              </div>
-            </article>
-          ) : null}
-
-          {hasOffice ? (
-            <article className={execStyles.overviewCard}>
-              <div className={execStyles.overviewCardHead}>
-                <IconifyIcon icon="mdi:microsoft-office" width={16} height={16} color="#2563eb" />
-                Microsoft 365
-              </div>
-              <div className={execStyles.overviewCardValue}>{formatInt(o365Data?.usersCount || 0)} utilisateurs</div>
-              <div className={execStyles.overviewCardHint}>
-                {formatInt(o365Data?.licenseTypes || 0)} types de licences suivis
-              </div>
-            </article>
-          ) : null}
-
-          {hasOffice ? (
-            <article className={execStyles.overviewCard}>
-              <div className={execStyles.overviewCardHead}>
-                <IconifyIcon icon="mdi:shield-key-outline" width={16} height={16} color="#7c3aed" />
-                Sécurité M365
-              </div>
-              <div
-                className={`${execStyles.overviewCardValue} ${(o365Data?.mfa?.userRate ?? 100) < 50 ? execStyles.overviewCardValueWarn : execStyles.overviewCardValueOk}`}
-              >
-                {formatPct(o365Data?.mfa?.globalRate)} MFA
-              </div>
-              <div className={execStyles.overviewCardHint}>
-                {o365Data?.mfa?.nonAdminWithMFA || 0} utilisateurs sur {o365Data?.mfa?.nonAdminTotal || 0} hors
-                administrateurs
-              </div>
-            </article>
-          ) : null}
-        </div>
-      </section>
-
-      <p className={execStyles.synthesisBlock}>
-        <span className={execStyles.synthesisLabel}>Synthèse :</span> {synthesisText}
-      </p>
-
-      <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Points à surveiller</h4>
-        <p className={`${execStyles.sectionLead} ${watchPoints.length === 0 ? execStyles.sectionLeadOk : ""}`.trim()}>
-          <IconifyIcon icon={watchPoints.length > 0 ? "mdi:alert" : "mdi:check-circle"} width={16} height={16} />
-          {watchPoints.length > 0
-            ? "Éléments nécessitant une attention"
-            : "Aucun point de vigilance détecté"}
-        </p>
-        {watchPoints.length > 0 ? (
-          <div className={styles.watchList}>
-            {watchPoints.map(point => (
-              <article key={point.id} className={styles.watchCard}>
-                <h5 className={styles.watchCardTitle}>{point.title}</h5>
-                <p className={styles.watchCardBody}>{point.body}</p>
-                {point.action ? <p className={styles.watchCardAction}>{point.action}</p> : null}
-              </article>
-            ))}
-          </div>
-        ) : null}
-        {showAgentConsistencyNote ? (
-          <p className={styles.watchNote}>
-            Important : les points liés aux agents antivirus doivent être vérifiés avant publication. Les données
-            indiquent {antivirusStats.managed} postes gérés, mais également {antivirusStats.disconnected} agents non
-            vus depuis plus de 24 h. Cette combinaison peut correspondre à un problème de collecte, de remontée ou de
-            définition des indicateurs.
-          </p>
-        ) : null}
-      </section>
-
-      {hasAntivirus ? (
-        <section className={execStyles.sectionBlock}>
-          <h4 className={execStyles.sectionHeading}>Antivirus</h4>
-          <div className={styles.serviceCard}>
-            <div className={styles.serviceHead}>
-              <div className={styles.serviceIdentity}>
-                <span className={`${styles.serviceIcon} ${antivirusStats.unmanaged > 0 ? styles.serviceIconWarn : ""}`}>
-                  <IconifyIcon icon="mdi:shield-check" width={22} height={22} />
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>MFA</span>
+                <span
+                  className={`${execStyles.kpiValue} ${(o365Data.mfa?.userRate ?? 100) < 50 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
+                >
+                  {formatPct(o365Data.mfa?.globalRate)}
                 </span>
-                <div>
-                  <p className={styles.serviceName}>{antivirusStats.solutionName}</p>
-                  <p className={styles.serviceSubtitle}>Protection des postes et serveurs</p>
-                </div>
+                <span className={execStyles.kpiHint}>
+                  {formatInt(o365Data.mfa?.nonAdminWithMFA || 0)}/{formatInt(o365Data.mfa?.nonAdminTotal || 0)} hors admin
+                </span>
               </div>
-              <span className={antivirusStats.unmanaged > 0 ? styles.serviceBadgeWarn : styles.serviceBadge}>
-                {antivirusStats.unmanaged > 0
-                  ? `${antivirusStats.unmanaged} poste${antivirusStats.unmanaged > 1 ? "s" : ""} non géré${antivirusStats.unmanaged > 1 ? "s" : ""}`
-                  : "Couverture complète"}
-              </span>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Secure Score</span>
+                <span className={execStyles.kpiValue}>
+                  {scoreCurrent != null && scoreMax != null
+                    ? `${formatInt(scoreCurrent)}/${formatInt(scoreMax)}`
+                    : "—"}
+                </span>
+                <span className={execStyles.kpiHint}>
+                  {scorePct != null ? `${formatPct(scorePct)} des points` : "score de sécurité"}
+                </span>
+              </div>
             </div>
-            <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
-              <Metric label="Postes inventoriés" value={formatInt(antivirusStats.totalEndpoints)} />
-              <Metric label="Postes gérés" value={formatInt(antivirusStats.managed)} />
-              <Metric label="Postes non gérés" value={formatInt(antivirusStats.unmanaged)} />
-              <Metric label="Taux de couverture" value={formatPct(antivirusStats.managementRate)} />
+          </section>
+
+          {renderSynthesis("microsoft", microsoftSynthesis, "Rédigez la synthèse Microsoft 365…")}
+
+          <section className={execStyles.sectionBlock}>
+            <h4 className={execStyles.sectionHeading}>Microsoft 365</h4>
+            <div className={styles.serviceCard}>
+              <h5 className={execStyles.detailSectionTitle}>Licences</h5>
+              <ReportTableBlock
+                title={null}
+                columns={[
+                  {
+                    id: "name",
+                    label: "Licence",
+                    render: row =>
+                      getLicenseDisplayName(
+                        row.nom || row.displayName || row.name || row.skuPartNumber || row.skuId || "-"
+                      )
+                  },
+                  {
+                    id: "used",
+                    label: "Utilisées",
+                    render: row => formatInt(Number(row.utilisees || row.used || 0) || 0)
+                  },
+                  {
+                    id: "total",
+                    label: "Total",
+                    render: row => formatInt(Number(row.total || row.nombre || 0) || 0)
+                  },
+                  {
+                    id: "available",
+                    label: "Disponibles",
+                    render: row => {
+                      const total = Number(row.total || row.nombre || 0) || 0;
+                      const used = Number(row.utilisees || row.used || 0) || 0;
+                      return formatInt(Math.max(0, total - used));
+                    }
+                  }
+                ]}
+                rows={o365Data.licenses.map((lic, idx) => ({
+                  ...lic,
+                  _rowKey: lic.skuId || lic.id || `${lic.name || "lic"}-${idx}`
+                }))}
+                emptyMessage="Aucune licence payante remontée."
+              />
+
+              {o365Data.microsoftDomains.length > 0 ? (
+                <>
+                  <h5 className={execStyles.detailSectionTitle}>Domaines Microsoft 365</h5>
+                  <ul className={styles.simpleList}>
+                    {o365Data.microsoftDomains.map(domain => (
+                      <li key={domain}>{domain}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
             </div>
-            <h5 className={execStyles.detailSectionTitle}>État des agents</h5>
-            <div className={styles.metricGrid}>
-              <Metric label="Agents vus depuis moins de 24 h" value={formatInt(antivirusStats.connected)} />
-              <Metric label="Agents sans remontée depuis plus de 24 h" value={formatInt(antivirusStats.disconnected)} />
-            </div>
-            {showAgentConsistencyNote ? (
-              <p className={execStyles.sectionFootnote}>
-                Ces indicateurs doivent être vérifiés : leur cohérence avec le nombre de postes gérés est à confirmer.
-              </p>
-            ) : null}
-            {antivirusStats.licenseTotal > 0 ? (
-              <>
-                <h5 className={execStyles.detailSectionTitle}>Licences</h5>
-                <div className={styles.metricGrid}>
-                  <Metric
-                    label={antivirusStats.solutionName}
-                    value={`${formatInt(antivirusStats.licenseUsed)} / ${formatInt(antivirusStats.licenseTotal)}`}
-                    hint={`${formatInt(antivirusStats.licenseUsed)} licences utilisées sur ${formatInt(antivirusStats.licenseTotal)} licences disponibles.`}
-                  />
+
+            <div className={styles.serviceCard}>
+              <h5 className={execStyles.detailSectionTitle}>Usage des services</h5>
+
+              {exchange ? (
+                <div className={styles.usageBlock}>
+                  <p className={styles.usageTitle}>
+                    <IconifyIcon icon="mdi:email-outline" width={18} height={18} />
+                    Exchange
+                  </p>
+                  <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
+                    <Metric
+                      label="E-mails reçus"
+                      value={formatInt(exchange.emailActivity?.received)}
+                      hint="Sur la période"
+                    />
+                    <Metric label="Boîtes mail" value={formatInt(exchange.mailboxes?.total)} />
+                    <Metric label="Espace utilisé" value={exchange.mailboxes?.totalSize || "—"} />
+                    <Metric
+                      label="Taux de lecture"
+                      value={
+                        typeof exchange.emailActivity?.readRate === "number"
+                          ? formatPct(exchange.emailActivity.readRate)
+                          : "—"
+                      }
+                    />
+                  </div>
+                  {typeof exchange.emailActivity?.sent === "number" ? (
+                    <p className={execStyles.sectionFootnote}>
+                      {formatInt(exchange.emailActivity.sent)} e-mails envoyés sur la période.
+                    </p>
+                  ) : null}
                 </div>
-              </>
-            ) : null}
-          </div>
-        </section>
+              ) : null}
+
+              {teams ? (
+                <div className={styles.usageBlock}>
+                  <p className={styles.usageTitle}>
+                    <IconifyIcon icon="mdi:microsoft-teams" width={18} height={18} />
+                    Microsoft Teams
+                  </p>
+                  <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
+                    <Metric
+                      label="Utilisateurs"
+                      value={formatInt(teamsUsage.licensedUsers || teams?.teams?.users || 0)}
+                      hint={`${formatInt(teamsUsage.activeUsers ?? teams?.teams?.activeUsers ?? 0)} actifs sur la période`}
+                    />
+                    <Metric label="Réunions" value={formatInt(teamsMeetings.total || 0)} />
+                    <Metric
+                      label="Messages"
+                      value={formatInt(teamsMessages.channel || teamsMessages.total || 0)}
+                      hint="Messages de canal"
+                    />
+                    <Metric
+                      label="Durée des appels"
+                      value={teamsCalls.totalDuration || teamsCalls.duration || teamsCalls.totalTime || "—"}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {o365Data.onedriveData && o365Data.onedriveData.success !== false ? (
+                <div className={styles.usageBlock}>
+                  <p className={styles.usageTitle}>
+                    <IconifyIcon icon="mdi:microsoft-onedrive" width={18} height={18} />
+                    OneDrive
+                  </p>
+                  <div className={styles.metricGrid}>
+                    <Metric label="Espace utilisé" value={o365Data.onedriveData.storage?.totalUsed || "—"} />
+                    <Metric
+                      label="Nombre de fichiers"
+                      value={formatInt(o365Data.onedriveData.storage?.totalFiles)}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {o365Data.sharepointData && o365Data.sharepointData.success !== false ? (
+                <div className={styles.usageBlock}>
+                  <p className={styles.usageTitle}>
+                    <IconifyIcon icon="mdi:microsoft-sharepoint" width={18} height={18} />
+                    SharePoint
+                  </p>
+                  <div className={styles.metricGrid}>
+                    <Metric label="Sites SharePoint référencés" value={formatInt(sharepointSites.length)} />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className={styles.serviceCard}>
+              <h5 className={execStyles.detailSectionTitle}>Sécurité</h5>
+              <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
+                <Metric
+                  label="Secure Score"
+                  value={
+                    scoreCurrent != null && scoreMax != null
+                      ? `${formatInt(scoreCurrent)} / ${formatInt(scoreMax)}`
+                      : "—"
+                  }
+                  hint={scorePct != null ? `${formatPct(scorePct)} des points obtenus` : null}
+                />
+                <Metric
+                  label="MFA global"
+                  value={formatPct(o365Data.mfa.globalRate)}
+                  hint={`${formatInt(o365Data.mfa.usersWithMFA)} comptes sur ${formatInt(o365Data.mfa.totalUsers)}`}
+                />
+                <Metric
+                  label="MFA administrateurs"
+                  value={formatPct(o365Data.mfa.adminRate)}
+                  hint={`${formatInt(o365Data.mfa.adminsWithMFA)} comptes sur ${formatInt(o365Data.mfa.adminsTotal)}`}
+                />
+                <Metric
+                  label="MFA utilisateurs"
+                  value={formatPct(o365Data.mfa.userRate)}
+                  hint={`${formatInt(o365Data.mfa.nonAdminWithMFA)} comptes sur ${formatInt(o365Data.mfa.nonAdminTotal)}`}
+                />
+              </div>
+              {o365Data.securityRecommendations.length > 0 ? (
+                <p className={execStyles.sectionFootnote}>
+                  {formatInt(o365Data.securityRecommendations.length)} recommandation(s) de sécurité remontée(s).
+                </p>
+              ) : null}
+            </div>
+          </section>
+        </>
       ) : null}
 
       {hasAntispam ? (
-        <section className={execStyles.sectionBlock}>
-          <h4 className={execStyles.sectionHeading}>Antispam</h4>
-          <div className={styles.serviceCard}>
-            <div className={styles.serviceHead}>
-              <div className={styles.serviceIdentity}>
-                <span className={`${styles.serviceIcon} ${styles.serviceIconWarn}`}>
-                  <IconifyIcon icon="mdi:email-outline" width={22} height={22} />
-                </span>
-                <div>
-                  <p className={styles.serviceName}>{antispamStats.solutionName}</p>
-                  <p className={styles.serviceSubtitle}>Protection des messageries</p>
-                </div>
+        <>
+          <section className={execStyles.sectionBlock}>
+            <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs antispam">
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Solution</span>
+                <span className={execStyles.kpiValue}>{antispamStats.solutionName}</span>
+                <span className={execStyles.kpiHint}>protection messagerie</span>
               </div>
-              <span className={styles.serviceBadgeMuted}>Suivi actif</span>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Utilisateurs protégés</span>
+                <span className={execStyles.kpiValue}>{formatInt(antispamStats.protectedUsers)}</span>
+                <span className={execStyles.kpiHint}>comptes couverts</span>
+              </div>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Domaines / licences</span>
+                <span className={execStyles.kpiValue}>{formatInt(antispamStats.domainsOrLicenses)}</span>
+                <span className={execStyles.kpiHint}>
+                  {antispamStats.hasStats ? "stats disponibles" : "stats non disponibles"}
+                </span>
+              </div>
             </div>
-            <div className={styles.metricGrid}>
-              <Metric label="Utilisateurs protégés" value={formatInt(antispamStats.protectedUsers)} />
-              <Metric label="Domaines / licences" value={formatInt(antispamStats.domainsOrLicenses)} />
-            </div>
-            {!antispamStats.hasStats ? (
-              <p className={execStyles.sectionFootnote}>
-                Les statistiques de filtrage des e-mails ne sont pas disponibles sur la période.
+          </section>
+
+          {renderSynthesis("antispam", antispamSynthesis, "Rédigez la synthèse antispam…")}
+
+          <section className={execStyles.sectionBlock}>
+            <h4 className={execStyles.sectionHeading}>Antispam</h4>
+            <div className={styles.serviceCard}>
+              <p className={styles.serviceSubtitle}>
+                {antispamStats.solutionName} — protection des messageries
               </p>
-            ) : null}
-          </div>
-        </section>
+              {!antispamStats.hasStats ? (
+                <p className={execStyles.sectionFootnote}>
+                  Les statistiques de filtrage des e-mails ne sont pas disponibles sur la période.
+                </p>
+              ) : (
+                <p className={execStyles.sectionFootnote}>Suivi antispam actif sur la période.</p>
+              )}
+            </div>
+          </section>
+        </>
       ) : null}
 
-      {hasOffice && o365Data ? (
-        <section className={execStyles.sectionBlock}>
-          <h4 className={execStyles.sectionHeading}>Microsoft 365</h4>
-          <div className={styles.serviceCard}>
-            <h5 className={execStyles.detailSectionTitle}>Licences & utilisateurs</h5>
-            <div className={styles.metricGrid}>
-              <Metric label="Utilisateurs" value={formatInt(o365Data.usersCount)} />
-              <Metric label="Types de licences" value={formatInt(o365Data.licenseTypes)} />
-            </div>
-
-            {o365Data.licenses.length > 0 ? (
-              <div className={execStyles.watchTableWrap}>
-                <table className={execStyles.watchTable}>
-                  <thead>
-                    <tr>
-                      <th>Licence</th>
-                      <th>Utilisées</th>
-                      <th>Total</th>
-                      <th>Disponibles</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {o365Data.licenses.map((lic, idx) => {
-                      const total = Number(lic.total || lic.nombre || 0) || 0;
-                      const used = Number(lic.utilisees || lic.used || 0) || 0;
-                      return (
-                        <tr key={lic.skuId || lic.id || `${lic.name || "lic"}-${idx}`}>
-                          <td>
-                            {getLicenseDisplayName(
-                              lic.nom || lic.displayName || lic.name || lic.skuPartNumber || lic.skuId || "-"
-                            )}
-                          </td>
-                          <td>{formatInt(used)}</td>
-                          <td>{formatInt(total)}</td>
-                          <td>{formatInt(Math.max(0, total - used))}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+      {hasAntivirus ? (
+        <>
+          <section className={execStyles.sectionBlock}>
+            <div className={execStyles.kpiStrip} role="list" aria-label="Indicateurs antivirus">
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Postes</span>
+                <span className={execStyles.kpiValue}>{formatInt(antivirusStats.totalEndpoints)}</span>
+                <span className={execStyles.kpiHint}>{antivirusStats.solutionName}</span>
               </div>
-            ) : null}
-
-            {o365Data.microsoftDomains.length > 0 ? (
-              <>
-                <h5 className={execStyles.detailSectionTitle}>Domaines Microsoft 365</h5>
-                <ul className={styles.simpleList}>
-                  {o365Data.microsoftDomains.map(domain => (
-                    <li key={domain}>{domain}</li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
-
-          <div className={styles.serviceCard}>
-            <h5 className={execStyles.detailSectionTitle}>Usage des services</h5>
-
-            {exchange ? (
-              <div className={styles.usageBlock}>
-                <p className={styles.usageTitle}>
-                  <IconifyIcon icon="mdi:email-outline" width={18} height={18} />
-                  Exchange
-                </p>
-                <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
-                  <Metric
-                    label="E-mails reçus"
-                    value={formatInt(exchange.emailActivity?.received)}
-                    hint="Sur la période"
-                  />
-                  <Metric label="Boîtes mail" value={formatInt(exchange.mailboxes?.total)} />
-                  <Metric label="Espace utilisé" value={exchange.mailboxes?.totalSize || "—"} />
-                  <Metric
-                    label="Taux de lecture"
-                    value={
-                      typeof exchange.emailActivity?.readRate === "number"
-                        ? formatPct(exchange.emailActivity.readRate)
-                        : "—"
-                    }
-                  />
-                </div>
-                {typeof exchange.emailActivity?.sent === "number" ? (
-                  <p className={execStyles.sectionFootnote}>
-                    {formatInt(exchange.emailActivity.sent)} e-mails envoyés sur la période.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-
-            {teams ? (
-              <div className={styles.usageBlock}>
-                <p className={styles.usageTitle}>
-                  <IconifyIcon icon="mdi:microsoft-teams" width={18} height={18} />
-                  Microsoft Teams
-                </p>
-                <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
-                  <Metric
-                    label="Utilisateurs"
-                    value={formatInt(teamsUsage.licensedUsers || teams?.teams?.users || 0)}
-                    hint={`${formatInt(teamsUsage.activeUsers ?? teams?.teams?.activeUsers ?? 0)} actifs sur la période`}
-                  />
-                  <Metric label="Réunions" value={formatInt(teamsMeetings.total || 0)} />
-                  <Metric
-                    label="Messages"
-                    value={formatInt(teamsMessages.channel || teamsMessages.total || 0)}
-                    hint="Messages de canal"
-                  />
-                  <Metric
-                    label="Durée des appels"
-                    value={teamsCalls.totalDuration || teamsCalls.duration || teamsCalls.totalTime || "—"}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {o365Data.onedriveData && o365Data.onedriveData.success !== false ? (
-              <div className={styles.usageBlock}>
-                <p className={styles.usageTitle}>
-                  <IconifyIcon icon="mdi:microsoft-onedrive" width={18} height={18} />
-                  OneDrive
-                </p>
-                <div className={styles.metricGrid}>
-                  <Metric label="Espace utilisé" value={o365Data.onedriveData.storage?.totalUsed || "—"} />
-                  <Metric
-                    label="Nombre de fichiers"
-                    value={formatInt(o365Data.onedriveData.storage?.totalFiles)}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {o365Data.sharepointData && o365Data.sharepointData.success !== false ? (
-              <div className={styles.usageBlock}>
-                <p className={styles.usageTitle}>
-                  <IconifyIcon icon="mdi:microsoft-sharepoint" width={18} height={18} />
-                  SharePoint
-                </p>
-                <div className={styles.metricGrid}>
-                  <Metric label="Sites SharePoint référencés" value={formatInt(sharepointSites.length)} />
-                </div>
-                <p className={execStyles.sectionFootnote}>
-                  La liste détaillée des sites et leurs URLs est disponible dans le détail technique.
-                </p>
-              </div>
-            ) : null}
-          </div>
-
-          <div className={styles.serviceCard}>
-            <div className={styles.serviceHead}>
-              <div className={styles.serviceIdentity}>
-                <span className={`${styles.serviceIcon} ${styles.serviceIconPurple}`}>
-                  <IconifyIcon icon="mdi:shield-key-outline" width={22} height={22} />
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Gérés</span>
+                <span className={execStyles.kpiValue}>{formatInt(antivirusStats.managed)}</span>
+                <span className={execStyles.kpiHint}>
+                  {formatInt(antivirusStats.unmanaged)} non géré{antivirusStats.unmanaged > 1 ? "s" : ""}
                 </span>
-                <div>
-                  <p className={styles.serviceName}>Microsoft 365 — Sécurité</p>
-                  <p className={styles.serviceSubtitle}>État de la sécurité</p>
-                </div>
+              </div>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Couverture</span>
+                <span
+                  className={`${execStyles.kpiValue} ${antivirusStats.unmanaged > 0 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
+                >
+                  {formatPct(antivirusStats.managementRate)}
+                </span>
+                <span className={execStyles.kpiHint}>postes gérés</span>
+              </div>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Agents 24 h</span>
+                <span
+                  className={`${execStyles.kpiValue} ${antivirusStats.disconnected > 0 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
+                >
+                  {formatInt(antivirusStats.connected)}
+                </span>
+                <span className={execStyles.kpiHint}>
+                  {formatInt(antivirusStats.disconnected)} sans remontée
+                </span>
               </div>
             </div>
-            <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
-              <Metric
-                label="Secure Score"
-                value={scoreCurrent != null && scoreMax != null ? `${formatInt(scoreCurrent)} / ${formatInt(scoreMax)}` : "—"}
-                hint={scorePct != null ? `${formatPct(scorePct)} des points obtenus` : null}
-              />
-              <Metric
-                label="MFA global"
-                value={formatPct(o365Data.mfa.globalRate)}
-                hint={`${formatInt(o365Data.mfa.usersWithMFA)} comptes sur ${formatInt(o365Data.mfa.totalUsers)}`}
-              />
-              <Metric
-                label="MFA administrateurs"
-                value={formatPct(o365Data.mfa.adminRate)}
-                hint={`${formatInt(o365Data.mfa.adminsWithMFA)} comptes sur ${formatInt(o365Data.mfa.adminsTotal)}`}
-              />
-              <Metric
-                label="MFA utilisateurs"
-                value={formatPct(o365Data.mfa.userRate)}
-                hint={`${formatInt(o365Data.mfa.nonAdminWithMFA)} comptes sur ${formatInt(o365Data.mfa.nonAdminTotal)}`}
-              />
+          </section>
+
+          {renderSynthesis("antivirus", antivirusSynthesis, "Rédigez la synthèse antivirus…")}
+
+          <section className={execStyles.sectionBlock}>
+            <h4 className={execStyles.sectionHeading}>Antivirus</h4>
+            <div className={styles.serviceCard}>
+              <h5 className={execStyles.detailSectionTitle}>État des agents</h5>
+              <div className={styles.metricGrid}>
+                <Metric label="Agents vus depuis moins de 24 h" value={formatInt(antivirusStats.connected)} />
+                <Metric
+                  label="Agents sans remontée depuis plus de 24 h"
+                  value={formatInt(antivirusStats.disconnected)}
+                />
+              </div>
+              {antivirusStats.licenseTotal > 0 ? (
+                <>
+                  <h5 className={execStyles.detailSectionTitle}>Licences</h5>
+                  <div className={styles.metricGrid}>
+                    <Metric
+                      label={antivirusStats.solutionName}
+                      value={`${formatInt(antivirusStats.licenseUsed)} / ${formatInt(antivirusStats.licenseTotal)}`}
+                      hint={`${formatInt(antivirusStats.licenseUsed)} licences utilisées sur ${formatInt(antivirusStats.licenseTotal)} disponibles.`}
+                    />
+                  </div>
+                </>
+              ) : null}
             </div>
-            <h5 className={execStyles.detailSectionTitle}>Points de sécurité à suivre</h5>
-            <div className={execStyles.watchTableWrap}>
-              <table className={execStyles.watchTable}>
-                <thead>
-                  <tr>
-                    <th>Indicateur</th>
-                    <th>État</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>MFA administrateurs</td>
-                    <td>{formatPct(o365Data.mfa.adminRate)}</td>
-                  </tr>
-                  <tr>
-                    <td>MFA utilisateurs</td>
-                    <td>{formatPct(o365Data.mfa.userRate)}</td>
-                  </tr>
-                  <tr>
-                    <td>Secure Score</td>
-                    <td>{formatPct(scorePct)}</td>
-                  </tr>
-                  <tr>
-                    <td>Recommandations de sécurité</td>
-                    <td>
-                      {o365Data.securityRecommendations.length > 0
-                        ? `${formatInt(o365Data.securityRecommendations.length)} recommandation(s)`
-                        : "Aucune donnée remontée"}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <p className={execStyles.sectionFootnote}>
-              Lecture : les comptes administrateurs sont protégés par MFA. Le déploiement du MFA sur les comptes
-              utilisateurs reste un sujet à suivre.
-            </p>
-          </div>
-        </section>
+          </section>
+        </>
       ) : null}
 
       {hasDomains ? (
-        <section className={execStyles.sectionBlock}>
-          <h4 className={execStyles.sectionHeading}>Noms de domaine</h4>
-          <p className={execStyles.perimeterLead}>Domaines suivis</p>
-          {domains.length === 0 ? (
-            <p className={execStyles.sectionFootnote}>Aucun nom de domaine enregistré.</p>
-          ) : (
-            domains.map((domain, idx) => {
-              const name = domain.nom || domain.name || domain.domaine || `Domaine ${idx + 1}`;
-              const expiration = domain.expiration || domain.expiry || domain.dateExpiration;
-              const remaining = daysUntil(expiration);
-              const registrar = domain.registrar || domain.registrarName || "—";
-              const nearExpiry = remaining != null && remaining <= 90;
-              return (
-                <div key={domain.id || `${name}-${idx}`} className={styles.domainRow}>
-                  <div>
-                    <div className={styles.domainName}>{name}</div>
-                    <div className={styles.domainMeta}>
-                      {registrar} · {remaining != null && remaining < 0 ? "Expiré" : "Domaine actif"}
-                      {nearExpiry ? " · Expiration proche" : ""}
+        <>
+          <section className={execStyles.sectionBlock}>
+            <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs domaines">
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Domaines</span>
+                <span className={execStyles.kpiValue}>{formatInt(domains.length)}</span>
+                <span className={execStyles.kpiHint}>noms de domaine suivis</span>
+              </div>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>Échéances &lt; 90 j</span>
+                <span className={execStyles.kpiValue}>
+                  {formatInt(
+                    domains.filter(domain => {
+                      const remaining = daysUntil(
+                        domain.expiration || domain.expiry || domain.dateExpiration
+                      );
+                      return remaining != null && remaining <= 90;
+                    }).length
+                  )}
+                </span>
+                <span className={execStyles.kpiHint}>à renouveler</span>
+              </div>
+              <div className={execStyles.kpiItem} role="listitem">
+                <span className={execStyles.kpiLabel}>État</span>
+                <span className={execStyles.kpiValue}>
+                  {domains.some(domain => {
+                    const remaining = daysUntil(
+                      domain.expiration || domain.expiry || domain.dateExpiration
+                    );
+                    return remaining != null && remaining < 0;
+                  })
+                    ? "Expiré"
+                    : "Actif"}
+                </span>
+                <span className={execStyles.kpiHint}>suivi DNS / registrar</span>
+              </div>
+            </div>
+          </section>
+
+          {renderSynthesis("domains", domainsSynthesis, "Rédigez la synthèse des domaines…")}
+
+          <section className={execStyles.sectionBlock}>
+            <h4 className={execStyles.sectionHeading}>Noms de domaine</h4>
+            {domains.length === 0 ? (
+              <p className={execStyles.sectionFootnote}>Aucun nom de domaine enregistré.</p>
+            ) : (
+              domains.map((domain, idx) => {
+                const name = domain.nom || domain.name || domain.domaine || `Domaine ${idx + 1}`;
+                const expiration = domain.expiration || domain.expiry || domain.dateExpiration;
+                const remaining = daysUntil(expiration);
+                const registrar = domain.registrar || domain.registrarName || "—";
+                const nearExpiry = remaining != null && remaining <= 90;
+                return (
+                  <div key={domain.id || `${name}-${idx}`} className={styles.domainRow}>
+                    <div>
+                      <div className={styles.domainName}>{name}</div>
+                      <div className={styles.domainMeta}>
+                        {registrar} · {remaining != null && remaining < 0 ? "Expiré" : "Domaine actif"}
+                        {nearExpiry ? " · Expiration proche" : ""}
+                      </div>
+                    </div>
+                    <div className={nearExpiry ? styles.domainExpiry : styles.domainMeta}>
+                      {expiration ? `Expiration : ${formatDateFr(expiration)}` : "Expiration non renseignée"}
                     </div>
                   </div>
-                  <div className={nearExpiry ? styles.domainExpiry : styles.domainMeta}>
-                    {expiration ? `Expiration : ${formatDateFr(expiration)}` : "Expiration non renseignée"}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </section>
+                );
+              })
+            )}
+          </section>
+        </>
       ) : null}
 
       <section className={execStyles.sectionBlock} data-export-hide="true">

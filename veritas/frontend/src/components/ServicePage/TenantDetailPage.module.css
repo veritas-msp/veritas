@@ -54,9 +54,108 @@
 .tabFill {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   height: 100%;
+  gap: 0.85rem;
+  margin-bottom: 0 !important;
+}
+
+.tabFill > * {
+  flex: 0 0 auto;
+}
+
+/* Recherche + table (tenant embedded) */
+.embeddedTableStack,
+.embeddedTableFill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  align-self: stretch;
+  height: auto;
+}
+
+.embeddedTableStack > :first-child {
+  flex: 0 0 auto;
+}
+
+.embeddedTableStack > :last-child,
+.embeddedTableFill {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  align-self: stretch;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Force la chaîne interne (host → section → shell) à remplir */
+.embeddedTableStack > :last-child > *,
+.embeddedTableFill > * {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.embeddedTableStack > :last-child > * > *,
+.embeddedTableFill > * > * {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+}
+
+/* Pagination sous table (tenant embedded) */
+.embeddedPagedFill {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  align-self: stretch;
+}
+
+.embeddedPagedFill > * {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.embeddedPagedFill > * > :last-child {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.embeddedPagedFill > * > :first-child {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Ne jamais forcer la hauteur des fondus scroll (sinon ils recouvrent la 1re ligne) */
+.embeddedTableFill :global([class*="tableScrollFade"]),
+.embeddedTableStack :global([class*="tableScrollFade"]),
+.embeddedPagedFill :global([class*="tableScrollFade"]) {
+  flex: none !important;
+  height: auto !important;
+  max-height: 2.75rem !important;
+  min-height: 0 !important;
+}
+
+.embeddedTableFill :global([class*="tableScrollFadeTop"]),
+.embeddedTableStack :global([class*="tableScrollFadeTop"]),
+.embeddedPagedFill :global([class*="tableScrollFadeTop"]) {
+  max-height: 1.15rem !important;
 }
 
 .tableFill {
@@ -708,6 +807,10 @@
 
 .kpiSection {
   margin-bottom: 1rem;
+}
+
+.kpiSection.tabFill {
+  margin-bottom: 0;
 }
 
 .sectionTitle {
@@ -1671,14 +1774,16 @@
 
 /* —— Embedded rapport : une carte, onglets toggle animés —— */
 .embeddedShell {
+  --tenant-embed-pad-x: 0.85rem;
+  --tenant-embed-pad-y: 0.75rem;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   height: 100%;
   width: 100%;
-  border: 1px solid var(--msp-border-light, #e8edf5);
-  border-radius: var(--msp-radius, 16px);
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 14px;
   background: var(--msp-surface, #fff);
   box-shadow: none;
   overflow: hidden;
@@ -1691,7 +1796,7 @@
   align-items: center;
   gap: 0.2rem;
   flex-shrink: 0;
-  padding: 0.55rem 0.65rem;
+  padding: 0.55rem var(--tenant-embed-pad-x);
   border-bottom: 1px solid var(--msp-border-light, #e8edf5);
   background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 88%, var(--msp-surface, #fff));
 }
@@ -1705,11 +1810,17 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
+  will-change: transform, width, height;
+}
+
+/* Pas de transition tant que le 1er placement n’est pas connu (évite le slide depuis 0,0) */
+.embeddedTabIndicatorReady {
   transition:
     transform var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.22, 1.2, 0.36, 1)),
     width var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
-    height var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
-  will-change: transform, width, height;
+    height var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    opacity var(--msp-duration-fast, 160ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 .embeddedTab {
@@ -1740,10 +1851,20 @@
   background: color-mix(in srgb, var(--msp-surface, #fff) 70%, transparent);
 }
 
+/* Fond actif CSS toujours présent : filet de sécurité si l’indicateur
+   est encore trop court (icônes Iconify chargées après la 1re mesure). */
 .embeddedTabActive,
 .embeddedTabActive:hover {
   color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+}
+
+/* Quand l’indicateur est prêt, on laisse le pill glissant prendre le relais */
+.embeddedTabs[data-indicator-ready="true"] .embeddedTabActive,
+.embeddedTabs[data-indicator-ready="true"] .embeddedTabActive:hover {
   background: transparent;
+  box-shadow: none;
 }
 
 .embeddedTabIcon {
@@ -1769,7 +1890,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 0.85rem 1rem 0.9rem;
+  padding: var(--tenant-embed-pad-y) var(--tenant-embed-pad-x);
 }
 
 .embeddedBodyInner {
@@ -1778,6 +1899,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.embeddedBodyInner > * {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .embeddedFadePending {
@@ -1814,7 +1940,7 @@
 .embeddedFooter {
   flex-shrink: 0;
   margin: 0;
-  padding: 0.45rem 1rem 0.55rem;
+  padding: 0.45rem var(--tenant-embed-pad-x) 0.55rem;
   border-top: 1px solid var(--msp-border-light, #e8edf5);
   font-size: 0.72rem;
   color: var(--msp-muted, #5c6b82);
@@ -1836,7 +1962,44 @@
 
 .embeddedKpiStrip {
   flex-shrink: 0;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+/* 2 colonnes : Users|Messages / Meetings|Calls */
+.embeddedKpiGrid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.embeddedKpiGrid2 .kpiSectionBlock {
+  min-width: 0;
+}
+
+.embeddedKpiGrid2 .metricsRowFlat {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .embeddedKpiGrid2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tabFill .metricsRowFlat,
+.tabFill .kpiSectionBlock {
+  margin-bottom: 0;
+}
+
+.tabFill .kpiSectionBlock {
+  gap: 0.4rem;
+}
+
+.tabFill .metricsRowFlat {
+  margin-bottom: 0;
 }
 
 .tablePlain {

@@ -94,21 +94,48 @@ export default function TenantDetailPage({
   const [deletingTenant, setDeletingTenant] = useState(false);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const [sectionContentEnter, setSectionContentEnter] = useState(true);
+  const [embeddedIndicatorMotion, setEmbeddedIndicatorMotion] = useState(false);
+  const skipNextSectionFadeRef = useRef(true);
   const currentTenantKeyRef = useRef(tenantTargetKey(tenantData));
   const abortControllerRef = useRef(null);
   const heroActionsMenuRef = useRef(null);
   const { trackRef: embeddedTabsTrackRef, indicator: embeddedTabsIndicator } = useFinderNavIndicator([
     viewMode,
-    embedded
+    embedded,
+    // Recalcule quand le shell/contenu est prêt (largeur onglets stable)
+    loading
   ]);
+
+  // Indicateur « fiable » : largeur plausible pour un onglet (évite le pill coupé au mount)
+  const embeddedIndicatorReliable =
+    embeddedTabsIndicator.ready &&
+    embeddedTabsIndicator.width >= 72 &&
+    embeddedTabsIndicator.height >= 24;
+
+  useEffect(() => {
+    if (!embeddedIndicatorReliable) {
+      setEmbeddedIndicatorMotion(false);
+      return undefined;
+    }
+    // Active les transitions seulement après un placement correct
+    const id = requestAnimationFrame(() => setEmbeddedIndicatorMotion(true));
+    return () => cancelAnimationFrame(id);
+  }, [embeddedIndicatorReliable]);
 
   useLayoutEffect(() => {
     if (!embedded) return;
+    // Pas de fade opacity:0 au 1er rendu (onglet Licences par défaut)
+    if (skipNextSectionFadeRef.current) {
+      skipNextSectionFadeRef.current = false;
+      setSectionContentEnter(true);
+      return;
+    }
     setSectionContentEnter(false);
   }, [viewMode, embedded]);
 
   useEffect(() => {
     if (!embedded) return undefined;
+    if (sectionContentEnter) return undefined;
     let cancelled = false;
     let innerId = 0;
     const outerId = requestAnimationFrame(() => {
@@ -122,7 +149,7 @@ export default function TenantDetailPage({
       cancelAnimationFrame(outerId);
       cancelAnimationFrame(innerId);
     };
-  }, [viewMode, embedded]);
+  }, [viewMode, embedded, sectionContentEnter]);
 
   useEffect(() => {
     const incomingKey = tenantTargetKey(tenantData);
@@ -715,12 +742,22 @@ export default function TenantDetailPage({
       label: copy.tabs[section.id]
     }));
     return <div className={`${styles.tenantVars} ${styles.tenantVarsFill} ${styles.embeddedShell}`}>
-        <nav ref={embeddedTabsTrackRef} className={styles.embeddedTabs} aria-label={copy.tabs.aria}>
-          {embeddedTabsIndicator.ready ? <div className={styles.embeddedTabIndicator} style={{
-          transform: `translate3d(${embeddedTabsIndicator.left}px, ${embeddedTabsIndicator.top}px, 0)`,
-          width: embeddedTabsIndicator.width,
-          height: embeddedTabsIndicator.height
-        }} aria-hidden /> : null}
+        <nav
+          ref={embeddedTabsTrackRef}
+          className={styles.embeddedTabs}
+          data-indicator-ready={embeddedIndicatorReliable ? "true" : "false"}
+          aria-label={copy.tabs.aria}
+        >
+          <div
+            className={`${styles.embeddedTabIndicator} ${embeddedIndicatorMotion ? styles.embeddedTabIndicatorReady : ""}`}
+            style={{
+              transform: `translate3d(${embeddedTabsIndicator.left}px, ${embeddedTabsIndicator.top}px, 0)`,
+              width: embeddedTabsIndicator.width || undefined,
+              height: embeddedTabsIndicator.height || undefined,
+              opacity: embeddedIndicatorReliable ? 1 : 0
+            }}
+            aria-hidden
+          />
           {tabSections.map((section) => {
           const active = viewMode === section.id;
           return <button key={section.id} type="button" className={`${styles.embeddedTab} ${active ? styles.embeddedTabActive : ""}`} aria-current={active ? "page" : undefined} onClick={() => setViewMode(section.id)}>

@@ -482,19 +482,22 @@
   left: 0;
   right: 0;
   top: 0;
-  height: 2.75rem;
+  /* Court : ne doit pas noyer la 1re ligne sous le thead */
+  height: 1.15rem;
+  max-height: 1.15rem;
+  flex: none !important;
   pointer-events: none;
   /* Au-dessus des lignes, décalé sous le thead sticky via offset JS */
   z-index: 13;
   border-radius: 0;
   background: linear-gradient(
     to bottom,
-    var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 5%,
-    color-mix(in srgb, var(--eq-surface-2, var(--msp-surface-2, #f4f7fb)) 78%, transparent) 48%,
+    var(--eq-surface, var(--msp-surface, #ffffff)) 0%,
+    color-mix(in srgb, var(--eq-surface, var(--msp-surface, #ffffff)) 55%, transparent) 55%,
     transparent 100%
   );
   opacity: 0;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.18s ease;
 }
 
 .tableScrollFadeVisible {
@@ -2155,8 +2158,8 @@
 :global(body.dark) .tableScrollFadeTop {
   background: linear-gradient(
     to bottom,
-    var(--msp-surface-2, #152035) 5%,
-    color-mix(in srgb, var(--msp-surface-2, #152035) 78%, transparent) 48%,
+    var(--msp-surface, #1a2540) 0%,
+    color-mix(in srgb, var(--msp-surface, #1a2540) 55%, transparent) 55%,
     transparent 100%
   );
 }

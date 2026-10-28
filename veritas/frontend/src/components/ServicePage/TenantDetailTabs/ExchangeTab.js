@@ -1,12 +1,75 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Icon } from '@iconify/react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 import styles from '../TenantDetailPage.module.css';
+import { UiKitKpiStrip } from '../../UiKit';
 export default function ExchangeTab({
   exchangeData,
-  theme
+  theme,
+  embedded = false
 }) {
   const [emailActivityViewMode, setEmailActivityViewMode] = useState('day');
+  const embeddedKpis = useMemo(() => [{
+    key: 'sent',
+    label: 'Emails sent',
+    value: exchangeData?.emailActivity?.sent ?? 0
+  }, {
+    key: 'received',
+    label: 'Emails received',
+    value: exchangeData?.emailActivity?.received ?? 0
+  }, {
+    key: 'read',
+    label: 'Emails read',
+    value: exchangeData?.emailActivity?.read ?? 0
+  }, {
+    key: 'rate',
+    label: 'Read rate',
+    value: exchangeData?.emailActivity?.readRate != null ? Math.round(exchangeData.emailActivity.readRate) : 0
+  }], [exchangeData]);
+
+  if (embedded) {
+    const dailyActivity = Array.isArray(exchangeData?.emailActivity?.dailyActivity)
+      ? exchangeData.emailActivity.dailyActivity
+      : [];
+    const chartData = dailyActivity.length > 0
+      ? dailyActivity
+      : [{ date: '—', sent: 0, received: 0, read: 0 }];
+    return <div className={`${styles.exchangeSection} ${styles.tabFill}`.trim()} style={{
+      position: 'relative',
+      overflow: 'auto'
+    }}>
+        {exchangeData?.success === false ? <p className={styles.mutedHint} style={{ color: '#b91c1c', margin: '0 0 0.5rem' }}>
+            {exchangeData.error || 'Erreur chargement Exchange'}
+          </p> : null}
+        <div className={styles.embeddedKpiStrip}>
+          <UiKitKpiStrip variant="segments" cards={embeddedKpis} ariaLabel="Exchange KPIs" />
+        </div>
+        <div style={{
+        flex: '1 1 auto',
+        minHeight: 280
+      }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--msp-border-light, #e8edf5)" />
+                <XAxis dataKey="date" tick={{
+              fontSize: 11,
+              fill: 'var(--msp-muted, #5c6b82)'
+            }} />
+                <YAxis allowDecimals={false} tick={{
+              fontSize: 11,
+              fill: 'var(--msp-muted, #5c6b82)'
+            }} domain={[0, 'auto']} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="sent" name="Sent" stroke="var(--msp-muted, #5c6b82)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="received" name="Received" stroke="var(--msp-text, #0f1c2e)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="read" name="Read" stroke="var(--msp-accent, #2b5fab)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+      </div>;
+  }
+
   if (!exchangeData) {
     return <div className={styles.exchangeSection} style={{
       position: 'relative'
@@ -179,9 +242,7 @@ export default function ExchangeTab({
         gap: '0.75rem'
       }}>
           <div className={styles.statCard}>
-            <div className={styles.statCardIcon} style={{
-            color: '#3b82f6'
-          }}>
+            <div className={styles.statCardIcon}>
               <Icon icon="mdi:email-send" />
             </div>
             <div className={styles.statCardContent}>
@@ -195,9 +256,7 @@ export default function ExchangeTab({
             </div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statCardIcon} style={{
-            color: '#10b981'
-          }}>
+            <div className={styles.statCardIcon}>
               <Icon icon="mdi:email-receive" />
             </div>
             <div className={styles.statCardContent}>
@@ -211,9 +270,7 @@ export default function ExchangeTab({
             </div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statCardIcon} style={{
-            color: '#8b5cf6'
-          }}>
+            <div className={styles.statCardIcon}>
               <Icon icon="mdi:email-open" />
             </div>
             <div className={styles.statCardContent}>
@@ -227,9 +284,7 @@ export default function ExchangeTab({
             </div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statCardIcon} style={{
-            color: '#f59e0b'
-          }}>
+            <div className={styles.statCardIcon}>
               <Icon icon="mdi:percent" />
             </div>
             <div className={styles.statCardContent}>

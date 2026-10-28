@@ -1,0 +1,40 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.tools {
+  padding: 0 0.1rem;
+}
+
+.editor {
+  min-height: 4.5rem;
+  max-height: 14rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border-light, #e8edf5);
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 70%, var(--msp-surface, #fff));
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  outline: none;
+}
+
+.editor:focus {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 45%, var(--msp-border, #c5d0df));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+}
+
+.editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--msp-muted, #5c6b82);
+  pointer-events: none;
+}
+
+:global(html.dark) .editor {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 70%, transparent);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}

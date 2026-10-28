@@ -501,7 +501,17 @@ export function buildSummarySnapshot({
     if (isEquipment) {
       const moduleKey = comment.moduleKey || getModuleKeyForEquipment(equipmentKey);
       const moduleLabel = moduleKey ? MODULE_LABELS[moduleKey] || moduleKey : "";
-      const ref = comment.referenceLabel || comment.ticketTitle || "";
+      let ref = String(comment.referenceLabel || comment.ticketTitle || "").trim();
+      // Évite le doublon "Serveurs · Servers · nom" quand referenceLabel contient déjà la famille
+      const stripFamilyPrefix = value => {
+        let next = value;
+        [moduleLabel, moduleKey].filter(Boolean).forEach(prefix => {
+          const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[·•|]\\s*`, "i");
+          next = next.replace(re, "").trim();
+        });
+        return next;
+      };
+      ref = stripFamilyPrefix(ref);
       linkedLabel = [moduleLabel, ref].filter(Boolean).join(" · ") || "Équipement";
     }
     return {
@@ -527,6 +537,17 @@ export function buildSummarySnapshot({
 
   watchPoints.forEach(point => {
     point.comments = commentsByEquipment[point.equipmentKey] || [];
+  });
+
+  modules.forEach(module => {
+    (module.equipments || []).forEach(eq => {
+      const items = commentsByEquipment[eq.key] || [];
+      eq.commentItems = items;
+      eq.commentPreview = items
+        .map(item => String(item.text || "").trim())
+        .filter(Boolean)
+        .join(" · ");
+    });
   });
 
   const watchEquipmentKeys = new Set(watchPoints.map(point => point.equipmentKey).filter(Boolean));

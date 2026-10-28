@@ -27,7 +27,6 @@ import { buildPeriodInsights, mergeSeededTicketComments } from "./monitoring/sup
 import shellStyles from "./RapportBuilderPlaceholder.module.css";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { isReportBuilderSessionActive } from "../../utils/monitoringReportGuard";
-import saveModalStyles from "../Monitoring/MonitoringSummary/MonitoringSummary.module.css";
 import { exportReportAsZIP, buildReportHtmlParts } from "./exportRapportZip";
 import { uploadReportHtmlFolderToClientVault } from "../../utils/uploadReportToClientVault";
 import SaveSupervisionReportModal from "./SaveSupervisionReportModal";
@@ -144,11 +143,10 @@ export default function ReportPage({
   const syncInFlightRef = useRef(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState("");
+  const [saveNameError, setSaveNameError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveSuccessVisible, setSaveSuccessVisible] = useState(false);
   const [saveErrorVisible, setSaveErrorVisible] = useState(false);
-  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
-  const [pendingSave, setPendingSave] = useState(null);
   const [saveVisibleToClient, setSaveVisibleToClient] = useState(false);
   const [stepStorageState, setStepStorageState] = useState(null);
   const [startingSupervisionBuilder, setStartingSupervisionBuilder] = useState(false);
@@ -853,7 +851,8 @@ export default function ReportPage({
       equipment
     } = activeCommentsTarget;
     const equipmentName = equipment?.nom || equipment?.name || equipment?.logiciel || "Equipment";
-    const referenceLabel = `${moduleKey || "Equipment"} · ${equipmentName}`;
+    const familyLabel = MODULE_LABELS[moduleKey] || moduleKey || "Équipement";
+    const referenceLabel = `${familyLabel} · ${equipmentName}`;
     const infraModules = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"];
     const cyberModules = ["Backup", "Antivirus", "Antispam"];
     const servicesModules = ["Office365", "NDD"];
@@ -986,8 +985,9 @@ export default function ReportPage({
       };
     }
   };
-  const handleSaveReport = async (forceOverwrite = false) => {
+  const handleSaveReport = async () => {
     if (!saveName.trim() || !builderClient) return null;
+    setSaveNameError("");
     setSaving(true);
     try {
       const configCopy = safeJsonClone({
@@ -1023,7 +1023,7 @@ export default function ReportPage({
         report_period: reportPeriod,
         config: configCopy,
         data: dataCopy,
-        overwrite: forceOverwrite
+        overwrite: false
       });
       if (result && result.success) {
         const vaultResult = await archiveReportToClientVault({
@@ -1033,6 +1033,7 @@ export default function ReportPage({
         });
         setSaveSuccessVisible(true);
         setSaveName("");
+        setSaveNameError("");
         setShowSaveModal(false);
         setTimeout(() => setSaveSuccessVisible(false), 3000);
         if (vaultResult.success) {
@@ -1046,16 +1047,10 @@ export default function ReportPage({
         }
         return result;
       }
-      if (result && result.message && /déjà enregistré|already saved/i.test(String(result.message))) {
-        setPendingSave({
-          name: saveName.trim(),
-          client_name: clientName,
-          report_period: reportPeriod,
-          config: configCopy,
-          data: dataCopy,
-          visibleToClient: saveVisibleToClient
-        });
-        setShowOverwriteConfirm(true);
+      if (result && result.message && /déjà enregistré|already saved|already exists|existe déjà/i.test(String(result.message))) {
+        setSaveNameError(
+          `Un document nommé « ${saveName.trim()} » existe déjà. Choisissez un autre nom.`
+        );
         return null;
       }
       setSaveErrorVisible(true);
@@ -1086,61 +1081,6 @@ export default function ReportPage({
       toast.success("Téléchargement du rapport lancé.");
     } catch (err) {
       toast.error(err?.message || "Erreur pendant l’export.");
-    }
-  };
-  const handleOverwriteConfirm = async () => {
-    if (!pendingSave) return;
-    setSaving(true);
-    try {
-      const dataWithComments = {
-        ...(typeof pendingSave.data === "object" && pendingSave.data !== null ? pendingSave.data : {}),
-        reportComments: {
-          equipment: equipmentComments,
-          general: generalComments
-        },
-        stepStates: {
-          Storage: stepStorageState
-        },
-        checkMK: buildCheckMKReportSnapshot(equipmentCheckMKData, equipmentMonitoringStatus, builderClient?.reportStartDate, builderClient?.reportEndDate)
-      };
-      const result = await saveMonitoringDocument({
-        name: pendingSave.name,
-        client_name: pendingSave.client_name,
-        report_period: pendingSave.report_period,
-        config: pendingSave.config,
-        data: dataWithComments,
-        overwrite: true
-      });
-      if (result && result.success) {
-        const vaultResult = await archiveReportToClientVault({
-          visibleToClient: pendingSave.visibleToClient ?? saveVisibleToClient,
-          documentName: pendingSave.name,
-          reportPeriod: pendingSave.report_period
-        });
-        setSaveSuccessVisible(true);
-        setSaveName("");
-        setPendingSave(null);
-        setShowOverwriteConfirm(false);
-        setShowSaveModal(false);
-        setTimeout(() => setSaveSuccessVisible(false), 3000);
-        if (vaultResult.success) {
-          toast.success(pendingSave.visibleToClient ?? saveVisibleToClient ? "Rapport enregistré et partagé avec l’entreprise." : "Rapport enregistré (interne agents).");
-        } else if (!vaultResult.skipped) {
-          toast.warn(vaultResult.error ? `Rapport enregistré, mais archivage échoué : ${vaultResult.error}` : "Rapport enregistré, mais l’archivage documentaire a échoué.");
-        } else {
-          toast.success("Rapport mis à jour.");
-        }
-      } else {
-        setSaveErrorVisible(true);
-        setTimeout(() => setSaveErrorVisible(false), 3000);
-        toast.error(result?.error || "Error while overwriting.");
-      }
-    } catch (err) {
-      setSaveErrorVisible(true);
-      setTimeout(() => setSaveErrorVisible(false), 3000);
-      toast.error(err?.message || "Error while overwriting.");
-    } finally {
-      setSaving(false);
     }
   };
   const handleStartEditEquipmentComment = (equipmentKey, comment) => {
@@ -1287,31 +1227,48 @@ export default function ReportPage({
                 <div className={shellStyles.heroActions}>
                   <button
                     type="button"
-                    className={shellStyles.heroBtn}
+                    className={shellStyles.heroIconBtn}
                     onClick={() => { void handleSyncAllMonitoring(); }}
                     disabled={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open}
+                    title={pageCopy.supervisionBuilder.builderSync}
+                    aria-label={pageCopy.supervisionBuilder.builderSync}
                   >
                     <Icon
-                      icon="mdi:sync"
-                      className={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open ? shellStyles.heroSpin : undefined}
+                      icon={
+                        isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open
+                          ? "line-md:loading-loop"
+                          : "line-md:backup-restore"
+                      }
+                      width={20}
+                      height={20}
                       aria-hidden
                     />
-                    {pageCopy.supervisionBuilder.builderSync}
                   </button>
                   {isOnSummaryStep ? (
-                    <button type="button" className={shellStyles.heroBtn} onClick={handleDownloadZip} disabled={!builderClient}>
-                      <Icon icon="mdi:download" aria-hidden />
-                      {pageCopy.supervisionBuilder.builderDownload}
+                    <button
+                      type="button"
+                      className={shellStyles.heroIconBtn}
+                      onClick={handleDownloadZip}
+                      disabled={!builderClient}
+                      title={pageCopy.supervisionBuilder.builderDownload}
+                      aria-label={pageCopy.supervisionBuilder.builderDownload}
+                    >
+                      <Icon icon="line-md:download-loop" width={20} height={20} aria-hidden />
                     </button>
                   ) : null}
                   <button
                     type="button"
-                    className={shellStyles.heroBtnPrimary}
-                    onClick={() => builderClient && setShowSaveModal(true)}
+                    className={`${shellStyles.heroIconBtn} ${shellStyles.heroIconBtnPrimary}`}
+                    onClick={() => {
+                      if (!builderClient) return;
+                      setSaveNameError("");
+                      setShowSaveModal(true);
+                    }}
                     disabled={!builderClient}
+                    title={pageCopy.supervisionBuilder.builderSave}
+                    aria-label={pageCopy.supervisionBuilder.builderSave}
                   >
-                    <Icon icon="mdi:content-save-outline" aria-hidden />
-                    {pageCopy.supervisionBuilder.builderSave}
+                    <Icon icon="line-md:file-plus" width={20} height={20} aria-hidden />
                   </button>
                 </div>
               </div>
@@ -1322,75 +1279,21 @@ export default function ReportPage({
                   open={showSaveModal}
                   saving={saving}
                   saveName={saveName}
-                  onSaveNameChange={setSaveName}
+                  onSaveNameChange={value => {
+                    setSaveName(value);
+                    if (saveNameError) setSaveNameError("");
+                  }}
                   visibleToClient={saveVisibleToClient}
                   onVisibleToClientChange={setSaveVisibleToClient}
-                  onClose={() => { if (!saving) setShowSaveModal(false); }}
+                  onClose={() => {
+                    if (saving) return;
+                    setShowSaveModal(false);
+                    setSaveNameError("");
+                  }}
                   onSubmit={() => handleSaveReport()}
                   clientName={builderClient?.name || builderClient?.nom || ""}
+                  nameError={saveNameError}
                 />
-
-                {showOverwriteConfirm && pendingSave && <div className={saveModalStyles.modalOverlay} onClick={e => {
-            if (e.target === e.currentTarget) {
-              setShowOverwriteConfirm(false);
-              setPendingSave(null);
-            }
-          }}>
-                    <div className={`${saveModalStyles.modalContent} ${saveModalStyles.overwriteModalContent}`} onClick={e => e.stopPropagation()}>
-                      <div className={saveModalStyles.modalHeader}>
-                        <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem"
-                }}>
-                          <Icon icon="mdi:alert" className={saveModalStyles.modalIcon} />
-                          <h3>Document existant</h3>
-                        </div>
-                        <button type="button" className={saveModalStyles.closeButton} onClick={() => {
-                  setShowOverwriteConfirm(false);
-                  setPendingSave(null);
-                }} title="Fermer">
-                          <Icon icon="mdi:close" />
-                        </button>
-                      </div>
-                      <div className={saveModalStyles.modalBody}>
-                        <p style={{
-                  margin: 0,
-                  fontSize: "0.95rem",
-                  lineHeight: 1.6,
-                  color: "#1a1a1a"
-                }}>
-                          Un document nommé &quot;{saveName}&quot; existe déjà. Voulez-vous l’écraser ?
-                        </p>
-                      </div>
-                      <div className={saveModalStyles.modalActions} style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "0.75rem"
-              }}>
-                        <button type="button" className={saveModalStyles.secondaryButton} onClick={() => {
-                  setShowOverwriteConfirm(false);
-                  setPendingSave(null);
-                }}>
-                          Annuler
-                        </button>
-                        <button type="button" onClick={handleOverwriteConfirm} disabled={saving} className={saveModalStyles.primaryButton} style={{
-                  backgroundColor: "#dc2626",
-                  color: "white",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "0.35rem"
-                }}>
-                          <Icon icon={saving ? "mdi:loading" : "mdi:check"} style={saving ? {
-                    animation: "spin 1s linear infinite"
-                  } : undefined} />
-                          {saving ? "Enregistrement…" : "Oui, écraser"}
-                        </button>
-                      </div>
-                    </div>
-                  </div>}
 
                 {isSupervisionReportBuilderType(builderType) && builderClient && (
                   <MonitoringSteps

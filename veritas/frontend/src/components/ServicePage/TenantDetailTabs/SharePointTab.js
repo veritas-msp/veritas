@@ -4,7 +4,7 @@ import { Icon } from '@iconify/react';
 import { toast } from 'react-toastify';
 import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
-import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap, MonitoringPagedBlock } from '../../RapportPage/monitoring/MonitoringStepLayout';
 export default function SharePointTab({
   sharepointData,
   theme,
@@ -12,6 +12,93 @@ export default function SharePointTab({
 }) {
   const [siteSearchQuery, setSiteSearchQuery] = useState('');
   const [sitesCurrentPage, setSitesCurrentPage] = useState(1);
+
+  const allSites = sharepointData?.sites || [];
+  const filteredSites = allSites.filter(site => {
+    const text = `${site.name || site.displayName || ''} ${site.webUrl || ''}`.toLowerCase();
+    return !siteSearchQuery.trim() || text.includes(siteSearchQuery.trim().toLowerCase());
+  });
+  const sitesPerPage = 20;
+  const totalSitesPages = Math.max(1, Math.ceil(filteredSites.length / sitesPerPage) || 1);
+  const safeSitesPage = Math.min(sitesCurrentPage, totalSitesPages);
+  const sitesStartIndex = (safeSitesPage - 1) * sitesPerPage;
+  const visibleSites = filteredSites.slice(sitesStartIndex, sitesStartIndex + sitesPerPage);
+  const handlePreviousSitesPage = () => {
+    setSitesCurrentPage(prev => Math.max(1, prev - 1));
+  };
+  const handleNextSitesPage = () => {
+    setSitesCurrentPage(prev => Math.min(totalSitesPages, prev + 1));
+  };
+
+  if (embedded) {
+    return <div className={styles.tabFill}>
+        {sharepointData?.success === false ? <p className={styles.mutedHint} style={{ color: '#b91c1c', margin: '0 0 0.5rem' }}>
+            {sharepointData.error || 'Erreur chargement SharePoint'}
+          </p> : null}
+        <div className={styles.embeddedTableStack}>
+          <MonitoringStepSearchBar
+            value={siteSearchQuery}
+            onChange={value => {
+              setSiteSearchQuery(value);
+              setSitesCurrentPage(1);
+            }}
+            onClear={() => {
+              setSiteSearchQuery('');
+              setSitesCurrentPage(1);
+            }}
+          />
+          <div className={styles.embeddedPagedFill}>
+            <MonitoringPagedBlock items={filteredSites} resetDeps={[siteSearchQuery]} initialPageSize={25}>
+              {pageItems => <MonitoringStepTableWrap scrollable fill hostClassName={styles.embeddedTableFill} deps={[pageItems.length, siteSearchQuery]}>
+                <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
+                  <table className={styles.licensesTable}>
+                    <thead>
+                      <tr>
+                        <th>Site name</th>
+                        <th>URL</th>
+                        <th>Created on</th>
+                        <th>Last activity</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageItems.length === 0 ? <tr>
+                          <td colSpan={5}>Aucun site SharePoint disponible.</td>
+                        </tr> : pageItems.map((site, idx) => <tr key={site.id || idx}>
+                          <td style={{ fontWeight: 600 }}>{site.name || site.displayName || "N/A"}</td>
+                          <td>{site.webUrl || site.url || "N/A"}</td>
+                          <td>
+                            {site.createdDateTime ? new Date(site.createdDateTime).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
+                      }) : "-"}
+                          </td>
+                          <td>
+                            {site.lastActivityDate ? new Date(site.lastActivityDate).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
+                      }) : site.lastModifiedDateTime ? new Date(site.lastModifiedDateTime).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric"
+                      }) : "-"}
+                          </td>
+                          <td>
+                            {site.isActive !== false ? "Active" : "Inactive"}
+                          </td>
+                        </tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              </MonitoringStepTableWrap>}
+            </MonitoringPagedBlock>
+          </div>
+        </div>
+      </div>;
+  }
+
   if (!sharepointData) {
     return <div>
         <h2 className={styles.sectionTitle}>SharePoint</h2>
@@ -36,22 +123,6 @@ export default function SharePointTab({
         </div>
       </div>;
   }
-  const allSites = sharepointData.sites || [];
-  const filteredSites = allSites.filter(site => {
-    const text = `${site.name || site.displayName || ''} ${site.webUrl || ''}`.toLowerCase();
-    return !siteSearchQuery.trim() || text.includes(siteSearchQuery.trim().toLowerCase());
-  });
-  const sitesPerPage = 20;
-  const totalSitesPages = Math.max(1, Math.ceil(filteredSites.length / sitesPerPage));
-  const safeSitesPage = Math.min(sitesCurrentPage, totalSitesPages);
-  const sitesStartIndex = (safeSitesPage - 1) * sitesPerPage;
-  const visibleSites = filteredSites.slice(sitesStartIndex, sitesStartIndex + sitesPerPage);
-  const handlePreviousSitesPage = () => {
-    setSitesCurrentPage(prev => Math.max(1, prev - 1));
-  };
-  const handleNextSitesPage = () => {
-    setSitesCurrentPage(prev => Math.min(totalSitesPages, prev + 1));
-  };
   const exportSitesToCSV = () => {
     if (filteredSites.length === 0) {
       toast.error('No sites to export for this filter');
@@ -92,69 +163,6 @@ export default function SharePointTab({
     URL.revokeObjectURL(url);
     toast.success(`CSV export successful: ${filteredSites.length} site(s) exported`);
   };
-  if (embedded) {
-    return <div className={styles.tabFill}>
-        <MonitoringStepSearchBar
-          value={siteSearchQuery}
-          onChange={value => {
-            setSiteSearchQuery(value);
-            setSitesCurrentPage(1);
-          }}
-          onClear={() => {
-            setSiteSearchQuery('');
-            setSitesCurrentPage(1);
-          }}
-          placeholder="Rechercher un site"
-        />
-        <MonitoringStepTableWrap scrollable deps={[filteredSites.length, siteSearchQuery]}>
-          <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
-            <table className={styles.licensesTable}>
-              <thead>
-                <tr>
-                  <th>Site name</th>
-                  <th>URL</th>
-                  <th>Created on</th>
-                  <th>Last activity</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSites.length === 0 ? <tr>
-                    <td colSpan={5}>No SharePoint site available.</td>
-                  </tr> : filteredSites.map((site, idx) => <tr key={site.id || idx}>
-                    <td style={{ fontWeight: 600 }}>{site.name || site.displayName || "N/A"}</td>
-                    <td>{site.webUrl || site.url || "N/A"}</td>
-                    <td>
-                      {site.createdDateTime ? new Date(site.createdDateTime).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric"
-                }) : "-"}
-                    </td>
-                    <td>
-                      {site.lastActivityDate ? new Date(site.lastActivityDate).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric"
-                }) : site.lastModifiedDateTime ? new Date(site.lastModifiedDateTime).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric"
-                }) : "-"}
-                    </td>
-                    <td>
-                      <span className={`${styles.badge} ${site.isActive !== false ? styles.badgeSuccess : styles.badgeDanger}`}>
-                        {site.isActive !== false ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                  </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </MonitoringStepTableWrap>
-      </div>;
-  }
-
   return <div>
       <h2 className={styles.sectionTitle}>SharePoint</h2>
       

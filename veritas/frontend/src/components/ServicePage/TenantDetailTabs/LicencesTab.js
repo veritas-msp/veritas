@@ -4,7 +4,7 @@ import SmartTooltip from '../../SmartTooltip';
 import styles from '../TenantDetailPage.module.css';
 import { getLicenseDisplayName, isFreeLicense } from './utils';
 import { UiKitKpiStrip } from '../../UiKit';
-import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap, MonitoringPagedBlock } from '../../RapportPage/monitoring/MonitoringStepLayout';
 
 export default function LicensesTab({
   licences,
@@ -108,7 +108,7 @@ export default function LicensesTab({
     value: usageRate
   }], [totalLicenses, usedLicenses, availableLicenses, usageRate]);
 
-  const renderTable = () => <table className={styles.licensesTable}>
+  const renderTable = (neutral = false, rows = filteredAndSortedLicenses) => <table className={styles.licensesTable}>
       <thead>
         <tr>
           <th onClick={() => handleLicenseSort('type')} style={{
@@ -139,7 +139,7 @@ export default function LicensesTab({
         </tr>
       </thead>
       <tbody>
-        {filteredAndSortedLicenses.map((lic, idx) => {
+        {rows.map((lic, idx) => {
         const total = lic.total || 0;
         const used = lic.utilisees || 0;
         const available = Math.max(0, total - used);
@@ -170,7 +170,7 @@ export default function LicensesTab({
                 }}>
                             <FaGift style={{
                     fontSize: '0.875rem',
-                    color: '#15D1A0',
+                    color: neutral ? 'var(--msp-muted, #5c6b82)' : '#15D1A0',
                     flexShrink: 0
                   }} />
                           </span>
@@ -178,7 +178,9 @@ export default function LicensesTab({
                     </div>
                   </td>
                   <td>
-                    <span style={{
+                    <span style={neutral ? {
+              fontWeight: 500
+            } : {
               color: statusColor,
               fontWeight: 500
             }}>
@@ -200,13 +202,16 @@ export default function LicensesTab({
                     </span>
                   </td>
                   <td>
-                    <div className={styles.progressBarContainer}>
+                    {neutral ? <span style={{
+              fontWeight: 500,
+              fontVariantNumeric: 'tabular-nums'
+            }}>{rowUsageRate}%</span> : <div className={styles.progressBarContainer}>
                       <div className={styles.progressBarFill} style={{
                 width: `${Math.max(rowUsageRate, 0)}%`,
                 background: statusColor
               }} />
                       <span className={styles.progressTextInside}>{rowUsageRate}%</span>
-                    </div>
+                    </div>}
                   </td>
                 </tr>;
       })}
@@ -237,20 +242,37 @@ export default function LicensesTab({
 
   if (embedded) {
     return <section className={`${styles.kpiSection} ${styles.tabFill}`}>
-        {licences.length > 0 ? <>
-            {dashboardMetrics ? <div className={styles.embeddedKpiStrip}>
-                <UiKitKpiStrip variant="segments" cards={kpiCards} ariaLabel="License KPIs" />
-              </div> : null}
-            <MonitoringStepSearchBar value={searchQuery} onChange={setSearchQuery} onClear={() => setSearchQuery('')} placeholder="Rechercher une licence" />
-            <MonitoringStepTableWrap scrollable deps={[filteredAndSortedLicenses.length, searchQuery, sortColumn, sortDirection]}>
-              <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
-                {renderTable()}
-              </div>
-            </MonitoringStepTableWrap>
-            {expiringBlock}
-          </> : <div className={styles.noDataMessage}>
-            <p>No licenses available. Please sync the data.</p>
-          </div>}
+        <div className={styles.embeddedKpiStrip}>
+          <UiKitKpiStrip variant="segments" cards={kpiCards} ariaLabel="License KPIs" />
+        </div>
+        <div className={styles.embeddedTableStack}>
+          <MonitoringStepSearchBar value={searchQuery} onChange={setSearchQuery} onClear={() => setSearchQuery('')} />
+          <div className={styles.embeddedPagedFill}>
+            <MonitoringPagedBlock items={filteredAndSortedLicenses} resetDeps={[searchQuery, sortColumn, sortDirection]} initialPageSize={25}>
+              {pageItems => <MonitoringStepTableWrap scrollable fill hostClassName={styles.embeddedTableFill} deps={[pageItems.length, searchQuery, sortColumn, sortDirection]}>
+                <div className={`${styles.licensesTableContainer} ${styles.tablePlain}`}>
+                  {pageItems.length === 0 ? <table className={styles.licensesTable}>
+                      <thead>
+                        <tr>
+                          <th>License type</th>
+                          <th>Used</th>
+                          <th>Total</th>
+                          <th>Available</th>
+                          <th>Usage rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colSpan={5}>Aucune licence disponible.</td>
+                        </tr>
+                      </tbody>
+                    </table> : renderTable(true, pageItems)}
+                </div>
+              </MonitoringStepTableWrap>}
+            </MonitoringPagedBlock>
+          </div>
+        </div>
+        {expiringBlock}
       </section>;
   }
 

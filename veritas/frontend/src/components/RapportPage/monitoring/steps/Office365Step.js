@@ -448,7 +448,7 @@ function Office365AttachedDetail({
     end: client?.reportEndDate
   };
   return <MonitoringStepShell>
-      <div className={styles.solutionOverviewEmbed}>
+      <div className={styles.solutionOverviewEmbed} data-tenant-embed="microsoft">
         <TenantDetailPage tenantData={tenantData} embedded reportPeriod={period} initialSection={initialSection} />
       </div>
     </MonitoringStepShell>;

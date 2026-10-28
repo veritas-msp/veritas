@@ -106,29 +106,6 @@ export default function BuilderCommentsPane({
         <span className={styles.commentsPaneBadge}>{itemComments.length}</span>
       </header>
 
-      {targetingItem ? (
-        <div className={styles.commentsPaneContext}>
-          <Icon icon="mdi:link-variant" aria-hidden />
-          <div className={styles.commentsPaneContextBody}>
-            <span className={styles.commentsPaneContextLabel}>Note liée à</span>
-            <strong className={styles.commentsPaneContextName}>{targetName}</strong>
-          </div>
-          <button
-            type="button"
-            className={styles.commentsPaneContextClear}
-            onClick={onClearTarget}
-            title="Retirer le lien"
-            aria-label="Retirer le lien matériel"
-          >
-            <Icon icon="mdi:close" aria-hidden />
-          </button>
-        </div>
-      ) : (
-        <p className={styles.commentsPaneLead}>
-          Ajoutez une note pour l’étape, ou cliquez sur l’icône commentaire d’un élément pour l’y lier.
-        </p>
-      )}
-
       <div className={styles.commentsPaneList}>
         {itemComments.length === 0 ? (
           <div className={styles.commentsPaneEmpty}>
@@ -247,37 +224,62 @@ export default function BuilderCommentsPane({
         )}
       </div>
 
-      <form className={styles.commentsPaneComposer} onSubmit={handleSubmit}>
-        <textarea
-          id="builder-comment-input"
-          ref={textareaRef}
-          rows={3}
-          className={styles.commentsPaneTextarea}
-          aria-label={
-            targetingItem
-              ? `Écrire une note liée à ${targetName}`
-              : "Écrire une note pour le rapport"
-          }
-          placeholder={
-            targetingItem
-              ? `Note liée à ${targetName}…`
-              : "Écrire une note pour le rapport…"
-          }
-          value={pendingText}
-          onChange={event => onPendingChange?.(event.target.value)}
-          onKeyDown={event => {
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") handleSubmit(event);
-          }}
-        />
-        <button
-          type="submit"
-          className={styles.commentsPanePrimary}
-          disabled={!String(pendingText || "").trim()}
-        >
-          <Icon icon="mdi:plus" aria-hidden />
-          Ajouter au rapport
-        </button>
-      </form>
+      <div className={styles.commentsPaneComposerWrap}>
+        {targetingItem ? (
+          <div className={styles.commentsPaneContext}>
+            <Icon icon="mdi:link-variant" aria-hidden />
+            <div className={styles.commentsPaneContextBody}>
+              <span className={styles.commentsPaneContextLabel}>Note liée à</span>
+              <strong className={styles.commentsPaneContextName}>{targetName}</strong>
+            </div>
+            <button
+              type="button"
+              className={styles.commentsPaneContextClear}
+              onClick={onClearTarget}
+              title="Retirer le lien"
+              aria-label="Retirer le lien matériel"
+            >
+              <Icon icon="mdi:close" aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <p className={styles.commentsPaneSectionHint}>
+            Note pour la section <strong>{stepLabel}</strong>
+          </p>
+        )}
+
+        <form className={styles.commentsPaneComposer} onSubmit={handleSubmit}>
+          <textarea
+            id="builder-comment-input"
+            ref={textareaRef}
+            rows={3}
+            className={styles.commentsPaneTextarea}
+            aria-label={
+              targetingItem
+                ? `Écrire une note liée à ${targetName}`
+                : "Écrire une note pour le rapport"
+            }
+            placeholder={
+              targetingItem
+                ? `Note liée à ${targetName}…`
+                : "Écrire une note pour le rapport…"
+            }
+            value={pendingText}
+            onChange={event => onPendingChange?.(event.target.value)}
+            onKeyDown={event => {
+              if ((event.metaKey || event.ctrlKey) && event.key === "Enter") handleSubmit(event);
+            }}
+          />
+          <button
+            type="submit"
+            className={styles.commentsPanePrimary}
+            disabled={!String(pendingText || "").trim()}
+          >
+            <Icon icon="mdi:plus" aria-hidden />
+            Ajouter au rapport
+          </button>
+        </form>
+      </div>
     </aside>
   );
 }

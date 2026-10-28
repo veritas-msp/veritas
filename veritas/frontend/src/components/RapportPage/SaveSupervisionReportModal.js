@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { FaTimes } from "react-icons/fa";
 import { Icon } from "@iconify/react";
@@ -15,21 +14,16 @@ export default function SaveSupervisionReportModal({
   onVisibleToClientChange,
   onClose,
   onSubmit,
-  clientName = ""
+  clientName = "",
+  nameError = ""
 }) {
-  const [activeSection, setActiveSection] = useState("general");
-
-  const navSections = useMemo(() => ([
-    { id: "general", icon: "mdi:file-document-edit-outline", label: "Général", hint: "Nom du dossier rapport" },
-    { id: "visibility", icon: "mdi:account-eye-outline", label: "Visibilité", hint: "Portail client" }
-  ]), []);
-
   if (!open) return null;
 
-  const canSubmit = Boolean(String(saveName || "").trim()) && !saving;
+  const trimmed = String(saveName || "").trim();
+  const canSubmit = Boolean(trimmed) && !saving && !nameError;
 
   return createPortal(
-    <div className={formStyles.overlay} onClick={onClose} role="presentation">
+    <div className={formStyles.overlay} onClick={() => { if (!saving) onClose?.(); }} role="presentation">
       <div
         className={`${formStyles.shell} ${styles.saveShell}`}
         onClick={event => event.stopPropagation()}
@@ -45,71 +39,60 @@ export default function SaveSupervisionReportModal({
             </div>
             <div className={formStyles.headerText}>
               <p className={formStyles.eyebrow}>Rapports de supervision</p>
-              <h2 className={formStyles.title} id="save-supervision-report-title">Enregistrer le rapport</h2>
+              <h2 className={formStyles.title} id="save-supervision-report-title">
+                Enregistrer le rapport
+              </h2>
               <p className={formStyles.subtitle}>
-                Crée un dossier dans le coffre documentaire{clientName ? ` de ${clientName}` : ""} avec les 3 HTML (supervision, sauvegardes, services).
+                {clientName
+                  ? `Dossier HTML dans le coffre de ${clientName}.`
+                  : "Dossier HTML dans le coffre documentaire."}
               </p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving} aria-label="Fermer">
+          <button
+            type="button"
+            className={`${formStyles.closeBtn} ${styles.closeBtn}`}
+            onClick={onClose}
+            disabled={saving}
+            aria-label="Fermer"
+            title="Fermer"
+          >
             <FaTimes />
           </button>
         </header>
 
-        <div className={formStyles.body}>
-          <nav className={formStyles.nav} aria-label="Enregistrement du rapport">
-            {navSections.map(section => (
-              <button
-                key={section.id}
-                type="button"
-                className={`${formStyles.navItem} ${activeSection === section.id ? formStyles.navItemActive : ""}`}
-                onClick={() => setActiveSection(section.id)}
-                aria-current={activeSection === section.id ? "step" : undefined}
-              >
-                <Icon icon={section.icon} className={formStyles.navItemIcon} aria-hidden />
-                <span className={formStyles.navItemText}>
-                  <span className={formStyles.navItemLabel}>{section.label}</span>
-                  <span className={formStyles.navItemHint}>{section.hint}</span>
-                </span>
-              </button>
-            ))}
-          </nav>
-
+        <div className={`${formStyles.bodySingle} ${styles.saveBody}`}>
           <div className={`${formStyles.content} ${styles.saveContent}`}>
-            {activeSection === "general" ? (
-              <div className={styles.sectionStack}>
-                <label className={styles.fieldLabel} htmlFor="save-report-name">Nom du dossier / document</label>
-                <input
-                  id="save-report-name"
-                  className={styles.nameInput}
-                  value={saveName}
-                  onChange={event => onSaveNameChange?.(event.target.value)}
-                  placeholder="Ex. Rapport supervision — août 2026"
-                  autoFocus
-                  disabled={saving}
-                />
-                <div className={styles.infoCard}>
-                  <Icon icon="mdi:information-outline" aria-hidden />
-                  <div>
-                    <strong>Archivage coffre-fort</strong>
-                    <p>Les trois fichiers HTML sont déposés dans un dossier portant ce nom. Le rapport reste aussi listé dans « Mes documents ».</p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+            <div className={styles.sectionStack}>
+              <label className={styles.fieldLabel} htmlFor="save-report-name">
+                Nom du dossier / document
+              </label>
+              <input
+                id="save-report-name"
+                className={`${styles.nameInput}${nameError ? ` ${styles.nameInputError}` : ""}`.trim()}
+                value={saveName}
+                onChange={event => onSaveNameChange?.(event.target.value)}
+                placeholder="Ex. Rapport supervision — août 2026"
+                autoFocus
+                disabled={saving}
+                aria-invalid={Boolean(nameError)}
+                aria-describedby={nameError ? "save-report-name-error" : undefined}
+              />
+              {nameError ? (
+                <p id="save-report-name-error" className={styles.nameError} role="alert">
+                  <Icon icon="mdi:alert-circle-outline" width={16} height={16} aria-hidden />
+                  {nameError}
+                </p>
+              ) : null}
 
-            {activeSection === "visibility" ? (
-              <div className={styles.sectionStack}>
+              <div className={styles.visibilityBlock}>
                 <ReportSaveVisibilitySwitch
                   visibleToClient={visibleToClient}
                   onChange={onVisibleToClientChange}
                   disabled={saving}
                 />
-                <p className={styles.hint}>
-                  Visible : le client voit le dossier HTML sur son portail. Masqué : réservé aux agents.
-                </p>
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
 

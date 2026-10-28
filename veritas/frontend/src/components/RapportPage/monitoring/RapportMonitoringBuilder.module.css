@@ -1156,6 +1156,30 @@
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 0;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* Section qui absorbe la hauteur restante (ex. Jobs sauvegarde) */
+.stepSectionFill {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stepSectionFill .infraPagedBlock {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stepSectionFill .infraTableHostFill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.stepSectionFill .infraPagedBlock > :last-child {
+  flex: 0 0 auto;
 }
 
 .stepSectionHeader,
@@ -1345,11 +1369,21 @@
   height: 100%;
 }
 
-/* Tables empilées (ex. Jobs sauvegarde) : hauteur plafonnée + scroll interne */
+/* Tables empilées (ex. Instances) : hauteur plafonnée + scroll interne */
 .infraTableHostCapped {
   flex: 0 1 auto;
   height: auto;
   max-height: none;
+}
+
+/* Table qui remplit la hauteur dispo (ex. Jobs / tenant Entra) */
+.infraTableHostFill {
+  flex: 1 1 0 !important;
+  align-self: stretch;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: hidden;
 }
 
 .infraTableShell {
@@ -1363,6 +1397,14 @@
   flex: 0 1 auto;
   height: auto;
   max-height: min(50vh, 28rem);
+}
+
+.infraTableShellFill {
+  flex: 1 1 0 !important;
+  align-self: stretch;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
 }
 
 .infraTableScroll {
@@ -1379,6 +1421,12 @@
 /* Doit passer après .infraTableScroll pour écraser max-height: none */
 .infraTableScroll.stepTableScroll {
   max-height: min(50vh, 28rem);
+}
+
+.infraTableScroll.stepTableScrollFill {
+  max-height: none;
+  height: 100%;
+  min-height: 0;
 }
 
 .infraTableScroll::-webkit-scrollbar {
@@ -2774,21 +2822,126 @@
   min-height: 0;
 }
 
-.supportIntro {
-  margin: 0 0 1rem;
-  font-size: 0.88rem;
-  line-height: 1.5;
+.supportStepShell {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  padding-bottom: 0.5rem;
+  gap: 1.15rem;
+  overflow: hidden;
+}
+
+.supportBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.supportStepShell > .supportBlock:not(.supportTicketsSection) {
+  flex-shrink: 0;
+}
+
+.supportBlockHead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.supportBlockTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+  letter-spacing: 0.01em;
+}
+
+.supportBlockCount {
+  margin-left: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 500;
   color: var(--msp-muted, #5c6b82);
 }
 
-.supportStepShell {
-  flex: 0 0 auto;
-  min-height: min-content;
-  padding-bottom: 2.5rem;
+.supportBlockBody {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .supportTicketsSection {
-  margin-bottom: 0.25rem;
+  flex: 1 1 0;
+  min-height: 14rem;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.supportTableStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.supportPagedFill {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.supportPagedFill > * {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.supportPagedFill > * > :last-child {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.supportPagedFill > * > :first-child {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.supportTicketsEmptyHost {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100%;
+  flex: 1 1 auto;
+}
+
+.supportTicketsEmptyHost :global(table) {
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+.supportTicketsEmpty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 10rem;
+  padding: 2rem 1.25rem;
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+  border: none;
 }
 
 .supportState,
@@ -2799,74 +2952,33 @@
 }
 
 .supportError {
-  margin: 0 0 0.85rem;
+  margin: 0;
   font-size: 0.88rem;
   color: #b91c1c;
 }
 
-.supportContractCard {
-  margin-bottom: 1.25rem;
-  padding: 0.9rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--msp-border, #c5d0df);
-  background: var(--msp-surface, #fff);
-}
-
-.supportContractHead {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--msp-border, #e2e8f0);
-}
-
-.supportContractIcon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 10px;
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-  color: var(--msp-accent, #2b5fab);
-  flex-shrink: 0;
-}
-
-.supportContractTitle {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
-  line-height: 1.2;
-}
-
-.supportContractSubtitle {
-  margin-top: 0.15rem;
-  font-size: 0.75rem;
-  color: var(--msp-muted, #5c6b82);
-}
-
-.supportContractHead .supportBadge {
-  margin-left: auto;
-  margin-top: 0;
-}
-
+/* Contrat : bandeau KPI plat */
 .supportContractGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-  gap: 0.75rem 1rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem 0.85rem;
   margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--msp-surface-2, #f7f9fc) 88%, var(--msp-surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
 }
 
 .supportContractItem {
   min-width: 0;
+  padding: 0.15rem 0.2rem;
 }
 
 .supportContractItem dt {
-  margin: 0 0 0.2rem;
-  font-size: 0.7rem;
+  margin: 0 0 0.3rem;
+  font-size: 0.68rem;
   font-weight: 650;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--msp-muted, #5c6b82);
 }
@@ -2874,17 +2986,16 @@
 .supportContractItem dd {
   margin: 0;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem 0.5rem;
-  font-size: 0.92rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
   line-height: 1.3;
 }
 
 .supportContractHint {
-  width: 100%;
   font-size: 0.72rem;
   font-weight: 500;
   color: var(--msp-muted, #5c6b82);
@@ -2894,58 +3005,108 @@
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  margin-top: 0.15rem;
   padding: 0.12rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
   font-weight: 650;
 }
 
 .supportBadgeOk {
-  background: #ecfdf5;
+  background: color-mix(in srgb, #047857 12%, transparent);
   color: #047857;
 }
 
 .supportBadgeWarn {
-  background: #fffbeb;
+  background: color-mix(in srgb, #b45309 12%, transparent);
   color: #b45309;
 }
 
 .supportBadgeDanger {
-  background: #fef2f2;
+  background: color-mix(in srgb, #b91c1c 12%, transparent);
   color: #b91c1c;
 }
 
 .supportBadgeMuted {
-  background: #f3f4f6;
+  background: color-mix(in srgb, #64748b 12%, transparent);
   color: #4b5563;
 }
 
-.supportBreakdownGrid {
+.supportStatsGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+  flex-shrink: 0;
+  padding: 0.15rem 0 0.25rem;
+  align-items: stretch;
+}
+
+.supportStatsGrid .supportBlock {
+  gap: 0.45rem;
+  min-width: 0;
+  height: 100%;
+  min-height: 14rem;
+}
+
+.supportStatsGrid .supportBlockBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .supportChartBlock {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: center;
-  min-height: 11.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.55rem;
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .supportChartCanvas {
+  position: relative;
   width: 100%;
-  height: 11rem;
+  height: 8.5rem;
   min-width: 0;
+  flex-shrink: 0;
+}
+
+.supportChartCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  line-height: 1.15;
+}
+
+.supportChartCenterValue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.supportChartCenterLabel {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .supportChartSolo {
   width: 100%;
-  height: 12rem;
+  flex: 1 1 auto;
+  min-height: 9rem;
+  height: 100%;
   min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
 .supportChartLegend {
@@ -2953,7 +3114,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.4rem;
+  gap: 0.28rem;
 }
 
 .supportChartLegend li {
@@ -2990,54 +3151,28 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-.supportTableWrap {
-  max-height: 22rem;
-  overflow: auto;
-  border: 1px solid var(--msp-border, #c5d0df);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+@media (max-width: 1100px) {
+  .supportContractGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.supportTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.82rem;
-}
-
-.supportTable th,
-.supportTable td {
-  padding: 0.45rem 0.65rem;
-  text-align: left;
-  border-bottom: 1px solid var(--msp-border, #e2e8f0);
-  vertical-align: top;
-}
-
-.supportTable th {
-  position: sticky;
-  top: 0;
-  background: var(--msp-surface-2, #eef3f8);
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--msp-muted, #5c6b82);
-  z-index: 1;
-}
-
-.supportTable tbody tr:last-child td {
-  border-bottom: none;
+@media (max-width: 1200px) {
+  .supportStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 980px) {
-  .supportBreakdownGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .supportChartBlock {
+  .supportStatsGrid {
     grid-template-columns: 1fr;
   }
 
   .supportChartCanvas {
-    height: 10rem;
+    height: 9rem;
+  }
+
+  .supportContractGrid {
+    grid-template-columns: 1fr 1fr;
   }
 }

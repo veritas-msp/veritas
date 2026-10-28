@@ -41,12 +41,11 @@ export function MonitoringTablePagination({
   className = "",
 }) {
   const total = Number(totalItems) || 0;
-  if (total <= 0) return null;
   const safePageSize = Math.max(1, Number(pageSize) || 25);
-  const pages = Math.max(1, Number(totalPages) || Math.ceil(total / safePageSize));
+  const pages = Math.max(1, Number(totalPages) || Math.ceil(Math.max(total, 1) / safePageSize) || 1);
   const current = Math.min(Math.max(1, Number(page) || 1), pages);
-  const rangeStart = (current - 1) * safePageSize + 1;
-  const rangeEnd = Math.min(current * safePageSize, total);
+  const rangeStart = total === 0 ? 0 : (current - 1) * safePageSize + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(current * safePageSize, total);
 
   return (
     <div className={`${equipmentStyles.pagination} ${equipmentStyles.paginationEmbedded} ${className}`.trim()}>
@@ -234,6 +233,7 @@ export function MonitoringStepSubsectionHeader({
 export function MonitoringTableScrollShell({
   children,
   scrollable = false,
+  fill = false,
   className = "",
   scrollClassName = "",
   deps = []
@@ -243,6 +243,7 @@ export function MonitoringTableScrollShell({
   const [fadeTopVisible, setFadeTopVisible] = useState(false);
   const [fadeTopOffset, setFadeTopOffset] = useState(0);
   const depsKey = Array.isArray(deps) ? deps.join("|") : String(deps ?? "");
+  const capped = scrollable && !fill;
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -250,15 +251,22 @@ export function MonitoringTableScrollShell({
 
     const syncFadeTopOffset = () => {
       const head = el.querySelector("thead");
-      const next = head ? Math.ceil(head.getBoundingClientRect().height) : 0;
+      if (!head) {
+        setFadeTopOffset(prev => (prev === 0 ? prev : 0));
+        return;
+      }
+      // offsetHeight plus fiable que getBoundingClientRect (sous-pixels / sticky)
+      const next = Math.max(0, Math.ceil(head.offsetHeight || head.getBoundingClientRect().height || 0));
       setFadeTopOffset(prev => (prev === next ? prev : next));
     };
 
     const updateFade = () => {
       syncFadeTopOffset();
       const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setFadeVisible(remaining > 4);
-      setFadeTopVisible(el.scrollTop > 4);
+      const canScroll = el.scrollHeight - el.clientHeight > 8;
+      setFadeVisible(canScroll && remaining > 6);
+      // Seuil plus haut : évite un fondu fantôme qui masque la 1re ligne
+      setFadeTopVisible(canScroll && el.scrollTop > 12);
     };
 
     updateFade();
@@ -276,27 +284,27 @@ export function MonitoringTableScrollShell({
       el.removeEventListener("scroll", updateFade);
       ro?.disconnect();
     };
-  }, [depsKey, scrollable]);
+  }, [depsKey, scrollable, fill]);
 
   return (
     <div
       className={`${equipmentStyles.tableScrollShell} ${styles.infraTableShell} ${
-        scrollable ? styles.infraTableShellCapped : ""
+        fill ? styles.infraTableShellFill : capped ? styles.infraTableShellCapped : ""
       } ${className}`.trim()}
     >
       <div
         ref={scrollRef}
         className={`${equipmentStyles.tableWrapper} ${equipmentStyles.tableWrapperEmbedded} ${styles.infraTableScroll} ${
-          scrollable ? styles.stepTableScroll : ""
+          fill ? styles.stepTableScrollFill : capped ? styles.stepTableScroll : ""
         } ${scrollClassName}`.trim()}
       >
         <div className={equipmentStyles.tableCardSurface}>{children}</div>
       </div>
       <div
         className={`${equipmentStyles.tableScrollFadeTop} ${
-          fadeTopVisible ? equipmentStyles.tableScrollFadeVisible : ""
+          fadeTopVisible && fadeTopOffset > 0 ? equipmentStyles.tableScrollFadeVisible : ""
         }`}
-        style={fadeTopOffset > 0 ? { top: fadeTopOffset } : undefined}
+        style={fadeTopOffset > 0 ? { top: fadeTopOffset } : { top: 0, opacity: 0, pointerEvents: "none" }}
         aria-hidden
       />
       <div
@@ -312,17 +320,24 @@ export function MonitoringTableScrollShell({
 export function MonitoringStepTableWrap({
   children,
   scrollable = false,
+  fill = false,
   className = "",
+  hostClassName = "",
   deps = []
 }) {
   return (
     <div
       className={`${equipmentStyles.hardwarePageEmbedded} ${styles.infraTableHost} ${
-        scrollable ? styles.infraTableHostCapped : ""
-      }`.trim()}
+        fill ? styles.infraTableHostFill : scrollable ? styles.infraTableHostCapped : ""
+      } ${hostClassName}`.trim()}
     >
       <div className={equipmentStyles.equipmentTableSectionEmbedded}>
-        <MonitoringTableScrollShell scrollable={scrollable} scrollClassName={className} deps={deps}>
+        <MonitoringTableScrollShell
+          scrollable={scrollable}
+          fill={fill}
+          scrollClassName={className}
+          deps={deps}
+        >
           {children}
         </MonitoringTableScrollShell>
       </div>

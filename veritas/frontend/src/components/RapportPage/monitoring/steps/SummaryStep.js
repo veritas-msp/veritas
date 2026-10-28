@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { fetchClientSupportCredits } from "../../../../api/clients";
 import { isDateWithinPeriod } from "../supervisionReportBuilder";
 import { buildSummarySnapshot } from "./summaryData";
@@ -6,27 +6,13 @@ import { fetchSupportSummary } from "./summarySupport";
 import ReportSummarySupervision from "../ReportSummary/ReportSummarySupervision";
 import ReportSummaryBackup from "../ReportSummary/ReportSummaryBackup";
 import ReportSummaryServicesCyber from "../ReportSummary/ReportSummaryServicesCyber";
+import { useFinderNavIndicator } from "../../../UiKit";
 import styles from "./SummaryStep.module.css";
 
 const REPORT_TABS = [
-  {
-    id: "supervision",
-    badge: "Rapport 1",
-    title: "Supervision",
-    desc: "Synthèse globale, vigilance, contrat, inventaire et support."
-  },
-  {
-    id: "sauvegarde",
-    badge: "Rapport 2",
-    title: "Sauvegardes",
-    desc: "Instances, flux et jobs de sauvegarde."
-  },
-  {
-    id: "services",
-    badge: "Rapport 3",
-    title: "Services",
-    desc: "Antivirus, antispam, Microsoft 365 et noms de domaine."
-  }
+  { id: "supervision", title: "Supervision" },
+  { id: "sauvegarde", title: "Sauvegardes" },
+  { id: "services", title: "Services" }
 ];
 
 function creditsConsumedInPeriod(ledger = [], start, end) {
@@ -54,6 +40,67 @@ export default function SummaryStep({
   const [supportStats, setSupportStats] = useState(null);
   const [credits, setCredits] = useState(null);
   const [activeReport, setActiveReport] = useState("supervision");
+  const [contentEnter, setContentEnter] = useState(true);
+  const [indicatorMotion, setIndicatorMotion] = useState(false);
+  const [customSynthesis, setCustomSynthesis] = useState({
+    supervision: null,
+    sauvegarde: null,
+    microsoft: null,
+    antispam: null,
+    antivirus: null,
+    domains: null
+  });
+
+  const clientKey = client?.id ?? client?.uuid ?? "";
+
+  useEffect(() => {
+    setCustomSynthesis({
+      supervision: null,
+      sauvegarde: null,
+      microsoft: null,
+      antispam: null,
+      antivirus: null,
+      domains: null
+    });
+  }, [clientKey]);
+
+  const { trackRef: toggleTrackRef, indicator: toggleIndicator } = useFinderNavIndicator([
+    activeReport,
+    REPORT_TABS.length
+  ]);
+
+  const indicatorReady =
+    toggleIndicator.ready && toggleIndicator.width >= 48 && toggleIndicator.height >= 20;
+
+  useEffect(() => {
+    if (!indicatorReady) {
+      setIndicatorMotion(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => setIndicatorMotion(true));
+    return () => cancelAnimationFrame(id);
+  }, [indicatorReady]);
+
+  useLayoutEffect(() => {
+    setContentEnter(false);
+  }, [activeReport]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      // Double rAF : commit opacity:0 avant le fade (comme MonitoringSteps).
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [activeReport]);
 
   useEffect(() => {
     if (!client) {
@@ -108,15 +155,26 @@ export default function SummaryStep({
     client?.reportEndDate
   );
 
-  const introMeta = {
-    clientPrefix: snapshot?.clientPrefix || "",
-    clientMainLabel: snapshot?.clientMainLabel || client?.name || client?.nom || "",
-    periodLabel: snapshot?.periodLabel || ""
-  };
-
   return (
     <div className={styles.root} ref={summaryContentRef}>
-      <div className={styles.reportTabs} role="tablist" aria-label="Rapports de synthèse" data-export-hide="true">
+      <div
+        ref={toggleTrackRef}
+        className={`${styles.reportToggle}${indicatorMotion ? ` ${styles.reportToggleAnimated}` : ""}`}
+        role="tablist"
+        aria-label="Rapports de synthèse"
+        data-export-hide="true"
+      >
+        {indicatorReady ? (
+          <div
+            className={styles.reportToggleIndicator}
+            style={{
+              transform: `translate3d(${toggleIndicator.left}px, ${toggleIndicator.top}px, 0)`,
+              width: toggleIndicator.width || undefined,
+              height: toggleIndicator.height || undefined
+            }}
+            aria-hidden
+          />
+        ) : null}
         {REPORT_TABS.map(tab => {
           const active = activeReport === tab.id;
           return (
@@ -125,83 +183,87 @@ export default function SummaryStep({
               type="button"
               role="tab"
               aria-selected={active}
-              className={`${styles.reportTab} ${active ? styles.reportTabActive : ""}`.trim()}
+              aria-current={active ? "page" : undefined}
+              className={`${styles.reportToggleBtn} ${active ? styles.reportToggleBtnActive : ""}`.trim()}
               onClick={() => setActiveReport(tab.id)}
             >
-              <span className={styles.reportTabBadge}>{tab.badge}</span>
-              <span className={styles.reportTabTitle}>{tab.title}</span>
-              <span className={styles.reportTabDesc}>{tab.desc}</span>
+              {tab.title}
             </button>
           );
         })}
       </div>
 
       <div className={styles.reportStack}>
-        <article
-          className={`${styles.reportDoc} ${activeReport === "supervision" ? styles.reportDocActive : styles.reportDocHidden}`.trim()}
-          data-report-export="supervision"
-          data-report-title="Rapport de supervision"
-          aria-hidden={activeReport !== "supervision"}
+        <div
+          key={activeReport}
+          className={`${styles.reportFade} ${
+            contentEnter ? styles.reportFadeIn : styles.reportFadePending
+          }`.trim()}
         >
-          <header className={styles.reportDocHead} data-export-hide="true">
-            <span className={styles.reportDocBadge}>Rapport 1</span>
-            <h2 className={styles.reportDocTitle}>Supervision</h2>
-            <p className={styles.reportDocDesc}>Synthèse globale, vigilance, contrat, inventaire et support.</p>
-          </header>
-          <div className={styles.exportRoot}>
-            <ReportSummarySupervision
-              snapshot={snapshot}
-              supportStats={supportStats}
-              credits={credits}
-              consumedOnPeriod={consumedOnPeriod}
-              reportStartDate={client?.reportStartDate}
-              reportEndDate={client?.reportEndDate}
-            />
-          </div>
-        </article>
+          <article
+            className={`${styles.reportDoc} ${activeReport === "supervision" ? styles.reportDocActive : styles.reportDocHidden}`.trim()}
+            data-report-export="supervision"
+            data-report-title="Rapport de supervision"
+            aria-hidden={activeReport !== "supervision"}
+          >
+            <div className={styles.exportRoot}>
+              <ReportSummarySupervision
+                snapshot={snapshot}
+                supportStats={supportStats}
+                credits={credits}
+                consumedOnPeriod={consumedOnPeriod}
+                reportStartDate={client?.reportStartDate}
+                reportEndDate={client?.reportEndDate}
+                synthesisHtml={customSynthesis.supervision}
+                onSynthesisChange={html =>
+                  setCustomSynthesis(prev => ({ ...prev, supervision: html }))
+                }
+              />
+            </div>
+          </article>
 
-        <article
-          className={`${styles.reportDoc} ${activeReport === "sauvegarde" ? styles.reportDocActive : styles.reportDocHidden}`.trim()}
-          data-report-export="sauvegarde"
-          data-report-title="Rapport sauvegardes"
-          aria-hidden={activeReport !== "sauvegarde"}
-        >
-          <header className={styles.reportDocHead} data-export-hide="true">
-            <span className={styles.reportDocBadge}>Rapport 2</span>
-            <h2 className={styles.reportDocTitle}>Sauvegardes</h2>
-            <p className={styles.reportDocDesc}>Instances, flux et jobs de sauvegarde uniquement.</p>
-          </header>
-          <div className={styles.exportRoot}>
+          <article
+            className={`${styles.reportDoc} ${activeReport === "sauvegarde" ? styles.reportDocActive : styles.reportDocHidden}`.trim()}
+            data-report-export="sauvegarde"
+            data-report-title="Rapport sauvegardes"
+            aria-hidden={activeReport !== "sauvegarde"}
+          >
+            <div className={styles.exportRoot}>
             <ReportSummaryBackup
               client={client}
-              clientPrefix={introMeta.clientPrefix}
-              clientMainLabel={introMeta.clientMainLabel}
-              reportEndDate={client?.reportEndDate}
+              comments={snapshot?.comments || []}
+              synthesisHtml={customSynthesis.sauvegarde}
+              onSynthesisChange={html =>
+                setCustomSynthesis(prev => ({ ...prev, sauvegarde: html }))
+              }
             />
-          </div>
-        </article>
+            </div>
+          </article>
 
-        <article
-          className={`${styles.reportDoc} ${activeReport === "services" ? styles.reportDocActive : styles.reportDocHidden}`.trim()}
-          data-report-export="services"
-          data-report-title="Rapport services"
-          aria-hidden={activeReport !== "services"}
-        >
-          <header className={styles.reportDocHead} data-export-hide="true">
-            <span className={styles.reportDocBadge}>Rapport 3</span>
-            <h2 className={styles.reportDocTitle}>Services</h2>
-            <p className={styles.reportDocDesc}>Antivirus, antispam, Microsoft 365 et noms de domaine.</p>
-          </header>
-          <div className={styles.exportRoot}>
-            <ReportSummaryServicesCyber
-              client={client}
-              clientPrefix={introMeta.clientPrefix}
-              clientMainLabel={introMeta.clientMainLabel}
-              reportStartDate={client?.reportStartDate}
-              reportEndDate={client?.reportEndDate}
-            />
-          </div>
-        </article>
+          <article
+            className={`${styles.reportDoc} ${activeReport === "services" ? styles.reportDocActive : styles.reportDocHidden}`.trim()}
+            data-report-export="services"
+            data-report-title="Rapport services"
+            aria-hidden={activeReport !== "services"}
+          >
+            <div className={styles.exportRoot}>
+              <ReportSummaryServicesCyber
+                client={client}
+                reportStartDate={client?.reportStartDate}
+                reportEndDate={client?.reportEndDate}
+                synthesisByService={{
+                  microsoft: customSynthesis.microsoft,
+                  antispam: customSynthesis.antispam,
+                  antivirus: customSynthesis.antivirus,
+                  domains: customSynthesis.domains
+                }}
+                onSynthesisChange={(serviceKey, html) =>
+                  setCustomSynthesis(prev => ({ ...prev, [serviceKey]: html }))
+                }
+              />
+            </div>
+          </article>
+        </div>
       </div>
     </div>
   );

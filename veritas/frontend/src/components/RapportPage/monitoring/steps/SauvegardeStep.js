@@ -307,9 +307,9 @@ export default function BackupStep({
 
       {renderHyperBackupInstanceTable(hyperBackupInstances, "HyperBackup")}
 
-      <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="Aucun job de sauvegarde.">
+      <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="Aucun job de sauvegarde." className={styles.stepSectionFill}>
         <MonitoringPagedBlock items={allJobs} resetDeps={[allJobs.length]}>
-          {pageItems => <MonitoringStepTableWrap scrollable>
+          {pageItems => <MonitoringStepTableWrap scrollable fill deps={[pageItems.length]}>
           <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>

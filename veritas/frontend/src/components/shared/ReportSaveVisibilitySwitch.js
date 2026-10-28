@@ -21,7 +21,7 @@ export default function ReportSaveVisibilitySwitch({
   return <div className={styles.row}>
       <div className={styles.copy}>
         <span className={styles.label}>{copy.label}</span>
-        <p className={styles.hint}>{copy.hint}</p>
+        {copy.hint ? <p className={styles.hint}>{copy.hint}</p> : null}
       </div>
       {switchBtn}
     </div>;

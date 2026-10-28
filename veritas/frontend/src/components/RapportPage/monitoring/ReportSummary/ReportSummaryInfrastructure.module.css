@@ -143,10 +143,11 @@
 }
 
 .infraTableWrapper {
-  border-radius: 10px;
-  border: 1px solid var(--border-primary, #e5e7eb);
-  background: #ffffff;
-  overflow-x: auto;
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  overflow: auto;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .infraTable {

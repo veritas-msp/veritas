@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { createTicketView, resetBuiltinTicketView, updateTicketView } from "../../api/tickets";
@@ -41,6 +40,13 @@ import TicketViewFilterBuilder from "./TicketViewFilterBuilder";
 import IconPicker from "../AdminPage/IconPicker";
 import { ENTERPRISE_ICON_CHOICES } from "../EnterprisesPage/enterpriseIconChoices";
 import macroModalStyles from "../AdminPage/MacroFormModal.module.css";
+import {
+  UiKitButton,
+  UiKitModalNavSectionButton,
+  uiKitLayoutsStyles as kit,
+  useFinderNavIndicator
+} from "../UiKit";
+import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./TicketViewModal.module.css";
 
 const EMPTY_ARRAY = [];
@@ -168,6 +174,14 @@ export default function TicketViewModal({
     }
     return formSectionsAll;
   }, [formSectionsAll, isBuiltin, forcedVisibility, isAdmin]);
+
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open, formSections]);
+
+  useEffect(() => {
+    if (!formSections.some(section => section.id === activeSection)) {
+      setActiveSection(formSections[0]?.id || "general");
+    }
+  }, [formSections, activeSection]);
 
   const resetForm = useCallback(() => {
     if (initialView) {
@@ -506,7 +520,7 @@ export default function TicketViewModal({
   };
 
   const renderGeneralSection = () => (
-    <>
+    <div className={layout.sectionScroll}>
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}>{modalCopy.generalTitle}</h3>
         <p className={styles.sectionDesc}>{modalCopy.generalDesc}</p>
@@ -569,11 +583,11 @@ export default function TicketViewModal({
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 
   const renderVisibilitySection = () => (
-    <>
+    <div className={layout.sectionScroll}>
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}>{modalCopy.visibilityTitle}</h3>
         <p className={styles.sectionDesc}>{modalCopy.visibilityDesc}</p>
@@ -662,11 +676,11 @@ export default function TicketViewModal({
           </div>
         </div>
       ) : null}
-    </>
+    </div>
   );
 
   const renderFiltersSection = () => (
-    <>
+    <div className={`${layout.sectionScroll} ${styles.filtersSection}`}>
       <div className={styles.sectionHead}>
         <h3 className={styles.sectionTitle}>{modalCopy.filtersTitle}</h3>
         <p className={styles.sectionDesc}>{modalCopy.filtersDesc}</p>
@@ -762,7 +776,7 @@ export default function TicketViewModal({
           {modalCopy.addGroup}
         </button>
       </div>
-    </>
+    </div>
   );
 
   const renderSectionContent = () => {
@@ -795,95 +809,141 @@ export default function TicketViewModal({
         ? modalCopy.createPrivateSubtitle
         : modalCopy.createSubtitle;
 
+  const navBadgeForSection = sectionId => {
+    if (sectionId === "filters" && ruleCount > 0) return String(ruleCount);
+    if (sectionRequiredMissing[sectionId]) return null;
+    if (sectionMeta[sectionId]) return "✓";
+    return null;
+  };
+
   return createPortal(
-    <div className={styles.overlay} onClick={onClose} role="presentation">
-      <div className={`${styles.shell} ${styles.viewShell}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ticket-view-modal-title">
-        <header className={styles.header}>
-          <div className={styles.headerMain}>
-            <div className={`${styles.headerIconWrap} ${isBuiltin ? styles.headerIconBuiltin : ""}`.trim()} aria-hidden>
+    <div className={layout.overlay} onClick={onClose} role="presentation">
+      <div
+        className={`${layout.shell} ${styles.viewShell}`}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ticket-view-modal-title"
+      >
+        <div className={layout.accentBar} aria-hidden />
+        <header className={layout.header}>
+          <div className={layout.headerMain}>
+            <div className={`${layout.headerIconWrap} ${isBuiltin ? styles.headerIconBuiltin : ""}`.trim()} aria-hidden>
               <Icon icon={form.icon || (isEdit ? "mdi:view-list" : "mdi:view-grid-plus-outline")} />
             </div>
-            <div className={styles.headerText}>
-              <p className={styles.eyebrow}>
+            <div className={layout.headerText}>
+              <p className={layout.eyebrow}>
                 {isBuiltin ? modalCopy.builtinEyebrow : modalCopy.eyebrow}
               </p>
-              <h2 className={styles.title} id="ticket-view-modal-title">{modalTitle}</h2>
-              <p className={styles.subtitle}>{modalSubtitle}</p>
+              <h2 className={layout.title} id="ticket-view-modal-title">{modalTitle}</h2>
+              <p className={layout.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} disabled={saving || resetting} aria-label={commonCopy.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={saving || resetting}
+            aria-label={commonCopy.close}
+            icon="mdi:close"
+          />
         </header>
 
-        <div className={styles.steps}>
-          {formSections.map((section, index) => (
-            <button
-              key={section.id}
-              type="button"
-              className={`${styles.step} ${activeSection === section.id ? styles.stepActive : ""} ${sectionMeta[section.id] && !sectionRequiredMissing[section.id] ? styles.stepDone : ""}`.trim()}
-              onClick={() => setActiveSection(section.id)}
-              aria-current={activeSection === section.id ? "step" : undefined}
+        <div className={layout.body}>
+          <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={modalCopy.navAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
             >
-              <span className={styles.stepIndex}>{index + 1}</span>
-              <span className={styles.stepText}>
-                <span className={styles.stepLabel}>
-                  {section.label}
-                  {sectionRequiredMissing[section.id] ? <span className={styles.navRequiredMark}>*</span> : null}
-                </span>
-                <span className={styles.stepHint}>{section.description}</span>
-              </span>
-              {section.id === "filters" && ruleCount > 0 ? <span className={styles.stepBadge}>{ruleCount}</span> : null}
-            </button>
-          ))}
-        </div>
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {formSections.map(section => (
+                <UiKitModalNavSectionButton
+                  key={section.id}
+                  section={section}
+                  active={activeSection === section.id}
+                  badge={navBadgeForSection(section.id)}
+                  onSelect={() => setActiveSection(section.id)}
+                  finderItemClass={kit.finderItem}
+                  finderItemActiveClass={kit.finderItemActive}
+                  finderItemIconClass={kit.finderItemIcon}
+                  finderItemLabelClass={`${kit.finderItemLabel}${sectionRequiredMissing[section.id] ? ` ${layout.navItemLabelRequired}` : ""}`}
+                  navBadgeClass={layout.navBadge}
+                  navBadgeSlotClass={layout.navBadgeSlot}
+                />
+              ))}
+            </nav>
+          </aside>
 
-        <div className={styles.content}>
-          <div key={activeSection} className={styles.sectionPanel}>
-            {renderSectionContent()}
-          </div>
-          {error ? (
-            <div className={styles.errorBox} role="alert">
-              <Icon icon="mdi:alert-circle-outline" aria-hidden />
-              {error}
+          <div className={layout.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>
+              {error ? (
+                <div className={styles.errorBox} role="alert">
+                  <Icon icon="mdi:alert-circle-outline" aria-hidden />
+                  {error}
+                </div>
+              ) : null}
+              {renderSectionContent()}
             </div>
-          ) : null}
+          </div>
         </div>
 
-        <footer className={styles.footer}>
-          <span className={styles.footerHint}>
+        <footer className={layout.footer}>
+          <span className={layout.footerHint}>
             {showAssignmentPickers
               ? modalCopy.formatFooterAssignments(userIds.length + profileNames.length + teamIds.length, ruleCount)
               : modalCopy.formatFooterRules(ruleCount)}
           </span>
-          <div className={styles.footerActions}>
+          <div className={layout.footerActions}>
             {isBuiltin && initialView?.hasOverride ? (
-              <button type="button" className={styles.ghostBtn} onClick={handleResetBuiltin} disabled={saving || resetting}>
-                {resetting ? <Icon icon="mdi:loading" className={styles.spinning} aria-hidden /> : <Icon icon="mdi:restore" aria-hidden />}
-                {modalCopy.resetBuiltin}
-              </button>
+              <UiKitButton
+                type="button"
+                variant="ghost"
+                onClick={handleResetBuiltin}
+                disabled={saving || resetting}
+                icon={resetting ? undefined : "mdi:restore"}
+              >
+                {resetting ? (
+                  <>
+                    <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+                    {modalCopy.resetBuiltin}
+                  </>
+                ) : (
+                  modalCopy.resetBuiltin
+                )}
+              </UiKitButton>
             ) : null}
-            <button type="button" className={styles.ghostBtn} onClick={onClose} disabled={saving || resetting}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving || resetting}>
               {commonCopy.cancel}
-            </button>
-            <button type="button" className={styles.primaryBtn} onClick={handleSave} disabled={saving || resetting}>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={handleSave}
+              disabled={saving || resetting}
+              icon={saving ? undefined : isEdit ? "mdi:content-save-outline" : "mdi:check"}
+            >
               {saving ? (
                 <>
-                  <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
+                  <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                   {commonCopy.saving}
                 </>
               ) : isEdit ? (
-                <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {commonCopy.save}
-                </>
+                commonCopy.save
               ) : (
-                <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {modalCopy.createView}
-                </>
+                modalCopy.createView
               )}
-            </button>
+            </UiKitButton>
           </div>
         </footer>
       </div>

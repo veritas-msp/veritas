@@ -6,7 +6,7 @@ import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
 import { getLicenseDisplayName } from './utils';
 import { getMfaMethods, getMfaUserFromIndex, buildMfaLookupIndex, userHasMethod, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
-import { MonitoringStepSearchBar, MonitoringStepTableWrap } from '../../RapportPage/monitoring/MonitoringStepLayout';
+import { MonitoringStepSearchBar, MonitoringStepTableWrap, MonitoringPagedBlock } from '../../RapportPage/monitoring/MonitoringStepLayout';
 function getMfaMethodLabel(methodType) {
   const labels = {
     microsoftauthenticatorauthenticationmethod: 'Microsoft Authenticator',
@@ -479,7 +479,7 @@ export default function UsersTab({
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * usersPerPage;
   const endIndex = startIndex + usersPerPage;
-  const paginatedUsers = embedded ? sortedUsers : sortedUsers.slice(startIndex, endIndex);
+  const paginatedUsers = sortedUsers.slice(startIndex, endIndex);
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(1, prev - 1));
   };
@@ -553,9 +553,12 @@ export default function UsersTab({
       count
     })).sort((a, b) => b.count - a.count || (a.domain === NO_DOMAIN_KEY ? 1 : b.domain === NO_DOMAIN_KEY ? -1 : a.domain.localeCompare(b.domain)));
   }, [displayUsers]);
+  const usersList = Array.isArray(users) ? users : [];
+  const showUserContent = embedded || usersList.length > 0;
+
   return <section className={`${styles.kpiSection} ${embedded ? styles.tabFill : ""}`}>
       {!embedded ? <h2 className={styles.sectionTitle}>Users</h2> : null}
-      {users.length > 0 ? <>
+      {showUserContent ? <>
           {}
           {!embedded && domainCounts.length > 0 && <>
               <h3 className={styles.subsectionTitle}>
@@ -726,13 +729,7 @@ export default function UsersTab({
             Users table
           </h3> : null}
 
-          {embedded ? <MonitoringStepSearchBar value={userSearchQuery} onChange={value => {
-        setUserSearchQuery(value);
-        setCurrentPage(1);
-      }} onClear={() => {
-        setUserSearchQuery('');
-        setCurrentPage(1);
-      }} placeholder="Rechercher un utilisateur" /> : <div className={styles.serviceAccountsRow}>
+          {!embedded ? <div className={styles.serviceAccountsRow}>
             <div className={styles.serviceAccountsLeft}>
               <div className={styles.serviceAccountsSearchContainer}>
                 <div className={styles.serviceAccountsSearchBox}>
@@ -769,9 +766,9 @@ export default function UsersTab({
                 <Icon icon="mdi:file-export" className={styles.headerActionIcon} />
               </button>
             </SmartTooltip>
-          </div>}
+          </div> : null}
           {(() => {
-            const tableEl = <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`} style={embedded ? undefined : {
+            const buildTableEl = tableRows => <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`} style={embedded ? undefined : {
         overflowY: 'hidden',
         maxHeight: 'none'
       }}>
@@ -900,7 +897,9 @@ export default function UsersTab({
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.map((user, idx) => {
+                {tableRows.length === 0 ? <tr>
+                    <td colSpan={8}>Aucun utilisateur disponible.</td>
+                  </tr> : tableRows.map((user, idx) => {
               const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
               const createdDate = user.createdDate ? new Date(user.createdDate) : null;
               const period90Days = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
@@ -908,8 +907,8 @@ export default function UsersTab({
               const period30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
               const isActive30 = lastLogin && lastLogin >= period30Days;
               const statusLabel = user.accountEnabled === false ? 'Blocked' : isActive30 ? 'Active' : isInactive ? 'Inactive (>90d)' : 'Inactive';
-              const statusBg = user.accountEnabled === false ? '#fee2e2' : isActive30 ? '#d1fae5' : isInactive ? '#fef3c7' : '#e0e7ff';
-              const statusColor = user.accountEnabled === false ? '#dc2626' : isActive30 ? '#059669' : isInactive ? '#d97706' : '#4338ca';
+              const statusBg = embedded ? 'transparent' : user.accountEnabled === false ? '#fee2e2' : isActive30 ? '#d1fae5' : isInactive ? '#fef3c7' : '#e0e7ff';
+              const statusColor = embedded ? 'var(--msp-text, #0f1c2e)' : user.accountEnabled === false ? '#dc2626' : isActive30 ? '#059669' : isInactive ? '#d97706' : '#4338ca';
               const licenseNames = (() => {
                 const raw = user.licenses;
                 if (!raw) return 'None';
@@ -928,7 +927,7 @@ export default function UsersTab({
                             {getMfaMethodIcon(method)}
                           </span>
                         </SmartTooltip>) : null;
-              return <tr key={startIndex + idx}>
+              return <tr key={user.id || user.userPrincipalName || user.email || idx}>
                       <td style={{
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -949,7 +948,7 @@ export default function UsersTab({
                         {createdDate ? createdDate.toLocaleDateString('en-GB') : 'N/A'}
                       </td>
                       <td>
-                        <span style={{
+                        {embedded ? <span>{statusLabel}</span> : <span style={{
                     padding: '0.25rem 0.5rem',
                     borderRadius: '4px',
                     fontSize: '0.75rem',
@@ -958,7 +957,7 @@ export default function UsersTab({
                     fontWeight: 500
                   }}>
                           {statusLabel}
-                        </span>
+                        </span>}
                       </td>
                       <td style={{
                   overflow: 'hidden',
@@ -1043,7 +1042,23 @@ export default function UsersTab({
               </tbody>
             </table>
           </div>;
-            return embedded ? <MonitoringStepTableWrap scrollable deps={[paginatedUsers.length, userSearchQuery, sortColumn, sortDirection]}>{tableEl}</MonitoringStepTableWrap> : tableEl;
+            if (!embedded) return buildTableEl(paginatedUsers);
+            return <div className={styles.embeddedTableStack}>
+              <MonitoringStepSearchBar value={userSearchQuery} onChange={value => {
+                setUserSearchQuery(value);
+                setCurrentPage(1);
+              }} onClear={() => {
+                setUserSearchQuery('');
+                setCurrentPage(1);
+              }} />
+              <div className={styles.embeddedPagedFill}>
+                <MonitoringPagedBlock items={sortedUsers} resetDeps={[userSearchQuery, sortColumn, sortDirection, hideServiceAccounts, activeFilters.join('|'), domainFilter]} initialPageSize={25}>
+                  {pageItems => <MonitoringStepTableWrap scrollable fill hostClassName={styles.embeddedTableFill} deps={[pageItems.length, userSearchQuery, sortColumn, sortDirection]}>
+                    {buildTableEl(pageItems)}
+                  </MonitoringStepTableWrap>}
+                </MonitoringPagedBlock>
+              </div>
+            </div>;
           })()}
 
           {}
