@@ -917,3 +917,32 @@
 :global(html.dark) .familyStatChip strong {
   color: inherit;
 }
+
+:global(html.dark) .commentsCount {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, transparent);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .detailToggle {
+  border-color: var(--msp-border, #2f4260);
+  color: #93c5fd;
+}
+
+:global(html.dark) .detailToggle:hover {
+  background: color-mix(in srgb, #60a5fa 12%, transparent);
+}
+
+:global(html.dark) .watchTable td,
+:global(html.dark) .eqName,
+:global(html.dark) .eqComment {
+  color: var(--msp-text, #e8edf5);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .eqCommentEmpty {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .moreToggle:hover {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 70%, transparent);
+}

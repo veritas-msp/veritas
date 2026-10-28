@@ -208,22 +208,23 @@ export function buildExportContentStyles() {
       border-radius: 12px !important;
     }
 
-    /* Familles */
+    /* Familles — une seule carte externe (pas de cartes imbriquées) */
     .vex-report [class*="familyGrid"] {
       display: grid !important;
       grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr)) !important;
       gap: 0.75rem !important;
     }
 
-    .vex-report [class*="familyCard"] {
+    .vex-report [class*="familyGrid"] > [class*="familyCard"] {
       display: flex !important;
       flex-direction: column !important;
-      gap: 0.65rem !important;
-      padding: 0.9rem !important;
+      gap: 0.55rem !important;
+      padding: 0.85rem 0.9rem !important;
       border-radius: 12px !important;
       border: 1px solid var(--vex-border) !important;
       background: var(--vex-surface) !important;
       min-width: 0 !important;
+      box-shadow: none !important;
     }
 
     .vex-report .vex-icon {
@@ -246,6 +247,18 @@ export function buildExportContentStyles() {
       /* Pas de fill !important : les paths MDI « ghost » (fill=none) redeviendraient des cercles. */
     }
 
+    .vex-report [class*="familyCardTop"],
+    .vex-report [class*="familyCardBody"],
+    .vex-report [class*="familyCardStats"] {
+      border: none !important;
+      background: transparent !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      min-height: 0 !important;
+    }
+
     .vex-report [class*="familyCardTop"] {
       display: flex !important;
       flex-direction: row !important;
@@ -254,7 +267,6 @@ export function buildExportContentStyles() {
       justify-content: space-between !important;
       gap: 0.5rem !important;
       width: 100% !important;
-      min-height: 22px !important;
     }
 
     .vex-report [class*="familyCardTop"] > .vex-icon {
@@ -284,6 +296,7 @@ export function buildExportContentStyles() {
       font-weight: 700 !important;
       color: var(--vex-navy) !important;
       line-height: 1.25 !important;
+      background: transparent !important;
     }
 
     .vex-report [class*="familyMeta"] {
@@ -293,6 +306,7 @@ export function buildExportContentStyles() {
       border: none !important;
       padding: 0 !important;
       display: block !important;
+      background: transparent !important;
     }
 
     .vex-report [class*="familyCardStatus"] {
@@ -306,12 +320,16 @@ export function buildExportContentStyles() {
       margin: 0 0 0 auto !important;
       padding: 0 !important;
       border: none !important;
+      background: transparent !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
       font-size: 0.72rem !important;
       font-weight: 650 !important;
       color: var(--vex-ok) !important;
       white-space: nowrap !important;
-      line-height: 22px !important;
-      height: 22px !important;
+      line-height: 1 !important;
+      height: auto !important;
+      min-height: 0 !important;
       box-sizing: border-box !important;
     }
 
@@ -330,6 +348,7 @@ export function buildExportContentStyles() {
       grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
       gap: 0.35rem !important;
       width: 100% !important;
+      margin-top: 0.15rem !important;
     }
 
     .vex-report [class*="familyStatChip"] {
@@ -340,11 +359,12 @@ export function buildExportContentStyles() {
       gap: 0.28rem !important;
       width: 100% !important;
       min-width: 0 !important;
-      min-height: 1.85rem !important;
-      padding: 0.3rem 0.35rem !important;
+      min-height: 1.7rem !important;
+      padding: 0.28rem 0.3rem !important;
       border-radius: 8px !important;
       background: var(--vex-bg-muted) !important;
-      border: 1px solid var(--vex-border) !important;
+      border: none !important;
+      box-shadow: none !important;
       font-size: 0.78rem !important;
       color: var(--vex-text) !important;
       line-height: 1 !important;
