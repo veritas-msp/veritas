@@ -889,3 +889,31 @@
 :global(html.dark) .watchConstat {
   color: #fdba74;
 }
+
+:global(html.dark) .equipmentChip {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, transparent);
+  color: var(--msp-text, #e8edf5);
+  border: 1px solid var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .detailTable th,
+:global(html.dark) .watchTable th {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 92%, transparent);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .detailTable tr:nth-child(even) td,
+:global(html.dark) .watchTable tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 45%, transparent);
+}
+
+:global(html.dark) .kpiLabel,
+:global(html.dark) .kpiHint,
+:global(html.dark) .familyMeta,
+:global(html.dark) .commentsHeader {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .familyStatChip strong {
+  color: inherit;
+}

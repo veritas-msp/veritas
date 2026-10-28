@@ -146,9 +146,24 @@ export function buildExportPrintStyles(branding = null) {
     svg, iconify-icon {
       max-width: none;
       flex-shrink: 0;
-      display: inline-block;
+      overflow: hidden;
+    }
+
+    .vex-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+      flex-shrink: 0;
+      overflow: hidden;
       vertical-align: middle;
-      overflow: visible;
+      color: inherit;
+    }
+
+    .vex-icon svg {
+      display: block;
+      margin: 0;
+      max-width: none;
     }
 
     a {

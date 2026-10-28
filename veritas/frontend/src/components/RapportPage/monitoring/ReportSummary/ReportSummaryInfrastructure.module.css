@@ -1376,3 +1376,82 @@
   }
 }
 
+/* ── Dark mode (tables + blocs partagés Backup / Services / Support) ── */
+:global(html.dark) .globalIntroTitle,
+:global(html.dark) .sectionTitle,
+:global(html.dark) .tableBlockTitle,
+:global(html.dark) .infraTableCell,
+:global(html.dark) .globalStatsValue {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .globalIntroText,
+:global(html.dark) .sectionSubtitle,
+:global(html.dark) .tableBlockCount,
+:global(html.dark) .infraTableEmpty,
+:global(html.dark) .infraTableHeaderCell,
+:global(html.dark) .globalStatsLabel,
+:global(html.dark) .globalStatsHint,
+:global(html.dark) .sectionHelperText {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .sectionTitleSeparator {
+  border-top-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .infraTableWrapper {
+  background: var(--msp-surface, #121a28);
+  border-color: var(--msp-border, #2f4260);
+  box-shadow: none;
+}
+
+:global(html.dark) .infraTable thead {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 92%, transparent);
+}
+
+:global(html.dark) .infraTableHeaderCell {
+  border-bottom-color: var(--msp-border, #2f4260);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .infraTableCell {
+  border-bottom-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .infraTableRow:nth-child(even) {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 55%, transparent);
+}
+
+:global(html.dark) .infraTableRow:hover,
+:global(html.dark) .infraTableRow:nth-child(even):hover {
+  background: color-mix(in srgb, var(--msp-surface-2, #1a2740) 78%, transparent);
+}
+
+:global(html.dark) .overviewContainer,
+:global(html.dark) .globalStatsBlock {
+  background: transparent;
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .globalStatsGrid {
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .overviewStatsBlock .globalStatsItem,
+:global(html.dark) .serverKpisBlock .globalStatsItem,
+:global(html.dark) .globalStatsGridStylized .globalStatsItem,
+:global(html.dark) .globalStatsItem {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, transparent);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .globalStatsTitle {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .kpiSectionTitle {
+  color: var(--msp-muted, #8fa8c4);
+}
+

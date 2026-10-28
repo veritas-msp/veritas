@@ -204,3 +204,64 @@
   font-weight: 500;
   color: var(--text-muted, #6b7280);
 }
+
+:global(html.dark) .factCard,
+:global(html.dark) .creditItem,
+:global(html.dark) .breakdownCard {
+  background: var(--msp-surface, #121a28);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .factValue,
+:global(html.dark) .creditLabel,
+:global(html.dark) .breakdownTitle,
+:global(html.dark) .breakdownLabel,
+:global(html.dark) .slaTable td {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .factLabel,
+:global(html.dark) .factHint,
+:global(html.dark) .creditMeta,
+:global(html.dark) .empty,
+:global(html.dark) .breakdownPct,
+:global(html.dark) .slaTable th {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .slaTable th {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 92%, transparent);
+}
+
+:global(html.dark) .slaTable th,
+:global(html.dark) .slaTable td {
+  border-bottom-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .badgeOk {
+  background: color-mix(in srgb, #047857 28%, transparent);
+  color: #6ee7b7;
+}
+
+:global(html.dark) .badgeWarn {
+  background: color-mix(in srgb, #b45309 28%, transparent);
+  color: #fbbf24;
+}
+
+:global(html.dark) .badgeDanger {
+  background: color-mix(in srgb, #b91c1c 30%, transparent);
+  color: #fca5a5;
+}
+
+:global(html.dark) .badgeMuted {
+  background: color-mix(in srgb, #64748b 28%, transparent);
+  color: #cbd5e1;
+}
+
+:global(html.dark) .breakdownTrack {
+  background: color-mix(in srgb, var(--msp-surface-2, #152035) 90%, transparent);
+}
+
+:global(html.dark) .creditValue {
+  color: #5eead4;
+}

@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.5",
+    date: "2026-10-28",
+    highlights: [
+      "Export HTML : alignement des icônes (familles / Sain / chips) et titres de section à gauche.",
+      "Rapports Supervision / Sauvegardes / Services : compatibilité dark mode (tables, badges, chips, KPI)."
+    ]
+  },
+  {
     version: "2.0.4",
     date: "2026-10-28",
     highlights: [

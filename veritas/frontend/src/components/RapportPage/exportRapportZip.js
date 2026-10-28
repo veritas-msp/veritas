@@ -61,28 +61,45 @@ function prepareReportExportClone(sourceNode) {
     el.replaceWith(staticEl);
   });
 
-  /* Figé les SVG Iconify pour l’export (taille + currentColor). */
+  /* Normalise les SVG Iconify : boîte fixe, sans vertical-align inline (cause du décalage). */
   clone.querySelectorAll("svg").forEach(svg => {
-    const width = svg.getAttribute("width") || svg.getAttribute("data-width") || "18";
-    const height = svg.getAttribute("height") || svg.getAttribute("data-height") || width;
-    svg.setAttribute("width", String(width).replace(/px$/i, ""));
-    svg.setAttribute("height", String(height).replace(/px$/i, ""));
-    svg.style.maxWidth = "none";
-    svg.style.flexShrink = "0";
-    svg.style.display = "inline-block";
-    svg.style.overflow = "visible";
-    if (!svg.getAttribute("fill") || svg.getAttribute("fill") === "none") {
-      /* paths Iconify gèrent souvent leur fill ; forcer currentColor sur le root aide. */
-      if (!svg.querySelector("[fill]:not([fill='none']):not([fill='currentColor'])")) {
-        svg.setAttribute("fill", "currentColor");
-      }
-    }
-    svg.querySelectorAll("path, circle, rect, polygon").forEach(node => {
-      const fill = node.getAttribute("fill");
-      if (!fill || fill === "currentColor") {
-        node.setAttribute("fill", "currentColor");
-      }
-    });
+    const rawW = String(svg.getAttribute("width") || "18").replace(/px$/i, "");
+    const rawH = String(svg.getAttribute("height") || rawW).replace(/px$/i, "");
+    const width = /^\d+(\.\d+)?$/.test(rawW) ? rawW : "18";
+    const height = /^\d+(\.\d+)?$/.test(rawH) ? rawH : width;
+
+    svg.removeAttribute("style");
+    svg.setAttribute("width", width);
+    svg.setAttribute("height", height);
+    if (!svg.getAttribute("fill")) svg.setAttribute("fill", "currentColor");
+
+    const wrap = clone.ownerDocument.createElement("span");
+    wrap.className = "vex-icon";
+    wrap.setAttribute("aria-hidden", "true");
+    wrap.style.cssText = [
+      "display:inline-flex",
+      "align-items:center",
+      "justify-content:center",
+      `width:${width}px`,
+      `height:${height}px`,
+      "line-height:0",
+      "flex-shrink:0",
+      "color:inherit",
+      "vertical-align:middle"
+    ].join(";");
+
+    svg.style.cssText = [
+      `width:${width}px`,
+      `height:${height}px`,
+      "display:block",
+      "margin:0",
+      "max-width:none",
+      "overflow:visible",
+      "vertical-align:unset"
+    ].join(";");
+
+    svg.replaceWith(wrap);
+    wrap.appendChild(svg);
   });
 
   clone.querySelectorAll("*").forEach(el => {
@@ -92,6 +109,9 @@ function prepareReportExportClone(sourceNode) {
         el.removeAttribute(attr.name);
       }
     });
+    /* Ne pas casser les .vex-icon / svg (display/height posés juste au-dessus). */
+    const tag = el.tagName?.toLowerCase();
+    if (tag === "svg" || el.classList?.contains("vex-icon")) return;
     if (el.style) {
       el.style.removeProperty("display");
       el.style.removeProperty("visibility");

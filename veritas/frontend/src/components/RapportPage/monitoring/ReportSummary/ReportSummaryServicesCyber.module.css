@@ -238,6 +238,17 @@
   color: #fbbf24;
 }
 
+:global(html.dark) .watchCardBody {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .watchCardAction,
+:global(html.dark) .watchNote,
+:global(html.dark) .serviceSubtitle {
+  color: var(--msp-muted, #8fa8c4);
+  border-top-color: var(--msp-border, #2f4260);
+}
+
 :global(html.dark) .metricGrid {
   background: color-mix(in srgb, var(--msp-surface-2, #152035) 88%, transparent);
   border-color: var(--msp-border, #2f4260);
@@ -251,6 +262,28 @@
 :global(html.dark) .serviceName,
 :global(html.dark) .metricValue,
 :global(html.dark) .usageTitle,
-:global(html.dark) .domainName {
+:global(html.dark) .domainName,
+:global(html.dark) .simpleList {
   color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .metricLabel,
+:global(html.dark) .metricHint,
+:global(html.dark) .domainMeta {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .serviceBadge {
+  background: color-mix(in srgb, #047857 22%, transparent);
+  color: #6ee7b7;
+}
+
+:global(html.dark) .serviceBadgeWarn {
+  background: color-mix(in srgb, #b45309 22%, transparent);
+  color: #fbbf24;
+}
+
+:global(html.dark) .serviceBadgeMuted {
+  background: color-mix(in srgb, #64748b 22%, transparent);
+  color: #cbd5e1;
 }

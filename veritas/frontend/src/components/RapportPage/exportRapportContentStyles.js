@@ -44,8 +44,8 @@ export function buildExportContentStyles() {
       padding: 0 !important;
     }
 
-    .vex-report [class*="sectionBlock"],
-    .vex-report [class*="section"] {
+    /* Uniquement les blocs section — pas sectionHeading / sectionTitle (sinon column+center). */
+    .vex-report [class*="sectionBlock"] {
       display: flex !important;
       flex-direction: column !important;
       gap: 0.65rem !important;
@@ -54,6 +54,19 @@ export function buildExportContentStyles() {
       border: none !important;
       background: transparent !important;
       box-shadow: none !important;
+      align-items: stretch !important;
+      text-align: left !important;
+    }
+
+    .vex-report [class*="sectionTitleWrapper"] {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 0.55rem !important;
+      width: 100% !important;
+      text-align: left !important;
+      margin: 0 !important;
     }
 
     .vex-report h3,
@@ -74,8 +87,13 @@ export function buildExportContentStyles() {
       letter-spacing: -0.01em !important;
       line-height: 1.3 !important;
       display: flex !important;
+      flex-direction: row !important;
       align-items: center !important;
+      justify-content: flex-start !important;
       gap: 0.4rem !important;
+      width: 100% !important;
+      text-align: left !important;
+      box-sizing: border-box !important;
     }
 
     .vex-report [class*="detailSectionTitle"] {
@@ -208,25 +226,45 @@ export function buildExportContentStyles() {
       min-width: 0 !important;
     }
 
+    .vex-report .vex-icon {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      line-height: 0 !important;
+      flex-shrink: 0 !important;
+      color: inherit !important;
+      vertical-align: middle !important;
+      overflow: hidden !important;
+    }
+
+    .vex-report .vex-icon svg {
+      display: block !important;
+      margin: 0 !important;
+      max-width: none !important;
+      overflow: hidden !important;
+      color: inherit !important;
+      /* Pas de fill !important : les paths MDI « ghost » (fill=none) redeviendraient des cercles. */
+    }
+
     .vex-report [class*="familyCardTop"] {
       display: flex !important;
       flex-direction: row !important;
       flex-wrap: nowrap !important;
       align-items: center !important;
       justify-content: space-between !important;
-      gap: 0.45rem !important;
+      gap: 0.5rem !important;
       width: 100% !important;
+      min-height: 22px !important;
     }
 
-    .vex-report [class*="familyCardIcon"],
-    .vex-report [class*="familyCardIcon"] svg {
+    .vex-report [class*="familyCardTop"] > .vex-icon {
       width: 22px !important;
       height: 22px !important;
-      min-width: 22px !important;
-      min-height: 22px !important;
-      max-width: 22px !important;
       color: var(--vex-navy) !important;
-      fill: currentColor !important;
+    }
+
+    .vex-report [class*="familyCardIcon"] {
+      color: var(--vex-navy) !important;
       flex-shrink: 0 !important;
     }
 
@@ -262,8 +300,9 @@ export function buildExportContentStyles() {
       flex-direction: row !important;
       flex-wrap: nowrap !important;
       align-items: center !important;
+      align-self: center !important;
       justify-content: flex-end !important;
-      gap: 0.28rem !important;
+      gap: 0.3rem !important;
       margin: 0 0 0 auto !important;
       padding: 0 !important;
       border: none !important;
@@ -271,18 +310,15 @@ export function buildExportContentStyles() {
       font-weight: 650 !important;
       color: var(--vex-ok) !important;
       white-space: nowrap !important;
-      line-height: 1 !important;
+      line-height: 22px !important;
+      height: 22px !important;
+      box-sizing: border-box !important;
     }
 
-    .vex-report [class*="familyCardStatus"] svg {
+    .vex-report [class*="familyCardStatus"] .vex-icon {
       width: 14px !important;
       height: 14px !important;
-      min-width: 14px !important;
-      min-height: 14px !important;
-      max-width: 14px !important;
       color: inherit !important;
-      fill: currentColor !important;
-      flex-shrink: 0 !important;
     }
 
     .vex-report [class*="familyCardStatusAlert"] {
@@ -304,31 +340,33 @@ export function buildExportContentStyles() {
       gap: 0.28rem !important;
       width: 100% !important;
       min-width: 0 !important;
-      padding: 0.35rem 0.4rem !important;
+      min-height: 1.85rem !important;
+      padding: 0.3rem 0.35rem !important;
       border-radius: 8px !important;
       background: var(--vex-bg-muted) !important;
       border: 1px solid var(--vex-border) !important;
       font-size: 0.78rem !important;
       color: var(--vex-text) !important;
       line-height: 1 !important;
+      box-sizing: border-box !important;
     }
 
-    .vex-report [class*="familyStatChip"] svg {
+    .vex-report [class*="familyStatChip"] .vex-icon {
       width: 15px !important;
       height: 15px !important;
-      min-width: 15px !important;
-      min-height: 15px !important;
-      max-width: 15px !important;
-      flex-shrink: 0 !important;
       color: inherit !important;
-      fill: currentColor !important;
       opacity: 1 !important;
     }
 
     .vex-report [class*="familyStatChip"] strong {
+      display: inline-flex !important;
+      align-items: center !important;
       font-weight: 700 !important;
       font-variant-numeric: tabular-nums !important;
       color: inherit !important;
+      line-height: 1 !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
 
     /* Toujours lisibles, même à 0 */

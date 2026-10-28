@@ -90,3 +90,42 @@
 :global(html.dark) .solutionName {
   color: var(--msp-text, #e8edf5);
 }
+
+:global(html.dark) .solutionSubtitle {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .statusOk {
+  background: color-mix(in srgb, #047857 28%, transparent);
+  color: #6ee7b7;
+}
+
+:global(html.dark) .statusWarn {
+  background: color-mix(in srgb, #b45309 28%, transparent);
+  color: #fbbf24;
+}
+
+:global(html.dark) .statusError {
+  background: color-mix(in srgb, #b91c1c 30%, transparent);
+  color: #fca5a5;
+}
+
+:global(html.dark) .statusNeutral {
+  background: color-mix(in srgb, #64748b 28%, transparent);
+  color: #cbd5e1;
+}
+
+:global(html.dark) .solutionBadgeOk {
+  background: color-mix(in srgb, #047857 22%, transparent);
+  color: #6ee7b7;
+}
+
+:global(html.dark) .solutionBadgeWarn {
+  background: color-mix(in srgb, #b45309 22%, transparent);
+  color: #fbbf24;
+}
+
+:global(html.dark) .solutionBadgeCritical {
+  background: color-mix(in srgb, #b91c1c 22%, transparent);
+  color: #fca5a5;
+}
