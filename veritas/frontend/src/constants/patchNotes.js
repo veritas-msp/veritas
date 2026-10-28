@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.4",
+    date: "2026-10-28",
+    highlights: [
+      "Exports HTML reconstruits : 3 rapports distincts (Supervision, Sauvegardes, Services) alignés sur les onglets, header/footer conservés.",
+      "Export : icônes des familles et statut « Sain » corrigés (visibilité et alignement)."
+    ]
+  },
+  {
     version: "2.0.3",
     date: "2026-10-28",
     highlights: [

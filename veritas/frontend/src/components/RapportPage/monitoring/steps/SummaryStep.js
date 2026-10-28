@@ -195,7 +195,6 @@ export default function SummaryStep({
 
       <div className={styles.reportStack}>
         <div
-          key={activeReport}
           className={`${styles.reportFade} ${
             contentEnter ? styles.reportFadeIn : styles.reportFadePending
           }`.trim()}
