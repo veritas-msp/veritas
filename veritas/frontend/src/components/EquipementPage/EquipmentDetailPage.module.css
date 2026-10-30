@@ -125,6 +125,45 @@
   align-self: center;
 }
 
+.heroMetaWithRmm {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.12rem;
+  height: auto;
+  max-height: none;
+  width: max-content;
+  max-width: 100%;
+}
+
+.heroMetaPrimary {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.heroMetaPrimary :global([class*="heroMetaBlock"]) + :global([class*="heroMetaBlock"]) {
+  padding-left: 0.55rem;
+  border-left: 1px solid var(--msp-border, #dde3ed);
+}
+
+.heroMetaRmmSubtitle {
+  align-self: flex-end;
+  max-width: min(36rem, 100%);
+}
+
+.equipmentDetailPage :global([class*="heroIdentityRow"]):has(.heroMetaWithRmm) {
+  --hero-identity-row-h: 3.85rem;
+  height: var(--hero-identity-row-h);
+  min-height: var(--hero-identity-row-h);
+  max-height: var(--hero-identity-row-h);
+}
+
 .heroNoteChip {
   display: inline-flex;
   align-items: center;
@@ -401,17 +440,69 @@
   flex-shrink: 0;
 }
 
-.heroMaintenanceReason {
-  /* Masqué dans le bandeau compact (tooltip via badge maintenance) */
-  display: none;
+.heroMaintenanceBadgeMeta {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-width: 1.5px;
+  background: rgba(194, 65, 12, 0.16);
+  box-shadow: 0 0 0 1px rgba(194, 65, 12, 0.08);
+}
+
+.heroMaintenanceUntil {
+  font-weight: 550;
+  opacity: 0.92;
+  margin-left: 0.1rem;
+}
+
+.heroMaintenanceBanner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.4rem 0.85rem 0.45rem 0.75rem;
+  box-sizing: border-box;
+  border-top: 1px solid rgba(194, 65, 12, 0.28);
+  background: linear-gradient(
+    90deg,
+    rgba(194, 65, 12, 0.14) 0%,
+    rgba(251, 146, 60, 0.08) 55%,
+    rgba(194, 65, 12, 0.04) 100%
+  );
+  color: #9a3412;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.heroMaintenanceBanner svg {
+  flex-shrink: 0;
+  color: #c2410c;
+}
+
+.heroMaintenanceBannerTitle {
+  flex-shrink: 0;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #c2410c;
+}
+
+.heroMaintenanceBannerUntil {
+  flex-shrink: 0;
+  font-weight: 550;
+  color: #9a3412;
+}
+
+.heroMaintenanceBannerReason {
+  display: inline-flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
-  margin: 0.2rem 0 0;
-  max-width: 42rem;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: #9a3412;
+  gap: 0.3rem 0.45rem;
+  min-width: 0;
+  margin-left: auto;
+  max-width: min(36rem, 100%);
 }
 
 .heroMaintenanceReasonLabel {
@@ -427,6 +518,9 @@
   min-width: 0;
   font-weight: 550;
   color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 :global(html.dark) .equipmentDetailPage.heroInMaintenance :global([class*="heroCover"]),
@@ -451,12 +545,30 @@
   color: #fb923c;
 }
 
-:global(html.dark) .heroMaintenanceReason {
+:global(html.dark) .heroMaintenanceBadgeMeta {
+  background: rgba(251, 146, 60, 0.2);
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.12);
+}
+
+:global(html.dark) .heroMaintenanceBanner {
+  border-top-color: rgba(251, 146, 60, 0.35);
+  background: linear-gradient(
+    90deg,
+    rgba(251, 146, 60, 0.18) 0%,
+    rgba(251, 146, 60, 0.08) 55%,
+    rgba(251, 146, 60, 0.03) 100%
+  );
   color: #fdba74;
 }
 
+:global(html.dark) .heroMaintenanceBanner svg,
+:global(html.dark) .heroMaintenanceBannerTitle,
 :global(html.dark) .heroMaintenanceReasonLabel {
   color: #fb923c;
+}
+
+:global(html.dark) .heroMaintenanceBannerUntil {
+  color: #fdba74;
 }
 
 .heroFactStrip {
@@ -586,27 +698,22 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--msp-surface, #fff);
+  background: var(--msp-surface-2, #f4f7fb);
   border: none;
   box-shadow: none;
 }
 
-/* Panels / cartes d’onglets : flush Finder (coins gauches carrés, comme EnterpriseDetail) */
-.equipmentFinderContent :global([class*="sectionCard"]),
-.equipmentFinderContent :global([class*="tabPanel"]),
-.equipmentFinderContent :global([class*="rmmMapCard"]),
-.equipmentFinderContent :global([class*="panelRoot"]),
-.equipmentFinderContent :global([class*="alertsGlance"]),
-.equipmentFinderContent .tabPanel,
-.equipmentFinderContent .supervisionMainPanel,
+:global(html.dark) .equipmentFinderContent,
+:global(body.dark) .equipmentFinderContent {
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 78%, #0b1220);
+}
+
+/* Documents / logs : flush Finder (coins gauches carrés). Les boards RMM/supervision gardent leurs arrondis. */
 .equipmentFinderContent .logsPanel,
 .equipmentFinderContent .logsPanelFill,
 .equipmentFinderContent .logsPanelFill :global([class*="logsPanel"]),
 .equipmentFinderContent .documentsPanelFill,
-.equipmentFinderContent .documentsPanelFill :global([class*="embeddedRoot"]),
-.equipmentFinderContent :global([class*="RmmMonitoring"]),
-.equipmentFinderContent :global([class*="metricHistory"]),
-.equipmentFinderContent :global([class*="CheckMK"]) {
+.equipmentFinderContent .documentsPanelFill :global([class*="embeddedRoot"]) {
   border-top-left-radius: 0 !important;
   border-bottom-left-radius: 0 !important;
 }
@@ -718,6 +825,22 @@
   border-radius: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
+}
+
+.equipmentFinderContent .dashboardMain,
+.equipmentFinderContent .supervisionStack,
+.equipmentFinderContent .supervisionPanelBody {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.equipmentFinderContent .dashboardMain > :global([class*="root"]),
+.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="RmmMonitoring"]),
+.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="metricHistory"]),
+.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="embedded"]) {
+  min-height: 0;
+  height: 100%;
 }
 
 .finderItemDimmed,
@@ -1269,30 +1392,86 @@
 .dashboardMain {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0;
   min-width: 0;
   min-height: 0;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dashboardMain > :global([class*="root"]),
 .dashboardMain > .ficheOnlyStack {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-height: 0;
+  height: auto;
 }
 
 .dashboardAside {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
   min-width: 0;
   min-height: 0;
   position: sticky;
-  top: 5.5rem;
+  top: 0.75rem;
   align-self: start;
-  max-height: calc(100vh - 6.5rem);
+  max-height: calc(100% - 0.5rem);
   overflow: auto;
+  padding: 0.85rem 0.85rem 1.15rem 0;
+  box-sizing: border-box;
+}
+
+.rmmDeviceNoteCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+}
+
+.rmmDeviceNoteHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--msp-muted, #64748b);
+}
+
+.rmmDeviceNoteHead h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: inherit;
+}
+
+.rmmDeviceNoteHead :global(svg) {
+  font-size: 1rem;
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.rmmDeviceNoteBody {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--msp-text, #0f172a);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:global(html.dark) .rmmDeviceNoteCard,
+:global(body.dark) .rmmDeviceNoteCard {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
 .activityStack,
@@ -1386,24 +1565,32 @@
 }
 
 .historyTabLayout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
   align-items: stretch;
-  overflow: hidden;
+  padding: 0.85rem 1rem 1.15rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: transparent;
 }
 
 .historyTabLayout > * {
   min-width: 0;
   min-height: 0;
-  max-height: 100%;
-  height: 100%;
-  overflow: hidden;
+  max-height: none;
+  height: auto;
+  flex: 0 0 auto;
+  overflow: visible;
   display: flex;
   flex-direction: column;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .historyTabLayout > :global([class*="emptyState"]) {
@@ -1447,7 +1634,6 @@
 
 @media (max-width: 1100px) {
   .historyTabLayout {
-    grid-template-columns: 1fr;
     overflow: auto;
     overscroll-behavior: contain;
   }
@@ -1688,28 +1874,32 @@
 }
 
 .supervisionMainPanel > :global([class*="panelBody"]) {
-  padding-top: 0.85rem;
+  padding: 0 !important;
 }
 
 .supervisionPanelBody {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0;
   min-width: 0;
   min-height: 0;
   flex: 1 1 0;
   height: 100%;
   overflow: hidden;
-  overscroll-behavior: contain;
+  padding: 0;
+  background: transparent;
 }
 
 .supervisionPanelBody > :global([class*="panel"]) {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .supervisionMainPanel {
@@ -1719,6 +1909,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: transparent;
 }
 
 .supervisionToolbarActions {

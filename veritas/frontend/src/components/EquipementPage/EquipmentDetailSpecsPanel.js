@@ -189,6 +189,7 @@ export default function EquipmentDetailSpecsPanel({
   compact = false,
   bare = false,
   hideResources = false,
+  hideNotes = false,
   sectionFilter = "all",
   column = false,
   title
@@ -387,7 +388,9 @@ export default function EquipmentDetailSpecsPanel({
   const rmmManagedComputer = equipment?.type === "Ordinateurs" && isRmmManagedEquipment(equipment);
   const rmmGroupedSections = useMemo(() => {
     if (!rmmManagedComputer) return [];
-    const preferredIds = ["billingInstallation", "administrative", "technique", "notes"];
+    const preferredIds = hideNotes
+      ? ["billingInstallation", "administrative", "technique"]
+      : ["billingInstallation", "administrative", "technique", "notes"];
     const preferred = preferredIds
       .map(id => sections.find(section => section.id === id))
       .filter(section => section && (section.fields || []).length > 0);
@@ -462,7 +465,7 @@ export default function EquipmentDetailSpecsPanel({
       });
     }
     return [...grouped, ...otherSections];
-  }, [rmmManagedComputer, sections, copy.specs, locale]);
+  }, [rmmManagedComputer, sections, copy.specs, locale, hideNotes]);
   const locationName = String(formData?.location || equipment?.location || "").trim();
   const resolvedSite = useMemo(() => locationName ? findClientSiteByLocation(clientSites, locationName) : null, [clientSites, locationName]);
   const showSiteVignette = Boolean(locationName && locationName !== "Sans site");
@@ -528,7 +531,8 @@ export default function EquipmentDetailSpecsPanel({
   }
 
   const cardsSource = (rmmManagedComputer && (bare || compact) ? rmmGroupedSections : sections)
-    .filter(section => sectionMatchesFilter(section.id, sectionFilter));
+    .filter(section => sectionMatchesFilter(section.id, sectionFilter))
+    .filter(section => !(hideNotes && String(section.id || "") === "notes"));
   const showResources = rmmManagedComputer && bare && !hideResources && (sectionFilter === "all" || sectionFilter === "rest");
   const gridClass = column
     ? styles.sectionsColumn

@@ -3,14 +3,20 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 0;
+  gap: 0.75rem;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.85rem 1rem 1.15rem;
+  box-sizing: border-box;
+  background: transparent;
 }
 
 .embedded {
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 0 14px 14px 0;
-  overflow: hidden;
-  background: var(--msp-surface);
+  border: none;
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -20,9 +26,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1rem;
-  padding: 0.9rem 1.1rem;
+  padding: 0.85rem 1.05rem;
   background: var(--msp-surface);
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   flex-shrink: 0;
 }
 
@@ -103,9 +111,9 @@
 }
 
 .dashboardBody {
-  padding: 1rem;
-  background: var(--msp-surface-2, #f8fafc);
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
 }
 
 .dashboard {
@@ -281,11 +289,11 @@
 .donutCard,
 .zoneCard {
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--msp-surface, #fff);
   padding: 0.85rem 1.1rem 1.1rem;
   min-width: 0;
-  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .donutCard {
@@ -576,5 +584,25 @@
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+:global(html.dark) .toolbar,
+:global(body.dark) .toolbar,
+:global(html.dark) .donutCard,
+:global(body.dark) .donutCard,
+:global(html.dark) .zoneCard,
+:global(body.dark) .zoneCard {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+:global(html.dark) .select,
+:global(body.dark) .select,
+:global(html.dark) .periodBtn,
+:global(body.dark) .periodBtn {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  color: var(--msp-text, #e2e8f0);
 }
 

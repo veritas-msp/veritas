@@ -52,7 +52,7 @@ const FR = {
   },
   supervisionPane: {
     aria: "Sections supervision",
-    main: "Main",
+    main: "Synthèse",
     history: "Historique"
   },
   historyTab: {
@@ -70,6 +70,7 @@ const FR = {
     maintenanceTooltip: "Mettre en maintenance (cône de travaux)",
     maintenanceTooltipActive: "En maintenance{until}",
     maintenanceUntil: " jusqu’au {date}",
+    maintenanceUntilShort: "→ {date}",
     maintenanceBadge: "En maintenance",
     maintenanceReasonLabel: "Motif",
     maintenanceAria: "Maintenance périphérique",
@@ -1024,7 +1025,7 @@ const EN = {
   },
   supervisionPane: {
     aria: "Supervision sections",
-    main: "Main",
+    main: "Overview",
     history: "History"
   },
   historyTab: {
@@ -1042,6 +1043,7 @@ const EN = {
     maintenanceTooltip: "Put in maintenance (works cone)",
     maintenanceTooltipActive: "In maintenance{until}",
     maintenanceUntil: " until {date}",
+    maintenanceUntilShort: "→ {date}",
     maintenanceBadge: "In maintenance",
     maintenanceReasonLabel: "Reason",
     maintenanceAria: "Device maintenance",
@@ -1984,6 +1986,7 @@ const DE = {
   },
   supervisionPane: {
     ...EN.supervisionPane,
+    main: "Übersicht",
     history: "Historie"
   },
   notes: {

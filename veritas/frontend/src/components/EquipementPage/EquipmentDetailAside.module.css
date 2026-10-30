@@ -45,6 +45,64 @@
 
 .assocBody {
   padding-top: 0.65rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.assocBody :global(ul),
+.assocBody :global([class*="sidebarContactsList"]) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.assocBody :global(li) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.assocBody :global([class*="sidebarContactItem"]),
+.assocBody .assocStatic {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.assocBody button[class*="sidebarContactItem"] {
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+}
+
+.assocBody :global([class*="sidebarContactBody"]),
+.assocBody :global([class*="sidebarContactTop"]),
+.assocBody :global([class*="sidebarContactIdentity"]) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.assocBody :global([class*="sidebarContactBody"]) {
+  flex: 1 1 auto;
+}
+
+.assocBody :global([class*="sidebarContactIdentity"]) {
+  flex: 1 1 auto;
+}
+
+.assocBody :global([class*="sidebarContactName"]),
+.assocBody :global([class*="sidebarContactRole"]) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .notesFill {
@@ -81,6 +139,7 @@
 .assocStatus {
   display: inline-flex;
   align-items: center;
+  max-width: 42%;
   padding: 0.12rem 0.45rem;
   border-radius: 999px;
   font-size: 0.65rem;
@@ -91,6 +150,10 @@
   color: #15803d;
   flex-shrink: 0;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 .assocStatus_warn {

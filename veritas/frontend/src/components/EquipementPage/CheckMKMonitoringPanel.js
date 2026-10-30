@@ -473,16 +473,123 @@ export default function CheckMKMonitoringPanel({
     </tbody>
   );
 
+  const hostIdentityBlock = (
+    <div className={styles.hostIdentity}>
+      <Icon icon="simple-icons:checkmk" className={styles.hostIdentityIcon} aria-hidden />
+      <div className={styles.hostIdentityBody}>
+        <div className={styles.hostIdentityPrimary}>
+          <span className={styles.hostName}>{hostName}</span>
+          {hostState ? (
+            <span
+              className={styles.hostStateBadge}
+              style={{
+                background: `${hostStateColor}22`,
+                color: hostStateColor,
+                border: `1px solid ${hostStateColor}55`
+              }}
+            >
+              <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} aria-hidden />
+              {hostState}
+            </span>
+          ) : null}
+        </div>
+        <div className={styles.hostIdentityMeta}>
+          {[
+            showAlias ? { key: "alias", label: hostAlias } : null,
+            checkmkHostDetails?.ipAddress
+              ? { key: "ip", label: checkmkHostDetails.ipAddress, mono: true }
+              : null,
+            checkmkMapping.checkmk_site
+              ? { key: "site", label: `Site ${checkmkMapping.checkmk_site}` }
+              : null
+          ]
+            .filter(Boolean)
+            .map((part, index) => (
+              <React.Fragment key={part.key}>
+                {index > 0 ? <span className={styles.hostMetaSep} aria-hidden>·</span> : null}
+                <span className={part.mono ? styles.ipText : undefined}>{part.label}</span>
+              </React.Fragment>
+            ))}
+        </div>
+      </div>
+      {syncedLabel ? (
+        <span className={styles.hostSync} title={lastSyncedAt || undefined}>
+          <Icon icon="mdi:update" aria-hidden />
+          {syncedLabel}
+        </span>
+      ) : null}
+    </div>
+  );
+
+  const kpiGrid = (
+    <div className={styles.kpiGrid} role="group" aria-label="Indicateurs CheckMK">
+      <div className={styles.kpiCard}>
+        <span className={styles.kpiLabel}>Santé</span>
+        <span
+          className={`${styles.kpiValue} ${
+            kpis.healthScore >= 90
+              ? styles.kpiValueGood
+              : kpis.healthScore >= 70
+                ? styles.kpiValueWarn
+                : styles.kpiValueBad
+          }`}
+        >
+          {kpis.healthScore != null ? `${kpis.healthScore}%` : "—"}
+        </span>
+        <span className={styles.kpiSub}>
+          {serviceCounts[0]} OK · {serviceCounts[1]} W · {serviceCounts[2]} C
+          {liveProblemCount ? ` · ${liveProblemCount} alerte${liveProblemCount > 1 ? "s" : ""}` : ""}
+        </span>
+      </div>
+
+      <div className={styles.kpiCard}>
+        <span className={styles.kpiLabel}>Disponibilité</span>
+        <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
+          {loadingAvailability ? "…" : availUp != null ? `${Math.round(availUp)}%` : "—"}
+        </span>
+        <div className={styles.kpiPeriodRow} role="group" aria-label="Période de disponibilité">
+          {CHECKMK_AVAILABILITY_PERIOD_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              className={`${styles.periodPill} ${checkmkAvailabilityPeriod === value ? styles.periodPillActive : ""}`}
+              onClick={() => onAvailabilityPeriodChange(value)}
+              disabled={loadingAvailability}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {section !== "services" ? (
+        <div className={styles.kpiCard}>
+          <span className={styles.kpiLabel}>Événements</span>
+          <span className={styles.kpiValue}>{eventTotal}</span>
+          <span className={styles.kpiSub}>
+            {centreAlerts.length} centre · {cmkEventTotal} CheckMK
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const isTabLayout = layout === "tab";
+
   return (
-    <section className={`${panelClass} ${styles.panelCompact}`}>
+    <section className={`${panelClass} ${styles.panelCompact}${isTabLayout ? ` ${styles.panelTabBoard}` : ""}`.trim()}>
       {!isReport ? (
-      <header className={styles.hostHeader}>
-        {!section ? (
-          <div className={styles.hostIdentity}>
-            <Icon icon="simple-icons:checkmk" className={styles.hostIdentityIcon} aria-hidden />
-            <div className={styles.hostIdentityBody}>
-              <div className={styles.hostIdentityPrimary}>
-                <span className={styles.hostName}>{hostName}</span>
+        isTabLayout ? (
+          <>
+            <header className={styles.boardToolbar}>{hostIdentityBlock}</header>
+            {kpiGrid}
+          </>
+        ) : (
+          <header className={styles.hostHeader}>
+            {!section ? (
+              hostIdentityBlock
+            ) : (
+              <div className={styles.hostIdentityCompact}>
                 {hostState ? (
                   <span
                     className={styles.hostStateBadge}
@@ -496,109 +603,20 @@ export default function CheckMKMonitoringPanel({
                     {hostState}
                   </span>
                 ) : null}
+                {syncedLabel ? (
+                  <span className={styles.hostSync} title={lastSyncedAt || undefined}>
+                    <Icon icon="mdi:update" aria-hidden />
+                    {syncedLabel}
+                  </span>
+                ) : null}
               </div>
-              <div className={styles.hostIdentityMeta}>
-                {[
-                  showAlias ? { key: "alias", label: hostAlias } : null,
-                  checkmkHostDetails?.ipAddress
-                    ? { key: "ip", label: checkmkHostDetails.ipAddress, mono: true }
-                    : null,
-                  checkmkMapping.checkmk_site
-                    ? { key: "site", label: `Site ${checkmkMapping.checkmk_site}` }
-                    : null
-                ]
-                  .filter(Boolean)
-                  .map((part, index) => (
-                    <React.Fragment key={part.key}>
-                      {index > 0 ? <span className={styles.hostMetaSep} aria-hidden>·</span> : null}
-                      <span className={part.mono ? styles.ipText : undefined}>{part.label}</span>
-                    </React.Fragment>
-                  ))}
-              </div>
-            </div>
-            {syncedLabel ? (
-              <span className={styles.hostSync} title={lastSyncedAt || undefined}>
-                <Icon icon="mdi:update" aria-hidden />
-                {syncedLabel}
-              </span>
-            ) : null}
-          </div>
-        ) : (
-          <div className={styles.hostIdentityCompact}>
-            {hostState ? (
-              <span
-                className={styles.hostStateBadge}
-                style={{
-                  background: `${hostStateColor}22`,
-                  color: hostStateColor,
-                  border: `1px solid ${hostStateColor}55`
-                }}
-              >
-                <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} aria-hidden />
-                {hostState}
-              </span>
-            ) : null}
-            {syncedLabel ? (
-              <span className={styles.hostSync} title={lastSyncedAt || undefined}>
-                <Icon icon="mdi:update" aria-hidden />
-                {syncedLabel}
-              </span>
-            ) : null}
-          </div>
-        )}
-
-        <div className={styles.kpiGrid} role="group" aria-label="Indicateurs CheckMK">
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Santé</span>
-            <span
-              className={`${styles.kpiValue} ${
-                kpis.healthScore >= 90
-                  ? styles.kpiValueGood
-                  : kpis.healthScore >= 70
-                    ? styles.kpiValueWarn
-                    : styles.kpiValueBad
-              }`}
-            >
-              {kpis.healthScore != null ? `${kpis.healthScore}%` : "—"}
-            </span>
-            <span className={styles.kpiSub}>
-              {serviceCounts[0]} OK · {serviceCounts[1]} W · {serviceCounts[2]} C
-              {liveProblemCount ? ` · ${liveProblemCount} alerte${liveProblemCount > 1 ? "s" : ""}` : ""}
-            </span>
-          </div>
-
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Disponibilité</span>
-            <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
-              {loadingAvailability ? "…" : availUp != null ? `${Math.round(availUp)}%` : "—"}
-            </span>
-            <div className={styles.kpiPeriodRow} role="group" aria-label="Période de disponibilité">
-              {CHECKMK_AVAILABILITY_PERIOD_OPTIONS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`${styles.periodPill} ${checkmkAvailabilityPeriod === value ? styles.periodPillActive : ""}`}
-                  onClick={() => onAvailabilityPeriodChange(value)}
-                  disabled={loadingAvailability}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Événements</span>
-            <span className={styles.kpiValue}>{eventTotal}</span>
-            <span className={styles.kpiSub}>
-              {centreAlerts.length} centre · {cmkEventTotal} CheckMK
-            </span>
-          </div>
-        </div>
-      </header>
+            )}
+            {kpiGrid}
+          </header>
+        )
       ) : null}
 
-      <div className={`${splitClass}${isReport ? ` ${styles.splitLayoutReport}` : ""}`}>
+      <div className={`${splitClass}${isReport ? ` ${styles.splitLayoutReport}` : ""}${isTabLayout ? ` ${styles.boardStack}` : ""}`.trim()}>
         {showServices ? (
         <div className={`${styles.section}${isReport ? ` ${styles.sectionReport}` : ""}`}>
           {!isReport ? (

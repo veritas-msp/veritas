@@ -625,7 +625,12 @@ export function RmmCollectionStatusLine({
     when: formatRmmExpectedCollectionLabel(equipment, heartbeatMinutes)
   }) : null].filter(Boolean).join("\n");
   return <SmartTooltip content={tooltip || label}>
-      <p className={`${compact ? styles.heroCollectionStatus : styles.subtitle} ${className}`.trim()}>{label}</p>
+      <p className={`${compact ? styles.heroCollectionStatus : styles.subtitle} ${className}`.trim()}>
+        {compact ? (
+          <Icon icon="mdi:heart-pulse" className={styles.heroCollectionHeart} aria-hidden />
+        ) : null}
+        <span className={compact ? styles.heroCollectionStatusText : undefined}>{label}</span>
+      </p>
     </SmartTooltip>;
 }
 function PanelHeader({

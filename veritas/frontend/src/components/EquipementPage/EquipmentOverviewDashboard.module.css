@@ -1,12 +1,16 @@
 .root {
+  --overview-card-radius: 14px;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   min-width: 0;
-  flex: 1 1 0;
-  min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: min-content;
+  height: auto;
+  padding: 0.85rem 1rem 1.15rem;
+  box-sizing: border-box;
+  overflow: visible;
+  background: transparent;
 }
 
 .paneSwitch {
@@ -67,13 +71,13 @@
 }
 
 .columnFill > .paneGridFill {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
 }
 
 .metricsRow > .card {
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
 .metricCardBody {
@@ -131,38 +135,37 @@
 .ramSlotsBoard {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
   min-width: 0;
+  padding-top: 0.15rem;
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
 .ramSlotsRow {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
 }
 
 .ramSlot {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.12rem;
-  min-height: 42px;
-  padding: 0.3rem 0.25rem;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 45%, transparent);
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, #fff);
+  gap: 0.3rem;
+  min-height: 1.55rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: none;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
 }
 
 .ramSlotFilled {
-  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
 }
 
 .ramSlotEmpty {
   background: transparent;
-  border-style: dashed;
-  border-color: var(--msp-border, #cbd5e1);
-  opacity: 0.85;
+  box-shadow: inset 0 0 0 1px var(--msp-border, #cbd5e1);
+  opacity: 0.9;
 }
 
 .ramSlotIndex {
@@ -175,11 +178,11 @@
 
 .ramSlotCap {
   font-size: 0.68rem;
-  font-weight: 750;
+  font-weight: 700;
   color: var(--msp-text, #0f172a);
   font-variant-numeric: tabular-nums;
-  text-align: center;
   line-height: 1.15;
+  white-space: nowrap;
 }
 
 .ramSlotsMeta {
@@ -272,23 +275,24 @@
 }
 
 .columnFill {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
-  height: 100%;
-  overflow: hidden;
+  height: auto;
+  overflow: visible;
+  gap: 0.85rem;
 }
 
 .paneGridFill {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
-  height: 100%;
-  align-content: stretch;
-  grid-auto-rows: minmax(0, 1fr);
+  height: auto;
+  align-content: start;
+  grid-auto-rows: auto;
 }
 
 .paneGridFill > .card {
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
 .columnHead {
@@ -330,9 +334,9 @@
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 0 14px 14px 0;
+  border-radius: var(--overview-card-radius, 14px);
   background: var(--msp-surface, #fff);
-  box-shadow: none;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   overflow: hidden;
 }
 
@@ -389,15 +393,14 @@
 }
 
 .cardBody {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   padding: 0.85rem 1.1rem 1.1rem;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
 }
 
 .cardBody > :global([class*="emptyState"]) {
@@ -583,34 +586,42 @@
 }
 
 .netStats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
 .netStat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.55rem 0.7rem;
-  border-radius: 10px;
-  background: var(--msp-surface-2, #f4f7fb);
-  border: 1px solid var(--msp-border-light, #e2e8f0);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: baseline;
+  font-size: 0.72rem;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .netStatLabel {
-  font-size: 0.68rem;
-  font-weight: 650;
   color: var(--msp-muted, #64748b);
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .netStatValue {
-  font-size: 0.95rem;
-  font-weight: 800;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: var(--msp-text, #0f172a);
   font-variant-numeric: tabular-nums;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tableWrap {
@@ -897,4 +908,62 @@
   .supervisionGrid {
     grid-template-columns: 1fr;
   }
+}
+
+:global(html.dark) .card,
+:global(body.dark) .card {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+:global(html.dark) .cardHead,
+:global(body.dark) .cardHead {
+  background: var(--msp-surface, #1a2540);
+  border-bottom-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .ramSlotsBoard,
+:global(body.dark) .ramSlotsBoard,
+:global(html.dark) .table th,
+:global(body.dark) .table th,
+:global(html.dark) .table td,
+:global(body.dark) .table td {
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .ramSlotEmpty,
+:global(body.dark) .ramSlotEmpty {
+  box-shadow: inset 0 0 0 1px var(--msp-border, #3d5478);
+}
+
+:global(html.dark) .driveBar,
+:global(body.dark) .driveBar,
+:global(html.dark) .processBar,
+:global(body.dark) .processBar {
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 70%, #0b1220);
+}
+
+:global(html.dark) .statusUp,
+:global(body.dark) .statusUp {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+:global(html.dark) .statusDown,
+:global(body.dark) .statusDown {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+:global(html.dark) .paneSwitch,
+:global(body.dark) .paneSwitch {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+:global(html.dark) .paneSwitchBtn:hover,
+:global(body.dark) .paneSwitchBtn:hover {
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 82%, #0b1220);
 }

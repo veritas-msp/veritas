@@ -257,9 +257,7 @@ export default function EquipmentDetailPage({
   const pageRootRef = useRef(null);
   const mainContentRef = useRef(null);
   const heroTabsRef = useRef(null);
-  const supervisionSwitchRef = useRef(null);
   const [heroTabIndicator, setHeroTabIndicator] = useState({ left: 0, width: 0, ready: false });
-  const [supervisionSwitchIndicator, setSupervisionSwitchIndicator] = useState({ left: 0, width: 0, ready: false });
   const equipmentUiIdRef = useRef(resolvedEquipmentId);
   const skipEquipmentUiPersistRef = useRef(false);
   const getEquipmentDbIdLocal = () => resolveEquipmentDbId(equipment);
@@ -668,9 +666,12 @@ export default function EquipmentDetailPage({
   const hasSupervisedMonitoring = Boolean(
     rmmManaged || String(resolvedCheckmkMapping?.checkmk_host_name || "").trim()
   );
-  const canLoadMaintenance = Boolean(equipmentDbId && equipmentClientId && maintenanceFamily);
-  /** Maintenance réservée aux équipements RMM ou mappés supervision (CheckMK…). */
-  const canStartMaintenance = Boolean(canLoadMaintenance && hasSupervisedMonitoring);
+  /** Lecture du statut maintenance : id + client suffisent (comme la liste parc). */
+  const canLoadMaintenance = Boolean(equipmentDbId && equipmentClientId);
+  /** Démarrer une maintenance : famille + RMM / CheckMK requis. */
+  const canStartMaintenance = Boolean(
+    canLoadMaintenance && maintenanceFamily && hasSupervisedMonitoring
+  );
   const inMaintenance = Boolean(activeMaintenance);
   const showMaintenanceControl = canStartMaintenance || inMaintenance;
 
@@ -684,12 +685,18 @@ export default function EquipmentDetailPage({
         clientId: equipmentClientId,
         equipmentId: equipmentDbId
       });
-      const deviceMaint = (Array.isArray(rows) ? rows : []).find(
-        row =>
-          String(row.equipmentId) === String(equipmentDbId) &&
-          row.scope === "device" &&
-          (row.kind || "maintenance") === "maintenance"
-      );
+      const targetId = String(equipmentDbId || "").trim().toLowerCase();
+      const deviceMaint = (Array.isArray(rows) ? rows : []).find(row => {
+        if (!row || row.active === false) return false;
+        const kind = String(row.kind || "maintenance").toLowerCase();
+        if (kind !== "maintenance") return false;
+        const scope = String(row.scope || "device").toLowerCase();
+        if (scope !== "device") return false;
+        const id = String(row.equipmentId || row.equipment_id || "")
+          .trim()
+          .toLowerCase();
+        return Boolean(id) && id === targetId;
+      });
       setActiveMaintenance(deviceMaint || null);
       return deviceMaint || null;
     } catch {
@@ -1299,23 +1306,6 @@ export default function EquipmentDetailPage({
     showRmmOperationsTab,
     showRmmPeripheralsTab
   ]);
-
-  useLayoutEffect(() => {
-    const root = supervisionSwitchRef.current;
-    if (!root) {
-      setSupervisionSwitchIndicator(prev => (prev.ready ? { left: 0, width: 0, ready: false } : prev));
-      return undefined;
-    }
-    const update = () => measureSlidingTabIndicator(root, setSupervisionSwitchIndicator);
-    update();
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(update) : null;
-    ro?.observe(root);
-    window.addEventListener("resize", update);
-    return () => {
-      ro?.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [measureSlidingTabIndicator, supervisionPane, rightPanelTab, showSupervisionTab]);
 
   useEffect(() => {
     return () => {
@@ -2068,16 +2058,6 @@ export default function EquipmentDetailPage({
                       className={enterpriseDetailStyles.heroTitleStatus}
                     />
                     <span className={enterpriseDetailStyles.heroTitleName}>{equipmentHeroTitle}</span>
-                    {inMaintenance ? (
-                      <span
-                        className={styles.heroMaintenanceBadge}
-                        title={maintenanceBadgeTitle}
-                        aria-label={copy.hero.maintenanceBadge || "En maintenance"}
-                      >
-                        <Icon icon="mdi:traffic-cone" width={12} height={12} aria-hidden />
-                        {copy.hero.maintenanceBadge || "En maintenance"}
-                      </span>
-                    ) : null}
                     {loadingEquipmentTags ? (
                       <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span>
                     ) : equipmentTags.length > 0 || canManageEquipmentTags ? (
@@ -2122,84 +2102,123 @@ export default function EquipmentDetailPage({
                       </span>
                     ) : null}
                   </h1>
-                  {inMaintenance && maintenanceReason ? (
-                    <p className={styles.heroMaintenanceReason} title={maintenanceReason}>
-                      <span className={styles.heroMaintenanceReasonLabel}>{maintenanceReasonLabel}</span>
-                      <span className={styles.heroMaintenanceReasonText}>{maintenanceReason}</span>
-                    </p>
-                  ) : null}
                 </div>
               </div>
-              <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
-                {(() => {
-                  const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
-                  const enterpriseName = equipment?.clientName || modalClient?.name || "";
-                  if (!enterpriseName && !enterpriseId) return null;
-                  const enterpriseClient =
-                    modalClient && String(modalClient.id) === String(enterpriseId)
-                      ? modalClient
-                      : {
-                          id: enterpriseId,
-                          name: enterpriseName,
-                          client_number: equipment?.clientNumber ?? equipment?.client_number,
-                          clientNumber: equipment?.clientNumber ?? equipment?.client_number
-                        };
-                  const code = getClientNumber(enterpriseClient);
-                  const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
-                  if (!label && !code) return null;
-                  const companyContent = (
-                    <>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      {code ? (
-                        <>
-                          <span className={styles.heroClientCode}>{code}</span>
-                          {label}
-                        </>
-                      ) : (
-                        label
-                      )}
-                    </>
-                  );
-                  if (!enterpriseId || !onNavigate) {
-                    return (
-                      <span className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock}`}>
-                        {companyContent}
-                      </span>
-                    );
-                  }
-                  return (
-                    <button
-                      type="button"
-                      className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock} ${enterpriseDetailStyles.heroMetaLink}`}
-                      onClick={() => openEnterprise()}
-                      onMouseDown={e => {
-                        if (e.button === 1) {
-                          e.preventDefault();
-                          openEnterprise({ background: true });
-                        }
-                      }}
-                      onAuxClick={e => {
-                        if (e.button === 1) {
-                          e.preventDefault();
-                          openEnterprise({ background: true });
-                        }
-                      }}
-                      title={copy.hero.viewEnterprise}
-                      aria-label={copy.hero.viewEnterprise}
+              <div
+                className={`${enterpriseDetailStyles.heroMeta} ${showRmmHeroStatus ? styles.heroMetaWithRmm : ""}`.trim()}
+                aria-label={copy.hero.metaAria}
+              >
+                <div className={styles.heroMetaPrimary}>
+                  {inMaintenance ? (
+                    <span
+                      className={`${styles.heroMaintenanceBadge} ${styles.heroMaintenanceBadgeMeta} ${enterpriseDetailStyles.heroMetaBlock}`.trim()}
+                      title={maintenanceBadgeTitle}
+                      aria-label={copy.hero.maintenanceBadge || "En maintenance"}
                     >
-                      {companyContent}
-                    </button>
-                  );
-                })()}
-                {createdAtLabel ? (
-                  <span
-                    className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock}`}
-                    title={copy.stats.createdInVeritas}
-                  >
-                    <Icon icon="mdi:calendar-plus" aria-hidden />
-                    {createdAtLabel}
-                  </span>
-                ) : null}
+                      <Icon icon="mdi:traffic-cone" width={13} height={13} aria-hidden />
+                      {copy.hero.maintenanceBadge || "En maintenance"}
+                      {maintenanceUntilLabel ? (
+                        <span className={styles.heroMaintenanceUntil}>
+                          {interpolate(copy.hero.maintenanceUntilShort || "→ {date}", {
+                            date: maintenanceUntilLabel
+                          })}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
+                  {(() => {
+                    const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
+                    const enterpriseName = equipment?.clientName || modalClient?.name || "";
+                    if (!enterpriseName && !enterpriseId) return null;
+                    const enterpriseClient =
+                      modalClient && String(modalClient.id) === String(enterpriseId)
+                        ? modalClient
+                        : {
+                            id: enterpriseId,
+                            name: enterpriseName,
+                            client_number: equipment?.clientNumber ?? equipment?.client_number,
+                            clientNumber: equipment?.clientNumber ?? equipment?.client_number
+                          };
+                    const code = getClientNumber(enterpriseClient);
+                    const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
+                    if (!label && !code) return null;
+                    const companyContent = (
+                      <>
+                        <Icon icon="mdi:domain" aria-hidden />
+                        {code ? (
+                          <>
+                            <span className={styles.heroClientCode}>{code}</span>
+                            {label}
+                          </>
+                        ) : (
+                          label
+                        )}
+                      </>
+                    );
+                    if (!enterpriseId || !onNavigate) {
+                      return (
+                        <span className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock}`}>
+                          {companyContent}
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        type="button"
+                        className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock} ${enterpriseDetailStyles.heroMetaLink}`}
+                        onClick={() => openEnterprise()}
+                        onMouseDown={e => {
+                          if (e.button === 1) {
+                            e.preventDefault();
+                            openEnterprise({ background: true });
+                          }
+                        }}
+                        onAuxClick={e => {
+                          if (e.button === 1) {
+                            e.preventDefault();
+                            openEnterprise({ background: true });
+                          }
+                        }}
+                        title={copy.hero.viewEnterprise}
+                        aria-label={copy.hero.viewEnterprise}
+                      >
+                        {companyContent}
+                      </button>
+                    );
+                  })()}
+                  {createdAtLabel ? (
+                    <span
+                      className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaBlock}`}
+                      title={copy.stats.createdInVeritas}
+                    >
+                      <Icon icon="mdi:calendar-plus" aria-hidden />
+                      {createdAtLabel}
+                    </span>
+                  ) : null}
+                  {deviceNote ? (
+                    <SmartTooltip
+                      content={
+                        <div className={styles.heroNoteTooltip}>
+                          <strong className={styles.heroNoteTooltipTitle}>{copy.hero.factNote || "Note"}</strong>
+                          <p className={styles.heroNoteTooltipBody}>{deviceNote}</p>
+                        </div>
+                      }
+                      data-tooltip-position="bottom-end"
+                    >
+                      <div
+                        className={`${styles.heroNoteChip} ${enterpriseDetailStyles.heroMetaBlock}`}
+                        tabIndex={0}
+                        aria-label={`${copy.hero.factNote || "Note"}: ${deviceNote}`}
+                      >
+                        <Icon icon="mdi:note-text-outline" className={styles.heroNoteIcon} aria-hidden />
+                        <div className={styles.heroNoteText}>
+                          <span className={styles.heroNoteLabel}>{copy.hero.factNote || "Note"}</span>
+                          <span className={styles.heroNotePreview}>{deviceNotePreview}</span>
+                        </div>
+                      </div>
+                    </SmartTooltip>
+                  ) : null}
+                </div>
                 {showRmmHeroStatus ? (
                   <RmmCollectionStatusLine
                     equipment={equipmentWithRmmLive}
@@ -2207,35 +2226,41 @@ export default function EquipmentDetailPage({
                     locale={locale}
                     copy={copy}
                     compact
-                    className={`${enterpriseDetailStyles.heroMetaItemRmm} ${enterpriseDetailStyles.heroMetaBlock}`}
+                    className={styles.heroMetaRmmSubtitle}
                   />
-                ) : null}
-                {deviceNote ? (
-                  <SmartTooltip
-                    content={
-                      <div className={styles.heroNoteTooltip}>
-                        <strong className={styles.heroNoteTooltipTitle}>{copy.hero.factNote || "Note"}</strong>
-                        <p className={styles.heroNoteTooltipBody}>{deviceNote}</p>
-                      </div>
-                    }
-                    data-tooltip-position="bottom-end"
-                  >
-                    <div
-                      className={`${styles.heroNoteChip} ${enterpriseDetailStyles.heroMetaBlock}`}
-                      tabIndex={0}
-                      aria-label={`${copy.hero.factNote || "Note"}: ${deviceNote}`}
-                    >
-                      <Icon icon="mdi:note-text-outline" className={styles.heroNoteIcon} aria-hidden />
-                      <div className={styles.heroNoteText}>
-                        <span className={styles.heroNoteLabel}>{copy.hero.factNote || "Note"}</span>
-                        <span className={styles.heroNotePreview}>{deviceNotePreview}</span>
-                      </div>
-                    </div>
-                  </SmartTooltip>
                 ) : null}
               </div>
             </div>
           </div>
+          {inMaintenance ? (
+            <div
+              className={styles.heroMaintenanceBanner}
+              role="status"
+              title={maintenanceBadgeTitle}
+            >
+              <Icon icon="mdi:traffic-cone" width={16} height={16} aria-hidden />
+              <strong className={styles.heroMaintenanceBannerTitle}>
+                {copy.hero.maintenanceBadge || "En maintenance"}
+              </strong>
+              {maintenanceUntilLabel ? (
+                <span className={styles.heroMaintenanceBannerUntil}>
+                  {interpolate(copy.overview?.maintenanceUntil || "jusqu’au {date}", {
+                    date: maintenanceUntilLabel
+                  })}
+                </span>
+              ) : (
+                <span className={styles.heroMaintenanceBannerUntil}>
+                  {copy.aside?.maintenanceUntilNone || "Durée indéterminée"}
+                </span>
+              )}
+              {maintenanceReason ? (
+                <span className={styles.heroMaintenanceBannerReason} title={maintenanceReason}>
+                  <span className={styles.heroMaintenanceReasonLabel}>{maintenanceReasonLabel}</span>
+                  <span className={styles.heroMaintenanceReasonText}>{maintenanceReason}</span>
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </header>
 
@@ -2283,26 +2308,6 @@ export default function EquipmentDetailPage({
                   labelClassName={finderKit.finderItemLabel}
                 />
                 <EnterpriseOverviewTabButton
-                  tabId="documents"
-                  iconify="mdi:file-document-outline"
-                  label={copy.tabs.documents}
-                  active={rightPanelTab === "documents"}
-                  onClick={() => selectEquipmentTab("documents")}
-                  className={`${finderKit.finderItem} ${rightPanelTab === "documents" ? finderKit.finderItemActive : ""}`}
-                  iconClassName={finderKit.finderItemIcon}
-                  labelClassName={finderKit.finderItemLabel}
-                />
-                <EnterpriseOverviewTabButton
-                  tabId="logs"
-                  iconify="mdi:history"
-                  label={copy.tabs.logs}
-                  active={rightPanelTab === "logs"}
-                  onClick={() => selectEquipmentTab("logs")}
-                  className={`${finderKit.finderItem} ${rightPanelTab === "logs" ? finderKit.finderItemActive : ""}`}
-                  iconClassName={finderKit.finderItemIcon}
-                  labelClassName={finderKit.finderItemLabel}
-                />
-                <EnterpriseOverviewTabButton
                   tabId="rmm"
                   iconify="mdi:monitor-dashboard"
                   label={copy.tabs.rmm || copy.tabs.groupRmm || "Agent RMM"}
@@ -2319,6 +2324,26 @@ export default function EquipmentDetailPage({
                   active={rightPanelTab === "supervision"}
                   onClick={() => selectEquipmentTab("supervision")}
                   className={`${finderKit.finderItem} ${rightPanelTab === "supervision" ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="documents"
+                  iconify="mdi:file-document-outline"
+                  label={copy.tabs.documents}
+                  active={rightPanelTab === "documents"}
+                  onClick={() => selectEquipmentTab("documents")}
+                  className={`${finderKit.finderItem} ${rightPanelTab === "documents" ? finderKit.finderItemActive : ""}`}
+                  iconClassName={finderKit.finderItemIcon}
+                  labelClassName={finderKit.finderItemLabel}
+                />
+                <EnterpriseOverviewTabButton
+                  tabId="logs"
+                  iconify="mdi:history"
+                  label={copy.tabs.logs}
+                  active={rightPanelTab === "logs"}
+                  onClick={() => selectEquipmentTab("logs")}
+                  className={`${finderKit.finderItem} ${rightPanelTab === "logs" ? finderKit.finderItemActive : ""}`}
                   iconClassName={finderKit.finderItemIcon}
                   labelClassName={finderKit.finderItemLabel}
                 />
@@ -2403,22 +2428,33 @@ export default function EquipmentDetailPage({
                   <div className={finderKit.finderSecPanel} hidden={rightPanelTab !== "supervision"} aria-hidden={rightPanelTab !== "supervision"}>
                     <p className={finderKit.finderSecTitle}>{copy.tabs.supervision}</p>
                     <nav
-                      className={finderKit.finderSecNav}
+                      ref={rightPanelTab === "supervision" ? finderSecondaryTrackRef : undefined}
+                      className={`${finderKit.finderSecNav} ${finderKit.finderSecNavAnimated}`}
                       aria-label={copy.supervisionPane?.aria || copy.tabs.supervision}
                     >
+                      {rightPanelTab === "supervision" && finderSecondaryIndicator.ready ? (
+                        <div
+                          className={finderKit.finderNavIndicator}
+                          style={{
+                            transform: `translate3d(0, ${finderSecondaryIndicator.top}px, 0)`,
+                            height: finderSecondaryIndicator.height
+                          }}
+                          aria-hidden
+                        />
+                      ) : null}
                       <button
                         type="button"
-                        className={`${finderKit.finderSecItem} ${supervisionPane === "main" ? finderKit.finderSecItemActive : ""}`}
+                        className={`${finderKit.finderSecItem} ${supervisionPane === "main" ? finderKit.finderSecItemActive : ""}`.trim()}
                         aria-current={supervisionPane === "main" ? "page" : undefined}
                         tabIndex={rightPanelTab === "supervision" ? undefined : -1}
                         onClick={() => selectSupervisionPane("main")}
                       >
                         <Icon icon="mdi:radar" className={finderKit.finderSecItemIcon} aria-hidden />
-                        <span className={finderKit.finderSecItemLabel}>{copy.supervisionPane?.main || "Main"}</span>
+                        <span className={finderKit.finderSecItemLabel}>{copy.supervisionPane?.main || "Synthèse"}</span>
                       </button>
                       <button
                         type="button"
-                        className={`${finderKit.finderSecItem} ${supervisionPane === "history" ? finderKit.finderSecItemActive : ""}`}
+                        className={`${finderKit.finderSecItem} ${supervisionPane === "history" ? finderKit.finderSecItemActive : ""}`.trim()}
                         aria-current={supervisionPane === "history" ? "page" : undefined}
                         tabIndex={rightPanelTab === "supervision" ? undefined : -1}
                         onClick={() => selectSupervisionPane("history")}
@@ -2439,7 +2475,12 @@ export default function EquipmentDetailPage({
         <div ref={mainContentRef} className={styles.mainContent}>
           {rightPanelTab === "synthese" ? (
               showSyntheseTab ? (
-                <div key="synthese" className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}>
+                <div
+                  key="synthese"
+                  className={`${styles.dashboardSplit} ${
+                    showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? "" : styles.dashboardSplitSolo
+                  } ${styles.contentFadeUp}`.trim()}
+                >
                   <div className={styles.dashboardMain}>
                     <EquipmentOverviewDashboard
                       equipment={equipmentWithRmmLive || equipment}
@@ -2453,6 +2494,40 @@ export default function EquipmentDetailPage({
                       hidePaneSwitch
                     />
                   </div>
+                  {showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? (
+                    <div className={styles.dashboardAside}>
+                      {rmmDeviceHealth ? (
+                        <ScoreAside
+                          health={rmmDeviceHealth}
+                          copy={{
+                            scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+                            breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
+                            breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
+                            breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+                            statusOk: copy.rmm.overview?.scoreStatusOk,
+                            statusBad: copy.rmm.overview?.scoreStatusBad,
+                            statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+                            statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+                            statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+                            checks: copy.rmm.overview?.scoreChecks,
+                            formatPenalty: points =>
+                              interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                                points: String(points)
+                              })
+                          }}
+                        />
+                      ) : null}
+                      {deviceNote ? (
+                        <article className={styles.rmmDeviceNoteCard}>
+                          <header className={styles.rmmDeviceNoteHead}>
+                            <Icon icon="mdi:note-text-outline" aria-hidden />
+                            <h3>{copy.hero.factNote || copy.specs?.notesTitle || "Note"}</h3>
+                          </header>
+                          <p className={styles.rmmDeviceNoteBody}>{deviceNote}</p>
+                        </article>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div key="synthese-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
@@ -2463,13 +2538,12 @@ export default function EquipmentDetailPage({
 
           {rightPanelTab === "fiche" ? (
               <div key="fiche" className={`${styles.ficheLayout} ${styles.contentFadeUp}`.trim()}>
-                <div
-                  className={`${styles.ficheMainRow} ${showRmmHeroStatus && rmmDeviceHealth ? styles.ficheMainRowWithScore : ""}`.trim()}
-                >
+                <div className={styles.ficheMainRow}>
                   <EquipmentDetailSpecsPanel
                     bare
                     column
-                    hideResources={false}
+                    hideResources
+                    hideNotes={Boolean(rmmManaged)}
                     sectionFilter="all"
                     equipment={equipment}
                     formData={formData}
@@ -2480,28 +2554,6 @@ export default function EquipmentDetailPage({
                     peerStorage={peerStorage}
                     onOpenEquipment={openLinkedEquipment}
                   />
-                  {showRmmHeroStatus && rmmDeviceHealth ? (
-                    <div className={styles.ficheScoreCol}>
-                      <ScoreAside
-                        health={rmmDeviceHealth}
-                        copy={{
-                          scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
-                          breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
-                          breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
-                          breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
-                          statusOk: copy.rmm.overview?.scoreStatusOk,
-                          statusBad: copy.rmm.overview?.scoreStatusBad,
-                          statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
-                          statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
-                          statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
-                          checks: copy.rmm.overview?.scoreChecks,
-                          formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
-                            points: String(points)
-                          })
-                        }}
-                      />
-                    </div>
-                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -2531,6 +2583,7 @@ export default function EquipmentDetailPage({
                           checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
                           lastSyncedAt={checkmkLastSyncedAt}
                           layout="tab"
+                          section="services"
                           active={supervisionPane === "main"}
                           onAvailabilityPeriodChange={period => {
                             setCheckmkAvailabilityPeriod(period);
@@ -2662,7 +2715,7 @@ export default function EquipmentDetailPage({
 
           {rightPanelTab === "operations" ? (
             showRmmOperationsTab ? (
-              <div key="operations" className={`${styles.dashboardSplit} ${styles.contentFadeUp}`.trim()}>
+              <div key="operations" className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}>
                 <div className={styles.dashboardMain}>
                   <RmmMonitoringPanel
                     equipment={equipmentWithRmmLive}
@@ -2672,29 +2725,6 @@ export default function EquipmentDetailPage({
                     variant="operations"
                     agentStatusInHero={showRmmHeroStatus}
                   />
-                </div>
-                <div className={styles.dashboardAside}>
-                  {showRmmHeroStatus && rmmDeviceHealth ? (
-                    <ScoreAside
-                      health={rmmDeviceHealth}
-                      copy={{
-                        scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
-                        breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
-                        breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
-                        breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
-                        statusOk: copy.rmm.overview?.scoreStatusOk,
-                        statusBad: copy.rmm.overview?.scoreStatusBad,
-                        statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
-                        statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
-                        statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
-                        checks: copy.rmm.overview?.scoreChecks,
-                        formatPenalty: points =>
-                          interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
-                            points: String(points)
-                          })
-                      }}
-                    />
-                  ) : null}
                 </div>
               </div>
             ) : (

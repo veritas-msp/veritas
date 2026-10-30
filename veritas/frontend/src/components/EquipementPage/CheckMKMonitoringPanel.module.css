@@ -1,11 +1,11 @@
 .panel {
   position: relative;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 0 14px 14px 0;
-  background: var(--msp-surface);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
-  overflow: hidden;
-  padding-bottom: 1rem;
+  overflow: visible;
+  padding-bottom: 0;
 }
 
 .panelTab {
@@ -18,11 +18,14 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  padding: 0;
-  overflow: auto;
+  padding: 0.85rem 1rem 1.15rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
+  gap: 0.85rem;
 }
 
 .panelTab > :global([class*="emptyState"]) {
@@ -49,17 +52,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
-  padding: 0.9rem 1.1rem;
+  margin-bottom: 0;
+  padding: 0.85rem 1.05rem;
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--msp-surface);
-  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   flex-wrap: wrap;
 }
 
 .panelTab .header {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0;
 }
 
 .titleBlock {
@@ -141,6 +144,81 @@
 
 .panelTab.panelCompact {
   max-height: calc(100vh - 260px);
+}
+
+.panelTab.panelTabBoard {
+  max-height: none;
+  height: auto;
+  flex: 1 1 auto;
+  gap: 0.85rem;
+}
+
+.boardToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0.85rem 1.05rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  flex-shrink: 0;
+}
+
+.panelTabBoard .kpiGrid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.panelTabBoard .kpiCard {
+  padding: 0.85rem 1.05rem 1rem;
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  gap: 0.35rem;
+  min-height: 6.5rem;
+}
+
+.panelTabBoard .kpiLabel {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.panelTabBoard .kpiValue {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.panelTabBoard .boardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.panelTabBoard .boardStack > .section {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.panelTabBoard .sectionHeader {
+  padding: 0.85rem 1.05rem;
+}
+
+:global(html.dark) .boardToolbar,
+:global(body.dark) .boardToolbar,
+:global(html.dark) .panelTabBoard .kpiCard,
+:global(body.dark) .panelTabBoard .kpiCard {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
 }
 
 .panelReport.panelCompact {
@@ -697,8 +775,8 @@
 .section {
   background: var(--msp-surface);
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 16px;
-  box-shadow: 0 2px 14px rgba(15, 28, 46, 0.05);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
   overflow: hidden;
 }
 
@@ -1185,4 +1263,19 @@
 
 .skeletonSection {
   height: 320px;
+}
+
+:global(html.dark) .header,
+:global(body.dark) .header,
+:global(html.dark) .section,
+:global(body.dark) .section {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+:global(html.dark) .sectionHeader,
+:global(body.dark) .sectionHeader {
+  background: var(--msp-surface, #1a2540);
+  border-bottom-color: var(--msp-border, #2a3a55);
 }

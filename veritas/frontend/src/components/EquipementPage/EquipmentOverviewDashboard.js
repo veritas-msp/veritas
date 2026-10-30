@@ -40,7 +40,6 @@ import {
   writeEquipmentDetailUi
 } from "../../utils/equipmentDetailUiState";
 import { resolveEquipmentActivityRange } from "./equipmentActivityUtils";
-import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
 import EquipmentEmptyState from "./EquipmentEmptyState";
 import styles from "./EquipmentOverviewDashboard.module.css";
 
@@ -821,21 +820,19 @@ export default function EquipmentOverviewDashboard({
             <OverviewCard title={ov.networkTitle || "Réseau"} icon="mdi:lan">
               {adapters.length || primaryIp ? (
                 <div className={styles.metricCardBody}>
-                  <div className={styles.netStats}>
-                    <div className={styles.netStat}>
-                      <span className={styles.netStatLabel}>{ov.adaptersUp || "Interfaces IP"}</span>
-                      <span className={styles.netStatValue}>
+                  <ul className={styles.metricFacts}>
+                    <li>
+                      <span>{ov.adaptersUp || "Interfaces IP"}</span>
+                      <strong>
                         {adaptersUpCount}
                         <span className={styles.netStatMuted}> / {adapters.length || 0}</span>
-                      </span>
-                    </div>
-                    <div className={styles.netStat}>
-                      <span className={styles.netStatLabel}>{ov.primaryIp || "IP principale"}</span>
-                      <span className={styles.netStatValue} style={{ fontSize: "0.82rem" }}>
-                        {primaryIp || "—"}
-                      </span>
-                    </div>
-                  </div>
+                      </strong>
+                    </li>
+                    <li title={primaryIp || undefined}>
+                      <span>{ov.primaryIp || "IP principale"}</span>
+                      <strong>{primaryIp || "—"}</strong>
+                    </li>
+                  </ul>
                   {adapters.length ? (
                     <ul className={styles.netIfList}>
                       {adapters.slice(0, 4).map((adapter, index) => {
@@ -932,17 +929,6 @@ export default function EquipmentOverviewDashboard({
                 />
               )}
             </OverviewCard>
-
-            {equipmentDbId ? (
-              <EquipmentMaintenanceHistoryPanel
-                copy={copy}
-                locale={locale}
-                equipmentId={equipmentDbId}
-                clientId={equipmentClientId}
-                refreshKey={maintenanceHistoryKey}
-                embedded
-              />
-            ) : null}
           </div>
         </section>
       ) : null}

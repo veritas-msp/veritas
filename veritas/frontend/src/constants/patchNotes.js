@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.7",
+    date: "2026-10-30",
+    highlights: [
+      "Fiche matériel : maintenance visible dans le header, heartbeat RMM en sous-titre, associations sans débordement.",
+      "Agent RMM & Supervision : boards alignés sur Métriques (cartes arrondies, dark mode, scroll), sans cartes imbriquées.",
+      "Informations matériel allégées : note et score RMM déplacés vers la Synthèse RMM ; menu réordonné.",
+      "Supervision : sous-onglets style Agent RMM, « Synthèse » à la place de Main, événements uniquement dans Historique."
+    ]
+  },
+  {
     version: "2.0.6",
     date: "2026-10-30",
     highlights: [
