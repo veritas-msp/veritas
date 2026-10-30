@@ -189,6 +189,7 @@ export default function MicrosoftTenantMspDashboard({
               </div>
 
               <UiKitCrmListToolbar
+                searchVariant="embedded"
                 searchValue={search}
                 onSearchChange={setSearch}
                 onSearchClear={() => setSearch("")}

@@ -804,7 +804,7 @@
   box-shadow: none;
 }
 
-/* Scroll molette sans barres visibles (fondu bas = indicateur). Colonnes fit → pas de H. */
+/* Scroll molette sans barres visibles (fondu bas = indicateur). */
 .dataTableWrap :global([class*="scrollViewport"]) {
   overflow-x: hidden;
   overflow-y: auto;
@@ -1207,6 +1207,8 @@
   white-space: nowrap;
   text-align: center;
   vertical-align: middle;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .favoriteCell .favoriteBtn {
@@ -1221,6 +1223,8 @@
   padding-left: 0.1rem !important;
   padding-right: 0.45rem !important;
   box-sizing: border-box;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .rowChevron {
@@ -1409,9 +1413,9 @@
   color: var(--msp-text, #0f1c2e);
   background: #ffffff;
   box-sizing: border-box;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .dataTable tbody tr:last-child td {
@@ -1466,7 +1470,7 @@
   white-space: nowrap;
 }
 
-/* —— Largeurs colonnes CRM (table-layout: fixed, 100%) —— */
+/* —— Largeurs réparties (table classique full-width) —— */
 .colCompanyStatus {
   width: 3.5rem;
   white-space: nowrap;
@@ -1474,7 +1478,7 @@
 }
 
 .colClientNumber {
-  width: 4.25rem;
+  width: 5rem;
   white-space: nowrap;
   font-size: 0.8125rem;
   font-weight: 400;
@@ -1488,7 +1492,7 @@
 }
 
 .colCompany {
-  width: auto;
+  width: 22%;
   min-width: 0;
 }
 
@@ -1515,19 +1519,19 @@
 }
 
 .colTags {
-  width: 7.5rem;
+  width: 10%;
 }
 
 .colContact {
-  width: 8.5rem;
+  width: 12%;
 }
 
 .colCommercial {
-  width: 6.75rem;
+  width: 11%;
 }
 
 .colModules {
-  width: 11rem;
+  width: 14%;
 }
 
 .colCompany .clientNameText {
@@ -1552,7 +1556,7 @@
 }
 
 .colExpiry {
-  width: 5.5rem;
+  width: 7%;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   font-weight: 600;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
@@ -145,6 +145,8 @@ export default function CheckMKMonitoringPanel({
   layout = "default",
   /** "services" | "events" | null — filtre la vue (modale supervision). */
   section = null,
+  /** When false (keep-alive hidden), skip heavy alert refetch. */
+  active = true,
   onAvailabilityPeriodChange,
   onOpenService,
   onOpenEvent,
@@ -160,6 +162,7 @@ export default function CheckMKMonitoringPanel({
   const [historyPage, setHistoryPage] = useState(1);
   const [centreAlerts, setCentreAlerts] = useState([]);
   const [loadingCentre, setLoadingCentre] = useState(false);
+  const centreLoadedForRef = useRef("");
 
   const equipmentId = useMemo(() => getEquipmentDbId(equipment), [equipment]);
   const isReport = layout === "report";
@@ -201,14 +204,18 @@ export default function CheckMKMonitoringPanel({
   useEffect(() => {
     if (!equipmentId) {
       setCentreAlerts([]);
+      centreLoadedForRef.current = "";
       return undefined;
     }
+    if (!active) return undefined;
+    if (centreLoadedForRef.current === String(equipmentId)) return undefined;
     let cancelled = false;
     (async () => {
       setLoadingCentre(true);
       try {
         const rows = await fetchEquipmentRecentAlerts(equipmentId, { days: 365, limit: 200 });
         if (!cancelled) {
+          centreLoadedForRef.current = String(equipmentId);
           setCentreAlerts(
             (Array.isArray(rows) ? rows : []).filter(row => {
               const src = String(row.source || "").toLowerCase();
@@ -225,7 +232,7 @@ export default function CheckMKMonitoringPanel({
     return () => {
       cancelled = true;
     };
-  }, [equipmentId]);
+  }, [active, equipmentId]);
 
   const liveProblemCount = useMemo(
     () => services.filter(s => {

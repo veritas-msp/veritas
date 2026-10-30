@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import { fetchSupervisionExclusionHistory } from "../../api/supervisionAlerts";
@@ -179,13 +179,15 @@ export default function EquipmentMaintenanceHistoryPanel({
   clientId,
   refreshKey = 0,
   limit = 50,
-  embedded = false
+  embedded = false,
+  active = true
 }) {
   const t = copy?.maintenanceHistory || {};
   const localeCode = getLocaleDateTimeFormat(locale);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const lastLoadKeyRef = useRef("");
 
   const canLoad = Boolean(equipmentId);
 
@@ -194,8 +196,11 @@ export default function EquipmentMaintenanceHistoryPanel({
       setRows([]);
       setLoading(false);
       setError(null);
+      lastLoadKeyRef.current = "";
       return;
     }
+    const key = `${equipmentId}:${clientId || ""}:${limit}:${refreshKey}`;
+    if (lastLoadKeyRef.current === key) return;
     setLoading(true);
     setError(null);
     try {
@@ -205,6 +210,7 @@ export default function EquipmentMaintenanceHistoryPanel({
         kind: "maintenance",
         limit
       });
+      lastLoadKeyRef.current = key;
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
       setRows([]);
@@ -212,11 +218,12 @@ export default function EquipmentMaintenanceHistoryPanel({
     } finally {
       setLoading(false);
     }
-  }, [canLoad, clientId, equipmentId, limit, t.error]);
+  }, [canLoad, clientId, equipmentId, limit, refreshKey, t.error]);
 
   useEffect(() => {
+    if (!active) return;
     load();
-  }, [load, refreshKey]);
+  }, [active, load]);
 
   const items = useMemo(
     () =>

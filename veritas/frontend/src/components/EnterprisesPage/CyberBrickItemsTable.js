@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import equipStyles from "../EquipementPage/EquipmentPage.module.css";
+import EmbeddedEquipmentActionsMenu from "../EquipementPage/EmbeddedEquipmentActionsMenu";
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { getLicenseDisplayName } from "../ServicePage/TenantDetailTabs/utils";
@@ -114,13 +115,34 @@ function getColumns(brickType) {
   switch (brickType) {
     case "Backup":
       return [
-        { key: "logiciel", label: "Logiciel", get: item => item?.logiciel || item?.name || item?.solution || "—" },
-        { key: "server", label: "Serveur", get: item => item?.server || item?.serveur || item?.host || "—" },
-        { key: "version", label: "Version", get: item => item?.version || "—" },
-        { key: "expiration", label: "Expiration", get: item => formatDateValue(item?.expiration) },
+        {
+          key: "logiciel",
+          label: "Logiciel",
+          className: equipStyles.embeddedColName,
+          get: item => item?.logiciel || item?.name || item?.solution || "—"
+        },
+        {
+          key: "server",
+          label: "Serveur",
+          className: equipStyles.embeddedColSite,
+          get: item => item?.server || item?.serveur || item?.host || "—"
+        },
+        {
+          key: "version",
+          label: "Version",
+          className: equipStyles.embeddedColVersion,
+          get: item => item?.version || "—"
+        },
+        {
+          key: "expiration",
+          label: "Expiration",
+          className: equipStyles.embeddedColMetric,
+          get: item => formatDateValue(item?.expiration)
+        },
         {
           key: "jobs",
           label: "Jobs",
+          className: equipStyles.embeddedColCount,
           get: item => {
             if (Number.isFinite(Number(item?.jobsCount))) return String(item.jobsCount);
             if (Array.isArray(item?.jobs)) return String(item.jobs.length);
@@ -131,6 +153,7 @@ function getColumns(brickType) {
         {
           key: "mapped",
           label: "Mappés",
+          className: equipStyles.embeddedColCount,
           get: item => (item?.mappedJobsCount != null ? String(item.mappedJobsCount) : "—"),
           sortValue: item => Number(item?.mappedJobsCount) || 0
         }
@@ -434,6 +457,7 @@ export default function CyberBrickItemsTable({
   sortable = true,
   onEditItem = null,
   editLabel = "Éditer",
+  getActionMenuItems = null,
   selectable = false,
   selectedIds = null,
   allSelected = false,
@@ -442,6 +466,7 @@ export default function CyberBrickItemsTable({
   selectAllLabel = "Tout sélectionner",
   selectRowLabel = "Sélectionner"
 }) {
+  const [openRowMenuKey, setOpenRowMenuKey] = useState(null);
   const baseColumns = useMemo(() => getColumns(brickType), [brickType]);
   const columns = useMemo(() => {
     const next = [...baseColumns];
@@ -470,33 +495,53 @@ export default function CyberBrickItemsTable({
         }
       });
     }
-    if (typeof onEditItem === "function") {
+    const useMenu = typeof getActionMenuItems === "function";
+    if (useMenu || typeof onEditItem === "function") {
       next.push({
         key: "actions",
         label: "Actions",
         sortable: false,
         get: () => "",
-        render: item => (
-          <div className={equipStyles.embeddedRowActions} onClick={event => event.stopPropagation()}>
-            <button
-              type="button"
-              className={equipStyles.embeddedQuickActionButton}
-              onClick={() => onEditItem(item)}
-              title={editLabel}
-              aria-label={editLabel}
-            >
-              <Icon icon="mdi:pencil-outline" aria-hidden />
-            </button>
-          </div>
-        )
+        render: item => {
+          const menuKey = cyberBrickItemKey(item);
+          if (useMenu) {
+            const items = getActionMenuItems(item) || [];
+            if (!items.length) return null;
+            return (
+              <div className={equipStyles.embeddedRowActions} onClick={event => event.stopPropagation()}>
+                <EmbeddedEquipmentActionsMenu
+                  menuKey={menuKey}
+                  openMenuKey={openRowMenuKey}
+                  onOpenChange={setOpenRowMenuKey}
+                  items={items}
+                />
+              </div>
+            );
+          }
+          return (
+            <div className={equipStyles.embeddedRowActions} onClick={event => event.stopPropagation()}>
+              <button
+                type="button"
+                className={equipStyles.embeddedQuickActionButton}
+                onClick={() => onEditItem(item)}
+                title={editLabel}
+                aria-label={editLabel}
+              >
+                <Icon icon="mdi:pencil-outline" aria-hidden />
+              </button>
+            </div>
+          );
+        }
       });
     }
     return next;
   }, [
     baseColumns,
     editLabel,
+    getActionMenuItems,
     onEditItem,
     onToggleItem,
+    openRowMenuKey,
     selectRowLabel,
     selectable,
     selectedIds

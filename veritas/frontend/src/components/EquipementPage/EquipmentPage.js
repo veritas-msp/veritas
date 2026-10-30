@@ -1079,6 +1079,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   initialTableSort = null,
   initialEmbeddedPageSize = null,
   equipmentRevision = 0,
+  /** When false (enterprise map keep-alive hidden), skip network refresh. */
+  active = true,
   /** When true, skip embedded skeleton (parent shows a unified map-tab skeleton). */
   hideEmbeddedSkeleton = false,
   onLoadingChange,
@@ -1264,6 +1266,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         isMountedRef.current = false;
       };
     }
+    if (!active) {
+      return undefined;
+    }
     isMountedRef.current = true;
     try {
       sessionStorage.removeItem("equipment_page_cache_v2");
@@ -1292,14 +1297,14 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       isMountedRef.current = false;
       controller.abort();
     };
-  }, [embedded, fixedClientId, embeddedClient?.id, equipmentRevision]);
+  }, [active, embedded, fixedClientId, embeddedClient?.id, equipmentRevision]);
   useEffect(() => {
-    if (!embedded) return;
+    if (!embedded || !active) return;
     // Keep last painted table when remounting / revisiting the same client (no blank flash).
     if (hasLoadedOnceRef.current) return;
     setLoading(true);
     onLoadingChangeRef.current?.(true);
-  }, [embedded, fixedClientId, embeddedClient?.id]);
+  }, [active, embedded, fixedClientId, embeddedClient?.id]);
   const refreshMonitoringSummaries = useCallback(async signal => {
     const clientId = embeddedClient?.id || fixedClientId || null;
     const mappedIds = allEquipment.filter(eq => eq.checkmkMapping?.checkmk_host_name && isCheckMKMappableType(eq.type)).map(eq => getEquipmentDbId(eq)).filter(id => id && UUID_RE.test(String(id)));

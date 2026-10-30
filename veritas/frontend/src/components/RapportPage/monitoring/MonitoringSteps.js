@@ -320,7 +320,9 @@ export default function MonitoringSteps({
   summaryContentRef = null,
   stockageReportState = null,
   onSetStorageReportState,
-  commentsPane = null
+  commentsPane = null,
+  customSynthesis = null,
+  onCustomSynthesisChange = null
 }) {
   const [internalIndex, setInternalIndex] = useState(0);
   const [isSyncingAntivirus, setIsSyncingAntivirus] = useState(false);
@@ -539,6 +541,8 @@ export default function MonitoringSteps({
             equipmentTicketCounts={equipmentTicketCounts}
             equipmentAlertCounts={equipmentAlertCounts}
             summaryContentRef={summaryContentRef}
+            customSynthesis={customSynthesis}
+            onCustomSynthesisChange={onCustomSynthesisChange}
           />
         );
       default:

@@ -230,7 +230,7 @@
   }
 }
 
-/* Rail modules (navigation verticale) */
+/* Rail modules (navigation verticale) — legacy 64px ; préférer mspFinderLayout */
 .cyberLayout {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
@@ -239,6 +239,86 @@
   min-height: 0;
   height: 100%;
   align-items: stretch;
+}
+
+/* Split finder type EquipmentDetail / EnterpriseDetail */
+.mspFinderLayout {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.mspFinderLayout :global([class*="listBody"]),
+.mspFinderLayout :global([class*="listArea"]),
+.mspFinderLayout :global([class*="panelCard"]) {
+  min-height: 0;
+  height: 100%;
+}
+
+.mspFinderLayout :global([class*="panelCard"]) {
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.mspFinderContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 0.75rem 0.85rem;
+  background: var(--msp-surface, #fff);
+}
+
+.mspFinderContent > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.mspTabPanel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.mspTabPanelFadePending {
+  opacity: 0;
+}
+
+.mspTabPanelFadeIn {
+  animation: mspTabPanelFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes mspTabPanelFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mspTabPanelFadePending {
+    opacity: 1;
+  }
+
+  .mspTabPanelFadeIn {
+    animation: none;
+  }
+}
+
+:global(html.dark) .mspFinderContent {
+  background: var(--msp-surface, #1a2540);
 }
 
 .moduleRail {

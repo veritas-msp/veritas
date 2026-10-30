@@ -144,7 +144,8 @@ function PortalEmailPicker({
 export default function ContactPortalSection({
   contact,
   onUpdated,
-  canManage = true
+  canManage = true,
+  active = true
 }) {
   const locale = useAppLocale();
   const { formatDateTime } = useAppFormatters();
@@ -188,8 +189,9 @@ export default function ContactPortalSection({
     }
   }, [isCommunity, maxPortalUsers]);
   useEffect(() => {
+    if (!active) return;
     loadPortalUsage();
-  }, [loadPortalUsage]);
+  }, [active, loadPortalUsage]);
   useEffect(() => {
     const preferred =
       String(contact?.portal_email || "").trim() ||
@@ -226,10 +228,11 @@ export default function ContactPortalSection({
     }
   }, [contact?.id, contact?.portal_user_id]);
   useEffect(() => {
+    if (!active) return undefined;
     const controller = new AbortController();
     loadLoginEvents(controller.signal);
     return () => controller.abort();
-  }, [loadLoginEvents]);
+  }, [active, loadLoginEvents]);
 
   if (!contact?.id) return null;
   const activePortalCount = portalUsage.active;

@@ -8,7 +8,8 @@ import SortIcon from "../Misc/SortableHeader/SortIcon";
 import styles from "./ComputerFleetStats.module.css";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 
-export const STATS_CHART_COLORS = ["#2b5fab", "#1d6f42", "#b45309", "#7c3aed", "#0e7490", "#be185d", "#64748b", "#c2410c"];
+/** Palette alignée UI-kit (`--msp-accent` / success / warn / danger adoucis). */
+export const STATS_CHART_COLORS = ["#2b5fab", "#5b84c4", "#3d8f6a", "#c47a2b", "#3d8a9a", "#64748b", "#7a8aa3", "#c45a5a"];
 const MAX_PIE_SLICES = 6;
 const SVG_SIZE = 100;
 const SVG_CX = 50;
@@ -369,9 +370,10 @@ export function StatsDistributionBars({
 }
 
 export function StatsDashboardBody({
-  children
+  children,
+  className = ""
 }) {
-  return <div className={styles.body}>{children}</div>;
+  return <div className={`${styles.root} ${styles.body} ${className}`.trim()}>{children}</div>;
 }
 
 export function StatsPanel({

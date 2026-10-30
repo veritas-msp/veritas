@@ -973,7 +973,7 @@ textarea:disabled {
 }
 
 .simpleAdminTable {
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .simpleAdminTable th,
@@ -993,7 +993,7 @@ textarea:disabled {
 
 
 .enterpriseAdminTable {
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .enterpriseAdminTable th:first-child,
@@ -3258,7 +3258,7 @@ textarea.input {
   width: 100%;
   border-collapse: collapse;
   min-width: 1000px;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .accessMatrixWrapper {
@@ -3275,7 +3275,7 @@ textarea.input {
   width: 100%;
   min-width: 900px;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .accessMatrix th {

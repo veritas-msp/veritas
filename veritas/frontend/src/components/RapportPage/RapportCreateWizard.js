@@ -41,7 +41,6 @@ function ReportTypeCard({ type, index, comingSoon, selected, badgeSoon, onPick }
       onMouseEnter={() => iconRef.current?.startAnimation?.()}
       onMouseLeave={() => iconRef.current?.stopAnimation?.()}
     >
-      {comingSoon ? <span className={styles.typeSoonBadge}>{badgeSoon}</span> : null}
       <span className={styles.typeIcon} aria-hidden>
         <AnimatedIcon ref={iconRef} className={styles.typeIconGlyph} size={28} />
       </span>
@@ -49,6 +48,7 @@ function ReportTypeCard({ type, index, comingSoon, selected, badgeSoon, onPick }
         <span className={styles.typeTitle}>{type.title}</span>
         {type.description ? <span className={styles.typeDesc}>{type.description}</span> : null}
       </span>
+      {comingSoon ? <span className={styles.typeSoonBadge}>{badgeSoon}</span> : null}
     </button>
   );
 }

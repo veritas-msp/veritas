@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { fetchClientsList, fetchClientModules, fetchClientGeneral } from "../../api/clients";
 import { getCheckMKReportPeriodData } from "../../api/checkmkReportPeriod";
-import { saveMonitoringDocument } from "../../api/monitoringDocuments";
+import { saveMonitoringDocument, updateMonitoringDocument, fetchMonitoringDocument } from "../../api/monitoringDocuments";
 import styles from "./RapportPage.module.css";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import ReportCreateWizard from "./RapportCreateWizard";
@@ -12,6 +12,7 @@ import SupervisionPeriodGate from "./SupervisionPeriodGate";
 import ReportInterventionBuilder from "./intervention/RapportInterventionBuilder";
 import AuditSubtypeGate from "./audit/AuditSubtypeGate";
 import RapportAuditBuilder from "./audit/RapportAuditBuilder";
+import RapportSavedDocuments from "./RapportSavedDocuments";
 import { REPORT_TYPE_IDS } from "./reportTypeConstants";
 import MonitoringSteps, { getEnabledMonitoringSteps, MODULE_LABELS } from "./monitoring/MonitoringSteps";
 import BuilderCommentsPane from "./monitoring/BuilderCommentsPane";
@@ -24,11 +25,22 @@ import { fetchTickets } from "../../api/tickets";
 import { fetchSupervisionAlertsHistory } from "../../api/supervisionAlerts";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
 import { buildPeriodInsights, mergeSeededTicketComments } from "./monitoring/supervisionReportInsights";
+import {
+  buildSupervisionBuilderStatePayload,
+  emptyCustomSynthesis,
+  getDocumentClientId,
+  normalizeCustomSynthesis,
+  resolveReportTypeIdFromDocument
+} from "./reportDocumentUtils";
 import shellStyles from "./RapportBuilderPlaceholder.module.css";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { isReportBuilderSessionActive } from "../../utils/monitoringReportGuard";
 import { exportReportAsZIP, buildReportHtmlParts } from "./exportRapportZip";
-import { uploadReportHtmlFolderToClientVault } from "../../utils/uploadReportToClientVault";
+import {
+  fetchVaultBuilderState,
+  replaceReportHtmlFolderInClientVault,
+  uploadReportHtmlFolderToClientVault
+} from "../../utils/uploadReportToClientVault";
 import SaveSupervisionReportModal from "./SaveSupervisionReportModal";
 import { safeJsonClone } from "../../utils/safeJson";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -36,6 +48,7 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getRapportGuide } from "../PageGuide/rapportGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { getRapportPageCopy, getReportTypes } from "./rapportPageI18n";
+import { interpolate } from "../../i18n/translate";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const RAPPORT_CLIENTS_CACHE_KEY = "rapport_clients_list_cache_v1";
@@ -89,7 +102,9 @@ async function loadReportClientsListCached({
 export default function ReportPage({
   onNavigate,
   hasTabsBar = false,
-  onMonitoringReportGuardChange
+  onMonitoringReportGuardChange,
+  pageParams = null,
+  onPageParamsConsumed
 }) {
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getRapportPageCopy(locale), [locale]);
@@ -153,7 +168,15 @@ export default function ReportPage({
   const [equipmentAlertCounts, setEquipmentAlertCounts] = useState({});
   const [equipmentTicketInsightCounts, setEquipmentTicketInsightCounts] = useState({});
   const [equipmentTicketsByKey, setEquipmentTicketsByKey] = useState({});
+  const [customSynthesis, setCustomSynthesis] = useState(() => emptyCustomSynthesis());
+  const [editingDocumentId, setEditingDocumentId] = useState(null);
+  const [editingVaultFolderId, setEditingVaultFolderId] = useState(null);
+  const [editingVaultFileIds, setEditingVaultFileIds] = useState(null);
+  const [editFrozenAt, setEditFrozenAt] = useState(null);
+  const [savedDocsRefreshKey, setSavedDocsRefreshKey] = useState(0);
+  const [openingSavedReport, setOpeningSavedReport] = useState(false);
   const periodInsightsAbortRef = useRef(null);
+  const pageParamsHandledRef = useRef(null);
   const userInitial = useMemo(() => {
     if (typeof window === "undefined") return "L";
     try {
@@ -372,7 +395,15 @@ export default function ReportPage({
       setEquipmentCheckMKData({});
       setEquipmentAlertCounts({});
       setEquipmentTicketInsightCounts({});
+      setEquipmentTicketsByKey({});
       setStepStorageState(null);
+      setCustomSynthesis(emptyCustomSynthesis());
+      setEditingDocumentId(null);
+      setEditingVaultFolderId(null);
+      setEditingVaultFileIds(null);
+      setEditFrozenAt(null);
+      setSaveName("");
+      setSaveVisibleToClient(false);
       setDraftReport(null);
       setCreateWizardStep("type");
       void handleSyncAllMonitoring(nextClient);
@@ -396,20 +427,213 @@ export default function ReportPage({
     }
     leaveDraft();
   };
+  const resetSupervisionBuilderState = () => {
+    setBuilderType(null);
+    setBuilderClient(null);
+    setBuilderStepIndex(0);
+    setEquipmentComments({});
+    setGeneralComments([]);
+    setActiveCommentsTarget(null);
+    setEquipmentMonitoringStatus({});
+    setEquipmentCheckMKData({});
+    setEquipmentAlertCounts({});
+    setEquipmentTicketInsightCounts({});
+    setEquipmentTicketsByKey({});
+    setStepStorageState(null);
+    setCustomSynthesis(emptyCustomSynthesis());
+    setEditingDocumentId(null);
+    setEditingVaultFolderId(null);
+    setEditingVaultFileIds(null);
+    setEditFrozenAt(null);
+    setSaveName("");
+    setSaveVisibleToClient(false);
+  };
   const handleBackToSelection = () => {
     requestLeaveBuilder(() => {
-      setBuilderType(null);
-      setBuilderClient(null);
-      setBuilderStepIndex(0);
-      setEquipmentComments({});
-      setActiveCommentsTarget(null);
-      setEquipmentMonitoringStatus({});
+      resetSupervisionBuilderState();
+      setSavedDocsRefreshKey(k => k + 1);
+    });
+  };
+  const openSavedReport = useCallback(async (rawDoc) => {
+    if (!rawDoc || openingSavedReport) return;
+    setOpeningSavedReport(true);
+    try {
+      let doc = rawDoc;
+      if (!doc?.config || !doc?.data) {
+        doc = await fetchMonitoringDocument(rawDoc.id);
+      }
+      if (!doc?.config || !doc?.data) {
+        toast.error("Document de rapport introuvable ou incomplet.");
+        return;
+      }
+      const typeId = resolveReportTypeIdFromDocument(doc);
+      const type = reportTypes.find(entry => entry.id === typeId);
+      if (!type || type.comingSoon) {
+        toast.error("Ce type de rapport n’est pas éditable.");
+        return;
+      }
+
+      const clientId = getDocumentClientId(doc);
+      let client =
+        clients.find(entry => String(entry.id) === String(clientId) || String(entry.uuid) === String(clientId))
+        || null;
+      if (!client && clientId) {
+        client = {
+          id: clientId,
+          name: doc.client_name || doc.config?.client?.name || doc.config?.client?.nom || "",
+          nom: doc.client_name || doc.config?.client?.nom || doc.config?.client?.name || ""
+        };
+      }
+      if (!client) {
+        toast.error("Client du rapport introuvable.");
+        return;
+      }
+
+      if (typeId === REPORT_TYPE_IDS.INTERVENTION) {
+        const clientForDraft = await enrichBuilderClientWithSites(client);
+        setDraftReport({
+          type,
+          client: clientForDraft,
+          documentId: doc.id,
+          initialData: doc.data?.intervention || doc.data || null,
+          documentName: doc.name || "",
+          vaultFileId: doc.config?.vaultFileId || null,
+          visibleToClient: Boolean(doc.config?.visibleToClient),
+          auditSubtypeId: undefined
+        });
+        setCreateWizardStep("type");
+        return;
+      }
+
+      if (typeId === REPORT_TYPE_IDS.AUDIT) {
+        const clientForDraft = await enrichBuilderClientWithSites(client);
+        const auditPayload = doc.data?.audit || doc.data || null;
+        const subtypeId = auditPayload?.subtypeId || doc.config?.auditSubtype || null;
+        setDraftReport({
+          type,
+          client: clientForDraft,
+          documentId: doc.id,
+          initialData: auditPayload,
+          documentName: doc.name || "",
+          vaultFileId: doc.config?.vaultFileId || null,
+          visibleToClient: Boolean(doc.config?.visibleToClient),
+          auditSubtypeId: subtypeId
+        });
+        setCreateWizardStep("type");
+        return;
+      }
+
+      // Supervision: hydrate builder, skip PeriodGate + auto sync
+      const clientIdResolved = client.id ?? client.uuid;
+      const [modulesData, enrichedClient] = await Promise.all([
+        fetchClientModules(clientIdResolved),
+        enrichBuilderClientWithSites(client)
+      ]);
+      const periodStart = doc.data?.period?.start || doc.config?.client?.reportStartDate || null;
+      const periodEnd = doc.data?.period?.end || doc.config?.client?.reportEndDate || null;
+      const selectedModules = doc.data?.reportSelectedModules
+        || doc.config?.client?.reportSelectedModules
+        || undefined;
+      const nextClient = {
+        ...enrichedClient,
+        equipements: modulesData?.equipements || enrichedClient.equipements || {},
+        modules_monitoring: modulesData?.modules_monitoring || enrichedClient.modules_monitoring || {},
+        reportStartDate: periodStart,
+        reportEndDate: periodEnd,
+        reportPeriod: doc.report_period || doc.config?.client?.reportPeriod || null,
+        reportSelectedModules: Array.isArray(selectedModules) ? selectedModules : undefined
+      };
+
+      const comments = doc.data?.reportComments || {};
+      setEquipmentComments(comments.equipment && typeof comments.equipment === "object" ? comments.equipment : {});
+      setGeneralComments(Array.isArray(comments.general) ? comments.general : []);
+      setStepStorageState(doc.data?.stepStates?.Storage ?? null);
+      setCustomSynthesis(normalizeCustomSynthesis(doc.data?.customSynthesis));
+      setEquipmentMonitoringStatus(doc.data?.checkMK?.equipmentStatus || {});
       setEquipmentCheckMKData({});
       setEquipmentAlertCounts({});
       setEquipmentTicketInsightCounts({});
-      setStepStorageState(null);
-    });
-  };
+      setEquipmentTicketsByKey({});
+
+      const vaultFolderId = doc.config?.vaultFolderId || null;
+      setEditingDocumentId(doc.id);
+      setEditingVaultFolderId(vaultFolderId);
+      setEditingVaultFileIds(doc.config?.vaultFileIds || null);
+      setSaveName(doc.name || "");
+      setSaveVisibleToClient(Boolean(doc.config?.visibleToClient));
+      setEditFrozenAt(doc.updated_at || doc.created_at || null);
+
+      let sidecarLoaded = false;
+      if (vaultFolderId && clientIdResolved) {
+        try {
+          const sidecar = await fetchVaultBuilderState({
+            clientId: clientIdResolved,
+            folderId: vaultFolderId
+          });
+          if (sidecar) {
+            sidecarLoaded = true;
+            if (sidecar.equipmentCheckMKData) setEquipmentCheckMKData(sidecar.equipmentCheckMKData);
+            if (sidecar.equipmentMonitoringStatus) setEquipmentMonitoringStatus(sidecar.equipmentMonitoringStatus);
+            if (sidecar.equipmentAlertCounts) setEquipmentAlertCounts(sidecar.equipmentAlertCounts);
+            if (sidecar.equipmentTicketInsightCounts) setEquipmentTicketInsightCounts(sidecar.equipmentTicketInsightCounts);
+            if (sidecar.equipmentTicketsByKey) setEquipmentTicketsByKey(sidecar.equipmentTicketsByKey);
+            if (sidecar.customSynthesis) setCustomSynthesis(normalizeCustomSynthesis(sidecar.customSynthesis));
+            if (sidecar.savedAt) setEditFrozenAt(sidecar.savedAt);
+          }
+        } catch (err) {
+          console.warn("Unable to load vault builder sidecar:", err);
+        }
+      }
+      if (!sidecarLoaded) {
+        toast.warn(pageCopy.supervisionBuilder.editLegacyNoCache || "État Checkmk non retrouvé : mode dégradé.");
+      }
+
+      setBuilderClient(nextClient);
+      setBuilderType(REPORT_TYPE_IDS.SUPERVISION_ETAT);
+      setBuilderStepIndex(0);
+      setDraftReport(null);
+      setCreateWizardStep("type");
+      // Explicitly do NOT call handleSyncAllMonitoring / loadPeriodInsights
+    } catch (err) {
+      console.error("Unable to open saved report:", err);
+      toast.error(err?.message || "Impossible d’ouvrir le rapport.");
+    } finally {
+      setOpeningSavedReport(false);
+    }
+  }, [openingSavedReport, reportTypes, clients, pageCopy.supervisionBuilder.editLegacyNoCache]);
+
+  useEffect(() => {
+    if (pageParams?.goHome) {
+      const homeKey = `goHome:${pageParams._nonce ?? "1"}`;
+      if (pageParamsHandledRef.current === homeKey) return;
+      pageParamsHandledRef.current = homeKey;
+      onPageParamsConsumed?.();
+      resetSupervisionBuilderState();
+      setDraftReport(null);
+      setSelectedReportTypeId(null);
+      setSelectedClientId("");
+      setCreateWizardStep("type");
+      setReportStartDate("");
+      setReportEndDate("");
+      setShowSaveModal(false);
+      setLaunchDisclaimerOpen(false);
+      setPendingLaunchAction(null);
+      setSavedDocsRefreshKey(k => k + 1);
+      return;
+    }
+    const editId = pageParams?.editDocumentId ?? pageParams?.documentId ?? null;
+    const editDoc = pageParams?.document || null;
+    if (!editId && !editDoc) {
+      pageParamsHandledRef.current = null;
+      return;
+    }
+    const handleKey = String(editId || editDoc?.id || "");
+    if (!handleKey || pageParamsHandledRef.current === handleKey) return;
+    if (loading) return;
+    pageParamsHandledRef.current = handleKey;
+    onPageParamsConsumed?.();
+    void openSavedReport(editDoc || { id: editId });
+  }, [pageParams, loading, openSavedReport, onPageParamsConsumed]);
   const enrichBuilderClientWithSites = async client => {
     const clientId = client?.id ?? client?.uuid;
     if (!clientId) return client;
@@ -942,7 +1166,9 @@ export default function ReportPage({
   const archiveReportToClientVault = async ({
     visibleToClient,
     documentName,
-    reportPeriod
+    reportPeriod,
+    folderId = null,
+    builderState = null
   }) => {
     const clientId = builderClient?.id ?? builderClient?.uuid;
     if (!clientId) {
@@ -965,17 +1191,28 @@ export default function ReportPage({
       if (!files?.length) {
         throw new Error("Aucun fichier HTML à archiver.");
       }
-      await uploadReportHtmlFolderToClientVault({
+      const payload = {
         files,
-        folderName: documentName || folderLabel,
         clientId,
         clientName: builderClient.name || builderClient.nom || "",
         description: reportPeriod || "",
-        visibleToClient
-      });
+        visibleToClient,
+        builderState
+      };
+      const vaultResult = folderId
+        ? await replaceReportHtmlFolderInClientVault({
+            ...payload,
+            folderId
+          })
+        : await uploadReportHtmlFolderToClientVault({
+            ...payload,
+            folderName: documentName || folderLabel
+          });
       return {
         success: true,
-        fileCount: files.length
+        fileCount: files.length,
+        vaultFolderId: vaultResult.vaultFolderId || vaultResult.folder?.id || folderId || null,
+        vaultFileIds: vaultResult.vaultFileIds || null
       };
     } catch (err) {
       console.error("Archivage vault:", err);
@@ -990,16 +1227,8 @@ export default function ReportPage({
     setSaveNameError("");
     setSaving(true);
     try {
-      const configCopy = safeJsonClone({
-        client: {
-          id: builderClient.id ?? builderClient.uuid ?? null,
-          name: builderClient.name || builderClient.nom || "",
-          nom: builderClient.nom || builderClient.name || "",
-          reportStartDate: builderClient.reportStartDate || null,
-          reportEndDate: builderClient.reportEndDate || null,
-          reportPeriod: builderClient.reportPeriod || null
-        }
-      });
+      const clientName = builderClient?.name || builderClient?.nom || "CLIENT";
+      const reportPeriod = builderClient?.reportStartDate && builderClient?.reportEndDate ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}` : builderClient?.reportPeriod || null;
       const dataCopy = safeJsonClone({
         reportComments: {
           equipment: equipmentComments,
@@ -1009,32 +1238,88 @@ export default function ReportPage({
           start: builderClient?.reportStartDate || null,
           end: builderClient?.reportEndDate || null
         },
+        reportSelectedModules: builderClient.reportSelectedModules || null,
         stepStates: {
           Storage: stepStorageState
         },
+        customSynthesis,
         checkMK: buildCheckMKReportSnapshot(equipmentCheckMKData, equipmentMonitoringStatus, builderClient?.reportStartDate, builderClient?.reportEndDate),
-        reportType: REPORT_TYPE_IDS.SUPERVISION_ETAT
+        reportType: REPORT_TYPE_IDS.SUPERVISION_ETAT,
+        builderVersion: 1
       });
-      const clientName = builderClient?.name || builderClient?.nom || "CLIENT";
-      const reportPeriod = builderClient?.reportStartDate && builderClient?.reportEndDate ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}` : builderClient?.reportPeriod || null;
-      const result = await saveMonitoringDocument({
-        name: saveName.trim(),
-        client_name: clientName,
-        report_period: reportPeriod,
-        config: configCopy,
-        data: dataCopy,
-        overwrite: false
+      const buildConfig = (vaultFolderId, vaultFileIds) => safeJsonClone({
+        client: {
+          id: builderClient.id ?? builderClient.uuid ?? null,
+          name: builderClient.name || builderClient.nom || "",
+          nom: builderClient.nom || builderClient.name || "",
+          reportStartDate: builderClient.reportStartDate || null,
+          reportEndDate: builderClient.reportEndDate || null,
+          reportPeriod: builderClient.reportPeriod || null,
+          reportSelectedModules: builderClient.reportSelectedModules || null
+        },
+        reportType: REPORT_TYPE_IDS.SUPERVISION_ETAT,
+        vaultFolderId: vaultFolderId || null,
+        vaultFileIds: vaultFileIds || null,
+        visibleToClient: Boolean(saveVisibleToClient)
       });
+
+      const result = editingDocumentId
+        ? await updateMonitoringDocument(editingDocumentId, {
+            name: saveName.trim(),
+            client_name: clientName,
+            report_period: reportPeriod,
+            config: buildConfig(editingVaultFolderId, editingVaultFileIds),
+            data: dataCopy
+          })
+        : await saveMonitoringDocument({
+            name: saveName.trim(),
+            client_name: clientName,
+            report_period: reportPeriod,
+            config: buildConfig(editingVaultFolderId, editingVaultFileIds),
+            data: dataCopy,
+            overwrite: false
+          });
       if (result && result.success) {
+        const nextDocId = result.id || editingDocumentId;
+        if (nextDocId) setEditingDocumentId(nextDocId);
+
+        const builderState = buildSupervisionBuilderStatePayload({
+          equipmentCheckMKData,
+          equipmentMonitoringStatus,
+          equipmentAlertCounts,
+          equipmentTicketInsightCounts,
+          equipmentTicketsByKey,
+          customSynthesis
+        });
         const vaultResult = await archiveReportToClientVault({
           visibleToClient: saveVisibleToClient,
           documentName: saveName.trim(),
-          reportPeriod
+          reportPeriod,
+          folderId: editingVaultFolderId,
+          builderState
         });
+
+        if (vaultResult.success) {
+          const nextFolderId = vaultResult.vaultFolderId || editingVaultFolderId || null;
+          const nextFileIds = vaultResult.vaultFileIds || editingVaultFileIds || null;
+          if (nextFolderId) setEditingVaultFolderId(nextFolderId);
+          if (nextFileIds) setEditingVaultFileIds(nextFileIds);
+          if (nextDocId && (nextFolderId || nextFileIds)) {
+            await updateMonitoringDocument(nextDocId, {
+              name: saveName.trim(),
+              client_name: clientName,
+              report_period: reportPeriod,
+              config: buildConfig(nextFolderId, nextFileIds),
+              data: dataCopy
+            });
+          }
+        }
+
+        setEditFrozenAt(new Date().toISOString());
         setSaveSuccessVisible(true);
-        setSaveName("");
         setSaveNameError("");
         setShowSaveModal(false);
+        setSavedDocsRefreshKey(k => k + 1);
         setTimeout(() => setSaveSuccessVisible(false), 3000);
         if (vaultResult.success) {
           toast.success(saveVisibleToClient
@@ -1047,7 +1332,7 @@ export default function ReportPage({
         }
         return result;
       }
-      if (result && result.message && /déjà enregistré|already saved|already exists|existe déjà/i.test(String(result.message))) {
+      if (!editingDocumentId && result && result.message && /déjà enregistré|already saved|already exists|existe déjà/i.test(String(result.message))) {
         setSaveNameError(
           `Un document nommé « ${saveName.trim()} » existe déjà. Choisissez un autre nom.`
         );
@@ -1181,6 +1466,20 @@ export default function ReportPage({
     if (Number.isNaN(d.getTime())) return isoDate;
     return d.toLocaleDateString(pageCopy.bcp47);
   };
+  const formatDocDateTime = isoDate => {
+    if (!isoDate) return "";
+    try {
+      return new Date(isoDate).toLocaleString(pageCopy.bcp47, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return String(isoDate);
+    }
+  };
   const isSupervisionBuilder = isSupervisionReportBuilderType(builderType) && builderClient;
   const isDraftWizard = Boolean(draftReport);
   const isInterventionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.INTERVENTION;
@@ -1223,6 +1522,13 @@ export default function ReportPage({
                       ? `${builderClient?.name || builderClient?.nom || pageCopy.create.getClientLabel(builderClient?.id)} · Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}`
                       : `${builderClient?.name || builderClient?.nom || ""} — ${pageCopy.supervisionBuilder.builderHint || ""}`}
                   </p>
+                  {editingDocumentId && editFrozenAt ? (
+                    <p className={shellStyles.builderToolbarSubtitle}>
+                      {interpolate(pageCopy.supervisionBuilder.editFrozenHint || "Données figées au {date} — synchroniser pour actualiser.", {
+                        date: formatDocDateTime(editFrozenAt)
+                      })}
+                    </p>
+                  ) : null}
                 </div>
                 <div className={shellStyles.heroActions}>
                   <button
@@ -1262,6 +1568,9 @@ export default function ReportPage({
                     onClick={() => {
                       if (!builderClient) return;
                       setSaveNameError("");
+                      if (editingDocumentId && !saveName.trim()) {
+                        /* keep existing name when editing */
+                      }
                       setShowSaveModal(true);
                     }}
                     disabled={!builderClient}
@@ -1320,13 +1629,15 @@ export default function ReportPage({
                     stockageReportState={stepStorageState}
                     onSetStorageReportState={setStepStorageState}
                     commentsPane={builderCommentsPane}
+                    customSynthesis={customSynthesis}
+                    onCustomSynthesisChange={setCustomSynthesis}
                   />
                 )}
 
               </div>
             </div>
             </div>
-          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isAuditGate ? <div className={cyberStyles.mspLayout}>
+          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} initialVaultFileId={draftReport.vaultFileId || null} initialVisibleToClient={Boolean(draftReport.visibleToClient)} onBack={handleBackFromDraftReport} /> : isAuditGate ? <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
               <AuditSubtypeGate
                 locale={pageCopy.localeCode || locale}
@@ -1348,6 +1659,8 @@ export default function ReportPage({
             initialData={draftReport.initialData}
             documentId={draftReport.documentId}
             documentName={draftReport.documentName}
+            initialVaultFileId={draftReport.vaultFileId || null}
+            initialVisibleToClient={Boolean(draftReport.visibleToClient)}
             onBack={handleBackFromDraftReport}
             onChangeSubtype={() => {
               setDraftReport(prev => prev ? { ...prev, auditSubtypeId: null, initialData: null } : prev);
@@ -1363,19 +1676,30 @@ export default function ReportPage({
                 <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
                   <div className={styles.wizardFill}>
                     {error ? <div className={styles.alertError}>{error}</div> : null}
-                    <ReportCreateWizard
-                      copy={pageCopy}
-                      reportTypes={reportTypes}
-                      clients={clients}
-                      loading={loading}
-                      step={createWizardStep}
-                      onStepChange={setCreateWizardStep}
-                      selectedClientId={selectedClientId}
-                      onSelectClient={handleWizardSelectClient}
-                      selectedReportTypeId={selectedReportTypeId}
-                      onSelectType={handleWizardSelectType}
-                      onStartReport={handleStartDraftReport}
-                    />
+                    <div className={styles.homeSplit}>
+                      <div className={styles.homeMain}>
+                        <ReportCreateWizard
+                          copy={pageCopy}
+                          reportTypes={reportTypes}
+                          clients={clients}
+                          loading={loading || openingSavedReport}
+                          step={createWizardStep}
+                          onStepChange={setCreateWizardStep}
+                          selectedClientId={selectedClientId}
+                          onSelectClient={handleWizardSelectClient}
+                          selectedReportTypeId={selectedReportTypeId}
+                          onSelectType={handleWizardSelectType}
+                          onStartReport={handleStartDraftReport}
+                        />
+                      </div>
+                      <aside className={styles.homeSide}>
+                        <RapportSavedDocuments
+                          copy={pageCopy}
+                          refreshKey={savedDocsRefreshKey}
+                          onEditDocument={doc => { void openSavedReport(doc); }}
+                        />
+                      </aside>
+                    </div>
                   </div>
                 </div>
               </main>

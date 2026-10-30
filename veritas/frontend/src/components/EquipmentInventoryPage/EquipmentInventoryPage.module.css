@@ -60,20 +60,6 @@
   color: var(--msp-text, #0f1c2e);
 }
 
-.filtersCountBadge {
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.35rem;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(43, 95, 171, 0.12);
-  color: var(--msp-accent, #2b5fab);
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
 .filtersResetBtn {
   border: none;
   background: transparent;
@@ -83,13 +69,22 @@
   cursor: pointer;
   padding: 0.15rem 0.2rem;
   flex-shrink: 0;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.filtersResetBtn:hover {
+.filtersResetBtn:hover:not(:disabled) {
   text-decoration: underline;
 }
 
+/* Toujours présent pour éviter le reflow de la colonne au filtrage. */
+.filtersResetBtnHidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .statusSegment {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
@@ -98,7 +93,29 @@
   background: var(--msp-surface-2, #f4f7fb);
 }
 
+.statusSegmentIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  border: 1px solid rgba(43, 95, 171, 0.22);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06);
+  pointer-events: none;
+  will-change: transform, width, height;
+}
+
+.statusSegmentAnimated .statusSegmentIndicator {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .statusSegmentBtn {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -111,19 +128,18 @@
   background: transparent;
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: color 0.18s ease;
 }
 
 .statusSegmentBtn:hover {
   color: var(--msp-text, #0f1c2e);
-  background: rgba(255, 255, 255, 0.55);
 }
 
 .statusSegmentBtnActive {
-  background: var(--msp-surface, #fff);
-  border-color: rgba(43, 95, 171, 0.22);
+  background: transparent;
+  border-color: transparent;
   color: var(--msp-accent, #2b5fab);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06);
+  box-shadow: none;
 }
 
 .statusSegmentLabel {
@@ -141,35 +157,59 @@
 }
 
 .facetNav {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f4f7fb);
   flex-shrink: 0;
 }
 
+.facetNavIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 8px;
+  background: rgba(43, 95, 171, 0.1);
+  border: 1px solid rgba(43, 95, 171, 0.3);
+  pointer-events: none;
+  will-change: transform, width, height;
+}
+
+.facetNavAnimated .facetNavIndicator {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .facetNavBtn {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
   min-width: 0;
   padding: 0.42rem 0.3rem;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition: color 0.18s ease;
 }
 
 .facetNavBtn:hover {
-  border-color: rgba(43, 95, 171, 0.28);
   color: var(--msp-text, #0f1c2e);
 }
 
 .facetNavBtnActive {
-  background: rgba(43, 95, 171, 0.08);
-  border-color: rgba(43, 95, 171, 0.35);
+  background: transparent;
+  border-color: transparent;
   color: var(--msp-accent, #2b5fab);
 }
 
@@ -203,6 +243,44 @@
   flex-direction: column;
   gap: 0.45rem;
   overflow: hidden;
+}
+
+/* Même barre UiKit que la table, sans scale focus (overflow du panneau). */
+.facetToolbarSearch:focus-within {
+  transform: none;
+  animation: none;
+}
+
+.facetBodyFadePending {
+  opacity: 0;
+}
+
+.facetBodyFadeIn {
+  animation: inventoryFacetFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes inventoryFacetFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .statusSegmentAnimated .statusSegmentIndicator,
+  .facetNavAnimated .facetNavIndicator {
+    transition: none;
+  }
+
+  .facetBodyFadePending {
+    opacity: 1;
+  }
+
+  .facetBodyFadeIn {
+    animation: none;
+  }
 }
 
 .facetBodyHeader {
@@ -699,17 +777,26 @@
   }
 }
 
-:global(html.dark) .statusSegment {
+:global(html.dark) .statusSegment,
+:global(html.dark) .facetNav {
   background: var(--msp-surface-2, #152035);
 }
 
-:global(html.dark) .statusSegmentBtn:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-:global(html.dark) .statusSegmentBtnActive {
+:global(html.dark) .statusSegmentIndicator {
   background: var(--msp-surface, #1f2d4a);
   border-color: rgba(90, 143, 212, 0.35);
+  box-shadow: none;
+}
+
+:global(html.dark) .facetNavIndicator {
+  background: rgba(90, 143, 212, 0.14);
+  border-color: rgba(90, 143, 212, 0.35);
+}
+
+:global(html.dark) .statusSegmentBtnActive,
+:global(html.dark) .facetNavBtnActive {
+  background: transparent;
+  border-color: transparent;
 }
 
 :global(html.dark) .facetCheck {

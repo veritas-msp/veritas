@@ -278,52 +278,126 @@
 .listSectionFill {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dualTables {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.85rem;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dualTablePane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dualTablePane > .listSectionFill {
+  flex: 1 1 0;
+}
+
+.dualTableTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.dualTableTitle svg {
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .dualTables {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .dualTablePane {
+    min-height: 18rem;
+  }
 }
 
 .listTableWithPager {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  gap: 0.25rem;
+  height: 100%;
+  gap: 0.55rem;
+  overflow: hidden;
 }
 
 .listTableWithPagerStatic {
   display: flex;
   flex-direction: column;
   width: 100%;
-  gap: 0.25rem;
+  gap: 0.55rem;
 }
 
-.listSearchBox {
+.listTableWithPager > :global([class*="hardwarePageEmbedded"]),
+.listTableWithPagerStatic > :global([class*="hardwarePageEmbedded"]) {
+  flex: 0 0 auto;
+}
+
+.listTableWithPager > :global([class*="pagination"]),
+.listTableWithPagerStatic > :global([class*="pagination"]) {
+  flex: 0 0 auto;
+}
+
+.overviewUiKitTable {
+  flex: 1 1 0 !important;
+  min-height: 0;
+  width: 100%;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-  min-height: 38px;
-  padding: 0 0.75rem;
+  flex-direction: column;
+}
+
+/* Même chrome que EnterpriseDetailPage (activityUiKitTable) */
+.overviewUiKitTable :global([class*="tableShell"]),
+.overviewUiKitTable :global([class*="scrollShell"]) {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  --fade-surface: var(--msp-surface, #fff);
+  --fade-radius: var(--msp-radius-sm, 10px);
   border: 1px solid var(--msp-border, #dde3ed);
-  border-radius: 10px;
+  border-radius: var(--msp-radius-sm, 10px);
   background: var(--msp-surface, #fff);
-  color: var(--msp-muted, #5c6b82);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  overflow: hidden;
 }
 
-.listSearchBox input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 0.875rem;
-  color: var(--msp-text, #1a2332);
-}
-
-.listSearchBox input::placeholder {
-  color: var(--msp-muted, #8a97ab);
+:global(html.dark) .overviewUiKitTable :global([class*="tableShell"]),
+:global(html.dark) .overviewUiKitTable :global([class*="scrollShell"]),
+:global(body.dark) .overviewUiKitTable :global([class*="tableShell"]),
+:global(body.dark) .overviewUiKitTable :global([class*="scrollShell"]) {
+  --fade-surface: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .listSectionMeta {
@@ -368,9 +442,17 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  font-weight: 600;
+  font-weight: 650;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   color: var(--msp-muted, #5c6b82);
-  background: var(--msp-surface-2, #f8fafc);
+  background: var(--msp-surface-2, #f4f7fb);
+}
+
+:global(html.dark) .dataTable th {
+  background: var(--msp-surface-2, #162338) !important;
+  color: var(--msp-muted, #9bb0c9);
+  border-bottom-color: color-mix(in srgb, var(--msp-border, #3d5478) 55%, transparent);
 }
 
 .dataTable td {
@@ -387,6 +469,162 @@
 .policyNameCell svg {
   flex-shrink: 0;
   color: var(--msp-accent, #2b5fab);
+}
+
+.rowClickable {
+  cursor: pointer;
+}
+
+.thLabelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.thHintBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.thHintBtn:hover,
+.thHintBtn:focus-visible {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+  outline: none;
+}
+
+.thHintBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-width: 18rem;
+  text-align: left;
+}
+
+.thHintBody p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.thHintBody strong {
+  font-weight: 700;
+}
+
+.cellWithIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cellWithIcon svg {
+  flex-shrink: 0;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.cellTruncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.infectedNeutral {
+  font-weight: 400;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.infectedBad {
+  font-weight: 700;
+  line-height: 1.2;
+  color: #dc2626;
+}
+
+:global(html.dark) .infectedBad,
+:global(body.dark) .infectedBad {
+  color: #f87171;
+}
+
+.eventTypeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.eventTypeBadge svg {
+  flex-shrink: 0;
+}
+
+.eventTone_danger {
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.12);
+}
+
+.eventTone_success {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.eventTone_warn {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.eventTone_info {
+  color: #1d4ed8;
+  background: rgba(43, 95, 171, 0.12);
+}
+
+:global(html.dark) .eventTone_danger,
+:global(body.dark) .eventTone_danger {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.16);
+}
+
+:global(html.dark) .eventTone_success,
+:global(body.dark) .eventTone_success {
+  color: #6ee7b7;
+  background: rgba(52, 211, 153, 0.16);
+}
+
+:global(html.dark) .eventTone_warn,
+:global(body.dark) .eventTone_warn {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.16);
+}
+
+:global(html.dark) .eventTone_info,
+:global(body.dark) .eventTone_info {
+  color: #93c5fd;
+  background: rgba(96, 165, 250, 0.16);
 }
 
 .appliedOk {
@@ -408,6 +646,64 @@
   text-align: center;
   color: var(--msp-muted, #5c6b82);
   font-size: 0.85rem;
+}
+
+.emptyStateCell {
+  text-align: center !important;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.85rem;
+  padding: 2rem 1rem !important;
+  white-space: normal !important;
+}
+
+.listEmptyPanel {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.5rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.listEmptyPanel :global([class*="emptyStateBare"]) {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+}
+
+.listEmptyPanel :global([class*="emptyIcon"]) {
+  font-size: 2.5rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  opacity: 0.75;
+}
+
+.listEmptyPanel :global([class*="emptyTitle"]),
+.listEmptyPanel :global([class*="emptyText"]) {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  max-width: 28rem;
+}
+
+:global(html.dark) .listEmptyPanel,
+:global(body.dark) .listEmptyPanel {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .errorBox {
@@ -473,9 +769,11 @@
 
 .chartsSectionTitle {
   margin: 0 0 0.75rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
 }
 
 .chartsGrid {
@@ -498,9 +796,11 @@
 
 .chartCardTitle {
   margin: 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
 }
 
 .chartCardSubtitle {
@@ -601,4 +901,25 @@
   background: #1a2540;
   border-color: #2f4260;
   color: #e8edf5;
+}
+
+:global(html.dark) .chartCard {
+  background: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border-light, #2c3d5a);
+}
+
+:global(html.dark) .chartsSectionTitle,
+:global(html.dark) .chartCardTitle {
+  color: var(--msp-muted, #9bb0c9);
+}
+
+:global(html.dark) .chartCardSubtitle,
+:global(html.dark) .chartEmpty {
+  color: var(--msp-muted, #9bb0c9);
+}
+
+:global(html.dark) .errorBox {
+  background: color-mix(in srgb, #7f1d1d 35%, #1a2540);
+  border-color: color-mix(in srgb, #f87171 35%, transparent);
+  color: #fecaca;
 }

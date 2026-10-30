@@ -102,7 +102,9 @@ import {
   normalizeEquipmentRmmPane,
   normalizeEquipmentSupervisionPane,
   readEquipmentDetailUi,
-  writeEquipmentDetailUi
+  writeEquipmentDetailUi,
+  writeEquipmentDetailUiScroll,
+  flushEquipmentDetailUiScroll
 } from "../../utils/equipmentDetailUiState";
 const CheckMKMappingModal = EquipmentMappingModal;
 
@@ -217,6 +219,24 @@ export default function EquipmentDetailPage({
         : initialEquipmentUi?.supervisionPane
     )
   );
+  const [visitedSupervisionPanes, setVisitedSupervisionPanes] = useState(() => {
+    const initial = normalizeEquipmentSupervisionPane(
+      initialEquipmentUi?.rightPanelTab === "history" || initialEquipmentUi?.rightPanelTab === "maintenance"
+        ? "history"
+        : initialEquipmentUi?.supervisionPane
+    ) || "main";
+    return {
+      [initial]: true
+    };
+  });
+  const selectSupervisionPane = useCallback(pane => {
+    const next = normalizeEquipmentSupervisionPane(pane) || "main";
+    setSupervisionPane(next);
+    setVisitedSupervisionPanes(prev => prev[next] ? prev : {
+      ...prev,
+      [next]: true
+    });
+  }, []);
   const [rmmPane, setRmmPane] = useState(() =>
     normalizeEquipmentRmmPane(
       equipment?.detailTab === "metrics"
@@ -846,13 +866,15 @@ export default function EquipmentDetailPage({
         (savedTab === "activity" || savedTab === "events" || savedTab === "stats" || savedTab === "metrics");
       const nextTab = normalizeEquipmentDetailTab(migratedMetrics ? "metrics" : savedTab);
       setRightPanelTab(nextTab);
-      setSupervisionPane(
-        normalizeEquipmentSupervisionPane(
-          savedTab === "history" || savedTab === "maintenance"
-            ? "history"
-            : saved?.supervisionPane
-        )
-      );
+      const nextSupervisionPane = normalizeEquipmentSupervisionPane(
+        savedTab === "history" || savedTab === "maintenance"
+          ? "history"
+          : saved?.supervisionPane
+      ) || "main";
+      setSupervisionPane(nextSupervisionPane);
+      setVisitedSupervisionPanes({
+        [nextSupervisionPane]: true
+      });
       setRmmPane(normalizeEquipmentRmmPane(nextTab === "metrics" ? "metrics" : nextTab));
       setActivityDatePreset(saved?.activityDatePreset || "30d");
       const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
@@ -885,13 +907,12 @@ export default function EquipmentDetailPage({
   useEffect(() => {
     const el = mainContentRef.current;
     if (!el || !equipmentDbId) return undefined;
+    const id = equipmentDbId;
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        writeEquipmentDetailUi(equipmentDbId, {
-          scrollY: el.scrollTop
-        });
+        writeEquipmentDetailUiScroll(id, el.scrollTop);
       });
     };
     el.addEventListener("scroll", onScroll, {
@@ -900,7 +921,8 @@ export default function EquipmentDetailPage({
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", onScroll);
-      writeEquipmentDetailUi(equipmentDbId, {
+      flushEquipmentDetailUiScroll(id);
+      writeEquipmentDetailUi(id, {
         scrollY: el.scrollTop
       });
     };
@@ -942,10 +964,10 @@ export default function EquipmentDetailPage({
         checkmkMapping: mapping
       });
     }
-    if (checkmkIntegrationEnabled && mapping?.checkmk_host_name) {
-      loadCheckMKData();
-    } else if (!needsHydration) {
-      setCheckmkData(null);
+    // CheckMK payload is heavy — only clear when mapping missing; actual fetch is gated
+    // by the supervision/synthese effect below.
+    if (!checkmkIntegrationEnabled || !mapping?.checkmk_host_name) {
+      if (!needsHydration) setCheckmkData(null);
     }
   }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids, equipment?.checkmkMapping, equipment?.checkmk_host_name, equipmentDbId, patchEquipmentCache]);
   // Si le mapping n'est pas dans le payload (ex. stub URL / inventaire partiel), le récupérer via l'API client.
@@ -2389,7 +2411,7 @@ export default function EquipmentDetailPage({
                         className={`${finderKit.finderSecItem} ${supervisionPane === "main" ? finderKit.finderSecItemActive : ""}`}
                         aria-current={supervisionPane === "main" ? "page" : undefined}
                         tabIndex={rightPanelTab === "supervision" ? undefined : -1}
-                        onClick={() => setSupervisionPane("main")}
+                        onClick={() => selectSupervisionPane("main")}
                       >
                         <Icon icon="mdi:radar" className={finderKit.finderSecItemIcon} aria-hidden />
                         <span className={finderKit.finderSecItemLabel}>{copy.supervisionPane?.main || "Main"}</span>
@@ -2399,7 +2421,7 @@ export default function EquipmentDetailPage({
                         className={`${finderKit.finderSecItem} ${supervisionPane === "history" ? finderKit.finderSecItemActive : ""}`}
                         aria-current={supervisionPane === "history" ? "page" : undefined}
                         tabIndex={rightPanelTab === "supervision" ? undefined : -1}
-                        onClick={() => setSupervisionPane("history")}
+                        onClick={() => selectSupervisionPane("history")}
                       >
                         <Icon icon="mdi:clipboard-text-clock-outline" className={finderKit.finderSecItemIcon} aria-hidden />
                         <span className={finderKit.finderSecItemLabel}>{copy.supervisionPane?.history || copy.tabs.history || "Historique"}</span>
@@ -2486,53 +2508,73 @@ export default function EquipmentDetailPage({
 
           {rightPanelTab === "supervision" ? (
             <div
-              key={`supervision-${supervisionPane}-${showSupervisionTab ? "on" : "off"}`}
+              key={`supervision-${showSupervisionTab ? "on" : "off"}`}
               className={`${styles.supervisionStack} ${styles.contentFadeUp}`.trim()}
             >
               {showSupervisionTab ? (
-                supervisionPane === "main" ? (
-                  <section className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel}`.trim()}>
-                    <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
-                      <CheckMKMonitoringPanel
+                <>
+                  {visitedSupervisionPanes.main ? (
+                    <section
+                      className={`${enterpriseDetailStyles.panel} ${styles.supervisionMainPanel}`.trim()}
+                      hidden={supervisionPane !== "main"}
+                      style={supervisionPane === "main" ? undefined : { display: "none" }}
+                      aria-hidden={supervisionPane !== "main"}
+                    >
+                      <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
+                        <CheckMKMonitoringPanel
+                          equipment={equipment}
+                          checkmkMapping={checkmkMapping}
+                          checkmkData={checkmkData}
+                          checkmkHostDetails={checkmkHostDetails}
+                          loadingCheckMK={loadingCheckMK}
+                          loadingAvailability={loadingAvailability}
+                          checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
+                          lastSyncedAt={checkmkLastSyncedAt}
+                          layout="tab"
+                          active={supervisionPane === "main"}
+                          onAvailabilityPeriodChange={period => {
+                            setCheckmkAvailabilityPeriod(period);
+                            loadCheckMKAvailabilityOnly(period);
+                          }}
+                          onOpenService={openCheckMKService}
+                          onOpenEvent={openCheckMKEvent}
+                          onOpenMapping={() => setCheckmkMappingModal(true)}
+                        />
+                      </div>
+                    </section>
+                  ) : null}
+                  {visitedSupervisionPanes.history ? (
+                    <div
+                      className={styles.historyTabLayout}
+                      hidden={supervisionPane !== "history"}
+                      style={supervisionPane === "history" ? undefined : { display: "none" }}
+                      aria-hidden={supervisionPane !== "history"}
+                    >
+                      <EquipmentAlertsGlance
                         equipment={equipment}
-                        checkmkMapping={checkmkMapping}
-                        checkmkData={checkmkData}
-                        checkmkHostDetails={checkmkHostDetails}
-                        loadingCheckMK={loadingCheckMK}
-                        loadingAvailability={loadingAvailability}
-                        checkmkAvailabilityPeriod={checkmkAvailabilityPeriod}
-                        lastSyncedAt={checkmkLastSyncedAt}
-                        layout="tab"
-                        onAvailabilityPeriodChange={period => {
-                          setCheckmkAvailabilityPeriod(period);
-                          loadCheckMKAvailabilityOnly(period);
-                        }}
-                        onOpenService={openCheckMKService}
-                        onOpenEvent={openCheckMKEvent}
-                        onOpenMapping={() => setCheckmkMappingModal(true)}
+                        days={30}
+                        limit={50}
+                        active={supervisionPane === "history"}
                       />
+                      {equipmentDbId ? (
+                        <EquipmentMaintenanceHistoryPanel
+                          copy={copy}
+                          locale={locale}
+                          equipmentId={equipmentDbId}
+                          clientId={equipmentClientId}
+                          refreshKey={maintenanceHistoryKey}
+                          active={supervisionPane === "history"}
+                        />
+                      ) : (
+                        <EquipmentEmptyState
+                          icon="mdi:wrench-clock"
+                          title={copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}
+                          subtitle={copy.maintenanceHistory?.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
+                        />
+                      )}
                     </div>
-                  </section>
-                ) : (
-                  <div className={styles.historyTabLayout}>
-                    <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
-                    {equipmentDbId ? (
-                      <EquipmentMaintenanceHistoryPanel
-                        copy={copy}
-                        locale={locale}
-                        equipmentId={equipmentDbId}
-                        clientId={equipmentClientId}
-                        refreshKey={maintenanceHistoryKey}
-                      />
-                    ) : (
-                      <EquipmentEmptyState
-                        icon="mdi:wrench-clock"
-                        title={copy.maintenanceHistory?.emptyTitle || "Aucune période de maintenance"}
-                        subtitle={copy.maintenanceHistory?.emptyHint || "Les mises en maintenance de ce périphérique apparaîtront ici."}
-                      />
-                    )}
-                  </div>
-                )
+                  ) : null}
+                </>
               ) : (
                 supervisionUnavailableEmpty
               )}
@@ -2722,7 +2764,7 @@ export default function EquipmentDetailPage({
             if (url) window.open(url, "_blank", "noopener,noreferrer");
           }}
           onOpenSupervision={showSupervisionTab ? () => {
-            setSupervisionPane("main");
+            selectSupervisionPane("main");
             setRightPanelTab("supervision");
           } : null}
           onRefreshCheckmk={checkmkMapping?.checkmk_host_name ? () => loadCheckMKData({ force: true }) : null}

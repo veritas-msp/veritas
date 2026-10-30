@@ -8,6 +8,72 @@
   flex-direction: column;
   gap: 0.85rem;
   min-width: 0;
+  width: 100%;
+}
+
+.contentStackFill {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tablesSplit {
+  display: grid;
+  grid-template-rows: minmax(0, 3fr) minmax(0, 7fr);
+  gap: 0.75rem;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.tableBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.15rem 0.05rem 0.1rem;
+  box-sizing: border-box;
+}
+
+.tableBlockHead {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.tableBlockHead .sectionTitle {
+  margin: 0;
+}
+
+.tableBlockHead .sectionHint {
+  margin: 0;
+}
+
+.tableBlockBody {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.historyFill {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.historyFill .filterChips {
+  margin-bottom: 0;
+  margin-top: 0.35rem;
 }
 
 .shell {
@@ -57,6 +123,8 @@
 }
 
 .section {
+  width: 100%;
+  box-sizing: border-box;
   background: var(--msp-surface, #fff);
   border: 1px solid var(--msp-border, #e2e8f0);
   border-radius: var(--msp-radius, 16px);
@@ -400,8 +468,21 @@
   color: var(--msp-muted, #9bb0c9);
 }
 
+.jobRowActive td {
+  background: rgba(43, 95, 171, 0.12) !important;
+}
+
+:global(html.dark) .jobRowActive td,
+:global(body.dark) .jobRowActive td {
+  background: rgba(90, 143, 212, 0.16) !important;
+}
+
 @media (max-width: 1100px) {
   .columns {
     grid-template-columns: 1fr;
+  }
+
+  .tablesSplit {
+    grid-template-rows: minmax(12rem, 30%) minmax(0, 1fr);
   }
 }

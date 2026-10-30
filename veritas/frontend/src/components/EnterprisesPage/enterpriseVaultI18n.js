@@ -50,7 +50,7 @@ const ENTERPRISE_VAULT_COPY = {
       filesCount: "{count} fichier(s)",
       subfoldersCount: "{count} sous-dossier(s)",
       treeTitle: "Arborescence",
-      treeRoot: "Racine du coffre",
+      treeRoot: "Racine",
       moveItem: "Déplacer",
       moveHere: "Déplacer ici",
       moveToRoot: "À la racine",
@@ -130,6 +130,9 @@ const ENTERPRISE_VAULT_COPY = {
       downloadTitle: "Télécharger",
       editDescriptionTitle: "Modifier",
       editDescriptionAria: "Modifier le document",
+      openInBuilderTitle: "Ouvrir dans le builder",
+      openInBuilderUnavailable: "Ce dossier n’est pas lié à un rapport rééditable.",
+      openInBuilderError: "Impossible d’ouvrir le rapport dans le builder.",
       removeTitle: "Retirer",
       moveTitle: "Déplacer"
     },
@@ -188,7 +191,7 @@ const ENTERPRISE_VAULT_COPY = {
       visiblePortalHint: "Activé : le contact peut consulter le document. Désactivé : réservé aux agents.",
       visibleOn: "Visible",
       visibleOff: "Masqué",
-      footerHint: "Nom, description et visibilité portail",
+      footerHint: "",
       cancel: "Annuler",
       save: "Enregistrer",
       saving: "Enregistrement…",
@@ -267,7 +270,7 @@ const ENTERPRISE_VAULT_COPY = {
       filesCount: "{count} file(s)",
       subfoldersCount: "{count} subfolder(s)",
       treeTitle: "Folder tree",
-      treeRoot: "Vault root",
+      treeRoot: "Root",
       moveItem: "Move",
       moveHere: "Move here",
       moveToRoot: "To root",
@@ -347,6 +350,9 @@ const ENTERPRISE_VAULT_COPY = {
       downloadTitle: "Download",
       editDescriptionTitle: "Edit",
       editDescriptionAria: "Edit document",
+      openInBuilderTitle: "Open in builder",
+      openInBuilderUnavailable: "This folder is not linked to an editable report.",
+      openInBuilderError: "Unable to open the report in the builder.",
       removeTitle: "Remove",
       moveTitle: "Move"
     },
@@ -405,7 +411,7 @@ const ENTERPRISE_VAULT_COPY = {
       visiblePortalHint: "On: contact can view the document. Off: agents only.",
       visibleOn: "Visible",
       visibleOff: "Hidden",
-      footerHint: "Name, description and portal visibility",
+      footerHint: "",
       cancel: "Cancel",
       save: "Save",
       saving: "Saving…",
@@ -484,7 +490,7 @@ const ENTERPRISE_VAULT_COPY = {
       filesCount: "{count} Datei(en)",
       subfoldersCount: "{count} Unterordner",
       treeTitle: "Ordnerstruktur",
-      treeRoot: "Tresor-Stamm",
+      treeRoot: "Stamm",
       moveItem: "Verschieben",
       moveHere: "Hierher verschieben",
       moveToRoot: "Zur Wurzel",
@@ -524,6 +530,9 @@ const ENTERPRISE_VAULT_COPY = {
       downloadTitle: "Herunterladen",
       editDescriptionTitle: "Beschreibung bearbeiten",
       editDescriptionAria: "Beschreibung bearbeiten",
+      openInBuilderTitle: "Im Builder öffnen",
+      openInBuilderUnavailable: "Dieser Ordner ist nicht mit einem bearbeitbaren Bericht verknüpft.",
+      openInBuilderError: "Bericht kann nicht im Builder geöffnet werden.",
       removeTitle: "Entfernen"
     },
     uploadModal: {
@@ -578,7 +587,7 @@ const ENTERPRISE_VAULT_COPY = {
       visiblePortalHint: "Ein: Kontakt kann das Dokument sehen. Aus: nur Agenten.",
       visibleOn: "Sichtbar",
       visibleOff: "Ausgeblendet",
-      footerHint: "Name, Beschreibung und Portal-Sichtbarkeit",
+      footerHint: "",
       cancel: "Abbrechen",
       save: "Speichern",
       saving: "Speichern…",
@@ -657,7 +666,7 @@ const ENTERPRISE_VAULT_COPY = {
       filesCount: "{count} file",
       subfoldersCount: "{count} sottocartella/e",
       treeTitle: "Struttura cartelle",
-      treeRoot: "Radice cassaforte",
+      treeRoot: "Radice",
       moveItem: "Sposta",
       moveHere: "Sposta qui",
       moveToRoot: "Alla radice",
@@ -697,6 +706,9 @@ const ENTERPRISE_VAULT_COPY = {
       downloadTitle: "Scarica",
       editDescriptionTitle: "Modifica descrizione",
       editDescriptionAria: "Modifica descrizione",
+      openInBuilderTitle: "Apri nel builder",
+      openInBuilderUnavailable: "Questa cartella non è collegata a un report modificabile.",
+      openInBuilderError: "Impossibile aprire il report nel builder.",
       removeTitle: "Rimuovi"
     },
     uploadModal: {
@@ -751,7 +763,7 @@ const ENTERPRISE_VAULT_COPY = {
       visiblePortalHint: "Attivo: il contatto può consultarlo. Disattivo: solo agenti.",
       visibleOn: "Visibile",
       visibleOff: "Nascosto",
-      footerHint: "Nome, descrizione e visibilità portale",
+      footerHint: "",
       cancel: "Annulla",
       save: "Salva",
       saving: "Salvataggio…",
@@ -830,7 +842,7 @@ const ENTERPRISE_VAULT_COPY = {
       filesCount: "{count} archivo(s)",
       subfoldersCount: "{count} subcarpeta(s)",
       treeTitle: "Árbol de carpetas",
-      treeRoot: "Raíz de la caja fuerte",
+      treeRoot: "Raíz",
       moveItem: "Mover",
       moveHere: "Mover aquí",
       moveToRoot: "A la raíz",
@@ -870,6 +882,9 @@ const ENTERPRISE_VAULT_COPY = {
       downloadTitle: "Descargar",
       editDescriptionTitle: "Editar descripción",
       editDescriptionAria: "Editar descripción",
+      openInBuilderTitle: "Abrir en el builder",
+      openInBuilderUnavailable: "Esta carpeta no está vinculada a un informe editable.",
+      openInBuilderError: "No se puede abrir el informe en el builder.",
       removeTitle: "Retirar"
     },
     uploadModal: {
@@ -924,7 +939,7 @@ const ENTERPRISE_VAULT_COPY = {
       visiblePortalHint: "Activado: el contacto puede consultarlo. Desactivado: solo agentes.",
       visibleOn: "Visible",
       visibleOff: "Oculto",
-      footerHint: "Nombre, descripción y visibilidad en el portal",
+      footerHint: "",
       cancel: "Cancelar",
       save: "Guardar",
       saving: "Guardando…",
@@ -1043,7 +1058,15 @@ export function getEnterpriseVaultCopy(locale) {
     formatDate: value => {
       if (!value) return "-";
       const d = new Date(value);
-      return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString(bcp47);
+      return Number.isNaN(d.getTime())
+        ? "-"
+        : d.toLocaleString(bcp47, {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
     },
     formatDeleteConfirm: name => interpolate(merged.confirmDelete, {
       name: String(name || "")

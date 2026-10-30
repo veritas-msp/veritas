@@ -13,10 +13,12 @@ const DETAIL_TABS = new Set([
   "stats",
   "metrics"
 ]);
-const ACTIVITY_PANES = new Set(["veritas"]);
-const RMM_PANES = new Set(["synthese", "operations", "peripherals", "metrics"]);
-const OVERVIEW_PANES = new Set(["fiche", "rmm", "supervision"]);
 const SUPERVISION_PANES = new Set(["main", "history"]);
+const SCROLL_DEBOUNCE_MS = 250;
+
+const memoryCache = new Map();
+const scrollTimers = new Map();
+const scrollPending = new Map();
 
 function storageKey(equipmentId) {
   return `${KEY_PREFIX}${equipmentId}`;
@@ -59,44 +61,82 @@ export function normalizeEquipmentOverviewPane(pane, { allowRmm = true, allowSup
   return "fiche";
 }
 
-export function readEquipmentDetailUi(equipmentId) {
-  if (!equipmentId) return null;
+function readRaw(equipmentId) {
+  if (memoryCache.has(equipmentId)) return memoryCache.get(equipmentId);
   try {
     const raw = sessionStorage.getItem(storageKey(equipmentId));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : null;
+    const value = parsed && typeof parsed === "object" ? parsed : null;
+    if (value) memoryCache.set(equipmentId, value);
+    return value;
   } catch {
     return null;
   }
 }
 
-export function writeEquipmentDetailUi(equipmentId, patch = {}) {
-  if (!equipmentId || !patch || typeof patch !== "object") return;
+function writeRaw(equipmentId, next) {
+  memoryCache.set(equipmentId, next);
   try {
-    const previous = readEquipmentDetailUi(equipmentId) || {};
-    const next = {
-      ...previous,
-      ...patch,
-      updatedAt: Date.now()
-    };
-    if (Object.prototype.hasOwnProperty.call(patch, "rightPanelTab")) {
-      next.rightPanelTab = normalizeEquipmentDetailTab(patch.rightPanelTab);
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, "activityPane")) {
-      next.activityPane = normalizeEquipmentActivityPane(patch.activityPane);
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, "overviewPane")) {
-      next.overviewPane = normalizeEquipmentOverviewPane(patch.overviewPane);
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, "supervisionPane")) {
-      next.supervisionPane = normalizeEquipmentSupervisionPane(patch.supervisionPane);
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, "rmmPane")) {
-      next.rmmPane = normalizeEquipmentRmmPane(patch.rmmPane);
-    }
     sessionStorage.setItem(storageKey(equipmentId), JSON.stringify(next));
   } catch {
     // ignore quota / private mode
   }
+}
+
+export function readEquipmentDetailUi(equipmentId) {
+  if (!equipmentId) return null;
+  return readRaw(equipmentId);
+}
+
+export function writeEquipmentDetailUi(equipmentId, patch = {}) {
+  if (!equipmentId || !patch || typeof patch !== "object") return;
+  const previous = readRaw(equipmentId) || {};
+  const next = {
+    ...previous,
+    ...patch,
+    updatedAt: Date.now()
+  };
+  if (Object.prototype.hasOwnProperty.call(patch, "rightPanelTab")) {
+    next.rightPanelTab = normalizeEquipmentDetailTab(patch.rightPanelTab);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "activityPane")) {
+    next.activityPane = normalizeEquipmentActivityPane(patch.activityPane);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "overviewPane")) {
+    next.overviewPane = normalizeEquipmentOverviewPane(patch.overviewPane);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "supervisionPane")) {
+    next.supervisionPane = normalizeEquipmentSupervisionPane(patch.supervisionPane);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, "rmmPane")) {
+    next.rmmPane = normalizeEquipmentRmmPane(patch.rmmPane);
+  }
+  writeRaw(equipmentId, next);
+}
+
+export function writeEquipmentDetailUiScroll(equipmentId, scrollY) {
+  if (!equipmentId) return;
+  scrollPending.set(equipmentId, scrollY);
+  if (scrollTimers.has(equipmentId)) return;
+  const timer = setTimeout(() => {
+    scrollTimers.delete(equipmentId);
+    const y = scrollPending.get(equipmentId);
+    scrollPending.delete(equipmentId);
+    if (typeof y === "number") writeEquipmentDetailUi(equipmentId, { scrollY: y });
+  }, SCROLL_DEBOUNCE_MS);
+  scrollTimers.set(equipmentId, timer);
+}
+
+export function flushEquipmentDetailUiScroll(equipmentId) {
+  if (!equipmentId) return;
+  const timer = scrollTimers.get(equipmentId);
+  if (timer) {
+    clearTimeout(timer);
+    scrollTimers.delete(equipmentId);
+  }
+  if (!scrollPending.has(equipmentId)) return;
+  const y = scrollPending.get(equipmentId);
+  scrollPending.delete(equipmentId);
+  if (typeof y === "number") writeEquipmentDetailUi(equipmentId, { scrollY: y });
 }

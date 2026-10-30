@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getCybersecuriteGuide } from "../PageGuide/cybersecuriteGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
@@ -21,6 +21,7 @@ import { buildBackupFleetFromClients, buildBackupInstanceDetailPayload } from ".
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import API_BASE_URL from "../../config";
+import { uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 const MODULE_TABS = ["antivirus", "antispam", "backup"];
 export default function CybersecuritePage({
   onNavigate,
@@ -40,6 +41,28 @@ export default function CybersecuritePage({
   const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v2";
   const CYBER_PAGE_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
   const [activeTab, setActiveTab] = useState("antivirus");
+  const [tabContentEnter, setTabContentEnter] = useState(true);
+  const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
+    activeTab
+  ]);
+  useLayoutEffect(() => {
+    setTabContentEnter(false);
+  }, [activeTab]);
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setTabContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [activeTab]);
   const [clients, setClients] = useState([]);
   const clientsWithModulesLoadedRef = useRef(false);
   const loadingClientsRef = useRef(false);
@@ -62,7 +85,8 @@ export default function CybersecuritePage({
   const [antivirusCurrentPage, setAntivirusCurrentPage] = useState(1);
   const [antivirusPageSize, setAntivirusPageSize] = useState(50);
   const selectTab = tabKey => {
-    if (!MODULE_TABS.includes(tabKey)) return;
+    if (!MODULE_TABS.includes(tabKey) || tabKey === activeTab) return;
+    setSearchQuery("");
     setActiveTab(tabKey);
   };
   useEffect(() => {
@@ -152,14 +176,23 @@ export default function CybersecuritePage({
           const clientsData = Array.isArray(payload?.clients) ? payload.clients : [];
           setClients(clientsData);
           clientsWithModulesLoadedRef.current = true;
-          try {
-            sessionStorage.setItem(CYBER_PAGE_DATA_CACHE_KEY, JSON.stringify({
-              savedAt: Date.now(),
-              data: {
-                clients: clientsData
-              }
-            }));
-          } catch {}
+          // Persist off the critical path — payload can be large.
+          const cachePayload = clientsData;
+          const persist = () => {
+            try {
+              sessionStorage.setItem(CYBER_PAGE_DATA_CACHE_KEY, JSON.stringify({
+                savedAt: Date.now(),
+                data: {
+                  clients: cachePayload
+                }
+              }));
+            } catch {}
+          };
+          if (typeof requestIdleCallback === "function") {
+            requestIdleCallback(persist, { timeout: 800 });
+          } else {
+            setTimeout(persist, 0);
+          }
           return clientsData;
         } else {
           const clientsData = await fetchClientsList({
@@ -462,54 +495,78 @@ export default function CybersecuritePage({
     });
   };
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
+  const tabPanelClass = `${styles.mspTabPanel} ${
+    tabContentEnter ? styles.mspTabPanelFadeIn : styles.mspTabPanelFadePending
+  }`;
   return <div className={`${styles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={styles.mspLayout}>
       <div className={styles.mspMain}>
         <main className={`${styles.mspContent} ${styles.mspContentList} ${layout.contentNoHero}`}>
           <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-            <div className={styles.cyberLayout}>
-              <aside className={styles.moduleRail} aria-label={pageCopy.tabSectionsAria} data-guide="cyber-tabs">
-                <div className={styles.moduleRailList} role="tablist" aria-orientation="vertical">
-                  {moduleTabs.map(tab => {
-                    const locked = tab.proOnly && isCommunity;
-                    const active = activeTab === tab.key;
-                    return <button
-                      key={tab.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      className={`${styles.moduleRailBtn} ${active ? styles.moduleRailBtnActive : ""} ${locked ? styles.moduleRailBtnLocked : ""}`}
-                      onClick={() => selectTab(tab.key)}
-                      title={locked ? `${tab.label}${pageCopy.proTabSuffix || ""}` : tab.label}
-                    >
-                      <span className={styles.moduleRailIconWrap}>
-                        <Icon icon={tab.icon} className={styles.moduleRailIcon} aria-hidden />
-                      </span>
-                      <span className={styles.moduleRailLabel}>{tab.label}</span>
-                      {locked ? <ProFeatureBadge variant="inline" className={styles.moduleRailProBadge} /> : null}
-                      {active ? <span className={styles.moduleRailActiveBar} aria-hidden /> : null}
-                    </button>;
-                  })}
-                </div>
+            <div className={`${finderKit.finderLayout} ${styles.mspFinderLayout}`}>
+              <aside className={finderKit.finderSidebar} aria-label={pageCopy.tabSectionsAria} data-guide="cyber-tabs">
+                <nav
+                  ref={finderPrimaryTrackRef}
+                  className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated}`}
+                  role="tablist"
+                  aria-orientation="vertical"
+                >
+                  {finderPrimaryIndicator.ready ? (
+                    <div
+                      className={finderKit.finderNavIndicator}
+                      style={{
+                        transform: `translate3d(0, ${finderPrimaryIndicator.top}px, 0)`,
+                        height: finderPrimaryIndicator.height
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <div className={finderKit.finderNavGroup}>
+                    {moduleTabs.map(tab => {
+                      const locked = tab.proOnly && isCommunity;
+                      const active = activeTab === tab.key;
+                      return (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          aria-current={active ? "page" : undefined}
+                          className={`${finderKit.finderItem} ${active ? finderKit.finderItemActive : ""} ${locked ? styles.moduleRailBtnLocked : ""}`}
+                          onClick={() => selectTab(tab.key)}
+                          title={locked ? `${tab.label}${pageCopy.proTabSuffix || ""}` : tab.label}
+                        >
+                          <span className={finderKit.finderItemIcon} aria-hidden>
+                            <Icon icon={tab.icon} width={18} height={18} />
+                          </span>
+                          <span className={finderKit.finderItemLabel}>{tab.label}</span>
+                          {locked ? <ProFeatureBadge variant="inline" className={styles.moduleRailProBadge} /> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </nav>
               </aside>
 
-              <div className={`${styles.cyberMain} ${styles.tabContent}`} data-guide="cyber-dashboard">
-                {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
-                  withModules: true,
-                  force: true,
-                  skipCache: true
-                })} /> : null}
-                {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
-                  withModules: true,
-                  force: true,
-                  skipCache: true
-                })} /> : null}
-                {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} onOpenInstance={handleViewBackupInstance} onSync={syncAllFleet} syncing={syncingFleet} onRefresh={() => loadClients({
-                  withModules: true,
-                  force: true,
-                  skipCache: true
-                })} /> : null}
+              <div className={styles.mspFinderContent} data-guide="cyber-dashboard">
+                <div key={activeTab} className={tabPanelClass}>
+                  {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
+                    withModules: true,
+                    force: true,
+                    skipCache: true
+                  })} /> : null}
+                  {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
+                    withModules: true,
+                    force: true,
+                    skipCache: true
+                  })} /> : null}
+                  {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} onOpenInstance={handleViewBackupInstance} onSync={syncAllFleet} syncing={syncingFleet} onRefresh={() => loadClients({
+                    withModules: true,
+                    force: true,
+                    skipCache: true
+                  })} /> : null}
+                </div>
               </div>
             </div>
           </div>

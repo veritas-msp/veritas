@@ -11,7 +11,7 @@ import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
 import { filterCustomFamilyMap } from "../../utils/siteFilterUtils";
-import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi, normalizeEnterpriseOverviewTab } from "../../utils/enterprisePeripheralsUiState";
+import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi, writeEnterprisePeripheralsUiScroll, flushEnterprisePeripheralsUiScroll, normalizeEnterpriseOverviewTab } from "../../utils/enterprisePeripheralsUiState";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 import { fetchUsers, fetchActiveUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
@@ -130,6 +130,11 @@ import SupportCreditPackModal from "../AdminPage/SupportCreditPackModal";
 import AntivirusConfigModal from "./AntivirusConfigModal";
 import BackupConfigModal from "./BackupConfigModal";
 import BackupOverviewPanel from "./BackupOverviewPanel";
+import EquipmentMappingModal from "../EquipementPage/EquipmentMappingModal";
+import HycuJobMappingModal from "./HycuJobMappingModal";
+import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
+import { getEquipmentPageCopy } from "../EquipementPage/equipmentPageI18n";
+import { getBackupModalCopy } from "./backupConfigModalI18n";
 import { filterBySite } from "../../utils/siteFilterUtils";
 import mapStyles from "./InfrastructureMap.module.css";
 import AntivirusSolutionPickerModal from "./AntivirusSolutionPickerModal";
@@ -434,6 +439,12 @@ function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
         destination: job.destination || job.stockageLie || instance.server || "",
         isMapped: isBackupJobCheckmkMapped(job, mappingsMap[jobId]),
         checkmkMapping: buildJobCheckmkMapping(job, mappingsMap[jobId]),
+        checkmk_host_name: job.checkmk_host_name || mappingsMap[jobId]?.checkmk_host_name || null,
+        checkmk_site: job.checkmk_site || mappingsMap[jobId]?.checkmk_site || null,
+        checkmk_service_name: job.checkmk_service_name || mappingsMap[jobId]?.checkmk_service_name || null,
+        hycu_job_uuid: job.hycu_job_uuid || job.hycuMapping?.hycu_job_uuid || null,
+        hycu_job_name: job.hycu_job_name || job.hycuMapping?.hycu_job_name || null,
+        hycuMapping: job.hycuMapping || null,
         last_backup_date: job.last_backup_date ?? null,
         last_backup_start: job.last_backup_start ?? null,
         last_backup_duration: job.last_backup_duration ?? null
@@ -596,6 +607,15 @@ export default function ClientDetailPage({
   const skipPeripheralsUiPersistRef = useRef(false);
   const equipmentExportMenuRef = useRef(null);
   const vaultPanelRef = useRef(null);
+  /** Lazy secondary loads — avoid storming cyber/backup/activity on every fiche open. */
+  const deferredLoadsForClientRef = useRef({
+    clientId: null,
+    cyber: false,
+    backup: false,
+    activity: false,
+    campaigns: false,
+    ssl: false
+  });
   const [contacts, setContacts] = useState(() =>
     Array.isArray(initialCachedEnterprise?.contacts) ? initialCachedEnterprise.contacts : []
   );
@@ -745,6 +765,10 @@ export default function ClientDetailPage({
   const [backupConfigInitialSection, setBackupConfigInitialSection] = useState("overview");
   const [backupConfigInitialInstance, setBackupConfigInitialInstance] = useState(null);
   const [backupConfigInitialJob, setBackupConfigInitialJob] = useState(null);
+  const [backupJobMappingTarget, setBackupJobMappingTarget] = useState(null);
+  const { enabled: checkmkIntegrationEnabled } = useCheckMKIntegrationEnabled();
+  const equipmentActionsCopy = useMemo(() => getEquipmentPageCopy(locale).actions, [locale]);
+  const backupModalCopy = useMemo(() => getBackupModalCopy(locale), [locale]);
   const [antivirusConfigModalOpen, setAntivirusConfigModalOpen] = useState(false);
   const [antivirusConfigInitialSection, setAntivirusConfigInitialSection] = useState("overview");
   const [antivirusConfigEditingSolution, setAntivirusConfigEditingSolution] = useState(null);
@@ -803,6 +827,65 @@ export default function ClientDetailPage({
     setBackupConfigInitialJob(options?.job || null);
     setBackupConfigModalOpen(true);
   }, []);
+  const isHycuBackupLogiciel = useCallback(
+    logiciel => /hycu/i.test(String(logiciel || "").trim()),
+    []
+  );
+  const getBackupJobActionMenuItems = useCallback(
+    job => {
+      if (!job || !canManageSolutions) return [];
+      const items = [
+        {
+          id: "edit",
+          icon: "mdi:pencil-outline",
+          label: backupModalCopy?.actions?.edit || "Éditer",
+          onClick: () =>
+            openBackupConfigModal("edit-job", {
+              job,
+              instance: job?.instanceId ? { id: job.instanceId } : null
+            })
+        }
+      ];
+      const isHycu = isHycuBackupLogiciel(job.instanceLogiciel);
+      if (isHycu) {
+        const mappedHycu = Boolean(String(job?.hycu_job_uuid || job?.hycuMapping?.hycu_job_uuid || "").trim());
+        items.push({
+          id: "hycu-map",
+          icon: "mdi:cloud-sync-outline",
+          label: mappedHycu
+            ? backupModalCopy?.actions?.editHycu || "Modifier le mapping HYCU"
+            : backupModalCopy?.actions?.mapHycu || "Mapper vers HYCU",
+          active: mappedHycu,
+          disabled: !job?.id,
+          onClick: () => setBackupJobMappingTarget(job)
+        });
+      } else if (checkmkIntegrationEnabled) {
+        const mappedCheckmk = isBackupJobCheckmkMapped(job);
+        const host = job?.checkmkMapping?.checkmk_host_name || job?.checkmk_host_name || "";
+        items.push({
+          id: "checkmk-map",
+          icon: "simple-icons:checkmk",
+          label: mappedCheckmk
+            ? host
+              ? `CheckMK : ${host}`
+              : backupModalCopy?.actions?.editCheckmk || equipmentActionsCopy?.checkmkMap || "Modifier le mapping CheckMK"
+            : backupModalCopy?.actions?.mapCheckmk || equipmentActionsCopy?.checkmkMap || "Mapper vers CheckMK",
+          active: mappedCheckmk,
+          disabled: !job?.id,
+          onClick: () => setBackupJobMappingTarget(job)
+        });
+      }
+      return items;
+    },
+    [
+      backupModalCopy,
+      canManageSolutions,
+      checkmkIntegrationEnabled,
+      equipmentActionsCopy,
+      isHycuBackupLogiciel,
+      openBackupConfigModal
+    ]
+  );
   const openDomainsConfigModal = useCallback((section = "inventory", providerId = null, { openAddChoice = false, editDomain = null } = {}) => {
     setDomainsConfigInitialSection(section);
     setDomainsConfigInitialProviderId(providerId);
@@ -1224,8 +1307,9 @@ export default function ClientDetailPage({
       skipPeripheralsUiPersistRef.current = true;
       const nextOverviewTab = normalizeEnterpriseOverviewTab(saved?.overviewTab);
       setOverviewTab(nextOverviewTab);
-      setMapTabMounted(false);
+      setMapTabMounted(nextOverviewTab === "map");
       setCyberTabMounted(nextOverviewTab === "cyber");
+      setBackupTabMounted(nextOverviewTab === "backup");
       setActivityTabMounted(nextOverviewTab === "activity");
       setEventsTabMounted(nextOverviewTab === "events");
       setVaultTabMounted(nextOverviewTab === "vault");
@@ -1248,16 +1332,8 @@ export default function ClientDetailPage({
       activeType: activeEquipmentTableType || null
     });
   }, [client?.id, overviewTab, equipmentSearchQuery, activeSiteFilter, activeEquipmentTableType]);
-  useEffect(() => {
-    if (!client?.id) return;
-    // Eager keep-alive dès que la fiche est prête : plus de flash au 1er switch d'onglet.
-    setMapTabMounted(true);
-    setCyberTabMounted(true);
-    setActivityTabMounted(true);
-    setEventsTabMounted(true);
-    setVaultTabMounted(true);
-    setLogsTabMounted(true);
-  }, [client?.id]);
+  // Keep-alive only after first visit of each overview tab (mount-on-demand).
+  // Eager-mounting every heavy panel caused a ~40-request storm and UI freezes.
   useEffect(() => {
     // Prefetch Iconify glyphs so secondary nav icons appear with labels (no async gap).
     try {
@@ -1275,6 +1351,53 @@ export default function ClientDetailPage({
     if (overviewTab === "vault") setVaultTabMounted(true);
     if (overviewTab === "logs") setLogsTabMounted(true);
   }, [overviewTab]);
+  // Secondary data: load only when the related overview tab is first visited.
+  useEffect(() => {
+    if (loading || !client?.id) return;
+    const clientId = client.id;
+    const state = deferredLoadsForClientRef.current;
+    if (String(state.clientId) !== String(clientId)) {
+      deferredLoadsForClientRef.current = {
+        clientId: String(clientId),
+        cyber: false,
+        backup: false,
+        activity: false,
+        campaigns: false,
+        ssl: false
+      };
+    }
+    const flags = deferredLoadsForClientRef.current;
+    const needsCyber = overviewTab === "cyber";
+    const needsBackup = overviewTab === "backup" || overviewTab === "cyber";
+    const needsActivity = overviewTab === "activity" || overviewTab === "events";
+    const needsCampaigns = overviewTab === "activity" || overviewTab === "cyber";
+
+    if (needsBackup && !flags.backup) {
+      flags.backup = true;
+      void loadBackupData(clientId, undefined, { silent: true });
+    }
+    if (!isCommunity && needsCyber && !flags.cyber) {
+      flags.cyber = true;
+      void loadCybersecurityData(clientId);
+    }
+    if (isCommunity && needsCyber && !flags.ssl) {
+      flags.ssl = true;
+      void loadSslLicensesData(clientId);
+    }
+    if (needsActivity && !flags.activity) {
+      flags.activity = true;
+      const keepVisible =
+        Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ||
+        Array.isArray(supportTickets) && supportTickets.length > 0;
+      void loadClientActivity(clientId, undefined, { keepVisible });
+    }
+    if (!isCommunity && needsCampaigns && !flags.campaigns) {
+      flags.campaigns = true;
+      void loadCampaigns(clientId);
+    }
+    // keepVisible read at call time from current state; omit from deps to avoid re-entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load* helpers are stable per render; flags gate re-fetch
+  }, [loading, client?.id, overviewTab, isCommunity]);
   const [finderSecEnter, setFinderSecEnter] = useState(true);
   const [mainContentEnter, setMainContentEnter] = useState(true);
   useLayoutEffect(() => {
@@ -1305,13 +1428,12 @@ export default function ClientDetailPage({
   useEffect(() => {
     const el = pageRootRef.current;
     if (!el || !client?.id) return undefined;
+    const clientId = client.id;
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        writeEnterprisePeripheralsUi(client.id, {
-          scrollY: el.scrollTop
-        });
+        writeEnterprisePeripheralsUiScroll(clientId, el.scrollTop);
       });
     };
     el.addEventListener("scroll", onScroll, {
@@ -1320,7 +1442,8 @@ export default function ClientDetailPage({
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", onScroll);
-      writeEnterprisePeripheralsUi(client.id, {
+      flushEnterprisePeripheralsUiScroll(clientId);
+      writeEnterprisePeripheralsUi(clientId, {
         scrollY: el.scrollTop
       });
     };
@@ -1989,19 +2112,18 @@ export default function ClientDetailPage({
       });
       void loadClientModules(clientInfo.id, modulesData, clientInfo);
       const keepTags = Array.isArray(cachedSnapshot?.tags);
-      const keepActivity = Array.isArray(cachedSnapshot?.upcomingEvents) || Array.isArray(cachedSnapshot?.recentEvents) || Array.isArray(cachedSnapshot?.supportTickets) || cachedSnapshot?.supportCreditBalance != null;
+      // Only essentials at open — cyber/backup/activity/campaigns load on first tab visit.
+      deferredLoadsForClientRef.current = {
+        clientId: String(clientInfo.id),
+        cyber: false,
+        backup: false,
+        activity: false,
+        campaigns: false,
+        ssl: false
+      };
       const parallelLoads = [loadCustomFamilyMap(clientInfo.id, signal), loadClientTagsAndNotes(clientInfo.id, signal, {
         keepVisible: keepTags
-      }), loadClientActivity(clientInfo.id, signal, {
-        keepVisible: keepActivity
-      }), loadTotalEquipment(clientInfo.id, clientInfo, modulesData, signal), loadBackupData(clientInfo.id, signal, {
-        silent: true
-      })];
-      if (!isCommunity) {
-        parallelLoads.unshift(loadCampaigns(clientInfo.id, signal), loadCybersecurityData(clientInfo.id, signal));
-      } else {
-        parallelLoads.unshift(loadSslLicensesData(clientInfo.id, signal));
-      }
+      }), loadTotalEquipment(clientInfo.id, clientInfo, modulesData, signal)];
       void Promise.all(parallelLoads);
     } catch (err) {
       if (err?.name === "AbortError") return;
@@ -5219,6 +5341,7 @@ export default function ClientDetailPage({
                   <EquipmentPage
                     ref={equipmentPageRef}
                     embedded
+                    active={overviewTab === "map"}
                     embeddedTypeNav="portal"
                     typeNavPortalTarget={equipTypeNavPortalEl}
                     fixedClientId={client.id}
@@ -5377,6 +5500,7 @@ export default function ClientDetailPage({
                         job,
                         instance: job?.instanceId ? { id: job.instanceId } : null
                       }) : null}
+                      getJobActionMenuItems={canManageSolutions ? getBackupJobActionMenuItems : null}
                       canAddJob={filteredBackupInstancesForTab.length > 0}
                       addInstanceLabel={backupPreviewCopy.addInstance || "Ajouter une instance"}
                       addJobLabel={backupPreviewCopy.addJob || "Ajouter un job"}
@@ -5835,6 +5959,8 @@ export default function ClientDetailPage({
                       clientId={client.id}
                       clientName={client.name}
                       treeNavPortalTarget={vaultTreeNavPortalEl}
+                      onNavigate={onNavigate}
+                      active={overviewTab === "vault"}
                     />
                   ) : null}
                 </ProFeatureLock>
@@ -6895,6 +7021,52 @@ export default function ClientDetailPage({
       });
       setEquipmentRevision(revision => revision + 1);
     }} />}
+
+      {backupJobMappingTarget && client?.id && !isHycuBackupLogiciel(backupJobMappingTarget.instanceLogiciel) ? (
+        <EquipmentMappingModal
+          isOpen={Boolean(backupJobMappingTarget)}
+          onClose={() => setBackupJobMappingTarget(null)}
+          stacked
+          requireService
+          equipment={{
+            id: backupJobMappingTarget.id,
+            name: backupJobMappingTarget.nom,
+            nom: backupJobMappingTarget.nom,
+            type: "Sauvegarde",
+            clientId: client.id,
+            clientName: client.name || client.nom || "",
+            checkmkMapping: backupJobMappingTarget.checkmkMapping || (
+              backupJobMappingTarget.checkmk_host_name
+                ? {
+                    checkmk_host_name: backupJobMappingTarget.checkmk_host_name,
+                    checkmk_site: backupJobMappingTarget.checkmk_site || null,
+                    checkmk_service_name: backupJobMappingTarget.checkmk_service_name || null,
+                    is_active: true
+                  }
+                : null
+            )
+          }}
+          onMappingSaved={async () => {
+            setBackupJobMappingTarget(null);
+            await loadBackupData(client.id);
+          }}
+        />
+      ) : null}
+
+      {backupJobMappingTarget && client?.id && isHycuBackupLogiciel(backupJobMappingTarget.instanceLogiciel) ? (
+        <HycuJobMappingModal
+          open={Boolean(backupJobMappingTarget)}
+          onClose={() => setBackupJobMappingTarget(null)}
+          stacked
+          clientId={client.id}
+          job={backupJobMappingTarget}
+          hasCheckmkMapping={isBackupJobCheckmkMapped(backupJobMappingTarget)}
+          onMappingSaved={async () => {
+            setBackupJobMappingTarget(null);
+            await loadBackupData(client.id);
+          }}
+        />
+      ) : null}
 
       <CustomEquipmentModal isOpen={Boolean(customEquipmentModal?.family)} onClose={() => setCustomEquipmentModal(null)} family={customEquipmentModal?.family} item={customEquipmentModal?.item} client={client ? {
       ...client,

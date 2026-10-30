@@ -220,6 +220,8 @@ const RAPPORT_PAGE = {
       builderSave: "Enregistrer",
       builderDownload: "Exporter",
       builderHint: "Commentez les écarts, créez un ticket support et référencez-le pour montrer l’action prévue au client.",
+      editFrozenHint: "Données figées au {date} — synchroniser pour actualiser.",
+      editLegacyNoCache: "État Checkmk non retrouvé : mode dégradé. Lancez une synchronisation manuelle si besoin.",
       syncProgress: {
         title: "On récupère les données du client",
         kicker: "Mise à jour",
@@ -300,14 +302,27 @@ const RAPPORT_PAGE = {
       servicesLoading: "Chargement des services…"
     },
     recent: {
-      title: "Derniers rapports",
-      hint: "Les rapports déjà générés, du plus récent au plus ancien.",
+      title: "Rapports enregistrés",
+      hint: "Rouvrir un rapport pour le corriger dans le builder.",
       hintClient: "Rapports déjà générés pour cette entreprise.",
-      empty: "Aucun rapport généré pour le moment.",
+      empty: "Aucun rapport enregistré pour le moment.",
       emptyClient: "Aucun rapport pour cette entreprise.",
       created: "Créé le",
+      updated: "Modifié",
       author: "par",
-      openAria: "Afficher l’entreprise de ce rapport"
+      edit: "Éditer",
+      reopen: "Rouvrir",
+      refresh: "Actualiser",
+      searchPlaceholder: "Rechercher",
+      clearSearch: "Effacer la recherche",
+      colName: "Nom",
+      colType: "Type",
+      colUser: "Utilisateur",
+      colDate: "Date",
+      colActions: "Actions",
+      loading: "Chargement…",
+      loadError: "Impossible de charger les rapports enregistrés.",
+      openAria: "Rouvrir ce rapport dans le builder"
     }
   },
   en: {
@@ -424,6 +439,8 @@ const RAPPORT_PAGE = {
       builderSave: "Save",
       builderDownload: "Export",
       builderHint: "Comment on gaps, create a support ticket and reference it to show the planned action to the client.",
+      editFrozenHint: "Data frozen at {date} — sync to refresh.",
+      editLegacyNoCache: "Checkmk state not found: degraded mode. Run a manual sync if needed.",
       syncProgress: {
         title: "Fetching the latest client data",
         kicker: "Catching up",
@@ -504,14 +521,27 @@ const RAPPORT_PAGE = {
       servicesLoading: "Loading services…"
     },
     recent: {
-      title: "Recent reports",
-      hint: "Previously generated reports, newest first.",
+      title: "Saved reports",
+      hint: "Reopen a report to correct it in the builder.",
       hintClient: "Reports already generated for this company.",
-      empty: "No reports generated yet.",
+      empty: "No saved reports yet.",
       emptyClient: "No reports for this company.",
       created: "Created",
+      updated: "Updated",
       author: "by",
-      openAria: "Show this report’s company"
+      edit: "Edit",
+      reopen: "Reopen",
+      refresh: "Refresh",
+      searchPlaceholder: "Search",
+      clearSearch: "Clear search",
+      colName: "Name",
+      colType: "Type",
+      colUser: "User",
+      colDate: "Date",
+      colActions: "Actions",
+      loading: "Loading…",
+      loadError: "Unable to load saved reports.",
+      openAria: "Reopen this report in the builder"
     }
   },
   de: {
@@ -628,6 +658,8 @@ const RAPPORT_PAGE = {
       builderSave: "Speichern",
       builderDownload: "Exportieren",
       builderHint: "Kommentieren Sie Abweichungen, erstellen Sie ein Support-Ticket und referenzieren Sie es als geplante Maßnahme.",
+      editFrozenHint: "Daten eingefroren am {date} — zum Aktualisieren synchronisieren.",
+      editLegacyNoCache: "Checkmk-Status nicht gefunden: eingeschränkter Modus. Bei Bedarf manuell synchronisieren.",
       syncProgress: {
         title: "Wir holen die Kundendaten",
         kicker: "Aktualisierung",
@@ -708,14 +740,27 @@ const RAPPORT_PAGE = {
       servicesLoading: "Dienste werden geladen…"
     },
     recent: {
-      title: "Letzte Berichte",
-      hint: "Bereits erzeugte Berichte, neueste zuerst.",
+      title: "Gespeicherte Berichte",
+      hint: "Bericht erneut öffnen, um ihn im Builder zu korrigieren.",
       hintClient: "Bereits erzeugte Berichte für dieses Unternehmen.",
-      empty: "Noch keine Berichte erzeugt.",
+      empty: "Noch keine gespeicherten Berichte.",
       emptyClient: "Keine Berichte für dieses Unternehmen.",
       created: "Erstellt",
+      updated: "Aktualisiert",
       author: "von",
-      openAria: "Unternehmen dieses Berichts anzeigen"
+      edit: "Bearbeiten",
+      reopen: "Erneut öffnen",
+      refresh: "Aktualisieren",
+      searchPlaceholder: "Suchen",
+      clearSearch: "Suche löschen",
+      colName: "Name",
+      colType: "Typ",
+      colUser: "Benutzer",
+      colDate: "Datum",
+      colActions: "Aktionen",
+      loading: "Laden…",
+      loadError: "Gespeicherte Berichte konnten nicht geladen werden.",
+      openAria: "Diesen Bericht im Builder erneut öffnen"
     }
   },
   it: {
@@ -832,6 +877,8 @@ const RAPPORT_PAGE = {
       builderSave: "Salva",
       builderDownload: "Esporta",
       builderHint: "Commenta gli scostamenti, crea un ticket di supporto e referenzialo per mostrare l’azione prevista al cliente.",
+      editFrozenHint: "Dati congelati al {date} — sincronizza per aggiornare.",
+      editLegacyNoCache: "Stato Checkmk non trovato: modalità ridotta. Avvia una sincronizzazione manuale se serve.",
       syncProgress: {
         title: "Stiamo aggiornando i dati del cliente",
         kicker: "Aggiornamento",
@@ -912,14 +959,27 @@ const RAPPORT_PAGE = {
       servicesLoading: "Caricamento servizi…"
     },
     recent: {
-      title: "Ultimi report",
-      hint: "Report già generati, dal più recente.",
+      title: "Report salvati",
+      hint: "Riapri un report per correggerlo nel builder.",
       hintClient: "Report già generati per questa azienda.",
-      empty: "Nessun report generato al momento.",
+      empty: "Nessun report salvato al momento.",
       emptyClient: "Nessun report per questa azienda.",
       created: "Creato il",
+      updated: "Modificato",
       author: "da",
-      openAria: "Mostra l’azienda di questo report"
+      edit: "Modifica",
+      reopen: "Riapri",
+      refresh: "Aggiorna",
+      searchPlaceholder: "Cerca",
+      clearSearch: "Cancella ricerca",
+      colName: "Nome",
+      colType: "Tipo",
+      colUser: "Utente",
+      colDate: "Data",
+      colActions: "Azioni",
+      loading: "Caricamento…",
+      loadError: "Impossibile caricare i report salvati.",
+      openAria: "Riapri questo report nel builder"
     }
   },
   es: {
@@ -1036,6 +1096,8 @@ const RAPPORT_PAGE = {
       builderSave: "Guardar",
       builderDownload: "Exportar",
       builderHint: "Comente las desviaciones, cree un ticket de soporte y refiéralo para mostrar la acción prevista al cliente.",
+      editFrozenHint: "Datos fijados el {date} — sincronice para actualizar.",
+      editLegacyNoCache: "Estado Checkmk no encontrado: modo degradado. Lance una sincronización manual si hace falta.",
       syncProgress: {
         title: "Estamos trayendo los datos del cliente",
         kicker: "Actualización",
@@ -1116,14 +1178,27 @@ const RAPPORT_PAGE = {
       servicesLoading: "Cargando servicios…"
     },
     recent: {
-      title: "Últimos informes",
-      hint: "Informes ya generados, del más reciente.",
+      title: "Informes guardados",
+      hint: "Reabra un informe para corregirlo en el builder.",
       hintClient: "Informes ya generados para esta empresa.",
-      empty: "Ningún informe generado por ahora.",
+      empty: "Ningún informe guardado por ahora.",
       emptyClient: "Ningún informe para esta empresa.",
       created: "Creado el",
+      updated: "Modificado",
       author: "por",
-      openAria: "Mostrar la empresa de este informe"
+      edit: "Editar",
+      reopen: "Reabrir",
+      refresh: "Actualizar",
+      searchPlaceholder: "Buscar",
+      clearSearch: "Borrar búsqueda",
+      colName: "Nombre",
+      colType: "Tipo",
+      colUser: "Usuario",
+      colDate: "Fecha",
+      colActions: "Acciones",
+      loading: "Cargando…",
+      loadError: "No se pueden cargar los informes guardados.",
+      openAria: "Reabrir este informe en el builder"
     }
   }
 };

@@ -412,7 +412,8 @@
   height: 2.85rem;
   box-sizing: border-box;
   border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
-  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
+  /* Même fond surface-2 que les tables CRM (pas de mix #fff qui casse le dark). */
+  background: var(--msp-surface-2, #f4f7fb);
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -979,16 +980,65 @@
   background: rgba(90, 143, 212, 0.15);
 }
 
+:global(html.dark) .table thead th,
+:global(body.dark) .table thead th {
+  background: var(--msp-surface-2, #162338) !important;
+  background-color: var(--msp-surface-2, #162338) !important;
+  color: var(--msp-muted, #9bb0c9);
+  border-bottom-color: color-mix(in srgb, var(--msp-border, #3d5478) 55%, transparent);
+}
+
+:global(html.dark) .table tbody td,
+:global(body.dark) .table tbody td {
+  background: var(--msp-surface-2, #162338) !important;
+  background-color: var(--msp-surface-2, #162338) !important;
+  color: var(--msp-text, #f0f4fa);
+  border-bottom-color: color-mix(in srgb, var(--msp-border, #3d5478) 55%, transparent);
+}
+
+:global(html.dark) .table tbody tr:nth-child(even) td,
+:global(body.dark) .table tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #162338) !important;
+  background-color: var(--msp-surface-2, #162338) !important;
+}
+
+:global(html.dark) .table tbody tr:hover td,
+:global(html.dark) .table tbody tr:nth-child(even):hover td,
+:global(body.dark) .table tbody tr:hover td,
+:global(body.dark) .table tbody tr:nth-child(even):hover td {
+  background: var(--msp-surface-3, #283858) !important;
+  background-color: var(--msp-surface-3, #283858) !important;
+}
+
+:global(html.dark) .tableRow.selectedRow td,
+:global(html.dark) .tableRow.selectedRow:nth-child(even) td,
+:global(body.dark) .tableRow.selectedRow td,
+:global(body.dark) .tableRow.selectedRow:nth-child(even) td {
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 18%, var(--msp-surface-2, #162338)) !important;
+}
+
+:global(html.dark) .tableRow.selectedRow:hover td,
+:global(html.dark) .tableRow.selectedRow:nth-child(even):hover td,
+:global(body.dark) .tableRow.selectedRow:hover td,
+:global(body.dark) .tableRow.selectedRow:nth-child(even):hover td {
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 28%, var(--msp-surface-2, #162338)) !important;
+}
+
+:global(html.dark) .cellMuted,
+:global(body.dark) .cellMuted {
+  color: var(--msp-muted, #9bb0c9);
+}
+
 :global(html.dark) .rowOpenChevron,
 :global(body.dark) .rowOpenChevron {
-  color: #7d8da3;
+  color: #4a5f7a;
 }
 
 :global(html.dark) .tableRow:hover .rowOpenChevron,
 :global(html.dark) .tableRow:focus-visible .rowOpenChevron,
 :global(body.dark) .tableRow:hover .rowOpenChevron,
 :global(body.dark) .tableRow:focus-visible .rowOpenChevron {
-  color: #7eb0e8;
+  color: var(--msp-accent, #7eb0e8);
 }
 
 :global(html.dark) .rowSyncBtn,

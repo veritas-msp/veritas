@@ -35,14 +35,16 @@ export default function SummaryStep({
   equipmentCommentCounts = {},
   equipmentTicketCounts = {},
   equipmentAlertCounts = {},
-  summaryContentRef = null
+  summaryContentRef = null,
+  customSynthesis: customSynthesisProp = null,
+  onCustomSynthesisChange = null
 }) {
   const [supportStats, setSupportStats] = useState(null);
   const [credits, setCredits] = useState(null);
   const [activeReport, setActiveReport] = useState("supervision");
   const [contentEnter, setContentEnter] = useState(true);
   const [indicatorMotion, setIndicatorMotion] = useState(false);
-  const [customSynthesis, setCustomSynthesis] = useState({
+  const [localCustomSynthesis, setLocalCustomSynthesis] = useState({
     supervision: null,
     sauvegarde: null,
     microsoft: null,
@@ -50,11 +52,21 @@ export default function SummaryStep({
     antivirus: null,
     domains: null
   });
+  const isControlled = typeof onCustomSynthesisChange === "function";
+  const customSynthesis = isControlled
+    ? (customSynthesisProp || localCustomSynthesis)
+    : localCustomSynthesis;
+  const setCustomSynthesis = next => {
+    const value = typeof next === "function" ? next(customSynthesis) : next;
+    if (isControlled) onCustomSynthesisChange(value);
+    else setLocalCustomSynthesis(value);
+  };
 
   const clientKey = client?.id ?? client?.uuid ?? "";
 
   useEffect(() => {
-    setCustomSynthesis({
+    if (isControlled) return;
+    setLocalCustomSynthesis({
       supervision: null,
       sauvegarde: null,
       microsoft: null,
@@ -62,7 +74,7 @@ export default function SummaryStep({
       antivirus: null,
       domains: null
     });
-  }, [clientKey]);
+  }, [clientKey, isControlled]);
 
   const { trackRef: toggleTrackRef, indicator: toggleIndicator } = useFinderNavIndicator([
     activeReport,

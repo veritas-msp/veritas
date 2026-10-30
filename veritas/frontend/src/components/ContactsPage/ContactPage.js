@@ -544,7 +544,7 @@ export default function ContactPage({
   const showSourceEmpty = !loading && contacts.length === 0;
   const showFilteredEmpty = !loading && contacts.length > 0 && isFilteredEmpty;
   const tableColSpan = useMemo(() => {
-    let span = tableColumns.length + 3;
+    let span = tableColumns.length + 3; /* actions + favoris + chevron */
     if (showBulkSelection) span += 1;
     return span;
   }, [tableColumns.length, showBulkSelection]);
@@ -777,12 +777,6 @@ export default function ContactPage({
   };
   const tableToolbar = (
     <div className={layout.tableSearchBar}>
-      <header className={layout.cardHead}>
-        <span className={layout.cardHeadIcon} aria-hidden>
-          <Icon icon="mdi:account-outline" />
-        </span>
-        <h1 className={layout.cardTitle}>{pageCopy.pageTitle}</h1>
-      </header>
       <div className={kit.searchBox}>
         <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
         <input
@@ -911,6 +905,7 @@ export default function ContactPage({
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
+            <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
         {error && !showSkeleton ? <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />

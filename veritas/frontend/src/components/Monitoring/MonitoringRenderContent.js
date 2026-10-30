@@ -52,6 +52,20 @@ const MonitoringRenderContent = ({
   const [scrollY, setScrollY] = useState(initialScrollY ?? 0);
   const hasRestoredScrollRef = useRef(false);
   const onStateChangeRef = useRef(onStateChange);
+  const statePersistRef = useRef({
+    config,
+    data,
+    gatePassed,
+    step,
+    scrollY
+  });
+  statePersistRef.current = {
+    config,
+    data,
+    gatePassed,
+    step,
+    scrollY
+  };
   const [clients, setClients] = useState([]);
   const [checkMKSyncInfo, setCheckMKSyncInfo] = useState(null);
   const [csvImportInfo, setCsvImportInfo] = useState(null);
@@ -117,17 +131,25 @@ const MonitoringRenderContent = ({
     if (!clientId) return null;
     return `${clientId}-${docName || "default"}`;
   }, [config]);
+  const persistStepTimerRef = useRef(null);
   const updateStep = useCallback(updater => {
     setStep(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       if (currentReportKey) {
         stepByReportKeyRef.current[currentReportKey] = next;
-        try {
-          const raw = localStorage.getItem("monitoring_steps");
-          const map = raw ? JSON.parse(raw) : {};
-          map[currentReportKey] = next;
-          localStorage.setItem("monitoring_steps", JSON.stringify(map));
-        } catch (e) {}
+        // Debounce localStorage write — never block the step transition.
+        if (persistStepTimerRef.current) clearTimeout(persistStepTimerRef.current);
+        const key = currentReportKey;
+        const value = next;
+        persistStepTimerRef.current = setTimeout(() => {
+          persistStepTimerRef.current = null;
+          try {
+            const raw = localStorage.getItem("monitoring_steps");
+            const map = raw ? JSON.parse(raw) : {};
+            map[key] = value;
+            localStorage.setItem("monitoring_steps", JSON.stringify(map));
+          } catch (e) {}
+        }, 200);
       }
       return next;
     });
@@ -159,32 +181,59 @@ const MonitoringRenderContent = ({
     }
   }, [config, currentReportKey, initialStep, step]);
   useEffect(() => {
+    let throttleTimer = null;
+    let latestScroll = 0;
+    const flushScroll = () => {
+      throttleTimer = null;
+      setScrollY(latestScroll);
+    };
     const handleScroll = () => {
-      const currentScroll = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
-      setScrollY(currentScroll);
+      latestScroll = window.pageYOffset || document.documentElement.scrollTop || window.scrollY || 0;
+      if (throttleTimer != null) return;
+      throttleTimer = window.setTimeout(flushScroll, 250);
     };
     window.addEventListener("scroll", handleScroll, {
       passive: true
     });
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      if (throttleTimer != null) window.clearTimeout(throttleTimer);
     };
   }, []);
   useEffect(() => {
     onStateChangeRef.current = onStateChange;
   }, [onStateChange]);
+  // Persist structural report state immediately; keep scrollY out of this effect
+  // so scrolling does not rewrite the full Monitoring payload on every tick.
   useEffect(() => {
-    if (typeof onStateChangeRef.current === 'function' && config && config.client) {
+    const snap = statePersistRef.current;
+    if (typeof onStateChangeRef.current === 'function' && snap.config && snap.config.client) {
       onStateChangeRef.current({
-        client: config.client,
-        documentName: config.documentName,
-        data,
-        gatePassed,
-        step,
-        scrollY
+        client: snap.config.client,
+        documentName: snap.config.documentName,
+        data: snap.data,
+        gatePassed: snap.gatePassed,
+        step: snap.step,
+        scrollY: snap.scrollY
       });
     }
-  }, [config, data, gatePassed, step, scrollY]);
+  }, [config, data, gatePassed, step]);
+  useEffect(() => {
+    if (typeof onStateChangeRef.current !== 'function') return;
+    const timer = window.setTimeout(() => {
+      const snap = statePersistRef.current;
+      if (!snap.config?.client) return;
+      onStateChangeRef.current({
+        client: snap.config.client,
+        documentName: snap.config.documentName,
+        data: snap.data,
+        gatePassed: snap.gatePassed,
+        step: snap.step,
+        scrollY: snap.scrollY
+      });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [scrollY]);
   useEffect(() => {
     const editData = localStorage.getItem('editDocumentData');
     if (editData) {

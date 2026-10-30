@@ -1,4 +1,4 @@
-/* —— Largeurs colonnes prestataires —— */
+/* —— Largeurs réparties (table classique full-width) —— */
 .colStatus {
   width: 3.5rem;
   white-space: nowrap;
@@ -10,7 +10,7 @@
 }
 
 .colName {
-  width: auto;
+  width: 18%;
   min-width: 0;
 }
 
@@ -20,27 +20,31 @@
 }
 
 .colType {
-  width: 7.5rem;
+  width: 12%;
 }
 
 .colContact {
-  width: 8.5rem;
+  width: 14%;
 }
 
 .colEmail {
-  width: 11rem;
+  width: 18%;
 }
 
 .colPhone {
-  width: 8.5rem;
+  width: 12%;
 }
 
 .colEnterprises {
-  width: 7.5rem;
+  width: 12%;
 }
 
 .colActions {
-  width: 8.5rem;
+  width: 7.5rem;
+  white-space: nowrap;
+  text-align: right;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .colFavorite {
@@ -50,6 +54,8 @@
 
 .actionsCell {
   white-space: nowrap;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .cardActions {

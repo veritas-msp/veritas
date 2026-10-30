@@ -10,9 +10,9 @@
   --msp-text: #0f1c2e;
   --msp-muted: #5c6b82;
   --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 16px 40px rgba(15, 28, 46, 0.14);
-  --fleet-metric-good: #1d6f42;
-  --fleet-metric-warn: #b45309;
-  --fleet-metric-bad: #b91c1c;
+  --fleet-metric-good: var(--msp-success, #3d8f6a);
+  --fleet-metric-warn: var(--msp-warn, #c47a2b);
+  --fleet-metric-bad: var(--msp-danger, #c45a5a);
 
   color: var(--msp-text);
 }
@@ -20,9 +20,62 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 1.15rem;
   width: 100%;
   min-width: 0;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+
+.bodyFill {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.15rem;
+  overflow: hidden;
+}
+
+.bodyFillTop {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.bodyFillSection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bodyFillSection > :last-child {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.sectionBlockTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.sectionBlockTitle svg {
+  display: none;
 }
 
 .kpiGrid {
@@ -37,6 +90,25 @@
 
 .kpiGrid4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.kpiGrid3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.kpiDualRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  min-width: 0;
+}
+
+.kpiDualGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
 }
 
 .kpiCard {
@@ -290,23 +362,22 @@
   padding: 0.8rem 0.9rem;
   border-radius: 12px;
   border: 1px solid var(--msp-border-light);
-  background: var(--msp-surface);
+  background: var(--msp-surface-2, var(--msp-surface));
   min-width: 0;
   box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .panelTitle {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
   margin: 0 0 0.75rem;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--msp-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
 }
 
 .panelTitle svg {
-  color: var(--msp-accent);
+  display: none;
 }
 
 .panelDesc {
@@ -899,6 +970,14 @@
   color: var(--msp-muted);
 }
 
+.chartTooltip {
+  pointer-events: none;
+}
+
+.chartTooltipLabel {
+  font-weight: 500;
+}
+
 .pieBlock > .emptyHint {
   display: flex;
   align-items: center;
@@ -921,17 +1000,67 @@
   --msp-text: #f0f4fa;
   --msp-muted: #9bb0c9;
   --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.45);
-  --fleet-metric-good: #4ade80;
-  --fleet-metric-warn: #fbbf24;
-  --fleet-metric-bad: #f87171;
+  --fleet-metric-good: #5fa882;
+  --fleet-metric-warn: #d4a05c;
+  --fleet-metric-bad: #d08888;
 }
 
 :global(html.dark) .kpiCard,
 :global(html.dark) .panel {
   box-shadow: none;
+  background: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border-light, #2c3d5a);
+}
+
+:global(html.dark) .kpiCard {
+  border: 1px solid var(--msp-border-light, #2c3d5a);
+}
+
+:global(html.dark) .sectionBlockTitle,
+:global(html.dark) .panelTitle {
+  color: var(--msp-muted, #9bb0c9);
+}
+
+:global(html.dark) .chartTooltip {
+  background: var(--msp-surface, #1f2d4a) !important;
+  border: 1px solid var(--msp-border, #3d5478) !important;
+  color: var(--msp-text, #f0f4fa) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+:global(html.dark) .chartTooltipLabel {
+  color: var(--msp-muted, #9bb0c9);
+}
+
+:global(html.dark) :global(.recharts-default-tooltip) {
+  background: var(--msp-surface, #1f2d4a) !important;
+  border: 1px solid var(--msp-border, #3d5478) !important;
+  border-radius: 8px !important;
+  color: var(--msp-text, #f0f4fa) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+:global(html.dark) :global(.recharts-tooltip-label),
+:global(html.dark) :global(.recharts-tooltip-item) {
+  color: var(--msp-text, #f0f4fa) !important;
+}
+
+:global(html.dark) :global(.recharts-cartesian-axis-tick-value),
+:global(html.dark) :global(.recharts-legend-item-text) {
+  fill: var(--msp-muted, #9bb0c9) !important;
+  color: var(--msp-muted, #9bb0c9) !important;
+}
+
+:global(html.dark) :global(.recharts-cartesian-grid line) {
+  stroke: var(--msp-border-light, #2c3d5a) !important;
 }
 
 @media (max-width: 1200px) {
+  .kpiDualRow {
+    grid-template-columns: 1fr;
+  }
+
   .kpiGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -942,6 +1071,10 @@
 
   .kpiGrid4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpiGrid3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .chartGrid {
@@ -969,6 +1102,10 @@
 
   .kpiGrid4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpiGrid3 {
+    grid-template-columns: 1fr;
   }
 
   .statusGrid4 {

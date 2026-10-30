@@ -535,11 +535,10 @@
 }
 
 .typeSoonBadge {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+  margin-top: auto;
+  align-self: center;
   z-index: 1;
-  padding: 0.12rem 0.38rem;
+  padding: 0.14rem 0.45rem;
   border-radius: 999px;
   border: 1px solid var(--msp-border-light, #e2e8f0);
   background: var(--msp-surface-2, #f7f9fc);
@@ -548,7 +547,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  max-width: calc(100% - 1rem);
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

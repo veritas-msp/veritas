@@ -120,6 +120,12 @@ export default function InfrastructureEquipmentTable({
     resetDeps: [search, moduleKey, safeEquipments.length],
   });
 
+  // Si au moins une ligne a un accès distant, réserver le slot partout pour éviter le décalage.
+  const reserveRemoteAccessSlot = useMemo(
+    () => filteredEquipments.some(item => hasReportRemoteAccessConfigured(item, moduleKey)),
+    [filteredEquipments, moduleKey]
+  );
+
   const displayColumns = useMemo(() => {
     const base = Array.isArray(columns) ? columns : [];
     if (!showInsightColumns) return base;
@@ -236,6 +242,11 @@ export default function InfrastructureEquipmentTable({
                         {showActions && <td className={styles.infraTableActions} onClick={e => e.stopPropagation()}>
                           <div className={equipmentStyles.mappingActions}>
                             <div className={equipmentStyles.mappingActionsGroup}>
+                              {hasRemoteAccessAction ? (
+                                <ReportEquipmentRemoteAccessButton equipment={item} moduleKey={moduleKey} />
+                              ) : reserveRemoteAccessSlot ? (
+                                <span className={equipmentStyles.mappingActionSlot} aria-hidden="true" />
+                              ) : null}
                               {hasMonitoringAction && <button type="button" className={getMonitoringButtonClass(isMappedForMonitoring, syncStatus)} title={isMappedForMonitoring ? (syncStatus === "ok" ? "Supervision OK — voir le détail" : syncStatus === "warn" ? "Supervision : alertes — voir le détail" : syncStatus === "critical" ? "Supervision : critique — voir le détail" : syncStatus ? "Voir le détail supervision" : "Synchronisation en cours ou à lancer — ouvrir le détail") : "Non mappé à une supervision"} disabled={!isMappedForMonitoring} onClick={() => onOpenCheckMKDetail(item, {
                           moduleKey,
                           equipmentKey,
@@ -262,7 +273,6 @@ export default function InfrastructureEquipmentTable({
                           moduleKey,
                           equipmentKey
                         }) : null}
-                              <ReportEquipmentRemoteAccessButton equipment={item} moduleKey={moduleKey} />
                               {hasExternalLink && <a href={externalLink.url} target="_blank" rel="noopener noreferrer" className={equipmentStyles.mappingActionButton} title={externalLink.title || "Open dans un nouvel onglet"} style={{
                           display: "inline-flex",
                           alignItems: "center",

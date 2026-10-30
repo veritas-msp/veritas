@@ -1,6 +1,7 @@
 import { fetchClientModules, saveClientModules } from "../../api/clients";
 import { deleteClientMailinblackTenant, fetchMailinblackDashboard, syncMailinblackCustomer } from "../../api/clientMailinblack";
 import { getAntispamProvider, inferProviderIdFromSolution } from "./antispamFormConfig";
+import { buildAntispamEventLogUpdate, normalizeAntispamEventLog } from "./antispamEventLogUtils";
 function resolveAntispamProviderId(item) {
   const normalized = normalizeAntispamItem(item) || item;
   if (!normalized) return "manual";
@@ -649,12 +650,17 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
   if (!resolvedDashboard) {
     throw new Error("Dashboard Mailinblack inaccessible — mêmes données que la page détail indisponibles.");
   }
+  const { eventLog } = buildAntispamEventLogUpdate(
+    normalized.syncData?.eventLog,
+    normalized.syncData?.dashboard,
+    resolvedDashboard
+  );
   const formattedPayload = formatAntispamSyncPayload(
     normalizedCustomer,
     mappingMode,
     mailinblackTenantId,
     providerId,
-    { dashboard: resolvedDashboard }
+    { dashboard: resolvedDashboard, eventLog }
   );
   const backendPayload = syncResult.data && typeof syncResult.data === "object" ? syncResult.data : null;
   const updatedPayload = backendPayload
@@ -682,6 +688,7 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
           ...(formattedPayload.syncData || {}),
           customer: backendPayload.syncData?.customer || normalizedCustomer,
           dashboard: resolvedDashboard,
+          eventLog,
           lastSync: new Date().toISOString()
         }
       }
@@ -690,6 +697,7 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
         syncData: {
           ...formattedPayload.syncData,
           dashboard: resolvedDashboard,
+          eventLog,
           lastSync: new Date().toISOString()
         }
       };
@@ -725,9 +733,55 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
   return {
     syncResult,
     dashboard: resolvedDashboard,
+    eventLog,
     updatedPayload
   };
 }
+
+/** Persiste uniquement le journal d’événements (survit aux relectures API). */
+export async function persistAntispamEventLog(clientId, solution, eventLog, { signal } = {}) {
+  const normalized = normalizeAntispamItem(solution);
+  if (!clientId || !normalized) {
+    throw new Error("Client Mailinblack introuvable.");
+  }
+  const modulesData = await fetchClientModules(clientId, { signal });
+  const existingEquipements = modulesData?.equipements || {};
+  const antispamEquipement = existingEquipements.Antispam || {};
+  const existingSolutions = Array.isArray(antispamEquipement.solutions) ? antispamEquipement.solutions : [];
+  const nextLog = normalizeAntispamEventLog(eventLog);
+  const hasMatch = existingSolutions.some(entry => solutionMatches(entry, normalized));
+  if (!hasMatch) {
+    throw new Error("Solution antispam introuvable pour enregistrer le journal.");
+  }
+  const finalSolutions = existingSolutions.map(entry => {
+    if (!solutionMatches(entry, normalized)) return entry;
+    return {
+      ...entry,
+      syncData: {
+        ...(entry.syncData || {}),
+        eventLog: nextLog
+      }
+    };
+  });
+  await saveClientModules(clientId, {
+    modules: modulesData?.modules || {
+      Monitoring: true
+    },
+    modules_monitoring: {
+      ...(modulesData?.modules_monitoring || {}),
+      Antispam: finalSolutions.length > 0
+    },
+    equipements: {
+      ...existingEquipements,
+      Antispam: {
+        ...antispamEquipement,
+        solutions: finalSolutions
+      }
+    }
+  });
+  return nextLog;
+}
+
 export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTenantId, providerId = "mailinblack", extra = {}) {
   const provider = getAntispamProvider(providerId);
   const solutionLabel = provider?.solutionName || "Mailinblack Protect";
@@ -770,6 +824,7 @@ export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTena
     syncData: {
       customer,
       dashboard,
+      eventLog: normalizeAntispamEventLog(extra.eventLog),
       status: customer?.status || null,
       lastSync: new Date().toISOString()
     }

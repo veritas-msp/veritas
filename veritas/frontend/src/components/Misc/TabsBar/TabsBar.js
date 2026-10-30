@@ -223,7 +223,9 @@ function TabFolderGroup({
   onToggle,
   onTabClick,
   onTabClose,
-  useFolderUi
+  useFolderUi,
+  /** When true, even a single-tab group uses the compact folder chrome (overflow). */
+  forceFolderChrome = false
 }) {
   const commonCopy = useCommonCopy();
   const activeTab = group.tabs.find(tab => tab.id === activeTabId);
@@ -234,6 +236,7 @@ function TabFolderGroup({
   const [dropdownStyle, setDropdownStyle] = useState(null);
   const menuTabs = activeTab ? inactiveTabs : group.tabs;
   const menuCount = menuTabs.length;
+  const useChrome = useFolderUi && (forceFolderChrome || group.tabs.length > 1);
   useLayoutEffect(() => {
     if (!isOpen || !buttonRef.current) {
       setDropdownStyle(null);
@@ -273,7 +276,7 @@ function TabFolderGroup({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onToggle]);
-  if (!useFolderUi || group.tabs.length === 1) {
+  if (!useChrome) {
     return <>
         {group.tabs.map(tab => {
         const isActive = !launcherActive && tab.id === activeTabId;
@@ -283,21 +286,21 @@ function TabFolderGroup({
   }
   return <div className={styles.folderGroup} ref={wrapRef}>
       {activeTab ? <SortableTab tab={activeTab} isActive={!launcherActive} onTabClick={onTabClick} onTabClose={onTabClose} /> : null}
-      {menuCount > 0 ? <div className={styles.folderWrap}>
+      {menuCount > 0 || !activeTab && group.tabs.length === 1 ? <div className={styles.folderWrap}>
           <button ref={buttonRef} type="button" className={`${styles.folderButton} ${isOpen ? styles.folderButtonOpen : ""} ${activeTab ? styles.folderButtonCompact : ""}`.trim()} onClick={() => onToggle(isOpen ? null : group.key)} aria-expanded={isOpen} aria-haspopup="menu" title={activeTab ? interpolate(commonCopy.tabFolderMore, {
-        count: String(menuCount)
+        count: String(Math.max(menuCount, 1))
       }) : interpolate(commonCopy.tabFolderOpen, {
         label: folderLabel,
-        count: String(menuCount)
+        count: String(Math.max(menuCount, group.tabs.length))
       })}>
             <Icon icon={group.icon} className={styles.folderButtonIcon} width={13} height={13} />
             {!activeTab ? <span className={styles.folderButtonLabel}>{folderLabel}</span> : null}
-            <span className={styles.folderCount}>{activeTab ? `+${menuCount}` : menuCount}</span>
+            <span className={styles.folderCount}>{activeTab ? `+${menuCount}` : menuCount || group.tabs.length}</span>
             <Icon icon={isOpen ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.folderChevron} width={14} height={14} aria-hidden />
           </button>
           {isOpen && dropdownStyle ? createPortal(<div ref={dropdownRef} className={styles.folderDropdown} style={dropdownStyle} role="menu">
                   <div className={styles.folderDropdownHeader}>{folderLabel}</div>
-                  {menuTabs.map(tab => <TabFolderDropdownItem key={tab.id} tab={tab} onTabClick={selected => {
+                  {(menuTabs.length ? menuTabs : group.tabs).map(tab => <TabFolderDropdownItem key={tab.id} tab={tab} onTabClick={selected => {
           onToggle(null);
           onTabClick(selected);
         }} onTabClose={onTabClose} />)}
@@ -305,6 +308,11 @@ function TabFolderGroup({
         </div> : null}
     </div>;
 }
+/** Typical rendered tab width used to exit width-forced folder mode with hysteresis. */
+const FLAT_TAB_ESTIMATE_PX = 150;
+const TAB_GAP_PX = 2;
+const FOLDER_EXIT_SLACK_PX = 72;
+
 export default function TabsBar({
   tabs,
   activeTabId,
@@ -327,11 +335,76 @@ export default function TabsBar({
   const locale = useAppLocale();
   const commonCopy = useCommonCopy();
   const [openFolderKey, setOpenFolderKey] = useState(null);
-  const folderMode = shouldUseFolderMode(tabs);
+  const tabsContainerRef = useRef(null);
+  const [widthForcedFolder, setWidthForcedFolder] = useState(false);
+  const [compactFolders, setCompactFolders] = useState(false);
+  const countFolderMode = shouldUseFolderMode(tabs);
+  const folderMode = countFolderMode || widthForcedFolder;
   const folderGroups = useMemo(() => folderMode ? groupTabsIntoFolders(tabs, locale) : [], [folderMode, tabs, locale]);
   const getFolderLabel = useCallback(key => commonCopy.tabFolders[key] || commonCopy.tabFolders.other, [commonCopy]);
+  const tabCount = Array.isArray(tabs) ? tabs.length : 0;
+
+  useLayoutEffect(() => {
+    const el = tabsContainerRef.current;
+    if (!el) return undefined;
+
+    const measure = () => {
+      const available = el.clientWidth;
+      if (available <= 0) return;
+
+      const contentOverflows = el.scrollWidth > available + 1;
+
+      if (!countFolderMode && !widthForcedFolder) {
+        // Flat layout: switch to regroup before any clipping/scrollbar.
+        if (contentOverflows) {
+          setWidthForcedFolder(true);
+          setCompactFolders(false);
+        }
+        return;
+      }
+
+      if (widthForcedFolder && !countFolderMode) {
+        const estimatedFlat =
+          tabCount * FLAT_TAB_ESTIMATE_PX + Math.max(0, tabCount - 1) * TAB_GAP_PX;
+        if (estimatedFlat + FOLDER_EXIT_SLACK_PX < available) {
+          setWidthForcedFolder(false);
+          setCompactFolders(false);
+          return;
+        }
+      }
+
+      // Folder layout still too wide (many singleton groups) → compact chrome.
+      // Only escalate (never oscillate back while still in folder mode).
+      if (folderMode && contentOverflows) {
+        setCompactFolders(true);
+      }
+    };
+
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => measure()) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [
+    countFolderMode,
+    folderMode,
+    tabCount,
+    tabs,
+    widthForcedFolder,
+    activeTabId,
+    sidebarCollapsed,
+    sidebarLayout,
+    folderGroups.length
+  ]);
+
   useEffect(() => {
-    if (!folderMode) setOpenFolderKey(null);
+    if (!folderMode) {
+      setOpenFolderKey(null);
+      setCompactFolders(false);
+    }
   }, [folderMode]);
   useEffect(() => {
     if (!openFolderKey) return;
@@ -357,7 +430,7 @@ export default function TabsBar({
   };
   const renderTabs = () => {
     if (folderMode) {
-      return folderGroups.map(group => <TabFolderGroup key={group.key} group={group} folderLabel={getFolderLabel(group.key)} activeTabId={activeTabId} launcherActive={launcherActive} isOpen={openFolderKey === group.key} onToggle={setOpenFolderKey} onTabClick={onTabClick} onTabClose={onTabClose} useFolderUi={group.tabs.length > 1} />);
+      return folderGroups.map(group => <TabFolderGroup key={group.key} group={group} folderLabel={getFolderLabel(group.key)} activeTabId={activeTabId} launcherActive={launcherActive} isOpen={openFolderKey === group.key} onToggle={setOpenFolderKey} onTabClick={onTabClick} onTabClose={onTabClose} useFolderUi={group.tabs.length > 1 || compactFolders} forceFolderChrome={compactFolders} />);
     }
     return (tabs || []).map(tab => {
       const isActive = !launcherActive && tab.id === activeTabId;
@@ -367,7 +440,7 @@ export default function TabsBar({
   return <div className={`${styles.tabsBar} ${sidebarLayout === "horizontal" ? styles.sidebarTop : sidebarCollapsed ? styles.sidebarCollapsed : ""} ${folderMode ? styles.tabsBarFolderMode : ""}`.trim()}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={(tabs || []).map(tab => tab.id)} strategy={horizontalListSortingStrategy}>
-          <div className={styles.tabsContainer}>
+          <div ref={tabsContainerRef} className={styles.tabsContainer}>
             {renderTabs()}
           </div>
         </SortableContext>

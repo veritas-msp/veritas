@@ -34,6 +34,7 @@ const ALLOWED_MIME = new Set([
   "text/csv",
   "text/html",
   "application/xhtml+xml",
+  "application/json",
   "application/zip",
   "application/x-zip-compressed",
   "application/x-zip",
@@ -42,6 +43,7 @@ const ALLOWED_MIME = new Set([
 const ALLOWED_CATEGORIES = new Set(["Facture", "Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"]);
 const ZIP_EXTENSIONS = new Set([".zip"]);
 const HTML_EXTENSIONS = new Set([".html", ".htm"]);
+const JSON_EXTENSIONS = new Set([".json"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isUuid(value) {
   return UUID_RE.test(String(value || "").trim());
@@ -74,6 +76,9 @@ function isAllowedUpload(file) {
     return true;
   }
   if (HTML_EXTENSIONS.has(ext) && (!file.mimetype || file.mimetype === "application/octet-stream" || file.mimetype === "text/plain")) {
+    return true;
+  }
+  if (JSON_EXTENSIONS.has(ext) && (!file.mimetype || file.mimetype === "application/octet-stream" || file.mimetype === "text/plain" || file.mimetype === "application/json")) {
     return true;
   }
   return false;
@@ -485,7 +490,9 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
           ? "application/zip"
           : HTML_EXTENSIONS.has(ext)
             ? "text/html"
-            : req.file.mimetype || "application/octet-stream";
+            : JSON_EXTENSIONS.has(ext)
+              ? "application/json"
+              : req.file.mimetype || "application/octet-stream";
     const safeCategory = ALLOWED_CATEGORIES.has(category) ? category : "Autre";
     const hasFolders = await hasClientFileFoldersTable();
     const originalName = resolveUploadOriginalName(req.file);

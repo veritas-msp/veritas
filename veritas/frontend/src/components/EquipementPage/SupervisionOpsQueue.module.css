@@ -332,7 +332,7 @@
 .table {
   width: 100%;
   min-width: 980px;
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.8125rem;

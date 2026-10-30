@@ -47,25 +47,11 @@
   flex: 1;
   min-width: 0;
   height: 100%;
-  overflow-x: auto;
+  /* Never show a scrollbar — regroup (folder mode) must kick in before overflow. */
+  overflow-x: hidden;
   overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--msp-border, #c5d0df) transparent;
   padding: 0 0 0 4px;
   gap: 2px;
-}
-
-.tabsContainer::-webkit-scrollbar {
-  height: 3px;
-}
-
-.tabsContainer::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.tabsContainer::-webkit-scrollbar-thumb {
-  background-color: var(--msp-border, #c5d0df);
-  border-radius: 2px;
 }
 
 .tab {
@@ -409,14 +395,6 @@
 :global(html.dark) .tabsBar {
   background: var(--msp-surface-2, #152035);
   border-bottom-color: var(--msp-border, #2f4260);
-}
-
-:global(html.dark) .tabsContainer {
-  scrollbar-color: var(--msp-border, #2f4260) transparent;
-}
-
-:global(html.dark) .tabsContainer::-webkit-scrollbar-thumb {
-  background-color: var(--msp-border, #2f4260);
 }
 
 :global(html.dark) .tab:hover {

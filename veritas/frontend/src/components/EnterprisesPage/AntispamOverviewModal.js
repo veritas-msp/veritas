@@ -4,13 +4,15 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { ANTISPAM_OVERVIEW_SECTIONS } from "./antispamOverviewSections";
 import { fetchMailinblackDashboard } from "../../api/clientMailinblack";
-import { formatAntispamSolutionSummary, resolveAntispamProviderImage, syncAndPersistAntispamSolution } from "./antispamSolutionUtils";
+import { formatAntispamSolutionSummary, persistAntispamEventLog, resolveAntispamProviderImage, syncAndPersistAntispamSolution } from "./antispamSolutionUtils";
+import { buildAntispamEventLogUpdate, getAntispamEventTypeMeta, normalizeAntispamEventLog } from "./antispamEventLogUtils";
 import { getAntispamProvider } from "./antispamFormConfig";
 import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
-import { KpiCard, StatsPieChart, StatsDistributionBars, StatsDashboardBody, StatsPanel, buildDistributionItems, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import { KpiCard, StatsDashboardBody, StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import AntispamOverviewCharts from "./AntispamOverviewCharts";
 import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
 function formatDate(value) {
   if (value == null || value === "" || value === 0 || value === "0") return "-";
@@ -23,7 +25,7 @@ function formatDate(value) {
       d = new Date(value);
     }
     if (Number.isNaN(d.getTime()) || d.getUTCFullYear() < 1990) return "-";
-    return d.toLocaleString("en-GB");
+    return d.toLocaleString("fr-FR");
   } catch {
     return String(value);
   }
@@ -45,50 +47,6 @@ function displayText(...values) {
   }
   return "-";
 }
-function StatusPill({
-  status,
-  preview = false,
-  compact = false
-}) {
-  const resolved = preview && status === "error" ? "preview" : status;
-  const map = {
-    ok: {
-      className: styles.statusOk,
-      label: "OK",
-      icon: "mdi:check-circle"
-    },
-    empty: {
-      className: styles.statusEmpty,
-      label: "Empty",
-      icon: "mdi:minus-circle-outline"
-    },
-    error: {
-      className: styles.statusError,
-      label: "Error",
-      icon: "mdi:close-circle"
-    },
-    permission_denied: {
-      className: styles.statusDenied,
-      label: compact ? "Auth" : "Unauthorized",
-      icon: "mdi:lock-outline"
-    },
-    preview: {
-      className: styles.statusPreview,
-      label: compact ? "Preview" : "Preview",
-      icon: "mdi:dots-horizontal-circle-outline"
-    },
-    info: {
-      className: styles.statusInfo,
-      label: "Info",
-      icon: "mdi:information-outline"
-    }
-  };
-  const meta = map[resolved] || map.info;
-  return <span className={`${styles.statusPill} ${compact ? styles.statusPillCompact : ""} ${meta.className}`}>
-      {!compact ? <Icon icon={meta.icon} aria-hidden /> : null}
-      {meta.label}
-    </span>;
-}
 function SectionError({
   error
 }) {
@@ -103,10 +61,10 @@ function formatCellValue(value) {
 function DataTable({
   columns,
   rows,
-  emptyLabel = "No data",
+  emptyLabel = "Aucune donnée",
   fillHeight = false,
   searchable = false,
-  searchPlaceholder = "Search…"
+  searchPlaceholder = "Rechercher"
 }) {
   return (
     <SolutionOverviewDataTable
@@ -124,27 +82,27 @@ function renderListSection(section, {
   preview = false,
   fillHeight = false,
   searchable = false,
-  searchPlaceholder = "Search…"
+  searchPlaceholder = "Rechercher"
 } = {}) {
-  if (!section) return <div className={styles.emptyState}>Section unavailable</div>;
-  const error = isBenignListError(section.error) ? null : section.error;
-  const status = section.status === "error" && !error ? "empty" : section.status;
+  const safe = section || {
+    status: "empty",
+    error: null,
+    items: [],
+    total: 0,
+    columns: []
+  };
+  const error = isBenignListError(safe.error) ? null : safe.error;
+  const status = safe.status === "error" && !error ? "empty" : safe.status;
   return <div className={fillHeight ? styles.listSectionFill : undefined}>
       {preview ? <div className={styles.previewBanner}>
           <Icon icon="mdi:flask-outline" aria-hidden />
-          <span>Mailinblack data · read-only preview.</span>
+          <span>Données Mailinblack · aperçu en lecture seule.</span>
         </div> : null}
       <SectionError error={error} />
-      <div className={styles.listSectionMeta}>
-        <StatusPill status={status} preview={preview} />
-        {section.total != null ? <span className={styles.listSectionCount}>
-            {section.total} item{section.total > 1 ? "s" : ""}
-          </span> : null}
-      </div>
       <DataTable
-        columns={section.columns}
-        rows={section.items}
-        emptyLabel={status === "permission_denied" ? "Access denied · check the auth key and client ID" : "No data returned"}
+        columns={safe.columns || []}
+        rows={safe.items || []}
+        emptyLabel={status === "permission_denied" ? "Accès refusé · vérifiez la clé et l’ID client" : "Aucune donnée"}
         fillHeight={fillHeight}
         searchable={searchable}
         searchPlaceholder={searchPlaceholder}
@@ -154,10 +112,10 @@ function renderListSection(section, {
 const SECTION_COLUMNS = {
   domains: [{
     key: "name",
-    label: "Domain"
+    label: "Domaine"
   }, {
     key: "status",
-    label: "Status"
+    label: "Statut"
   }, {
     key: "mx",
     label: "MX"
@@ -167,8 +125,8 @@ const SECTION_COLUMNS = {
     render: r => formatDate(r.expiration)
   }, {
     key: "autoRenew",
-    label: "Auto-renew",
-    render: r => r.autoRenew === true || r.autoRenew === "Yes" ? "Yes" : r.autoRenew === false || r.autoRenew === "No" ? "No" : "-"
+    label: "Renouvellement auto",
+    render: r => r.autoRenew === true || r.autoRenew === "Yes" ? "Oui" : r.autoRenew === false || r.autoRenew === "No" ? "Non" : "-"
   }],
   users: [{
     key: "email",
@@ -176,32 +134,32 @@ const SECTION_COLUMNS = {
     render: r => displayText(r.email, looksLikeEmail(r.name) ? r.name : null, r.mail, r.login)
   }, {
     key: "name",
-    label: "Name"
+    label: "Nom"
   }, {
     key: "role",
-    label: "Role",
+    label: "Rôle",
     render: r => displayText(r.role, r.profile, r.userType)
   }, {
     key: "status",
-    label: "Status",
+    label: "Statut",
     render: r => displayText(r.status, r.state)
   }, {
     key: "lastLogin",
-    label: "Last login",
+    label: "Dernière connexion",
     render: r => formatDate(r.lastLogin || r.lastAuthDate || r.lastConnectionDate)
   }],
   licenses: [{
     key: "product",
-    label: "Product"
+    label: "Produit"
   }, {
     key: "total",
-    label: "Seats"
+    label: "Sièges"
   }, {
     key: "used",
-    label: "Used"
+    label: "Utilisés"
   }, {
     key: "status",
-    label: "Status"
+    label: "Statut"
   }, {
     key: "expiration",
     label: "Expiration",
@@ -212,21 +170,21 @@ const SECTION_COLUMNS = {
     label: "E-mail"
   }, {
     key: "domain",
-    label: "Domain"
+    label: "Domaine"
   }, {
     key: "type",
     label: "Type"
   }, {
     key: "primary",
-    label: "Primary",
-    render: r => r.primary === true ? "Yes" : r.primary === false ? "No" : "-"
+    label: "Principal",
+    render: r => r.primary === true ? "Oui" : r.primary === false ? "Non" : "-"
   }, {
     key: "status",
-    label: "Status"
+    label: "Statut"
   }],
   servers: [{
     key: "name",
-    label: "Server"
+    label: "Serveur"
   }, {
     key: "ip",
     label: "IP",
@@ -236,54 +194,54 @@ const SECTION_COLUMNS = {
     label: "Type"
   }, {
     key: "domain",
-    label: "Domain"
+    label: "Domaine"
   }, {
     key: "status",
-    label: "Status"
+    label: "Statut"
   }],
   senders: [{
     key: "email",
-    label: "Sender"
+    label: "Expéditeur"
   }, {
     key: "domain",
-    label: "Domain"
+    label: "Domaine"
   }, {
     key: "status",
-    label: "Status"
+    label: "Statut"
   }, {
     key: "authorized",
-    label: "Allowed",
-    render: r => r.authorized === true ? "Yes" : r.authorized === false ? "No" : "-"
+    label: "Autorisé",
+    render: r => r.authorized === true ? "Oui" : r.authorized === false ? "Non" : "-"
   }, {
     key: "lastSeen",
-    label: "Last seen",
+    label: "Dernière vue",
     render: r => formatDate(r.lastSeen || r.creationDate || r.createdAt || r.addedDate || r.date)
   }],
   spools: [{
     key: "subject",
-    label: "Subject"
+    label: "Objet"
   }, {
     key: "sender",
-    label: "From",
+    label: "De",
     render: r => displayText(r.sender, r.from, r.mailFrom, r.expediteur)
   }, {
     key: "recipient",
-    label: "To",
+    label: "À",
     render: r => displayText(r.recipient, r.to, r.mailTo, r.destinataire)
   }, {
     key: "status",
-    label: "Status",
+    label: "Statut",
     render: r => displayText(r.status, r.state, r.statut)
   }, {
     key: "category",
-    label: "Category"
+    label: "Catégorie"
   }, {
     key: "threat",
-    label: "Threat",
+    label: "Menace",
     render: r => displayText(r.threat, r.reason, r.detection, r.spamType)
   }, {
     key: "receivedAt",
-    label: "Received",
+    label: "Reçu",
     render: r => formatDate(r.receivedAt || r.date || r.createdAt || r.receptionDate)
   }]
 };
@@ -308,8 +266,11 @@ export function AntispamOverviewPanel({
   const [loading, setLoading] = useState(() => !cachedSync?.dashboard);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState(() => cachedSync?.dashboard || null);
+  const [eventLog, setEventLog] = useState(() => normalizeAntispamEventLog(cachedSync?.eventLog));
   const [lastPersistedAt, setLastPersistedAt] = useState(() => cachedSync?.lastSync || null);
   const [loadError, setLoadError] = useState(null);
+  const eventLogRef = useRef(normalizeAntispamEventLog(cachedSync?.eventLog));
+  eventLogRef.current = eventLog;
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
   const dashboardRef = useRef(cachedSync?.dashboard || null);
@@ -348,11 +309,12 @@ export function AntispamOverviewPanel({
         if (signal.aborted || requestId !== requestIdRef.current) return;
         await onSyncedRef.current?.();
         if (signal.aborted || requestId !== requestIdRef.current) return;
-        showSuccess("Antispam data refreshed and saved.");
+        showSuccess("Données antispam actualisées et enregistrées.");
         if (persisted.dashboard) {
           dashboardRef.current = persisted.dashboard;
           setDashboard(persisted.dashboard);
         }
+        setEventLog(normalizeAntispamEventLog(persisted.eventLog || persisted.updatedPayload?.syncData?.eventLog));
         setLastPersistedAt(persisted.updatedPayload?.syncData?.lastSync || new Date().toISOString());
         return;
       }
@@ -361,9 +323,28 @@ export function AntispamOverviewPanel({
         signal
       });
       if (signal.aborted || requestId !== requestIdRef.current) return;
+      const latest = antispamItemRef.current;
+      const { eventLog: nextEventLog, addedCount } = buildAntispamEventLogUpdate(
+        eventLogRef.current.length ? eventLogRef.current : latest?.syncData?.eventLog,
+        latest?.syncData?.dashboard,
+        dashboardData
+      );
       dashboardRef.current = dashboardData;
       setDashboard(dashboardData);
-      setLastPersistedAt(antispamItemRef.current?.syncData?.lastSync || null);
+      setEventLog(nextEventLog);
+      setLastPersistedAt(latest?.syncData?.lastSync || null);
+      if (addedCount > 0 && clientId && latest) {
+        try {
+          await persistAntispamEventLog(clientId, latest, nextEventLog, { signal });
+          if (!signal.aborted && requestId === requestIdRef.current) {
+            await onSyncedRef.current?.();
+          }
+        } catch (persistErr) {
+          if (persistErr?.name !== "AbortError") {
+            console.warn("Antispam event log persist failed:", persistErr);
+          }
+        }
+      }
     } catch (err) {
       if (err?.name === "AbortError" || controller.signal.aborted || requestId !== requestIdRef.current) return;
       setLoadError(err.message);
@@ -385,6 +366,7 @@ export function AntispamOverviewPanel({
       dashboardRef.current = cached.dashboard;
       setDashboard(cached.dashboard);
     }
+    if (cached?.eventLog) setEventLog(normalizeAntispamEventLog(cached.eventLog));
     if (cached?.lastSync) setLastPersistedAt(cached.lastSync);
     if (cachedOnly) {
       setLoading(false);
@@ -410,12 +392,23 @@ export function AntispamOverviewPanel({
     const views = {};
     Object.entries(SECTION_COLUMNS).forEach(([key, columns]) => {
       const section = sections[key];
-      if (!section) return;
+      if (!section) {
+        views[key] = {
+          status: "empty",
+          error: null,
+          items: [],
+          total: 0,
+          columns
+        };
+        return;
+      }
       const benignError = section.status === "error" && isBenignListError(section.error);
       views[key] = {
         ...section,
         status: benignError ? "empty" : section.status,
         error: benignError ? null : section.error,
+        items: section.items || [],
+        total: section.total ?? (section.items || []).length,
         columns
       };
     });
@@ -460,6 +453,48 @@ export function AntispamOverviewPanel({
     }
     return views;
   }, [sections]);
+
+  const eventColumns = useMemo(
+    () => [
+      {
+        key: "at",
+        label: "Date",
+        sortValue: row => {
+          const ms = row.at ? new Date(row.at).getTime() : NaN;
+          return Number.isFinite(ms) ? ms : 0;
+        },
+        render: row => formatDate(row.at)
+      },
+      {
+        key: "type",
+        label: "Type",
+        sortValue: row => getAntispamEventTypeMeta(row.type).label,
+        render: row => {
+          const meta = getAntispamEventTypeMeta(row.type);
+          return (
+            <span className={`${styles.eventTypeBadge} ${styles[`eventTone_${meta.tone}`] || ""}`}>
+              <Icon icon={meta.icon} width={16} height={16} aria-hidden />
+              {meta.label}
+            </span>
+          );
+        }
+      },
+      {
+        key: "subjectName",
+        label: "Élément",
+        sortValue: row => row.subjectName || "",
+        render: row => row.subjectName || "-"
+      },
+      {
+        key: "message",
+        label: "Événement",
+        sortValue: row => row.message || "",
+        render: row => <span className={styles.cellTruncate}>{row.message || "-"}</span>
+      }
+    ],
+    []
+  );
+
   const renderOverview = () => {
     const customer = sections.customer?.data;
     const usersTotal = sections.users?.total ?? antispamItem?.utilisateursProteges ?? 0;
@@ -471,91 +506,85 @@ export function AntispamOverviewPanel({
     const sendersTotal = sections.senders?.total ?? 0;
     const spoolsTotal = sections.spools?.total ?? 0;
     if (asPage || embedded || embed) {
-      const volumeDistribution = buildDistributionItems([{
-        name: "Users",
-        count: usersTotal
-      }, {
-        name: "Domains",
-        count: domainsTotal
-      }, {
-        name: "E-mails",
-        count: emailsTotal
-      }, {
-        name: "Servers",
-        count: serversTotal
-      }, {
-        name: "Senders",
-        count: sendersTotal
-      }, {
-        name: "Spools",
-        count: spoolsTotal
-      }]);
-      const moduleBars = buildDistributionItems([{
-        name: "Domains",
-        count: domainsTotal
-      }, {
-        name: "Users",
-        count: usersTotal
-      }, {
-        name: "E-mails",
-        count: emailsTotal
-      }, {
-        name: "Servers",
-        count: serversTotal
-      }, {
-        name: "Senders",
-        count: sendersTotal
-      }, {
-        name: "Spools",
-        count: spoolsTotal
-      }]);
-      const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
-      return <StatsDashboardBody>
-          <StatsPanel title={customerName} icon="mdi:email-secure-outline">
-            <p className={dashStyles.panelDesc}>
-              Mailinblack Protect client linked to {client?.name}. Last update:{" "}
-              {formatDate(dashboard?.fetchedAt)} · {syncLabel}
-            </p>
-          </StatsPanel>
+      const clientPanel = customer ? <StatsPanel title="Information client">
+          <ul className={dashStyles.metricList}>
+            <li>
+              <span>ID client</span>
+              <strong className={dashStyles.metricMono}>{customer.id}</strong>
+            </li>
+            {customer.domain ? <li>
+                <span>Domaine principal</span>
+                <strong>{customer.domain}</strong>
+              </li> : null}
+            {customer.status ? <li>
+                <span>Statut</span>
+                <strong>{customer.status}</strong>
+              </li> : null}
+            {licenseTotal != null || licenseUsed != null ? <li>
+                <span>Licences</span>
+                <strong>{licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed}</strong>
+              </li> : null}
+          </ul>
+        </StatsPanel> : <StatsPanel title="Information client">
+          <p className={dashStyles.panelDesc}>Aucune information client disponible.</p>
+        </StatsPanel>;
+      return <StatsDashboardBody className={dashStyles.bodyFill}>
+          <div className={dashStyles.bodyFillTop}>
+            <section className={dashStyles.sectionBlock}>
+              <div className={dashStyles.kpiDualRow}>
+                <div className={dashStyles.kpiDualGroup}>
+                  <h3 className={dashStyles.sectionBlockTitle}>KPI globales</h3>
+                  <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
+                    <KpiCard icon="mdi:account-group-outline" label="Utilisateurs" value={usersTotal || 0} sub="Comptes protégés" />
+                    <KpiCard icon="mdi:web" label="Domaines" value={domainsTotal || 0} sub="Domaines surveillés" />
+                    <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || 0} sub="Adresses admin" />
+                    <KpiCard icon="mdi:email-arrow-right-outline" label="Expéditeurs" value={sendersTotal || 0} sub="Liste Protect" />
+                    <KpiCard icon="mdi:email-multiple-outline" label="Files d’attente" value={spoolsTotal || 0} sub="Messages en file" />
+                  </div>
+                </div>
+                <div className={dashStyles.kpiDualGroup}>
+                  <h3 className={dashStyles.sectionBlockTitle}>KPI licences</h3>
+                  <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid3}`}>
+                    <KpiCard icon="mdi:license" label="Total" value={licenseTotal ?? 0} sub="Sièges achetés" />
+                    <KpiCard icon="mdi:account-check-outline" label="Utilisées" value={licenseUsed ?? 0} sub="Sièges attribués" />
+                    <KpiCard
+                      icon="mdi:gauge"
+                      label="Disponibles"
+                      value={licenseTotal != null && licenseUsed != null ? Math.max(0, Number(licenseTotal) - Number(licenseUsed)) : 0}
+                      sub="Restantes"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
 
-          <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
-            <KpiCard icon="mdi:account-group-outline" label="Users" value={usersTotal || "-"} sub="Protected accounts" />
-            <KpiCard icon="mdi:license" label="Licenses" value={licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed ?? "-"} sub="Assigned / purchased" />
-            <KpiCard icon="mdi:web" label="Domains" value={domainsTotal || "-"} sub="Monitored domains" />
-            <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || "-"} sub="Admin addresses" />
-            <KpiCard icon="mdi:email-arrow-right-outline" label="Senders" value={sendersTotal || "-"} sub="Protect list" />
-            <KpiCard icon="mdi:email-multiple-outline" label="Spools" value={spoolsTotal || "-"} sub="Queued messages" />
-          </section>
+            <section className={dashStyles.sectionBlock}>
+              <h3 className={dashStyles.sectionBlockTitle}>Graphiques</h3>
+              <AntispamOverviewCharts
+                usersTotal={usersTotal}
+                domainsTotal={domainsTotal}
+                emailsTotal={emailsTotal}
+                serversTotal={serversTotal}
+                sendersTotal={sendersTotal}
+                spoolsTotal={spoolsTotal}
+                clientPanel={clientPanel}
+              />
+            </section>
+          </div>
 
-          <section className={dashStyles.chartGrid3}>
-            <StatsPanel title="Fleet distribution" icon="mdi:chart-donut">
-              <StatsPieChart items={volumeDistribution.items} total={volumeDistribution.total} emptyLabel="No volume reported" title="Fleet distribution" />
-            </StatsPanel>
-            {customer ? <StatsPanel title="Information client" icon="mdi:card-account-details-outline">
-                <ul className={dashStyles.metricList}>
-                  <li>
-                    <span>ID client</span>
-                    <strong className={dashStyles.metricMono}>{customer.id}</strong>
-                  </li>
-                  {customer.domain ? <li>
-                      <span>Domaine principal</span>
-                      <strong>{customer.domain}</strong>
-                    </li> : null}
-                  {customer.status ? <li>
-                      <span>Status</span>
-                      <strong>{customer.status}</strong>
-                    </li> : null}
-                  {licenseTotal != null || licenseUsed != null ? <li>
-                      <span>Licenses</span>
-                      <strong>{licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed}</strong>
-                    </li> : null}
-                </ul>
-              </StatsPanel> : <StatsPanel title="Information client" icon="mdi:card-account-details-outline">
-                <p className={dashStyles.panelDesc}>Aucune information client disponible.</p>
-              </StatsPanel>}
-            <StatsPanel title="Volumes par module" icon="mdi:chart-bar">
-              <StatsDistributionBars items={moduleBars.items} emptyLabel="No volume available" />
-            </StatsPanel>
+          <section className={`${dashStyles.sectionBlock} ${dashStyles.bodyFillSection}`}>
+            <h3 className={dashStyles.sectionBlockTitle}>Événements</h3>
+            <div className={styles.listSectionFill}>
+              <SolutionOverviewDataTable
+                fillHeight
+                searchable
+                searchPlaceholder="Rechercher un événement…"
+                emptyLabel="Aucun événement enregistré pour l’instant."
+                emptyIcon="mdi:history"
+                rows={eventLog}
+                columns={eventColumns}
+              />
+            </div>
           </section>
         </StatsDashboardBody>;
     }
@@ -563,27 +592,27 @@ export function AntispamOverviewPanel({
         <div className={formStyles.sectionHead}>
           <h3 className={formStyles.sectionTitle}>{customerName}</h3>
           <p className={formStyles.sectionDesc}>
-            Mailinblack Protect client linked to {client?.name}. Last update:{" "}
+            Client Mailinblack Protect lié à {client?.name}. Dernière mise à jour :{" "}
             {formatDate(dashboard?.fetchedAt)}
-            {lastPersistedAt ? <> · Last saved: {formatDate(lastPersistedAt)}</> : null}
+            {lastPersistedAt ? <> · Dernier enregistrement : {formatDate(lastPersistedAt)}</> : null}
           </p>
         </div>
 
         <div className={styles.kpiGrid}>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Users</span>
+            <span className={styles.kpiLabel}>Utilisateurs</span>
             <span className={styles.kpiValue}>
               {sections.users?.total ?? antispamItem?.utilisateursProteges ?? "-"}
             </span>
           </div>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Licenses</span>
+            <span className={styles.kpiLabel}>Licences</span>
             <span className={styles.kpiValue}>
               {licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed ?? "-"}
             </span>
           </div>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Domains</span>
+            <span className={styles.kpiLabel}>Domaines</span>
             <span className={styles.kpiValue}>
               {sections.domains?.total ?? antispamItem?.domainesSurveilles ?? "-"}
             </span>
@@ -593,11 +622,11 @@ export function AntispamOverviewPanel({
             <span className={styles.kpiValue}>{sectionViews.emails?.total ?? sections.emails?.total ?? "-"}</span>
           </div>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Senders</span>
+            <span className={styles.kpiLabel}>Expéditeurs</span>
             <span className={styles.kpiValue}>{sections.senders?.total ?? "-"}</span>
           </div>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Spools</span>
+            <span className={styles.kpiLabel}>Files d’attente</span>
             <span className={styles.kpiValue}>{sections.spools?.total ?? "-"}</span>
           </div>
         </div>
@@ -623,52 +652,39 @@ export function AntispamOverviewPanel({
     if (!asPage && !embedded && loading) {
       return <div className={styles.loadingBlock}>
           <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          Loading Mailinblack data…
+          Chargement des données Mailinblack…
         </div>;
     }
-    if (loadError) return <SectionError error={loadError} />;
+    if (loadError && !asPage && !embedded && !embed) return <SectionError error={loadError} />;
     let content;
     switch (activeSection) {
+      case "directory":
       case "domains":
-        content = renderListSection(sectionViews.domains, {
-          fillHeight: fillTables
-        });
-        break;
       case "users":
-        content = renderListSection(sectionViews.users, {
-          fillHeight: fillTables,
-          searchable: true,
-          searchPlaceholder: "Search a user, e-mail…"
-        });
-        break;
-      case "licenses":
-        content = renderListSection(sectionViews.licenses, {
-          fillHeight: fillTables
-        });
-        break;
-      case "emails":
-        content = renderListSection(sectionViews.emails, {
-          fillHeight: fillTables
-        });
-        break;
-      case "servers":
-        content = renderListSection(sectionViews.servers, {
-          fillHeight: fillTables
-        });
-        break;
-      case "senders":
-        content = renderListSection(sectionViews.senders, {
-          fillHeight: fillTables,
-          searchable: true,
-          searchPlaceholder: "Search a sender…"
-        });
-        break;
-      case "spools":
-        content = renderListSection(sectionViews.spools, {
-          fillHeight: fillTables,
-          searchable: true,
-          searchPlaceholder: "Search a spool, subject…"
-        });
+        content = (
+          <div className={fillTables ? `${styles.dualTables} ${styles.listSectionFill}` : styles.dualTables}>
+            <section className={styles.dualTablePane}>
+              <h3 className={styles.dualTableTitle}>
+                <Icon icon="mdi:web" width={14} height={14} aria-hidden />
+                Domaines
+              </h3>
+              {renderListSection(sectionViews.domains, {
+                fillHeight: fillTables
+              })}
+            </section>
+            <section className={styles.dualTablePane}>
+              <h3 className={styles.dualTableTitle}>
+                <Icon icon="mdi:account-group-outline" width={14} height={14} aria-hidden />
+                Utilisateurs
+              </h3>
+              {renderListSection(sectionViews.users, {
+                fillHeight: fillTables,
+                searchable: true,
+                searchPlaceholder: "Rechercher un utilisateur…"
+              })}
+            </section>
+          </div>
+        );
         break;
       default:
         content = renderOverview();
@@ -681,7 +697,7 @@ export function AntispamOverviewPanel({
     section
   })), []);
   if (!active || !customerId) return null;
-  const mappingLabel = antispamItem?.mappingMode === "dedicated" ? "Dedicated tenant" : "Tenant global";
+  const mappingLabel = antispamItem?.mappingMode === "dedicated" ? "Tenant dédié" : "Tenant global";
   const openEnterprise = () => {
     if (!client?.id || !onNavigate) return;
     onNavigate("ContratDetail", {
@@ -690,13 +706,12 @@ export function AntispamOverviewPanel({
     });
   };
   if (embed) {
-    if (loading && !dashboard) {
+    if (loading && !dashboard && !loadError) {
       return <div className={styles.loadingBlock}>
           <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          Loading Mailinblack data…
+          Chargement des données Mailinblack…
         </div>;
     }
-    if (loadError && !dashboard) return <SectionError error={loadError} />;
     return renderSectionContent();
   }
   const solutionSummary = formatAntispamSolutionSummary(antispamItem);
@@ -705,16 +720,23 @@ export function AntispamOverviewPanel({
   const providerIcon = provider?.icon || "mdi:email-secure-outline";
 
   if (asPage || embedded) {
-    const clientName = client?.name || "-";
-    const subtitle = <>
-        {client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
+    const clientName = client?.name || customerName || "-";
+    const subtitle = client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
             {clientName}
-          </button> : clientName}
-        {` · ${mappingLabel}`}
+          </button> : clientName;
+    const syncAt = lastPersistedAt || dashboard?.fetchedAt;
+    const headerMeta = syncAt ? <>
+        <Icon icon="mdi:cloud-sync-outline" width={14} height={14} aria-hidden />
+        <span>
+          Dernière sync · <strong>{formatDate(syncAt)}</strong>
+        </span>
+      </> : <>
+        <Icon icon="mdi:cloud-off-outline" width={14} height={14} aria-hidden />
+        <span>Jamais synchronisé</span>
       </>;
-    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon={providerIcon} titleImage={providerImage} subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={embedded ? undefined : () => loadDashboard({
+    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" title="Antispam" titleIcon={providerIcon} titleImage={providerImage} subtitle={subtitle} headerMeta={headerMeta} headerError={loadError} loading={loading} refreshing={refreshing} loadingMessage="Chargement des données Mailinblack…" onRefresh={embedded ? undefined : () => loadDashboard({
       persist: true
-    })} refreshLabel="Refresh and save" footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
+    })} refreshLabel="Actualiser et enregistrer" footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
       </SolutionDetailPageLayout>;
   }
@@ -726,14 +748,14 @@ export function AntispamOverviewPanel({
             {providerImage ? <img src={providerImage} alt="" className={styles.headerLogoImg} /> : <Icon icon={providerIcon} />}
           </div>
           <div className={formStyles.headerText}>
-            <p className={formStyles.eyebrow}>Cybersecurity · Mailinblack Protect</p>
+            <p className={formStyles.eyebrow}>Cybersécurité · Mailinblack Protect</p>
             <h2 className={formStyles.title} id="antispam-overview-title">
               Antispam · {customerName}
             </h2>
             {mappingLabel ? <p className={formStyles.subtitle}>{mappingLabel}</p> : null}
           </div>
         </div>
-        <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Close">
+        <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Fermer">
           <FaTimes />
         </button>
       </header>
@@ -763,7 +785,7 @@ export function AntispamOverviewPanel({
           persist: true
         })} disabled={loading || refreshing}>
             <Icon icon="mdi:cloud-sync-outline" aria-hidden />
-            Refresh and save
+            Actualiser et enregistrer
           </button>
         </div>
       </footer>

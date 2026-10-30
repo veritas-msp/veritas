@@ -1,6 +1,7 @@
 import { fetchClientModules, saveClientModules } from "../../api/clients";
 import { syncBitdefenderCompany, fetchGravityZoneDashboard, fetchBitdefenderStatistics, fetchBitdefenderEnrichedEndpoints } from "../../api/clientBitdefender";
 import { getAntivirusProvider, inferProviderIdFromSolution } from "./antivirusFormConfig";
+import { buildAntivirusEventLogUpdate, normalizeAntivirusEventLog } from "./antivirusEventLogUtils";
 const DEFAULT_SOLUTION_NAME = "GravityZone BitDefender";
 const BITDEFENDER_BRAND_NAME = "BITDEFENDER";
 const GENERIC_BITDEFENDER_LABELS = new Set(["bitdefender", "bitdefender gravityzone", "gravityzone bitdefender", "gravityzone"]);
@@ -353,6 +354,7 @@ export function formatAntivirusSyncPayload(syncData, companyId, companyName, map
       statistics: extra.statistics || null,
       enrichedEndpoints: extra.enrichedEndpoints || null,
       enrichedSummary: extra.enrichedSummary || null,
+      eventLog: normalizeAntivirusEventLog(extra.eventLog),
       lastSync: new Date().toISOString()
     }
   };
@@ -381,7 +383,15 @@ export async function syncAndPersistAntivirusSolution(clientId, solution, {
   }
   const providerId = normalized.providerId || "bitdefender";
   const companyName = syncResult.data?.company?.name || syncExtra.dashboard?.sections?.company?.data?.name || normalized.companyName || normalized.solution || "";
-  const updatedPayload = formatAntivirusSyncPayload(syncResult.data, companyId, companyName, mappingMode, normalized.bitdefenderTenantId, providerId, syncExtra);
+  const { eventLog } = buildAntivirusEventLogUpdate(
+    normalized.syncData?.eventLog,
+    normalized.syncData?.enrichedEndpoints,
+    syncExtra.enrichedEndpoints
+  );
+  const updatedPayload = formatAntivirusSyncPayload(syncResult.data, companyId, companyName, mappingMode, normalized.bitdefenderTenantId, providerId, {
+    ...syncExtra,
+    eventLog
+  });
   const modulesData = await fetchClientModules(clientId, {
     signal
   });
@@ -417,8 +427,53 @@ export async function syncAndPersistAntivirusSolution(clientId, solution, {
     statistics: syncExtra.statistics,
     enrichedSummary: syncExtra.enrichedSummary,
     enrichedEndpoints: syncExtra.enrichedEndpoints,
+    eventLog,
     updatedPayload
   };
+}
+
+/** Persiste uniquement le journal d’événements (survit aux relectures API). */
+export async function persistAntivirusEventLog(clientId, solution, eventLog, { signal } = {}) {
+  const normalized = normalizeAntivirusItem(solution);
+  if (!clientId || !normalized) {
+    throw new Error("Solution GravityZone introuvable.");
+  }
+  const modulesData = await fetchClientModules(clientId, { signal });
+  const existingEquipements = modulesData?.equipements || {};
+  const antivirusEquipement = existingEquipements.Antivirus || {};
+  const existingSolutions = Array.isArray(antivirusEquipement.solutions) ? antivirusEquipement.solutions : [];
+  const nextLog = normalizeAntivirusEventLog(eventLog);
+  const hasMatch = existingSolutions.some(entry => solutionMatches(entry, normalized));
+  if (!hasMatch) {
+    throw new Error("Solution antivirus introuvable pour enregistrer le journal.");
+  }
+  const finalSolutions = existingSolutions.map(entry => {
+    if (!solutionMatches(entry, normalized)) return entry;
+    return {
+      ...entry,
+      syncData: {
+        ...(entry.syncData || {}),
+        eventLog: nextLog
+      }
+    };
+  });
+  await saveClientModules(clientId, {
+    modules: modulesData?.modules || {
+      Monitoring: true
+    },
+    modules_monitoring: {
+      ...(modulesData?.modules_monitoring || {}),
+      Antivirus: finalSolutions.length > 0
+    },
+    equipements: {
+      ...existingEquipements,
+      Antivirus: {
+        ...antivirusEquipement,
+        solutions: finalSolutions
+      }
+    }
+  });
+  return nextLog;
 }
 function groupFleetItemsByClient(items = []) {
   const groups = new Map();

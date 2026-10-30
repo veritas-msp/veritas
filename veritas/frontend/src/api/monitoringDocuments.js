@@ -43,10 +43,16 @@ export async function saveMonitoringDocument({
 }
 export async function fetchMonitoringDocuments(options = {}) {
   const {
-    signal
+    signal,
+    vaultFolderId,
+    vaultFileId
   } = options;
   try {
-    const res = await fetch(`${MONITORING_DOCS_BASE}`, {
+    const params = new URLSearchParams();
+    if (vaultFolderId) params.set("vaultFolderId", String(vaultFolderId));
+    if (vaultFileId) params.set("vaultFileId", String(vaultFileId));
+    const qs = params.toString();
+    const res = await fetch(`${MONITORING_DOCS_BASE}${qs ? `?${qs}` : ""}`, {
       method: "GET",
       credentials: 'include',
       headers: {
@@ -63,6 +69,31 @@ export async function fetchMonitoringDocuments(options = {}) {
     console.error("❌ fetchMonitoringDocuments:", err);
     throw err;
   }
+}
+
+function firstActiveMonitoringDoc(docs) {
+  const list = Array.isArray(docs) ? docs.filter(doc => !doc?.is_trashed) : [];
+  return list[0] || null;
+}
+
+/** Resolve monitoring document linked to a vault folder (report edit shortcut). */
+export async function fetchMonitoringDocumentByVaultFolderId(vaultFolderId, options = {}) {
+  if (!vaultFolderId) return null;
+  const docs = await fetchMonitoringDocuments({
+    ...options,
+    vaultFolderId
+  });
+  return firstActiveMonitoringDoc(docs);
+}
+
+/** Resolve monitoring document linked to a vault file (intervention / audit shortcut). */
+export async function fetchMonitoringDocumentByVaultFileId(vaultFileId, options = {}) {
+  if (!vaultFileId) return null;
+  const docs = await fetchMonitoringDocuments({
+    ...options,
+    vaultFileId
+  });
+  return firstActiveMonitoringDoc(docs);
 }
 export async function fetchMonitoringDocument(documentId) {
   try {

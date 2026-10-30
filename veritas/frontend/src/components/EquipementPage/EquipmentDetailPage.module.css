@@ -3163,7 +3163,7 @@
 
 .logsTable {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
   font-size: 0.8125rem;
 }
 

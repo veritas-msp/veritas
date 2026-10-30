@@ -5,6 +5,7 @@ const COPY = {
     loading: "Chargement de l’instance…",
     back: "Retour",
     eyebrow: "Cybersécurité · Sauvegarde",
+    solutionTitle: "Sauvegarde",
     openClient: "Ouvrir l’entreprise",
     openJob: "Ouvrir le job",
     navAria: "Sections",
@@ -12,6 +13,8 @@ const COPY = {
     syncSuccess: "Synchronisation terminée ({count})",
     syncNone: "Aucun job mappé à synchroniser.",
     syncError: "Échec de la synchronisation",
+    lastSyncLabel: "Dernière sync",
+    lastSyncNever: "Jamais synchronisé",
     mappingHint: "{mapped}/{total} jobs mappés",
     mappingNone: "Aucun job mappé",
     empty: {
@@ -21,6 +24,7 @@ const COPY = {
     sections: {
       overview: "Instance",
       overviewHint: "Informations générales",
+      overviewSplitHint: "Instance et jobs",
       jobs: "Jobs",
       jobsHint: "Jobs de l’instance",
       history: "Historique",
@@ -59,6 +63,7 @@ const COPY = {
     loading: "Loading instance…",
     back: "Back",
     eyebrow: "Cybersecurity · Backup",
+    solutionTitle: "Backup",
     openClient: "Open company",
     openJob: "Open job",
     navAria: "Sections",
@@ -66,6 +71,8 @@ const COPY = {
     syncSuccess: "Sync completed ({count})",
     syncNone: "No mapped jobs to sync.",
     syncError: "Sync failed",
+    lastSyncLabel: "Last sync",
+    lastSyncNever: "Never synced",
     mappingHint: "{mapped}/{total} mapped jobs",
     mappingNone: "No mapped jobs",
     empty: {
@@ -75,6 +82,7 @@ const COPY = {
     sections: {
       overview: "Instance",
       overviewHint: "General information",
+      overviewSplitHint: "Instance and jobs",
       jobs: "Jobs",
       jobsHint: "Instance jobs",
       history: "History",

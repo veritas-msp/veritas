@@ -2,8 +2,11 @@ import { Icon } from "@iconify/react";
 import styles from "../uiKitHome.module.css";
 
 function formatNumber(value) {
-  if (value == null || Number.isNaN(Number(value))) return "-";
-  return String(Math.round(Number(value)));
+  if (value == null || value === "") return "-";
+  if (typeof value === "string") return value;
+  const n = Number(value);
+  if (Number.isNaN(n)) return String(value);
+  return String(Math.round(n));
 }
 
 function KpiWidgetButton({ card, onNavigate }) {

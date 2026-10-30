@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getServicePageGuide } from "../PageGuide/servicePageGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
@@ -19,6 +19,7 @@ import { listConfiguredDomainIntegrations } from "./servicePageDomainSync";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { buildMicrosoftTenantDetailNavigationPayload } from "../EnterprisesPage/microsoftTenantSolutionUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 const MODULE_TABS = ["microsoft", "domain", "ssl"];
 const SERVICE_CLIENTS_CACHE_KEY = "service_clients_list_cache_v2";
 const SERVICE_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -100,6 +101,28 @@ export default function ServicePage({
     showMicrosoft: () => setActiveTab("microsoft")
   }), [locale]);
   const [activeTab, setActiveTab] = useState(MODULE_TABS.includes(serviceParams?.activeTab) ? serviceParams.activeTab : "microsoft");
+  const [tabContentEnter, setTabContentEnter] = useState(true);
+  const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
+    activeTab
+  ]);
+  useLayoutEffect(() => {
+    setTabContentEnter(false);
+  }, [activeTab]);
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setTabContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [activeTab]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMicrosoft, setLoadingMicrosoft] = useState(true);
@@ -588,7 +611,7 @@ export default function ServicePage({
     onNavigate("TenantDetail", payload, options);
   };
   const selectTab = tabKey => {
-    if (!MODULE_TABS.includes(tabKey)) return;
+    if (!MODULE_TABS.includes(tabKey) || tabKey === activeTab) return;
     setActiveTab(tabKey);
   };
   const requestSyncMicrosoft = () => {
@@ -605,45 +628,67 @@ export default function ServicePage({
     handleSyncMicrosoft();
   };
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
+  const tabPanelClass = `${cyberStyles.mspTabPanel} ${
+    tabContentEnter ? cyberStyles.mspTabPanelFadeIn : cyberStyles.mspTabPanelFadePending
+  }`;
   return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
       <div className={cyberStyles.mspMain}>
         <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList} ${layout.contentNoHero}`}>
           <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-            <div className={cyberStyles.cyberLayout}>
-              <aside className={cyberStyles.moduleRail} aria-label={pageCopy.tabSectionsAria} data-guide="service-tabs">
-                <div className={cyberStyles.moduleRailList} role="tablist" aria-orientation="vertical">
-                  {moduleTabs.map(tab => {
-                    const active = activeTab === tab.key;
-                    return <button
-                      key={tab.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      className={`${cyberStyles.moduleRailBtn} ${active ? cyberStyles.moduleRailBtnActive : ""}`}
-                      onClick={() => selectTab(tab.key)}
-                      title={tab.label}
-                    >
-                      <span className={cyberStyles.moduleRailIconWrap}>
-                        <Icon icon={tab.icon} className={cyberStyles.moduleRailIcon} aria-hidden />
-                      </span>
-                      <span className={cyberStyles.moduleRailLabel}>{tab.label}</span>
-                      {active ? <span className={cyberStyles.moduleRailActiveBar} aria-hidden /> : null}
-                    </button>;
-                  })}
-                </div>
+            <div className={`${finderKit.finderLayout} ${cyberStyles.mspFinderLayout}`}>
+              <aside className={finderKit.finderSidebar} aria-label={pageCopy.tabSectionsAria} data-guide="service-tabs">
+                <nav
+                  ref={finderPrimaryTrackRef}
+                  className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated}`}
+                  role="tablist"
+                  aria-orientation="vertical"
+                >
+                  {finderPrimaryIndicator.ready ? (
+                    <div
+                      className={finderKit.finderNavIndicator}
+                      style={{
+                        transform: `translate3d(0, ${finderPrimaryIndicator.top}px, 0)`,
+                        height: finderPrimaryIndicator.height
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  <div className={finderKit.finderNavGroup}>
+                    {moduleTabs.map(tab => {
+                      const active = activeTab === tab.key;
+                      return (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          aria-current={active ? "page" : undefined}
+                          className={`${finderKit.finderItem} ${active ? finderKit.finderItemActive : ""}`}
+                          onClick={() => selectTab(tab.key)}
+                          title={tab.label}
+                        >
+                          <span className={finderKit.finderItemIcon} aria-hidden>
+                            <Icon icon={tab.icon} width={18} height={18} />
+                          </span>
+                          <span className={finderKit.finderItemLabel}>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </nav>
               </aside>
 
-              <div className={`${cyberStyles.cyberMain} ${cyberStyles.tabContent}`} data-guide="service-dashboard">
-                {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading || loadingMicrosoft} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} onSync={requestSyncMicrosoft} syncing={syncing} />}
-
-                {activeTab === "domain" && <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} onSync={handleSyncDomains} syncing={syncingDomains} />}
-
-                {activeTab === "ssl" && <SslMspDashboard certificates={allSslCerts} loading={loadingSsl} copy={pageCopy.ssl} onSync={handleCheckAllSsl} syncing={checkingSsl} onOpenClient={row => {
-                      const clientId = row.clientId || clients.find(client => client.name === row.clientName)?.id;
-                      if (clientId) handleOpenServiceClient(clientId, row.clientName);
-                    }} />}
+              <div className={cyberStyles.mspFinderContent} data-guide="service-dashboard">
+                <div key={activeTab} className={tabPanelClass}>
+                  {activeTab === "microsoft" ? <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading || loadingMicrosoft} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} onSync={requestSyncMicrosoft} syncing={syncing} /> : null}
+                  {activeTab === "domain" ? <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} onSync={handleSyncDomains} syncing={syncingDomains} /> : null}
+                  {activeTab === "ssl" ? <SslMspDashboard certificates={allSslCerts} loading={loadingSsl} copy={pageCopy.ssl} onSync={handleCheckAllSsl} syncing={checkingSsl} onOpenClient={row => {
+                    const clientId = row.clientId || clients.find(client => client.name === row.clientName)?.id;
+                    if (clientId) handleOpenServiceClient(clientId, row.clientName);
+                  }} /> : null}
+                </div>
               </div>
             </div>
           </div>

@@ -36,7 +36,12 @@ import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import { repairFilenameEncoding } from "../../utils/repairFilenameEncoding";
+import { isVeritasInternalVaultFile } from "../../utils/uploadReportToClientVault";
 import { fetchTicketTableColumns } from "../../api/tickets";
+import {
+  fetchMonitoringDocumentByVaultFileId,
+  fetchMonitoringDocuments
+} from "../../api/monitoringDocuments";
 import {
   DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS,
   normalizeTicketTableColumns
@@ -50,6 +55,103 @@ import styles from "./EnterpriseVaultPanel.module.css";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const DEFAULT_CATEGORY = "Autre";
 const VAULT_PAGE_SCOPE = "enterprise_vault";
+const EMPTY_BUILDER_LINKS = { folders: {}, files: {} };
+const FILE_LINKED_REPORT_TYPES = new Set(["intervention", "audit", "audit-securite"]);
+
+function parseMonitoringConfig(doc) {
+  let config = doc?.config;
+  if (typeof config === "string") {
+    try {
+      config = JSON.parse(config);
+    } catch {
+      return {};
+    }
+  }
+  return config && typeof config === "object" ? config : {};
+}
+
+/** Normalise un nom de rapport coffre (PDF/HTML) pour le rapprochement builder. */
+function normalizeVaultReportBaseName(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.(html?|pdf)$/i, "")
+    .replace(/\s*[·•|_]\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isFileLinkedReportDoc(doc, config) {
+  const reportType = String(config?.reportType || "").toLowerCase();
+  if (FILE_LINKED_REPORT_TYPES.has(reportType)) return true;
+  const name = normalizeVaultReportBaseName(doc?.name);
+  return name.includes("intervention") || name.includes("audit");
+}
+
+function buildVaultBuilderLinks(documents, vaultFiles = []) {
+  const folders = {};
+  const files = {};
+  const allDocs = Array.isArray(documents) ? documents : [];
+  const visibleFiles = Array.isArray(vaultFiles) ? vaultFiles : [];
+  const visibleFileIds = new Set(visibleFiles.map(file => String(file?.id)));
+
+  // Skip docs without vault linkage candidates — avoids O(n) JSON.parse on the full corpus.
+  const docs = [];
+  for (let i = 0; i < allDocs.length; i += 1) {
+    const doc = allDocs[i];
+    if (!doc?.id || doc?.is_trashed) continue;
+    const config = parseMonitoringConfig(doc);
+    if (config.vaultFolderId != null || config.vaultFileId != null || isFileLinkedReportDoc(doc, config)) {
+      docs.push({
+        doc,
+        config
+      });
+    }
+  }
+
+  docs.forEach(({ doc, config }) => {
+    const folderId = config.vaultFolderId != null ? String(config.vaultFolderId) : "";
+    const fileId = config.vaultFileId != null ? String(config.vaultFileId) : "";
+    if (folderId && !folders[folderId]) folders[folderId] = doc;
+    if (fileId && !files[fileId]) files[fileId] = doc;
+  });
+
+  // Fallback nom : PDF historiques / HTML renommés dont vaultFileId ne pointe plus sur le fichier visible.
+  const filesByBaseName = new Map();
+  visibleFiles.forEach(file => {
+    const key = normalizeVaultReportBaseName(file?.file_name || file?.fileName || file?.name);
+    if (!key || filesByBaseName.has(key)) return;
+    filesByBaseName.set(key, file);
+  });
+
+  docs.forEach(({ doc, config }) => {
+    if (!isFileLinkedReportDoc(doc, config)) return;
+
+    const linkedId = config.vaultFileId != null ? String(config.vaultFileId) : "";
+    if (linkedId && visibleFileIds.has(linkedId)) return;
+
+    const docKey = normalizeVaultReportBaseName(doc.name);
+    if (!docKey) return;
+
+    let match = filesByBaseName.get(docKey) || null;
+    if (!match && docKey.length >= 12) {
+      for (const [key, file] of filesByBaseName.entries()) {
+        if (key.length < 12) continue;
+        if (key.startsWith(docKey) || docKey.startsWith(key)) {
+          match = file;
+          break;
+        }
+      }
+    }
+    if (match?.id != null && !files[String(match.id)]) {
+      files[String(match.id)] = doc;
+    }
+  });
+
+  return { folders, files };
+}
 const VAULT_COLUMN_HEADERS = {
   name: "name",
   description: "description",
@@ -155,8 +257,11 @@ export default forwardRef(function EnterpriseVaultPanel({
   clientId,
   clientName,
   copy: copyProp,
-  /** DOM node: rendu de l’arborescence dans la colonne Finder (comme les familles matériel). */
-  treeNavPortalTarget = null
+  /** DOM node: rendu de l’arborescence dans la colonne Finder. */
+  treeNavPortalTarget = null,
+  onNavigate = null,
+  /** When false (keep-alive hidden), skip network + heavy linkage work. */
+  active = true
 }, ref) {
   const locale = useAppLocale();
   const {
@@ -204,7 +309,12 @@ export default forwardRef(function EnterpriseVaultPanel({
   const [contextMenu, setContextMenu] = useState(null);
   const [activeDrag, setActiveDrag] = useState(null);
   const [movingItem, setMovingItem] = useState(false);
+  const [builderDocs, setBuilderDocs] = useState([]);
   const currentFolderId = folderPath.length ? folderPath[folderPath.length - 1].id : null;
+  const builderLinks = useMemo(
+    () => (onNavigate ? buildVaultBuilderLinks(builderDocs, files) : EMPTY_BUILDER_LINKS),
+    [builderDocs, files, onNavigate]
+  );
   const childrenMap = useMemo(() => buildFolderChildrenMap(allFolders), [allFolders]);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
@@ -213,7 +323,10 @@ export default forwardRef(function EnterpriseVaultPanel({
   }));
 
   const hasVaultContentRef = useRef(Boolean(initialVaultCache));
+  const columnsLoadedRef = useRef(false);
+  const builderDocsLoadedForClientRef = useRef(null);
   const load = useCallback(async () => {
+    if (!active) return;
     if (!editionLoaded) {
       setLoading(true);
       return;
@@ -252,7 +365,7 @@ export default forwardRef(function EnterpriseVaultPanel({
           tree: true
         }).catch(() => [])
       ]);
-      const nextFiles = Array.isArray(rows) ? rows : [];
+      const nextFiles = (Array.isArray(rows) ? rows : []).filter(file => !isVeritasInternalVaultFile(file));
       const nextFolders = Array.isArray(folderRows) ? folderRows : [];
       const nextAllFolders = Array.isArray(treeRows) ? treeRows : [];
       setFiles(nextFiles);
@@ -277,13 +390,110 @@ export default forwardRef(function EnterpriseVaultPanel({
     } finally {
       setLoading(false);
     }
-  }, [clientId, currentFolderId, editionLoaded, isCommunity]);
+  }, [active, clientId, currentFolderId, editionLoaded, isCommunity]);
   useEffect(() => {
     load();
   }, [load]);
   useEffect(() => {
+    let cancelled = false;
+    if (!active || !editionLoaded || isCommunity || !clientId || !onNavigate) {
+      return undefined;
+    }
+    if (builderDocsLoadedForClientRef.current === String(clientId)) {
+      return undefined;
+    }
+    (async () => {
+      try {
+        const docs = await fetchMonitoringDocuments();
+        if (cancelled) return;
+        const clientKey = String(clientId);
+        const scoped = (Array.isArray(docs) ? docs : []).filter(doc => {
+          if (!doc?.id || doc?.is_trashed) return false;
+          const config = parseMonitoringConfig(doc);
+          const docClient =
+            doc.client_id ??
+            doc.clientId ??
+            config.clientId ??
+            config.client?.id ??
+            null;
+          if (docClient != null && String(docClient) === clientKey) return true;
+          // Keep vault-linked docs even without client id (legacy / other author).
+          return config.vaultFolderId != null || config.vaultFileId != null || isFileLinkedReportDoc(doc, config);
+        });
+        builderDocsLoadedForClientRef.current = clientKey;
+        setBuilderDocs(scoped);
+      } catch (err) {
+        console.error("Vault builder links load failed:", err);
+        if (!cancelled) {
+          builderDocsLoadedForClientRef.current = String(clientId);
+          setBuilderDocs([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active, clientId, editionLoaded, isCommunity, onNavigate]);
+
+  // Résout les PDF/HTML d’intervention dont le document monitoring n’est pas dans la liste
+  // (autre auteur) ou dont le vaultFileId pointe encore sur ce fichier.
+  useEffect(() => {
+    if (!active || !onNavigate || !files.length) return undefined;
+    let cancelled = false;
+    const unresolved = files.filter(file => {
+      if (builderLinks.files[String(file.id)]) return false;
+      const name = normalizeVaultReportBaseName(displayFileName(file));
+      if (name.includes("intervention") || name.includes("audit")) return true;
+      const category = String(file?.category || "").toLowerCase();
+      const mime = String(file?.mime_type || "").toLowerCase();
+      const isReportFile =
+        category === "rapport" && (mime.includes("pdf") || mime.includes("html") || /\.(pdf|html?)$/i.test(name));
+      return isReportFile;
+    }).slice(0, 12);
+    if (!unresolved.length) return undefined;
+
+    (async () => {
+      const extras = [];
+      // Cap concurrency to avoid saturating the browser connection pool.
+      const CONCURRENCY = 3;
+      for (let i = 0; i < unresolved.length; i += CONCURRENCY) {
+        if (cancelled) return;
+        const batch = unresolved.slice(i, i + CONCURRENCY);
+        const batchDocs = await Promise.all(
+          batch.map(async file => {
+            try {
+              return await fetchMonitoringDocumentByVaultFileId(file.id);
+            } catch {
+              return null;
+            }
+          })
+        );
+        batchDocs.forEach(doc => {
+          if (doc?.id) extras.push(doc);
+        });
+      }
+      if (cancelled || !extras.length) return;
+      setBuilderDocs(prev => {
+        const byId = new Map((Array.isArray(prev) ? prev : []).map(doc => [String(doc.id), doc]));
+        let changed = false;
+        extras.forEach(doc => {
+          if (!byId.has(String(doc.id))) {
+            byId.set(String(doc.id), doc);
+            changed = true;
+          }
+        });
+        return changed ? Array.from(byId.values()) : prev;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active, builderLinks.files, files, onNavigate]);
+  useEffect(() => {
     const cached = clientId ? vaultListingCache.get(vaultCacheKey(clientId, "root")) : null;
     hasVaultContentRef.current = Boolean(cached);
+    builderDocsLoadedForClientRef.current = null;
     if (cached) {
       setFiles(cached.files || []);
       setFolders(cached.folders || []);
@@ -297,11 +507,13 @@ export default forwardRef(function EnterpriseVaultPanel({
     setCategoryFilter("all");
   }, [clientId]);
   useEffect(() => {
+    if (!active || columnsLoadedRef.current) return undefined;
     let cancelled = false;
     (async () => {
       try {
         const data = await fetchTicketTableColumns(VAULT_PAGE_SCOPE);
         if (cancelled) return;
+        columnsLoadedRef.current = true;
         setPublicTableColumns(sanitizeVaultTableColumns(Array.isArray(data?.public) ? data.public : DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
         setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? sanitizeVaultTableColumns(data.private) : null);
         setVisibleTableColumns(sanitizeVaultTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS));
@@ -312,7 +524,7 @@ export default forwardRef(function EnterpriseVaultPanel({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [active]);
   const handleColumnsSaved = useCallback(result => {
     if (Array.isArray(result?.public)) setPublicTableColumns(sanitizeVaultTableColumns(result.public));
     setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? sanitizeVaultTableColumns(result.private) : null);
@@ -400,6 +612,7 @@ export default forwardRef(function EnterpriseVaultPanel({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = files.filter(file => {
+      if (isVeritasInternalVaultFile(file)) return false;
       if (categoryFilter !== "all" && file.category !== categoryFilter) return false;
       if (!q) return true;
       return displayFileName(file).toLowerCase().includes(q) || String(file.category || "").toLowerCase().includes(q) || String(file.description || "").toLowerCase().includes(q);
@@ -409,6 +622,26 @@ export default forwardRef(function EnterpriseVaultPanel({
       compareVaultSortValues(getVaultFileSortValue(left, sortBy), getVaultFileSortValue(right, sortBy), sortDirection || "asc")
     );
   }, [files, search, categoryFilter, sortBy, sortDirection]);
+  const openLinkedReportInBuilder = useCallback(doc => {
+    if (!doc?.id || !onNavigate) return;
+    onNavigate("Report", { editDocumentId: doc.id, document: doc });
+  }, [onNavigate]);
+  const openFolderInBuilder = useCallback(folder => {
+    const doc = builderLinks.folders[String(folder?.id)];
+    if (!doc) {
+      toast.info(copy.card?.openInBuilderUnavailable || "Ce dossier n’est pas lié à un rapport rééditable.");
+      return;
+    }
+    openLinkedReportInBuilder(doc);
+  }, [builderLinks.folders, copy.card?.openInBuilderUnavailable, openLinkedReportInBuilder]);
+  const openFileInBuilder = useCallback(file => {
+    const doc = builderLinks.files[String(file?.id)];
+    if (!doc) {
+      toast.info(copy.card?.openInBuilderUnavailable || "Ce dossier n’est pas lié à un rapport rééditable.");
+      return;
+    }
+    openLinkedReportInBuilder(doc);
+  }, [builderLinks.files, copy.card?.openInBuilderUnavailable, openLinkedReportInBuilder]);
   const filteredFolders = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = !q
@@ -619,6 +852,34 @@ export default forwardRef(function EnterpriseVaultPanel({
     }
   }, [copy.panel.moveError, copy.toast.updateError, moveItemToFolder, movingItem]);
   const isEmpty = !loading && filteredFolders.length === 0 && filtered.length === 0;
+  const pathBreadcrumb = (
+    <div className={`${styles.macosPathPill} ${styles.vaultPathBesideSearch}`.trim()} aria-label={copy.panel.rootBreadcrumb || "Vault"}>
+      <button
+        type="button"
+        className={`${styles.macosPathBtn} ${folderPath.length === 0 ? styles.macosPathBtnCurrent : ""}`.trim()}
+        onClick={() => goToBreadcrumb(-1)}
+        title={copy.panel.treeRoot || "Racine"}
+      >
+        <Icon icon="mdi:safe-square-outline" aria-hidden />
+        <span>{copy.panel.treeRoot}</span>
+      </button>
+      {folderPath.map((crumb, index) => (
+        <Fragment key={crumb.id}>
+          <span className={styles.macosPathSep} aria-hidden>
+            <Icon icon="mdi:chevron-right" />
+          </span>
+          <button
+            type="button"
+            className={`${styles.macosPathBtn} ${index === folderPath.length - 1 ? styles.macosPathBtnCurrent : ""}`}
+            onClick={() => goToBreadcrumb(index)}
+          >
+            <Icon icon="mdi:folder-outline" aria-hidden />
+            <span>{crumb.name}</span>
+          </button>
+        </Fragment>
+      ))}
+    </div>
+  );
   const treePane = (
     <aside
       className={`${styles.treePane} ${treeNavPortalTarget ? styles.treePanePortaled : ""}`.trim()}
@@ -720,29 +981,8 @@ export default forwardRef(function EnterpriseVaultPanel({
                   </button>
                 ) : null}
               </div>
+              {pathBreadcrumb}
               <div className={`${equipStyles.embeddedSearchActions} ${styles.vaultToolbarActions}`}>
-                {folderPath.length > 0 ? (
-                  <div className={styles.macosPathPill} aria-label={copy.panel.rootBreadcrumb || "Vault"}>
-                    <button type="button" className={styles.macosPathBtn} onClick={() => goToBreadcrumb(-1)} title={copy.panel.rootBreadcrumb || "Coffre-fort"}>
-                      <Icon icon="mdi:safe-square-outline" aria-hidden />
-                    </button>
-                    {folderPath.map((crumb, index) => (
-                      <Fragment key={crumb.id}>
-                        <span className={styles.macosPathSep} aria-hidden>
-                          <Icon icon="mdi:chevron-right" />
-                        </span>
-                        <button
-                          type="button"
-                          className={`${styles.macosPathBtn} ${index === folderPath.length - 1 ? styles.macosPathBtnCurrent : ""}`}
-                          onClick={() => goToBreadcrumb(index)}
-                        >
-                          <Icon icon="mdi:folder-outline" aria-hidden />
-                          <span>{crumb.name}</span>
-                        </button>
-                      </Fragment>
-                    ))}
-                  </div>
-                ) : null}
                 <div className={styles.macosPillSelectWrap}>
                   <button
                     type="button"
@@ -868,6 +1108,7 @@ export default forwardRef(function EnterpriseVaultPanel({
                         onRename={setRenameTarget}
                         onDelete={requestDeleteFolder}
                         onContextMenu={openContextMenu}
+                        onOpenInBuilder={builderLinks.folders[String(folder.id)] ? openFolderInBuilder : null}
                       />
                     ))}
                     {filtered.map(file => (
@@ -882,6 +1123,7 @@ export default forwardRef(function EnterpriseVaultPanel({
                         onEdit={setEditingFile}
                         onDelete={requestDeleteFile}
                         onContextMenu={openContextMenu}
+                        onOpenInBuilder={builderLinks.files[String(file.id)] ? openFileInBuilder : null}
                       />
                     ))}
                   </tbody>
@@ -910,6 +1152,18 @@ export default forwardRef(function EnterpriseVaultPanel({
           closeContextMenu();
           toggleFolderVisibility(folder);
         }}
+        onOpenInBuilder={item => {
+          closeContextMenu();
+          if (contextMenu?.kind === "file") openFileInBuilder(item);
+          else openFolderInBuilder(item);
+        }}
+        canOpenInBuilder={
+          contextMenu?.kind === "folder"
+            ? Boolean(builderLinks.folders[String(contextMenu.item?.id)])
+            : contextMenu?.kind === "file"
+              ? Boolean(builderLinks.files[String(contextMenu.item?.id)])
+              : false
+        }
         onDeleteFolder={folder => {
           closeContextMenu();
           requestDeleteFolder(folder);
@@ -1127,7 +1381,8 @@ function VaultFolderRow({
   onToggleVisibility,
   onRename,
   onDelete,
-  onContextMenu
+  onContextMenu,
+  onOpenInBuilder = null
 }) {
   const drag = useDraggable({
     id: `drag-folder-${folder.id}`,
@@ -1203,6 +1458,20 @@ function VaultFolderRow({
       })}
       <td className={styles.colActions}>
         <div className={styles.rowActions}>
+          {onOpenInBuilder ? (
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={() => onOpenInBuilder(folder)}
+              title={copy.card?.openInBuilderTitle || "Ouvrir dans le builder"}
+              aria-label={copy.card?.openInBuilderTitle || "Ouvrir dans le builder"}
+            >
+              <Icon icon="mdi:file-document-edit-outline" aria-hidden />
+            </button>
+          ) : (
+            <span className={styles.actionSlot} aria-hidden />
+          )}
+          <span className={styles.actionSlot} aria-hidden />
           <button type="button" className={styles.actionBtn} onClick={() => onRename(folder)} title={copy.panel.renameFolder}><Icon icon="mdi:pencil-outline" aria-hidden /></button>
           <button type="button" className={`${styles.actionBtn} ${styles.actionDelete}`} onClick={() => onDelete(folder)} title={copy.panel.deleteFolder}><Icon icon="mdi:trash-can-outline" aria-hidden /></button>
         </div>
@@ -1219,7 +1488,8 @@ function VaultFileRow({
   onToggleVisibility,
   onEdit,
   onDelete,
-  onContextMenu
+  onContextMenu,
+  onOpenInBuilder = null
 }) {
   const fileName = displayFileName(file);
   const isPdf = file.mime_type === "application/pdf";
@@ -1294,6 +1564,19 @@ function VaultFileRow({
       })}
       <td className={styles.colActions}>
         <div className={styles.rowActions}>
+          {onOpenInBuilder ? (
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={() => onOpenInBuilder(file)}
+              title={copy.card?.openInBuilderTitle || "Ouvrir dans le builder"}
+              aria-label={copy.card?.openInBuilderTitle || "Ouvrir dans le builder"}
+            >
+              <Icon icon="mdi:file-document-edit-outline" aria-hidden />
+            </button>
+          ) : (
+            <span className={styles.actionSlot} aria-hidden />
+          )}
           <a href={getDownloadUrl(file.id)} download={fileName} className={styles.actionBtn} title={copy.card.downloadTitle}><Icon icon="mdi:download-outline" aria-hidden /></a>
           <button type="button" className={styles.actionBtn} onClick={() => onEdit(file)} title={copy.card.editDescriptionTitle}><Icon icon="mdi:pencil-outline" aria-hidden /></button>
           <button type="button" className={`${styles.actionBtn} ${styles.actionDelete}`} onClick={() => onDelete(file)} title={copy.card.removeTitle}><Icon icon="mdi:trash-can-outline" aria-hidden /></button>
@@ -1308,6 +1591,8 @@ function VaultContextMenu({
   onClose,
   onRenameFolder,
   onToggleFolderVisibility,
+  onOpenInBuilder,
+  canOpenInBuilder = false,
   onDeleteFolder,
   onPreviewFile,
   onDownloadFile,
@@ -1322,7 +1607,16 @@ function VaultContextMenu({
   const items = useMemo(() => {
     if (menu.kind === "folder" && menu.item) {
       const folder = menu.item;
-      return [
+      const rows = [];
+      if (canOpenInBuilder && onOpenInBuilder) {
+        rows.push({
+          key: "open-builder",
+          icon: "mdi:file-document-edit-outline",
+          label: copy.card?.openInBuilderTitle || "Ouvrir dans le builder",
+          onSelect: () => onOpenInBuilder(folder)
+        });
+      }
+      rows.push(
         { key: "rename", icon: "mdi:pencil-outline", label: copy.panel.renameFolder, onSelect: () => onRenameFolder(folder) },
         {
           key: "visibility",
@@ -1332,11 +1626,21 @@ function VaultContextMenu({
         },
         { key: "sep-1", separator: true },
         { key: "delete", icon: "mdi:trash-can-outline", label: copy.panel.deleteFolder, danger: true, onSelect: () => onDeleteFolder(folder) }
-      ];
+      );
+      return rows;
     }
     if (menu.kind === "file" && menu.item) {
       const file = menu.item;
-      return [
+      const rows = [];
+      if (canOpenInBuilder && onOpenInBuilder) {
+        rows.push({
+          key: "open-builder",
+          icon: "mdi:file-document-edit-outline",
+          label: copy.card?.openInBuilderTitle || "Ouvrir dans le builder",
+          onSelect: () => onOpenInBuilder(file)
+        });
+      }
+      rows.push(
         { key: "preview", icon: "mdi:eye-outline", label: copy.card.previewTitle, onSelect: () => onPreviewFile(file) },
         { key: "download", icon: "mdi:download-outline", label: copy.card.downloadTitle, onSelect: () => onDownloadFile(file) },
         { key: "edit", icon: "mdi:pencil-outline", label: copy.card.editDescriptionTitle, onSelect: () => onEditFile(file) },
@@ -1348,13 +1652,14 @@ function VaultContextMenu({
         },
         { key: "sep-1", separator: true },
         { key: "delete", icon: "mdi:trash-can-outline", label: copy.card.removeTitle, danger: true, onSelect: () => onDeleteFile(file) }
-      ];
+      );
+      return rows;
     }
     return [
       { key: "upload", icon: "mdi:upload-outline", label: copy.panel.uploadDocument || copy.uploadModal?.upload || "Upload", onSelect: onUpload },
       { key: "new-folder", icon: "mdi:folder-plus-outline", label: copy.panel.newFolder, onSelect: onNewFolder }
     ];
-  }, [menu, copy, onRenameFolder, onToggleFolderVisibility, onDeleteFolder, onPreviewFile, onDownloadFile, onEditFile, onToggleFileVisibility, onDeleteFile, onNewFolder, onUpload]);
+  }, [menu, copy, onRenameFolder, onToggleFolderVisibility, onOpenInBuilder, canOpenInBuilder, onDeleteFolder, onPreviewFile, onDownloadFile, onEditFile, onToggleFileVisibility, onDeleteFile, onNewFolder, onUpload]);
 
   useEffect(() => {
     const el = menuRef.current;
@@ -1916,11 +2221,16 @@ function VaultEditDescriptionModal({
   const [description, setDescription] = useState(file?.description || "");
   const [visibleToClient, setVisibleToClient] = useState(Boolean(file?.visible_to_client));
   const [saving, setSaving] = useState(false);
+  const modal = copy.editModal;
+  const originalName = displayFileName(file);
+  const nameReady = Boolean(String(fileName || "").trim());
+
   useEffect(() => {
     setFileName(displayFileName(file) || "");
     setDescription(file?.description || "");
     setVisibleToClient(Boolean(file?.visible_to_client));
   }, [file]);
+
   const handleSubmit = async e => {
     e.preventDefault();
     if (!file?.id) return;
@@ -1940,9 +2250,16 @@ function VaultEditDescriptionModal({
       setSaving(false);
     }
   };
-  const modal = copy.editModal;
-  return createPortal(<div className={formStyles.overlay} onClick={onClose} role="presentation">
-      <div className={`${formStyles.shell} ${formStyles.shellMedium}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="vault-edit-description-title">
+
+  return createPortal(
+    <div className={formStyles.overlay} onClick={saving ? undefined : onClose} role="presentation">
+      <div
+        className={`${formStyles.shell} ${formStyles.shellCompact}`}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vault-edit-description-title"
+      >
         <div className={formStyles.accentBar} aria-hidden />
         <header className={formStyles.header}>
           <div className={formStyles.headerMain}>
@@ -1954,16 +2271,25 @@ function VaultEditDescriptionModal({
               <h2 className={formStyles.title} id="vault-edit-description-title">
                 {modal.title}
               </h2>
-              <p className={formStyles.subtitle}>{modal.subtitle || displayFileName(file)}</p>
+              <p className={formStyles.subtitle} title={originalName || undefined}>
+                {modal.subtitle}
+              </p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving} aria-label={modal.closeAria}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={formStyles.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={modal.closeAria}
+            icon="mdi:close"
+          />
         </header>
 
-        <form className={styles.modalForm} onSubmit={handleSubmit}>
-          <div className={styles.modalFormBody}>
+        <form className={`${styles.modalForm} ${styles.modalFormCompact}`} onSubmit={handleSubmit}>
+          <div className={`${styles.modalFormBody} ${styles.modalFormBodyCompact}`}>
             <div className={formStyles.field}>
               <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-edit-name">
                 {modal.nameLabel || "Nom"}
@@ -1976,6 +2302,7 @@ function VaultEditDescriptionModal({
                 value={fileName}
                 onChange={e => setFileName(e.target.value)}
                 disabled={saving}
+                autoFocus
               />
             </div>
 
@@ -1983,7 +2310,16 @@ function VaultEditDescriptionModal({
               <label className={formStyles.label} htmlFor="vault-edit-description">
                 {modal.descriptionLabel}
               </label>
-              <textarea id="vault-edit-description" className={formStyles.input} rows={4} maxLength={2000} placeholder={modal.descriptionPlaceholder} value={description} onChange={e => setDescription(e.target.value)} disabled={saving} />
+              <textarea
+                id="vault-edit-description"
+                className={formStyles.input}
+                rows={3}
+                maxLength={2000}
+                placeholder={modal.descriptionPlaceholder}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                disabled={saving}
+              />
             </div>
 
             <div className={styles.visibilitySwitchRow}>
@@ -1991,7 +2327,14 @@ function VaultEditDescriptionModal({
                 <span className={formStyles.label}>{modal.visiblePortalLabel}</span>
                 <p className={styles.visibilitySwitchHint}>{modal.visiblePortalHint}</p>
               </div>
-              <button type="button" role="switch" aria-checked={visibleToClient} className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`} onClick={() => setVisibleToClient(value => !value)} disabled={saving}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={visibleToClient}
+                className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`}
+                onClick={() => setVisibleToClient(value => !value)}
+                disabled={saving}
+              >
                 <span className={styles.visibilitySwitchTrack}>
                   <span className={styles.visibilitySwitchThumb} />
                 </span>
@@ -2003,23 +2346,31 @@ function VaultEditDescriptionModal({
           </div>
 
           <footer className={formStyles.footer}>
-            <span className={formStyles.footerHint}>{modal.footerHint}</span>
+            <span className={formStyles.footerHint} aria-hidden />
             <div className={formStyles.footerActions}>
-              <button type="button" className={formStyles.ghostBtn} onClick={onClose} disabled={saving}>
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
                 {modal.cancel}
-              </button>
-              <button type="submit" className={formStyles.primaryBtn} disabled={saving}>
-                {saving ? <>
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={saving || !nameReady}
+                icon={saving ? undefined : "mdi:content-save-outline"}
+              >
+                {saving ? (
+                  <>
                     <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
                     {modal.saving}
-                  </> : <>
-                    <Icon icon="mdi:content-save-outline" aria-hidden />
-                    {modal.save}
-                  </>}
-              </button>
+                  </>
+                ) : (
+                  modal.save
+                )}
+              </UiKitButton>
             </div>
           </footer>
         </form>
       </div>
-    </div>, document.getElementById("modal-root") || document.body);
+    </div>,
+    document.getElementById("modal-root") || document.body
+  );
 }

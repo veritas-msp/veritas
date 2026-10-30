@@ -214,16 +214,13 @@
 }
 
 .table.tableList thead {
-  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
+  background: var(--msp-surface-2, #f4f7fb);
   z-index: 6;
 }
 
-.table.tableList thead th {
-  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 92%, #fff);
-}
-
+.table.tableList thead th,
 .table.tableList th {
-  /* Hauteur alignée lignes infra/sauvegarde (cellule ≈ bouton action 28px + padding) */
+  /* Aligné tables CRM (Entreprises / Contacts) + infra */
   padding: 0.65rem 0.6rem;
   min-height: 2.85rem;
   height: 2.85rem;
@@ -234,7 +231,7 @@
   text-transform: none;
   color: var(--msp-muted, #5c6b82);
   border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
-  background: transparent;
+  background: var(--msp-surface-2, #f4f7fb);
   vertical-align: middle;
 }
 
@@ -265,6 +262,36 @@
 .table.tableList tbody tr:hover td,
 .table.tableList tbody tr:nth-child(even):hover td {
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+/* Dark — même header que dataTable CRM */
+:global(html.dark) .table.tableList thead,
+:global(html.dark) .table.tableList thead th,
+:global(html.dark) .table.tableList th {
+  background: var(--msp-surface-2, #162338) !important;
+  background-color: var(--msp-surface-2, #162338) !important;
+  color: var(--msp-muted, #9bb0c9);
+  border-bottom-color: color-mix(in srgb, var(--msp-border, #3d5478) 55%, transparent);
+}
+
+:global(html.dark) .table.tableList tbody tr td {
+  background: var(--msp-surface-2, #162338) !important;
+  color: var(--msp-text, #f0f4fa);
+  border-bottom-color: color-mix(in srgb, var(--msp-border, #3d5478) 55%, transparent);
+}
+
+:global(html.dark) .table.tableList tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #162338) !important;
+}
+
+:global(html.dark) .table.tableList tbody tr:hover td,
+:global(html.dark) .table.tableList tbody tr:nth-child(even):hover td {
+  background: var(--msp-surface-3, #283858) !important;
+}
+
+:global(html.dark) .tableShell,
+:global(html.dark) .tableShellInset {
+  --fade-surface: var(--msp-surface-2, #162338);
 }
 
 .tableListFill {

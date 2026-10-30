@@ -1,8 +1,10 @@
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaArrowLeft } from "react-icons/fa";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "./EnterprisesPage.module.css";
+import enterpriseStyles from "./EnterpriseDetailPage.module.css";
+import { uiKitLayoutsStyles as finderKit, useFinderNavIndicator } from "../UiKit";
 import styles from "./SolutionDetailPageLayout.module.css";
 
 const BRAND_MARK = {
@@ -18,75 +20,129 @@ export default function SolutionDetailPageLayout({
   titleIcon,
   titleImage = null,
   subtitle,
-  backLabel = "Back",
+  backLabel = "Retour",
   onBack,
   loading = false,
   refreshing = false,
-  loadingMessage = "Loading…",
+  loadingMessage = "Chargement…",
   onRefresh,
   onRefreshSave,
-  refreshLabel = "Refresh",
-  refreshSaveLabel = "Refresh and save",
+  refreshLabel = "Actualiser",
+  refreshSaveLabel = "Actualiser et enregistrer",
   extraActions = null,
+  headerError = null,
+  headerMeta = null,
   footerHint,
   navEntries = [],
   activeSection,
   onSectionChange,
   navAriaLabel = "Sections",
+  hideNav = false,
   embedded = false,
   children
 }) {
   const accentKey = ["gravityzone", "mailinblack", "microsoft"].includes(accent) ? accent : "default";
   const busy = loading || refreshing;
-  const views = (
-    <div className={`${styles.viewsLayout} ${embedded ? styles.viewsLayoutEmbedded : ""}`.trim()}>
-      <aside className={styles.viewsPane} aria-label={navAriaLabel}>
-        <div className={styles.viewsPaneHeader}>
-          <span className={styles.viewsTitle}>{navAriaLabel}</span>
-        </div>
-        <nav className={styles.viewsList}>
-          {navEntries.map((entry) =>
-            entry.type === "group" ? (
-              <div key={entry.key} className={styles.viewsGroupLabel}>
-                {entry.label}
-              </div>
-            ) : (
-              <button
-                key={entry.key}
-                type="button"
-                className={`${styles.viewItem} ${activeSection === entry.section.id ? styles.viewItemActive : ""}`}
-                onClick={() => onSectionChange?.(entry.section.id)}
-                aria-current={activeSection === entry.section.id ? "true" : undefined}
-                title={entry.section.description || entry.section.label}
-              >
-                <Icon icon={entry.section.icon} className={styles.viewItemIcon} width={18} height={18} aria-hidden />
-                <span className={styles.viewItemMain}>
-                  <span className={styles.viewItemLabel}>{entry.section.label}</span>
-                </span>
-              </button>
-            )
-          )}
-        </nav>
-        {footerHint ? <p className={styles.viewsFooterHint}>{footerHint}</p> : null}
-      </aside>
+  const showNav = !hideNav && Array.isArray(navEntries) && navEntries.length > 0;
+  const [contentEnter, setContentEnter] = useState(true);
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([
+    activeSection,
+    navEntries.length
+  ]);
 
-      <div className={styles.mainColumn}>
-        {loading ? (
-          <div className={layout.stateBox}>
-            <Icon icon="mdi:loading" className={layout.spinning} />
-            <span>{loadingMessage}</span>
-          </div>
-        ) : (
-          <div className={styles.tablePanel}>
-            {refreshing ? (
-              <div className={styles.refreshOverlay} aria-live="polite">
-                <Icon icon="mdi:loading" className={styles.spin} aria-hidden />
-                <span>{loadingMessage}</span>
-              </div>
+  useLayoutEffect(() => {
+    setContentEnter(false);
+  }, [activeSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [activeSection]);
+
+  const sectionPanelClass = `${styles.sectionPanel} ${
+    contentEnter ? styles.sectionPanelFadeIn : styles.sectionPanelFadePending
+  }`;
+
+  const views = (
+    <div
+      className={`${finderKit.finderLayout} ${styles.solutionFinderLayout} ${
+        embedded ? styles.viewsLayoutEmbedded : ""
+      } ${showNav ? "" : styles.solutionFinderLayoutNoNav}`.trim()}
+    >
+      {showNav ? (
+        <aside className={finderKit.finderSidebar} aria-label={navAriaLabel}>
+          <nav
+            ref={navTrackRef}
+            className={`${finderKit.finderPrimary} ${finderKit.finderPrimaryAnimated} ${styles.solutionFinderNav}`}
+            role="tablist"
+            aria-orientation="vertical"
+            aria-label={navAriaLabel}
+          >
+            {navIndicator.ready ? (
+              <div
+                className={finderKit.finderNavIndicator}
+                style={{
+                  transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                  height: navIndicator.height
+                }}
+                aria-hidden
+              />
             ) : null}
-            <div className={styles.tableScroll}>{children}</div>
+            <div className={finderKit.finderNavGroup}>
+              {navEntries.map(entry =>
+                entry.type === "group" ? (
+                  <div key={entry.key} className={finderKit.finderNavGroupTitle}>
+                    {entry.label}
+                  </div>
+                ) : (
+                  <button
+                    key={entry.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSection === entry.section.id}
+                    aria-current={activeSection === entry.section.id ? "page" : undefined}
+                    className={`${finderKit.finderItem} ${
+                      activeSection === entry.section.id ? finderKit.finderItemActive : ""
+                    }`}
+                    onClick={() => onSectionChange?.(entry.section.id)}
+                    title={entry.section.description || entry.section.label}
+                  >
+                    <span className={finderKit.finderItemIcon} aria-hidden>
+                      <Icon icon={entry.section.icon} width={18} height={18} />
+                    </span>
+                    <span className={finderKit.finderItemLabel}>{entry.section.label}</span>
+                  </button>
+                )
+              )}
+            </div>
+          </nav>
+          {footerHint ? <p className={styles.viewsFooterHint}>{footerHint}</p> : null}
+        </aside>
+      ) : null}
+
+      <div className={`${styles.mainColumn} ${showNav ? "" : styles.mainColumnNoNav}`.trim()}>
+        <div className={styles.tablePanel}>
+          {busy ? (
+            <div className={styles.refreshOverlay} aria-live="polite">
+              <Icon icon="mdi:loading" className={styles.spin} aria-hidden />
+              <span>{loadingMessage}</span>
+            </div>
+          ) : null}
+          <div key={activeSection} className={`${styles.tableScroll} ${sectionPanelClass}`}>
+            {children}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -94,12 +150,18 @@ export default function SolutionDetailPageLayout({
   if (embedded) {
     return (
       <div className={styles.embeddedRoot}>
-        {onRefresh || onRefreshSave || extraActions ? (
+        {onRefresh || onRefreshSave || extraActions || headerError ? (
           <div className={styles.embeddedToolbar}>
+            {headerError ? (
+              <div className={styles.headerError} role="alert" title={String(headerError)}>
+                <Icon icon="mdi:alert-circle-outline" aria-hidden />
+                <span>{headerError}</span>
+              </div>
+            ) : null}
             {onRefresh ? (
               <button
                 type="button"
-                className={layout.iconBtn}
+                className={`${finderKit.btnSquare} ${finderKit.btnSquareSecondary}`}
                 onClick={onRefresh}
                 disabled={busy}
                 aria-label={refreshLabel}
@@ -122,29 +184,63 @@ export default function SolutionDetailPageLayout({
     );
   }
 
+  const showBrand = Boolean(titleImage || titleIcon);
+
   return (
-    <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
-      <div className={mspStyles.mspLayout}>
-        <div className={mspStyles.mspMain}>
-          <MspPageHero
-            eyebrow={eyebrow}
-            title={title}
-            subtitle={subtitle}
-            icon={titleIcon}
-            image={titleImage}
-            brandMarkClassName={titleImage ? "" : BRAND_MARK[accentKey] || ""}
-            actions={
-              <>
+    <div
+      className={`${mspStyles.mspPage} ${layout.page} ${enterpriseStyles.enterpriseDetailPage} ${styles.solutionDetailPage} msp-page-grid`.trim()}
+    >
+      <header className={`${enterpriseStyles.pageHero} ${styles.solutionHero}`}>
+        <div className={enterpriseStyles.heroTop}>
+          <div className={enterpriseStyles.heroIdentityBlock}>
+            <div className={`${enterpriseStyles.heroIdentityRow} ${styles.solutionHeroRow}`}>
+              <div className={`${enterpriseStyles.heroMain} ${styles.solutionHeroMain}`}>
                 {onBack ? (
-                  <button type="button" className={styles.backBtn} onClick={onBack}>
+                  <button type="button" className={styles.backIconBtn} onClick={onBack} aria-label={backLabel} title={backLabel}>
                     <FaArrowLeft aria-hidden />
-                    <span>{backLabel}</span>
                   </button>
+                ) : null}
+                {showBrand ? (
+                  <span
+                    className={`${enterpriseStyles.heroBrandIcon} ${styles.solutionBrandIcon} ${
+                      titleImage ? "" : BRAND_MARK[accentKey] || ""
+                    }`.trim()}
+                    aria-hidden
+                  >
+                    {titleImage ? (
+                      <img src={titleImage} alt="" className={styles.solutionBrandImg} />
+                    ) : (
+                      <Icon icon={titleIcon} width={16} height={16} />
+                    )}
+                  </span>
+                ) : null}
+                <div className={`${enterpriseStyles.heroText} ${styles.solutionHeroText}`}>
+                  {eyebrow ? <span className={styles.solutionEyebrow}>{eyebrow}</span> : null}
+                  <h1 className={`${enterpriseStyles.heroTitle} ${styles.solutionTitleLine}`}>
+                    <span className={enterpriseStyles.heroTitleName}>{title}</span>
+                    {subtitle ? (
+                      <>
+                        <span className={styles.solutionTitleArrow} aria-hidden>
+                          –
+                        </span>
+                        <span className={styles.solutionTitleClient}>{subtitle}</span>
+                      </>
+                    ) : null}
+                  </h1>
+                </div>
+              </div>
+              <div className={styles.solutionHeroActions}>
+                {headerMeta ? <div className={styles.headerMeta}>{headerMeta}</div> : null}
+                {headerError ? (
+                  <div className={styles.headerError} role="alert" title={String(headerError)}>
+                    <Icon icon="mdi:alert-circle-outline" aria-hidden />
+                    <span>{headerError}</span>
+                  </div>
                 ) : null}
                 {onRefresh ? (
                   <button
                     type="button"
-                    className={layout.iconBtn}
+                    className={`${finderKit.btnSquare} ${finderKit.btnSquareSecondary}`}
                     onClick={onRefresh}
                     disabled={busy}
                     aria-label={refreshLabel}
@@ -160,15 +256,17 @@ export default function SolutionDetailPageLayout({
                   </button>
                 ) : null}
                 {extraActions}
-              </>
-            }
-          />
-
-          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
-            <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-              {views}
+              </div>
             </div>
-          </main>
+          </div>
+        </div>
+      </header>
+
+      <div className={`${enterpriseStyles.pageBody} ${enterpriseStyles.pageBodyFill} ${styles.solutionBody}`}>
+        <div className={`${enterpriseStyles.pageGrid} ${styles.solutionGrid}`}>
+          <div className={`${enterpriseStyles.mainColumn} ${enterpriseStyles.mainColumnFinder} ${styles.solutionMainColumn}`}>
+            {views}
+          </div>
         </div>
       </div>
     </div>

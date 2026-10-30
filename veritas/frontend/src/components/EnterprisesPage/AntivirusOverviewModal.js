@@ -4,23 +4,101 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { ANTIVIRUS_OVERVIEW_SECTIONS } from "./antivirusOverviewSections";
 import { fetchGravityZoneDashboard, fetchBitdefenderStatistics, fetchBitdefenderEnrichedEndpoints } from "../../api/clientBitdefender";
-import { formatAntivirusEndpointType, syncAndPersistAntivirusSolution } from "./antivirusSolutionUtils";
+import { persistAntivirusEventLog, syncAndPersistAntivirusSolution } from "./antivirusSolutionUtils";
+import { buildAntivirusEventLogUpdate, getAntivirusEventTypeMeta, normalizeAntivirusEventLog } from "./antivirusEventLogUtils";
 import AntivirusOverviewCharts from "./AntivirusOverviewCharts";
 import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
-import { KpiCard, StatsDashboardBody, StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import { KpiCard, StatsDashboardBody, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import { UiKitKpiStrip } from "../UiKit";
 import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
+import { getOsIconName } from "../EquipementPage/osIconUtils";
+
 function formatDate(value) {
   if (!value) return "-";
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleString("en-GB");
+    return d.toLocaleString("fr-FR");
   } catch {
     return String(value);
   }
+}
+
+function getEndpointOsLabel(row) {
+  return row?.os || row?.operatingSystem || "";
+}
+
+/** Serveur vs poste de travail (OS + nom). */
+function getEndpointRole(row) {
+  const os = String(getEndpointOsLabel(row) || "").toLowerCase();
+  const name = String(row?.name || row?.fqdn || "").toLowerCase();
+  const looksServer =
+    /\bserver\b/.test(os) ||
+    os.includes("esxi") ||
+    os.includes("hyper-v") ||
+    os.includes("vcenter") ||
+    os.includes("proxmox") ||
+    /(^|[-_\s])(srv|server|dc|sql|exch|ad|fs)([-_\s]|$)/i.test(name);
+  if (looksServer) {
+    return { key: "server", label: "Serveur", icon: "mdi:server" };
+  }
+  return { key: "workstation", label: "Poste", icon: "mdi:laptop" };
+}
+
+function isEndpointInfected(row) {
+  return row?.isInfected === true || row?.malwareDetected === true;
+}
+
+function buildEnrichedEndpointMap(list) {
+  const map = new Map();
+  for (const ep of Array.isArray(list) ? list : []) {
+    if (ep?.id != null) {
+      map.set(String(ep.id), ep);
+      map.set(ep.id, ep);
+    }
+    const fallback = `${ep?.name ?? ""}|${ep?.ip ?? ""}|${ep?.fqdn ?? ""}`.trim();
+    if (fallback && fallback !== "||") map.set(fallback, ep);
+  }
+  return map;
+}
+
+function mergeEndpointWithEnriched(row, enrichedMap) {
+  if (!row) return row;
+  const fallback = `${row.name ?? ""}|${row.ip ?? ""}|${row.fqdn ?? ""}`.trim();
+  const enriched =
+    (row.id != null ? enrichedMap.get(String(row.id)) || enrichedMap.get(row.id) : null) ||
+    (fallback && fallback !== "||" ? enrichedMap.get(fallback) : null) ||
+    null;
+  const merged = enriched
+    ? {
+        ...row,
+        ...enriched,
+        id: row.id ?? enriched.id,
+        name: row.name || enriched.name,
+        ip: row.ip || enriched.ip,
+        fqdn: row.fqdn || enriched.fqdn,
+        type: row.type || enriched.type,
+        machineType: row.machineType ?? enriched.machineType,
+        isManaged: row.isManaged ?? enriched.isManaged,
+        os: getEndpointOsLabel(row) || enriched.operatingSystem || enriched.os || null,
+        operatingSystem: enriched.operatingSystem || getEndpointOsLabel(row) || null,
+        isInfected: isEndpointInfected(enriched) || isEndpointInfected(row),
+        malwareDetected: enriched.malwareDetected === true || row.malwareDetected === true
+      }
+    : {
+        ...row,
+        os: getEndpointOsLabel(row) || null,
+        isInfected: isEndpointInfected(row)
+      };
+  const role = getEndpointRole(merged);
+  return {
+    ...merged,
+    roleKey: role.key,
+    roleLabel: role.label
+  };
 }
 function collectPolicyUsage(endpoints = []) {
   const list = Array.isArray(endpoints) ? endpoints : Array.isArray(endpoints?.endpoints) ? endpoints.endpoints : [];
@@ -44,59 +122,10 @@ function formatDateShort(value) {
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleDateString("en-GB");
+    return d.toLocaleDateString("fr-FR");
   } catch {
     return String(value);
   }
-}
-function resolveApiDisplayStatus(status, preview = false) {
-  if (!preview) return status;
-  if (status === "error") return "preview";
-  return status;
-}
-function StatusPill({
-  status,
-  preview = false,
-  compact = false
-}) {
-  const resolved = resolveApiDisplayStatus(status, preview);
-  const map = {
-    ok: {
-      className: styles.statusOk,
-      label: "OK",
-      icon: "mdi:check-circle"
-    },
-    empty: {
-      className: styles.statusEmpty,
-      label: "Empty",
-      icon: "mdi:minus-circle-outline"
-    },
-    error: {
-      className: styles.statusError,
-      label: "Error",
-      icon: "mdi:close-circle"
-    },
-    permission_denied: {
-      className: styles.statusDenied,
-      label: compact ? "API key" : "Unauthorized",
-      icon: "mdi:lock-outline"
-    },
-    info: {
-      className: styles.statusInfo,
-      label: "Info",
-      icon: "mdi:information-outline"
-    },
-    preview: {
-      className: styles.statusPreview,
-      label: compact ? "Disabled" : "Preview",
-      icon: "mdi:dots-horizontal-circle-outline"
-    }
-  };
-  const meta = map[resolved] || map.info;
-  return <span className={`${styles.statusPill} ${compact ? styles.statusPillCompact : ""} ${meta.className}`}>
-      {!compact ? <Icon icon={meta.icon} aria-hidden /> : null}
-      {meta.label}
-    </span>;
 }
 function SectionError({
   error
@@ -107,16 +136,18 @@ function SectionError({
 function DataTable({
   columns,
   rows,
-  emptyLabel = "No data",
+  emptyLabel = "Aucune donnée",
+  emptyIcon = "mdi:inbox-outline",
   fillHeight = false,
   searchable = false,
-  searchPlaceholder = "Search…"
+  searchPlaceholder = "Rechercher"
 }) {
   return (
     <SolutionOverviewDataTable
       columns={columns}
       rows={rows}
       emptyLabel={emptyLabel}
+      emptyIcon={emptyIcon}
       fillHeight={fillHeight}
       searchable={searchable}
       searchPlaceholder={searchPlaceholder}
@@ -127,28 +158,33 @@ function renderListSection(section, {
   preview = false,
   fillHeight = false,
   searchable = false,
-  searchPlaceholder = "Search…"
+  searchPlaceholder = "Rechercher",
+  emptyIcon = "mdi:inbox-outline"
 } = {}) {
-  if (!section) return <div className={styles.emptyState}>Section unavailable</div>;
+  const safe = section || {
+    status: "empty",
+    error: null,
+    items: [],
+    total: 0,
+    columns: []
+  };
   return <div className={fillHeight ? styles.listSectionFill : undefined}>
       {preview ? <div className={styles.previewBanner}>
           <Icon icon="mdi:flask-outline" aria-hidden />
           <span>
-            API enabled for your GravityZone key but not yet integrated with Veritas. Data
-            displayed read-only from GravityZone.
+            API activée pour votre clé GravityZone mais pas encore intégrée à Veritas. Données
+            affichées en lecture seule depuis GravityZone.
           </span>
         </div> : null}
-      <SectionError error={section.error} />
-      <div className={styles.listSectionMeta}>
-        <StatusPill status={section.status} />
-        {section.total != null ? <span className={styles.listSectionCount}>
-            {section.total} item{section.total > 1 ? "s" : ""}
-          </span> : null}
-      </div>
       <DataTable
-        columns={section.columns}
-        rows={section.items}
-        emptyLabel={section.status === "permission_denied" ? "Access denied · enable this API for the GravityZone key" : "No data returned"}
+        columns={safe.columns || []}
+        rows={safe.items || []}
+        emptyLabel={
+          safe.status === "permission_denied"
+            ? "Accès refusé · activez cette API pour la clé GravityZone"
+            : "Aucune donnée"
+        }
+        emptyIcon={emptyIcon}
         fillHeight={fillHeight}
         searchable={searchable}
         searchPlaceholder={searchPlaceholder}
@@ -179,8 +215,11 @@ export function AntivirusOverviewPanel({
   const [statistics, setStatistics] = useState(() => cachedSync?.statistics || null);
   const [enrichedSummary, setEnrichedSummary] = useState(() => cachedSync?.enrichedSummary || null);
   const [enrichedEndpoints, setEnrichedEndpoints] = useState(() => cachedSync?.enrichedEndpoints || null);
+  const [eventLog, setEventLog] = useState(() => normalizeAntivirusEventLog(cachedSync?.eventLog));
   const [lastPersistedAt, setLastPersistedAt] = useState(() => cachedSync?.lastSync || null);
   const [loadError, setLoadError] = useState(null);
+  const eventLogRef = useRef(normalizeAntivirusEventLog(cachedSync?.eventLog));
+  eventLogRef.current = eventLog;
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
   const dashboardRef = useRef(cachedSync?.dashboard || null);
@@ -219,7 +258,7 @@ export function AntivirusOverviewPanel({
         if (signal.aborted || requestId !== requestIdRef.current) return;
         await onSyncedRef.current?.();
         if (signal.aborted || requestId !== requestIdRef.current) return;
-        showSuccess("Antivirus data refreshed and saved.");
+        showSuccess("Données antivirus actualisées et enregistrées.");
         if (persisted.dashboard) {
           dashboardRef.current = persisted.dashboard;
           setDashboard(persisted.dashboard);
@@ -227,6 +266,7 @@ export function AntivirusOverviewPanel({
         setStatistics(persisted.statistics || null);
         setEnrichedSummary(persisted.enrichedSummary || null);
         setEnrichedEndpoints(persisted.enrichedEndpoints || persisted.updatedPayload?.syncData?.enrichedEndpoints || null);
+        setEventLog(normalizeAntivirusEventLog(persisted.eventLog || persisted.updatedPayload?.syncData?.eventLog));
         setLastPersistedAt(persisted.updatedPayload?.syncData?.lastSync || new Date().toISOString());
         return;
       }
@@ -246,12 +286,31 @@ export function AntivirusOverviewPanel({
       }).catch(ignoreUnlessAbort)]);
       if (signal.aborted || requestId !== requestIdRef.current) return;
       const latest = antivirusItemRef.current;
+      const nextEndpoints = enrichedRes?.endpoints || latest?.syncData?.enrichedEndpoints || null;
+      const { eventLog: nextEventLog, addedCount } = buildAntivirusEventLogUpdate(
+        eventLogRef.current.length ? eventLogRef.current : latest?.syncData?.eventLog,
+        latest?.syncData?.enrichedEndpoints,
+        nextEndpoints
+      );
       dashboardRef.current = dashboardData;
       setDashboard(dashboardData);
       setStatistics(statisticsRes?.statistics || latest?.syncData?.statistics || null);
       setEnrichedSummary(enrichedRes?.summary || latest?.syncData?.enrichedSummary || null);
-      setEnrichedEndpoints(enrichedRes?.endpoints || latest?.syncData?.enrichedEndpoints || null);
+      setEnrichedEndpoints(nextEndpoints);
+      setEventLog(nextEventLog);
       setLastPersistedAt(latest?.syncData?.lastSync || null);
+      if (addedCount > 0 && clientId && latest) {
+        try {
+          await persistAntivirusEventLog(clientId, latest, nextEventLog, { signal });
+          if (!signal.aborted && requestId === requestIdRef.current) {
+            await onSyncedRef.current?.();
+          }
+        } catch (persistErr) {
+          if (persistErr?.name !== "AbortError") {
+            console.warn("Antivirus event log persist failed:", persistErr);
+          }
+        }
+      }
     } catch (err) {
       if (err?.name === "AbortError" || controller.signal.aborted || requestId !== requestIdRef.current) return;
       setLoadError(err.message);
@@ -276,6 +335,7 @@ export function AntivirusOverviewPanel({
     if (cached?.statistics) setStatistics(cached.statistics);
     if (cached?.enrichedSummary) setEnrichedSummary(cached.enrichedSummary);
     if (cached?.enrichedEndpoints) setEnrichedEndpoints(cached.enrichedEndpoints);
+    if (cached?.eventLog) setEventLog(normalizeAntivirusEventLog(cached.eventLog));
     if (cached?.lastSync) setLastPersistedAt(cached.lastSync);
     if (cachedOnly) {
       setLoading(false);
@@ -300,29 +360,152 @@ export function AntivirusOverviewPanel({
   const sectionViews = useMemo(() => {
     const endpoints = sections.endpoints;
     const policies = sections.policies;
+    const quarantine = sections.quarantine;
     const policyUsage = collectPolicyUsage(enrichedEndpoints);
+    const enrichedMap = buildEnrichedEndpointMap(enrichedEndpoints);
+    const endpointColumns = [{
+      key: "type",
+      label: "Type",
+      sortValue: row => row.roleLabel || getEndpointRole(row).label,
+      render: row => {
+        const role = getEndpointRole(row);
+        return (
+          <span className={styles.cellWithIcon}>
+            <Icon icon={role.icon} width={18} height={18} aria-hidden />
+            {role.label}
+          </span>
+        );
+      }
+    }, {
+      key: "name",
+      label: "Poste",
+      sortValue: row => row.name || ""
+    }, {
+      key: "os",
+      label: "OS",
+      sortValue: row => getEndpointOsLabel(row) || "",
+      render: row => {
+        const osLabel = getEndpointOsLabel(row) || "-";
+        const osIcon = osLabel !== "-" ? getOsIconName(osLabel, { withFallback: true }) : null;
+        return (
+          <span className={styles.cellWithIcon}>
+            {osIcon ? <Icon icon={osIcon} width={18} height={18} aria-hidden /> : null}
+            <span className={styles.cellTruncate}>{osLabel}</span>
+          </span>
+        );
+      }
+    }, {
+      key: "ip",
+      label: "IP",
+      mono: true,
+      sortValue: row => row.ip || ""
+    }, {
+      key: "isManaged",
+      label: "Géré",
+      headerHint: (
+        <div className={styles.thHintBody}>
+          <p>
+            <strong>Poste géré :</strong> machine avec l’agent Bitdefender installé, administrée depuis GravityZone (politiques, mises à jour, scans, rapports).
+          </p>
+          <p>
+            <strong>Poste non géré :</strong> machine détectée sur le réseau mais sans agent Bitdefender actif sous GravityZone.
+          </p>
+        </div>
+      ),
+      sortValue: row => (row.isManaged ? 1 : 0),
+      render: row => (row.isManaged ? "Oui" : "Non")
+    }, {
+      key: "isInfected",
+      label: "Infecté",
+      sortValue: row => (isEndpointInfected(row) ? 1 : 0),
+      render: row => {
+        const infected = isEndpointInfected(row);
+        return (
+          <span className={infected ? styles.infectedBad : styles.infectedNeutral}>
+            {infected ? "Oui" : "Non"}
+          </span>
+        );
+      }
+    }];
+    const policyColumns = [{
+      key: "name",
+      label: "Politique",
+      sortValue: row => row.name || "",
+      render: row => <span className={styles.policyNameCell}>
+          <Icon icon="mdi:shield-account-outline" width={16} height={16} aria-hidden />
+          {row.name || "-"}
+        </span>
+    }, {
+      key: "workstations",
+      label: "Postes",
+      sortValue: row => Number(row.workstations) || 0,
+      render: row => row.workstations ?? 0
+    }, {
+      key: "appliedCount",
+      label: "Appliquée",
+      sortValue: row => Number(row.appliedCount) || 0,
+      render: row => {
+        const total = row.workstations ?? 0;
+        const applied = row.appliedCount ?? 0;
+        if (!total) return "0 / 0";
+        return <span className={applied > 0 ? styles.appliedOk : styles.appliedIdle}>
+            {applied} / {total}
+          </span>;
+      }
+    }];
+    const quarantineColumns = [{
+      key: "fileName",
+      label: "Fichier",
+      sortValue: row => row.fileName || "",
+      render: row => (
+        <span className={styles.cellWithIcon}>
+          <Icon icon="mdi:file-alert-outline" width={18} height={18} aria-hidden />
+          <span className={styles.cellTruncate}>{row.fileName || "-"}</span>
+        </span>
+      )
+    }, {
+      key: "filePath",
+      label: "Chemin",
+      sortValue: row => row.filePath || "",
+      render: row => <span className={styles.cellTruncate}>{row.filePath || "-"}</span>
+    }, {
+      key: "threat",
+      label: "Menace",
+      sortValue: row => row.threat || "",
+      render: row => (
+        <span className={styles.cellWithIcon}>
+          <Icon icon="mdi:virus-outline" width={18} height={18} aria-hidden />
+          <span className={styles.cellTruncate}>{row.threat || "-"}</span>
+        </span>
+      )
+    }, {
+      key: "endpoint",
+      label: "Poste",
+      sortValue: row => row.endpoint || "",
+      render: row => row.endpoint || "-"
+    }, {
+      key: "quarantinedAt",
+      label: "Date",
+      sortValue: row => {
+        const ms = row.quarantinedAt ? new Date(row.quarantinedAt).getTime() : NaN;
+        return Number.isFinite(ms) ? ms : 0;
+      },
+      render: row => formatDate(row.quarantinedAt)
+    }];
+    const emptySection = (columns, error = null) => ({
+      status: error ? "error" : "empty",
+      error,
+      items: [],
+      total: 0,
+      columns
+    });
     return {
       endpoints: endpoints ? {
         ...endpoints,
-        columns: [{
-          key: "name",
-          label: "Poste"
-        }, {
-          key: "type",
-          label: "Type",
-          render: row => formatAntivirusEndpointType(row.type ?? row.machineType)
-        }, {
-          key: "os",
-          label: "OS"
-        }, {
-          key: "ip",
-          label: "IP"
-        }, {
-          key: "isManaged",
-          label: "Managed",
-          render: row => row.isManaged ? "Yes" : "No"
-        }]
-      } : null,
+        items: (endpoints.items || []).map(row => mergeEndpointWithEnriched(row, enrichedMap)),
+        total: endpoints.total ?? (endpoints.items || []).length,
+        columns: endpointColumns
+      } : emptySection(endpointColumns),
       policies: policies ? {
         ...policies,
         items: (policies.items || []).map(policy => {
@@ -334,87 +517,152 @@ export function AntivirusOverviewPanel({
             appliedCount: usage?.applied ?? 0
           };
         }),
-        columns: [{
-          key: "name",
-          label: "Politique",
-          render: row => <span className={styles.policyNameCell}>
-              <Icon icon="mdi:shield-account-outline" width={16} height={16} aria-hidden />
-              {row.name || "-"}
-            </span>
-        }, {
-          key: "workstations",
-          label: "Workstations",
-          render: row => row.workstations ?? 0
-        }, {
-          key: "appliedCount",
-          label: "Applied",
-          render: row => {
-            const total = row.workstations ?? 0;
-            const applied = row.appliedCount ?? 0;
-            if (!total) return "0 / 0";
-            return <span className={applied > 0 ? styles.appliedOk : styles.appliedIdle}>
-                {applied} / {total}
-              </span>;
-          }
-        }]
-      } : null,
-      quarantine: sections.quarantine ? {
-        ...sections.quarantine,
-        columns: [{
-          key: "fileName",
-          label: "Fichier"
-        }, {
-          key: "filePath",
-          label: "Chemin",
-          render: row => row.filePath || "-"
-        }, {
-          key: "threat",
-          label: "Menace"
-        }, {
-          key: "endpoint",
-          label: "Poste"
-        }, {
-          key: "quarantinedAt",
-          label: "Date de quarantaine",
-          render: row => formatDate(row.quarantinedAt)
-        }]
-      } : null
+        total: policies.total ?? (policies.items || []).length,
+        columns: policyColumns
+      } : emptySection(policyColumns),
+      quarantine: quarantine ? {
+        ...quarantine,
+        items: quarantine.items || [],
+        total: quarantine.total ?? (quarantine.items || []).length,
+        columns: quarantineColumns
+      } : emptySection(quarantineColumns)
     };
   }, [sections, enrichedEndpoints]);
+
+  const eventColumns = useMemo(
+    () => [
+      {
+        key: "at",
+        label: "Date",
+        sortValue: row => {
+          const ms = row.at ? new Date(row.at).getTime() : NaN;
+          return Number.isFinite(ms) ? ms : 0;
+        },
+        render: row => formatDate(row.at)
+      },
+      {
+        key: "type",
+        label: "Type",
+        sortValue: row => getAntivirusEventTypeMeta(row.type).label,
+        render: row => {
+          const meta = getAntivirusEventTypeMeta(row.type);
+          return (
+            <span className={`${styles.eventTypeBadge} ${styles[`eventTone_${meta.tone}`] || ""}`}>
+              <Icon icon={meta.icon} width={16} height={16} aria-hidden />
+              {meta.label}
+            </span>
+          );
+        }
+      },
+      {
+        key: "endpointName",
+        label: "Poste",
+        sortValue: row => row.endpointName || "",
+        render: row => row.endpointName || "-"
+      },
+      {
+        key: "message",
+        label: "Événement",
+        sortValue: row => row.message || "",
+        render: row => <span className={styles.cellTruncate}>{row.message || "-"}</span>
+      }
+    ],
+    []
+  );
+
   const renderOverview = () => {
     const license = sections.license?.data;
     const endpoints = sections.endpoints;
-    const licenseUsagePct = license?.used != null && license?.total ? Math.round(license.used / license.total * 100) : null;
-    const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
+    const licenseTotal = license?.total ?? 0;
+    const licenseUsed = license?.used ?? 0;
+    const licenseAvailable = license?.total != null && license?.used != null ? Math.max(0, license.total - license.used) : 0;
+    const expirationDate = license?.expirationDate || antivirusItem?.expiration || antivirusItem?.syncData?.license?.expirationDate;
     if (asPage || embedded || embed) {
-      return <StatsDashboardBody>
-          <StatsPanel title={companyName} icon="simple-icons:bitdefender">
-            <p className={dashStyles.panelDesc}>
-              GravityZone company linked to {client?.name}. Last API read:{" "}
-              {formatDate(dashboard?.fetchedAt)} · {syncLabel}
-            </p>
-          </StatsPanel>
+      const byType = statistics?.endpoints?.byType;
+      const physical = byType?.physical || 0;
+      const virtual = byType?.virtual || 0;
+      const other = byType?.other || 0;
+      const typeTotal = physical + virtual + other;
+      const typePct = count => typeTotal > 0 ? Math.round(count / typeTotal * 100) : 0;
+      return <StatsDashboardBody className={dashStyles.bodyFill}>
+          <div className={dashStyles.bodyFillTop}>
+            <section className={dashStyles.sectionBlock}>
+              <div className={dashStyles.kpiDualRow}>
+                <div className={dashStyles.kpiDualGroup}>
+                  <h3 className={dashStyles.sectionBlockTitle}>KPI globales</h3>
+                  <UiKitKpiStrip
+                    variant="pills"
+                    ariaLabel="KPI globales"
+                    cards={[
+                      { key: "endpoints", value: endpoints?.total ?? 0, label: "Postes" },
+                      { key: "incidents", value: sections.incidents?.total ?? 0, label: "Incidents" },
+                      { key: "quarantine", value: sections.quarantine?.total ?? 0, label: "Quarantaine" },
+                      {
+                        key: "health",
+                        value: enrichedSummary?.total
+                          ? `${Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0))}/${enrichedSummary.total}`
+                          : "0/0",
+                        label: "Santé"
+                      }
+                    ]}
+                  />
+                </div>
+                <div className={dashStyles.kpiDualGroup}>
+                  <h3 className={dashStyles.sectionBlockTitle}>KPI licences</h3>
+                  <UiKitKpiStrip
+                    variant="pills"
+                    ariaLabel="KPI licences"
+                    cards={[
+                      { key: "license-total", value: licenseTotal, label: "Total" },
+                      { key: "license-used", value: licenseUsed, label: "Utilisées" },
+                      { key: "license-available", value: licenseAvailable, label: "Disponibles" },
+                      { key: "license-exp", value: formatDateShort(expirationDate), label: "Expiration" }
+                    ]}
+                  />
+                </div>
+              </div>
+            </section>
 
-          <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
-            <KpiCard icon="mdi:desktop-classic" label="Postes inventoriés" value={endpoints?.total ?? "-"} sub={`${sections.policies?.total ?? 0} politique(s) active(s)`} />
-            <KpiCard icon="mdi:license" label="Licences" value={license?.used != null && license?.total != null ? `${license.used}/${license.total}` : "-"} sub={licenseUsagePct != null ? `${licenseUsagePct} % utilisées` : "Consommation des licences"} tone={licenseUsagePct == null ? "neutral" : licenseUsagePct >= 95 ? "bad" : licenseUsagePct >= 80 ? "warn" : "good"} />
-            <KpiCard icon="mdi:shield-alert-outline" label="Incidents" value={sections.incidents?.total ?? 0} sub="Vue GravityZone" tone={(sections.incidents?.total ?? 0) > 0 ? "warn" : "good"} />
-            <KpiCard icon="mdi:archive-lock-outline" label="Quarantaine" value={sections.quarantine?.total ?? 0} sub="Fichiers isolés" tone={(sections.quarantine?.total ?? 0) > 0 ? "warn" : "good"} />
-            <KpiCard icon="mdi:heart-pulse" label="Santé des postes" value={enrichedSummary?.total ? `${Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0))}/${enrichedSummary.total}` : "-"} sub={enrichedSummary?.infected ? `${enrichedSummary.infected} infecté(s)` : "Analyse malware"} tone={enrichedSummary?.infected ? "bad" : "good"} />
+            <section className={dashStyles.sectionBlock}>
+              <h3 className={dashStyles.sectionBlockTitle}>Types de postes</h3>
+              <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid3}`}>
+                <KpiCard icon="mdi:desktop-classic" label="Physiques" value={physical} sub={`${typePct(physical)} %`} />
+                <KpiCard icon="mdi:cloud-outline" label="Virtuels" value={virtual} sub={`${typePct(virtual)} %`} />
+                <KpiCard icon="mdi:devices" label="Autres" value={other} sub={`${typePct(other)} %`} />
+              </div>
+            </section>
+
+            <section className={dashStyles.sectionBlock}>
+              <h3 className={dashStyles.sectionBlockTitle}>Graphiques</h3>
+              <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} hideEndpointTypes />
+            </section>
+          </div>
+
+          <section className={`${dashStyles.sectionBlock} ${dashStyles.bodyFillSection}`}>
+            <h3 className={dashStyles.sectionBlockTitle}>Événements</h3>
+            <div className={styles.listSectionFill}>
+              <SolutionOverviewDataTable
+                fillHeight
+                searchable
+                searchPlaceholder="Rechercher un événement…"
+                emptyLabel="Aucun événement enregistré pour l’instant."
+                emptyIcon="mdi:history"
+                rows={eventLog}
+                columns={eventColumns}
+              />
+            </div>
           </section>
-
-          <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
         </StatsDashboardBody>;
     }
     return <>
         <div className={formStyles.sectionHead}>
           <h3 className={formStyles.sectionTitle}>{companyName}</h3>
           <p className={formStyles.sectionDesc}>
-            GravityZone company linked to {client?.name}. Last API read:{" "}
+            Société GravityZone liée à {client?.name}. Dernière lecture API :{" "}
             {formatDate(dashboard?.fetchedAt)}
             {lastPersistedAt ? <>
                 {" "}
-                · Last saved: {formatDate(lastPersistedAt)}
+                · Dernier enregistrement : {formatDate(lastPersistedAt)}
               </> : null}
             .
           </p>
@@ -423,13 +671,7 @@ export function AntivirusOverviewPanel({
         <div className={styles.kpiGrid}>
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{endpoints?.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Inventoried workstations</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>
-              {license?.used != null && license?.total != null ? `${license.used}/${license.total}` : "-"}
-            </div>
-            <div className={styles.kpiLabel}>Used licenses</div>
+            <div className={styles.kpiLabel}>Postes inventoriés</div>
           </div>
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{sections.policies?.total ?? "-"}</div>
@@ -445,54 +687,39 @@ export function AntivirusOverviewPanel({
           </div>
         </div>
 
-        <AntivirusOverviewCharts statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
-      </>;
-  };
-  const renderLicense = () => {
-    const license = sections.license;
-    if (license?.status === "error" || license?.status === "permission_denied") {
-      return <>
-          <SectionError error={license?.error} />
-          <div className={styles.emptyState}>License inaccessible</div>
-        </>;
-    }
-    const data = license?.data;
-    if (!data) {
-      return <>
-          <SectionError error={license?.error} />
-          <div className={styles.emptyState}>No license information</div>
-        </>;
-    }
-    const expirationDate = data.expirationDate || antivirusItem?.expiration || antivirusItem?.syncData?.license?.expirationDate;
-    return <div className={styles.kpiGridLicense}>
+        <div className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>Licences</h3>
+        </div>
+        <div className={styles.kpiGridLicense}>
           <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{data.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Total licenses</div>
+            <div className={styles.kpiValue}>{licenseTotal}</div>
+            <div className={styles.kpiLabel}>Total</div>
           </div>
           <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{data.used ?? "-"}</div>
-            <div className={styles.kpiLabel}>Used licenses</div>
+            <div className={styles.kpiValue}>{licenseUsed}</div>
+            <div className={styles.kpiLabel}>Utilisées</div>
           </div>
           <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>
-              {data.total != null && data.used != null ? data.total - data.used : "-"}
-            </div>
-            <div className={styles.kpiLabel}>Available licenses</div>
+            <div className={styles.kpiValue}>{licenseAvailable}</div>
+            <div className={styles.kpiLabel}>Disponibles</div>
           </div>
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{formatDateShort(expirationDate)}</div>
-            <div className={styles.kpiLabel}>Expiration date</div>
+            <div className={styles.kpiLabel}>Expiration</div>
           </div>
-        </div>;
+        </div>
+
+        <AntivirusOverviewCharts statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
+      </>;
   };
   const renderSectionContent = () => {
     if (!asPage && !embedded && loading) {
       return <div className={styles.loadingBlock}>
           <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          Loading GravityZone data…
+          Chargement des données GravityZone…
         </div>;
     }
-    if (loadError) {
+    if (loadError && !asPage && !embedded && !embed) {
       return <SectionError error={loadError} />;
     }
     let content;
@@ -504,24 +731,21 @@ export function AntivirusOverviewPanel({
         content = renderListSection(sectionViews.endpoints, {
           fillHeight: true,
           searchable: true,
-          searchPlaceholder: "Search a workstation, IP, OS…"
+          emptyIcon: "mdi:monitor-off"
         });
-        break;
-      case "license":
-        content = renderLicense();
         break;
       case "policies":
         content = renderListSection(sectionViews.policies, {
           fillHeight: true,
           searchable: true,
-          searchPlaceholder: "Search a policy…"
+          emptyIcon: "mdi:shield-account-outline"
         });
         break;
       case "quarantine":
         content = renderListSection(sectionViews.quarantine, {
           fillHeight: true,
           searchable: true,
-          searchPlaceholder: "Search quarantine…"
+          emptyIcon: "mdi:virus-outline"
         });
         break;
       default:
@@ -535,7 +759,7 @@ export function AntivirusOverviewPanel({
     section
   })), []);
   if (!active || !antivirusItem?.companyId) return null;
-  const mappingLabel = antivirusItem.mappingMode === "dedicated" ? "Dedicated tenant" : "Global tenant";
+  const mappingLabel = antivirusItem.mappingMode === "dedicated" ? "Tenant dédié" : "Tenant global";
   const openEnterprise = () => {
     if (!client?.id || !onNavigate) return;
     onNavigate("ContratDetail", {
@@ -544,23 +768,32 @@ export function AntivirusOverviewPanel({
     });
   };
   if (embed) {
-    if (loading && !dashboard) {
+    if (loading && !dashboard && !loadError) {
       return <div className={styles.loadingBlock}>
           <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
-          Loading GravityZone data…
+          Chargement des données GravityZone…
         </div>;
     }
-    if (loadError && !dashboard) return <SectionError error={loadError} />;
     return renderSectionContent();
   }
   if (asPage || embedded) {
-    const clientName = client?.name || "-";
+    const clientName = client?.name || companyName || "-";
     const subtitle = client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
         {clientName}
       </button> : clientName;
-    return <SolutionDetailPageLayout embedded={embedded} accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={embedded ? undefined : () => loadDashboard({
+    const syncAt = lastPersistedAt || dashboard?.fetchedAt;
+    const headerMeta = syncAt ? <>
+        <Icon icon="mdi:cloud-sync-outline" width={14} height={14} aria-hidden />
+        <span>
+          Dernière sync · <strong>{formatDate(syncAt)}</strong>
+        </span>
+      </> : <>
+        <Icon icon="mdi:cloud-off-outline" width={14} height={14} aria-hidden />
+        <span>Jamais synchronisé</span>
+      </>;
+    return <SolutionDetailPageLayout embedded={embedded} accent="gravityzone" title="Antivirus" titleIcon="simple-icons:bitdefender" subtitle={subtitle} headerMeta={headerMeta} loading={loading} refreshing={refreshing} loadingMessage="Chargement des données GravityZone…" onRefresh={embedded ? undefined : () => loadDashboard({
       persist: true
-    })} refreshLabel="Refresh and save" footerHint={mappingLabel} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
+    })} refreshLabel="Actualiser et enregistrer" footerHint={mappingLabel} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
       </SolutionDetailPageLayout>;
   }
@@ -572,13 +805,13 @@ export function AntivirusOverviewPanel({
             <Icon icon="simple-icons:bitdefender" />
           </div>
           <div className={formStyles.headerText}>
-            <p className={formStyles.eyebrow}>Cybersecurity · GravityZone</p>
+            <p className={formStyles.eyebrow}>Cybersécurité · GravityZone</p>
             <h2 className={formStyles.title} id="antivirus-overview-title">
               Antivirus · {companyName}
             </h2>
           </div>
         </div>
-        {!asPage ? <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Close">
+        {!asPage ? <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Fermer">
             <FaTimes />
           </button> : null}
       </header>
@@ -606,7 +839,7 @@ export function AntivirusOverviewPanel({
           persist: true
         })} disabled={loading || refreshing}>
             <Icon icon={loading || refreshing ? "mdi:loading" : "mdi:refresh"} className={loading || refreshing ? formStyles.spinning : ""} aria-hidden />
-            {loading || refreshing ? "Refreshing…" : "Refresh"}
+            {loading || refreshing ? "Actualisation…" : "Actualiser"}
           </button>
         </div>
       </footer>

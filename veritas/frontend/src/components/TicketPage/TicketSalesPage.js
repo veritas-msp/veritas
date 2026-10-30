@@ -1434,7 +1434,7 @@ export default function TicketSalesPage({
                           {pageCopy.empty.newRequest}
                         </button>}
                     </div> : <>
-                  <div key={`tickets-${activeViewId}`} className={styles.contentFadeUp}>
+                  <div className={styles.contentFadeUp} data-ticket-view={activeViewId || "default"}>
                   <UiKitTable
                     fill
                     fadeTop

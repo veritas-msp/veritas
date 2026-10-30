@@ -25,14 +25,8 @@ function expiryClass(status) {
   return "";
 }
 
-function StatusPill({ status, label }) {
-  const isActive = status === "actif";
-  return (
-    <span className={`${layout.statusPill} ${isActive ? layout.statusPillActive : layout.statusPillInactive}`}>
-      <StatusDot active={isActive} label="" aria-hidden />
-      <span>{label}</span>
-    </span>
-  );
+function StatusCell({ status, label }) {
+  return <StatusDot active={status === "actif"} label={label} className={layout.statusDotOnly} />;
 }
 
 function formatLicenseCount(total) {
@@ -89,7 +83,7 @@ function FleetTableRow({
         <SolutionCell label={row.solutionLabel || row.providerName || row.productName || "-"} image={row.providerImage} icon={row.providerIcon || "mdi:shield-bug-outline"} />
       </td>
       <td>
-        <StatusPill status={row.status} label={statusMeta.label} />
+        <StatusCell status={row.status} label={statusMeta.label} />
       </td>
       <td className={styles.cellMuted}>{row.paymentPlan || "-"}</td>
       <td className={`${styles.cellExpiry} ${expiryClass(row.status)}`.trim()}>{formatDate(row.expirationDate)}</td>
@@ -255,6 +249,7 @@ export default function AntivirusMspDashboard({
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
               <UiKitCrmListToolbar
+                searchVariant="embedded"
                 searchValue={search}
                 onSearchChange={setSearch}
                 onSearchClear={() => setSearch("")}

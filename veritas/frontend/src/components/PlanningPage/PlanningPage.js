@@ -47,7 +47,10 @@ import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { resolveEnterpriseIcon, resolveEnterpriseIconColor } from "../EnterprisesPage/enterpriseIconChoices";
 const PLANNING_CLIENTS_CACHE_KEY = "planning_clients_list_cache_v1";
+const PLANNING_CLIENTS_PREVIEW_LIMIT = 6;
+const PLANNING_CLIENTS_SEARCH_LIMIT = 40;
 const PLANNING_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const PLANNING_CLIENT_MODULES_CACHE_KEY = "planning_client_modules_cache_v1";
 const PLANNING_CLIENT_MODULES_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -191,6 +194,7 @@ function getCalendarDaysCountInclusive(startDate, endDate) {
   return Math.max(1, end.diff(start, "days") + 1);
 }
 function normalizeClientListRow(client) {
+  if (!client || typeof client !== "object" || client.id == null) return null;
   let modulesSnapshot = client.modules;
   if (typeof modulesSnapshot === "string") {
     try {
@@ -218,7 +222,7 @@ async function loadPlanningClientsListCached({
         const parsed = JSON.parse(raw);
         const isFresh = parsed?.savedAt && Array.isArray(parsed?.data) && Date.now() - parsed.savedAt < PLANNING_CLIENTS_CACHE_TTL_MS;
         if (isFresh) {
-          return parsed.data.map(normalizeClientListRow);
+          return parsed.data.map(normalizeClientListRow).filter(Boolean);
         }
       }
     } catch {}
@@ -227,7 +231,7 @@ async function loadPlanningClientsListCached({
     signal
   });
   if (signal?.aborted) return [];
-  const normalized = (Array.isArray(clientsData) ? clientsData : []).map(normalizeClientListRow);
+  const normalized = (Array.isArray(clientsData) ? clientsData : []).map(normalizeClientListRow).filter(Boolean);
   try {
     sessionStorage.setItem(PLANNING_CLIENTS_CACHE_KEY, JSON.stringify({
       savedAt: Date.now(),
@@ -404,10 +408,14 @@ export default function PlanningPage({
     pinnedTeamIds,
     selectedUsers
   ]);
+  const selectedClientsFilterKey = useMemo(
+    () => [...selectedClientsFilter].map(String).sort().join("|"),
+    [selectedClientsFilter]
+  );
   const { trackRef: clientsTrackRef, indicator: clientsIndicator } = useFinderNavIndicator([
     focusedClientId,
     sidebarSection,
-    selectedClientsFilter,
+    selectedClientsFilterKey,
     clientFilterSearch
   ]);
   const calendarViewKey = view === "month" ? `month-${monthsShown}` : view;
@@ -1233,17 +1241,8 @@ export default function PlanningPage({
       return haystack.includes(query);
     });
   }, [planningTeams, pinnedTeamIds, agentFilterSearch]);
-  const filteredClientsForPane = useMemo(() => {
-    const query = clientFilterSearch.trim().toLowerCase();
-    if (!query) {
-      return clients.filter(client => selectedClientsFilter.has(String(client.id)));
-    }
-    return clients.filter(client => {
-      const name = (client.name || client.nom || "").toLowerCase();
-      return name.includes(query);
-    }).slice(0, 40);
-  }, [clients, clientFilterSearch, selectedClientsFilter]);
   const toggleClient = clientId => {
+    if (clientId == null || clientId === "") return;
     const newSelected = new Set(selectedClientsFilter);
     const clientIdStr = String(clientId);
     setFocusedClientId(clientIdStr);
@@ -1298,6 +1297,43 @@ export default function PlanningPage({
     });
     return counts;
   }, [allEvents]);
+  const filteredClientsForPane = useMemo(() => {
+    const list = (Array.isArray(clients) ? clients : []).filter(c => c != null && c.id != null);
+    const query = clientFilterSearch.trim().toLowerCase();
+    const byName = (a, b) =>
+      String(a.name || a.nom || "").localeCompare(String(b.name || b.nom || ""), "fr", {
+        sensitivity: "base"
+      });
+
+    if (query) {
+      return list
+        .filter(client => String(client.name || client.nom || "").toLowerCase().includes(query))
+        .sort(byName)
+        .slice(0, PLANNING_CLIENTS_SEARCH_LIMIT);
+    }
+
+    /* Sans recherche : seulement quelques clients (sélectionnés + avec events). */
+    const selected = [];
+    const withEvents = [];
+    list.forEach(client => {
+      if (!client || client.id == null) return;
+      const id = String(client.id);
+      if (selectedClientsFilter.has(id)) selected.push(client);
+      else if ((clientCounts[id] || 0) > 0) withEvents.push(client);
+    });
+    selected.sort(byName);
+    withEvents.sort(byName);
+    const preview = [...selected];
+    for (const client of withEvents) {
+      if (preview.length >= PLANNING_CLIENTS_PREVIEW_LIMIT) break;
+      preview.push(client);
+    }
+    /* Si rien à montrer : petit aperçu alphabétique pour amorcer la recherche. */
+    if (preview.length === 0) {
+      return [...list].filter(c => c?.id != null).sort(byName).slice(0, PLANNING_CLIENTS_PREVIEW_LIMIT);
+    }
+    return preview.slice(0, Math.max(PLANNING_CLIENTS_PREVIEW_LIMIT, selected.length));
+  }, [clients, clientFilterSearch, selectedClientsFilter, clientCounts]);
   const handleNavigate = newDate => {
     setCurrentDate(newDate);
   };
@@ -2000,16 +2036,22 @@ export default function PlanningPage({
   };
   const eventStyleGetter = planningEventStyleGetter;
   const planningTypes = eventFormCopy.planningTypes;
-  const renderFilterItem = (key, label, count, active, onClick, icon, focused = false) => <button
+  const renderFilterItem = (key, label, count, active, onClick, icon, focused = false, iconColor = null) => <button
       key={key}
       type="button"
-      className={`${finderKit.finderSecItem} ${styles.planningSecItem} ${active ? `${finderKit.finderSecItemActive} ${styles.planningSecItemActive}` : ""} ${count === 0 ? styles.filterItemDisabled : ""}`}
+      className={`${finderKit.finderSecItem} ${styles.planningSecItem} ${active ? `${finderKit.finderSecItemActive} ${styles.planningSecItemActive}` : ""}`}
       onClick={onClick}
-      disabled={count === 0}
       aria-pressed={active}
       aria-current={focused ? "true" : undefined}
     >
-      {icon ? <Icon icon={icon} className={finderKit.finderSecItemIcon} aria-hidden /> : null}
+      {icon ? (
+        <Icon
+          icon={icon}
+          className={`${finderKit.finderSecItemIcon} ${styles.clientFilterBrandIcon}`}
+          style={iconColor ? { color: iconColor } : undefined}
+          aria-hidden
+        />
+      ) : null}
       <span className={finderKit.finderSecItemLabel}>{label}</span>
       <span className={`${styles.filterItemCount} ${styles.planningSecCount}`}>{count}</span>
     </button>;
@@ -2269,9 +2311,6 @@ export default function PlanningPage({
                           </>
                         )}
                       </div>
-                      {selectedUsers.size > 1 && (
-                        <p className={styles.agentFilterMeta}>{planningCopy.formatAgentsSelected(selectedUsers.size)}</p>
-                      )}
                     </div>
                   ) : (
                     <div className={finderKit.finderSecPanel}>
@@ -2323,23 +2362,27 @@ export default function PlanningPage({
                           <p className={styles.agentFilterHint}>
                             {clientFilterSearch.trim()
                               ? planningCopy.filters.noClientFound
-                              : clients.length === 0
-                                ? planningCopy.filters.noClients
-                                : planningCopy.filters.searchClientHint}
+                              : planningCopy.filters.noClients}
                           </p>
                         ) : (
                           filteredClientsForPane.map(client => {
+                            if (!client || client.id == null) return null;
                             const clientIdStr = String(client.id);
                             const count = clientCounts[clientIdStr] || 0;
                             const clientName = client.name || client.nom || planningCopy.defaults.client;
+                            const brandIcon = resolveEnterpriseIcon(client.icon);
+                            const brandColor = resolveEnterpriseIconColor(
+                              client.icon_color || client.iconColor
+                            );
                             return renderFilterItem(
-                              client.id,
+                              clientIdStr,
                               clientName,
                               count,
                               selectedClientsFilter.has(clientIdStr),
                               () => toggleClient(client.id),
-                              "mdi:office-building-outline",
-                              focusedClientId === clientIdStr
+                              brandIcon,
+                              focusedClientId === clientIdStr,
+                              brandColor
                             );
                           })
                         )}
@@ -2359,8 +2402,6 @@ export default function PlanningPage({
                 <header className={styles.planningHeader}>
                   <UiKitCrmListToolbar
                     className={styles.planningHeaderTop}
-                    title={planningCopy.title}
-                    titleIcon="mdi:calendar-month-outline"
                     searchValue={searchQuery}
                     onSearchChange={setSearchQuery}
                     onSearchClear={() => setSearchQuery("")}

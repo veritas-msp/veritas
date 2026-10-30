@@ -156,6 +156,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
   const [ticketsTablePage, setTicketsTablePage] = useState(1);
   const [activityTabMounted, setActivityTabMounted] = useState(true);
   const [logsTabMounted, setLogsTabMounted] = useState(false);
+  const activityLoadedForRef = useRef(null);
   const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(true);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(true);
   const loadControllerRef = useRef(null);
@@ -420,12 +421,8 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
           nom: fetched.nom || fetched.name
         });
       }
-      activityControllerRef.current?.abort();
-      const activityController = createTrackedAbortController();
-      activityControllerRef.current = activityController;
-      loadActivity(fetched.id, activityController.signal, {
-        keepVisible: Array.isArray(cached?.mentionedTickets)
-      });
+      // Activity tickets load on first visit of the activity tab (see effect below).
+      activityLoadedForRef.current = null;
       ensureClientsLoaded();
     } catch (err) {
       if (err?.name === "AbortError") return;
@@ -494,6 +491,20 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
     if (overviewTab === "activity") setActivityTabMounted(true);
     if (overviewTab === "logs") setLogsTabMounted(true);
   }, [overviewTab]);
+  useEffect(() => {
+    if (overviewTab !== "activity" || !prestataire?.id) return undefined;
+    const id = String(prestataire.id);
+    if (activityLoadedForRef.current === id) return undefined;
+    activityLoadedForRef.current = id;
+    activityControllerRef.current?.abort();
+    const activityController = createTrackedAbortController();
+    activityControllerRef.current = activityController;
+    const cached = getDetailCache(DETAIL_CACHE_NS.prestataire, id);
+    loadActivity(prestataire.id, activityController.signal, {
+      keepVisible: Array.isArray(cached?.mentionedTickets) && cached.mentionedTickets.length > 0
+    });
+    return () => activityController.abort();
+  }, [overviewTab, prestataire?.id, loadActivity]);
 
   const { trackRef: finderPrimaryTrackRef, indicator: finderPrimaryIndicator } = useFinderNavIndicator([
     overviewTab

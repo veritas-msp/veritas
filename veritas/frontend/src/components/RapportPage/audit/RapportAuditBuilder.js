@@ -6,7 +6,7 @@ import {
   updateMonitoringDocument
 } from "../../../api/monitoringDocuments";
 import { useAppGeneralSettings, useAppLocale } from "../../../hooks/useAppGeneralSettings";
-import { uploadReportHtmlToClientVault } from "../../../utils/uploadReportToClientVault";
+import { replaceOrUploadReportHtmlToClientVault } from "../../../utils/uploadReportToClientVault";
 import { exportBrandedReportHtmlFromElement } from "../exportBrandedReportHtmlFromElement";
 import { REPORT_TYPE_IDS } from "../reportTypeConstants";
 import ConfirmModal from "../../Misc/ConfirmModal/ConfirmModal";
@@ -72,7 +72,9 @@ export default function RapportAuditBuilder({
   subtypeId,
   initialData = null,
   documentId = null,
-  documentName = ""
+  documentName = "",
+  initialVaultFileId = null,
+  initialVisibleToClient = false
 }) {
   const locale = useAppLocale();
   const { settings } = useAppGeneralSettings();
@@ -99,7 +101,8 @@ export default function RapportAuditBuilder({
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
-  const [saveVisibleToClient, setSaveVisibleToClient] = useState(false);
+  const [saveVisibleToClient, setSaveVisibleToClient] = useState(Boolean(initialVisibleToClient));
+  const [vaultFileId, setVaultFileId] = useState(initialVaultFileId || null);
   const previewDocRef = useRef(null);
 
   const currentStep = steps[stepIndex] || steps[0];
@@ -173,7 +176,8 @@ export default function RapportAuditBuilder({
         documentTitle: docName
       });
       if (!blob) throw new Error("HTML generation failed");
-      const uploaded = await uploadReportHtmlToClientVault({
+      const uploaded = await replaceOrUploadReportHtmlToClientVault({
+        existingFileId: vaultFileId,
         blob,
         fileName: docName,
         clientId,
@@ -200,7 +204,6 @@ export default function RapportAuditBuilder({
       toast.error(auditCopy.alerts.saveNameRequired);
       return;
     }
-    setSaveVisibleToClient(false);
     setShowSaveModal(true);
   };
 
@@ -218,25 +221,46 @@ export default function RapportAuditBuilder({
     setSaving(true);
     try {
       const { config, data } = serializeAuditSavePayload(client, formData, REPORT_TYPE_IDS.AUDIT);
+      const configWithVault = {
+        ...config,
+        vaultFileId: vaultFileId || null,
+        visibleToClient: Boolean(saveVisibleToClient)
+      };
       const reportPeriod = buildAuditReportPeriod(formData);
       const result = documentId
         ? await updateMonitoringDocument(documentId, {
             name,
             client_name: clientLabel,
             report_period: reportPeriod,
-            config,
+            config: configWithVault,
             data
           })
         : await saveMonitoringDocument({
             name,
             client_name: clientLabel,
             report_period: reportPeriod,
-            config,
+            config: configWithVault,
             data,
             overwrite: forceOverwrite
           });
       if (result?.success) {
         const vault = await archiveAuditHtmlToVault({ docName: name, reportPeriod });
+        if (vault?.success && vault.file?.id) {
+          setVaultFileId(vault.file.id);
+          const nextDocId = documentId || result.id;
+          if (nextDocId) {
+            await updateMonitoringDocument(nextDocId, {
+              name,
+              client_name: clientLabel,
+              report_period: reportPeriod,
+              config: {
+                ...configWithVault,
+                vaultFileId: vault.file.id
+              },
+              data
+            });
+          }
+        }
         if (vault?.success === false) {
           toast.warning(auditCopy.alerts.vaultError);
         } else {

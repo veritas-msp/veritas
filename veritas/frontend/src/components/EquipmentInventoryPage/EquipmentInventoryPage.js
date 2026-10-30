@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getEquipmentInventoryGuide } from "../PageGuide/equipmentInventoryGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
@@ -23,7 +23,13 @@ import InventoryEquipmentActions from "./InventoryEquipmentActions";
 import InventoryBulkEditModal from "./InventoryBulkEditModal";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
-import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
+import {
+  UiKitCrmListToolbar,
+  UiKitEmptyState,
+  UiKitScrollFadeShell,
+  uiKitLayoutsStyles as kit,
+  useFinderNavIndicator
+} from "../UiKit";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import {
   getEquipmentInventoryUiDefaults,
@@ -488,6 +494,60 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const tableScrollRef = useRef(null);
   const facetListRef = useRef(null);
   const scrollRestoredRef = useRef(false);
+  const [statusToggleMotion, setStatusToggleMotion] = useState(false);
+  const [facetToggleMotion, setFacetToggleMotion] = useState(false);
+  const [facetContentEnter, setFacetContentEnter] = useState(true);
+
+  const { trackRef: statusTrackRef, indicator: statusIndicator } = useFinderNavIndicator([
+    statusFilter,
+    copy.statusFilterItems?.length
+  ]);
+  const { trackRef: facetTrackRef, indicator: facetIndicator } = useFinderNavIndicator([
+    openFilterSection
+  ]);
+
+  const statusIndicatorReady =
+    statusIndicator.ready && statusIndicator.width >= 24 && statusIndicator.height >= 16;
+  const facetIndicatorReady =
+    facetIndicator.ready && facetIndicator.width >= 24 && facetIndicator.height >= 16;
+
+  useEffect(() => {
+    if (!statusIndicatorReady) {
+      setStatusToggleMotion(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => setStatusToggleMotion(true));
+    return () => cancelAnimationFrame(id);
+  }, [statusIndicatorReady]);
+
+  useEffect(() => {
+    if (!facetIndicatorReady) {
+      setFacetToggleMotion(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => setFacetToggleMotion(true));
+    return () => cancelAnimationFrame(id);
+  }, [facetIndicatorReady]);
+
+  useLayoutEffect(() => {
+    setFacetContentEnter(false);
+  }, [openFilterSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setFacetContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [openFilterSection]);
 
   const load = useCallback(async ({ force = false } = {}) => {
     if (!force) {
@@ -1053,8 +1113,6 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const hasFilters = Boolean(
     search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || selectedTags.size > 0 || statusFilter !== "all"
   );
-  const activeSideFilterCount =
-    (statusFilter !== "all" ? 1 : 0) + selectedClients.size + selectedTypes.size + selectedTags.size;
 
   const getColumnLabel = key => {
     if (isCustomColumnKey(key)) {
@@ -1318,18 +1376,36 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                     <div className={styles.filtersTopRow}>
                       <div className={styles.filtersTitleBlock}>
                         <span className={styles.filtersTitle}>{copy.filters?.title || copy.filters?.aria || "Filters"}</span>
-                        {activeSideFilterCount > 0 ? (
-                          <span className={styles.filtersCountBadge}>{activeSideFilterCount}</span>
-                        ) : null}
                       </div>
-                      {hasFilters ? (
-                        <button type="button" className={styles.filtersResetBtn} onClick={clearFilters}>
-                          {copy.filters?.clearAll || "Reset"}
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        className={`${styles.filtersResetBtn}${hasFilters ? "" : ` ${styles.filtersResetBtnHidden}`}`}
+                        onClick={clearFilters}
+                        disabled={!hasFilters}
+                        tabIndex={hasFilters ? undefined : -1}
+                        aria-hidden={!hasFilters}
+                      >
+                        {copy.filters?.clearAll || "Reset"}
+                      </button>
                     </div>
 
-                    <div className={styles.statusSegment} role="group" aria-label={copy.filters?.status || "Status"}>
+                    <div
+                      ref={statusTrackRef}
+                      className={`${styles.statusSegment}${statusToggleMotion ? ` ${styles.statusSegmentAnimated}` : ""}`}
+                      role="group"
+                      aria-label={copy.filters?.status || "Status"}
+                    >
+                      {statusIndicatorReady ? (
+                        <span
+                          className={styles.statusSegmentIndicator}
+                          style={{
+                            transform: `translate3d(${statusIndicator.left}px, ${statusIndicator.top}px, 0)`,
+                            width: statusIndicator.width || undefined,
+                            height: statusIndicator.height || undefined
+                          }}
+                          aria-hidden
+                        />
+                      ) : null}
                       {copy.statusFilterItems.map(item => {
                         const active = statusFilter === item.key;
                         const count = statusCounts[item.key] || 0;
@@ -1340,6 +1416,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                             className={`${styles.statusSegmentBtn} ${active ? styles.statusSegmentBtnActive : ""}`}
                             onClick={() => setStatusFilter(item.key)}
                             aria-pressed={active}
+                            aria-current={active ? "true" : undefined}
                           >
                             <span className={styles.statusSegmentLabel}>{item.label}</span>
                             <span className={styles.statusSegmentCount}>{count}</span>
@@ -1349,7 +1426,23 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                     </div>
                   </div>
 
-                  <div className={styles.facetNav} role="tablist" aria-label={copy.filters?.facetsAria || copy.filters?.aria}>
+                  <div
+                    ref={facetTrackRef}
+                    className={`${styles.facetNav}${facetToggleMotion ? ` ${styles.facetNavAnimated}` : ""}`}
+                    role="tablist"
+                    aria-label={copy.filters?.facetsAria || copy.filters?.aria}
+                  >
+                    {facetIndicatorReady ? (
+                      <span
+                        className={styles.facetNavIndicator}
+                        style={{
+                          transform: `translate3d(${facetIndicator.left}px, ${facetIndicator.top}px, 0)`,
+                          width: facetIndicator.width || undefined,
+                          height: facetIndicator.height || undefined
+                        }}
+                        aria-hidden
+                      />
+                    ) : null}
                     {facetSections.map(section => {
                       const isOpen = openFilterSection === section.key;
                       return (
@@ -1358,6 +1451,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                           type="button"
                           role="tab"
                           aria-selected={isOpen}
+                          aria-current={isOpen ? "true" : undefined}
                           className={`${styles.facetNavBtn} ${isOpen ? styles.facetNavBtnActive : ""}`}
                           onClick={() => openFacetSection(section.key)}
                         >
@@ -1370,39 +1464,49 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                     })}
                   </div>
 
-                  <div className={styles.facetBody} role="tabpanel">
+                  <div
+                    className={`${styles.facetBody} ${
+                      facetContentEnter ? styles.facetBodyFadeIn : styles.facetBodyFadePending
+                    }`}
+                    role="tabpanel"
+                  >
                     <div className={styles.facetBodyHeader}>
                       <span className={styles.facetBodyTitle}>{openFacet.title}</span>
-                      {openFacet.selectedCount > 0 ? (
-                        <button
-                          type="button"
-                          className={styles.filtersResetBtn}
-                          onClick={() => clearFacetSection(openFacet.key)}
-                        >
-                          {copy.filters?.clear || "Clear"}
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        className={`${styles.filtersResetBtn}${
+                          openFacet.selectedCount > 0 ? "" : ` ${styles.filtersResetBtnHidden}`
+                        }`}
+                        onClick={() => clearFacetSection(openFacet.key)}
+                        disabled={openFacet.selectedCount <= 0}
+                        tabIndex={openFacet.selectedCount > 0 ? undefined : -1}
+                        aria-hidden={openFacet.selectedCount <= 0}
+                      >
+                        {copy.filters?.clear || "Clear"}
+                      </button>
                     </div>
 
-                    <div className={styles.facetSearchWrap}>
-                      <Icon icon="mdi:magnify" className={styles.facetSearchIcon} aria-hidden />
+                    <div className={`${kit.searchBox} ${kit.searchBoxFluid} ${styles.facetToolbarSearch}`}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
                       <input
                         type="text"
-                        className={styles.facetSearchInput}
+                        inputMode="search"
+                        enterKeyHint="search"
+                        className={kit.searchInput}
                         value={facetQuery}
                         onChange={e => setFacetQuery(e.target.value)}
-                        placeholder={openFacet.searchPlaceholder}
+                        placeholder={copy.searchPlaceholder}
                         autoComplete="off"
-                        aria-label={openFacet.searchPlaceholder}
+                        aria-label={copy.searchPlaceholder}
                       />
                       {facetQuery ? (
                         <button
                           type="button"
-                          className={styles.facetSearchClear}
+                          className={kit.searchClear}
                           onClick={() => setFacetQuery("")}
                           aria-label={copy.clearSearch}
                         >
-                          <Icon icon="mdi:close" width={14} height={14} aria-hidden />
+                          <Icon icon="mdi:close" aria-hidden />
                         </button>
                       ) : null}
                     </div>
@@ -1447,29 +1551,37 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                         <div className={layout.panelCard}>
                           <div data-guide="inventory-search">
                           <UiKitCrmListToolbar
-                            title={copy.pageTitle}
-                            titleIcon="mdi:devices"
                             searchValue={search}
                             onSearchChange={setSearch}
                             onSearchClear={() => setSearch("")}
                             searchPlaceholder={copy.searchPlaceholder}
                             searchAriaLabel={copy.searchAria}
                             clearSearchLabel={copy.clearSearch}
-                            moreMenuItems={[
-                              {
-                                key: "export",
-                                label: copy.exportCsv,
-                                icon: "mdi:download-outline",
-                                disabled: filtered.length === 0,
-                                onClick: handleExportCsv
-                              },
-                              {
-                                key: "refresh",
-                                label: copy.refresh,
-                                icon: "mdi:refresh",
-                                onClick: load
-                              }
-                            ]}
+                            extraActions={
+                              <>
+                                <SmartTooltip content={copy.exportCsv}>
+                                  <button
+                                    type="button"
+                                    className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                                    aria-label={copy.exportCsvAria || copy.exportCsv}
+                                    onClick={handleExportCsv}
+                                    disabled={filtered.length === 0}
+                                  >
+                                    <Icon icon="mdi:download-outline" aria-hidden />
+                                  </button>
+                                </SmartTooltip>
+                                <SmartTooltip content={copy.refresh}>
+                                  <button
+                                    type="button"
+                                    className={`${kit.btnSquare} ${kit.btnSquareSecondary}`}
+                                    aria-label={copy.refresh}
+                                    onClick={load}
+                                  >
+                                    <Icon icon="mdi:refresh" aria-hidden />
+                                  </button>
+                                </SmartTooltip>
+                              </>
+                            }
                           />
                           </div>
 

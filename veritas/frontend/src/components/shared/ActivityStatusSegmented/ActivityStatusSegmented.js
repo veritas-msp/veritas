@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import styles from "./ActivityStatusSegmented.module.css";
 
 /**
@@ -8,6 +8,8 @@ import styles from "./ActivityStatusSegmented.module.css";
 export default function ActivityStatusSegmented({ value, onChange, options = [], ariaLabel }) {
   const trackRef = useRef(null);
   const [indicator, setIndicator] = useState({ left: 0, width: 0, ready: false });
+  const [animated, setAnimated] = useState(false);
+  const optionsKey = options.map(option => option?.id).join("|");
 
   useLayoutEffect(() => {
     const root = trackRef.current;
@@ -40,15 +42,29 @@ export default function ActivityStatusSegmented({ value, onChange, options = [],
       ro?.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [value, options]);
+  }, [value, optionsKey]);
+
+  useEffect(() => {
+    if (!indicator.ready) {
+      setAnimated(false);
+      return undefined;
+    }
+    const id = requestAnimationFrame(() => setAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, [indicator.ready]);
 
   return (
-    <div ref={trackRef} className={styles.macosSegmented} role="group" aria-label={ariaLabel}>
+    <div
+      ref={trackRef}
+      className={`${styles.macosSegmented}${animated ? ` ${styles.macosSegmentedAnimated}` : ""}`}
+      role="group"
+      aria-label={ariaLabel}
+    >
       {indicator.ready ? (
         <span
           className={styles.macosSegmentIndicator}
           style={{
-            transform: `translateX(${indicator.left}px)`,
+            transform: `translate3d(${indicator.left}px, 0, 0)`,
             width: indicator.width
           }}
           aria-hidden

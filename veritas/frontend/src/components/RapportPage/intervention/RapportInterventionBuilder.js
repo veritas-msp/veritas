@@ -24,7 +24,7 @@ import {
   loadClientEquipments
 } from "../../TicketPage/ticketEquipmentUtils";
 import InterventionSaveModal from "./InterventionSaveModal";
-import { uploadInterventionHtmlToClientVault } from "../../../utils/uploadReportToClientVault";
+import { replaceOrUploadReportHtmlToClientVault } from "../../../utils/uploadReportToClientVault";
 import { exportBrandedReportHtmlFromElement } from "../exportBrandedReportHtmlFromElement";
 import cyberStyles from "../../CybersecuritePage/CybersecuritePage.module.css";
 import shellStyles from "../RapportBuilderPlaceholder.module.css";
@@ -94,7 +94,9 @@ export default function ReportInterventionBuilder({
   onSaved,
   initialData = null,
   documentId = null,
-  documentName = ""
+  documentName = "",
+  initialVaultFileId = null,
+  initialVisibleToClient = false
 }) {
   const locale = useAppLocale();
   const { settings } = useAppGeneralSettings();
@@ -120,7 +122,8 @@ export default function ReportInterventionBuilder({
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedDocuments, setSavedDocuments] = useState([]);
-  const [saveVisibleToClient, setSaveVisibleToClient] = useState(false);
+  const [saveVisibleToClient, setSaveVisibleToClient] = useState(Boolean(initialVisibleToClient));
+  const [vaultFileId, setVaultFileId] = useState(initialVaultFileId || null);
   const [clientTickets, setClientTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [ticketSearch, setTicketSearch] = useState(() => String(initialData?.numeroTicket || "").trim());
@@ -747,7 +750,8 @@ export default function ReportInterventionBuilder({
     try {
       const blob = await buildInterventionHtmlBlob(payload, docName);
       if (!blob) throw new Error("HTML generation failed");
-      const uploaded = await uploadInterventionHtmlToClientVault({
+      const uploaded = await replaceOrUploadReportHtmlToClientVault({
+        existingFileId: vaultFileId,
         blob,
         fileName: docName,
         clientId,
@@ -816,6 +820,11 @@ export default function ReportInterventionBuilder({
         payload,
         REPORT_TYPE_IDS.INTERVENTION
       );
+      const configWithVault = {
+        ...config,
+        vaultFileId: vaultFileId || null,
+        visibleToClient: Boolean(saveVisibleToClient)
+      };
       const clientName = client?.name || client?.nom || "CLIENT";
       const reportPeriod = buildInterventionReportPeriod(payload);
       const result = documentId
@@ -823,14 +832,14 @@ export default function ReportInterventionBuilder({
             name: saveName.trim(),
             client_name: clientName,
             report_period: reportPeriod,
-            config,
+            config: configWithVault,
             data
           })
         : await saveMonitoringDocument({
             name: saveName.trim(),
             client_name: clientName,
             report_period: reportPeriod,
-            config,
+            config: configWithVault,
             data,
             overwrite: forceOverwrite
           });
@@ -841,6 +850,22 @@ export default function ReportInterventionBuilder({
           reportPeriod,
           payload
         });
+        if (vaultResult.success && vaultResult.file?.id) {
+          setVaultFileId(vaultResult.file.id);
+          const nextDocId = documentId || result.id;
+          if (nextDocId) {
+            await updateMonitoringDocument(nextDocId, {
+              name: saveName.trim(),
+              client_name: clientName,
+              report_period: reportPeriod,
+              config: {
+                ...configWithVault,
+                vaultFileId: vaultResult.file.id
+              },
+              data
+            });
+          }
+        }
         if (vaultResult.success) {
           toast.success(
             saveVisibleToClient
@@ -899,7 +924,6 @@ export default function ReportInterventionBuilder({
       toast.error(getStepAlert(2, payload));
       return;
     }
-    setSaveVisibleToClient(false);
     if (payload.linkedTicketId || String(payload.numeroTicket || "").trim()) {
       updateField({ postTicketFollowUp: payload.postTicketFollowUp !== false });
     }

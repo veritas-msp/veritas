@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.6",
+    date: "2026-10-30",
+    highlights: [
+      "Performance : navigation et fiches nettement plus fluides (chargement différé des onglets, sync URL, persist onglets/scroll sans figer l’UI).",
+      "Barre d’onglets : regroupement automatique avant tout débordement, plus jamais de scrollbar.",
+      "Coffre entreprise, vues antivirus/antispam et fiches job / instance enrichis ; documents enregistrés côté rapports.",
+      "Inventaire, planning, services MSP et listes CRM : polish UI et chargements allégés."
+    ]
+  },
+  {
     version: "2.0.5",
     date: "2026-10-28",
     highlights: [

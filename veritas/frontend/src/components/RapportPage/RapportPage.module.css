@@ -5,10 +5,16 @@
   margin-bottom: 0.85rem;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(220, 38, 38, 0.25);
-  background: rgba(220, 38, 38, 0.06);
-  color: #b91c1c;
+  border: 1px solid color-mix(in srgb, var(--msp-danger, #dc2626) 28%, transparent);
+  background: color-mix(in srgb, var(--msp-danger, #dc2626) 8%, transparent);
+  color: var(--msp-danger, #b91c1c);
   font-size: 0.85rem;
+}
+
+:global(html.dark) .alertError {
+  color: #fca5a5;
+  border-color: color-mix(in srgb, #f87171 35%, transparent);
+  background: color-mix(in srgb, #f87171 12%, transparent);
 }
 
 .builderShell {
@@ -26,6 +32,48 @@
   min-height: 0;
   overflow: hidden;
   gap: 0.65rem;
+}
+
+.homeSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr);
+  gap: 0.85rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.homeMain,
+.homeSide {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.homeMain > *,
+.homeSide > * {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 1100px) {
+  .homeSplit {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .homeMain,
+  .homeSide {
+    overflow: visible;
+  }
+
+  .homeMain > *,
+  .homeSide > * {
+    flex: none;
+  }
 }
 
 .createPanel {

@@ -45,6 +45,7 @@ import EquipmentInventoryPage from "../components/EquipmentInventoryPage/Equipme
 import TabLauncherPage from "../components/TabLauncher/TabLauncherPage";
 import { createListTabData, findTenantDetailTab, generateTenantDetailTabId, isListTabDocType } from "../navigation/tabTypes";
 import { abortInFlightPageLoads } from "../utils/pageLoadAbort";
+import { persistTabs, persistActiveTabId } from "../utils/persistTabsStorage";
 import MonitoringRenderContent from "../components/Monitoring/MonitoringRenderContent";
 import { EphemeralMonitoringProvider } from "../contexts/MonitoringContext";
 import { useAuthContext } from "../contexts/AuthContext";
@@ -104,6 +105,16 @@ export default function MainApp() {
   const effectiveProfile = isPreviewing && previewProfile ? previewProfile : profile;
   const rawAccess = useProfileAccess(effectiveProfile, refreshTrigger);
   const access = useMemo(() => filterAccessForEdition(rawAccess, isCommunity ? "community" : "pro"), [rawAccess, isCommunity]);
+  const accessRef = useRef(access);
+  accessRef.current = access;
+  const rawAccessRef = useRef(rawAccess);
+  rawAccessRef.current = rawAccess;
+  const userRoleRef = useRef(userRole);
+  userRoleRef.current = userRole;
+  const isCommunityRef = useRef(isCommunity);
+  isCommunityRef.current = isCommunity;
+  const canAccessAdminRef = useRef(canAccessAdmin);
+  canAccessAdminRef.current = canAccessAdmin;
   const {
     ready: onboardingReady,
     completed: onboardingCompleted,
@@ -125,8 +136,10 @@ export default function MainApp() {
   const [currentDocType, setCurrentDocType] = useState("Home");
   const currentDocTypeRef = useRef(currentDocType);
   currentDocTypeRef.current = currentDocType;
+  const activeTabIdRef = useRef(null);
   const [contratDetailData, setContratDetailData] = useState(null);
   const [contratPageParams, setContratPageParams] = useState(null);
+  const [reportPageParams, setReportPageParams] = useState(null);
   const [contactPageParams, setContactPageParams] = useState(null);
   const [prestatairePageParams, setPrestatairePageParams] = useState(null);
   const [campaignDetailData, setCampaignDetailData] = useState(null);
@@ -210,33 +223,40 @@ export default function MainApp() {
   }, [injectionNavLocked, warnInjectionNavLocked, requestReportLeave, handleLogout]);
   const [tabs, setTabs] = useState(() => {
     try {
-      const savedTabs = localStorage.getItem('veritas_tabs');
-      if (savedTabs) {
-        const parsed = JSON.parse(savedTabs);
-        return Array.isArray(parsed) ? parsed.filter(tab => tab.type !== "Mon") : [];
+      const savedTabs = localStorage.getItem("veritas_tabs");
+      if (!savedTabs) return [];
+      const parsed = JSON.parse(savedTabs);
+      // Share parse with activeTabId initializer via module-free boot cache on window.
+      if (typeof window !== "undefined") {
+        window.__veritasBootTabs = Array.isArray(parsed) ? parsed : [];
       }
+      return Array.isArray(parsed) ? parsed.filter(tab => tab.type !== "Mon") : [];
     } catch (error) {
-      console.error('Error lors de la restauration des onglets:', error);
+      console.error("Error lors de la restauration des onglets:", error);
+      return [];
     }
-    return [];
   });
   const [activeTabId, setActiveTabId] = useState(() => {
     try {
-      const savedActiveTabId = localStorage.getItem('veritas_activeTabId');
-      const savedTabs = localStorage.getItem('veritas_tabs');
-      if (savedActiveTabId && savedTabs) {
-        const parsed = JSON.parse(savedTabs);
-        const activeTab = Array.isArray(parsed) ? parsed.find(tab => tab.id === savedActiveTabId) : null;
-        if (activeTab && activeTab.type !== "Mon") {
-          return savedActiveTabId;
-        }
-      }
+      const savedActiveTabId = localStorage.getItem("veritas_activeTabId");
+      if (!savedActiveTabId) return null;
+      const parsed =
+        typeof window !== "undefined" && Array.isArray(window.__veritasBootTabs)
+          ? window.__veritasBootTabs
+          : (() => {
+              const raw = localStorage.getItem("veritas_tabs");
+              return raw ? JSON.parse(raw) : [];
+            })();
+      if (typeof window !== "undefined") delete window.__veritasBootTabs;
+      const activeTab = Array.isArray(parsed) ? parsed.find(tab => tab.id === savedActiveTabId) : null;
+      if (activeTab && activeTab.type !== "Mon") return savedActiveTabId;
     } catch (error) {
-      console.error('Error lors de la restauration de l\'onglet actif:', error);
+      console.error("Error lors de la restauration de l'onglet actif:", error);
       return null;
     }
     return null;
   });
+  activeTabIdRef.current = activeTabId;
   const generateTabId = useCallback((type, data) => {
     if (data?.tabInstanceId) {
       return String(data.tabInstanceId);
@@ -352,7 +372,9 @@ export default function MainApp() {
     if (type === "KnowledgeBaseArticle" && data?.articleId) {
       return `kb-${data.mode === "edit" ? "edit" : "read"}-${data.articleId}`;
     }
-    return `${type}-${Date.now()}`;
+    // Stable fallback: Date.now() caused infinite tab creation when URL sync
+    // re-ran applyRouteState without enough identity fields in parsed.data.
+    return `${type}-unknown`;
   }, []);
   const updateTabTitle = (tabId, newTitle) => {
     setTabs(prevTabs => prevTabs.map(tab => tab.id === tabId ? {
@@ -422,7 +444,7 @@ export default function MainApp() {
   const applyRouteState = useCallback((pathname, search) => {
     const parsed = parseAgentPath(pathname, search);
     if (!parsed) {
-      if (currentDocType !== "Home") {
+      if (currentDocTypeRef.current !== "Home") {
         abortInFlightPageLoads();
       }
       setCurrentDocType("Home");
@@ -434,12 +456,12 @@ export default function MainApp() {
       }
       return;
     }
-    const accessLoaded = Object.keys(rawAccess || {}).length > 0;
+    const accessLoaded = Object.keys(rawAccessRef.current || {}).length > 0;
     if (accessLoaded && !isAgentPathAllowed(parsed.docType, {
-      userRole,
-      access,
-      isCommunity,
-      canAccessAdmin
+      userRole: userRoleRef.current,
+      access: accessRef.current,
+      isCommunity: isCommunityRef.current,
+      canAccessAdmin: canAccessAdminRef.current
     })) {
       navigate("/", {
         replace: true
@@ -449,7 +471,7 @@ export default function MainApp() {
     const routeState = routeToMainAppState(parsed);
     const tabTypes = ["ContratDetail", "ContactDetail", "PrestataireDetail", "Equipment", "EquipmentDetail", "JobDetail", "InstanceDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
     const nextTabId = tabTypes.includes(routeState.docType) && parsed.data ? generateTabId(routeState.docType, parsed.data) : null;
-    if (routeState.docType !== currentDocType || nextTabId && nextTabId !== activeTabId) {
+    if (routeState.docType !== currentDocTypeRef.current || nextTabId && nextTabId !== activeTabIdRef.current) {
       abortInFlightPageLoads();
     }
     setCurrentDocType(routeState.docType);
@@ -513,6 +535,10 @@ export default function MainApp() {
               ...parsed.data
             }
           });
+          const dataChanged = parsed.data && Object.keys(parsed.data).some(key => existing.data?.[key] !== parsed.data[key]);
+          if (!dataChanged) {
+            return prevTabs;
+          }
           return prevTabs.map(t => t.id === existing.id ? {
             ...t,
             data: {
@@ -529,18 +555,14 @@ export default function MainApp() {
         };
         setActiveTabId(tabId);
         const newTabs = [...prevTabs, newTab];
-        try {
-          localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
-          localStorage.setItem("veritas_activeTabId", tabId);
-        } catch (error) {
-          console.error("Error lors de la sauvegarde des onglets:", error);
-        }
+        persistTabs(newTabs, { immediate: true });
+        persistActiveTabId(tabId, { immediate: true });
         return newTabs;
       });
     } else if (!tabTypes.includes(routeState.docType)) {
       setActiveTabId(null);
     }
-  }, [userRole, access, rawAccess, isCommunity, navigate, generateTabId, hydrateDetailStateFromTab, appLocale, currentDocType, activeTabId]);
+  }, [navigate, generateTabId, hydrateDetailStateFromTab, appLocale]);
   const pushAgentUrl = useCallback((type, data, options = {}) => {
     if (options.background) return;
     const path = buildAgentPath(type, data, {
@@ -587,6 +609,29 @@ export default function MainApp() {
         return;
       }
     }
+    // Re-clic sidebar « Rapport » alors qu’on est déjà sur Report : retour à l’accueil
+    // (avec alerte builder si une session est en cours).
+    const isReportHomeReentry = type === "Report" && currentDocTypeRef.current === "Report" && !options.background && !data?.editDocumentId && !data?.documentId && !data?.document && !data?.goHome;
+    if (isReportHomeReentry) {
+      const homeData = {
+        goHome: true,
+        _nonce: Date.now()
+      };
+      if (monitoringReportGuardActiveRef.current && !options.skipReportLeaveGuard) {
+        requestReportLeave(() => handleDocSelect(type, homeData, {
+          ...options,
+          skipReportLeaveGuard: true
+        }));
+        return;
+      }
+      data = homeData;
+    } else if (type === "Report" && data?.goHome && monitoringReportGuardActiveRef.current && !options.background && !options.skipReportLeaveGuard) {
+      requestReportLeave(() => handleDocSelect(type, data, {
+        ...options,
+        skipReportLeaveGuard: true
+      }));
+      return;
+    }
     if (shouldBlockMonitoringReportLeave(type) && !options.background && !options.skipReportLeaveGuard) {
       requestReportLeave(() => handleDocSelect(type, data, {
         ...options,
@@ -614,12 +659,8 @@ export default function MainApp() {
           data: normalizedData
         };
         const newTabs = [...prevTabs, newTab];
-        try {
-          localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
-          localStorage.setItem("veritas_activeTabId", tabId);
-        } catch (error) {
-          console.error("Error lors de la sauvegarde des onglets:", error);
-        }
+        persistTabs(newTabs, { immediate: true });
+        persistActiveTabId(tabId, { immediate: true });
         return newTabs;
       });
       setActiveTabId(tabId);
@@ -645,22 +686,11 @@ export default function MainApp() {
     if (options.closeCurrent && activeTabId) {
       setTabs(prevTabs => {
         const newTabs = prevTabs.filter(t => t.id !== activeTabId);
-        try {
-          localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
-          if (newTabs.length === 0) {
-            localStorage.removeItem("veritas_tabs");
-          }
-        } catch (error) {
-          console.error("Error lors de la sauvegarde des onglets:", error);
-        }
+        persistTabs(newTabs, { immediate: true });
         return newTabs;
       });
       setActiveTabId(null);
-      try {
-        localStorage.removeItem("veritas_activeTabId");
-      } catch (error) {
-        console.error("Error while deleting de l'onglet actif:", error);
-      }
+      persistActiveTabId(null, { immediate: true });
     }
     const tabTypes = ["ContratDetail", "ContactDetail", "PrestataireDetail", "Equipment", "EquipmentDetail", "JobDetail", "InstanceDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
     if (tabTypes.includes(type) && data) {
@@ -677,11 +707,7 @@ export default function MainApp() {
           window.alert("A monitoring report is already in progress. " + "Please close the current report tab before creating a new one.");
           setActiveTabId(existingMonitoringTab.id);
           setCurrentDocType("MonitoringDetail");
-          try {
-            localStorage.setItem("veritas_activeTabId", existingMonitoringTab.id);
-          } catch (error) {
-            console.error("Error lors de la sauvegarde de l'onglet actif:", error);
-          }
+          persistActiveTabId(existingMonitoringTab.id, { immediate: true });
           pushAgentUrl("MonitoringDetail", existingMonitoringTab.data, options);
           return;
         }
@@ -721,13 +747,9 @@ export default function MainApp() {
           }
           newTabs = [...prevTabs, newTab];
         }
-        try {
-          localStorage.setItem('veritas_tabs', JSON.stringify(newTabs));
-          if (!inBackground) {
-            localStorage.setItem('veritas_activeTabId', tabId);
-          }
-        } catch (error) {
-          console.error('Error lors de la sauvegarde des onglets:', error);
+        persistTabs(newTabs, { immediate: true });
+        if (!inBackground) {
+          persistActiveTabId(tabId, { immediate: true });
         }
         return newTabs;
       });
@@ -760,6 +782,8 @@ export default function MainApp() {
       setPrestataireDetailData(data);
     } else if (!options.background && type === "Contrat") {
       setContratPageParams(data || null);
+    } else if (!options.background && type === "Report") {
+      setReportPageParams(data || null);
     } else if (!options.background && type === "Contact") {
       setContactPageParams(data || null);
     } else if (!options.background && type === "Prestataire") {
@@ -821,6 +845,9 @@ export default function MainApp() {
     }
     if (type !== "Contrat") {
       setContratPageParams(null);
+    }
+    if (type !== "Report") {
+      setReportPageParams(null);
     }
     if (type !== "Contact") {
       setContactPageParams(null);
@@ -903,11 +930,7 @@ export default function MainApp() {
     } else {
       hydrateDetailStateFromTab(resolvedTab);
     }
-    try {
-      localStorage.setItem("veritas_activeTabId", resolvedTab.id);
-    } catch (error) {
-      console.error("Error lors de la sauvegarde de l'onglet actif:", error);
-    }
+    persistActiveTabId(resolvedTab.id, { immediate: true });
     pushAgentUrl(resolvedTab.type, resolvedTab.data);
   };
   const handleOpenTabLauncher = useCallback(() => {
@@ -944,11 +967,7 @@ export default function MainApp() {
         if (newTabs.length > 0) {
           const lastTab = newTabs[newTabs.length - 1];
           setActiveTabId(lastTab.id);
-          try {
-            localStorage.setItem('veritas_activeTabId', lastTab.id);
-          } catch (error) {
-            console.error('Error lors de la sauvegarde de l\'onglet actif:', error);
-          }
+          persistActiveTabId(lastTab.id, { immediate: true });
           handleDocSelect(lastTab.type, lastTab.data);
           } else {
           setActiveTabId(null);
@@ -957,40 +976,21 @@ export default function MainApp() {
             setCurrentDocType("Home");
             pushAgentUrl("Home", null);
           }
-          try {
-            localStorage.removeItem('veritas_activeTabId');
-          } catch (error) {
-            console.error('Error while deleting de l\'onglet actif:', error);
-          }
+          persistActiveTabId(null, { immediate: true });
         }
       }
-      try {
-        localStorage.setItem('veritas_tabs', JSON.stringify(newTabs));
-        if (newTabs.length === 0) {
-          localStorage.removeItem('veritas_tabs');
-        }
-      } catch (error) {
-        console.error('Error lors de la sauvegarde des onglets:', error);
-      }
+      persistTabs(newTabs, { immediate: true });
       return newTabs;
     });
   };
   const handleTabReorder = newTabs => {
     setTabs(newTabs);
-    try {
-      localStorage.setItem('veritas_tabs', JSON.stringify(newTabs));
-    } catch (error) {
-      console.error('Error lors de la sauvegarde des onglets:', error);
-    }
+    persistTabs(newTabs, { immediate: true });
   };
   const handleTabSort = useCallback(() => {
     setTabs(prevTabs => {
       const sorted = sortTabsByType(prevTabs, appLocale);
-      try {
-        localStorage.setItem("veritas_tabs", JSON.stringify(sorted));
-      } catch (error) {
-        console.error("Error lors de la sauvegarde des onglets:", error);
-      }
+      persistTabs(sorted, { immediate: true });
       return sorted;
     });
   }, [appLocale]);
@@ -1033,7 +1033,25 @@ export default function MainApp() {
       }
     }
     applyRouteState(location.pathname, location.search);
-  }, [location.pathname, location.search, loading, user, applyRouteState, access, rawAccess, warnInjectionNavLocked, pushAgentUrl]);
+  }, [location.pathname, location.search, loading, user, applyRouteState, warnInjectionNavLocked, pushAgentUrl]);
+  // Permission-only check: do not re-run full applyRouteState when access refreshes.
+  useEffect(() => {
+    if (loading || !user) return;
+    const accessLoaded = Object.keys(rawAccess || {}).length > 0;
+    if (!accessLoaded) return;
+    const parsed = parseAgentPath(location.pathname, location.search);
+    if (!parsed) return;
+    if (!isAgentPathAllowed(parsed.docType, {
+      userRole,
+      access,
+      isCommunity,
+      canAccessAdmin
+    })) {
+      navigate("/", {
+        replace: true
+      });
+    }
+  }, [loading, user, rawAccess, access, userRole, isCommunity, canAccessAdmin, location.pathname, location.search, navigate]);
   const fetchProfile = () => {
     if (!user) return;
     fetch(`${API_BASE_URL}/users/me`, {
@@ -1087,11 +1105,7 @@ export default function MainApp() {
           title: newTitle,
           data: mergedData
         } : tab);
-        try {
-          localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
-        } catch (error) {
-          console.error("Error lors de la sauvegarde des onglets:", error);
-        }
+        persistTabs(newTabs);
         return newTabs;
       });
     };
@@ -1157,11 +1171,7 @@ export default function MainApp() {
                 data: updatedEquipment,
                 title: newTitle
               } : tab);
-              try {
-                localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
-              } catch (error) {
-                console.error("Error lors de la sauvegarde des onglets:", error);
-              }
+              persistTabs(newTabs, { immediate: true });
               return newTabs;
             });
           }} />;
@@ -1183,11 +1193,7 @@ export default function MainApp() {
                 data: updatedJob,
                 title: newTitle
               } : tab);
-              try {
-                localStorage.setItem("veritas_tabs", JSON.stringify(newTabs));
-              } catch (error) {
-                console.error("Error lors de la sauvegarde des onglets:", error);
-              }
+              persistTabs(newTabs, { immediate: true });
               return newTabs;
             });
           }} />;
@@ -1263,7 +1269,7 @@ export default function MainApp() {
       case "PrestataireDetail":
         return <PrestataireDetailPage onNavigate={handleDocSelect} prestataireData={prestataireDetailData} />;
       case "Report":
-        return <RapportPage onNavigate={handleDocSelect} hasTabsBar={tabs.length > 0} onMonitoringReportGuardChange={handleMonitoringReportGuardChange} />;
+        return <RapportPage onNavigate={handleDocSelect} hasTabsBar={tabs.length > 0} onMonitoringReportGuardChange={handleMonitoringReportGuardChange} pageParams={reportPageParams} onPageParamsConsumed={() => setReportPageParams(null)} />;
       case "DocumentsHub":
         return <DocumentsHubPage />;
       case "KnowledgeBase":
@@ -1284,19 +1290,32 @@ export default function MainApp() {
           const initialData = monitoringTabData?.data || {};
           return <EphemeralMonitoringProvider initialConfig={initialConfig} initialData={initialData} refreshDraftStatus={refreshDraftStatus}>
             <MonitoringRenderContent onNavigate={handleDocSelect} isFullscreen={false} initialGatePassed={monitoringTabData?.gatePassed || false} initialGoToSummary={monitoringTabData?.goToSummary || false} initialScrollY={initialScrollY} initialStep={initialStep} onMonitoringReportGuardChange={handleMonitoringReportGuardChange} onStateChange={state => {
+              const tabId = activeTabIdRef.current;
               setTabs(prevTabs => {
-                const newTabs = prevTabs.map(tab => tab.id === activeTabId && tab.type === "MonitoringDetail" ? {
-                  ...tab,
-                  data: {
-                    ...tab.data,
-                    ...state
-                  }
-                } : tab);
-                try {
-                  localStorage.setItem('veritas_tabs', JSON.stringify(newTabs));
-                } catch (error) {
-                  console.error('Error lors de la sauvegarde des onglets (MonitoringDetail):', error);
+                const idx = prevTabs.findIndex(tab => tab.id === tabId && tab.type === "MonitoringDetail");
+                if (idx < 0) return prevTabs;
+                const prev = prevTabs[idx];
+                const nextData = {
+                  ...prev.data,
+                  ...state
+                };
+                if (
+                  prev.data?.step === nextData.step &&
+                  prev.data?.scrollY === nextData.scrollY &&
+                  prev.data?.gatePassed === nextData.gatePassed &&
+                  prev.data?.documentName === nextData.documentName &&
+                  prev.data?.client === nextData.client &&
+                  prev.data?.data === nextData.data
+                ) {
+                  return prevTabs;
                 }
+                const newTabs = prevTabs.slice();
+                newTabs[idx] = {
+                  ...prev,
+                  data: nextData
+                };
+                // Debounced: Monitoring payloads are huge; sync stringify freezes UI.
+                persistTabs(newTabs);
                 return newTabs;
               });
             }} />

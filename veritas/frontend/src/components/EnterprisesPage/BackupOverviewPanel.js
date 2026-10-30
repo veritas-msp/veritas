@@ -26,6 +26,7 @@ export default function BackupOverviewPanel({
   onAddJob = null,
   onEditInstance = null,
   onEditJob = null,
+  getJobActionMenuItems = null,
   canAddJob = false,
   addInstanceLabel = "Ajouter une instance",
   addJobLabel = "Ajouter un job",
@@ -160,7 +161,8 @@ export default function BackupOverviewPanel({
               emptyLabel={!canAddJob ? "Ajoutez d’abord une instance" : "Aucun job"}
               hideSearchBar
               sortable
-              onEditItem={onEditJob}
+              onEditItem={typeof getJobActionMenuItems === "function" ? null : onEditJob}
+              getActionMenuItems={getJobActionMenuItems}
               editLabel={editLabel}
             />
           </div>

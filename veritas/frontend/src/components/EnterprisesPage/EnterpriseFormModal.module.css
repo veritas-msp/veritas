@@ -49,6 +49,13 @@
   max-height: min(92vh, 860px);
 }
 
+/* Modals courts (édition / renommage) : hauteur adaptée au contenu */
+.shellCompact {
+  width: min(560px, 100%);
+  height: auto;
+  max-height: min(90vh, 720px);
+}
+
 .shellBackup {
   width: min(1120px, 100%);
   height: min(92vh, 940px);

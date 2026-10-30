@@ -58,7 +58,9 @@ import {
   normalizeContactActivitySection,
   normalizeContactOverviewTab,
   readContactDetailUi,
-  writeContactDetailUi
+  writeContactDetailUi,
+  writeContactDetailUiScroll,
+  flushContactDetailUiScroll
 } from "../../utils/contactDetailUiState";
 import CrmDetailPageSkeleton from "../EnterprisesPage/CrmDetailPageSkeleton";
 import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
@@ -348,7 +350,9 @@ export default function ContactDetailPage({
   const [activitySection, setActivitySection] = useState(() =>
     normalizeContactActivitySection(initialContactUi?.activitySection)
   );
-  const [activityTabMounted, setActivityTabMounted] = useState(true);
+  const [activityTabMounted, setActivityTabMounted] = useState(
+    () => normalizeContactOverviewTab(initialContactUi?.overviewTab) === "activity"
+  );
   const [portalTabMounted, setPortalTabMounted] = useState(
     () => normalizeContactOverviewTab(initialContactUi?.overviewTab) === "portal"
   );
@@ -764,7 +768,7 @@ export default function ContactDetailPage({
       setPortalTabMounted(nextTab === "portal");
       setShareTabMounted(nextTab === "share");
       setLogsTabMounted(nextTab === "logs");
-      setActivityTabMounted(true);
+      setActivityTabMounted(nextTab === "activity");
       setVaultClientId(saved?.vaultClientId || null);
     }
     contactUiIdRef.current = id;
@@ -781,13 +785,7 @@ export default function ContactDetailPage({
       vaultClientId: vaultClientId || null
     });
   }, [contact?.id, overviewTab, activitySection, vaultClientId]);
-  useEffect(() => {
-    if (!contact?.id) return;
-    setActivityTabMounted(true);
-    setPortalTabMounted(true);
-    setShareTabMounted(true);
-    setLogsTabMounted(true);
-  }, [contact?.id]);
+  // Keep-alive after first visit only — eager mount of all panels freezes the UI.
   useEffect(() => {
     if (overviewTab === "activity") setActivityTabMounted(true);
     if (overviewTab === "portal") setPortalTabMounted(true);
@@ -831,13 +829,12 @@ export default function ContactDetailPage({
   useEffect(() => {
     const el = pageRootRef.current;
     if (!el || !contact?.id) return undefined;
+    const contactId = contact.id;
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        writeContactDetailUi(contact.id, {
-          scrollY: el.scrollTop
-        });
+        writeContactDetailUiScroll(contactId, el.scrollTop);
       });
     };
     el.addEventListener("scroll", onScroll, {
@@ -846,7 +843,8 @@ export default function ContactDetailPage({
     return () => {
       cancelAnimationFrame(frame);
       el.removeEventListener("scroll", onScroll);
-      writeContactDetailUi(contact.id, {
+      flushContactDetailUiScroll(contactId);
+      writeContactDetailUi(contactId, {
         scrollY: el.scrollTop
       });
     };
@@ -1857,7 +1855,11 @@ export default function ContactDetailPage({
               <div className={styles.activityUnifiedCard}>
                 <section className={`${styles.activityUnifiedSection} ${styles.activityUnifiedSectionSolo}`}>
                   <div className={`${styles.activityUnifiedBody} ${contactStyles.contactTabBody} ${contactStyles.portalTabContent}`.trim()}>
-                    <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
+                    <ContactPortalSection
+                      contact={contact}
+                      canManage={canManagePortal}
+                      active={overviewTab === "portal"}
+                      onUpdated={() => {
                       const controller = createTrackedAbortController();
                       loadControllerRef.current?.abort();
                       loadControllerRef.current = controller;

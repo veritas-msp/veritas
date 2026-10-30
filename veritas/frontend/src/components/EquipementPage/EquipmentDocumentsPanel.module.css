@@ -142,7 +142,7 @@
 
 .docsTable {
   width: 100%;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .docsTable th,

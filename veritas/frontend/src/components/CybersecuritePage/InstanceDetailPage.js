@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { fetchClientModules, fetchCyberPageData } from "../../api/clients";
+import API_BASE_URL from "../../config";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import SolutionDetailPageLayout from "../EnterprisesPage/SolutionDetailPageLayout";
+import SolutionOverviewDataTable from "../EnterprisesPage/SolutionOverviewDataTable";
 import {
   getBackupJobStatus,
   getBackupJobStatusLabel,
@@ -14,10 +16,34 @@ import {
   buildBackupInstanceDetailPayload,
   findBackupInstanceInClients
 } from "../EquipementPage/backupMspUtils";
-import { formatServeurLieLabel, isBackupJobActive } from "../EnterprisesPage/backupJobUtils";
+import { isBackupJobActive } from "../EnterprisesPage/backupJobUtils";
 import { bulkSyncBackupJobs, isBackupJobSyncable } from "./backupBulkUtils";
 import { getInstanceDetailCopy } from "./instanceDetailPageI18n";
 import styles from "./InstanceDetailPage.module.css";
+
+async function fetchBackupJobsLastSync() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/last-sync`, {
+      credentials: "include"
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => ({}));
+    return data.lastSync || null;
+  } catch {
+    return null;
+  }
+}
+
+function formatSyncDate(value) {
+  if (!value) return null;
+  try {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString("fr-FR");
+  } catch {
+    return String(value);
+  }
+}
 
 function formatDuration(value) {
   if (value == null || value === "") return null;
@@ -50,20 +76,6 @@ function instanceIdentityKey(data) {
   const clientId = data.clientId || "";
   const name = data.instanceName || data.logiciel || "";
   return `${clientId}:${instanceId}:${name}`;
-}
-
-function StatCard({ icon, label, value }) {
-  return (
-    <div className={styles.statCard}>
-      <span className={styles.statCardIcon}>
-        <Icon icon={icon} />
-      </span>
-      <div className={styles.statCardContent}>
-        <span className={styles.statCardValue}>{value || "-"}</span>
-        <span className={styles.statCardLabel}>{label}</span>
-      </div>
-    </div>
-  );
 }
 
 async function resolveInstanceFromApi(seed) {
@@ -102,11 +114,24 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
   const [instance, setInstance] = useState(() => seed);
   const [loading, setLoading] = useState(() => !seed?.instanceName && !seed?.logiciel);
   const [syncing, setSyncing] = useState(false);
-  const [activeSection, setActiveSection] = useState("overview");
+  const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [activeSection, setActiveSection] = useState(
+    instanceData?.focusJobId ? "jobs" : "overview"
+  );
   const [selectedJobId, setSelectedJobId] = useState(instanceData?.focusJobId || null);
   const loadedKeyRef = useRef("");
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBackupJobsLastSync().then(lastSync => {
+      if (!cancelled && lastSync) setLastSyncAt(lastSync);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [identityKey]);
 
   const refreshFromApi = useCallback(async (seedPayload) => {
     const current = seedPayload || normalizeIncomingInstance(instanceData);
@@ -206,11 +231,6 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
       .sort((a, b) => b.sortKey - a.sortKey);
   }, [jobs, selectedJobId]);
 
-  const selectedJob = useMemo(
-    () => (selectedJobId ? jobs.find(j => String(j.id) === String(selectedJobId)) : null),
-    [jobs, selectedJobId]
-  );
-
   const handleOpenClient = () => {
     if (!instance?.clientId || !onNavigate) return;
     onNavigate("ContratDetail", {
@@ -227,10 +247,15 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
   };
 
   const handleSync = useCallback(async () => {
-    if (!canSync || syncing) return;
+    if (syncing) return;
+    if (!canSync) {
+      toast.info(copy.syncNone || "Aucun job mappé à synchroniser.");
+      return;
+    }
     setSyncing(true);
     try {
       const result = await bulkSyncBackupJobs(jobs);
+      if (result?.lastSync) setLastSyncAt(result.lastSync);
       if (result.updated > 0) {
         toast.success(
           (copy.syncSuccess || "Synchronisation terminée ({count})").replace(
@@ -242,6 +267,8 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
         toast.info(copy.syncNone || "Aucun job mappé à synchroniser.");
       }
       await refreshFromApi(instance);
+      const latest = await fetchBackupJobsLastSync();
+      if (latest) setLastSyncAt(latest);
     } catch (err) {
       toast.error(err?.message || copy.syncError || "Échec de la synchronisation");
     } finally {
@@ -257,16 +284,7 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
           id: "overview",
           label: copy.sections.overview,
           icon: "mdi:information-outline",
-          description: copy.sections.overviewHint || ""
-        }
-      },
-      {
-        key: "jobs",
-        section: {
-          id: "jobs",
-          label: copy.sections.jobs,
-          icon: "mdi:briefcase-outline",
-          description: copy.sections.jobsHint || ""
+          description: copy.sections.overviewSplitHint || copy.sections.overviewHint || ""
         }
       },
       {
@@ -285,10 +303,9 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
   if (!instance && !loading) {
     return (
       <SolutionDetailPageLayout
-        eyebrow={copy.eyebrow}
-        title={copy.empty.title}
+        title={copy.solutionTitle || "Sauvegarde"}
         titleIcon="mdi:backup-restore"
-        subtitle={copy.empty.text}
+        subtitle={copy.empty.title}
         navEntries={[]}
         navAriaLabel={copy.navAria || "Sections"}
       >
@@ -301,127 +318,242 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
     );
   }
 
-  const title = instance?.instanceName || instance?.logiciel || copy.loading;
+  const solutionTitle = copy.solutionTitle || "Sauvegarde";
+  const clientName = instance?.clientName || null;
   const subtitle = instance?.clientId && onNavigate ? (
     <button type="button" className={styles.subtitleLink} onClick={handleOpenClient}>
-      {instance.clientName || copy.openClient}
+      {clientName || copy.openClient}
     </button>
   ) : (
-    instance?.clientName || null
+    clientName
   );
 
   const mappedCount = jobs.filter(isBackupJobMapped).length;
-  const footerHint = mappedCount
+  const instanceLabel = instance?.instanceName || instance?.logiciel || null;
+  const mappingHint = mappedCount
     ? (copy.mappingHint || "{mapped}/{total} jobs mappés")
         .replace("{mapped}", String(mappedCount))
         .replace("{total}", String(jobs.length))
     : copy.mappingNone || "Aucun job mappé";
+  const footerHint = [instanceLabel, mappingHint].filter(Boolean).join(" · ");
 
-  const renderOverview = () => (
-    <section className={styles.section}>
-      <h2 className={styles.sectionTitle}>{copy.sections.overview}</h2>
-      <div className={styles.statsCards}>
-        <StatCard icon="mdi:backup-restore" label={copy.fields.solution} value={instance.providerName || instance.logiciel} />
-        <StatCard icon="mdi:server" label={copy.fields.server} value={instance.server} />
-        <StatCard icon="mdi:tag-outline" label={copy.fields.version} value={instance.version} />
-        <StatCard icon="mdi:calendar-end" label={copy.fields.expiration} value={instance.expiration} />
-        <StatCard icon="mdi:briefcase-outline" label={copy.fields.jobsCount} value={String(jobs.length)} />
-      </div>
-    </section>
+  const instanceRows = useMemo(() => {
+    if (!instance) return [];
+    return [
+      {
+        id: instance.instanceId || instance.id || "instance",
+        solution: instance.providerName || instance.logiciel || instance.instanceName || "-",
+        server: instance.server || "-",
+        version: instance.version || "-",
+        expiration: instance.expiration || "-",
+        jobsCount: jobs.length
+      }
+    ];
+  }, [instance, jobs.length]);
+
+  const instanceColumns = useMemo(
+    () => [
+      { key: "solution", label: copy.fields.solution, sortValue: row => row.solution || "" },
+      { key: "server", label: copy.fields.server, sortValue: row => row.server || "" },
+      { key: "version", label: copy.fields.version, sortValue: row => row.version || "" },
+      { key: "expiration", label: copy.fields.expiration, sortValue: row => row.expiration || "" },
+      {
+        key: "jobsCount",
+        label: copy.fields.jobsCount,
+        sortValue: row => Number(row.jobsCount) || 0
+      }
+    ],
+    [copy]
   );
 
-  const renderJobs = () => (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>{copy.sections.jobs}</h2>
-      </div>
-      <p className={styles.sectionHint}>{copy.jobs.selectHint}</p>
-      {jobs.length === 0 ? (
-        <p className={styles.emptyInline}>{loading ? copy.loading : copy.jobs.empty}</p>
-      ) : (
-        <div className={styles.jobsTableWrap}>
-          <table className={styles.jobsTable}>
-            <thead>
-              <tr>
-                <th>{copy.history.job}</th>
-                <th>{copy.fields.status}</th>
-                <th>{copy.fields.jobType}</th>
-                <th>{copy.fields.schedule}</th>
-                <th>{copy.fields.lastBackup}</th>
-                <th>{copy.fields.lastDuration}</th>
-                <th aria-label={copy.openJob} />
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map(job => {
-                const status = getBackupJobStatus(job);
-                const active = isBackupJobActive(job);
-                const selected = String(selectedJobId) === String(job.id);
-                const lastBackup = job.last_backup_start || job.last_backup_date;
-                return (
-                  <tr
-                    key={job.id}
-                    className={selected ? styles.jobRowActive : undefined}
-                    onClick={() => handleSelectJob(job)}
-                    onDoubleClick={() => handleOpenJob(job)}
-                  >
-                    <td className={styles.jobNameCell} title={job.nom || job.jobName}>
-                      {job.nom || job.jobName || "-"}
-                    </td>
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${styles[`status_${status}`] || ""}`}
-                        title={getBackupJobStatusTitle(status)}
-                      >
-                        {getBackupJobStatusLabel(status)}
-                      </span>
-                      <span className={styles.cellMuted} style={{ marginLeft: "0.4rem" }}>
-                        {active ? copy.jobs.active : copy.jobs.inactive}
-                      </span>
-                    </td>
-                    <td className={styles.cellMuted}>{job.typeBackup || "-"}</td>
-                    <td className={styles.cellMuted}>
-                      {[job.regularite, job.horaire].filter(Boolean).join(" · ") || "-"}
-                    </td>
-                    <td className={styles.cellMuted}>
-                      {lastBackup ? formatDateTime(lastBackup) : "-"}
-                    </td>
-                    <td className={styles.cellMuted}>
-                      {formatDuration(job.last_backup_duration) || "-"}
-                    </td>
-                    <td>
-                      <div className={styles.jobActions}>
-                        <button
-                          type="button"
-                          className={styles.jobActionBtn}
-                          title={copy.openJob}
-                          aria-label={copy.openJob}
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleOpenJob(job);
-                          }}
-                        >
-                          <Icon icon="mdi:open-in-new" aria-hidden />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+  const jobColumns = useMemo(
+    () => [
+      {
+        key: "name",
+        label: copy.history.job,
+        sortValue: row => row.nom || row.jobName || "",
+        render: row => (
+          <span className={styles.jobNameCell} title={row.nom || row.jobName}>
+            {row.nom || row.jobName || "-"}
+          </span>
+        )
+      },
+      {
+        key: "status",
+        label: copy.fields.status,
+        sortValue: row => getBackupJobStatus(row),
+        render: row => {
+          const status = getBackupJobStatus(row);
+          const active = isBackupJobActive(row);
+          return (
+            <>
+              <span
+                className={`${styles.statusBadge} ${styles[`status_${status}`] || ""}`}
+                title={getBackupJobStatusTitle(status)}
+              >
+                {getBackupJobStatusLabel(status)}
+              </span>
+              <span className={styles.cellMuted} style={{ marginLeft: "0.4rem" }}>
+                {active ? copy.jobs.active : copy.jobs.inactive}
+              </span>
+            </>
+          );
+        }
+      },
+      {
+        key: "typeBackup",
+        label: copy.fields.jobType,
+        sortValue: row => row.typeBackup || "",
+        render: row => <span className={styles.cellMuted}>{row.typeBackup || "-"}</span>
+      },
+      {
+        key: "schedule",
+        label: copy.fields.schedule,
+        sortValue: row => [row.regularite, row.horaire].filter(Boolean).join(" "),
+        render: row => (
+          <span className={styles.cellMuted}>
+            {[row.regularite, row.horaire].filter(Boolean).join(" · ") || "-"}
+          </span>
+        )
+      },
+      {
+        key: "lastBackup",
+        label: copy.fields.lastBackup,
+        sortValue: row => {
+          const when = row.last_backup_start || row.last_backup_date;
+          const ms = when ? new Date(when).getTime() : NaN;
+          return Number.isFinite(ms) ? ms : 0;
+        },
+        render: row => {
+          const lastBackup = row.last_backup_start || row.last_backup_date;
+          return (
+            <span className={styles.cellMuted}>
+              {lastBackup ? formatDateTime(lastBackup) : "-"}
+            </span>
+          );
+        }
+      },
+      {
+        key: "duration",
+        label: copy.fields.lastDuration,
+        sortValue: row => Number(row.last_backup_duration) || 0,
+        render: row => (
+          <span className={styles.cellMuted}>
+            {formatDuration(row.last_backup_duration) || "-"}
+          </span>
+        )
+      },
+      {
+        key: "actions",
+        label: "",
+        sortable: false,
+        render: row => (
+          <div className={styles.jobActions}>
+            <button
+              type="button"
+              className={styles.jobActionBtn}
+              title={copy.openJob}
+              aria-label={copy.openJob}
+              onClick={e => {
+                e.stopPropagation();
+                handleOpenJob(row);
+              }}
+            >
+              <Icon icon="mdi:open-in-new" aria-hidden />
+            </button>
+          </div>
+        )
+      }
+    ],
+    [copy, formatDateTime]
+  );
+
+  const renderInstanceJobsSplit = () => (
+    <div className={styles.tablesSplit}>
+      <section className={styles.tableBlock} aria-label={copy.sections.overview}>
+        <div className={styles.tableBlockHead}>
+          <h2 className={styles.sectionTitle}>{copy.sections.overview}</h2>
         </div>
-      )}
-    </section>
+        <div className={styles.tableBlockBody}>
+          <SolutionOverviewDataTable
+            columns={instanceColumns}
+            rows={instanceRows}
+            emptyLabel={copy.empty.title}
+            emptyIcon="mdi:server-off"
+            fillHeight
+            searchable
+            searchPlaceholder="Rechercher"
+          />
+        </div>
+      </section>
+
+      <section className={styles.tableBlock} aria-label={copy.sections.jobs}>
+        <div className={styles.tableBlockHead}>
+          <h2 className={styles.sectionTitle}>{copy.sections.jobs}</h2>
+        </div>
+        <div className={styles.tableBlockBody}>
+          <SolutionOverviewDataTable
+            columns={jobColumns}
+            rows={jobs}
+            emptyLabel={loading ? copy.loading : copy.jobs.empty}
+            emptyIcon="mdi:briefcase-off-outline"
+            fillHeight
+            searchable
+            searchPlaceholder="Rechercher"
+            onRowClick={handleSelectJob}
+            onRowDoubleClick={handleOpenJob}
+            getRowClassName={row =>
+              String(selectedJobId) === String(row.id) ? styles.jobRowActive : ""
+            }
+          />
+        </div>
+      </section>
+    </div>
+  );
+
+  const historyColumns = useMemo(
+    () => [
+      {
+        key: "jobName",
+        label: copy.history.job,
+        sortValue: row => row.jobName || "",
+        render: row => <span className={styles.jobNameCell}>{row.jobName}</span>
+      },
+      {
+        key: "when",
+        label: copy.history.when,
+        sortValue: row => Number(row.sortKey) || 0,
+        render: row => (
+          <span className={styles.cellMuted}>{row.when ? formatDateTime(row.when) : "-"}</span>
+        )
+      },
+      {
+        key: "duration",
+        label: copy.history.duration,
+        sortValue: row => row.duration || "",
+        render: row => <span className={styles.cellMuted}>{row.duration || "-"}</span>
+      },
+      {
+        key: "status",
+        label: copy.history.status,
+        sortValue: row => row.status || "",
+        render: row => (
+          <span
+            className={`${styles.statusBadge} ${styles[`status_${row.status}`] || ""}`}
+            title={getBackupJobStatusTitle(row.status)}
+          >
+            {getBackupJobStatusLabel(row.status)}
+          </span>
+        )
+      }
+    ],
+    [copy, formatDateTime]
   );
 
   const renderHistory = () => (
-    <>
-      <section className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>{copy.sections.history}</h2>
-        </div>
-        <p className={styles.sectionHint}>{copy.history.hint}</p>
+    <section className={`${styles.tableBlock} ${styles.historyFill}`} aria-label={copy.sections.history}>
+      <div className={styles.tableBlockHead}>
+        <h2 className={styles.sectionTitle}>{copy.sections.history}</h2>
         <div className={styles.filterChips}>
           <button
             type="button"
@@ -443,87 +575,65 @@ export default function InstanceDetailPage({ instanceData, onNavigate, onUpdate 
             </button>
           ))}
         </div>
-        {historyRows.length === 0 ? (
-          <p className={styles.emptyInline}>{copy.history.empty}</p>
-        ) : (
-          <div className={styles.jobsTableWrap}>
-            <table className={styles.jobsTable}>
-              <thead>
-                <tr>
-                  <th>{copy.history.job}</th>
-                  <th>{copy.history.when}</th>
-                  <th>{copy.history.duration}</th>
-                  <th>{copy.history.status}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyRows.map(row => (
-                  <tr
-                    key={`hist-${row.id}-${row.when}`}
-                    onClick={() => {
-                      const job = jobs.find(j => String(j.id) === String(row.id));
-                      if (job) handleOpenJob(job);
-                    }}
-                  >
-                    <td className={styles.jobNameCell}>{row.jobName}</td>
-                    <td className={styles.cellMuted}>{formatDateTime(row.when)}</td>
-                    <td className={styles.cellMuted}>{row.duration || "-"}</td>
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${styles[`status_${row.status}`] || ""}`}
-                        title={getBackupJobStatusTitle(row.status)}
-                      >
-                        {getBackupJobStatusLabel(row.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {selectedJob ? (
-        <section className={styles.section} style={{ marginTop: "0.85rem" }}>
-          <h2 className={styles.sectionTitle}>{copy.fields.destination}</h2>
-          <div className={styles.statsCards}>
-            <StatCard icon="mdi:harddisk" label={copy.fields.destination} value={selectedJob.destination} />
-            <StatCard
-              icon="mdi:server"
-              label={copy.fields.server}
-              value={formatServeurLieLabel(selectedJob.serveurLie, "-")}
-            />
-          </div>
-        </section>
-      ) : null}
-    </>
+      </div>
+      <div className={styles.tableBlockBody}>
+        <SolutionOverviewDataTable
+          columns={historyColumns}
+          rows={historyRows}
+          emptyLabel={copy.history.empty}
+          emptyIcon="mdi:history"
+          fillHeight
+          searchable
+          searchPlaceholder="Rechercher"
+          onRowClick={row => {
+            const job = jobs.find(j => String(j.id) === String(row.id));
+            if (job) handleOpenJob(job);
+          }}
+        />
+      </div>
+    </section>
   );
 
   const renderSection = () => {
-    if (activeSection === "jobs") return renderJobs();
     if (activeSection === "history") return renderHistory();
-    return renderOverview();
+    return renderInstanceJobsSplit();
   };
+
+  const syncAtLabel = formatSyncDate(lastSyncAt);
+  const headerMeta = syncAtLabel ? (
+    <>
+      <Icon icon="mdi:cloud-sync-outline" width={14} height={14} aria-hidden />
+      <span>
+        {copy.lastSyncLabel || "Dernière sync"} · <strong>{syncAtLabel}</strong>
+      </span>
+    </>
+  ) : (
+    <>
+      <Icon icon="mdi:cloud-off-outline" width={14} height={14} aria-hidden />
+      <span>{copy.lastSyncNever || "Jamais synchronisé"}</span>
+    </>
+  );
 
   return (
     <SolutionDetailPageLayout
-      eyebrow={copy.eyebrow}
-      title={title}
+      title={solutionTitle}
       titleIcon={instance?.providerIcon || "mdi:backup-restore"}
       subtitle={subtitle}
+      headerMeta={headerMeta}
       loading={loading && !instance}
       refreshing={syncing}
       loadingMessage={copy.loading}
-      onRefresh={canSync ? handleSync : undefined}
+      onRefresh={handleSync}
       refreshLabel={copy.sync || "Synchroniser"}
       footerHint={footerHint}
       navEntries={navEntries}
-      activeSection={activeSection}
+      activeSection={activeSection === "jobs" ? "overview" : activeSection}
       onSectionChange={setActiveSection}
       navAriaLabel={copy.navAria || "Sections"}
     >
-      <div className={styles.contentStack}>{renderSection()}</div>
+      <div className={`${styles.contentStack} ${styles.contentStackFill}`}>
+        {renderSection()}
+      </div>
     </SolutionDetailPageLayout>
   );
 }

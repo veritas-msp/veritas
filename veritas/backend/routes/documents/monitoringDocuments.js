@@ -7,7 +7,30 @@ const router = express.Router();
 router.get("/", verifyJWT, requirePermission("documents.view"), async (req, res) => {
   const userId = req.user.id;
   const isAdmin = req.user.role === 'admin';
+  const vaultFolderId = req.query.vaultFolderId ? String(req.query.vaultFolderId).trim() : "";
+  const vaultFileId = req.query.vaultFileId ? String(req.query.vaultFileId).trim() : "";
   try {
+    // Vault shortcut: any agent with documents.view can resolve a report folder/file → editable document.
+    if (vaultFolderId || vaultFileId) {
+      const result = await pool.query(
+        `SELECT md.id, md.name, md.report_period, md.config, md.data,
+                md.created_at, md.updated_at, md.is_trashed, md.user_id,
+                md.client_name,
+                u.email AS user_email, u.username
+           FROM v_b_d_monitoring md
+           LEFT JOIN v_b_users u ON u.id = md.user_id
+          WHERE COALESCE(md.is_trashed, FALSE) = FALSE
+            AND (
+              ($1::text <> '' AND md.config->>'vaultFolderId' = $1)
+              OR ($2::text <> '' AND md.config->>'vaultFileId' = $2)
+            )
+          ORDER BY md.updated_at DESC NULLS LAST, md.created_at DESC
+          LIMIT 5`,
+        [vaultFolderId, vaultFileId]
+      );
+      return res.json(result.rows);
+    }
+
     let result;
     if (isAdmin) {
       result = await pool.query(`SELECT md.id, md.name, md.report_period, md.config, md.data, 
@@ -37,10 +60,21 @@ router.get("/", verifyJWT, requirePermission("documents.view"), async (req, res)
 router.get("/:id", verifyJWT, requirePermission("documents.view"), async (req, res) => {
   const docId = req.params.id;
   const userId = req.user.id;
+  const isAdmin = req.user.role === "admin";
   try {
-    const result = await pool.query(`SELECT id, name, client_name, report_period, config, data, created_at, updated_at, is_trashed
-       FROM v_b_d_monitoring
-       WHERE id = $1 AND user_id = $2`, [docId, userId]);
+    const result = isAdmin
+      ? await pool.query(
+          `SELECT id, name, client_name, report_period, config, data, created_at, updated_at, is_trashed, user_id
+             FROM v_b_d_monitoring
+            WHERE id = $1`,
+          [docId]
+        )
+      : await pool.query(
+          `SELECT id, name, client_name, report_period, config, data, created_at, updated_at, is_trashed, user_id
+             FROM v_b_d_monitoring
+            WHERE id = $1 AND user_id = $2`,
+          [docId, userId]
+        );
     if (result.rows.length === 0) {
       return res.status(404).json({
         error: "Document not found or access denied."
@@ -180,7 +214,6 @@ router.delete("/:id", verifyJWT, requirePermission("documents.delete"), async (r
 });
 router.put("/:id", verifyJWT, requirePermission("documents.edit"), async (req, res) => {
   const docId = req.params.id;
-  const userId = req.user.id;
   const {
     name,
     client_name,
@@ -194,6 +227,7 @@ router.put("/:id", verifyJWT, requirePermission("documents.edit"), async (req, r
     });
   }
   try {
+    // Agents sharing a client vault may re-save a report they did not originally create.
     const result = await pool.query(`UPDATE v_b_d_monitoring
        SET name = $1,
            client_name = $2,
@@ -201,8 +235,15 @@ router.put("/:id", verifyJWT, requirePermission("documents.edit"), async (req, r
            config = $4::jsonb,
            data = $5::jsonb,
            updated_at = NOW()
-       WHERE id = $6 AND user_id = $7
-       RETURNING id`, [name, client_name, report_period, config, data, docId, userId]);
+       WHERE id = $6
+       RETURNING id`, [
+      name,
+      client_name,
+      report_period,
+      typeof config === "string" ? config : JSON.stringify(config ?? {}),
+      typeof data === "string" ? data : JSON.stringify(data ?? {}),
+      docId
+    ]);
     if (result.rows.length === 0) {
       return res.status(404).json({
         error: "Document not found or access denied."

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { fetchEquipmentRecentAlerts } from "../../api/supervisionAlerts";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -62,7 +62,8 @@ function resolveTypeLabel(alert, glance, criteriaCopy) {
 export default function EquipmentAlertsGlance({
   equipment,
   days = 30,
-  limit = 50
+  limit = 50,
+  active = true
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
@@ -71,6 +72,7 @@ export default function EquipmentAlertsGlance({
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const loadedKeyRef = useRef("");
 
   const equipmentId = getEquipmentDbId(equipment) || equipment?.dbId || equipment?.rawData?.id || equipment?.id;
 
@@ -78,8 +80,12 @@ export default function EquipmentAlertsGlance({
     if (!equipmentId) {
       setAlerts([]);
       setLoading(false);
+      loadedKeyRef.current = "";
       return undefined;
     }
+    if (!active) return undefined;
+    const fetchKey = `${equipmentId}:${days}:${limit}`;
+    if (loadedKeyRef.current === fetchKey) return undefined;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -89,7 +95,10 @@ export default function EquipmentAlertsGlance({
           days,
           limit
         });
-        if (!cancelled) setAlerts(Array.isArray(rows) ? rows : []);
+        if (!cancelled) {
+          loadedKeyRef.current = fetchKey;
+          setAlerts(Array.isArray(rows) ? rows : []);
+        }
       } catch (err) {
         if (!cancelled) {
           setAlerts([]);
@@ -102,7 +111,7 @@ export default function EquipmentAlertsGlance({
     return () => {
       cancelled = true;
     };
-  }, [equipmentId, days, limit, glance.error]);
+  }, [active, days, equipmentId, glance.error, limit]);
 
   const isEmpty = !loading && !error && alerts.length === 0;
 

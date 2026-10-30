@@ -8,15 +8,13 @@ export default function SortIcon({
   direction = "asc",
   className = ""
 }) {
-  const icon = active
-    ? direction === "asc"
-      ? "mdi:chevron-up"
-      : "mdi:chevron-down"
-    : "mdi:unfold-more-horizontal";
+  /* Pas d’icône inactive (mdi:unfold-more-horizontal ressemble à un « . » en dark). */
+  if (!active) return null;
+  const icon = direction === "asc" ? "mdi:chevron-up" : "mdi:chevron-down";
   return (
     <Icon
       icon={icon}
-      className={`${styles.sortIcon} ${active ? styles.sortIconActive : ""} ${className}`.trim()}
+      className={`${styles.sortIcon} ${styles.sortIconActive} ${className}`.trim()}
       aria-hidden
     />
   );

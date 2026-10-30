@@ -79,6 +79,46 @@ function EnterprisesColGroup({ columns, showCheckbox }) {
     </colgroup>
   );
 }
+
+function enrichEnterpriseListRow(client, defaultModules, parseOptionsToModules) {
+  if (!client || client._rowParsed) return client;
+  let options = client.options;
+  if (typeof client._optionsRaw === "string" && client._optionsRaw.trim()) {
+    try {
+      const parsed = JSON.parse(client._optionsRaw);
+      options = parsed && typeof parsed === "object"
+        ? { ...defaultModules, ...parsed }
+        : parseOptionsToModules(client._optionsRaw);
+    } catch {
+      options = parseOptionsToModules(client._optionsRaw);
+    }
+  } else if (client.options && typeof client.options === "object") {
+    options = { ...defaultModules, ...client.options };
+  } else {
+    options = { ...defaultModules };
+  }
+  let sites = client.sites;
+  if (typeof client._sitesRaw === "string") {
+    try {
+      const parsed = JSON.parse(client._sitesRaw);
+      sites = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      sites = [];
+    }
+  } else if (Array.isArray(client.sites)) {
+    sites = client.sites;
+  } else {
+    sites = [];
+  }
+  return {
+    ...client,
+    options,
+    sites,
+    _optionsRaw: null,
+    _sitesRaw: null,
+    _rowParsed: true
+  };
+}
 function withCompanyStatusColumn(columns) {
   const list = Array.isArray(columns) ? [...columns] : [];
   if (!list.includes("company_status")) list.unshift("company_status");
@@ -259,50 +299,56 @@ export default function EnterprisesPage({
         throw new Error(message);
       }
       const clientsData = await res.json();
+      // Fast first paint: parse options/sites strings in idle batches (not on the critical path).
       const parsedClients = (Array.isArray(clientsData) ? clientsData : []).map(client => ({
         ...client,
         client_number: client.client_number ?? client.clientNumber ?? null,
         clientNumber: client.client_number ?? client.clientNumber ?? null,
         tags: Array.isArray(client.tags) ? client.tags : [],
-        options: (() => {
-          if (client.options && typeof client.options === "object") {
-            return {
-              ...defaultModules,
-              ...client.options
-            };
-          }
-          if (typeof client.options === "string" && client.options.trim()) {
-            try {
-              const parsed = JSON.parse(client.options);
-              if (parsed && typeof parsed === "object") {
-                return {
-                  ...defaultModules,
-                  ...parsed
-                };
-              }
-            } catch {
-              return parseOptionsToModules(client.options);
-            }
-          }
-          return {
-            ...defaultModules
-          };
-        })(),
-        sites: (() => {
-          if (Array.isArray(client.sites)) return client.sites;
-          if (typeof client.sites === "string") {
-            try {
-              return JSON.parse(client.sites);
-            } catch {
-              return [];
-            }
-          }
-          return client.sites || [];
-        })()
+        _optionsRaw: typeof client.options === "string" ? client.options : null,
+        _sitesRaw: typeof client.sites === "string" ? client.sites : null,
+        options: client.options && typeof client.options === "object"
+          ? { ...defaultModules, ...client.options }
+          : { ...defaultModules },
+        sites: Array.isArray(client.sites) ? client.sites : [],
+        _rowParsed: !(typeof client.options === "string" || typeof client.sites === "string")
       }));
       setListCache(LIST_CACHE_NS.enterprises, parsedClients);
       if (!isMountedRef.current) return;
       setClients(parsedClients);
+      // Parse string options/sites after first paint (idle), in small batches.
+      const needsEnrich = parsedClients.some(c => !c._rowParsed);
+      if (needsEnrich) {
+        const BATCH = 40;
+        const enrichBatch = startIndex => {
+          if (!isMountedRef.current) return;
+          const end = Math.min(startIndex + BATCH, parsedClients.length);
+          const slice = parsedClients
+            .slice(startIndex, end)
+            .map(row => enrichEnterpriseListRow(row, defaultModules, parseOptionsToModules));
+          setClients(prev => {
+            if (!Array.isArray(prev) || prev.length !== parsedClients.length) return prev;
+            const next = prev.slice();
+            for (let i = 0; i < slice.length; i += 1) {
+              next[startIndex + i] = slice[i];
+            }
+            if (end >= parsedClients.length) {
+              setListCache(LIST_CACHE_NS.enterprises, next);
+            }
+            return next;
+          });
+          if (end < parsedClients.length) {
+            const schedule = typeof requestIdleCallback === "function"
+              ? cb => requestIdleCallback(cb, { timeout: 200 })
+              : cb => setTimeout(cb, 0);
+            schedule(() => enrichBatch(end));
+          }
+        };
+        const schedule = typeof requestIdleCallback === "function"
+          ? cb => requestIdleCallback(cb, { timeout: 200 })
+          : cb => setTimeout(cb, 0);
+        schedule(() => enrichBatch(0));
+      }
     } catch (err) {
       if (err?.name === "AbortError") return;
       if (!silent) {
@@ -492,7 +538,7 @@ export default function EnterprisesPage({
   const showSourceEmpty = !loading && clients.length === 0;
   const showFilteredEmpty = !loading && clients.length > 0 && isFilteredEmpty;
   const tableColSpan = useMemo(() => {
-    let span = tableColumns.length + 2;
+    let span = tableColumns.length + 2; /* favoris + chevron */
     if (showBulkSelection) span += 1;
     return span;
   }, [tableColumns.length, showBulkSelection]);
@@ -714,12 +760,6 @@ export default function EnterprisesPage({
     />
   );
   const tableToolbar = <div className={styles.tableSearchBar}>
-        <header className={styles.cardHead}>
-          <span className={styles.cardHeadIcon} aria-hidden>
-            <Icon icon="mdi:office-building-outline" />
-          </span>
-          <h1 className={styles.cardTitle}>{copy.pageTitle}</h1>
-        </header>
         <div className={kit.searchBox}>
           <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
           <input
@@ -856,6 +896,7 @@ export default function EnterprisesPage({
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${styles.contentNoHero}`}>
+            <h1 className={styles.srOnly}>{copy.pageTitle}</h1>
             <div className={`${styles.shell} ${styles.shellWide} ${styles.shellFull}`}>
         {error && !showSkeleton ? <div className={`${styles.stateBox} ${styles.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />
@@ -1028,11 +1069,9 @@ export default function EnterprisesPage({
                         return <td key={columnId}>-</td>;
                       })}
                                 <td className={styles.favoriteCell} onClick={e => e.stopPropagation()}>
-                                  
                                     <button type="button" className={`${styles.favoriteBtn} ${favorited ? styles.favoriteBtnActive : ""}`} aria-label={favorited ? copy.favorites.remove : copy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(client.id)}>
                                       <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />
                                     </button>
-                                  
                                 </td>
                                 <td className={styles.chevronCell} aria-hidden>
                                   <Icon icon="mdi:chevron-right" className={styles.rowChevron} />

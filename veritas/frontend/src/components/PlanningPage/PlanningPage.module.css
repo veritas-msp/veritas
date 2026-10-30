@@ -133,6 +133,19 @@
 
 .planningSecCount {
   margin-left: auto;
+  box-sizing: border-box;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  padding: 0;
+  border-radius: 5px;
+  border: none;
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.6rem;
+  font-weight: 650;
+  line-height: 1;
+  opacity: 1;
 }
 
 .filtersPaneSection {
@@ -456,6 +469,11 @@
   padding-left: 0.28rem;
 }
 
+.clientFilterBrandIcon {
+  flex-shrink: 0;
+  opacity: 1 !important;
+}
+
 .clientFilterSearchWrap {
   position: relative;
   display: flex;
@@ -596,25 +614,43 @@
 }
 
 .filterItemCount {
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0 0.28rem;
-  border-radius: 999px;
-  background: var(--msp-surface-2, #f7f9fc);
-  border: 1px solid var(--msp-border-light, #eef2f7);
-  font-size: 0.68rem;
-  font-weight: 700;
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  padding: 0;
+  border-radius: 5px;
+  border: none;
+  background: color-mix(in srgb, var(--msp-muted, #5c6b82) 12%, transparent);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.6rem;
+  font-weight: 650;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
-.filterItemActive .filterItemCount {
-  background: rgba(43, 95, 171, 0.14);
-  border-color: rgba(43, 95, 171, 0.22);
-  color: #1e4a8a;
+.filterItemActive .filterItemCount,
+.planningSecItemActive .planningSecCount,
+.agentFilterRowActive .planningSecCount {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
+  color: var(--msp-accent, #2b5fab);
+}
+
+:global(html.dark) .filterItemCount,
+:global(html.dark) .planningSecCount {
+  background: color-mix(in srgb, var(--msp-muted, #8fa8c4) 16%, transparent);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .filterItemActive .filterItemCount,
+:global(html.dark) .planningSecItemActive .planningSecCount,
+:global(html.dark) .agentFilterRowActive .planningSecCount {
+  background: color-mix(in srgb, var(--msp-accent, #5a9de0) 18%, transparent);
+  color: var(--msp-accent, #5a9de0);
 }
 
 .filterItemIcon {
@@ -862,8 +898,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.35rem 0.4rem;
+  width: 2rem;
+  height: 2rem;
   min-width: 2rem;
+  padding: 0;
+  border-radius: 50%;
 }
 
 .toolbarBtnIcon svg {

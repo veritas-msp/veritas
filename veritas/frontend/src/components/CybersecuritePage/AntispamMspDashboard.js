@@ -25,14 +25,8 @@ function expiryClass(status) {
   return "";
 }
 
-function StatusPill({ status, label }) {
-  const isActive = status === "actif";
-  return (
-    <span className={`${layout.statusPill} ${isActive ? layout.statusPillActive : layout.statusPillInactive}`}>
-      <StatusDot active={isActive} label="" aria-hidden />
-      <span>{label}</span>
-    </span>
-  );
+function StatusCell({ status, label }) {
+  return <StatusDot active={status === "actif"} label={label} className={layout.statusDotOnly} />;
 }
 
 function formatLicenseCount(row) {
@@ -96,7 +90,7 @@ function FleetTableRow({
         <SolutionCell label={row.solutionLabel || row.providerName || "-"} subtitle={row.solutionSubtitle || null} image={row.providerImage} icon={row.providerIcon || "mdi:email-secure-outline"} />
       </td>
       <td>
-        <StatusPill status={row.status} label={statusMeta.label} />
+        <StatusCell status={row.status} label={statusMeta.label} />
       </td>
       <td className={styles.cellMuted}>{formatLicenseCount(row)}</td>
       <td className={styles.cellMuted}>{formatDomainCount(row.domainesSurveilles)}</td>
@@ -262,6 +256,7 @@ export default function AntispamMspDashboard({
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
               <UiKitCrmListToolbar
+                searchVariant="embedded"
                 searchValue={search}
                 onSearchChange={setSearch}
                 onSearchClear={() => setSearch("")}

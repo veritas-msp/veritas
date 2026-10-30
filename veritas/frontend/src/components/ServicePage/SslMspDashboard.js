@@ -116,6 +116,7 @@ export default function SslMspDashboard({
           <div className={layout.listArea}>
             <div className={layout.panelCard}>
               <UiKitCrmListToolbar
+                searchVariant="embedded"
                 searchValue={search}
                 onSearchChange={setSearch}
                 onSearchClear={() => setSearch("")}

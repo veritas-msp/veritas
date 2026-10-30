@@ -1,0 +1,324 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.headText {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.toolbarWrap {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.toolbar {
+  padding: 0;
+  margin: 0;
+  gap: 0.55rem;
+}
+
+.tableStack {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+
+.roundedTable {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Chrome arrondi + fades — même pattern qu’EnterpriseDetailPage activityUiKitTable */
+.roundedTable :global([class*="tableShell"]) {
+  height: 100%;
+  max-height: none;
+  --fade-surface: var(--msp-surface, #fff);
+  --fade-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+  overflow: hidden;
+}
+
+/* Autoriser le scroll X pour ne pas perdre la colonne Actions */
+.roundedTable :global([class*="scrollViewport"]) {
+  overflow-x: auto !important;
+}
+
+.table {
+  width: 100%;
+  min-width: 28rem;
+  table-layout: auto;
+}
+
+.dataRow {
+  cursor: pointer;
+}
+
+.actionsCol {
+  width: 5.5rem;
+  min-width: 5.5rem;
+  white-space: nowrap;
+  text-align: right;
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: inherit;
+  box-shadow: -8px 0 10px -10px rgba(15, 28, 46, 0.35);
+}
+
+.table thead .actionsCol {
+  z-index: 3;
+  background: var(--msp-surface-2, #f4f7fb);
+}
+
+.table tbody tr td.actionsCol {
+  background: var(--msp-surface, #fff);
+  overflow: visible;
+}
+
+.table tbody tr:nth-child(even) td.actionsCol {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.actionsHead {
+  display: inline-block;
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.itemName {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemSub {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemType {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--msp-accent, #1d4ed8);
+  background: color-mix(in srgb, var(--msp-accent, #1d4ed8) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userCell,
+.dateCell {
+  font-size: 0.8rem;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.editBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.45rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editBtnLabel {
+  display: none;
+}
+
+.editBtn:hover {
+  border-color: var(--msp-accent, #1d4ed8);
+  color: var(--msp-accent, #1d4ed8);
+  background: color-mix(in srgb, var(--msp-accent, #1d4ed8) 8%, var(--msp-surface, #fff));
+}
+
+.pagination {
+  flex: 0 0 auto;
+  padding-top: 0.55rem;
+}
+
+.stateBox,
+.emptyWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  flex: 1 1 0;
+  min-height: 0;
+  border: 1px solid color-mix(in srgb, var(--msp-border-light, #d7e0ec) 70%, transparent);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.82rem;
+}
+
+.spinning {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  color: var(--msp-danger, #b91c1c);
+}
+
+:global(html.dark) .root {
+  background: var(--msp-surface, #121a2b);
+  border-color: var(--msp-border, #2a364d);
+  box-shadow: none;
+}
+
+:global(html.dark) .title {
+  color: var(--msp-text, #e8eef8);
+}
+
+:global(html.dark) .hint,
+:global(html.dark) .itemSub,
+:global(html.dark) .userCell,
+:global(html.dark) .dateCell,
+:global(html.dark) .stateBox {
+  color: var(--msp-muted, #9aa8c0);
+}
+
+:global(html.dark) .itemName {
+  color: var(--msp-text, #e8eef8);
+}
+
+:global(html.dark) .itemType {
+  color: var(--msp-accent, #7eb0ff);
+  background: color-mix(in srgb, var(--msp-accent, #7eb0ff) 16%, transparent);
+}
+
+:global(html.dark) .editBtn {
+  background: var(--msp-surface-2, #182338);
+  border-color: var(--msp-border, #2a364d);
+  color: var(--msp-text, #e8eef8);
+}
+
+:global(html.dark) .editBtn:hover {
+  border-color: var(--msp-accent, #7eb0ff);
+  color: var(--msp-accent, #7eb0ff);
+  background: color-mix(in srgb, var(--msp-accent, #7eb0ff) 12%, var(--msp-surface-2, #182338));
+}
+
+:global(html.dark) .table thead .actionsCol {
+  background: var(--msp-surface-2, #182338);
+}
+
+:global(html.dark) .table tbody tr td.actionsCol {
+  background: var(--msp-surface, #1a2540);
+}
+
+:global(html.dark) .table tbody tr:nth-child(even) td.actionsCol {
+  background: color-mix(in srgb, var(--msp-surface-2, #182338) 88%, #000);
+}
+
+:global(html.dark) .roundedTable :global([class*="tableShell"]),
+:global(html.dark) .emptyWrap {
+  --fade-surface: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+:global(html.dark) .error {
+  color: #fca5a5;
+}
+
+@media (min-width: 1400px) {
+  .actionsCol {
+    width: 7.25rem;
+    min-width: 7.25rem;
+  }
+
+  .editBtnLabel {
+    display: inline;
+  }
+
+  .editBtn {
+    padding: 0 0.55rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .pagination {
+    flex-wrap: wrap;
+  }
+}

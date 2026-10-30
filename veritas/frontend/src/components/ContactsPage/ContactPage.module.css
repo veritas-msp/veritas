@@ -198,8 +198,9 @@
 }
 
 .actionsCell {
-  width: 1%;
   white-space: nowrap;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 /* —— Largeurs colonnes (th / td / col — mêmes classes) —— */
@@ -217,38 +218,37 @@
 }
 
 .colContactName {
-  /* colonne fluide : absorbe le reste */
-  width: auto;
+  width: 16%;
 }
 
 .colContactGender {
-  width: 5.5rem;
+  width: 6%;
   white-space: nowrap;
 }
 
 .colContactEnterprise {
-  width: 9rem;
+  width: 14%;
 }
 
 .colContactRole {
-  width: 7.5rem;
+  width: 10%;
 }
 
 .colContactEmail {
-  width: 12rem;
+  width: 16%;
 }
 
 .colContactPhone {
-  width: 9rem;
+  width: 10%;
 }
 
 .colContactPortal {
-  width: 3.75rem;
+  width: 4%;
   text-align: center;
 }
 
 .colContactTickets {
-  width: 4.5rem;
+  width: 6%;
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -256,11 +256,16 @@
 
 .colContactActions {
   width: 7rem;
+  text-align: right;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .colContactFavorite {
   width: 3.75rem;
   text-align: center;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 .ticketStatValue {

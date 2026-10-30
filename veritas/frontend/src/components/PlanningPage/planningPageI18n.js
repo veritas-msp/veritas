@@ -74,14 +74,14 @@ const PLANNING_PAGE = {
       removeAgentFromList: "Retirer {name} de la liste",
       removeTeamFromList: "Retirer l'équipe {name} de la liste",
       teamEmptyMembers: "Aucun agent dans cette équipe.",
-      searchClient: "Rechercher un client…",
+      searchClient: "Rechercher",
       noClientFound: "Aucun client trouvé.",
       noClients: "Aucun client.",
-      searchClientHint: "Recherchez un client pour l'ajouter au filtre.",
+      searchClientHint: "Recherchez un client pour afficher plus de résultats.",
       meSuffix: "(Moi)"
     },
     search: {
-      placeholder: "Événement, client, agent…",
+      placeholder: "Rechercher",
       aria: "Rechercher dans le planning",
       clear: "Effacer la recherche",
       clearFilters: "Effacer les filtres"
@@ -206,14 +206,14 @@ const PLANNING_PAGE = {
       removeAgentFromList: "Remove {name} from list",
       removeTeamFromList: "Remove team {name} from list",
       teamEmptyMembers: "No assignees in this team.",
-      searchClient: "Search for a client…",
+      searchClient: "Search",
       noClientFound: "No client found.",
       noClients: "No clients.",
-      searchClientHint: "Search for a client to add it to the filter.",
+      searchClientHint: "Search for a client to see more results.",
       meSuffix: "(Me)"
     },
     search: {
-      placeholder: "Event, client, assignee…",
+      placeholder: "Search",
       aria: "Search schedule",
       clear: "Clear search",
       clearFilters: "Clear filters"
@@ -338,14 +338,14 @@ const PLANNING_PAGE = {
       removeAgentFromList: "{name} aus Liste entfernen",
       removeTeamFromList: "Team {name} aus Liste entfernen",
       teamEmptyMembers: "Keine Mitarbeiter in diesem Team.",
-      searchClient: "Kunde suchen…",
+      searchClient: "Suchen",
       noClientFound: "Kein Kunde gefunden.",
       noClients: "Keine Kunden.",
       searchClientHint: "Suchen Sie einen Kunden, um ihn zum Filter hinzuzufügen.",
       meSuffix: "(Ich)"
     },
     search: {
-      placeholder: "Ereignis, Kunde, Mitarbeiter…",
+      placeholder: "Suchen",
       aria: "Planung durchsuchen",
       clear: "Suche löschen",
       clearFilters: "Filter löschen"
@@ -470,14 +470,14 @@ const PLANNING_PAGE = {
       removeAgentFromList: "Rimuovi {name} dall'elenco",
       removeTeamFromList: "Rimuovi il team {name} dall'elenco",
       teamEmptyMembers: "Nessun agente in questo team.",
-      searchClient: "Cerca un cliente…",
+      searchClient: "Cerca",
       noClientFound: "Nessun cliente trovato.",
       noClients: "Nessun cliente.",
       searchClientHint: "Cerca un cliente per aggiungerlo al filtro.",
       meSuffix: "(Io)"
     },
     search: {
-      placeholder: "Evento, cliente, agente…",
+      placeholder: "Cerca",
       aria: "Cerca nella pianificazione",
       clear: "Cancella ricerca",
       clearFilters: "Cancella filtri"
@@ -602,14 +602,14 @@ const PLANNING_PAGE = {
       removeAgentFromList: "Quitar {name} de la lista",
       removeTeamFromList: "Quitar el equipo {name} de la lista",
       teamEmptyMembers: "Ningún agente en este equipo.",
-      searchClient: "Buscar un cliente…",
+      searchClient: "Buscar",
       noClientFound: "Ningún cliente encontrado.",
       noClients: "Ningún cliente.",
       searchClientHint: "Busque un cliente para añadirlo al filtro.",
       meSuffix: "(Yo)"
     },
     search: {
-      placeholder: "Evento, cliente, agente…",
+      placeholder: "Buscar",
       aria: "Buscar en la planificación",
       clear: "Borrar búsqueda",
       clearFilters: "Borrar filtros"

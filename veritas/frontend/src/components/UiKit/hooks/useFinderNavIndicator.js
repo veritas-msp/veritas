@@ -12,7 +12,20 @@ export default function useFinderNavIndicator(deps = []) {
     setTrackEl(node);
   }, []);
   const [indicator, setIndicator] = useState({ top: 0, left: 0, width: 0, height: 0, ready: false });
-  const depsKey = deps.map(d => String(d)).join("|");
+  const depsKey = deps
+    .map(d => {
+      if (d instanceof Set) return [...d].join(",");
+      if (Array.isArray(d)) return d.join(",");
+      if (d && typeof d === "object") {
+        try {
+          return JSON.stringify(d);
+        } catch {
+          return String(d);
+        }
+      }
+      return String(d);
+    })
+    .join("|");
 
   useLayoutEffect(() => {
     const root = trackEl;
@@ -104,11 +117,26 @@ export default function useFinderNavIndicator(deps = []) {
 
     const mo =
       typeof MutationObserver !== "undefined"
-        ? new MutationObserver(() => {
-            update();
+        ? new MutationObserver(records => {
+            /* Ignorer les mutations de style de l'indicateur (évite boucle Resize/Mutation). */
+            const meaningful = records.some(rec => {
+              if (rec.type === "attributes" && rec.attributeName === "style") return false;
+              const t = rec.target;
+              if (t?.nodeType === 1 && t.getAttribute?.("aria-hidden") === "true") return false;
+              const cls = typeof t?.className === "string" ? t.className : "";
+              if (cls.includes("finderNavIndicator") || cls.includes("NavIndicator")) return false;
+              return true;
+            });
+            if (meaningful) update();
           })
         : null;
-    mo?.observe(root, { childList: true, subtree: true, characterData: true, attributes: true });
+    mo?.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["aria-current", "class", "aria-pressed"]
+    });
 
     const fontsReady = document.fonts?.ready?.then?.(() => update());
 
