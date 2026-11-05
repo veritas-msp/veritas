@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
-import { Page, Card, Btn, Pagination } from "./AdminUi";
+import { Btn, Pagination } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import adminUi from "./AdminUi.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchClientsList } from "../../api/clients";
@@ -74,7 +76,7 @@ export default function AdminInjection({
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminInjectionCopy(locale), [locale]);
   const { enabledModules } = useContractModuleOptions();
-  const [activeView, setActiveView] = useState(null);
+  const [activeView, setActiveView] = useState(INJECTION_ENTITIES[0]);
   const [customFamilies, setCustomFamilies] = useState([]);
   const [systemExtensions, setSystemExtensions] = useState({});
   const [familiesLoading, setFamiliesLoading] = useState(false);
@@ -109,8 +111,17 @@ export default function AdminInjection({
     () => enabledModules.map(mod => mod.moduleKey).filter(Boolean).join(", "),
     [enabledModules]
   );
+  const injectionTabs = useMemo(
+    () =>
+      INJECTION_ENTITIES.map(key => ({
+        key,
+        label: copy.tabs[key],
+        icon: ENTITY_ICONS[key]
+      })),
+    [copy.tabs]
+  );
+
   const fieldGuideRows = useMemo(() => {
-    if (!activeView) return [];
     return getInjectionFieldRows(activeView).map(row => {
       if (row.id !== "options") return row;
       return {
@@ -119,7 +130,7 @@ export default function AdminInjection({
       };
     });
   }, [activeView, contractOptionKeysNote]);
-  const showFieldGuide = activeView ? hasInjectionFieldCatalog(activeView) : false;
+  const showFieldGuide = hasInjectionFieldCatalog(activeView);
   const [rows, setRows] = useState([]);
   const [previewSearch, setPreviewSearch] = useState("");
   const [csvName, setCsvName] = useState("");
@@ -219,7 +230,7 @@ export default function AdminInjection({
     };
   }, [activeView, isCommunity]);
 
-  const openEntity = key => {
+  const handleTabChange = key => {
     if (running) {
       toast.warn(copy.navBlocked);
       return;
@@ -229,14 +240,6 @@ export default function AdminInjection({
       return;
     }
     setActiveView(key);
-  };
-
-  const backToHub = () => {
-    if (running) {
-      toast.warn(copy.navBlocked);
-      return;
-    }
-    setActiveView(null);
   };
 
   const normalizePreviewQuery = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
@@ -452,58 +455,96 @@ export default function AdminInjection({
   };
 
   const isDocuments = activeView === "documents";
-  const workspaceTitle = activeView ? copy.tabs[activeView] : copy.title;
 
-  if (!activeView) {
-    return (
-      <Page>
-        <Card title={copy.title} description={copy.subtitle}>
-          <div className={styles.hub}>
-            <div className={styles.hubIntro}>
-              <h3 className={styles.hubTitle}>{copy.hubTitle}</h3>
-              <p className={styles.hubSubtitle}>{copy.hubSubtitle}</p>
-            </div>
-            <div className={styles.hubGrid}>
-              {INJECTION_ENTITIES.map(key => {
-                const locked = isCommunity && COMMUNITY_LOCKED_ENTITIES.has(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`${styles.hubTile} ${locked ? styles.hubTileLocked : ""}`}
-                    onClick={() => openEntity(key)}
-                    disabled={running}
-                  >
-                    <span className={styles.hubTileIconWrap}>
-                      <Icon icon={ENTITY_ICONS[key]} className={styles.hubTileIcon} aria-hidden />
-                    </span>
-                    <span className={styles.hubTileBody}>
-                      <span className={styles.hubTileTitleRow}>
-                        <span className={styles.hubTileTitle}>{copy.tabs[key]}</span>
-                        {locked ? <span className={styles.hubProBadge}>{copy.proBadge}</span> : null}
-                      </span>
-                      <span className={styles.hubTileDesc}>{copy.tileDesc?.[key] || ""}</span>
-                    </span>
-                    <Icon icon="mdi:chevron-right" className={styles.hubTileChevron} aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </Card>
-      </Page>
-    );
-  }
+  const sectionActions = isDocuments ? (
+    <div className={styles.toolbar}>
+      <Btn
+        size="sm"
+        variant="secondary"
+        icon="mdi:file-plus-outline"
+        disabled={running || isCommunity}
+        onClick={() => filesInputRef.current?.click()}
+      >
+        {copy.docsPickFiles}
+      </Btn>
+      <Btn
+        size="sm"
+        variant="secondary"
+        icon="mdi:folder-open-outline"
+        disabled={running || isCommunity}
+        onClick={() => folderInputRef.current?.click()}
+      >
+        {copy.docsPickFolder}
+      </Btn>
+      {docDrafts.length > 0 ? (
+        <Btn size="sm" icon="mdi:table-edit" disabled={running || isCommunity} onClick={() => setDocsModalOpen(true)}>
+          {copy.docsManageLabel(docDrafts.length)}
+        </Btn>
+      ) : null}
+      <input ref={filesInputRef} type="file" multiple hidden onChange={handleDocsFileInput} />
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        webkitdirectory=""
+        hidden
+        onChange={handleDocsFileInput}
+      />
+    </div>
+  ) : (
+    <div className={styles.toolbar}>
+      <Btn size="sm" variant="secondary" icon="mdi:download" onClick={handleDownloadTemplate}>
+        {activeView === "equipment" ? copy.downloadFamilyTemplate : copy.downloadTemplate}
+      </Btn>
+      <Btn
+        size="sm"
+        variant="secondary"
+        icon="mdi:file-delimited-outline"
+        onClick={() => csvInputRef.current?.click()}
+        disabled={running}
+      >
+        {csvName || (activeView === "equipment" ? copy.pickInjectFile : copy.pickCsv)}
+      </Btn>
+      <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChange} />
+      <span className={styles.toolbarSep} aria-hidden />
+      <Btn size="sm" icon="mdi:database-import" onClick={handleInject} disabled={running || !rows.length}>
+        {running ? (paused ? copy.paused : copy.injecting) : copy.inject}
+      </Btn>
+      {running ? (
+        <>
+          {paused ? (
+            <Btn size="sm" variant="secondary" icon="mdi:play" onClick={handleResumeInjection}>
+              {copy.resume}
+            </Btn>
+          ) : (
+            <Btn size="sm" variant="secondary" icon="mdi:pause" onClick={handlePauseInjection}>
+              {copy.pause}
+            </Btn>
+          )}
+          <Btn size="sm" variant="danger" icon="mdi:stop" onClick={handleCancelInjection}>
+            {copy.cancel}
+          </Btn>
+        </>
+      ) : null}
+    </div>
+  );
 
   return (
-    <Page>
-      <Card title={workspaceTitle} description={copy.subtitle}>
-        <div className={styles.workspaceHeader}>
-          <Btn variant="secondary" icon="mdi:arrow-left" onClick={backToHub} disabled={running}>
-            {copy.backToHub}
-          </Btn>
-        </div>
-
+    <>
+      <AdminPlatformShell
+        tabs={injectionTabs}
+        activeTab={activeView}
+        onTabChange={handleTabChange}
+        tabsAriaLabel={copy.title}
+        fill
+      >
+        <SettingsSection
+          title={copy.tabs[activeView]}
+          description={copy.subtitle}
+          icon="mdi:database-import"
+          iconKey={activeView}
+          action={sectionActions}
+        >
         <div className={styles.panel}>
           {isDocuments ? (
             <p className={styles.columnsHint}>
@@ -518,47 +559,45 @@ export default function AdminInjection({
                 <Icon icon="mdi:chevron-down" className={styles.fieldsGuideChevron} aria-hidden />
               </summary>
               <div className={styles.fieldsGuideBody}>
-                <div className={styles.fieldsGuideTableWrap}>
-                  <table className={styles.fieldsGuideTable}>
-                    <thead>
-                      <tr>
-                        <th>{FIELDS_GUIDE_UI.colField}</th>
-                        <th>{FIELDS_GUIDE_UI.colCsv}</th>
-                        <th>{FIELDS_GUIDE_UI.colType}</th>
+                <table className={styles.fieldsGuideTable}>
+                  <thead>
+                    <tr>
+                      <th>{FIELDS_GUIDE_UI.colField}</th>
+                      <th>{FIELDS_GUIDE_UI.colCsv}</th>
+                      <th>{FIELDS_GUIDE_UI.colType}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fieldGuideRows.map(row => (
+                      <tr key={row.id}>
+                        <td>
+                          <div className={styles.fieldsGuideField}>
+                            {row.label}
+                            {row.required ? (
+                              <span className={styles.fieldsGuideRequired}> · {FIELDS_GUIDE_UI.required}</span>
+                            ) : null}
+                          </div>
+                          {row.note ? <p className={styles.fieldsGuideNote}>{row.note}</p> : null}
+                        </td>
+                        <td>
+                          <div className={styles.fieldsGuideCsvCodes}>
+                            {row.columns.map(col => (
+                              <code key={col}>{col}</code>
+                            ))}
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            className={`${styles.fieldsGuideType} ${row.values ? styles.fieldsGuideTypeValues : ""}`}
+                            title={row.values || row.type}
+                          >
+                            {row.values || row.type}
+                          </span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {fieldGuideRows.map(row => (
-                        <tr key={row.id}>
-                          <td>
-                            <div className={styles.fieldsGuideField}>
-                              {row.label}
-                              {row.required ? (
-                                <span className={styles.fieldsGuideRequired}> · {FIELDS_GUIDE_UI.required}</span>
-                              ) : null}
-                            </div>
-                            {row.note ? <p className={styles.fieldsGuideNote}>{row.note}</p> : null}
-                          </td>
-                          <td>
-                            <div className={styles.fieldsGuideCsvCodes}>
-                              {row.columns.map(col => (
-                                <code key={col}>{col}</code>
-                              ))}
-                            </div>
-                          </td>
-                          <td>
-                            <span
-                              className={`${styles.fieldsGuideType} ${row.values ? styles.fieldsGuideTypeValues : ""}`}
-                              title={row.values || row.type}
-                            >
-                              {row.values || row.type}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </details>
           ) : null}
@@ -670,67 +709,7 @@ export default function AdminInjection({
                   </div>
                 </div>
               ) : null}
-            </div>
-          ) : null}
 
-          {isDocuments ? (
-            <>
-              <div
-                className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ""} ${isCommunity ? styles.dropzoneDisabled : ""}`}
-                onDragEnter={e => {
-                  e.preventDefault();
-                  if (!isCommunity && !running) setDragOver(true);
-                }}
-                onDragOver={e => {
-                  e.preventDefault();
-                  if (!isCommunity && !running) setDragOver(true);
-                }}
-                onDragLeave={e => {
-                  e.preventDefault();
-                  setDragOver(false);
-                }}
-                onDrop={handleDocsDrop}
-              >
-                <Icon icon="mdi:cloud-upload-outline" className={styles.dropzoneIcon} aria-hidden />
-                <p className={styles.dropzoneTitle}>{copy.docsDropTitle}</p>
-                <p className={styles.dropzoneHint}>{copy.docsDropHint}</p>
-                <div className={styles.dropzoneActions}>
-                  <Btn
-                    variant="secondary"
-                    icon="mdi:file-plus-outline"
-                    disabled={running || isCommunity}
-                    onClick={() => filesInputRef.current?.click()}
-                  >
-                    {copy.docsPickFiles}
-                  </Btn>
-                  <Btn
-                    variant="secondary"
-                    icon="mdi:folder-open-outline"
-                    disabled={running || isCommunity}
-                    onClick={() => folderInputRef.current?.click()}
-                  >
-                    {copy.docsPickFolder}
-                  </Btn>
-                  {docDrafts.length > 0 ? (
-                    <Btn icon="mdi:table-edit" disabled={running || isCommunity} onClick={() => setDocsModalOpen(true)}>
-                      {copy.docsManageLabel(docDrafts.length)}
-                    </Btn>
-                  ) : null}
-                </div>
-                <input ref={filesInputRef} type="file" multiple hidden onChange={handleDocsFileInput} />
-                <input
-                  ref={folderInputRef}
-                  type="file"
-                  multiple
-                  webkitdirectory=""
-                  hidden
-                  onChange={handleDocsFileInput}
-                />
-              </div>
-            </>
-          ) : (
-            <div className={styles.injectActions}>
-            {activeView === "equipment" ? (
               <label className={styles.upsertCheck}>
                 <input
                   type="checkbox"
@@ -743,42 +722,33 @@ export default function AdminInjection({
                   <span className={styles.upsertHint}>{copy.upsertEquipmentHint}</span>
                 </span>
               </label>
-            ) : null}
-            <div className={styles.actions}>
-              <Btn variant="secondary" icon="mdi:download" onClick={handleDownloadTemplate}>
-                {activeView === "equipment" ? copy.downloadFamilyTemplate : copy.downloadTemplate}
-              </Btn>
-              <Btn
-                variant="secondary"
-                icon="mdi:file-delimited-outline"
-                onClick={() => csvInputRef.current?.click()}
-                disabled={running}
-              >
-                {csvName || (activeView === "equipment" ? copy.pickInjectFile : copy.pickCsv)}
-              </Btn>
-              <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChange} />
-              <Btn icon="mdi:database-import" onClick={handleInject} disabled={running || !rows.length}>
-                {running ? (paused ? copy.paused : copy.injecting) : copy.inject}
-              </Btn>
-              {running ? (
-                <>
-                  {paused ? (
-                    <Btn variant="secondary" icon="mdi:play" onClick={handleResumeInjection}>
-                      {copy.resume}
-                    </Btn>
-                  ) : (
-                    <Btn variant="secondary" icon="mdi:pause" onClick={handlePauseInjection}>
-                      {copy.pause}
-                    </Btn>
-                  )}
-                  <Btn variant="danger" icon="mdi:stop" onClick={handleCancelInjection}>
-                    {copy.cancel}
-                  </Btn>
-                </>
-              ) : null}
             </div>
+          ) : null}
+
+          {isDocuments ? (
+            <div
+              className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ""} ${isCommunity ? styles.dropzoneDisabled : ""}`}
+              onDragEnter={e => {
+                e.preventDefault();
+                if (!isCommunity && !running) setDragOver(true);
+              }}
+              onDragOver={e => {
+                e.preventDefault();
+                if (!isCommunity && !running) setDragOver(true);
+              }}
+              onDragLeave={e => {
+                e.preventDefault();
+                setDragOver(false);
+              }}
+              onDrop={handleDocsDrop}
+            >
+              <Icon icon="mdi:cloud-upload-outline" className={styles.dropzoneIcon} aria-hidden />
+              <div className={styles.dropzoneCopy}>
+                <p className={styles.dropzoneTitle}>{copy.docsDropTitle}</p>
+                <p className={styles.dropzoneHint}>{copy.docsDropHint}</p>
+              </div>
             </div>
-          )}
+          ) : null}
 
           {progress && !docsModalOpen
             ? (() => {
@@ -908,7 +878,8 @@ export default function AdminInjection({
             </section>
           ) : null}
         </div>
-      </Card>
+        </SettingsSection>
+      </AdminPlatformShell>
 
       <AdminInjectionDocumentsModal
         open={docsModalOpen}
@@ -928,6 +899,6 @@ export default function AdminInjection({
         onAddFiles={() => filesInputRef.current?.click()}
         onAddFolder={() => folderInputRef.current?.click()}
       />
-    </Page>
+    </>
   );
 }

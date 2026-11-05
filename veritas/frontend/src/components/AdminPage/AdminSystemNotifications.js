@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { Btn, Card, Switch } from "./AdminUi";
+import { Btn, BtnIcon, Switch } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import catalogStyles from "./AdminNotificationCatalog.module.css";
 import formStyles from "./NotificationEventFormModal.module.css";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
@@ -538,17 +539,17 @@ export default function AdminSystemNotifications() {
   };
 
   return <div className={catalogStyles.layout}>
-      <Card title={copy.system.title} description={copy.system.description} fill>
+      <SettingsSection title={copy.system.title} description={copy.system.description} icon="mdi:email-edit-outline">
         <div className={catalogStyles.groups}>
           {SYSTEM_NOTIFICATION_GROUPS.map(group => <section key={group.id} className={catalogStyles.group}>
               <header className={catalogStyles.groupHeader}>
                 <h3 className={catalogStyles.groupTitle}>{copy.system.groups[group.id] || group.title}</h3>
               </header>
-              <div className={catalogStyles.rowsGrid}>
+              <div className={catalogStyles.rows}>
                 {SYSTEM_NOTIFICATION_DEFS.filter(item => item.group === group.id).map(item => {
             const state = system[item.key];
             const active = state.enabled !== false;
-            return <article key={item.key} className={`${catalogStyles.rowCard} ${active ? "" : catalogStyles.rowOff}`}>
+            return <article key={item.key} className={`${catalogStyles.row} ${active ? "" : catalogStyles.rowOff}`}>
                     <div className={catalogStyles.rowMain}>
                       <p className={catalogStyles.rowTitle}>{copy.system.items[item.key]?.label || item.key}</p>
                       <div className={catalogStyles.rowMeta}>
@@ -557,20 +558,16 @@ export default function AdminSystemNotifications() {
                         <span className={catalogStyles.badge}>{copy.system.items[item.key]?.recipients || item.recipients}</span>
                       </div>
                     </div>
-                    <div className={catalogStyles.rowCardFooter}>
-                      <Switch checked={active} onChange={value => toggleEnabled(item.key, value)} label={active ? copy.catalog.masterOn : copy.catalog.masterOff} />
-                      <div className={catalogStyles.rowActions}>
-                        <Btn size="sm" variant="secondary" icon="mdi:pencil-outline" onClick={() => openEdit(item.key)}>
-                          {copy.catalog.edit}
-                        </Btn>
-                      </div>
+                    <Switch checked={active} onChange={value => toggleEnabled(item.key, value)} label={active ? copy.catalog.masterOn : copy.catalog.masterOff} />
+                    <div className={catalogStyles.rowActions}>
+                      <BtnIcon icon="mdi:pencil-outline" title={copy.catalog.edit} onClick={() => openEdit(item.key)} />
                     </div>
                   </article>;
           })}
               </div>
             </section>)}
         </div>
-      </Card>
+      </SettingsSection>
 
       {draft && def ? createPortal(<div className={layout.overlay} onClick={close} role="presentation">
           <div className={layout.shell} style={{

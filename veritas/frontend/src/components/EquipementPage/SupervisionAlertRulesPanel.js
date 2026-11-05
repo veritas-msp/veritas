@@ -74,7 +74,12 @@ export default function MonitoringAlertRulesPanel({
   onSaved,
   /** "centre" = critères monitoring du centre only ; "all" = catalogue complet (Admin). */
   scope = "all",
-  toolbarActions = null
+  toolbarActions = null,
+  /** Sans carte imbriquée — s’appuie sur la carte globale admin. */
+  flat = false,
+  pageTitle = "",
+  pageDescription = "",
+  pageIcon = ""
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getSupervisionAlertRulesCopy(locale), [locale]);
@@ -300,7 +305,24 @@ export default function MonitoringAlertRulesPanel({
   const enabledOnFamily = countEnabledRulesForFamily(activeFamily.key, draft, { centreOnly });
 
   return (
-    <div className={`${layout.panelCard} ${styles.root}`} data-page-fill>
+    <div
+      className={`${flat ? styles.rootFlat : `${layout.panelCard} ${styles.root}`}`}
+      data-page-fill
+    >
+      {flat && (pageTitle || pageDescription) ? (
+        <header className={styles.pageHeader}>
+          {pageIcon ? (
+            <span className={styles.pageHeaderIcon} aria-hidden>
+              <Icon icon={pageIcon} />
+            </span>
+          ) : null}
+          <div className={styles.pageHeaderText}>
+            {pageTitle ? <h2 className={styles.pageTitle}>{pageTitle}</h2> : null}
+            {pageDescription ? <p className={styles.pageDesc}>{pageDescription}</p> : null}
+          </div>
+        </header>
+      ) : null}
+
       <div className={styles.toolbar} data-guide="supervision-filters">
         <UiKitCrmListToolbar
           searchValue={navSearch}
@@ -318,7 +340,7 @@ export default function MonitoringAlertRulesPanel({
         />
       </div>
 
-      <div className={styles.body}>
+      <div className={`${styles.body}${flat ? ` ${styles.bodyFlat}` : ""}`}>
         <aside className={styles.sidebar} aria-label={copy.familyNavAria}>
           {filteredNavSections.length === 0 && navSearchTokens.length > 0 ? (
             <p className={styles.navSearchEmpty}>

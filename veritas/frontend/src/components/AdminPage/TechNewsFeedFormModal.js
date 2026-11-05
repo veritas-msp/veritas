@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { Switch } from "./AdminUi";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAdminCommonCopy, useAdminModalCopy } from "../../hooks/useAdminCopy";
@@ -10,6 +9,7 @@ import { getTechNewsFeedFormSections } from "./adminFormModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import { DEFAULT_TECH_NEWS_FEED_CATEGORIES, DEFAULT_TECH_NEWS_FEED_LOCALE } from "./techNewsFeedConstants";
 import { APP_LOCALES } from "../../i18n/locales";
+import { UiKitButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import formStyles from "./IngestionRuleFormModal.module.css";
 export default function TechNewsFeedFormModal({
@@ -31,6 +31,7 @@ export default function TechNewsFeedFormModal({
   const formSections = useMemo(() => getTechNewsFeedFormSections(locale), [locale]);
   const isCreate = mode === "create";
   const [activeSection, setActiveSection] = useState("source");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   useEffect(() => {
     if (!open) return;
     setActiveSection("source");
@@ -158,24 +159,59 @@ export default function TechNewsFeedFormModal({
               <p className={layout.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={commonCopy.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={commonCopy.close}
+            icon="mdi:close"
+          />
         </header>
 
         <div className={layout.body}>
-          <nav className={layout.nav} aria-label={modalCopy.sectionsAria}>
-            {formSections.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
-                <span className={layout.navItemText}>
-                  <span className={layout.navItemLabel}>{section.label}</span>
-                  <span className={layout.navItemHint}>{section.description}</span>
-                </span>
-                {sectionMeta[section.id] && <span className={layout.navBadge}>✓</span>}
-              </button>)}
-          </nav>
+          <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={modalCopy.sectionsAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
+            >
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {formSections.map(section => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={`${kit.finderItem} ${kit.finderItemRich} ${active ? kit.finderItemActive : ""}`}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                    <span className={kit.finderItemStack}>
+                      <span className={kit.finderItemLabel}>{section.label}</span>
+                      {section.description ? <span className={kit.finderItemDesc}>{section.description}</span> : null}
+                    </span>
+                    {sectionMeta[section.id] ? <span className={layout.navBadge}>✓</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-          <div className={layout.content}>{renderSectionContent()}</div>
+          <div className={layout.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={layout.footer}>
@@ -184,21 +220,27 @@ export default function TechNewsFeedFormModal({
             {draft.enabled ? adminCopy.active : adminCopy.inactive}
           </span>
           <div className={layout.footerActions}>
-            <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
               {commonCopy.cancel}
-            </button>
-            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving || !canSave}>
-              {saving ? <>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={onSave}
+              disabled={saving || !canSave}
+              icon={saving ? undefined : isCreate ? "mdi:plus" : "mdi:content-save-outline"}
+            >
+              {saving ? (
+                <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                   {commonCopy.saving}
-                </> : isCreate ? <>
-                  <Icon icon="mdi:plus" aria-hidden />
-                  {modalCopy.addBtn}
-                </> : <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {commonCopy.save}
-                </>}
-            </button>
+                </>
+              ) : isCreate ? (
+                modalCopy.addBtn
+              ) : (
+                commonCopy.save
+              )}
+            </UiKitButton>
           </div>
         </footer>
       </div>

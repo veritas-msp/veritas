@@ -156,12 +156,25 @@
 }
 
 .adminNavSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   margin: 0 0 0.4rem 0.35rem;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted);
+}
+
+.adminNavSectionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: var(--msp-accent);
+  opacity: 0.9;
+  line-height: 0;
 }
 
 .adminNavList {
@@ -215,10 +228,14 @@
 }
 
 .adminNavIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.15rem;
   flex-shrink: 0;
   margin-top: 0.05rem;
   color: var(--msp-accent);
+  line-height: 0;
 }
 
 .adminNavItemText {
@@ -334,7 +351,7 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   background: var(--msp-bg);
 }
 

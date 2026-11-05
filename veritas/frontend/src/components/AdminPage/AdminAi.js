@@ -4,11 +4,13 @@ import { toast } from "react-toastify";
 import { fetchAiStatus, fetchAiUsage, updateAiPolicy } from "../../api/ai";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { createLocaleGetter } from "../../i18n/translate";
-import { Page, Card, Btn, Switch, NumberStepper } from "./AdminUi";
+import { Btn, Switch, NumberStepper } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
+import { useAdminCommonCopy } from "../../hooks/useAdminCopy";
 import ui from "./AdminUi.module.css";
 import styles from "./AdminAi.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const DEFAULT_LIMITS = {
   autoPriority: 100,
@@ -306,6 +308,7 @@ export default function AdminAi({
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminAiCopy(locale), [locale]);
+  const adminCopy = useAdminCommonCopy();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
@@ -376,66 +379,68 @@ export default function AdminAi({
     ["supervisionBriefing", copy.featureSupervisionBriefing],
     ["enterpriseSummary", copy.featureEnterpriseSummary]
   ];
-
-  const heroCopy = getAdminPanelCopy(locale).items.ai;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:robot-outline" />
-      <div className={styles.toolbar} style={{ justifyContent: "flex-end" }}>
-        <div className={styles.toolbarActions}>
-          <Btn icon="mdi:refresh" variant="secondary" onClick={load} disabled={loading}>
-            {copy.refresh}
-          </Btn>
-          <Btn icon="mdi:link-variant" variant="secondary" onClick={goIntegrations}>
-            {copy.openIntegrations}
-          </Btn>
-        </div>
-      </div>
-
-      {loading ? <p className={ui.adminMutedText}>…</p> : !configured ? <Card title={copy.inactiveTitle} description={copy.inactiveHint}>
+return <AdminPlatformShell>
+      <SettingsSection title={copy.title} description={copy.description} icon="mdi:robot-outline" action={<div className={styles.toolbarActions}>
+            <Btn icon="mdi:refresh" variant="secondary" onClick={load} disabled={loading}>
+              {copy.refresh}
+            </Btn>
+            <Btn icon="mdi:link-variant" variant="secondary" onClick={goIntegrations}>
+              {copy.openIntegrations}
+            </Btn>
+          </div>}>
+      {loading ? <AdminGeneralSettingsLoading message={adminCopy.loading} /> : !configured ? <>
+          <h4 className={styles.pageTitle}>{copy.inactiveTitle}</h4>
+          <p className={ui.adminMutedText}>{copy.inactiveHint}</p>
           <Btn icon="mdi:robot-outline" onClick={goIntegrations}>
             {copy.openIntegrations}
           </Btn>
-        </Card> : <div className={styles.layout}>
-          <Card noPadding>
-            <div className={styles.statusQuotaBar}>
-              <div className={styles.metaRow}>
-                <span className={`${styles.pill} ${status.enabled ? styles.pillOk : styles.pillBad}`}>
-                  {status.enabled ? copy.active : copy.inactive}
-                </span>
-                <span className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{copy.provider}</span>
-                  <strong>{status.provider}</strong>
-                </span>
-                <span className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{copy.model}</span>
-                  <strong className={styles.mono}>{status.model}</strong>
-                </span>
-                <span className={styles.metaItem}>
-                  <span className={styles.metaLabel}>{copy.apiKey}</span>
-                  <strong>{status.hasApiKey ? copy.apiKeySet : copy.apiKeyMissing}</strong>
-                </span>
-                <span className={styles.metaItem}>
-                  <strong>{copy.actionsToday.replace("{count}", String(actionsToday))}</strong>
-                </span>
-                <div className={styles.metaActions}>
-                  <Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving}>
-                    {saving ? copy.saving : copy.savePolicy}
-                  </Btn>
-                </div>
+        </> : <div className={styles.layout}>
+          <div className={styles.statusQuotaBar}>
+            <div className={styles.metaRow}>
+              <span className={`${styles.pill} ${status.enabled ? styles.pillOk : styles.pillBad}`}>
+                {status.enabled ? copy.active : copy.inactive}
+              </span>
+              <span className={styles.metaItem}>
+                <span className={styles.metaLabel}>{copy.provider}</span>
+                <strong>{status.provider}</strong>
+              </span>
+              <span className={styles.metaItem}>
+                <span className={styles.metaLabel}>{copy.model}</span>
+                <strong className={styles.mono}>{status.model}</strong>
+              </span>
+              <span className={styles.metaItem}>
+                <span className={styles.metaLabel}>{copy.apiKey}</span>
+                <strong>{status.hasApiKey ? copy.apiKeySet : copy.apiKeyMissing}</strong>
+              </span>
+              <span className={styles.metaItem}>
+                <strong>{copy.actionsToday.replace("{count}", String(actionsToday))}</strong>
+              </span>
+              <div className={styles.metaActions}>
+                <Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving}>
+                  {saving ? copy.saving : copy.savePolicy}
+                </Btn>
               </div>
             </div>
-          </Card>
+          </div>
 
           <div className={styles.columns}>
             <div className={styles.columnCard}>
-              <Card title={copy.featuresTitle} description={copy.featuresHint} action={<Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving}>
+              <SettingsSection
+                title={copy.featuresTitle}
+                description={copy.featuresHint}
+                icon="mdi:tune-variant"
+                action={
+                  <Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving}>
                     {saving ? copy.saving : copy.savePolicy}
-                  </Btn>}>
+                  </Btn>
+                }
+              >
                 <div className={styles.featureList}>
                   {featureItems.map(([key, label, hint]) => {
-                const used = Number(featureUsage?.[key]?.used) || 0;
-                const limit = Number(featureLimits[key]) || DEFAULT_LIMITS[key];
-                return <div key={key} className={styles.featureRow}>
+                    const used = Number(featureUsage?.[key]?.used) || 0;
+                    const limit = Number(featureLimits[key]) || DEFAULT_LIMITS[key];
+                    return (
+                      <div key={key} className={styles.featureRow}>
                         <div className={styles.featureMain}>
                           <span className={styles.featureLabel}>{label}</span>
                           {hint ? <span className={styles.featureHint}>{hint}</span> : null}
@@ -445,24 +450,42 @@ export default function AdminAi({
                         </div>
                         <div className={styles.featureControls}>
                           <span className={styles.limitLabel}>{copy.limitPerDay}</span>
-                          <NumberStepper value={limit} onChange={value => setFeatureLimits(prev => ({
-                      ...prev,
-                      [key]: value
-                    }))} min={1} max={10000} step={1} disabled={!features[key] || saving} />
-                          <Switch checked={Boolean(features[key])} onChange={checked => setFeatures(prev => ({
-                      ...prev,
-                      [key]: checked
-                    }))} />
+                          <NumberStepper
+                            value={limit}
+                            onChange={value =>
+                              setFeatureLimits(prev => ({
+                                ...prev,
+                                [key]: value
+                              }))
+                            }
+                            min={1}
+                            max={10000}
+                            step={1}
+                            disabled={!features[key] || saving}
+                          />
+                          <Switch
+                            checked={Boolean(features[key])}
+                            onChange={checked =>
+                              setFeatures(prev => ({
+                                ...prev,
+                                [key]: checked
+                              }))
+                            }
+                          />
                         </div>
-                      </div>;
-              })}
+                      </div>
+                    );
+                  })}
                 </div>
-              </Card>
+              </SettingsSection>
             </div>
 
             <div className={styles.columnCard}>
-              <Card title={copy.journalTitle} fill>
-                {usageRows.length === 0 ? <p className={ui.adminMutedText}>{copy.journalEmpty}</p> : <div className={styles.tableWrap}>
+              <SettingsSection title={copy.journalTitle} icon="mdi:clipboard-text-clock-outline">
+                {usageRows.length === 0 ? (
+                  <p className={ui.adminMutedText}>{copy.journalEmpty}</p>
+                ) : (
+                  <div className={styles.tableWrap}>
                     <table className={styles.table}>
                       <thead>
                         <tr>
@@ -473,7 +496,8 @@ export default function AdminAi({
                         </tr>
                       </thead>
                       <tbody>
-                        {usageRows.map(row => <tr key={row.id}>
+                        {usageRows.map(row => (
+                          <tr key={row.id}>
                             <td>{formatWhen(row.used_at, locale)}</td>
                             <td>{featureLabel(row.feature, copy)}</td>
                             <td>{row.user_name || copy.system}</td>
@@ -481,17 +505,22 @@ export default function AdminAi({
                               <span className={row.success ? styles.ok : styles.bad}>
                                 {row.success ? copy.ok : copy.fail}
                               </span>
-                              {!row.success && row.error_message ? <span className={styles.errHint} title={row.error_message}>
+                              {!row.success && row.error_message ? (
+                                <span className={styles.errHint} title={row.error_message}>
                                   <Icon icon="mdi:alert-circle-outline" aria-hidden />
-                                </span> : null}
+                                </span>
+                              ) : null}
                             </td>
-                          </tr>)}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
-                  </div>}
-              </Card>
+                  </div>
+                )}
+              </SettingsSection>
             </div>
           </div>
         </div>}
-    </Page>;
+      </SettingsSection>
+    </AdminPlatformShell>;
 }

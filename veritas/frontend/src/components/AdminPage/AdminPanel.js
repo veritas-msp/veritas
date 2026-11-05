@@ -13,18 +13,14 @@ import AdminGeneralSettings from "./AdminGeneralSettings";
 import AdminLoginBranding from "./AdminLoginBranding";
 import AdminReports from "./AdminReports";
 import AdminTechNewsFeeds from "./AdminTechNewsFeeds";
-import AdminContractModuleOptions from "./AdminContractModuleOptions";
-import AdminEquipmentFamilies from "./AdminEquipmentFamilies";
-import AdminInfrastructureMap from "./AdminInfrastructureMap";
+import AdminFicheConfigPage from "./AdminFicheConfigPage";
 import AdminPlanning from "./AdminPlanning";
 import AdminUsers from "./AdminUsers";
 import AdminPermissions from "./AdminPermissions";
 import AdminClients from "./AdminClients";
 import AdminTickets from "./AdminTickets";
 import AdminInterconnections from "./AdminInterconnections";
-import AdminAi from "./AdminAi";
 import AdminRmm from "./AdminRmm";
-import AdminSupervisionAlertRules from "./AdminSupervisionAlertRules";
 import AdminMaintenance from "./AdminMaintenance";
 import AdminClientPortal from "./AdminClientPortal";
 import AdminLicense from "./AdminLicense";
@@ -46,9 +42,7 @@ const TAB_COMPONENTS = {
   "login-branding": AdminLoginBranding,
   reports: AdminReports,
   "tech-news-feeds": AdminTechNewsFeeds,
-  "contract-modules": AdminContractModuleOptions,
-  "equipment-families": AdminEquipmentFamilies,
-  "infrastructure-map": AdminInfrastructureMap,
+  "fiche-config": AdminFicheConfigPage,
   planning: AdminPlanning,
   users: AdminUsers,
   permissions: AdminPermissions,
@@ -63,9 +57,7 @@ const TAB_COMPONENTS = {
   "notifications-inapp": AdminNotificationsHub,
   notifications: AdminNotificationsHub,
   integrations: AdminInterconnections,
-  ai: AdminAi,
   rmm: AdminRmm,
-  "supervision-alert-rules": AdminSupervisionAlertRules,
   injection: AdminInjection,
   "equipment-purge": AdminEquipmentPurge,
   maintenance: AdminMaintenance,
@@ -76,9 +68,7 @@ const ADMIN_PANEL_PRO_PROMO = {
   reports: "adminReports",
   "tech-news-feeds": "adminTechNewsFeeds",
   teams: "adminTeams",
-  "contract-modules": "adminContractModules",
-  "equipment-families": "adminEquipmentFamilies",
-  "infrastructure-map": "adminEquipmentFamilies",
+  "fiche-config": "adminContractModules",
   planning: "planning",
   "support-credits": "credits",
   sla: "sla",
@@ -200,6 +190,12 @@ function resolveLegacyNavigation(parsed) {
       }
     };
   }
+  if (tab === "teams" || tab === "planning") {
+    return {
+      tab: "users",
+      agentView: tab
+    };
+  }
   return {
     tab
   };
@@ -221,6 +217,8 @@ export default function AdminPanel({
   const panelCopy = useMemo(() => getAdminPanelCopy(locale), [locale]);
   const injectionCopy = useMemo(() => getAdminInjectionCopy(locale), [locale]);
   const [activeTab, setActiveTab] = useState("general");
+  const [ficheConfigView, setFicheConfigView] = useState("contract-modules");
+  const [agentView, setAgentView] = useState(null);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [navSearch, setNavSearch] = useState("");
   const [expandedGroups, setExpandedGroups] = useState(() => new Set());
@@ -263,6 +261,14 @@ export default function AdminPanel({
           ...item,
           children
         };
+      }
+      if (item.key === "users") {
+        const canOrg =
+          canAccessAdminNavKey(can, "users", isAdmin) ||
+          canAccessAdminNavKey(can, "teams", isAdmin) ||
+          canAccessAdminNavKey(can, "planning", isAdmin);
+        if (!canOrg) return null;
+        return item;
       }
       if (!canAccessAdminNavKey(can, item.key, isAdmin)) return null;
       return item;
@@ -344,10 +350,17 @@ export default function AdminPanel({
       const {
         tab: resolvedTab,
         hub,
-        serviceView
+        serviceView,
+        agentView
       } = resolveLegacyNavigation(parsed);
       if (hub) {
         sessionStorage.setItem("veritas_admin_hub_view", JSON.stringify(hub));
+      }
+      if (agentView === "teams" || agentView === "planning") {
+        setAgentView(agentView);
+        try {
+          sessionStorage.setItem("veritas_admin_agent_view", agentView);
+        } catch {}
       }
       if (resolvedTab && allowedNavKeys.includes(resolvedTab)) {
         setActiveTab(resolvedTab);
@@ -375,13 +388,38 @@ export default function AdminPanel({
     }
   }, [activeTab, allowedNavKeys, injectionRunning]);
   useEffect(() => {
+    if (routeTab === "teams" || routeTab === "planning") {
+      setAgentView(routeTab);
+      try {
+        sessionStorage.setItem("veritas_admin_agent_view", routeTab);
+      } catch {}
+      setActiveTab("users");
+      onRouteTabChange?.("users");
+      return;
+    }
+    if (routeTab === "contract-modules" || routeTab === "equipment-families" || routeTab === "infrastructure-map" || routeTab === "nav-client-config") {
+      setFicheConfigView(routeTab === "equipment-families" ? "equipment-families" : "contract-modules");
+      if (allowedNavKeys.includes("fiche-config")) {
+        setActiveTab("fiche-config");
+        onRouteTabChange?.("fiche-config");
+      }
+      return;
+    }
+    if (routeTab === "supervision-alert-rules" || routeTab === "ai") {
+      const fallback = allowedNavKeys.includes("integrations")
+        ? "integrations"
+        : allowedNavKeys[0] || "general";
+      setActiveTab(fallback);
+      onRouteTabChange?.(fallback);
+      return;
+    }
     if (!routeTab || !allowedNavKeys.includes(routeTab)) return;
     setActiveTab(prev => {
       if (prev === routeTab) return prev;
       if (injectionRunning && routeTab !== "injection" && prev === "injection") return prev;
       return routeTab;
     });
-  }, [routeTab, allowedNavKeys, injectionRunning]);
+  }, [routeTab, allowedNavKeys, injectionRunning, onRouteTabChange]);
   if (!hasAdminAccess) {
     return <AdminAccessDenied />;
   }
@@ -400,9 +438,16 @@ export default function AdminPanel({
     query: navSearch.trim()
   })} onItemClick={handleNavClick} isGroupExpanded={isGroupExpanded} onToggleGroup={toggleNavGroup} renderProBadge={() => <ProFeatureBadge variant="inline" className={uiKitAdminStyles.adminNavItemProBadge} />} />}>
       <div className={layout.content}>
-        {ActiveComponent ? <ActiveComponent isCommunity={isCommunity} {...activeTab === "injection" ? {
-        onRunningChange: handleInjectionRunningChange
-      } : null} onOpenPage={onOpenPage} onNavigate={handleNavigate} /> : null}
+        <div className={layout.contentPane} key={activeTab}>
+          {ActiveComponent ? <ActiveComponent isCommunity={isCommunity} {...activeTab === "injection" ? {
+          onRunningChange: handleInjectionRunningChange
+        } : null} {...activeTab === "users" ? {
+          agentView,
+          onAgentViewConsumed: () => setAgentView(null)
+        } : null} {...(activeTab === "fiche-config" ? {
+          initialView: ficheConfigView
+        } : null)} onOpenPage={onOpenPage} onNavigate={handleNavigate} /> : null}
+        </div>
       </div>
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />

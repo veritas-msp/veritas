@@ -1,13 +1,28 @@
 
 
 .portalPageHero {
-  margin: 0;
-  width: 100%;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  align-self: stretch;
   box-sizing: border-box;
   border-radius: var(--msp-radius, 16px);
   border-color: var(--msp-border, var(--portal-border, #e4e8ee));
   background: var(--msp-surface, var(--portal-surface, #fff));
   box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
+}
+
+.portalWizardShell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
 }
 
 .tabBar {

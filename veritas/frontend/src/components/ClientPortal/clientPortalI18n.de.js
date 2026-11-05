@@ -815,6 +815,17 @@ export default {
       formSectionTitle: "Formular",
       noForms: "Derzeit ist kein Meldeformular verfügbar.",
       noFormsForKind: "Für diesen Meldungstyp ist kein Formular verfügbar.",
+      wizard: {
+        typeTitle: "Welcher Support-Tickettyp?",
+        typeHint: "Wählen Sie die Kategorie, die am besten zu Ihrer Anfrage passt.",
+        formTitle: "Welche Art von Anfrage?",
+        formHint: "Wählen Sie das passende Formular, um fortzufahren.",
+        back: "Zurück",
+        changeType: "Typ ändern",
+        changeForm: "Formular ändern",
+        loadingForms: "Formulare werden geladen…",
+        noForms: "Kein Formular für diesen Typ verfügbar."
+      },
       subject: "Betreff",
       description: "Ausführliche Beschreibung",
       attemptedActions: "Bereits durchgeführte Schritte",

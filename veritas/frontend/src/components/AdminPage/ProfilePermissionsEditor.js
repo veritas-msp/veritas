@@ -7,6 +7,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { isSuperAdminProtectedProfile } from "../../utils/profileProtection";
 import s from "./ProfilePermissionsEditor.module.css";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 
 function cloneMatrix(source) {
   const next = {};
@@ -175,7 +176,7 @@ export default function ProfilePermissionsEditor({
     if (ok) toast.success(copy.previewStarted.replace("{profile}", getLocalizedProfileName(profileName, copy) || profileName));
   };
 
-  if (loading) return <div className={s.state}>{copy.loading}</div>;
+  if (loading) return <AdminGeneralSettingsLoading message={copy.loading} />;
   if (error) return <div className={s.stateError}>{error}</div>;
   if (profiles.length === 0 || featureRows.length === 0 && !featureFilter) {
     return <div className={s.state}>{copy.empty}</div>;

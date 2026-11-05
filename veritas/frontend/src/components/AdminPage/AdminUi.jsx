@@ -41,9 +41,10 @@ export function Card({
   noPadding,
   fill,
   fillNoScroll,
-  overflowVisible
+  overflowVisible,
+  flat = false
 }) {
-  return <section className={`${s.card} ${fill ? s.cardFill : ""} ${fillNoScroll ? s.cardFillNoScroll : ""} ${overflowVisible ? s.cardOverflowVisible : ""}`}>
+  return <section className={`${s.card} ${fill ? s.cardFill : ""} ${fillNoScroll ? s.cardFillNoScroll : ""} ${overflowVisible ? s.cardOverflowVisible : ""} ${flat ? s.cardFlat : ""}`}>
       {(title || action) && <header className={s.cardHeader}>
           <div>
             {title && <h2 className={s.cardTitle}>{title}</h2>}

@@ -1731,10 +1731,17 @@ function VaultRenameFolderModal({ copy, folder, onClose, onSave }) {
   const [name, setName] = useState(folder?.name || "");
   const [visibleToClient, setVisibleToClient] = useState(Boolean(folder?.visibleToClient));
   const [saving, setSaving] = useState(false);
+  const nameReady = Boolean(String(name || "").trim());
+  const closeAria = copy.uploadModal?.closeAria || copy.editModal?.closeAria || "Close";
+  const cancelLabel = copy.uploadModal?.cancel || copy.editModal?.cancel || "Cancel";
+  const saveLabel = copy.editModal?.save || "Save";
+  const savingLabel = copy.editModal?.saving || "…";
+
   useEffect(() => {
     setName(folder?.name || "");
     setVisibleToClient(Boolean(folder?.visibleToClient));
   }, [folder]);
+
   const submit = async e => {
     e.preventDefault();
     const trimmed = name.trim();
@@ -1748,8 +1755,16 @@ function VaultRenameFolderModal({ copy, folder, onClose, onSave }) {
       setSaving(false);
     }
   };
-  return createPortal(<div className={formStyles.overlay} onClick={onClose} role="presentation">
-      <div className={`${formStyles.shell} ${formStyles.shellMedium}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+
+  return createPortal(
+    <div className={formStyles.overlay} onClick={saving ? undefined : onClose} role="presentation">
+      <div
+        className={`${formStyles.shell} ${formStyles.shellCompact}`}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vault-rename-folder-title"
+      >
         <div className={formStyles.accentBar} aria-hidden />
         <header className={formStyles.header}>
           <div className={formStyles.headerMain}>
@@ -1758,25 +1773,55 @@ function VaultRenameFolderModal({ copy, folder, onClose, onSave }) {
             </div>
             <div className={formStyles.headerText}>
               <p className={formStyles.eyebrow}>{copy.panel.sectionTitle}</p>
-              <h2 className={formStyles.title}>{copy.panel.renameFolderTitle}</h2>
+              <h2 className={formStyles.title} id="vault-rename-folder-title">
+                {copy.panel.renameFolderTitle}
+              </h2>
+              {copy.panel.renameFolderSubtitle ? (
+                <p className={formStyles.subtitle}>{copy.panel.renameFolderSubtitle}</p>
+              ) : null}
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving} aria-label={copy.uploadModal?.closeAria || "Close"}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={formStyles.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={closeAria}
+            icon="mdi:close"
+          />
         </header>
-        <form className={styles.modalForm} onSubmit={submit}>
-          <div className={styles.modalFormBody}>
+
+        <form className={`${styles.modalForm} ${styles.modalFormCompact}`} onSubmit={submit}>
+          <div className={`${styles.modalFormBody} ${styles.modalFormBodyCompact}`}>
             <div className={formStyles.field}>
-              <label className={formStyles.label} htmlFor="vault-rename-folder">{copy.panel.newFolderPlaceholder}</label>
-              <input id="vault-rename-folder" className={formStyles.input} value={name} onChange={e => setName(e.target.value)} autoFocus disabled={saving} />
+              <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-rename-folder">
+                {copy.panel.newFolderPlaceholder}
+              </label>
+              <input
+                id="vault-rename-folder"
+                className={formStyles.input}
+                value={name}
+                onChange={e => setName(e.target.value)}
+                maxLength={255}
+                autoFocus
+                disabled={saving}
+              />
             </div>
             <div className={styles.visibilitySwitchRow}>
               <div className={styles.visibilitySwitchCopy}>
                 <span className={formStyles.label}>{copy.panel.folderVisiblePortal}</span>
                 <p className={styles.visibilitySwitchHint}>{copy.uploadModal?.visiblePortalHint}</p>
               </div>
-              <button type="button" role="switch" aria-checked={visibleToClient} className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`} onClick={() => setVisibleToClient(v => !v)} disabled={saving}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={visibleToClient}
+                className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`}
+                onClick={() => setVisibleToClient(v => !v)}
+                disabled={saving}
+              >
                 <span className={styles.visibilitySwitchTrack}>
                   <span className={styles.visibilitySwitchThumb} />
                 </span>
@@ -1786,24 +1831,47 @@ function VaultRenameFolderModal({ copy, folder, onClose, onSave }) {
               </button>
             </div>
           </div>
+
           <footer className={formStyles.footer}>
-            <span className={formStyles.footerHint} />
+            <span className={formStyles.footerHint} aria-hidden />
             <div className={formStyles.footerActions}>
-              <button type="button" className={formStyles.ghostBtn} onClick={onClose} disabled={saving}>{copy.uploadModal?.cancel || "Cancel"}</button>
-              <button type="submit" className={formStyles.primaryBtn} disabled={saving || !name.trim()}>
-                {saving ? (copy.editModal?.saving || "…") : (copy.editModal?.save || "Save")}
-              </button>
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
+                {cancelLabel}
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={saving || !nameReady}
+                icon={saving ? undefined : "mdi:content-save-outline"}
+              >
+                {saving ? (
+                  <>
+                    <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
+                    {savingLabel}
+                  </>
+                ) : (
+                  saveLabel
+                )}
+              </UiKitButton>
             </div>
           </footer>
         </form>
       </div>
-    </div>, document.body);
+    </div>,
+    document.getElementById("modal-root") || document.body
+  );
 }
 
 function VaultCreateFolderModal({ copy, onClose, onCreate }) {
   const [name, setName] = useState("");
   const [visibleToClient, setVisibleToClient] = useState(false);
   const [saving, setSaving] = useState(false);
+  const nameReady = Boolean(String(name || "").trim());
+  const closeAria = copy.uploadModal?.closeAria || copy.editModal?.closeAria || "Close";
+  const cancelLabel = copy.uploadModal?.cancel || copy.editModal?.cancel || "Cancel";
+  const createLabel = copy.panel.createFolder || "Create";
+  const creatingLabel = copy.panel.creatingFolder || copy.uploadModal?.uploading || "…";
+
   const submit = async e => {
     e.preventDefault();
     const trimmed = name.trim();
@@ -1817,8 +1885,16 @@ function VaultCreateFolderModal({ copy, onClose, onCreate }) {
       setSaving(false);
     }
   };
-  return createPortal(<div className={formStyles.overlay} onClick={onClose} role="presentation">
-      <div className={`${formStyles.shell} ${formStyles.shellMedium}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="vault-folder-modal-title">
+
+  return createPortal(
+    <div className={formStyles.overlay} onClick={saving ? undefined : onClose} role="presentation">
+      <div
+        className={`${formStyles.shell} ${formStyles.shellCompact}`}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vault-folder-modal-title"
+      >
         <div className={formStyles.accentBar} aria-hidden />
         <header className={formStyles.header}>
           <div className={formStyles.headerMain}>
@@ -1827,25 +1903,56 @@ function VaultCreateFolderModal({ copy, onClose, onCreate }) {
             </div>
             <div className={formStyles.headerText}>
               <p className={formStyles.eyebrow}>{copy.uploadModal?.eyebrow || copy.panel.sectionTitle}</p>
-              <h2 className={formStyles.title} id="vault-folder-modal-title">{copy.panel.newFolder}</h2>
+              <h2 className={formStyles.title} id="vault-folder-modal-title">
+                {copy.panel.newFolder}
+              </h2>
+              {copy.panel.newFolderSubtitle ? (
+                <p className={formStyles.subtitle}>{copy.panel.newFolderSubtitle}</p>
+              ) : null}
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving} aria-label={copy.uploadModal?.closeAria || "Close"}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={formStyles.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={closeAria}
+            icon="mdi:close"
+          />
         </header>
-        <form className={styles.modalForm} onSubmit={submit}>
-          <div className={styles.modalFormBody}>
+
+        <form className={`${styles.modalForm} ${styles.modalFormCompact}`} onSubmit={submit}>
+          <div className={`${styles.modalFormBody} ${styles.modalFormBodyCompact}`}>
             <div className={formStyles.field}>
-              <label className={formStyles.label} htmlFor="vault-folder-name">{copy.panel.newFolderPlaceholder}</label>
-              <input id="vault-folder-name" className={formStyles.input} value={name} onChange={e => setName(e.target.value)} placeholder={copy.panel.newFolderPlaceholder} autoFocus disabled={saving} />
+              <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-folder-name">
+                {copy.panel.newFolderPlaceholder}
+              </label>
+              <input
+                id="vault-folder-name"
+                className={formStyles.input}
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder={copy.panel.newFolderPlaceholder}
+                maxLength={255}
+                autoFocus
+                disabled={saving}
+              />
             </div>
             <div className={styles.visibilitySwitchRow}>
               <div className={styles.visibilitySwitchCopy}>
                 <span className={formStyles.label}>{copy.panel.folderVisiblePortal}</span>
                 <p className={styles.visibilitySwitchHint}>{copy.uploadModal?.visiblePortalHint}</p>
               </div>
-              <button type="button" role="switch" aria-checked={visibleToClient} className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`} onClick={() => setVisibleToClient(v => !v)} disabled={saving}>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={visibleToClient}
+                className={`${styles.visibilitySwitch} ${visibleToClient ? styles.visibilitySwitchOn : ""}`}
+                onClick={() => setVisibleToClient(v => !v)}
+                disabled={saving}
+              >
                 <span className={styles.visibilitySwitchTrack}>
                   <span className={styles.visibilitySwitchThumb} />
                 </span>
@@ -1855,18 +1962,35 @@ function VaultCreateFolderModal({ copy, onClose, onCreate }) {
               </button>
             </div>
           </div>
+
           <footer className={formStyles.footer}>
-            <span className={formStyles.footerHint} />
+            <span className={formStyles.footerHint} aria-hidden />
             <div className={formStyles.footerActions}>
-              <button type="button" className={formStyles.ghostBtn} onClick={onClose} disabled={saving}>{copy.uploadModal?.cancel || "Cancel"}</button>
-              <button type="submit" className={formStyles.primaryBtn} disabled={saving || !name.trim()}>
-                {saving ? (copy.uploadModal?.uploading || "…") : (copy.panel.createFolder || "Create")}
-              </button>
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
+                {cancelLabel}
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={saving || !nameReady}
+                icon={saving ? undefined : "mdi:folder-plus-outline"}
+              >
+                {saving ? (
+                  <>
+                    <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
+                    {creatingLabel}
+                  </>
+                ) : (
+                  createLabel
+                )}
+              </UiKitButton>
             </div>
           </footer>
         </form>
       </div>
-    </div>, document.body);
+    </div>,
+    document.getElementById("modal-root") || document.body
+  );
 }
 
 function VaultUploadModal({

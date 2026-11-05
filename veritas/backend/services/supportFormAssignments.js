@@ -8,6 +8,17 @@ function emptyAssignments() {
     teamIds: []
   };
 }
+function emptyPortalAudience() {
+  return {
+    portalClientIds: [],
+    portalContactIds: [],
+    portalClients: [],
+    portalContacts: []
+  };
+}
+function normalizeIdList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map(value => String(value || "").trim()).filter(Boolean))];
+}
 export async function loadAssignmentsByFormIds(formIds = []) {
   if (!formIds.length) return {};
   const [profiles, users, teams] = await Promise.all([pool.query(`SELECT form_id, profile_name
@@ -51,6 +62,60 @@ export async function loadAssignmentsByFormIds(formIds = []) {
   }
   return map;
 }
+export async function loadPortalAudienceByFormIds(formIds = []) {
+  if (!formIds.length) return {};
+  const map = {};
+  for (const id of formIds) {
+    map[String(id)] = emptyPortalAudience();
+  }
+  try {
+    const [clients, contacts] = await Promise.all([
+      pool.query(
+        `SELECT fc.form_id, fc.client_id, COALESCE(c.name, c.nom, '') AS client_name
+           FROM v_b_support_form_portal_clients fc
+           LEFT JOIN v_b_clients c ON c.id = fc.client_id
+          WHERE fc.form_id = ANY($1::text[])
+          ORDER BY client_name ASC`,
+        [formIds]
+      ),
+      pool.query(
+        `SELECT fc.form_id, fc.contact_id,
+                COALESCE(NULLIF(TRIM(CONCAT(COALESCE(ct.prenom, ''), ' ', COALESCE(ct.nom, ''))), ''), ct.email, '') AS contact_label,
+                ct.email AS contact_email
+           FROM v_b_support_form_portal_contacts fc
+           LEFT JOIN v_b_contacts ct ON ct.id = fc.contact_id
+          WHERE fc.form_id = ANY($1::text[])
+          ORDER BY contact_label ASC`,
+        [formIds]
+      )
+    ]);
+    for (const row of clients.rows || []) {
+      const key = String(row.form_id);
+      const clientId = String(row.client_id);
+      map[key].portalClientIds.push(clientId);
+      map[key].portalClients.push({
+        id: clientId,
+        name: row.client_name || `#${clientId}`
+      });
+    }
+    for (const row of contacts.rows || []) {
+      const key = String(row.form_id);
+      const contactId = String(row.contact_id);
+      map[key].portalContactIds.push(contactId);
+      map[key].portalContacts.push({
+        id: contactId,
+        label: row.contact_label || row.contact_email || `#${contactId}`,
+        email: row.contact_email || ""
+      });
+    }
+  } catch (err) {
+    // Tables may not exist yet during rolling migration.
+    if (String(err?.code) !== "42P01") {
+      console.warn("loadPortalAudienceByFormIds:", err.message);
+    }
+  }
+  return map;
+}
 export async function syncFormAssignments(formId, assignments = {}) {
   const profileNames = [...new Set((assignments.profileNames || []).map(n => String(n || "").trim()).filter(Boolean))];
   const userIds = [...new Set((assignments.userIds || []).map(n => String(n || "").trim()).filter(Boolean))];
@@ -73,11 +138,61 @@ export async function syncFormAssignments(formId, assignments = {}) {
     teamIds
   };
 }
+export async function syncFormPortalAudience(formId, audience = {}) {
+  const portalClientIds = normalizeIdList(audience.portalClientIds);
+  const portalContactIds = normalizeIdList(audience.portalContactIds);
+  await pool.query(`DELETE FROM v_b_support_form_portal_clients WHERE form_id = $1`, [formId]);
+  await pool.query(`DELETE FROM v_b_support_form_portal_contacts WHERE form_id = $1`, [formId]);
+  for (const clientId of portalClientIds) {
+    await pool.query(
+      `INSERT INTO v_b_support_form_portal_clients (form_id, client_id)
+       VALUES ($1, $2::int)
+       ON CONFLICT DO NOTHING`,
+      [formId, clientId]
+    );
+  }
+  for (const contactId of portalContactIds) {
+    await pool.query(
+      `INSERT INTO v_b_support_form_portal_contacts (form_id, contact_id)
+       VALUES ($1, $2::int)
+       ON CONFLICT DO NOTHING`,
+      [formId, contactId]
+    );
+  }
+  return {
+    portalClientIds,
+    portalContactIds
+  };
+}
 export function mapFormAssignments(assignments = emptyAssignments()) {
   return mapViewAssignments(assignments);
 }
+export function mapFormPortalAudience(audience = emptyPortalAudience()) {
+  return {
+    portalClientIds: Array.isArray(audience.portalClientIds) ? audience.portalClientIds.map(String) : [],
+    portalContactIds: Array.isArray(audience.portalContactIds) ? audience.portalContactIds.map(String) : [],
+    portalClients: Array.isArray(audience.portalClients) ? audience.portalClients : [],
+    portalContacts: Array.isArray(audience.portalContacts) ? audience.portalContacts : []
+  };
+}
+export function hasPortalAudienceTargets(audience = {}) {
+  return normalizeIdList(audience.portalClientIds).length > 0 || normalizeIdList(audience.portalContactIds).length > 0;
+}
 export function userCanAccessForm(form, assignments, userId, profileName, userTeamIds = []) {
   if (!form) return false;
+  if (form.visibleToAgents === false) return false;
   if (form.visibility !== "assigned") return true;
   return userCanAccessAssignedView(assignments, userId, profileName, userTeamIds);
+}
+export function portalUserCanAccessForm(form, audience = emptyPortalAudience(), {
+  clientId = null,
+  contactId = null
+} = {}) {
+  if (!form || form.visibleToPortal !== true) return false;
+  if (form.portalVisibleToAll === true) return true;
+  const clientIds = new Set((audience.portalClientIds || []).map(String));
+  const contactIds = new Set((audience.portalContactIds || []).map(String));
+  if (clientId != null && clientId !== "" && clientIds.has(String(clientId))) return true;
+  if (contactId != null && contactId !== "" && contactIds.has(String(contactId))) return true;
+  return false;
 }

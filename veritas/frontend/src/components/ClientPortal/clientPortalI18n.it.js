@@ -815,6 +815,17 @@ export default {
       formSectionTitle: "Modulo",
       noForms: "Nessun modulo di dichiarazione disponibile al momento.",
       noFormsForKind: "Nessun modulo disponibile per questo tipo di dichiarazione.",
+      wizard: {
+        typeTitle: "Che tipo di ticket support?",
+        typeHint: "Scegliete la categoria che meglio corrisponde alla vostra richiesta.",
+        formTitle: "Quale natura della richiesta?",
+        formHint: "Selezionate il modulo adatto per continuare.",
+        back: "Indietro",
+        changeType: "Cambia tipo",
+        changeForm: "Cambia modulo",
+        loadingForms: "Caricamento moduli…",
+        noForms: "Nessun modulo disponibile per questo tipo."
+      },
       subject: "Oggetto",
       description: "Descrizione dettagliata",
       attemptedActions: "Azioni già tentate",

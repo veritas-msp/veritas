@@ -815,6 +815,17 @@ export default {
       formSectionTitle: "Form",
       noForms: "No declaration form is available at the moment.",
       noFormsForKind: "No form available for this declaration type.",
+      wizard: {
+        typeTitle: "What type of support ticket?",
+        typeHint: "Pick the category that best matches your request.",
+        formTitle: "What kind of request?",
+        formHint: "Select the right form to continue.",
+        back: "Back",
+        changeType: "Change type",
+        changeForm: "Change form",
+        loadingForms: "Loading forms…",
+        noForms: "No form available for this type."
+      },
       subject: "Subject",
       description: "Detailed description",
       attemptedActions: "Steps already tried",

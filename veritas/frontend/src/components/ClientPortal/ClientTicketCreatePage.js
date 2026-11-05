@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -24,7 +24,9 @@ import { filterPortalTicketsBySite, getPortalEquipmentSiteById } from "./portalS
 import { buildAvailabilityContactSlots, buildPortalClientEquipments, formatContactSlotLabel, getEquipmentLinkLabel, getEquipmentLinkSearchText, getEquipmentTypeLabel, getTodayDateString, serializeContactSlots } from "./clientPortalTicketCreateUtils";
 import pageStyles from "./ClientPortalPages.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import TicketCreateWizard from "../TicketPage/TicketCreateWizard";
 const TIP_ICONS = ["mdi:text-box-search-outline", "mdi:alert-circle-outline", "mdi:history", "mdi:paperclip"];
+const TICKET_KIND_KEYS = ["incident", "demande", "probleme", "changement"];
 const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_ATTACHMENT_FILES = 10;
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
@@ -222,12 +224,14 @@ export default function ClientTicketCreatePage() {
   const [supportForms, setSupportForms] = useState([]);
   const [selectedSupportFormId, setSelectedSupportFormId] = useState("");
   const [supportFormValues, setSupportFormValues] = useState({});
+  const [wizardStep, setWizardStep] = useState("type");
+  const [loadingForms, setLoadingForms] = useState(true);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [attemptedActions, setAttemptedActions] = useState("");
   const [issueNature, setIssueNature] = useState("unsure");
   const [priority, setPriority] = useState("normal");
-  const [type, setType] = useState("incident");
+  const [type, setType] = useState("");
   const [availabilityMode, setAvailabilityMode] = useState("none");
   const [availabilityDate, setAvailabilityDate] = useState(getTodayDateString());
   const [availabilityStart, setAvailabilityStart] = useState("09:00");
@@ -271,9 +275,11 @@ export default function ClientTicketCreatePage() {
     }).then(rows => setPortalTickets(Array.isArray(rows) ? rows : [])).catch(() => setPortalTickets([])).finally(() => setLoadingTickets(false));
   }, []);
   useEffect(() => {
+    setLoadingForms(true);
     fetchPortalSupportForms()
       .then(rows => setSupportForms(Array.isArray(rows) ? rows : []))
-      .catch(() => setSupportForms([]));
+      .catch(() => setSupportForms([]))
+      .finally(() => setLoadingForms(false));
   }, []);
   useEffect(() => {
     const handleClickOutside = event => {
@@ -338,21 +344,12 @@ export default function ClientTicketCreatePage() {
   const formEquipmentFieldKeys = useMemo(() => findFormEquipmentFieldKeys(selectedSupportForm?.fields || []), [selectedSupportForm]);
   const hasFormEquipmentField = formEquipmentFieldKeys.length > 0;
   useEffect(() => {
-    if (!hasAnySupportForms) return;
-    const hasFormsForCurrentType = enabledSupportForms.some(form => String(form.kind || "").trim() === type);
-    if (hasFormsForCurrentType) return;
-    const firstKind = String(enabledSupportForms[0]?.kind || "").trim();
-    if (firstKind && firstKind !== type) setType(firstKind);
-  }, [hasAnySupportForms, enabledSupportForms, type]);
-  useEffect(() => {
-    if (!hasSupportForms) {
-      if (selectedSupportFormId) setSelectedSupportFormId("");
-      return;
-    }
-    if (!formsForKind.some(form => String(form.id) === String(selectedSupportFormId))) {
-      setSelectedSupportFormId(String(formsForKind[0].id));
-    }
-  }, [hasSupportForms, formsForKind, selectedSupportFormId]);
+    if (!selectedSupportFormId) return;
+    if (formsForKind.some(form => String(form.id) === String(selectedSupportFormId))) return;
+    setSelectedSupportFormId("");
+    setSupportFormValues({});
+    if (wizardStep === "details" && hasAnySupportForms) setWizardStep("form");
+  }, [formsForKind, selectedSupportFormId, wizardStep, hasAnySupportForms]);
   useEffect(() => {
     setSupportFormValues(prev => {
       const next = {};
@@ -530,10 +527,27 @@ export default function ClientTicketCreatePage() {
       linkedTicketId: undefined
     }));
   };
-  const handleKindChange = useCallback(nextKind => {
-    const kind = String(nextKind || "").trim();
-    if (!kind || kind === type) return;
-    setType(kind);
+  const handleSupportFormSelect = useCallback((form, { advance = true } = {}) => {
+    if (!form?.id) return;
+    const nextId = String(form.id);
+    const sameForm = nextId === String(selectedSupportFormId);
+    if (!sameForm) {
+      setSelectedSupportFormId(nextId);
+      setSupportFormValues({});
+    }
+    const nextType = String(form.kind || "").trim();
+    if (nextType) setType(nextType);
+    setFieldErrors(prev => ({
+      ...prev,
+      supportForm: undefined,
+      supportFormDetails: undefined
+    }));
+    if (advance) setWizardStep("details");
+  }, [selectedSupportFormId]);
+  const handleWizardPickType = useCallback(item => {
+    const nextKind = String(item?.key || "").trim();
+    if (!TICKET_KIND_KEYS.includes(nextKind)) return;
+    setType(nextKind);
     setSelectedSupportFormId("");
     setSupportFormValues({});
     setFieldErrors(prev => ({
@@ -541,18 +555,40 @@ export default function ClientTicketCreatePage() {
       supportForm: undefined,
       supportFormDetails: undefined
     }));
-  }, [type]);
-  const handleSupportFormSelect = useCallback(form => {
-    if (!form?.id) return;
-    if (String(form.id) === String(selectedSupportFormId)) return;
-    setSelectedSupportFormId(String(form.id));
+    if (!hasAnySupportForms) {
+      setWizardStep("details");
+      return;
+    }
+    const matchingForms = enabledSupportForms.filter(form => String(form.kind || "").trim() === nextKind);
+    if (matchingForms.length === 1) {
+      handleSupportFormSelect(matchingForms[0], { advance: true });
+      return;
+    }
+    setWizardStep("form");
+  }, [hasAnySupportForms, enabledSupportForms, handleSupportFormSelect]);
+  const handleWizardBackToType = useCallback(() => {
+    setWizardStep("type");
+    setSelectedSupportFormId("");
     setSupportFormValues({});
     setFieldErrors(prev => ({
       ...prev,
       supportForm: undefined,
       supportFormDetails: undefined
     }));
-  }, [selectedSupportFormId]);
+  }, []);
+  const handleWizardBackToForm = useCallback(() => {
+    if (!hasAnySupportForms || formsForKind.length <= 1) {
+      handleWizardBackToType();
+      return;
+    }
+    setWizardStep("form");
+  }, [hasAnySupportForms, formsForKind.length, handleWizardBackToType]);
+  useEffect(() => {
+    if (loadingForms || wizardStep !== "form") return;
+    if (!type || formsForKind.length !== 1) return;
+    if (selectedSupportFormId) return;
+    handleSupportFormSelect(formsForKind[0], { advance: true });
+  }, [loadingForms, wizardStep, type, formsForKind, selectedSupportFormId, handleSupportFormSelect]);
   const validate = () => {
     const errors = {};
     if (!hasAnySupportForms) {
@@ -756,6 +792,16 @@ export default function ClientTicketCreatePage() {
     label: tc.availabilityRange,
     icon: "mdi:calendar-clock-outline"
   }], [tc.availabilityNone, tc.availabilityFrom, tc.availabilityRange]);
+  const isWizardPicker = wizardStep === "type" || wizardStep === "form";
+  const selectedTypeMeta = ticketTypes.find(item => item.key === type) || null;
+  const wizardCopy = useMemo(() => ({
+    wizard: tc.wizard || {},
+    back: copy.common.back,
+    loadingForms: tc.wizard?.loadingForms,
+    noForms: tc.noForms,
+    noFormsForKind: tc.noFormsForKind
+  }), [tc.wizard, tc.noForms, tc.noFormsForKind, copy.common.back]);
+  const canShowDetails = wizardStep === "details" && ((hasSupportForms && selectedSupportForm) || !hasAnySupportForms);
   return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`} onDragEnter={handlePageDragEnter} onDragLeave={handlePageDragLeave} onDragOver={handlePageDragOver} onDrop={handlePageDrop}>
       {isAttachmentDragOver ? <div className={s.pageDropOverlay} aria-hidden>
           <Icon icon="mdi:upload-outline" className={s.pageDropOverlayIcon} />
@@ -763,8 +809,8 @@ export default function ClientTicketCreatePage() {
           <p className={s.pageDropOverlayHint}>{dropHint}</p>
         </div> : null}
 
-      <div className={portalLayout.portalShell}>
-        <MspPageHero
+      <div className={`${portalLayout.portalShell} ${isWizardPicker ? pageStyles.portalWizardShell : ""}`.trim()}>
+        {!isWizardPicker ? <MspPageHero
           className={pageStyles.portalPageHero}
           eyebrow={tc.eyebrow}
           title={tc.pageTitle}
@@ -772,71 +818,74 @@ export default function ClientTicketCreatePage() {
           icon="mingcute:ticket-fill"
           actions={
             <>
-              <Link to="/client/tickets" className={s.btnSecondary}>
+              <button type="button" className={s.btnSecondary} onClick={() => {
+                if (wizardStep === "details") {
+                  handleWizardBackToForm();
+                  return;
+                }
+                navigate("/client/tickets");
+              }}>
                 <Icon icon="mdi:arrow-left" aria-hidden />
                 {copy.common.back}
-              </Link>
-              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || (hasAnySupportForms && !hasSupportForms)} title={hasAnySupportForms && !hasSupportForms ? tc.noFormsForKind : undefined}>
+              </button>
+              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || (hasAnySupportForms && !selectedSupportForm)} title={hasAnySupportForms && !selectedSupportForm ? tc.noFormsForKind : undefined}>
                 <Icon icon="mdi:check" aria-hidden />
                 {submitting ? tc.creating : tc.createBtn}
               </button>
             </>
           }
-        />
+        /> : null}
 
-        <div className={s.typeKpiRow}>
-          {ticketTypes.map(item => (
-            <button
-              key={item.key}
-              type="button"
-              className={`${layout.kpiCard} ${type === item.key ? layout.kpiCardActive : ""}`.trim()}
-              onClick={() => handleKindChange(item.key)}
-              aria-pressed={type === item.key}
-            >
-              <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
-                <Icon icon={item.icon} aria-hidden />
-              </div>
-              <div className={layout.kpiBody}>
-                <span className={layout.kpiValue}>{item.label}</span>
-                <span className={layout.kpiLabel}>{item.hint}</span>
-              </div>
+        {isWizardPicker ? <TicketCreateWizard
+          copy={wizardCopy}
+          step={wizardStep}
+          ticketTypes={ticketTypes}
+          forms={formsForKind}
+          loading={loadingForms}
+          selectedTypeKey={type}
+          selectedFormId={selectedSupportFormId}
+          formLocked={false}
+          onPickType={handleWizardPickType}
+          onPickForm={form => handleSupportFormSelect(form, { advance: true })}
+          onBackToType={handleWizardBackToType}
+          onExit={() => navigate("/client/tickets")}
+        /> : null}
+
+        {canShowDetails ? <>
+        {hasAnySupportForms ? <div className={s.wizardContextBar}>
+          <div className={s.wizardContextChips}>
+            {selectedTypeMeta ? <button type="button" className={s.wizardContextChip} onClick={handleWizardBackToType}>
+              <Icon icon={selectedTypeMeta.icon} aria-hidden />
+              <span>{selectedTypeMeta.label}</span>
+              <Icon icon="mdi:pencil-outline" className={s.wizardContextChipEdit} aria-hidden />
+            </button> : null}
+            {selectedSupportForm ? <button type="button" className={s.wizardContextChip} onClick={handleWizardBackToForm}>
+              <Icon icon={selectedSupportForm.icon || "mdi:file-document-outline"} aria-hidden />
+              <span>{selectedSupportForm.label}</span>
+              <Icon icon="mdi:pencil-outline" className={s.wizardContextChipEdit} aria-hidden />
+            </button> : null}
+          </div>
+          <button type="button" className={s.wizardContextBack} onClick={handleWizardBackToForm}>
+            <Icon icon="mdi:arrow-left" aria-hidden />
+            {(formsForKind.length <= 1 ? tc.wizard?.changeType : tc.wizard?.changeForm) || copy.common.back}
+          </button>
+        </div> : selectedTypeMeta ? <div className={s.wizardContextBar}>
+          <div className={s.wizardContextChips}>
+            <button type="button" className={s.wizardContextChip} onClick={handleWizardBackToType}>
+              <Icon icon={selectedTypeMeta.icon} aria-hidden />
+              <span>{selectedTypeMeta.label}</span>
+              <Icon icon="mdi:pencil-outline" className={s.wizardContextChipEdit} aria-hidden />
             </button>
-          ))}
-        </div>
+          </div>
+          <button type="button" className={s.wizardContextBack} onClick={handleWizardBackToType}>
+            <Icon icon="mdi:arrow-left" aria-hidden />
+            {tc.wizard?.changeType || copy.common.back}
+          </button>
+        </div> : null}
 
         <div className={account.contentScroll}>
           <div className={account.contentGridWide}>
             <div className={s.formStack}>
-              {hasAnySupportForms ? (
-                <SectionPanel title={tc.formSectionTitle}>
-                  {!hasSupportForms ? (
-                    <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
-                      {tc.noFormsForKind || tc.noForms}
-                    </p>
-                  ) : (
-                    <div
-                      className={`${s.typeGrid} ${s.formTypeGrid}`}
-                      data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}
-                    >
-                      {formsForKind.map(form => (
-                        <button
-                          key={form.id}
-                          type="button"
-                          className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`.trim()}
-                          onClick={() => handleSupportFormSelect(form)}
-                          aria-pressed={String(selectedSupportForm?.id) === String(form.id)}
-                        >
-                          <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
-                          <span className={s.typeLabel}>{form.label}</span>
-                          {form.description ? <span className={s.typeHint}>{form.description}</span> : null}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </SectionPanel>
-              ) : null}
-
-              {(hasSupportForms && selectedSupportForm) || !hasAnySupportForms ? (
               <SectionPanel title={tc.detailsTitle} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip tips={tc.tips} title={tc.tipsTitle} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={tc.tipsAria}>
                     <Icon icon="mdi:lightbulb-outline" aria-hidden />
                   </SmartTooltip>}>
@@ -956,7 +1005,6 @@ export default function ClientTicketCreatePage() {
                 </div>
                 </> : null}
               </SectionPanel>
-              ) : null}
 
               <SectionPanel title={tc.availabilityTitle}>
                 <div className={s.demandeurBlock}>
@@ -1252,6 +1300,7 @@ export default function ClientTicketCreatePage() {
             </aside>
           </div>
         </div>
+        </> : null}
       </div>
 
       {confirmModalOpen && createPortal(<div className={s.confirmOverlay} onClick={handleCloseConfirm} role="presentation">

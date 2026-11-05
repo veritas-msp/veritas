@@ -6,14 +6,15 @@ import { getVeritasCommercialLinks } from "../../config/commercial";
 import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
-import { Page, Card, Btn, Input, Badge } from "./AdminUi";
+import { Btn, Input, Badge } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import adminUi from "./AdminUi.module.css";
 import CommunityFeatureBadge from "../Misc/ProFeature/CommunityFeatureBadge";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { resolveLicenseApiError, resolveLicenseStatusMessage } from "./licensePageUtils";
 import s from "./AdminLicense.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 const COMMERCIAL_LINKS = getVeritasCommercialLinks();
 function statusBadgeVariant(status, valid) {
   if (status === "offline_lease") return "warn";
@@ -201,13 +202,12 @@ export default function AdminLicense() {
       setOfflineActivating(false);
     }
   };
-  const heroCopy = getAdminPanelCopy(locale).items.license;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:key-variant" />
-      <Card title={copy.title} action={<Btn variant="secondary" icon="mdi:refresh" onClick={onRefresh} disabled={refreshing || loading}>
+
+  return <AdminPlatformShell>
+      <SettingsSection title={copy.title} icon="mdi:key-variant" action={<Btn variant="secondary" icon="mdi:refresh" onClick={onRefresh} disabled={refreshing || loading}>
             {refreshing ? copy.refreshing : copy.refresh}
           </Btn>}>
-        {loading ? <p className={adminUi.adminMutedText}>{adminCopy.loading}</p> : <div className={s.layout}>
+        {loading ? <AdminGeneralSettingsLoading message={adminCopy.loading} /> : <div className={s.layout}>
             <div className={s.statusBar}>
               {isValid ? <ProFeatureBadge variant="inline" /> : <CommunityFeatureBadge variant="inline" />}
               <Badge variant={statusBadgeVariant(status, isValid)}>
@@ -249,9 +249,9 @@ export default function AdminLicense() {
               </Btn>
             </div>
           </div>}
-      </Card>
+      </SettingsSection>
 
-      <Card title={copy.subscriptionTitle}>
+      <SettingsSection title={copy.subscriptionTitle} icon="mdi:help-circle-outline">
         <p className={s.legalLinks}>
           <a href={COMMERCIAL_LINKS.legal} target="_blank" rel="noopener noreferrer">
             {copy.legal}
@@ -264,6 +264,6 @@ export default function AdminLicense() {
         <div className={s.faqList}>
           {subscriptionFaq.map(item => <SubscriptionFaqItem key={item.key} {...item} />)}
         </div>
-      </Card>
-    </Page>;
+      </SettingsSection>
+    </AdminPlatformShell>;
 }

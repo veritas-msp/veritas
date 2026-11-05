@@ -2,15 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import API_BASE_URL from "../../config";
 import { fetchUsers } from "../../api/users";
 import { fetchTeams } from "../../api/teams";
-import { Page, SubTabs } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
 import SalesFormsAdmin from "./SalesFormsAdmin";
 import SalesCategoriesAdmin from "./SalesCategoriesAdmin";
 import AdminTicketViews from "./AdminTicketViews";
 import styles from "./AdminTickets.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { pickLocaleMessages } from "../../i18n/translate";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const SERVICE_SETTINGS_TABS = {
   fr: {
@@ -40,12 +38,21 @@ const SERVICE_SETTINGS_TABS = {
   }
 };
 
-const TAB_KEYS = ["sales-forms", "sales-categories", "sales-ticket-views"];
+const TAB_DEFS = [{
+  key: "sales-forms",
+  icon: "mdi:form-select"
+}, {
+  key: "sales-categories",
+  icon: "mdi:shape-outline"
+}, {
+  key: "sales-ticket-views",
+  icon: "mdi:view-dashboard-outline"
+}];
 
 function readInitialSubView() {
   try {
     const raw = sessionStorage.getItem("veritas_admin_service_view");
-    if (raw && TAB_KEYS.includes(raw)) {
+    if (raw && TAB_DEFS.some(tab => tab.key === raw)) {
       sessionStorage.removeItem("veritas_admin_service_view");
       return raw;
     }
@@ -56,9 +63,10 @@ function readInitialSubView() {
 export default function AdminServiceSettingsPage() {
   const locale = useAppLocale();
   const tabLabels = pickLocaleMessages(SERVICE_SETTINGS_TABS, locale);
-  const tabItems = useMemo(() => TAB_KEYS.map(key => ({
-    key,
-    label: tabLabels[key] || key
+  const tabItems = useMemo(() => TAB_DEFS.map(def => ({
+    key: def.key,
+    label: tabLabels[def.key] || def.key,
+    icon: def.icon
   })), [tabLabels]);
   const [activeView, setActiveView] = useState(readInitialSubView);
   const [profiles, setProfiles] = useState([]);
@@ -97,14 +105,11 @@ export default function AdminServiceSettingsPage() {
     };
   }, []);
 
-  const heroCopy = getAdminPanelCopy(locale).items["service-settings"];
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:briefcase-edit-outline" />
-      <SubTabs items={tabItems} active={activeView} onChange={setActiveView} fullWidth />
+  return <AdminPlatformShell tabs={tabItems} activeTab={activeView} onTabChange={setActiveView} tabsAriaLabel={tabLabels["sales-forms"]} fill>
       <div className={styles.content}>
         {activeView === "sales-forms" ? <SalesFormsAdmin /> : null}
         {activeView === "sales-categories" ? <SalesCategoriesAdmin /> : null}
         {activeView === "sales-ticket-views" ? <AdminTicketViews pageScope="ticket_sales" profiles={profiles} users={users} teams={teams} /> : null}
       </div>
-    </Page>;
+    </AdminPlatformShell>;
 }

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchTicketAutomationConfig, getTicketAutomationConfig, saveTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
 import { DEFAULT_MAIL_COLLECT_SETTINGS, normalizeMailCollectSettings } from "../../utils/mailCollectSettingsConstants";
-import { Card, Field, Btn, Switch, ChoiceGroup, FieldRow, NumberStepper, FormGrid } from "./AdminUi";
+import { Field, Btn, Switch, ChoiceGroup, FieldRow, NumberStepper, FormGrid } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import adminUi from "./AdminUi.module.css";
 import styles from "./AdminMailCollectOptionsSettings.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -68,11 +70,11 @@ export default function AdminMailCollectOptionsSettings() {
   };
 
   if (loading) {
-    return <p className={adminUi.adminMutedText}>{opt.loading}</p>;
+    return <AdminGeneralSettingsLoading message={opt.loading} />;
   }
 
   return <div className={styles.layout}>
-      <Card title={opt.cardTitle} description={opt.cardDescription}>
+      <SettingsSection title={opt.cardTitle} description={opt.cardDescription} icon="mdi:cog-outline">
         <div className={styles.groups}>
           <section className={styles.group}>
             <header className={styles.groupHeader}>
@@ -156,7 +158,7 @@ export default function AdminMailCollectOptionsSettings() {
             </Field>
           </section>
         </div>
-      </Card>
+      </SettingsSection>
 
       <div className={styles.footerBar}>
         <p className={styles.footerHint}>{opt.footerHint}</p>

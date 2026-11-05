@@ -161,6 +161,12 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if (!(await tableExists(client, "v_b_support_form_definitions"))) {
     plan.push("20260907_support_form_definitions.sql");
   }
+  if (
+    (await tableExists(client, "v_b_support_form_definitions"))
+    && !(await columnExists(client, "v_b_support_form_definitions", "visible_to_portal"))
+  ) {
+    plan.push("20261103_support_form_portal_visibility.sql");
+  }
   if (!(await tableExists(client, "v_b_sales_ticket_categories")) || !(await tableExists(client, "v_b_sales_ticket_category_sections"))) {
     plan.push("20260729_sales_ticket_categories.sql");
   }

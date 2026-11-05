@@ -489,6 +489,10 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 0;
   padding: 10px 16px;
   background: linear-gradient(90deg, #1a3d75 0%, #2b5fab 100%);
   color: #fff;

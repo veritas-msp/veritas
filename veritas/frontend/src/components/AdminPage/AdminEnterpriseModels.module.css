@@ -4,7 +4,8 @@
   gap: 0;
   min-height: 0;
   flex: 1;
-  padding: 20px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .panel {

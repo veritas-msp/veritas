@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAdminCommonCopy, useAdminModalCopy } from "../../hooks/useAdminCopy";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getAdminPermissionsCopy, getLocalizedProfileName } from "./adminPermissionsI18n";
 import { getProfileFormSections } from "./adminFormModalsI18n";
+import { UiKitButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import formStyles from "./IngestionRuleFormModal.module.css";
 export default function ProfileFormModal({
@@ -25,6 +25,7 @@ export default function ProfileFormModal({
   const permissionsCopy = useMemo(() => getAdminPermissionsCopy(locale), [locale]);
   const formSections = useMemo(() => getProfileFormSections(locale), [locale]);
   const [activeSection, setActiveSection] = useState("general");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   useEffect(() => {
     if (!open) return;
     setActiveSection("general");
@@ -120,24 +121,59 @@ export default function ProfileFormModal({
               <p className={layout.subtitle}>{modalCopy.subtitle}</p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={commonCopy.close}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={commonCopy.close}
+            icon="mdi:close"
+          />
         </header>
 
         <div className={layout.body}>
-          <nav className={layout.nav} aria-label={modalCopy.sectionsAria}>
-            {formSections.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
-                <span className={layout.navItemText}>
-                  <span className={layout.navItemLabel}>{section.label}</span>
-                  <span className={layout.navItemHint}>{section.description}</span>
-                </span>
-                {sectionMeta[section.id] && <span className={layout.navBadge}>✓</span>}
-              </button>)}
-          </nav>
+          <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={modalCopy.sectionsAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
+            >
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {formSections.map(section => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={`${kit.finderItem} ${kit.finderItemRich} ${active ? kit.finderItemActive : ""}`}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                    <span className={kit.finderItemStack}>
+                      <span className={kit.finderItemLabel}>{section.label}</span>
+                      {section.description ? <span className={kit.finderItemDesc}>{section.description}</span> : null}
+                    </span>
+                    {sectionMeta[section.id] ? <span className={layout.navBadge}>✓</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-          <div className={layout.content}>{renderSectionContent()}</div>
+          <div className={layout.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={layout.footer}>
@@ -145,18 +181,25 @@ export default function ProfileFormModal({
             {draft.name?.trim() || adminCopy.noIdentifier} · {parentDisplayName}
           </span>
           <div className={layout.footerActions}>
-            <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
               {commonCopy.cancel}
-            </button>
-            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving || !String(draft.name || "").trim()}>
-              {saving ? <>
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={onSave}
+              disabled={saving || !String(draft.name || "").trim()}
+              icon={saving ? undefined : "mdi:check"}
+            >
+              {saving ? (
+                <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                   {adminCopy.creating}
-                </> : <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {modalCopy.createBtn}
-                </>}
-            </button>
+                </>
+              ) : (
+                modalCopy.createBtn
+              )}
+            </UiKitButton>
           </div>
         </footer>
       </div>

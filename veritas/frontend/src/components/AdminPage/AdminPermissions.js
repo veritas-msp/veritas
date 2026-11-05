@@ -7,18 +7,16 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getAdminPermissionsCopy } from "./adminPermissionsI18n";
 import ProfilePermissionsEditor from "./ProfilePermissionsEditor";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
-import { Btn, Card, Page } from "./AdminUi";
+import { Btn } from "./AdminUi";
 import s from "./AdminPermissions.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 
 export default function AdminPermissions() {
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminPermissionsCopy(locale), [locale]);
   const adminCopy = useAdminCommonCopy();
-  const {
-    isCommunity
-  } = useVeritasEdition();
+  const { isCommunity } = useVeritasEdition();
   const [permissionsDraft, setPermissionsDraft] = useState(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -62,27 +60,43 @@ export default function AdminPermissions() {
     }
   };
 
-  const heroCopy = getAdminPanelCopy(locale).items.permissions;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:shield-key-outline" />
-      <div className={s.pageFill} data-page-fill>
-        <Card title={copy.pageTitle} description={isCommunity ? copy.pageDescriptionCommunity : copy.pageDescription} fill fillNoScroll action={!permissionsLocked && matrixReady ? <Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving || !dirty || !permissionsDraft}>
-                {saving ? copy.saving : adminCopy.save || copy.save}
-              </Btn> : null}>
-          {isCommunity && <p className={s.communityHint}>
-              {copy.sectionHintCommunity}{" "}
-              <ProFeatureBadge variant="inline" className={s.proBadge} />
-            </p>}
+  return (
+    <AdminPlatformShell>
+      <SettingsSection
+        title={copy.pageTitle}
+        description={isCommunity ? copy.pageDescriptionCommunity : copy.pageDescription}
+        icon="mdi:shield-key-outline"
+        action={
+          !permissionsLocked && matrixReady ? (
+            <Btn icon="mdi:content-save-outline" onClick={handleSave} disabled={saving || !dirty || !permissionsDraft}>
+              {saving ? copy.saving : adminCopy.save || copy.save}
+            </Btn>
+          ) : null
+        }
+      >
+        {isCommunity ? (
+          <p className={s.communityHint}>
+            {copy.sectionHintCommunity}{" "}
+            <ProFeatureBadge variant="inline" className={s.proBadge} />
+          </p>
+        ) : null}
 
-          <div className={s.matrixLayout}>
-            {dirty && !permissionsLocked ? <div className={s.dirtyBar}>
-                <span className={s.dirtyBadge}>{copy.unsaved}</span>
-              </div> : null}
-            <div className={s.editorBodyFull}>
-              <ProfilePermissionsEditor value={permissionsDraft} onChange={handleDraftChange} readOnly={permissionsLocked} onLoadState={handleLoadState} />
+        <div className={s.matrixLayout}>
+          {dirty && !permissionsLocked ? (
+            <div className={s.dirtyBar}>
+              <span className={s.dirtyBadge}>{copy.unsaved}</span>
             </div>
+          ) : null}
+          <div className={s.editorBodyFull}>
+            <ProfilePermissionsEditor
+              value={permissionsDraft}
+              onChange={handleDraftChange}
+              readOnly={permissionsLocked}
+              onLoadState={handleLoadState}
+            />
           </div>
-        </Card>
-      </div>
-    </Page>;
+        </div>
+      </SettingsSection>
+    </AdminPlatformShell>
+  );
 }

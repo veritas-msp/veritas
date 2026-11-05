@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -8,6 +8,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import builderStyles from "./SalesFormBuilder.module.css";
 import { describeVisibilityRules } from "../../utils/salesFormConditions";
 import adminStyles from "./AdminTickets.module.css";
+import { PlusIcon, SquarePenIcon } from "../Misc/Sidebar/lucideAnimated";
 function FieldPreview({
   field
 }) {
@@ -116,6 +117,7 @@ function FieldPreview({
 }
 function SortableCanvasField({
   field,
+  index = 0,
   selected,
   onSelect,
   onDuplicate,
@@ -137,10 +139,11 @@ function SortableCanvasField({
   });
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition
+    transition,
+    "--field-i": index
   };
   const duplicateTitle = field.fieldType === "section" ? "Duplicate section and its fields" : "Duplicate field";
-  return <div ref={setNodeRef} style={style} className={`${builderStyles.canvasField} ${isLayoutField(field) ? builderStyles.canvasFieldSection : ""} ${selected ? builderStyles.canvasFieldSelected : ""} ${isDragging ? builderStyles.canvasFieldDragging : ""}`} onClick={() => onSelect(field)} onKeyDown={e => {
+  return <div ref={setNodeRef} style={style} className={`${builderStyles.canvasField} ${builderStyles.canvasFieldEnter} ${isLayoutField(field) ? builderStyles.canvasFieldSection : ""} ${selected ? builderStyles.canvasFieldSelected : ""} ${isDragging ? builderStyles.canvasFieldDragging : ""}`} onClick={() => onSelect(field)} onKeyDown={e => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onSelect(field);
@@ -181,6 +184,8 @@ export default function SalesFormBuilderCanvas({
   onDuplicateField,
   onRemoveField
 }) {
+  const locale = useAppLocale();
+  const emptyIconRef = useRef(null);
   const {
     setNodeRef,
     isOver
@@ -189,23 +194,33 @@ export default function SalesFormBuilderCanvas({
   });
   const sortedFields = useMemo(() => sortSalesFormFields(fields), [fields]);
   const fieldIds = sortedFields.map(field => field.id);
-  return <section className={builderStyles.canvasWrap}>
+  return <section className={`${builderStyles.canvasWrap} ${builderStyles.builderPaneFade}`}>
       <div className={builderStyles.canvasHead}>
-        <h3 className={builderStyles.canvasTitle}>{formLabel || "New form"}</h3>
+        <h3 className={builderStyles.canvasTitle}>{formLabel || (locale === "fr" ? "Nouveau formulaire" : "New form")}</h3>
         <p className={builderStyles.canvasDesc}>
-          {formDescription || "Drag fields from the palette and click to configure them."}
+          {formDescription || (locale === "fr"
+            ? "Glissez des champs depuis la palette et cliquez pour les configurer."
+            : "Drag fields from the palette and click to configure them.")}
         </p>
       </div>
       <div className={builderStyles.canvasBody}>
         <div ref={setNodeRef} className={`${builderStyles.canvasDropZone} ${isOver ? builderStyles.canvasDropZoneActive : ""}`}>
-          {sortedFields.length === 0 ? <div className={builderStyles.canvasEmpty}>
-              <Icon icon="mdi:cursor-move" style={{
-            fontSize: "2rem"
-          }} aria-hidden />
-              <p>Drop a field here to get started</p>
+          {sortedFields.length === 0 ? <div
+              className={builderStyles.canvasEmpty}
+              onMouseEnter={() => emptyIconRef.current?.startAnimation?.()}
+              onMouseLeave={() => emptyIconRef.current?.stopAnimation?.()}
+            >
+              <span className={builderStyles.canvasEmptyIcon} aria-hidden>
+                <PlusIcon ref={emptyIconRef} size={36} />
+              </span>
+              <p>{locale === "fr" ? "Déposez un champ ici pour commencer" : "Drop a field here to get started"}</p>
+              <span className={builderStyles.canvasEmptyHint}>
+                <SquarePenIcon size={14} />
+                {locale === "fr" ? "Ou cliquez un champ à gauche" : "Or click a field on the left"}
+              </span>
             </div> : <SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
               <div className={builderStyles.canvasFieldList}>
-                {sortedFields.map(field => <SortableCanvasField key={field.id} field={field} selected={String(selectedFieldId) === String(field.id)} onSelect={onSelectField} onDuplicate={onDuplicateField} onRemove={onRemoveField} />)}
+                {sortedFields.map((field, index) => <SortableCanvasField key={field.id} field={field} index={index} selected={String(selectedFieldId) === String(field.id)} onSelect={onSelectField} onDuplicate={onDuplicateField} onRemove={onRemoveField} />)}
               </div>
             </SortableContext>}
         </div>

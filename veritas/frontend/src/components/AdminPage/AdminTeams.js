@@ -5,15 +5,14 @@ import { fetchUsers } from "../../api/users";
 import { fetchTeams, fetchTeam, createTeam, updateTeam, deleteTeam, addTeamMember, updateTeamMember, removeTeamMember } from "../../api/teams";
 import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { interpolate } from "../../i18n/translate";
-import { Modal, ConfirmModal, ModalFooter, ModalForm, ModalFormSection, Btn, Card, Page } from "./AdminUi";
+import { Modal, ConfirmModal, ModalFooter, ModalForm, ModalFormSection, Btn, BtnIcon, Card } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import TeamFormModal from "./TeamFormModal";
 import MultiSuggestPicker from "./MultiSuggestPicker";
 import { buildDefaultTeamDraft } from "./adminOrgFormConstants";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
-import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 const MODAL_WIDTH = "520px";
 function getInitials(user) {
   const base = (user?.username || user?.email || "?").trim();
@@ -21,10 +20,10 @@ function getInitials(user) {
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return base.slice(0, 2).toUpperCase();
 }
-export default function AdminTeams() {
-  const locale = useAppLocale();
+export default function AdminTeams({
+  embedded = false
+}) {
   const copy = useAdminPageCopy("teams");
-  const heroCopy = getAdminPanelCopy(locale).items.teams;
   const adminCopy = useAdminCommonCopy();
   const [teams, setTeams] = useState([]);
   const [agents, setAgents] = useState([]);
@@ -215,130 +214,175 @@ export default function AdminTeams() {
       setBusy(false);
     }
   };
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:account-multiple-outline" />
-      <div className={s.teamsLayout}>
-        <Card title={copy.title} description={copy.description} fill fillNoScroll action={<Btn icon="mdi:plus" onClick={openCreateTeam}>
-              {copy.newTeam}
-            </Btn>}>
-          <div className={ui.toolRow}>
-            <div className={ui.toolLeft}>
-              <input type="search" className={ui.fieldSearch} placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
-              <span className={ui.count}>
-                {filteredTeams.length > 1 ? interpolate(copy.teamCountPlural, {
-                count: filteredTeams.length
-              }) : interpolate(copy.teamCount, {
-                count: filteredTeams.length
+  const listPaneBody = <>
+      <div className={`${ui.toolRow}${embedded ? ` ${s.toolRowFlush} ${s.teamsToolbar}` : ""}`}>
+        <div className={ui.toolLeft}>
+          <input type="search" className={ui.fieldSearch} placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
+          <span className={ui.count}>
+            {filteredTeams.length > 1 ? interpolate(copy.teamCountPlural, {
+            count: filteredTeams.length
+          }) : interpolate(copy.teamCount, {
+            count: filteredTeams.length
+          })}
+          </span>
+        </div>
+        {embedded ? (
+          <BtnIcon icon="mdi:plus" variant="primary" title={copy.newTeam} onClick={openCreateTeam} />
+        ) : null}
+      </div>
+
+      <div className={s.teamsListPane}>
+        {loading ? <div className={s.empty}>{adminCopy.loading}</div> : filteredTeams.length === 0 ? <div className={s.empty}>{copy.noTeams}</div> : filteredTeams.map(team => {
+        const active = String(selectedTeamId) === String(team.id);
+        return <button key={team.id} type="button" className={`${s.teamListItem} ${active ? s.teamListItemActive : ""}`} onClick={() => setSelectedTeamId(team.id)}>
+                <Icon icon={team.icon || "mdi:account-group-outline"} className={s.teamListIcon} />
+                <span className={s.teamListMain}>
+                  <span className={s.teamListName}>{team.name}</span>
+                  {team.description && <span className={s.teamListDesc}>{team.description}</span>}
+                </span>
+                <span className={s.teamListMeta}>
+                  {(team.memberCount || 0) > 1 ? interpolate(copy.memberCountPlural, {
+              count: team.memberCount || 0
+            }) : interpolate(copy.memberCount, {
+              count: team.memberCount || 0
+            })}
+                </span>
+              </button>;
+      })}
+      </div>
+    </>;
+
+  const listCard = embedded ? (
+    <Card flat noPadding fill fillNoScroll>
+      {listPaneBody}
+    </Card>
+  ) : (
+    <SettingsSection
+      title={copy.title}
+      description={copy.description}
+      icon="mdi:account-group-outline"
+      action={<Btn icon="mdi:plus" onClick={openCreateTeam}>{copy.newTeam}</Btn>}
+    >
+      {listPaneBody}
+    </SettingsSection>
+  );
+
+  const detailActions = selectedTeam ? <div className={s.teamDetailActions}>
+        <Btn icon="mdi:account-plus-outline" variant="secondary" size="sm" onClick={() => setAddMemberOpen(true)}>
+          {copy.addMember}
+        </Btn>
+        <Btn icon="mdi:pencil-outline" variant="secondary" size="sm" onClick={openEditTeam}>
+          {adminCopy.modify}
+        </Btn>
+        <BtnIcon icon="mdi:delete-outline" variant="danger" title={copy.deleteTeam} onClick={() => setConfirmDeleteTeam(selectedTeam)} />
+      </div> : null;
+
+  const detailPaneBody = <>
+      {embedded && selectedTeam ? (
+        <div className={`${ui.toolRow} ${s.toolRowFlush} ${s.teamsToolbar} ${s.teamDetailToolbar}`}>
+          <div className={ui.toolLeft}>
+            <span className={s.teamListName}>{selectedTeam.name}</span>
+            <span className={ui.count}>
+              {interpolate(copy.detailDescription, {
+                members: selectedTeam.memberCount || 0,
+                leaders: selectedTeam.leaderCount || 0
               })}
-              </span>
+            </span>
+          </div>
+          {detailActions}
+        </div>
+      ) : null}
+      {!selectedTeamId ? <div className={s.empty}>{copy.selectTeamHint}</div> : detailLoading ? <div className={s.empty}>{adminCopy.loading}</div> : <>
+          {selectedTeam && !selectedTeam.isActive && <div className={s.teamInactiveBanner}>
+              <Icon icon="mdi:pause-circle-outline" />
+              {copy.inactiveBanner}
+            </div>}
+
+          <div className={s.tableSection}>
+            <div className={s.tableWrap}>
+              <table className={s.table}>
+                <thead>
+                  <tr>
+                    <th>{adminCopy.agent}</th>
+                    <th>{adminCopy.profile}</th>
+                    <th>{adminCopy.status}</th>
+                    <th>{adminCopy.leader}</th>
+                    <th style={{
+                  width: 48
+                }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {!selectedTeam?.members?.length ? <tr>
+                      <td colSpan={5} className={s.empty}>
+                        {copy.noMembers}{" "}
+                        <button type="button" className={s.inlineLinkBtn} onClick={() => setAddMemberOpen(true)}>
+                          {copy.addAgentLink}
+                        </button>
+                      </td>
+                    </tr> : selectedTeam.members.map(member => <tr key={member.userId}>
+                        <td>
+                          <div className={s.userCell}>
+                            <div className={s.avatar}>{getInitials(member)}</div>
+                            <div className={s.userInfo}>
+                              <div className={s.userEmail}>{member.email}</div>
+                              {member.username && <div className={s.userName}>{member.username}</div>}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={s.badge}>{member.profile || "-"}</span>
+                        </td>
+                        <td>
+                          <span className={`${s.status} ${member.isActive ? s.statusActive : s.statusInactive}`}>
+                            <span className={s.statusDot} />
+                            {member.isActive ? adminCopy.active : adminCopy.inactive}
+                          </span>
+                        </td>
+                        <td>
+                          <button type="button" className={`${s.leaderToggle} ${member.isLeader ? s.leaderToggleOn : ""}`} title={member.isLeader ? copy.removeLeaderTitle : copy.setLeaderTitle} disabled={busy} onClick={() => handleToggleLeader(member)}>
+                            <Icon icon={member.isLeader ? "mdi:star" : "mdi:star-outline"} />
+                            {member.isLeader ? adminCopy.leader : adminCopy.member}
+                          </button>
+                        </td>
+                        <td>
+                          <button type="button" className={s.actionBtn} title={copy.removeFromTeamTitle} disabled={busy} onClick={() => setConfirmRemoveMember(member)}>
+                            <Icon icon="mdi:account-remove-outline" />
+                          </button>
+                        </td>
+                      </tr>)}
+                </tbody>
+              </table>
             </div>
           </div>
+        </>}
+    </>;
 
-          <div className={s.teamsListPane}>
-            {loading ? <div className={s.empty}>{adminCopy.loading}</div> : filteredTeams.length === 0 ? <div className={s.empty}>{copy.noTeams}</div> : filteredTeams.map(team => {
-            const active = String(selectedTeamId) === String(team.id);
-            return <button key={team.id} type="button" className={`${s.teamListItem} ${active ? s.teamListItemActive : ""}`} onClick={() => setSelectedTeamId(team.id)}>
-                    <Icon icon={team.icon || "mdi:account-group-outline"} className={s.teamListIcon} />
-                    <span className={s.teamListMain}>
-                      <span className={s.teamListName}>{team.name}</span>
-                      {team.description && <span className={s.teamListDesc}>{team.description}</span>}
-                    </span>
-                    <span className={s.teamListMeta}>
-                      {(team.memberCount || 0) > 1 ? interpolate(copy.memberCountPlural, {
-                  count: team.memberCount || 0
-                }) : interpolate(copy.memberCount, {
-                  count: team.memberCount || 0
-                })}
-                    </span>
-                  </button>;
-          })}
-          </div>
-        </Card>
-
-        <Card title={selectedTeam ? selectedTeam.name : copy.detailTitle} description={selectedTeam ? interpolate(copy.detailDescription, {
+  const detailTitle = selectedTeam ? selectedTeam.name : copy.detailTitle;
+  const detailDescription = selectedTeam
+    ? interpolate(copy.detailDescription, {
         members: selectedTeam.memberCount || 0,
         leaders: selectedTeam.leaderCount || 0
-      }) : copy.detailDescriptionEmpty} fill action={selectedTeam ? <div className={s.teamDetailActions}>
-                <Btn icon="mdi:account-plus-outline" variant="secondary" onClick={() => setAddMemberOpen(true)}>
-                  {copy.addMember}
-                </Btn>
-                <Btn icon="mdi:pencil-outline" variant="secondary" onClick={openEditTeam}>
-                  {adminCopy.modify}
-                </Btn>
-              </div> : null}>
-          {!selectedTeamId ? <div className={s.empty}>{copy.selectTeamHint}</div> : detailLoading ? <div className={s.empty}>{adminCopy.loading}</div> : <>
-              {selectedTeam && !selectedTeam.isActive && <div className={s.teamInactiveBanner}>
-                  <Icon icon="mdi:pause-circle-outline" />
-                  {copy.inactiveBanner}
-                </div>}
+      })
+    : copy.detailDescriptionEmpty;
 
-              <div className={s.tableSection}>
-                <div className={s.tableWrap}>
-                  <table className={s.table}>
-                    <thead>
-                      <tr>
-                        <th>{adminCopy.agent}</th>
-                        <th>{adminCopy.profile}</th>
-                        <th>{adminCopy.status}</th>
-                        <th>{adminCopy.leader}</th>
-                        <th style={{
-                      width: 48
-                    }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {!selectedTeam?.members?.length ? <tr>
-                          <td colSpan={5} className={s.empty}>
-                            {copy.noMembers}{" "}
-                            <button type="button" className={s.inlineLinkBtn} onClick={() => setAddMemberOpen(true)}>
-                              {copy.addAgentLink}
-                            </button>
-                          </td>
-                        </tr> : selectedTeam.members.map(member => <tr key={member.userId}>
-                            <td>
-                              <div className={s.userCell}>
-                                <div className={s.avatar}>{getInitials(member)}</div>
-                                <div className={s.userInfo}>
-                                  <div className={s.userEmail}>{member.email}</div>
-                                  {member.username && <div className={s.userName}>{member.username}</div>}
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <span className={s.badge}>{member.profile || "-"}</span>
-                            </td>
-                            <td>
-                              <span className={`${s.status} ${member.isActive ? s.statusActive : s.statusInactive}`}>
-                                <span className={s.statusDot} />
-                                {member.isActive ? adminCopy.active : adminCopy.inactive}
-                              </span>
-                            </td>
-                            <td>
-                              <button type="button" className={`${s.leaderToggle} ${member.isLeader ? s.leaderToggleOn : ""}`} title={member.isLeader ? copy.removeLeaderTitle : copy.setLeaderTitle} disabled={busy} onClick={() => handleToggleLeader(member)}>
-                                <Icon icon={member.isLeader ? "mdi:star" : "mdi:star-outline"} />
-                                {member.isLeader ? adminCopy.leader : adminCopy.member}
-                              </button>
-                            </td>
-                            <td>
-                              <button type="button" className={s.actionBtn} title={copy.removeFromTeamTitle} disabled={busy} onClick={() => setConfirmRemoveMember(member)}>
-                                <Icon icon="mdi:account-remove-outline" />
-                              </button>
-                            </td>
-                          </tr>)}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+  const detailCard = embedded ? (
+    <Card flat noPadding fill>
+      {detailPaneBody}
+    </Card>
+  ) : (
+    <SettingsSection title={detailTitle} description={detailDescription} icon="mdi:account-group" action={detailActions}>
+      {detailPaneBody}
+    </SettingsSection>
+  );
 
-              {selectedTeam && <div className={s.teamDangerZone}>
-                  <button type="button" className={s.teamDeleteBtn} onClick={() => setConfirmDeleteTeam(selectedTeam)}>
-                    <Icon icon="mdi:delete-outline" />
-                    {copy.deleteTeam}
-                  </button>
-                </div>}
-            </>}
-        </Card>
-      </div>
+  const teamsPane = <div className={`${s.teamsLayout}${embedded ? ` ${s.teamsLayoutEmbedded}` : ""}`}>
+      {listCard}
+      {detailCard}
+    </div>;
+
+  return <>
+      {embedded ? teamsPane : <AdminPlatformShell>{teamsPane}</AdminPlatformShell>}
 
       <TeamFormModal open={teamModalOpen} mode={teamModalMode} draft={teamForm} setDraft={setTeamForm} saving={busy} onClose={closeTeamModal} onSave={handleSaveTeam} />
 
@@ -370,5 +414,5 @@ export default function AdminTeams() {
       <ConfirmModal open={!!confirmDeleteTeam} onClose={() => setConfirmDeleteTeam(null)} onConfirm={handleDeleteTeam} title={copy.deleteTeamTitle} icon="mdi:delete-alert-outline" message={interpolate(copy.deleteTeamMessage, {
       name: confirmDeleteTeam?.name || ""
     })} confirmLabel={adminCopy.delete} confirmVariant="dangerSolid" />
-    </Page>;
+    </>;
 }

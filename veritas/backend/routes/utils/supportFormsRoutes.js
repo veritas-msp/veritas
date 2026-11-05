@@ -4,7 +4,18 @@ import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
 import { requirePermission } from "../../middleware/permissions.js";
 import { userHasAnyPermission } from "../../services/permissionService.js";
-import { getUserTeamIds, hasAssignmentTargets, loadAssignmentsByFormIds, mapFormAssignments, syncFormAssignments, userCanAccessForm } from "../../services/supportFormAssignments.js";
+import {
+  getUserTeamIds,
+  hasAssignmentTargets,
+  hasPortalAudienceTargets,
+  loadAssignmentsByFormIds,
+  loadPortalAudienceByFormIds,
+  mapFormAssignments,
+  mapFormPortalAudience,
+  syncFormAssignments,
+  syncFormPortalAudience,
+  userCanAccessForm
+} from "../../services/supportFormAssignments.js";
 import { normalizeTicketTargetsConfig, parseTicketTargetsFromRow } from "../../services/salesFormTicketTargets.js";
 import { normalizeVisibilityRules } from "../../services/salesFormConditions.js";
 const router = express.Router();
@@ -48,11 +59,21 @@ function extractAssignmentsFromBody(body = {}, fallback = {}) {
     teamIds: body.teamIds !== undefined ? body.teamIds : fallback.teamIds || []
   };
 }
+function extractPortalAudienceFromBody(body = {}, fallback = {}) {
+  return {
+    portalClientIds: body.portalClientIds !== undefined ? body.portalClientIds : fallback.portalClientIds || [],
+    portalContactIds: body.portalContactIds !== undefined ? body.portalContactIds : fallback.portalContactIds || []
+  };
+}
+function normalizeBoolean(value, defaultValue = false) {
+  if (value === undefined || value === null) return defaultValue;
+  return value === true || value === "true" || value === 1 || value === "1";
+}
 function slugifyPublicSlug(value, fallbackKey = "") {
   const raw = String(value || fallbackKey || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   return raw.slice(0, 100) || `form-${Date.now().toString(36)}`;
 }
-function mapFormRow(row, fields = [], assignments = null, usageCount = null) {
+function mapFormRow(row, fields = [], assignments = null, usageCount = null, portalAudience = null) {
   if (!row) return null;
   const mapped = {
     id: row.id,
@@ -65,6 +86,9 @@ function mapFormRow(row, fields = [], assignments = null, usageCount = null) {
     displayOrder: Number(row.display_order || 0),
     enabled: row.enabled !== false,
     visibility: normalizeVisibility(row.visibility),
+    visibleToAgents: row.visible_to_agents !== false,
+    visibleToPortal: row.visible_to_portal === true,
+    portalVisibleToAll: row.portal_visible_to_all === true,
     ticketTargets: parseTicketTargetsFromRow(row),
     publicEnabled: row.public_enabled === true,
     publicSlug: row.public_slug || null,
@@ -77,6 +101,9 @@ function mapFormRow(row, fields = [], assignments = null, usageCount = null) {
   }
   if (assignments) {
     Object.assign(mapped, mapFormAssignments(assignments));
+  }
+  if (portalAudience) {
+    Object.assign(mapped, mapFormPortalAudience(portalAudience));
   }
   return mapped;
 }
@@ -152,6 +179,9 @@ async function loadFormsWithFields({
   if (!includeDisabled) {
     where.push("d.enabled = TRUE");
   }
+  if (!skipVisibilityFilter) {
+    where.push("COALESCE(d.visible_to_agents, TRUE) = TRUE");
+  }
   if (!skipVisibilityFilter && userId) {
     values.push(userId, userProfileName);
     const userIdx = values.length - 1;
@@ -195,11 +225,21 @@ async function loadFormsWithFields({
     fieldsByForm.set(field.form_id, list);
   });
   let assignmentMap = {};
+  let portalAudienceMap = {};
   if (includeAssignments) {
-    assignmentMap = await loadAssignmentsByFormIds(formIds);
+    [assignmentMap, portalAudienceMap] = await Promise.all([
+      loadAssignmentsByFormIds(formIds),
+      loadPortalAudienceByFormIds(formIds)
+    ]);
   }
   const usageMap = includeUsageCounts ? await loadUsageCountsByFormIds(formIds) : null;
-  return forms.map(form => mapFormRow(form, fieldsByForm.get(form.id) || [], includeAssignments ? assignmentMap[String(form.id)] : null, includeUsageCounts ? usageMap[String(form.id)] || 0 : null));
+  return forms.map(form => mapFormRow(
+    form,
+    fieldsByForm.get(form.id) || [],
+    includeAssignments ? assignmentMap[String(form.id)] : null,
+    includeUsageCounts ? usageMap[String(form.id)] || 0 : null,
+    includeAssignments ? portalAudienceMap[String(form.id)] : null
+  ));
 }
 async function loadFormById(formId, {
   includeDisabledFields = true,
@@ -213,11 +253,16 @@ async function loadFormById(formId, {
        ${includeDisabledFields ? "" : "AND enabled = TRUE"}
      ORDER BY display_order ASC, id ASC`, [formId]);
   let assignments = null;
+  let portalAudience = null;
   if (includeAssignments) {
-    const assignmentMap = await loadAssignmentsByFormIds([formId]);
+    const [assignmentMap, portalAudienceMap] = await Promise.all([
+      loadAssignmentsByFormIds([formId]),
+      loadPortalAudienceByFormIds([formId])
+    ]);
     assignments = assignmentMap[String(formId)] || null;
+    portalAudience = portalAudienceMap[String(formId)] || null;
   }
-  return mapFormRow(formResult.rows[0], fieldsResult.rows || [], assignments);
+  return mapFormRow(formResult.rows[0], fieldsResult.rows || [], assignments, null, portalAudience);
 }
 async function assertUserCanAccessForm(req, res, formRow) {
   if (!formRow) {
@@ -229,6 +274,12 @@ async function assertUserCanAccessForm(req, res, formRow) {
   if (await canManageSupportForms(req) && (req.query?.includeDisabled === "true" || req.query?.includeDisabled === true)) {
     return true;
   }
+  if (formRow.visible_to_agents === false) {
+    res.status(403).json({
+      error: "Access denied to this form"
+    });
+    return false;
+  }
   const visibility = normalizeVisibility(formRow.visibility);
   if (visibility === "public") return true;
   const userId = req.user?.id;
@@ -237,7 +288,8 @@ async function assertUserCanAccessForm(req, res, formRow) {
   const assignmentMap = await loadAssignmentsByFormIds([formRow.id]);
   const assignments = assignmentMap[String(formRow.id)];
   if (userCanAccessForm({
-    visibility
+    visibility,
+    visibleToAgents: formRow.visible_to_agents !== false
   }, assignments, userId, userProfileName, userTeamIds)) return true;
   res.status(403).json({
     error: "Access denied to this form"
@@ -292,7 +344,7 @@ router.get("/:formId", verifyJWT, [param("formId").isString().notEmpty()], async
     });
   }
 });
-router.post("/", requireSupportFormsAdmin, [body("kind").isIn(["incident", "demande", "probleme", "changement"]), body("key").isString().notEmpty(), body("label").isString().notEmpty(), body("icon").optional({ nullable: true }).isString(), body("categorySlug").optional({ nullable: true }).isString(), body("description").optional({ nullable: true }).isString(), body("displayOrder").optional({ nullable: true }).isInt(), body("enabled").optional({ nullable: true }).isBoolean(), body("visibility").optional({ nullable: true }).isIn(["public", "assigned"]), body("publicEnabled").optional({ nullable: true }).isBoolean(), body("publicSlug").optional({ nullable: true }).isString(), body("profileNames").optional({ nullable: true }).isArray(), body("userIds").optional({ nullable: true }).isArray(), body("teamIds").optional({ nullable: true }).isArray(), body("ticketTargets").optional({ nullable: true }).isObject()], async (req, res) => {
+router.post("/", requireSupportFormsAdmin, [body("kind").isIn(["incident", "demande", "probleme", "changement"]), body("key").isString().notEmpty(), body("label").isString().notEmpty(), body("icon").optional({ nullable: true }).isString(), body("categorySlug").optional({ nullable: true }).isString(), body("description").optional({ nullable: true }).isString(), body("displayOrder").optional({ nullable: true }).isInt(), body("enabled").optional({ nullable: true }).isBoolean(), body("visibility").optional({ nullable: true }).isIn(["public", "assigned"]), body("visibleToAgents").optional({ nullable: true }).isBoolean(), body("visibleToPortal").optional({ nullable: true }).isBoolean(), body("portalVisibleToAll").optional({ nullable: true }).isBoolean(), body("portalClientIds").optional({ nullable: true }).isArray(), body("portalContactIds").optional({ nullable: true }).isArray(), body("publicEnabled").optional({ nullable: true }).isBoolean(), body("publicSlug").optional({ nullable: true }).isString(), body("profileNames").optional({ nullable: true }).isArray(), body("userIds").optional({ nullable: true }).isArray(), body("teamIds").optional({ nullable: true }).isArray(), body("ticketTargets").optional({ nullable: true }).isObject()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
@@ -305,22 +357,45 @@ router.post("/", requireSupportFormsAdmin, [body("kind").isIn(["incident", "dema
     const displayOrder = Number.isFinite(Number(req.body.displayOrder)) ? Number(req.body.displayOrder) : 0;
     const enabled = req.body.enabled !== false;
     const visibility = normalizeVisibility(req.body.visibility);
+    const visibleToAgents = normalizeBoolean(req.body.visibleToAgents, true);
+    const visibleToPortal = normalizeBoolean(req.body.visibleToPortal, false);
+    const portalVisibleToAll = visibleToPortal && normalizeBoolean(req.body.portalVisibleToAll, false);
     const publicEnabled = req.body.publicEnabled === true;
     const publicSlug = publicEnabled ? slugifyPublicSlug(req.body.publicSlug, formKey) : null;
     const ticketTargets = normalizeTicketTargetsConfig(req.body.ticketTargets);
     const assignments = extractAssignmentsFromBody(req.body);
-    if (visibility === "assigned" && !hasAssignmentTargets(assignments)) {
+    const portalAudience = extractPortalAudienceFromBody(req.body);
+    if (!visibleToAgents && !visibleToPortal) {
+      return res.status(400).json({
+        error: "Select at least one audience: agents or client portal"
+      });
+    }
+    if (visibleToAgents && visibility === "assigned" && !hasAssignmentTargets(assignments)) {
       return res.status(400).json({
         error: "Select at least one profile, user or team"
       });
     }
+    if (visibleToPortal && !portalVisibleToAll && !hasPortalAudienceTargets(portalAudience)) {
+      return res.status(400).json({
+        error: "Select at least one company or contact for the portal audience"
+      });
+    }
     const id = `support-form-${kind}-${formKey}-${Date.now().toString(36)}`;
     await pool.query(`INSERT INTO v_b_support_form_definitions
-          (id, kind, form_key, label, icon, category_slug, description, display_order, enabled, visibility, ticket_targets, public_enabled, public_slug, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, NOW(), NOW())
-         RETURNING *`, [id, kind, formKey, label, icon, categorySlug, description, displayOrder, enabled, visibility, JSON.stringify(ticketTargets), publicEnabled, publicSlug]);
-    if (visibility === "assigned") {
+          (id, kind, form_key, label, icon, category_slug, description, display_order, enabled, visibility,
+           visible_to_agents, visible_to_portal, portal_visible_to_all,
+           ticket_targets, public_enabled, public_slug, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, NOW(), NOW())
+         RETURNING *`, [
+      id, kind, formKey, label, icon, categorySlug, description, displayOrder, enabled, visibility,
+      visibleToAgents, visibleToPortal, portalVisibleToAll,
+      JSON.stringify(ticketTargets), publicEnabled, publicSlug
+    ]);
+    if (visibleToAgents && visibility === "assigned") {
       await syncFormAssignments(id, assignments);
+    }
+    if (visibleToPortal) {
+      await syncFormPortalAudience(id, portalVisibleToAll ? { portalClientIds: [], portalContactIds: [] } : portalAudience);
     }
     const form = await loadFormById(id, {
       includeDisabledFields: true,
@@ -339,7 +414,7 @@ router.post("/", requireSupportFormsAdmin, [body("kind").isIn(["incident", "dema
     });
   }
 });
-router.put("/:formId", requireSupportFormsAdmin, [param("formId").isString().notEmpty(), body("kind").optional({ nullable: true }).isIn(["incident", "demande", "probleme", "changement"]), body("key").optional({ nullable: true }).isString(), body("label").optional({ nullable: true }).isString(), body("icon").optional({ nullable: true }).isString(), body("categorySlug").optional({ nullable: true }).isString(), body("description").optional({ nullable: true }).isString(), body("displayOrder").optional({ nullable: true }).isInt(), body("enabled").optional({ nullable: true }).isBoolean(), body("visibility").optional({ nullable: true }).isIn(["public", "assigned"]), body("publicEnabled").optional({ nullable: true }).isBoolean(), body("publicSlug").optional({ nullable: true }).isString(), body("profileNames").optional({ nullable: true }).isArray(), body("userIds").optional({ nullable: true }).isArray(), body("teamIds").optional({ nullable: true }).isArray(), body("ticketTargets").optional({ nullable: true }).isObject()], async (req, res) => {
+router.put("/:formId", requireSupportFormsAdmin, [param("formId").isString().notEmpty(), body("kind").optional({ nullable: true }).isIn(["incident", "demande", "probleme", "changement"]), body("key").optional({ nullable: true }).isString(), body("label").optional({ nullable: true }).isString(), body("icon").optional({ nullable: true }).isString(), body("categorySlug").optional({ nullable: true }).isString(), body("description").optional({ nullable: true }).isString(), body("displayOrder").optional({ nullable: true }).isInt(), body("enabled").optional({ nullable: true }).isBoolean(), body("visibility").optional({ nullable: true }).isIn(["public", "assigned"]), body("visibleToAgents").optional({ nullable: true }).isBoolean(), body("visibleToPortal").optional({ nullable: true }).isBoolean(), body("portalVisibleToAll").optional({ nullable: true }).isBoolean(), body("portalClientIds").optional({ nullable: true }).isArray(), body("portalContactIds").optional({ nullable: true }).isArray(), body("publicEnabled").optional({ nullable: true }).isBoolean(), body("publicSlug").optional({ nullable: true }).isString(), body("profileNames").optional({ nullable: true }).isArray(), body("userIds").optional({ nullable: true }).isArray(), body("teamIds").optional({ nullable: true }).isArray(), body("ticketTargets").optional({ nullable: true }).isObject()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
@@ -374,6 +449,18 @@ router.put("/:formId", requireSupportFormsAdmin, [param("formId").isString().not
       updates.push(`${column} = $${idx++}`);
       values.push(value);
     });
+    if (Object.prototype.hasOwnProperty.call(req.body, "visibleToAgents")) {
+      updates.push(`visible_to_agents = $${idx++}`);
+      values.push(normalizeBoolean(req.body.visibleToAgents, true));
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "visibleToPortal")) {
+      updates.push(`visible_to_portal = $${idx++}`);
+      values.push(normalizeBoolean(req.body.visibleToPortal, false));
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "portalVisibleToAll")) {
+      updates.push(`portal_visible_to_all = $${idx++}`);
+      values.push(normalizeBoolean(req.body.portalVisibleToAll, false));
+    }
     if (Object.prototype.hasOwnProperty.call(req.body, "ticketTargets")) {
       updates.push(`ticket_targets = $${idx++}::jsonb`);
       values.push(JSON.stringify(normalizeTicketTargetsConfig(req.body.ticketTargets)));
@@ -391,17 +478,41 @@ router.put("/:formId", requireSupportFormsAdmin, [param("formId").isString().not
       values.push(nextPublicEnabled ? slugifyPublicSlug(slugSource, existing.rows[0].form_key) : null);
     }
     const hasAssignmentPatch = Object.prototype.hasOwnProperty.call(req.body, "profileNames") || Object.prototype.hasOwnProperty.call(req.body, "userIds") || Object.prototype.hasOwnProperty.call(req.body, "teamIds");
+    const hasPortalAudiencePatch = Object.prototype.hasOwnProperty.call(req.body, "portalClientIds") || Object.prototype.hasOwnProperty.call(req.body, "portalContactIds") || Object.prototype.hasOwnProperty.call(req.body, "portalVisibleToAll") || Object.prototype.hasOwnProperty.call(req.body, "visibleToPortal");
     const nextVisibility = Object.prototype.hasOwnProperty.call(req.body, "visibility") ? normalizeVisibility(req.body.visibility) : normalizeVisibility(existing.rows[0].visibility);
-    const assignmentMap = await loadAssignmentsByFormIds([formId]);
+    const nextVisibleToAgents = Object.prototype.hasOwnProperty.call(req.body, "visibleToAgents")
+      ? normalizeBoolean(req.body.visibleToAgents, true)
+      : existing.rows[0].visible_to_agents !== false;
+    const nextVisibleToPortal = Object.prototype.hasOwnProperty.call(req.body, "visibleToPortal")
+      ? normalizeBoolean(req.body.visibleToPortal, false)
+      : existing.rows[0].visible_to_portal === true;
+    const nextPortalVisibleToAll = Object.prototype.hasOwnProperty.call(req.body, "portalVisibleToAll")
+      ? normalizeBoolean(req.body.portalVisibleToAll, false)
+      : existing.rows[0].portal_visible_to_all === true;
+    const [assignmentMap, portalAudienceMap] = await Promise.all([
+      loadAssignmentsByFormIds([formId]),
+      loadPortalAudienceByFormIds([formId])
+    ]);
     const nextAssignments = hasAssignmentPatch ? extractAssignmentsFromBody(req.body) : assignmentMap[String(formId)] || {};
-    if (updates.length === 0 && !hasAssignmentPatch) {
+    const nextPortalAudience = hasPortalAudiencePatch ? extractPortalAudienceFromBody(req.body, portalAudienceMap[String(formId)] || {}) : portalAudienceMap[String(formId)] || {};
+    if (updates.length === 0 && !hasAssignmentPatch && !hasPortalAudiencePatch) {
       return res.status(400).json({
         error: "No fields to update"
       });
     }
-    if (nextVisibility === "assigned" && !hasAssignmentTargets(nextAssignments)) {
+    if (!nextVisibleToAgents && !nextVisibleToPortal) {
+      return res.status(400).json({
+        error: "Select at least one audience: agents or client portal"
+      });
+    }
+    if (nextVisibleToAgents && nextVisibility === "assigned" && !hasAssignmentTargets(nextAssignments)) {
       return res.status(400).json({
         error: "Select at least one profile, user or team"
+      });
+    }
+    if (nextVisibleToPortal && !nextPortalVisibleToAll && !hasPortalAudienceTargets(nextPortalAudience)) {
+      return res.status(400).json({
+        error: "Select at least one company or contact for the portal audience"
       });
     }
     if (updates.length > 0) {
@@ -409,14 +520,36 @@ router.put("/:formId", requireSupportFormsAdmin, [param("formId").isString().not
       values.push(formId);
       await pool.query(`UPDATE v_b_support_form_definitions SET ${updates.join(", ")} WHERE id = $${idx}`, values);
     }
-    if (nextVisibility === "assigned") {
+    if (nextVisibleToAgents && nextVisibility === "assigned") {
       await syncFormAssignments(formId, nextAssignments);
-    } else if (Object.prototype.hasOwnProperty.call(req.body, "visibility") && nextVisibility === "public") {
+    } else if (!nextVisibleToAgents || nextVisibility === "public") {
       await syncFormAssignments(formId, {
         profileNames: [],
         userIds: [],
         teamIds: []
       });
+    }
+    if (nextVisibleToPortal) {
+      await syncFormPortalAudience(
+        formId,
+        nextPortalVisibleToAll ? { portalClientIds: [], portalContactIds: [] } : nextPortalAudience
+      );
+      if (Object.prototype.hasOwnProperty.call(req.body, "portalVisibleToAll") || Object.prototype.hasOwnProperty.call(req.body, "visibleToPortal")) {
+        await pool.query(
+          `UPDATE v_b_support_form_definitions
+              SET portal_visible_to_all = $2, updated_at = NOW()
+            WHERE id = $1`,
+          [formId, nextPortalVisibleToAll]
+        );
+      }
+    } else {
+      await syncFormPortalAudience(formId, { portalClientIds: [], portalContactIds: [] });
+      await pool.query(
+        `UPDATE v_b_support_form_definitions
+            SET portal_visible_to_all = FALSE, updated_at = NOW()
+          WHERE id = $1`,
+        [formId]
+      );
     }
     const form = await loadFormById(formId, {
       includeDisabledFields: true,

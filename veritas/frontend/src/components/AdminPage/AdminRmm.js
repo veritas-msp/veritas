@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchClientsList } from "../../api/clients";
 import { createRmmEnrollmentToken, updateRmmEnrollmentToken, downloadRmmWindowsAgentSetupMsi, fetchRmmInstallerInfo, fetchRmmMetricsStorage, fetchRmmAgents, fetchRmmEnrollmentTokens, fetchRmmSettings, revokeRmmEnrollmentToken, restoreRmmEnrollmentToken, deleteRmmEnrollmentTokenPermanently, updateRmmAgentStatus, updateRmmSettings, requestRmmAgentUpdate } from "../../api/rmm";
-import { Badge, Btn, Card, ConfirmModal, Page, SubTabs, Table, Pagination, BtnIcon } from "./AdminUi";
+import { Badge, Btn, ConfirmModal, Table, Pagination, BtnIcon } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import { useTablePagination } from "./useTablePagination";
 import adminUi from "./AdminUi.module.css";
 import { Icon } from "@iconify/react";
-import { UiKitPageHero, uiKitLayoutsStyles as kit } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
+import { uiKitLayoutsStyles as kit } from "../UiKit";
 import RmmEnrollmentTokenValue from "../Rmm/RmmEnrollmentTokenValue";
 import RmmEnrollmentTokenFormModal from "./RmmEnrollmentTokenFormModal";
 import RmmEnrollmentTokenCreatedModal from "./RmmEnrollmentTokenCreatedModal";
@@ -213,8 +215,9 @@ export default function AdminRmm({
   const [bulkUpdateMode, setBulkUpdateMode] = useState(null);
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const rmmTabs = useMemo(() => RMM_TAB_KEYS.map(item => ({
-    ...item,
+    key: item.key,
     label: copy.tabs[item.key],
+    icon: item.icon,
     proOnly: isCommunity && Boolean(item.proOnly)
   })), [isCommunity, copy.tabs]);
   const deployPlatforms = useMemo(() => DEPLOY_PLATFORM_KEYS.map(key => ({
@@ -546,19 +549,23 @@ export default function AdminRmm({
       setDownloading(null);
     }
   };
-  const heroCopy = getAdminPanelCopy(locale).items.rmm;
-  const hero = <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:laptop-account" />;
   if (loading && !settings) {
-    return <Page>
-        {hero}
-        <p className={adminUi.adminMutedText}>{copy.common.loading}</p>
-      </Page>;
+    return (
+      <AdminPlatformShell
+        tabs={rmmTabs}
+        activeTab={tab}
+        onTabChange={handleTabChange}
+        tabsAriaLabel={copy.tabs.deploy}
+        fill
+        loading
+        loadingMessage={copy.common.loading}
+      />
+    );
   }
-  return <Page>
-      {hero}
-      <SubTabs items={rmmTabs} active={tab} onChange={handleTabChange} fullWidth />
+  return <>
+    <AdminPlatformShell tabs={rmmTabs} activeTab={tab} onTabChange={handleTabChange} tabsAriaLabel={copy.tabs.deploy} fill>
 
-      {tab === "deploy" && <Card title={copy.deploy.cardTitle} description={copy.deploy.cardDescription}>
+      {tab === "deploy" && <SettingsSection title={copy.deploy.cardTitle} description={copy.deploy.cardDescription} icon="mdi:download-outline">
           <div className={styles.deployGrid}>
             {deployPlatforms.map(platform => {
           const isSelected = selectedDeployPlatform === platform.key;
@@ -580,9 +587,9 @@ export default function AdminRmm({
           <div className={styles.instructions}>
             <DeployPlatformInstructions platformKey={selectedDeployPlatform} copy={copy} installerInfo={installerInfo} downloading={downloading} onDownloadWindows={handleDownloadWindows} />
           </div>
-        </Card>}
+        </SettingsSection>}
 
-      {tab === "settings" && settings && <Card title={copy.settings.globalTitle} description={copy.settings.globalDescription} fill action={<Btn icon="mdi:content-save-outline" onClick={handleSaveSettings} disabled={saving}>
+      {tab === "settings" && settings && <SettingsSection title={copy.settings.globalTitle} description={copy.settings.globalDescription} icon="mdi:cog-outline" action={<Btn icon="mdi:content-save-outline" onClick={handleSaveSettings} disabled={saving}>
               {saving ? copy.common.saving : copy.common.save}
             </Btn>}>
           <div className={styles.settingsLayout}>
@@ -607,11 +614,11 @@ export default function AdminRmm({
 
             <RmmCollectorsSection copy={copy} isCommunity={isCommunity} onProClick={() => setProPromoFeature("adminRmmCollectors")} getChecked={key => !!settings.collectors?.[key]} onToggle={(key, checked) => patchCollector(key, checked)} />
           </div>
-        </Card>}
+        </SettingsSection>}
 
       {tab === "tokenSettings" && settings && !isCommunity && <RmmTokenSettingsPanel copy={copy} locale={locale} globalSettings={settings} metricsStorageStats={metricsStorage?.stats} activeAgentCount={metricsAgentCount} onProClick={() => setProPromoFeature("adminRmmCollectors")} />}
 
-      {tab === "tokens" && <Card title={copy.tokens.title} description={copy.tokens.description} fill action={tokenListView === "active" ? <Btn icon="mdi:plus" onClick={openCreateTokenModal}>
+      {tab === "tokens" && <SettingsSection title={copy.tokens.title} description={copy.tokens.description} icon="mdi:key-outline" action={tokenListView === "active" ? <Btn icon="mdi:plus" onClick={openCreateTokenModal}>
                 {copy.tokens.newToken}
               </Btn> : null}>
           <div className={styles.tokensToolbar}>
@@ -628,7 +635,7 @@ export default function AdminRmm({
             </div>
           </div>
 
-          {loading ? <p className={adminUi.adminMutedText}>{copy.common.loadingShort}</p> : <>
+          {loading ? <AdminGeneralSettingsLoading message={copy.common.loadingShort} /> : <>
               <Table columns={tokenListView === "trash" ? [{
           key: "client_name",
           label: copy.tokens.colCompany
@@ -683,10 +690,10 @@ export default function AdminRmm({
         }]} rows={tokensPagination.paginatedItems.map(t => mapTokenTableRow(t, locale))} emptyMessage={tokenListView === "trash" ? copy.tokens.emptyTrash : copy.tokens.emptyActive} />
               {displayedTokens.length > 0 && <Pagination page={tokensPagination.page} totalPages={tokensPagination.totalPages} onPageChange={tokensPagination.setPage} pageSize={tokensPagination.pageSize} onPageSizeChange={tokensPagination.setPageSize} rangeLabel={tokensPagination.rangeLabel} />}
             </>}
-        </Card>}
+        </SettingsSection>}
 
-      {tab === "agents" && <Card title={copy.agents.title} description={copy.agents.description} fill>
-          {loading ? <p className={adminUi.adminMutedText}>{copy.common.loadingShort}</p> : <>
+      {tab === "agents" && <SettingsSection title={copy.agents.title} description={copy.agents.description} icon="mdi:laptop">
+          {loading ? <AdminGeneralSettingsLoading message={copy.common.loadingShort} /> : <>
               <div className={styles.agentsToolbar}>
                 <div className={styles.agentsToolbarMain}>
                   <div className={`${kit.searchBox} ${styles.agentsSearch}`}>
@@ -810,11 +817,13 @@ export default function AdminRmm({
         last_seen_at: a.last_seen_at ? formatRmmDateTime(a.last_seen_at, locale) : "-"
       }))} emptyMessage={agentSearch.trim() ? copy.agents.emptySearch : copy.agents.empty} />
             </>}
-        </Card>}
+        </SettingsSection>}
 
-      {tab === "consumptions" && settings && <Card title={copy.consumptions.cardTitle} description={copy.consumptions.cardDescription} fill>
+      {tab === "consumptions" && settings && <SettingsSection title={copy.consumptions.cardTitle} description={copy.consumptions.cardDescription} icon="mdi:chart-box-outline">
           <RmmConsumptionsPanel copy={copy} locale={locale} settings={settings} agentCount={agents.length} metricsStorage={metricsStorage} />
-        </Card>}
+        </SettingsSection>}
+
+    </AdminPlatformShell>
 
       <RmmEnrollmentTokenFormModal open={tokenModalOpen} copy={copy} draft={tokenDraft} setDraft={setTokenDraft} saving={creatingToken} clientOptions={clientOptions} onClose={closeTokenModal} onSave={handleSaveToken} />
 
@@ -841,5 +850,5 @@ export default function AdminRmm({
       />
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
-    </Page>;
+    </>;
 }

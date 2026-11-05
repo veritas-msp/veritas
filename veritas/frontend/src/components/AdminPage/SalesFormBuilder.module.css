@@ -1,3 +1,49 @@
+@keyframes builderFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes paletteItemIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes canvasFieldIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes emptyIconPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.builderPaneFade {
+  animation: builderFadeIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .palette {
   width: 220px;
   border-right: 1px solid var(--msp-border-light, #eef2f7);
@@ -5,6 +51,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: builderFadeIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .paletteHead {
@@ -14,11 +61,19 @@
 
 .paletteTitle {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted);
+}
+
+.paletteHeadIcon {
+  color: var(--msp-accent, #2b5fab);
+  display: inline-flex;
 }
 
 .paletteList {
@@ -62,15 +117,72 @@
   font-size: 0.82rem;
   color: var(--msp-text);
   user-select: none;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+  box-sizing: border-box;
+  opacity: 0;
+  animation: paletteItemIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--item-i, 0) * 28ms);
+  transition:
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.paletteItem:hover {
+  transform: translateX(3px);
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 42%, var(--msp-border-light, #eef2f7));
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 4px 14px rgba(15, 28, 46, 0.07);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.paletteItem:hover .paletteItemIcon,
+.paletteItem:hover .paletteItemIconAnimated {
+  transform: scale(1.12);
+  color: var(--msp-accent, #2b5fab);
 }
 
 .paletteItem:active {
   cursor: grabbing;
+  transform: translateX(1px) scale(0.99);
+}
+
+.paletteItemDragging {
+  opacity: 0.4 !important;
+  animation: none;
+}
+
+.paletteItemIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  color: var(--msp-accent, #2b5fab);
 }
 
 .paletteItemIcon {
   font-size: 1.05rem;
   color: var(--msp-accent);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), color 0.18s ease;
+}
+
+.paletteItemIconAnimated {
+  display: inline-flex;
+  color: var(--msp-accent, #2b5fab);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), color 0.18s ease;
+}
+
+.paletteItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .canvasWrap {
@@ -112,12 +224,13 @@
   border-radius: 14px;
   background: var(--msp-surface, #fff);
   padding: 1rem;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .canvasDropZoneActive {
   border-color: var(--msp-accent);
   background: var(--msp-accent-soft, rgba(59, 130, 246, 0.06));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent, #2b5fab) 25%, transparent);
 }
 
 .canvasEmpty {
@@ -125,11 +238,36 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   min-height: 220px;
   color: var(--msp-muted);
   text-align: center;
   font-size: 0.88rem;
+  animation: builderFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.canvasEmpty p {
+  margin: 0;
+}
+
+.canvasEmptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+  animation: emptyIconPulse 2.4s ease-in-out infinite;
+}
+
+.canvasEmptyHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted-light, #8b9bb5);
 }
 
 .canvasFieldList {
@@ -148,20 +286,29 @@
   border-radius: 12px;
   background: var(--msp-surface, #fff);
   cursor: pointer;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.canvasFieldEnter {
+  animation: canvasFieldIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--field-i, 0) * 35ms);
 }
 
 .canvasField:hover {
-  border-color: var(--msp-border, #dbe3ee);
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 28%, var(--msp-border, #dbe3ee));
+  box-shadow: 0 6px 16px rgba(15, 28, 46, 0.06);
+  transform: translateY(-1px);
 }
 
 .canvasFieldSelected {
   border-color: var(--msp-accent);
   box-shadow: 0 0 0 1px var(--msp-accent);
+  transform: none;
 }
 
 .canvasFieldDragging {
   opacity: 0.45;
+  animation: none;
 }
 
 .canvasFieldHandle {
@@ -309,6 +456,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  animation: builderFadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
 }
 
 .propsHead {
@@ -426,10 +574,11 @@
 
 .settingsContent {
   background: var(--msp-surface, #fff);
+  animation: builderFadeIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .settingsPanelWide {
-  width: min(720px, 100%);
+  width: min(1100px, 100%);
   margin: 0 auto;
   padding: 0.25rem 0.35rem 0.5rem;
 }
@@ -442,6 +591,7 @@
   background:
     radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 42%),
     var(--msp-surface-2, #f4f7fb);
+  animation: builderFadeIn 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .previewPanel {
@@ -575,5 +725,26 @@
     bottom: 0;
     z-index: 2;
     box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .builderPaneFade,
+  .palette,
+  .paletteItem,
+  .propsPanel,
+  .settingsContent,
+  .previewWrap,
+  .canvasEmpty,
+  .canvasEmptyIcon,
+  .canvasFieldEnter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .paletteItem,
+  .canvasField {
+    transition: none !important;
   }
 }

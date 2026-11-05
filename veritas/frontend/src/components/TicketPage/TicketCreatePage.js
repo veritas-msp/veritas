@@ -21,12 +21,29 @@ import { collectSupportFormFiles, findFormDescriptionField, findFormSubjectField
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
+import TicketCreateWizard from "./TicketCreateWizard";
 import SalesFormFieldsRenderer, { buildDynamicFieldLines, filterVisibleFields, validateDynamicFields } from "./SalesFormFieldsRenderer";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import s from "./TicketCreatePage.module.css";
+const TICKET_KIND_KEYS = ["incident", "demande", "probleme", "changement"];
+function resolveInitialTicketKind(initialData) {
+  const initialType = String(initialData?.type || "").trim();
+  return TICKET_KIND_KEYS.includes(initialType) ? initialType : "";
+}
+function resolveInitialWizardStep(initialData) {
+  if (
+    initialData?.supportFormId ||
+    initialData?.lockSupportForm ||
+    initialData?.prefillSource === "supervision"
+  ) {
+    return "details";
+  }
+  if (resolveInitialTicketKind(initialData)) return "form";
+  return "type";
+}
 const MAX_ATTACHMENT_FILES = 10;
 function mergeAttachmentFiles(currentFiles = [], nextFiles = []) {
   const merged = [...currentFiles];
@@ -495,14 +512,9 @@ export default function TicketCreatePage({
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [type, setType] = useState(() => {
-    const initialType = String(initialData?.type || "").trim();
-    return ["incident", "demande", "probleme", "changement"].includes(initialType) ? initialType : "incident";
-  });
-  const [ticketKind, setTicketKind] = useState(() => {
-    const initialType = String(initialData?.type || "").trim();
-    return ["incident", "demande", "probleme", "changement"].includes(initialType) ? initialType : "incident";
-  });
+  const [wizardStep, setWizardStep] = useState(() => resolveInitialWizardStep(initialData));
+  const [type, setType] = useState(() => resolveInitialTicketKind(initialData) || "incident");
+  const [ticketKind, setTicketKind] = useState(() => resolveInitialTicketKind(initialData));
   const [isMajorIncident, setIsMajorIncident] = useState(false);
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
@@ -912,7 +924,7 @@ export default function TicketCreatePage({
     // Pendant le chargement, ne pas vider le formulaire pré-sélectionné (sinon le préremplissage supervision est perdu).
     if (loadingData) return;
     if (!hasSupportForms) {
-      if (selectedSupportFormId) setSelectedSupportFormId("");
+      if (selectedSupportFormId && wizardStep === "details") setSelectedSupportFormId("");
       return;
     }
     if (initialData?.supportFormId && formsForKind.some(form => String(form.id) === String(initialData.supportFormId))) {
@@ -920,6 +932,7 @@ export default function TicketCreatePage({
       if (String(selectedSupportFormId) !== lockedId) {
         setSelectedSupportFormId(lockedId);
       }
+      if (wizardStep !== "details") setWizardStep("details");
       return;
     }
     if (selectedSupportFormId && !formsForKind.some(form => String(form.id) === String(selectedSupportFormId))) {
@@ -927,8 +940,9 @@ export default function TicketCreatePage({
       if (!initialData?.supportFormId) {
         setSupportFormValues({});
       }
+      if (wizardStep === "details") setWizardStep("form");
     }
-  }, [loadingData, hasSupportForms, formsForKind, selectedSupportFormId, initialData?.supportFormId]);
+  }, [loadingData, hasSupportForms, formsForKind, selectedSupportFormId, initialData?.supportFormId, wizardStep]);
 
   // Applique (ou ré-applique) le préremplissage supervision une fois le formulaire chargé.
   useEffect(() => {
@@ -1238,7 +1252,7 @@ export default function TicketCreatePage({
       setAvailabilityDate(getTodayDateString());
     }
   }, [availabilityDate]);
-  const handleSupportFormSelect = useCallback(form => {
+  const handleSupportFormSelect = useCallback((form, { advance = true } = {}) => {
     if (!form?.id) return;
     if (supportFormLocked) return;
     const nextId = String(form.id);
@@ -1259,11 +1273,12 @@ export default function TicketCreatePage({
       supportForm: undefined,
       supportFormDetails: undefined
     }));
+    if (advance) setWizardStep("details");
   }, [supportFormLocked, initialData?.supportFormId, initialData?.supportFormValues]);
-  const handleKindChange = useCallback(kind => {
+  const handleWizardPickType = useCallback(item => {
     if (supportFormLocked) return;
-    const nextKind = String(kind || "").trim();
-    if (!nextKind || nextKind === ticketKind) return;
+    const nextKind = String(item?.key || "").trim();
+    if (!TICKET_KIND_KEYS.includes(nextKind)) return;
     setTicketKind(nextKind);
     setType(nextKind);
     if (nextKind !== "incident") setIsMajorIncident(false);
@@ -1274,7 +1289,47 @@ export default function TicketCreatePage({
       supportForm: undefined,
       supportFormDetails: undefined
     }));
-  }, [supportFormLocked, ticketKind]);
+    const matchingForms = (Array.isArray(supportForms) ? supportForms : [])
+      .filter(form => form?.enabled !== false)
+      .filter(form => String(form.kind || "").trim() === nextKind);
+    if (matchingForms.length === 1) {
+      handleSupportFormSelect(matchingForms[0], { advance: true });
+      return;
+    }
+    setWizardStep("form");
+  }, [supportFormLocked, supportForms, handleSupportFormSelect]);
+  const handleWizardBackToType = useCallback(() => {
+    if (supportFormLocked) return;
+    setWizardStep("type");
+    setSelectedSupportFormId("");
+    setSupportFormValues({});
+    setFieldErrors(prev => ({
+      ...prev,
+      supportForm: undefined,
+      supportFormDetails: undefined
+    }));
+  }, [supportFormLocked]);
+  const handleWizardBackToForm = useCallback(() => {
+    if (supportFormLocked) return;
+    if (formsForKind.length <= 1) {
+      setWizardStep("type");
+      setSelectedSupportFormId("");
+      setSupportFormValues({});
+      setFieldErrors(prev => ({
+        ...prev,
+        supportForm: undefined,
+        supportFormDetails: undefined
+      }));
+      return;
+    }
+    setWizardStep("form");
+  }, [supportFormLocked, formsForKind.length]);
+  useEffect(() => {
+    if (loadingData || wizardStep !== "form" || supportFormLocked) return;
+    if (!ticketKind || formsForKind.length !== 1) return;
+    if (selectedSupportFormId) return;
+    handleSupportFormSelect(formsForKind[0], { advance: true });
+  }, [loadingData, wizardStep, supportFormLocked, ticketKind, formsForKind, selectedSupportFormId, handleSupportFormSelect]);
   const resolvedFormTicketContent = useMemo(() => {
     if (!hasSupportForms || !selectedSupportForm) {
       return {
@@ -1621,7 +1676,9 @@ export default function TicketCreatePage({
     }
   };
   const resetForm = () => {
+    setWizardStep("type");
     setType("incident");
+    setTicketKind("");
     setIsMajorIncident(false);
     setTitle("");
     setDescription("");
@@ -1830,6 +1887,8 @@ export default function TicketCreatePage({
         </div>
       </div>;
   }
+  const isWizardPicker = wizardStep === "type" || wizardStep === "form";
+  const selectedTypeMeta = copy.ticketTypes.find(item => item.key === ticketKind) || null;
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`} onDragEnter={handlePageDragEnter} onDragLeave={handlePageDragLeave} onDragOver={handlePageDragOver} onDrop={handlePageDrop}>
       {isAttachmentDragOver && <div className={s.pageDropOverlay} aria-hidden>
           <Icon icon="mdi:upload-outline" className={s.pageDropOverlayIcon} />
@@ -1838,55 +1897,63 @@ export default function TicketCreatePage({
         </div>}
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={copy.formatPageSubtitle(agentLabel)} icon="mdi:message-processing-outline" actions={<>
-            <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("Ticket")}>
+          {!isWizardPicker ? <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={copy.formatPageSubtitle(agentLabel)} icon="mdi:message-processing-outline" actions={<>
+            <button type="button" className={s.btnSecondary} onClick={() => {
+              if (wizardStep === "details" && !supportFormLocked) {
+                handleWizardBackToForm();
+                return;
+              }
+              onNavigate?.("Ticket");
+            }}>
               <Icon icon="mdi:arrow-left" />
               {copy.back}
             </button>
-            <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData || !hasSupportForms} title={loadingData ? copy.loadingData : !hasSupportForms ? copy.noForms : undefined}>
+            {wizardStep === "details" ? <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData || !hasSelectedSupportForm} title={loadingData ? copy.loadingData : !hasSelectedSupportForm ? copy.noForms : undefined}>
               <Icon icon="mdi:check" />
               {submitting ? copy.creating : copy.createTicket}
-            </button>
-          </>} />
-          <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
-        <div className={layout.shell}>
+            </button> : null}
+          </>} /> : null}
+          <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent ${isWizardPicker ? layout.contentNoHero : ""}`.trim()}>
+        <div className={`${layout.shell} ${isWizardPicker ? `${layout.shellFull || ""} ${s.wizardShell}` : ""}`.trim()}>
 
-        <div className={s.typeKpiRow}>
-          {copy.ticketTypes.map(item => (
-            <button
-              key={item.key}
-              type="button"
-              className={`${layout.kpiCard} ${ticketKind === item.key ? layout.kpiCardActive : ""}`}
-              onClick={() => handleKindChange(item.key)}
-              disabled={supportFormLocked && ticketKind !== item.key}
-              aria-pressed={ticketKind === item.key}
-            >
-              <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
-                <Icon icon={item.icon} />
-              </div>
-              <div className={layout.kpiBody}>
-                <span className={layout.kpiValue}>{item.label}</span>
-                <span className={layout.kpiLabel}>{item.hint}</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        {isWizardPicker ? <TicketCreateWizard
+          copy={copy}
+          step={wizardStep}
+          ticketTypes={copy.ticketTypes}
+          forms={formsForKind}
+          loading={loadingData}
+          selectedTypeKey={ticketKind}
+          selectedFormId={selectedSupportFormId}
+          formLocked={supportFormLocked}
+          onPickType={handleWizardPickType}
+          onPickForm={form => handleSupportFormSelect(form, { advance: true })}
+          onBackToType={handleWizardBackToType}
+          onExit={() => onNavigate?.("Ticket")}
+        /> : null}
+
+        {wizardStep === "details" ? <>
+        {!supportFormLocked ? <div className={s.wizardContextBar}>
+          <div className={s.wizardContextChips}>
+            {selectedTypeMeta ? <button type="button" className={s.wizardContextChip} onClick={handleWizardBackToType}>
+              <Icon icon={selectedTypeMeta.icon} aria-hidden />
+              <span>{selectedTypeMeta.label}</span>
+              <Icon icon="mdi:pencil-outline" className={s.wizardContextChipEdit} aria-hidden />
+            </button> : null}
+            {selectedSupportForm ? <button type="button" className={s.wizardContextChip} onClick={handleWizardBackToForm}>
+              <Icon icon={selectedSupportForm.icon || "mdi:file-document-outline"} aria-hidden />
+              <span>{selectedSupportForm.label}</span>
+              <Icon icon="mdi:pencil-outline" className={s.wizardContextChipEdit} aria-hidden />
+            </button> : null}
+          </div>
+          <button type="button" className={s.wizardContextBack} onClick={handleWizardBackToForm}>
+            <Icon icon="mdi:arrow-left" aria-hidden />
+            {(formsForKind.length <= 1 ? copy.wizard?.changeType : copy.wizard?.changeForm) || copy.back}
+          </button>
+        </div> : null}
 
         <div className={account.contentScroll}>
           <div className={account.contentGridWide}>
             <div className={s.formStack}>
-              <SectionPanel title={copy.sections.nature || copy.sections.form}>
-                {!hasSupportForms ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
-                    {loadingData ? copy.loadingForms : (enabledSupportForms.length > 0 ? copy.noFormsForKind || copy.noForms : copy.noForms)}
-                  </p> : <div className={`${s.typeGrid} ${s.formTypeGrid}`} data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}>
-                    {formsForKind.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => handleSupportFormSelect(form)} disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)} aria-disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)}>
-                        <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
-                        <span className={s.typeLabel}>{form.label}</span>
-                        {form.description ? <span className={s.typeHint}>{form.description}</span> : null}
-                      </button>)}
-                  </div>}
-              </SectionPanel>
-
               {hasSelectedSupportForm ? <SectionPanel title={copy.sections.requester} className={s.panelAllowOverflow}>
                 <div className={s.demandeurBlock}>
                   <p className={s.detailsAvailabilityTitle}>{copy.requesterContact}</p>
@@ -2579,6 +2646,7 @@ export default function TicketCreatePage({
             </aside>
           </div>
         </div>
+        </> : null}
       </div>
           </div>
 

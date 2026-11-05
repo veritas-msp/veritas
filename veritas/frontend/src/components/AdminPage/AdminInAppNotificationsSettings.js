@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { Btn, Card, FieldRow, Switch } from "./AdminUi";
+import { Btn, FieldRow, Switch } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import styles from "./AdminInAppNotificationsSettings.module.css";
 import { sendTestNotification } from "../../api/notifications";
 import { emitNotificationsUpdated } from "../../hooks/useNotifications";
@@ -90,16 +91,20 @@ export default function AdminInAppNotificationsSettings() {
       </article>;
   };
   return <div className={styles.layout}>
-      <Card title={copy.mainCard.title} description={copy.mainCard.description}>
+      <SettingsSection title={copy.mainCard.title} description={copy.mainCard.description} icon="mdi:bell-ring-outline">
         <FieldRow icon="mdi:bell-ring-outline" label={copy.enable.label} hint={copy.enable.hint} className={styles.compactRow}>
           <Switch checked={settings.enabled} onChange={value => setSettings(prev => ({
           ...prev,
           enabled: value
         }))} label={settings.enabled ? copy.status.enabled : copy.status.disabled} />
         </FieldRow>
-      </Card>
+      </SettingsSection>
 
-      <Card title={copy.eventsCard.title} description={settings.enabled ? formatInAppActiveEventsDescription(locale, activeEventsCount, eventOptions.length) : copy.eventsCard.disabledHint}>
+      <SettingsSection
+        title={copy.eventsCard.title}
+        description={settings.enabled ? formatInAppActiveEventsDescription(locale, activeEventsCount, eventOptions.length) : copy.eventsCard.disabledHint}
+        icon="mdi:bell-badge-outline"
+      >
         <div className={`${styles.groups} ${!settings.enabled ? styles.groupsDisabled : ""}`}>
           {eventGroups.map(group => <section key={group.id} className={styles.group}>
               <header className={styles.groupHeader}>
@@ -109,7 +114,7 @@ export default function AdminInAppNotificationsSettings() {
               <div className={styles.groupEvents}>{group.eventKeys.map(renderEventCard)}</div>
             </section>)}
         </div>
-      </Card>
+      </SettingsSection>
 
       <div className={styles.footerBar}>
         <p className={styles.footerHint}>{copy.footer.hint}</p>

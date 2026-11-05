@@ -1,5 +1,69 @@
 
+.shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
+.paneInner {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+.paneToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  padding: 0.95rem 1.35rem 0.65rem;
+}
+
+.paneToolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.paneToolbarRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.paneHint {
+  margin: 0;
+  padding: 0 1.35rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.paneContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 1.35rem 0.55rem;
+}
+
+.paneContentFlush {
+  padding-top: 0.75rem;
+}
 
 .panel {
   flex: 1;
@@ -131,6 +195,10 @@
   flex-shrink: 0;
 }
 
+.toolRowFlush {
+  margin-bottom: 0;
+}
+
 .toolLeft {
   display: flex;
   align-items: center;
@@ -198,9 +266,10 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border: 1px solid var(--msp-border);
-  border-radius: 8px;
-  background: var(--msp-surface);
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .table {
@@ -603,36 +672,57 @@
 }
 
 
+.listShell {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+}
+
 .profileGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   align-items: stretch;
+  padding: 0 0.85rem;
 }
 
 .profileCard {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  height: 100%;
-  min-height: 168px;
-  padding: 16px;
-  border: 1px solid var(--msp-border);
-  border-radius: 8px;
-  background: var(--msp-surface);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: auto;
+  min-height: 0;
+  padding: 0.95rem 0.15rem;
+  border: none;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transition: background 0.15s;
 }
 
 .profileCard:hover {
-  border-color: var(--msp-muted-light);
-  box-shadow: 0 2px 8px var(--shadow-color);
+  border-color: var(--msp-border-light, #eef2f7);
+  background: color-mix(in srgb, var(--msp-surface-2, #f8fafc) 70%, transparent);
+  box-shadow: none;
+}
+
+.profileCard:last-child {
+  border-bottom: none;
 }
 
 .profileCardHead {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   flex: 1;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -678,9 +768,9 @@
   color: var(--msp-muted-light);
   margin: 0;
   line-height: 1.4;
-  min-height: calc(1.4em * 2);
+  min-height: 0;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -736,7 +826,7 @@
 }
 
 .limitHint {
-  margin: 0 0 0.75rem;
+  margin: 0.35rem 0 0;
   font-size: 0.78rem;
   color: var(--msp-muted);
   display: flex;
@@ -752,7 +842,8 @@
 .profileCardActions {
   display: flex;
   gap: 6px;
-  margin-top: auto;
+  margin-top: 0;
+  flex-shrink: 0;
   padding-top: 8px;
   border-top: 1px solid var(--msp-border-light);
 }
@@ -793,137 +884,230 @@
 }
 
 
-.accessHeader {
+.pageAccessLayout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pageAccessProfiles {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--msp-border-light, #eef2f7);
+  background: transparent;
+  padding-right: 0.85rem;
 }
 
-.accessLegend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-}
-
-.legendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.76rem;
-  color: var(--msp-muted);
-}
-
-.legendDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-}
-
-.legendOn { background: #2b5fab; }
-.legendOff { background: #e4e8ee; border: 1px solid #dde3ed; }
-.legendLock { background: #f4f6fa; border: 1px solid #dde3ed; }
-
-.accessWrap {
-  flex: 1;
+.pageAccessProfileList {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  border: 1px solid var(--msp-border);
-  border-radius: 8px;
-  background: var(--msp-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0 0.15rem 0.75rem 0;
 }
 
-.accessTable {
+.pageAccessProfileBtn {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.8rem;
+  padding: 0.7rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--msp-text, #0f1c2e);
+  transition: background 0.12s, color 0.12s;
 }
 
-.accessTable th {
-  padding: 10px 8px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--msp-muted-light);
-  background: var(--msp-surface-2);
-  border-bottom: 1px solid var(--msp-border);
-  text-align: center;
+.pageAccessProfileBtn:hover {
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.pageAccessProfileBtnActive {
+  background: color-mix(in srgb, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)) 80%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: none;
+}
+
+.pageAccessProfileBtnMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.pageAccessProfileName {
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pageAccessProfileDesc {
+  font-size: 0.7rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 72px;
-  position: sticky;
-  top: 0;
-  z-index: 2;
 }
 
-.accessTable th:first-child {
-  text-align: left;
-  padding-left: 16px;
-  min-width: 140px;
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: var(--msp-surface-2);
+.pageAccessProfileCount {
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: var(--msp-muted-light, #8b9bb5);
 }
 
-.accessTable td {
-  padding: 8px;
-  border-bottom: 1px solid var(--msp-border-light);
-  text-align: center;
-  vertical-align: middle;
-  background: var(--msp-surface);
-  color: var(--msp-text);
+.pageAccessProfileBtnActive .pageAccessProfileCount {
+  color: var(--msp-accent, #2b5fab);
 }
 
-.accessTable td:first-child {
-  text-align: left;
-  padding-left: 16px;
-  vertical-align: middle;
-  position: sticky;
-  left: 0;
-  background: var(--msp-surface);
-  z-index: 1;
+.pageAccessPages {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 0.15rem 0.85rem 1.15rem;
 }
 
-.accessTable tbody tr:hover td { background: var(--msp-surface-3); }
-.accessTable tbody tr:hover td:first-child { background: var(--msp-surface-3); }
+.pageAccessGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0;
+}
 
-.accessTable tbody tr:last-child td { border-bottom: none; }
+.pageAccessCard:last-child {
+  border-bottom: none;
+}
 
-.toggle {
+.pageAccessCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.85rem 0.25rem;
+  border: none;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 0;
+  background: transparent;
+  transition: background 0.12s;
+}
+
+.pageAccessCardOn {
+  background: transparent;
+  border-color: var(--msp-border-light, #eef2f7);
+}
+
+.pageAccessCardLocked {
+  opacity: 0.92;
+}
+
+.pageAccessCardMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.pageAccessCardIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid #e4e8ee;
-  border-radius: 7px;
-  background: var(--msp-surface);
-  color: #d1d5db;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 9px;
+  background: transparent;
+  border: none;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.05rem;
+  flex-shrink: 0;
 }
 
-.toggleOn {
-  background: rgba(43, 95, 171, 0.1);
-  border-color: rgba(43, 95, 171, 0.35);
-  color: #2b5fab;
+.pageAccessLucideIcon {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
-.toggleOff:hover {
-  border-color: #c5d4ef;
-  color: var(--msp-muted-light);
+.pageAccessCardOn .pageAccessCardIcon {
+  background: color-mix(in srgb, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)) 90%, transparent);
+  border-color: transparent;
+  color: var(--msp-accent, #2b5fab);
 }
 
-.toggleLocked {
+.pageAccessCardText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pageAccessCardLabel {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.pageAccessCardBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.66rem;
+  font-weight: 650;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.pageAccessCardBadge :global(svg) {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .pageAccessLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .pageAccessProfiles {
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+    max-height: 220px;
+  }
+}
+
+:global(html.dark) .pageAccessCardIcon,
+:global(body.dark) .pageAccessCardIcon {
+  background: transparent;
+  border-color: transparent;
+}
+
+:global(html.dark) .pageAccessProfiles,
+:global(body.dark) .pageAccessProfiles,
+:global(html.dark) .pageAccessCard,
+:global(body.dark) .pageAccessCard {
   background: var(--msp-surface-2);
+}
+
+:global(html.dark) .pageAccessProfileBtnActive,
+:global(body.dark) .pageAccessProfileBtnActive {
+  background: var(--msp-surface);
   border-color: var(--msp-border);
-  color: var(--msp-muted-light);
-  cursor: default;
 }
 
 .profileViewSelectWrap {
@@ -1131,8 +1315,17 @@
 @media (max-width: 640px) {
   .toolRow { flex-direction: column; align-items: stretch; }
   .search { max-width: none; }
-  .profileGrid { grid-template-columns: 1fr; }
   .teamsLayout { grid-template-columns: 1fr; }
+  .teamsLayoutEmbedded > *:first-child {
+    padding-right: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+    padding-bottom: 1rem;
+  }
+  .teamsLayoutEmbedded > *:last-child {
+    padding-left: 0;
+    padding-top: 1rem;
+  }
 }
 
 
@@ -1143,6 +1336,32 @@
   gap: 1rem;
   flex: 1;
   min-height: 0;
+}
+
+.teamsLayoutEmbedded {
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.teamsLayoutEmbedded > *:first-child {
+  padding-right: 1rem;
+  border-right: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.teamsLayoutEmbedded > *:last-child {
+  padding-left: 1rem;
+}
+
+.teamsToolbar {
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
+}
+
+.teamDetailToolbar {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
 }
 
 .teamsListPane {
@@ -1160,9 +1379,9 @@
 
 .teamListItem {
   width: 100%;
-  border: 1px solid var(--msp-border);
-  border-radius: 10px;
-  background: var(--msp-surface-2);
+  border: none;
+  border-radius: 8px;
+  background: transparent;
   padding: 0.65rem 0.75rem;
   display: flex;
   align-items: center;
@@ -1170,18 +1389,17 @@
   cursor: pointer;
   text-align: left;
   font-family: inherit;
-  transition: border-color 0.12s, background 0.12s;
+  transition: background 0.12s, color 0.12s;
   color: inherit;
 }
 
 .teamListItem:hover {
-  border-color: var(--msp-muted-light);
-  background: var(--msp-surface-3);
+  background: var(--msp-surface-2, #f8fafc);
 }
 
 .teamListItemActive {
-  border-color: var(--msp-accent);
-  background: var(--msp-accent-soft);
+  background: color-mix(in srgb, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)) 80%, transparent);
+  color: var(--msp-accent, #2b5fab);
 }
 
 .teamListIcon {
@@ -1221,8 +1439,10 @@
 
 .teamDetailActions {
   display: flex;
+  align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .teamInactiveBanner {
@@ -1300,6 +1520,15 @@
 }
 
 
+:global(html.dark) .tableWrap,
+:global(body.dark) .tableWrap,
+:global(html.dark) .listShell,
+:global(body.dark) .listShell {
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 :global(html.dark) .statusActive { color: #4ade80; }
 :global(html.dark) .mfaEnabled { color: #4ade80; }
 :global(html.dark) .mfaPending { color: #fbbf24; }
@@ -1312,23 +1541,6 @@
 
 :global(html.dark) .mfaReleaseBtn:hover {
   background: rgba(248, 113, 113, 0.18);
-}
-
-:global(html.dark) .toggle {
-  border-color: var(--msp-border);
-  background: var(--msp-surface-2);
-}
-
-:global(html.dark) .toggleOn {
-  background: var(--msp-accent-soft);
-  border-color: rgba(74, 143, 212, 0.35);
-  color: var(--msp-accent);
-}
-
-:global(html.dark) .toggleLocked {
-  background: var(--msp-surface-3);
-  border-color: var(--msp-border);
-  color: var(--msp-muted-light);
 }
 
 :global(html.dark) .systemTag {
@@ -1364,14 +1576,4 @@
 :global(html.dark) .actionBtnDanger:hover {
   background: rgba(248, 113, 113, 0.1);
   color: #f87171;
-}
-
-:global(html.dark) .legendOff {
-  background: var(--msp-surface-3);
-  border-color: var(--msp-border);
-}
-
-:global(html.dark) .legendLock {
-  background: var(--msp-surface-2);
-  border-color: var(--msp-border);
 }

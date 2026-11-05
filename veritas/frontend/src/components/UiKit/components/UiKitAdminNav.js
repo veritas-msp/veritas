@@ -2,15 +2,70 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import styles from "../uiKitAdmin.module.css";
 import UiKitScrollFadeShell from "./UiKitScrollFadeShell";
+import AdminAnimatedIcon, { useAdminIconHover } from "../../AdminPage/AdminAnimatedIcon";
 
 function isItemActive(item, activeKey) {
   return activeKey === item.key && !item.proOnly;
 }
 
+function AdminNavItemButton({
+  item,
+  className,
+  onClick,
+  "aria-current": ariaCurrent,
+  "aria-disabled": ariaDisabled,
+  "aria-expanded": ariaExpanded,
+  children,
+  iconSize = 18
+}) {
+  const { animRef, onMouseEnter, onMouseLeave } = useAdminIconHover();
+  const showIcon = Boolean(item?.icon || item?.key);
+
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      aria-current={ariaCurrent}
+      aria-disabled={ariaDisabled}
+      aria-expanded={ariaExpanded}
+      onMouseEnter={showIcon ? onMouseEnter : undefined}
+      onMouseLeave={showIcon ? onMouseLeave : undefined}
+    >
+      {showIcon ? (
+        <span className={styles.adminNavIcon} aria-hidden>
+          <AdminAnimatedIcon iconKey={item.key} iconify={item.icon} size={iconSize} animRef={animRef} />
+        </span>
+      ) : null}
+      {children}
+    </button>
+  );
+}
+
+function AdminNavSectionTitle({ section }) {
+  const { animRef, onMouseEnter, onMouseLeave } = useAdminIconHover();
+  const showIcon = Boolean(section.icon || section.id);
+  if (!section.title) return null;
+  return (
+    <div
+      className={styles.adminNavSectionTitle}
+      onMouseEnter={showIcon ? onMouseEnter : undefined}
+      onMouseLeave={showIcon ? onMouseLeave : undefined}
+    >
+      {showIcon ? (
+        <span className={styles.adminNavSectionIcon} aria-hidden>
+          <AdminAnimatedIcon iconKey={section.id} iconify={section.icon} size={14} animRef={animRef} />
+        </span>
+      ) : null}
+      <span>{section.title}</span>
+    </div>
+  );
+}
+
 /**
  * Navigation administration réutilisable (recherche, sections, groupes, badge Pro, indicateur glissant).
  *
- * sections: [{ title, items: [{ key, label, description, icon, proOnly?, children? }] }]
+ * sections: [{ title, id?, icon?, items: [{ key, label, description, icon, proOnly?, children? }] }]
  */
 export default function UiKitAdminNav({
   sections = [],
@@ -151,7 +206,7 @@ export default function UiKitAdminNav({
           {isEmpty && hasSearch ? <p className={styles.adminNavEmpty}>{noResultsLabel}</p> : null}
           {sections.map(section => (
             <div key={section.title || section.items[0]?.key} className={styles.adminNavSection}>
-              {section.title ? <div className={styles.adminNavSectionTitle}>{section.title}</div> : null}
+              <AdminNavSectionTitle section={section} />
               <ul className={styles.adminNavList}>
                 {section.items.map(item => {
                   if (item.children) {
@@ -159,13 +214,12 @@ export default function UiKitAdminNav({
                     const hasActiveChild = item.children.some(child => isItemActive(child, activeKey));
                     return (
                       <li key={item.key} className={styles.adminNavGroup}>
-                        <button
-                          type="button"
+                        <AdminNavItemButton
+                          item={item}
                           className={`${styles.adminNavItem} ${styles.adminNavGroupToggle}${hasActiveChild ? ` ${styles.adminNavGroupActive}` : ""}`}
                           onClick={() => onToggleGroup?.(item.key)}
                           aria-expanded={expanded}
                         >
-                          {item.icon ? <Icon icon={item.icon} className={styles.adminNavIcon} aria-hidden /> : null}
                           <span className={styles.adminNavItemText}>
                             {renderLabelRow(item)}
                             <span className={styles.adminNavItemDesc}>{item.description}</span>
@@ -175,23 +229,24 @@ export default function UiKitAdminNav({
                             className={`${styles.adminNavGroupChevron}${expanded ? ` ${styles.adminNavGroupChevronOpen}` : ""}`}
                             aria-hidden
                           />
-                        </button>
+                        </AdminNavItemButton>
                         {expanded ? (
                           <ul className={`${styles.adminNavSubList} ${styles.adminNavSubListOpen}`}>
                             {item.children.map(child => (
                               <li key={child.key}>
-                                <button
-                                  type="button"
+                                <AdminNavItemButton
+                                  item={child}
                                   className={itemClass(child, styles.adminNavSubItem)}
                                   onClick={() => onItemClick?.(child)}
                                   aria-current={isItemActive(child, activeKey) ? "page" : undefined}
                                   aria-disabled={child.proOnly || undefined}
+                                  iconSize={16}
                                 >
                                   <span className={styles.adminNavItemText}>
                                     {renderLabelRow(child)}
                                     <span className={styles.adminNavItemDesc}>{child.description}</span>
                                   </span>
-                                </button>
+                                </AdminNavItemButton>
                               </li>
                             ))}
                           </ul>
@@ -201,19 +256,18 @@ export default function UiKitAdminNav({
                   }
                   return (
                     <li key={item.key}>
-                      <button
-                        type="button"
+                      <AdminNavItemButton
+                        item={item}
                         className={itemClass(item)}
                         onClick={() => onItemClick?.(item)}
                         aria-current={isItemActive(item, activeKey) ? "page" : undefined}
                         aria-disabled={item.proOnly || undefined}
                       >
-                        {item.icon ? <Icon icon={item.icon} className={styles.adminNavIcon} aria-hidden /> : null}
                         <span className={styles.adminNavItemText}>
                           {renderLabelRow(item)}
                           <span className={styles.adminNavItemDesc}>{item.description}</span>
                         </span>
-                      </button>
+                      </AdminNavItemButton>
                     </li>
                   );
                 })}

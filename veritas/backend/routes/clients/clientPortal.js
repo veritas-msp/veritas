@@ -23,6 +23,11 @@ import { toggleFavorite, upsertHelpful } from "../../services/knowledgeArticleEx
 import { addArticleComment, deleteArticleComment, updateArticleComment, upsertArticleRating } from "../../services/knowledgeArticleFeedbackService.js";
 import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
 import { normalizeVisibilityRules } from "../../services/salesFormConditions.js";
+import {
+  loadPortalAudienceByFormIds,
+  mapFormPortalAudience,
+  portalUserCanAccessForm
+} from "../../services/supportFormAssignments.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -847,10 +852,26 @@ router.get("/support-forms", async (req, res) => {
   if (!ctx) return;
   try {
     const formsResult = await pool.query(
-      `SELECT *
-         FROM v_b_support_form_definitions
-        WHERE enabled = TRUE
-        ORDER BY display_order ASC, label ASC`
+      `SELECT d.*
+         FROM v_b_support_form_definitions d
+        WHERE d.enabled = TRUE
+          AND COALESCE(d.visible_to_portal, FALSE) = TRUE
+          AND (
+            COALESCE(d.portal_visible_to_all, FALSE) = TRUE
+            OR EXISTS (
+              SELECT 1 FROM v_b_support_form_portal_clients pc
+               WHERE pc.form_id = d.id AND pc.client_id = $1
+            )
+            OR (
+              $2::int IS NOT NULL
+              AND EXISTS (
+                SELECT 1 FROM v_b_support_form_portal_contacts pct
+                 WHERE pct.form_id = d.id AND pct.contact_id = $2
+              )
+            )
+          )
+        ORDER BY d.display_order ASC, d.label ASC`,
+      [ctx.clientId, ctx.contactId || null]
     );
     const forms = [];
     for (const form of formsResult.rows || []) {
@@ -915,6 +936,11 @@ router.get("/support-forms", async (req, res) => {
     }
     res.json(forms);
   } catch (err) {
+    // Graceful fallback before migration is applied.
+    if (String(err?.code) === "42703" || String(err?.code) === "42P01") {
+      console.warn("GET /client-portal/support-forms: portal visibility schema missing, returning empty list");
+      return res.json([]);
+    }
     console.error("GET /client-portal/support-forms:", err);
     res.status(500).json({ error: "Error retrieving support forms" });
   }
@@ -928,6 +954,32 @@ router.post("/tickets", [body("title").notEmpty().withMessage("Title is required
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
+    const formId = req.body.supportFormData?.formId ? String(req.body.supportFormData.formId).trim() : "";
+    if (formId) {
+      const formResult = await pool.query(
+        `SELECT id, enabled, visible_to_portal, portal_visible_to_all
+           FROM v_b_support_form_definitions
+          WHERE id = $1
+          LIMIT 1`,
+        [formId]
+      );
+      const formRow = formResult.rows?.[0];
+      if (!formRow || formRow.enabled === false) {
+        return res.status(404).json({ error: "Support form not found" });
+      }
+      const audienceMap = await loadPortalAudienceByFormIds([formId]);
+      const mappedForm = {
+        visibleToPortal: formRow.visible_to_portal === true,
+        portalVisibleToAll: formRow.portal_visible_to_all === true
+      };
+      const audience = mapFormPortalAudience(audienceMap[String(formId)] || {});
+      if (!portalUserCanAccessForm(mappedForm, audience, {
+        clientId: ctx.clientId,
+        contactId: ctx.contactId
+      })) {
+        return res.status(403).json({ error: "This form is not available on the client portal" });
+      }
+    }
     const ticket = await createPortalTicket({
       clientId: ctx.clientId,
       contactId: ctx.contactId,
@@ -946,6 +998,9 @@ router.post("/tickets", [body("title").notEmpty().withMessage("Title is required
     });
     res.status(201).json(ticket);
   } catch (err) {
+    if (String(err?.code) === "42703" || String(err?.code) === "42P01") {
+      return res.status(503).json({ error: "Portal form visibility is not configured yet" });
+    }
     console.error("POST /client-portal/tickets:", err);
     res.status(500).json({
       error: "Error creating ticket"

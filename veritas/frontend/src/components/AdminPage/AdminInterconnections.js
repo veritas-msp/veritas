@@ -12,7 +12,10 @@ import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { buildIntegrationProPromo } from "../Misc/ProFeature/proFeaturePromoI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { Page, Card, Modal, Field, Input, Btn, Switch, FormGrid } from "./AdminUi";
+import { Modal, Field, Input, Btn, Switch, FormGrid } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import BitdefenderIntegrationModal from "./BitdefenderIntegrationModal";
 import MailinblackIntegrationModal from "./MailinblackIntegrationModal";
 import OvhIntegrationModal from "./OvhIntegrationModal";
@@ -23,8 +26,6 @@ import HycuIntegrationModal from "./HycuIntegrationModal";
 import WhatsappIntegrationModal from "./WhatsappIntegrationModal";
 import ui from "./AdminUi.module.css";
 import styles from "./AdminIntegrations.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 const FILTER_ALL = "all";
 const FILTER_ACTIVE = "active";
 const FILTER_AVAILABLE = "available";
@@ -107,16 +108,6 @@ export default function AdminInterconnections({
       key
     }) => `${settings[key] ?? ""}`.trim().length > 0);
   };
-  const stats = useMemo(() => {
-    const available = catalog.filter(item => item.status === "available").length;
-    const active = catalog.filter(item => item.status === "available").filter(integrationEnabled).length;
-    const soon = catalog.filter(item => item.status === "comingSoon").length;
-    return {
-      available,
-      active,
-      soon
-    };
-  }, [settings, catalog]);
   const filteredCatalog = useMemo(() => {
     const q = search.trim().toLowerCase();
     return catalog.filter(item => {
@@ -269,41 +260,11 @@ export default function AdminInterconnections({
     openConfig: copy.card.openConfig,
     soonHint: copy.card.soonHint
   };
-  const heroCopy = getAdminPanelCopy(locale).items.integrations;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:link-variant" />
-      <div className={styles.page}>
-        <div className={styles.statsRow}>
-          <div className={styles.statCard}>
-            <div className={`${styles.statIconWrap} ${styles.statIconActive}`} aria-hidden>
-              <Icon icon="mdi:check-circle-outline" />
-            </div>
-            <div>
-              <div className={styles.statValue}>{stats.active}</div>
-              <div className={styles.statLabel}>{copy.stats.activeIntegrations}</div>
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <div className={styles.statIconWrap} aria-hidden>
-              <Icon icon="mdi:connection" />
-            </div>
-            <div>
-              <div className={styles.statValue}>{stats.available}</div>
-              <div className={styles.statLabel}>{copy.stats.configurableConnectors}</div>
-            </div>
-          </div>
-          <div className={styles.statCard}>
-            <div className={`${styles.statIconWrap} ${styles.statIconSoon}`} aria-hidden>
-              <Icon icon="mdi:clock-outline" />
-            </div>
-            <div>
-              <div className={styles.statValue}>{stats.soon}</div>
-              <div className={styles.statLabel}>{copy.stats.comingSoon}</div>
-            </div>
-          </div>
-        </div>
 
-        <Card title={copy.catalog.title} description={copy.catalog.description} overflowVisible>
+  return <>
+    <AdminPlatformShell>
+      <div className={styles.page}>
+        <SettingsSection title={copy.catalog.title} description={copy.catalog.description} icon="mdi:connection">
           <div className={styles.catalogInner}>
             <div className={styles.toolbar}>
               <input type="search" className={ui.fieldSearch} placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} aria-label={copy.searchAria} />
@@ -314,7 +275,7 @@ export default function AdminInterconnections({
               </div>
             </div>
 
-            {loading ? <p className={styles.empty}>{copy.loading}</p> : sections.length === 0 ? <p className={styles.empty}>{copy.emptySearch}</p> : <div className={styles.sections}>
+            {loading ? <AdminGeneralSettingsLoading message={copy.loading} /> : sections.length === 0 ? <p className={styles.empty}>{copy.emptySearch}</p> : <div className={styles.sections}>
                 {sections.map(section => <section key={section.id} className={styles.section}>
                     <div className={styles.sectionHeader}>
                       <Icon icon={section.icon} className={styles.sectionIcon} aria-hidden />
@@ -329,8 +290,9 @@ export default function AdminInterconnections({
                   </section>)}
               </div>}
           </div>
-        </Card>
+        </SettingsSection>
       </div>
+    </AdminPlatformShell>
 
       <Modal open={!!selected && selected.id !== "bitdefender" && selected.id !== "mailinblack" && selected.id !== "ovh" && selected.id !== "ai" && selected.id !== "checkmk" && selected.id !== "hycu" && selected.id !== "whatsapp"} onClose={() => !saving && !testing && setSelected(null)} title={selected?.name} icon={selected?.icon} width="560px" footer={<>
             <Btn variant="secondary" onClick={() => runTest(selected)} disabled={saving || testing}>
@@ -426,5 +388,5 @@ export default function AdminInterconnections({
       </Modal>
 
       <ProFeaturePromoModal open={Boolean(proPromo)} featureKey={proPromo?.featureKey ?? null} promoOverride={proPromo?.promo ?? null} onClose={() => setProPromo(null)} />
-    </Page>;
+    </>;
 }

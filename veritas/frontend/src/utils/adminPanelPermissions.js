@@ -12,9 +12,9 @@ export const ADMIN_NAV_PERMISSION_BY_KEY = {
   "client-portal": "admin_panel.client_portal",
   "support-credits": "admin_panel.support_credits",
   sla: "admin_panel.sla",
+  "fiche-config": "admin_panel.contract_modules",
   "contract-modules": "admin_panel.contract_modules",
   "equipment-families": "admin_panel.equipment_families",
-  "infrastructure-map": "admin_panel.infrastructure_map",
   tickets: "admin_panel.tickets",
   "mail-collect": "admin_panel.mail_collect",
   "service-settings": "admin_panel.service_settings",
@@ -24,9 +24,7 @@ export const ADMIN_NAV_PERMISSION_BY_KEY = {
   "equipment-purge": "admin_panel.equipment_purge",
   maintenance: "admin_panel.maintenance",
   rmm: "admin_panel.rmm",
-  "supervision-alert-rules": "admin_panel.supervision_alerts",
   integrations: "admin_panel.integrations",
-  ai: "admin_panel.ai",
   license: "admin_panel.license"
 };
 
@@ -44,8 +42,11 @@ export function canAccessAdminPanel(canAny, isRoleAdmin = false) {
 
 export function canAccessAdminNavKey(can, navKey, isRoleAdmin = false) {
   if (isRoleAdmin) return true;
+  if (typeof can !== "function") return false;
+  if (navKey === "fiche-config") {
+    return can("admin_panel.contract_modules") || can("admin_panel.equipment_families");
+  }
   const permissionKey = permissionKeyForAdminNav(navKey);
   if (!permissionKey) return false;
-  if (typeof can !== "function") return false;
   return can(permissionKey);
 }

@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import { Page } from "./AdminUi";
-import ui from "./AdminUi.module.css";
 import MonitoringAlertRulesPanel from "../EquipementPage/SupervisionAlertRulesPanel";
 import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -8,6 +6,8 @@ import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getAdminSupervisionAlertRulesCopy } from "./adminSupervisionAlertRulesI18n";
+import AdminPlatformShell from "./AdminPlatformShell";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 
 export default function AdminSupervisionAlertRules() {
   const locale = useAppLocale();
@@ -28,17 +28,17 @@ export default function AdminSupervisionAlertRules() {
   } = useSupervisionAlertRules();
 
   return (
-    <Page>
-      {loading && !catalog ? (
-        <p className={ui.adminMutedText}>{copy.loading}</p>
-      ) : (
-        <MonitoringAlertRulesPanel
-          catalog={catalog}
-          rules={rules}
-          isAdmin={canManage}
-          onSaved={applyRules}
-        />
-      )}
-    </Page>
+    <AdminPlatformShell fill loading={loading && !catalog} loadingMessage={copy.loading}>
+      <MonitoringAlertRulesPanel
+        catalog={catalog}
+        rules={rules}
+        isAdmin={canManage}
+        onSaved={applyRules}
+        flat
+        pageTitle={copy.title}
+        pageDescription={copy.subtitle}
+        pageIcon="mdi:bell-alert-outline"
+      />
+    </AdminPlatformShell>
   );
 }

@@ -8,15 +8,18 @@ import { interpolate } from "../../i18n/translate";
 import { getPlanningAdminPageCopy } from "./adminPlanningI18n";
 import PlanningEventTypeFormModal from "./PlanningEventTypeFormModal";
 import { buildDefaultPlanningEventTypeDraft, buildPlanningEventTypeDraftFromType, getPlanningKpiToneColor } from "./planningEventTypeConstants";
-import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
+import { Btn, ConfirmModal, Switch, Table, Toolbar } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import adminUi from "./AdminUi.module.css";
 import formStyles from "./ContractModuleOptionFormModal.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const EMPTY_FORM = buildDefaultPlanningEventTypeDraft();
 
-export default function AdminPlanning() {
+export default function AdminPlanning({
+  embedded = false
+}) {
   const locale = useAppLocale();
   const copy = useMemo(() => getPlanningAdminPageCopy(locale), [locale]);
   const adminCopy = useAdminCommonCopy();
@@ -218,22 +221,23 @@ export default function AdminPlanning() {
   const activeCount = types.filter(t => t.enabled).length;
   const total = types.length;
   const metaKey = total > 1 && activeCount > 1 ? "metaBothPlural" : total > 1 ? "metaPlural" : activeCount > 1 ? "metaActivePlural" : "meta";
+  const planningToolbar = <Toolbar
+    meta={interpolate(copy[metaKey], { total, active: activeCount })}
+    action={
+      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+        <Btn variant="secondary" size="sm" icon="mdi:restore" onClick={() => setConfirmReset(true)}>
+          {copy.reset}
+        </Btn>
+        {embedded ? (
+          <Btn icon="mdi:plus" onClick={openCreate}>{copy.newType}</Btn>
+        ) : null}
+      </div>
+    }
+  />;
 
-  const heroCopy = getAdminPanelCopy(locale).items.planning;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:calendar-clock-outline" />
-      <Card title={copy.title} description={copy.description} fill action={<Btn icon="mdi:plus" onClick={openCreate}>
-            {copy.newType}
-          </Btn>}>
-        <Toolbar meta={interpolate(copy[metaKey], {
-        total,
-        active: activeCount
-      })} action={<Btn variant="secondary" size="sm" icon="mdi:restore" onClick={() => setConfirmReset(true)}>
-              {copy.reset}
-            </Btn>} />
-        {loading ? <p className={adminUi.adminMutedText}>{adminCopy.loading}</p> : <Table columns={columns} rows={types} emptyMessage={copy.empty} />}
-      </Card>
+  const planningTable = loading ? <AdminGeneralSettingsLoading message={adminCopy.loading} /> : <Table columns={columns} rows={types} emptyMessage={copy.empty} />;
 
+  const planningModals = <>
       <PlanningEventTypeFormModal open={modalOpen} mode={editing ? "edit" : "create"} draft={form} setDraft={setForm} saving={saving} onClose={closeModal} onSave={saveType} />
 
       <ConfirmModal open={Boolean(confirmDelete)} onClose={() => !saving && setConfirmDelete(null)} onConfirm={handleDelete} title={copy.deleteTitle} message={confirmDelete ? interpolate(copy.deleteMessage, {
@@ -241,5 +245,23 @@ export default function AdminPlanning() {
     }) : ""} confirmLabel={adminCopy.delete} icon="mdi:trash-can-outline" confirmVariant="danger" />
 
       <ConfirmModal open={confirmReset} onClose={() => !saving && setConfirmReset(false)} onConfirm={handleReset} title={copy.resetTitle} message={copy.resetMessage} confirmLabel={copy.reset} icon="mdi:restore" confirmVariant="primary" />
-    </Page>;
+    </>;
+
+  if (embedded) {
+    return <>
+        {planningToolbar}
+        {planningTable}
+        {planningModals}
+      </>;
+  }
+
+  return <>
+      <AdminPlatformShell>
+        <SettingsSection title={copy.title} description={copy.description} icon="mdi:calendar-clock-outline" action={<Btn icon="mdi:plus" onClick={openCreate}>{copy.newType}</Btn>}>
+          {planningToolbar}
+          {planningTable}
+        </SettingsSection>
+      </AdminPlatformShell>
+      {planningModals}
+    </>;
 }

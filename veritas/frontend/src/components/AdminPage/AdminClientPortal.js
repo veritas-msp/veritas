@@ -7,7 +7,7 @@ import { getCommunityClientPortalLimit } from "../../config/edition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import CommunityFeatureBadge from "../Misc/ProFeature/CommunityFeatureBadge";
 import ClientPortalDeleteModal from "./ClientPortalDeleteModal";
-import { Modal, ModalFooter, ModalForm, ModalFormSection, IconField, Input, Page, Card } from "./AdminUi";
+import { Modal, ModalFooter, ModalForm, ModalFormSection, IconField, Input } from "./AdminUi";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
 import { useAdminClientPortalCopy } from "../../hooks/useAdminCopy";
@@ -15,8 +15,8 @@ import { formatAccountCount, interpolate } from "./adminClientPortalI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 export default function AdminClientPortal({
   isCommunity = false
 }) {
@@ -209,11 +209,10 @@ export default function AdminClientPortal({
       setBusy(false);
     }
   };
-  const heroCopy = getAdminPanelCopy(locale).items["client-portal"];
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:monitor-dashboard" />
-      <Card title={copy.page.title} description={copy.page.description} fill>
-          <div className={ui.toolRow}>
+  return <>
+    <AdminPlatformShell>
+      <SettingsSection title={copy.page.title} description={copy.page.description} icon="mdi:monitor-dashboard">
+          <div className={`${ui.toolRow} ${s.toolRowFlush}`}>
             <div className={ui.toolLeft}>
               <input type="search" className={ui.fieldSearch} placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} autoComplete="off" name="client-portal-filter" id="client-portal-filter" data-lpignore="true" data-1p-ignore aria-label={copy.searchAria} />
               <span className={ui.count}>{formatAccountCount(locale, filtered.length)}</span>
@@ -310,7 +309,8 @@ export default function AdminClientPortal({
           total: sortedUsers.length
         })} />}
           </div>
-      </Card>
+      </SettingsSection>
+    </AdminPlatformShell>
 
       <Modal open={!!resetUserId} onClose={closeResetModal} title={copy.resetModal.title} icon="mdi:key-outline" width="440px" footer={<ModalFooter onCancel={closeResetModal} onConfirm={handleReset} confirmLabel={copy.resetModal.confirmBtn} confirmLoading={busy} />}>
         <form autoComplete="off" onSubmit={e => e.preventDefault()}>
@@ -328,5 +328,5 @@ export default function AdminClientPortal({
       </Modal>
 
       <ClientPortalDeleteModal open={!!deleteTarget} user={deleteTarget} saving={busy} onClose={() => !busy && setDeleteTarget(null)} onConfirm={handleDelete} />
-    </Page>;
+    </>;
 }

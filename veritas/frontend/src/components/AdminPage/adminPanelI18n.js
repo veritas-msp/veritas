@@ -1,6 +1,7 @@
 import { createLocaleGetter } from "../../i18n/translate";
 export const ADMIN_NAV_STRUCTURE = [{
   id: "general",
+  icon: "mdi:cog-outline",
   items: [{
     key: "general",
     icon: "mdi:cog-outline"
@@ -16,21 +17,17 @@ export const ADMIN_NAV_STRUCTURE = [{
   }]
 }, {
   id: "organization",
+  icon: "mdi:account-group-outline",
   items: [{
     key: "users",
     icon: "mdi:account-group-outline"
   }, {
     key: "permissions",
     icon: "mdi:shield-key-outline"
-  }, {
-    key: "teams",
-    icon: "mdi:account-multiple-outline"
-  }, {
-    key: "planning",
-    icon: "mdi:calendar-clock-outline"
   }]
 }, {
   id: "clients",
+  icon: "mdi:office-building-outline",
   items: [{
     key: "clients",
     icon: "mdi:office-building-outline"
@@ -38,24 +35,18 @@ export const ADMIN_NAV_STRUCTURE = [{
     key: "client-portal",
     icon: "mdi:monitor-dashboard"
   }, {
-    key: "support-credits",
-    icon: "mdi:ticket-confirmation-outline"
+    key: "fiche-config",
+    icon: "mdi:tune-variant"
   }, {
     key: "sla",
     icon: "mdi:timer-cog-outline"
   }, {
-    key: "nav-client-config",
-    icon: "mdi:tune-variant",
-    children: [{
-      key: "contract-modules"
-    }, {
-      key: "equipment-families"
-    }, {
-      key: "infrastructure-map"
-    }]
+    key: "support-credits",
+    icon: "mdi:ticket-confirmation-outline"
   }]
 }, {
   id: "tickets",
+  icon: "mdi:ticket-outline",
   items: [{
     key: "tickets",
     icon: "mdi:ticket-outline"
@@ -65,15 +56,13 @@ export const ADMIN_NAV_STRUCTURE = [{
   }, {
     key: "mail-collect",
     icon: "mdi:email-outline"
-  }]
-}, {
-  id: "notifications",
-  items: [{
+  }, {
     key: "notifications",
     icon: "mdi:bell-badge-outline"
   }]
 }, {
   id: "operations",
+  icon: "mdi:hammer-wrench",
   items: [{
     key: "injection",
     icon: "mdi:database-import-outline"
@@ -86,22 +75,14 @@ export const ADMIN_NAV_STRUCTURE = [{
   }]
 }, {
   id: "platform",
+  icon: "mdi:server-outline",
   items: [{
     key: "rmm",
     icon: "mdi:laptop-account"
   }, {
-    key: "supervision-alert-rules",
-    icon: "mdi:bell-cog-outline"
-  }, {
     key: "integrations",
     icon: "mdi:link-variant"
   }, {
-    key: "ai",
-    icon: "mdi:robot-outline"
-  }]
-}, {
-  id: "account",
-  items: [{
     key: "license",
     icon: "mdi:key-variant"
   }]
@@ -136,8 +117,8 @@ const ADMIN_PANEL_COPY = {
         description: "Sources RSS affichées à l'accueil"
       },
       users: {
-        label: "Agents",
-        description: "Comptes et profils d'accès"
+        label: "Collaborateurs",
+        description: "Comptes, équipes, planning et profils"
       },
       permissions: {
         label: "Permissions",
@@ -167,9 +148,9 @@ const ADMIN_PANEL_COPY = {
         label: "SLA",
         description: "Mode de calcul, horaires, heures / semaine et activation par entreprise"
       },
-      "nav-client-config": {
+      "fiche-config": {
         label: "Configuration fiche",
-        description: "Contenu affiché sur les fiches client"
+        description: "Options contrat et familles matériel"
       },
       "contract-modules": {
         label: "Options contrat",
@@ -178,10 +159,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Familles matériel",
         description: "Types d'équipements et champs"
-      },
-      "infrastructure-map": {
-        label: "Cartographie",
-        description: "Position des hexagones sur la fiche"
       },
       tickets: {
         label: "Paramètres support",
@@ -267,8 +244,8 @@ const ADMIN_PANEL_COPY = {
         description: "RSS sources shown on the home page"
       },
       users: {
-        label: "Agents",
-        description: "Accounts and access profiles"
+        label: "Staff",
+        description: "Accounts, teams, planning and profiles"
       },
       permissions: {
         label: "Permissions",
@@ -298,9 +275,9 @@ const ADMIN_PANEL_COPY = {
         label: "SLA",
         description: "Calculation mode, opening hours, hours / week and per-enterprise activation"
       },
-      "nav-client-config": {
+      "fiche-config": {
         label: "Record configuration",
-        description: "Content shown on client records"
+        description: "Contract options and equipment families"
       },
       "contract-modules": {
         label: "Contract options",
@@ -309,10 +286,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Equipment families",
         description: "Equipment types and fields"
-      },
-      "infrastructure-map": {
-        label: "Mapping",
-        description: "Hexagon positions on the record"
       },
       tickets: {
         label: "Support settings",
@@ -398,8 +371,8 @@ const ADMIN_PANEL_COPY = {
         description: "RSS-Quellen auf der Startseite"
       },
       users: {
-        label: "Agenten",
-        description: "Konten und Zugriffsprofile"
+        label: "Mitarbeiter",
+        description: "Konten, Teams, Planung und Profile"
       },
       permissions: {
         label: "Berechtigungen",
@@ -429,7 +402,7 @@ const ADMIN_PANEL_COPY = {
         label: "SLA",
         description: "Berechnungsmodus, Öffnungszeiten, Stunden / Woche und Aktivierung pro Unternehmen"
       },
-      "nav-client-config": {
+      "fiche-config": {
         label: "Akten-Konfiguration",
         description: "Inhalt auf Kundenakten"
       },
@@ -440,10 +413,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Gerätefamilien",
         description: "Gerätetypen und Felder"
-      },
-      "infrastructure-map": {
-        label: "Karte",
-        description: "Position der Sechsecke auf der Akte"
       },
       tickets: {
         label: "Support-Einstellungen",
@@ -533,8 +502,8 @@ const ADMIN_PANEL_COPY = {
         description: "Fonti RSS mostrate in home"
       },
       users: {
-        label: "Agenti",
-        description: "Account e profili di accesso"
+        label: "Collaboratori",
+        description: "Account, team, pianificazione e profili"
       },
       permissions: {
         label: "Permessi",
@@ -564,9 +533,9 @@ const ADMIN_PANEL_COPY = {
         label: "SLA",
         description: "Modalità di calcolo, orari, ore / settimana e attivazione per azienda"
       },
-      "nav-client-config": {
+      "fiche-config": {
         label: "Configurazione scheda",
-        description: "Contenuto mostrato sulle schede cliente"
+        description: "Opzioni contratto e famiglie attrezzature"
       },
       "contract-modules": {
         label: "Opzioni contratto",
@@ -575,10 +544,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Famiglie hardware",
         description: "Tipi di equipaggiamento e campi"
-      },
-      "infrastructure-map": {
-        label: "Mappa",
-        description: "Posizione degli esagoni sulla scheda"
       },
       tickets: {
         label: "Impostazioni supporto",
@@ -668,8 +633,8 @@ const ADMIN_PANEL_COPY = {
         description: "Fuentes RSS en la página de inicio"
       },
       users: {
-        label: "Agentes",
-        description: "Cuentas y perfiles de acceso"
+        label: "Colaboradores",
+        description: "Cuentas, equipos, planificación y perfiles"
       },
       permissions: {
         label: "Permisos",
@@ -699,7 +664,7 @@ const ADMIN_PANEL_COPY = {
         label: "SLA",
         description: "Modo de cálculo, horarios, horas / semana y activación por empresa"
       },
-      "nav-client-config": {
+      "fiche-config": {
         label: "Configuración de ficha",
         description: "Contenido mostrado en las fichas cliente"
       },
@@ -710,10 +675,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Familias de hardware",
         description: "Tipos de equipos y campos"
-      },
-      "infrastructure-map": {
-        label: "Cartografía",
-        description: "Posición de los hexágonos en la ficha"
       },
       tickets: {
         label: "Ajustes de soporte",
@@ -794,7 +755,9 @@ function localizeNavItem(item, copy) {
 export function buildAdminNavSections(locale) {
   const copy = getAdminPanelCopy(locale);
   return ADMIN_NAV_STRUCTURE.map(section => ({
+    id: section.id,
     title: copy.sections[section.id],
+    icon: section.icon || null,
     items: section.items.map(item => localizeNavItem(item, copy))
   }));
 }

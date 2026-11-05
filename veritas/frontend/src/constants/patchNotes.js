@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.8",
+    date: "2026-11-05",
+    highlights: [
+      "Création de ticket unifiée (agents et portail) : type de ticket → formulaires disponibles → saisie.",
+      "Formulaires support : visibilité paramétrable côté agents et/ou portail (tout le monde, entreprises, contacts) et accès public.",
+      "Builder formulaires : identité en 2 colonnes, cibles ticket en liste + onglets, animations palette/canvas, switches style coffre-fort.",
+      "Administration : polish des écrans (utilisateurs, notifications, login, settings, rapports) et modales alignées UiKit."
+    ]
+  },
+  {
     version: "2.0.7",
     date: "2026-10-30",
     highlights: [

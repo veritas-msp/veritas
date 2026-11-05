@@ -8,10 +8,13 @@ import EquipmentFamilyFormModal from "./EquipmentFamilyFormModal";
 import { buildDefaultEquipmentFamilyDraft, buildEquipmentFamilyDraftFromFamily, getDefaultEquipmentFamilies, uniqueEquipmentFieldKeys } from "./equipmentFamilyConstants";
 import { normalizeEquipmentFieldOptions } from "../../utils/equipmentFamilyFieldUtils";
 import { getDefaultHoneycombSlot } from "../EnterprisesPage/infraHoneycombLayout";
-import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
+import { Btn, ConfirmModal, Switch, Table, Toolbar } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import adminUi from "./AdminUi.module.css";
 const EMPTY_FORM = buildDefaultEquipmentFamilyDraft();
-export default function AdminEquipmentFamilies() {
+export default function AdminEquipmentFamilies({ embedded = false }) {
   const copy = useAdminPageCopy("equipmentFamilies");
   const adminCopy = useAdminCommonCopy();
   const [families, setFamilies] = useState([]);
@@ -231,28 +234,32 @@ export default function AdminEquipmentFamilies() {
             </button>}
           </div>
   }];
-  return <Page>
-      <Card title={copy.title} description={copy.description} fill action={<Btn icon="mdi:plus" onClick={openCreate}>
-            {copy.newFamily}
-          </Btn>}>
-        <Toolbar meta={(() => {
-        const custom = families.length;
-        const active = families.filter(f => f.enabled).length;
-        const key = custom > 1 && active > 1 ? "metaBothPlural" : custom > 1 ? "metaCustomPlural" : active > 1 ? "metaActivePlural" : "meta";
-        return interpolate(copy[key], {
-          defaults: defaultFamilies.length,
-          custom,
-          active
-        });
-      })()} />
+  const content = (
+    <SettingsSection title={copy.title} description={copy.description} icon="mdi:devices" action={<Btn icon="mdi:plus" onClick={openCreate}>
+          {copy.newFamily}
+        </Btn>}>
+      <Toolbar meta={(() => {
+      const custom = families.length;
+      const active = families.filter(f => f.enabled).length;
+      const key = custom > 1 && active > 1 ? "metaBothPlural" : custom > 1 ? "metaCustomPlural" : active > 1 ? "metaActivePlural" : "meta";
+      return interpolate(copy[key], {
+        defaults: defaultFamilies.length,
+        custom,
+        active
+      });
+    })()} />
 
-        {loading ? <p className={adminUi.adminMutedText}>{adminCopy.loading}</p> : <Table columns={columns} rows={allFamilies} emptyMessage={copy.empty} />}
-      </Card>
+      {loading ? <AdminGeneralSettingsLoading message={adminCopy.loading} /> : <Table columns={columns} rows={allFamilies} emptyMessage={copy.empty} />}
+    </SettingsSection>
+  );
+
+  return <>
+      {embedded ? content : <AdminPlatformShell>{content}</AdminPlatformShell>}
 
       <EquipmentFamilyFormModal open={modalOpen} mode={editing ? "edit" : "create"} variant={editing?.isSystem ? "system" : "custom"} draft={form} setDraft={setForm} saving={saving} onClose={closeModal} onSave={saveFamily} />
 
       <ConfirmModal open={Boolean(confirmDelete)} onClose={() => !saving && setConfirmDelete(null)} onConfirm={handleDelete} title={copy.deleteTitle} message={confirmDelete ? interpolate(copy.deleteMessage, {
       label: confirmDelete.label
     }) : ""} confirmLabel={adminCopy.delete} icon="mdi:trash-can-outline" confirmVariant="danger" />
-    </Page>;
+    </>;
 }

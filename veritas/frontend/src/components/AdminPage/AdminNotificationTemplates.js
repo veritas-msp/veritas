@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { Btn, BtnIcon, Card } from "./AdminUi";
+import { Btn, BtnIcon } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import NotificationVariablesModal from "./NotificationVariablesModal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchTicketAutomationConfig, getTicketAutomationConfig, saveTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
@@ -125,7 +126,12 @@ export default function AdminNotificationTemplates() {
     return `${getSourceOption(template.source).label} · ${getElementOption(template.source, template.element).label}`;
   };
   return <div className={catalogStyles.layout}>
-      <Card title={copy.templates.title} description={copy.templates.description} fill action={<Btn icon="mdi:plus" onClick={openCreate}>{copy.templates.add}</Btn>}>
+      <SettingsSection
+        title={copy.templates.title}
+        description={copy.templates.description}
+        icon="mdi:file-document-edit-outline"
+        action={<Btn icon="mdi:plus" onClick={openCreate}>{copy.templates.add}</Btn>}
+      >
       {templates.length === 0 ? <p className={catalogStyles.empty}>{copy.templates.empty}</p> : <div className={catalogStyles.tableShell}>
           <table className={catalogStyles.table}>
             <thead>
@@ -149,7 +155,7 @@ export default function AdminNotificationTemplates() {
             </tbody>
           </table>
         </div>}
-      </Card>
+      </SettingsSection>
       {draft ? createPortal(<div className={layout.overlay} onClick={close} role="presentation">
           <div className={layout.shell} style={{
         maxWidth: "min(860px, 100%)"

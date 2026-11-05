@@ -6,8 +6,10 @@ import API_BASE_URL from "../../config";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getAdminGeneralSettingsCopy } from "./adminGeneralSettingsI18n";
-import { Card, Field, Input, Btn, FormGrid, Modal, NumberStepper } from "./AdminUi";
+import { Field, Input, Btn, FormGrid, Modal, NumberStepper } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import s from "./AdminGeneralSettingsPlatform.module.css";
 const EMPTY = {
   db_host: "",
@@ -197,11 +199,11 @@ export default function AdminGeneralSettingsDatabase() {
       </div>;
   };
   if (loading) {
-    return <p className={adminUi.adminMutedText}>{copy.loading}</p>;
+    return <AdminGeneralSettingsLoading message={copy.loading} />;
   }
   return <>
-      <FormGrid cols={2} className={s.cardRow}>
-        <Card title={dbCopy.statsTitle} description={dbCopy.statsDescription}>
+      <div className={s.sectionRow}>
+        <SettingsSection title={dbCopy.statsTitle} description={dbCopy.statsDescription} icon="mdi:chart-box-outline">
           <div className={s.statsHeader}>
             <span className={`${s.statusBadge} ${statusClass}`}>{statusLabel}</span>
             <Btn variant="secondary" icon="mdi:refresh" onClick={loadStats} disabled={statsLoading}>
@@ -238,9 +240,9 @@ export default function AdminGeneralSettingsDatabase() {
                   </ul>
                 </div>}
             </> : <p className={adminUi.adminMutedText}>{dbCopy.statsUnavailable}</p>}
-        </Card>
+        </SettingsSection>
 
-        <Card title={dbCopy.connectionTitle} description={dbCopy.connectionDescription}>
+        <SettingsSection title={dbCopy.connectionTitle} description={dbCopy.connectionDescription} icon="mdi:database-outline">
           <div className={s.dbWarning} role="alert">
             <Icon icon="mdi:alert-outline" className={s.dbWarningIcon} aria-hidden />
             <div>
@@ -249,7 +251,7 @@ export default function AdminGeneralSettingsDatabase() {
             </div>
           </div>
 
-          <FormGrid cols={2}>
+          <FormGrid cols={1}>
             <Field label={dbCopy.hostLabel}>
               <Input value={form.db_host} onChange={e => setField("db_host", e.target.value)} placeholder="localhost" />
             </Field>
@@ -275,10 +277,10 @@ export default function AdminGeneralSettingsDatabase() {
               {saving ? common.saving : dbCopy.saveBtn}
             </Btn>
           </div>
-        </Card>
-      </FormGrid>
+        </SettingsSection>
+      </div>
 
-      <Card title={dbCopy.maintenanceTitle} description={dbCopy.maintenanceDescription}>
+      <SettingsSection title={dbCopy.maintenanceTitle} description={dbCopy.maintenanceDescription} icon="mdi:broom">
         <p className={adminUi.adminMutedText} style={{
         margin: "0 0 12px"
       }}>
@@ -287,7 +289,7 @@ export default function AdminGeneralSettingsDatabase() {
         <Btn variant="secondary" icon="mdi:broom" onClick={runMaintenance} disabled={maintaining || connectionStatus !== "ok"}>
           {maintaining ? dbCopy.maintenanceRunning : dbCopy.maintenanceBtn}
         </Btn>
-      </Card>
+      </SettingsSection>
 
       <Modal open={!!testResult} onClose={() => setTestResult(null)} title={dbCopy.testModalTitle} icon="mdi:database-check-outline" width="520px" footer={<Btn onClick={() => setTestResult(null)}>{common.close}</Btn>}>
         {testResult && <div className={s.testResult}>

@@ -111,8 +111,8 @@ const EXTRA = {
       deleteError: "Suppression impossible",
       resetSuccess: "Flux réinitialisés",
       resetError: "Réinitialisation impossible",
-      title: "Flux RSS de l'accueil",
-      description: "Sources affichées dans la colonne actualités. Seuls les flux actifs sont agrégés, toutes langues confondues. Les flux par défaut sont en anglais ; ajoutez manuellement les autres langues.",
+      title: "Tous les flux",
+      description: "Sources affichées dans la colonne actualités. Seuls les flux actifs sont agrégés, toutes langues confondues.",
       addFeed: "Ajouter un flux",
       meta: "{total} flux · {active} actifs",
       loading: "Chargement des flux…",
@@ -121,7 +121,25 @@ const EXTRA = {
       resetTitle: "Réinitialiser les flux",
       resetMessage: "Restaurer les flux anglais par défaut ? Tous les flux existants seront remplacés.",
       deleteTitle: "Supprimer le flux",
-      deleteMessage: "Supprimer « {source} » ?"
+      deleteMessage: "Supprimer « {source} » ?",
+      tabs: {
+        all: "Tous",
+        settings: "Paramètres"
+      },
+      categoryLabels: {
+        cve: "CVE",
+        security: "Sécurité",
+        news: "Actualités",
+        tech: "Tech"
+      },
+      categoryDescription: "Flux de la catégorie {category}.",
+      settingsTitle: "Paramètres des flux",
+      settingsDescription: "Réinitialisation et vue d’ensemble de vos sources RSS.",
+      overviewTitle: "Vue d’ensemble",
+      overviewDescription: "Compteurs globaux sur l’ensemble des flux configurés.",
+      statTotal: "Total",
+      statActive: "Actifs",
+      statLocales: "Langues"
     },
     loginBranding: {
       loadError: "Impossible de charger la personnalisation",
@@ -144,6 +162,7 @@ const EXTRA = {
       },
       enabledLabel: "Personnalisation active",
       enabledHint: "Lorsque désactivé, la page conserve l'apparence Veritas par défaut.",
+      generalTab: "Général",
       blankFieldHint: "Laissez vide pour le texte par défaut. Un espace seul masque le texte.",
       headline1Label: "Titre · ligne 1",
       headline2Label: "Titre · ligne 2",
@@ -155,10 +174,10 @@ const EXTRA = {
       footerLabel: "Pied de page formulaire",
       footerPlaceholder: "Veritas MSP · Votre partenaire IT",
       contentTitle: "Contenu",
-      contentDescription: "Textes du panneau gauche, pied de formulaire et blocs HTML personnalisés.",
+      contentDescription: "Textes du panneau gauche et pied de formulaire.",
       visualTitle: "Apparence",
-      visualDescription: "Typographie, couleurs, logo et images de fond.",
-      colorsTitle: "Couleurs & médias",
+      visualDescription: "Couleurs, logo et images de fond de la page de connexion.",
+      colorsTitle: "Médias",
       bgStartLabel: "Couleur de fond gauche (début)",
       bgEndLabel: "Couleur de fond gauche (fin)",
       accentLabel: "Couleur d'accent",
@@ -431,8 +450,8 @@ const EXTRA = {
       deleteError: "Unable to delete",
       resetSuccess: "Feeds reset",
       resetError: "Unable to reset",
-      title: "Home RSS feeds",
-      description: "Sources shown in the news column. Only active feeds are aggregated, across all languages. Default feeds are English; add other languages manually.",
+      title: "All feeds",
+      description: "Sources shown in the news column. Only active feeds are aggregated, across all languages.",
       addFeed: "Add feed",
       meta: "{total} feeds · {active} active",
       loading: "Loading feeds…",
@@ -441,7 +460,25 @@ const EXTRA = {
       resetTitle: "Reset feeds",
       resetMessage: "Restore default English feeds? All existing feeds will be replaced.",
       deleteTitle: "Delete feed",
-      deleteMessage: "Delete « {source} »?"
+      deleteMessage: "Delete « {source} »?",
+      tabs: {
+        all: "All",
+        settings: "Settings"
+      },
+      categoryLabels: {
+        cve: "CVE",
+        security: "Security",
+        news: "News",
+        tech: "Tech"
+      },
+      categoryDescription: "Feeds in the {category} category.",
+      settingsTitle: "Feed settings",
+      settingsDescription: "Reset and overview of your RSS sources.",
+      overviewTitle: "Overview",
+      overviewDescription: "Global counters across all configured feeds.",
+      statTotal: "Total",
+      statActive: "Active",
+      statLocales: "Languages"
     },
     loginBranding: {
       loadError: "Unable to load customization",
@@ -464,6 +501,7 @@ const EXTRA = {
       },
       enabledLabel: "Customization enabled",
       enabledHint: "When disabled, the page keeps the default Veritas look.",
+      generalTab: "General",
       blankFieldHint: "Leave empty for the default text. A single space hides the text.",
       headline1Label: "Headline · line 1",
       headline2Label: "Headline · line 2",
@@ -475,10 +513,10 @@ const EXTRA = {
       footerLabel: "Form footer",
       footerPlaceholder: "Your MSP · Your IT partner",
       contentTitle: "Content",
-      contentDescription: "Left panel texts, form footer and custom HTML blocks.",
+      contentDescription: "Left panel texts and form footer.",
       visualTitle: "Appearance",
-      visualDescription: "Typography, colors, logo and background images.",
-      colorsTitle: "Colors & media",
+      visualDescription: "Colors, logo and background images for the login page.",
+      colorsTitle: "Media",
       bgStartLabel: "Left background color (start)",
       bgEndLabel: "Left background color (end)",
       accentLabel: "Accent color",
@@ -739,8 +777,8 @@ const EXTRA = {
       deleteError: "Löschen fehlgeschlagen",
       resetSuccess: "Feeds zurückgesetzt",
       resetError: "Zurücksetzen fehlgeschlagen",
-      title: "Startseiten-RSS-Feeds",
-      description: "Quellen in der Nachrichtenspalte. Nur aktive Feeds werden aggregiert, sprachübergreifend. Standard-Feeds sind Englisch; andere Sprachen manuell hinzufügen.",
+      title: "Alle Feeds",
+      description: "Quellen in der Nachrichtenspalte. Nur aktive Feeds werden aggregiert, sprachübergreifend.",
       addFeed: "Feed hinzufügen",
       meta: "{total} Feeds · {active} aktiv",
       loading: "Feeds laden…",
@@ -749,7 +787,25 @@ const EXTRA = {
       resetTitle: "Feeds zurücksetzen",
       resetMessage: "Englische Standard-Feeds wiederherstellen? Alle vorhandenen Feeds werden ersetzt.",
       deleteTitle: "Feed löschen",
-      deleteMessage: "« {source} » löschen?"
+      deleteMessage: "« {source} » löschen?",
+      tabs: {
+        all: "Alle",
+        settings: "Einstellungen"
+      },
+      categoryLabels: {
+        cve: "CVE",
+        security: "Sicherheit",
+        news: "Nachrichten",
+        tech: "Tech"
+      },
+      categoryDescription: "Feeds der Kategorie {category}.",
+      settingsTitle: "Feed-Einstellungen",
+      settingsDescription: "Zurücksetzen und Übersicht Ihrer RSS-Quellen.",
+      overviewTitle: "Übersicht",
+      overviewDescription: "Globale Zähler über alle konfigurierten Feeds.",
+      statTotal: "Gesamt",
+      statActive: "Aktiv",
+      statLocales: "Sprachen"
     },
     loginBranding: {
       loadError: "Anpassung konnte nicht geladen werden",
@@ -772,6 +828,7 @@ const EXTRA = {
       },
       enabledLabel: "Anpassung aktiv",
       enabledHint: "Wenn deaktiviert, bleibt das Standard-Design von Veritas.",
+      generalTab: "Allgemein",
       blankFieldHint: "Leer lassen für Standardtext. Ein einzelnes Leerzeichen blendet den Text aus.",
       headline1Label: "Titel · Zeile 1",
       headline2Label: "Titel · Zeile 2",
@@ -982,8 +1039,8 @@ const EXTRA = {
       deleteError: "Eliminazione impossibile",
       resetSuccess: "Feed reimpostati",
       resetError: "Reimpostazione impossibile",
-      title: "Feed RSS home",
-      description: "Fonti mostrate nella colonna notizie. Solo i feed attivi sono aggregati, indipendentemente dalla lingua. I feed predefiniti sono in inglese; aggiungi le altre lingue manualmente.",
+      title: "Tutti i feed",
+      description: "Fonti mostrate nella colonna notizie. Solo i feed attivi sono aggregati, indipendentemente dalla lingua.",
       addFeed: "Aggiungi feed",
       meta: "{total} feed · {active} attivi",
       loading: "Caricamento feed…",
@@ -992,7 +1049,25 @@ const EXTRA = {
       resetTitle: "Reimposta feed",
       resetMessage: "Ripristinare i feed inglesi predefiniti? Tutti i feed esistenti verranno sostituiti.",
       deleteTitle: "Elimina feed",
-      deleteMessage: "Eliminare « {source} »?"
+      deleteMessage: "Eliminare « {source} »?",
+      tabs: {
+        all: "Tutti",
+        settings: "Impostazioni"
+      },
+      categoryLabels: {
+        cve: "CVE",
+        security: "Sicurezza",
+        news: "Notizie",
+        tech: "Tech"
+      },
+      categoryDescription: "Feed della categoria {category}.",
+      settingsTitle: "Impostazioni feed",
+      settingsDescription: "Reimpostazione e panoramica delle fonti RSS.",
+      overviewTitle: "Panoramica",
+      overviewDescription: "Contatori globali su tutti i feed configurati.",
+      statTotal: "Totale",
+      statActive: "Attivi",
+      statLocales: "Lingue"
     },
     loginBranding: {
       loadError: "Impossibile caricare la personalizzazione",
@@ -1015,6 +1090,7 @@ const EXTRA = {
       },
       enabledLabel: "Personalizzazione attiva",
       enabledHint: "Se disattivata, la pagina mantiene l'aspetto predefinito Veritas.",
+      generalTab: "Generale",
       blankFieldHint: "Lascia vuoto per il testo predefinito. Uno spazio nasconde il testo.",
       headline1Label: "Titolo · riga 1",
       headline2Label: "Titolo · riga 2",
@@ -1225,8 +1301,8 @@ const EXTRA = {
       deleteError: "Eliminación imposible",
       resetSuccess: "Feeds restablecidos",
       resetError: "Restablecimiento imposible",
-      title: "Feeds RSS de inicio",
-      description: "Fuentes mostradas en la columna de noticias. Solo se agregan los feeds activos, de todos los idiomas. Los feeds por defecto están en inglés; añada otros idiomas manualmente.",
+      title: "Todos los feeds",
+      description: "Fuentes mostradas en la columna de noticias. Solo se agregan los feeds activos, de todos los idiomas.",
       addFeed: "Añadir feed",
       meta: "{total} feeds · {active} activos",
       loading: "Cargando feeds…",
@@ -1235,7 +1311,25 @@ const EXTRA = {
       resetTitle: "Restablecer feeds",
       resetMessage: "¿Restaurar los feeds ingleses predeterminados? Se reemplazarán todos los feeds existentes.",
       deleteTitle: "Eliminar feed",
-      deleteMessage: "¿Eliminar « {source} »?"
+      deleteMessage: "¿Eliminar « {source} »?",
+      tabs: {
+        all: "Todos",
+        settings: "Ajustes"
+      },
+      categoryLabels: {
+        cve: "CVE",
+        security: "Seguridad",
+        news: "Noticias",
+        tech: "Tech"
+      },
+      categoryDescription: "Feeds de la categoría {category}.",
+      settingsTitle: "Ajustes de feeds",
+      settingsDescription: "Restablecimiento y visión general de sus fuentes RSS.",
+      overviewTitle: "Resumen",
+      overviewDescription: "Contadores globales de todos los feeds configurados.",
+      statTotal: "Total",
+      statActive: "Activos",
+      statLocales: "Idiomas"
     },
     loginBranding: {
       loadError: "No se pudo cargar la personalización",
@@ -1258,6 +1352,7 @@ const EXTRA = {
       },
       enabledLabel: "Personalización activa",
       enabledHint: "Si está desactivada, la página conserva el aspecto Veritas predeterminado.",
+      generalTab: "General",
       blankFieldHint: "Déjelo vacío para el texto predeterminado. Un solo espacio oculta el texto.",
       headline1Label: "Título · línea 1",
       headline2Label: "Título · línea 2",

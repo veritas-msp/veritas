@@ -3,7 +3,8 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { deleteSalesForm, deleteSupportForm, fetchSalesForms, fetchSupportForms } from "../../api/tickets";
 import { describeTicketTargetsSummary } from "../../utils/salesFormTargetRules";
-import { Card, Btn } from "./AdminUi";
+import { Btn } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import SalesFormModal from "./SalesFormModal";
 import styles from "./AdminTickets.module.css";
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -23,13 +24,34 @@ const SUPPORT_KIND_FILTERS = [
   { key: "changement", labelFr: "Changement", labelEn: "Change" }
 ];
 
-function describeFormVisibility(form, locale) {
+function describeAgentVisibility(form, locale) {
   if (form?.visibility !== "assigned") return locale === "fr" ? "Tous les agents" : "All agents";
   const parts = [];
   if (form.profileNames?.length) parts.push(`${form.profileNames.length} ${locale === "fr" ? "profil(s)" : "profile(s)"}`);
   if (form.userIds?.length) parts.push(`${form.userIds.length} ${locale === "fr" ? "agent(s)" : "agent(s)"}`);
   if (form.teamIds?.length) parts.push(`${form.teamIds.length} ${locale === "fr" ? "équipe(s)" : "team(s)"}`);
   return parts.length ? parts.join(" · ") : (locale === "fr" ? "Restreint (vide)" : "Restricted (empty)");
+}
+
+function describePortalVisibility(form, locale) {
+  if (form?.visibleToPortal !== true) return null;
+  if (form.portalVisibleToAll === true) return locale === "fr" ? "Portail : tout le monde" : "Portal: everyone";
+  const parts = [];
+  if (form.portalClientIds?.length) parts.push(`${form.portalClientIds.length} ${locale === "fr" ? "entreprise(s)" : "compan(y/ies)"}`);
+  if (form.portalContactIds?.length) parts.push(`${form.portalContactIds.length} ${locale === "fr" ? "contact(s)" : "contact(s)"}`);
+  return parts.length
+    ? `${locale === "fr" ? "Portail" : "Portal"} : ${parts.join(" · ")}`
+    : (locale === "fr" ? "Portail : restreint (vide)" : "Portal: restricted (empty)");
+}
+
+function describeFormVisibility(form, locale, isSupport = false) {
+  if (!isSupport) return describeAgentVisibility(form, locale);
+  const parts = [];
+  if (form?.visibleToAgents !== false) parts.push(describeAgentVisibility(form, locale));
+  const portal = describePortalVisibility(form, locale);
+  if (portal) parts.push(portal);
+  if (!parts.length) return locale === "fr" ? "Aucune audience" : "No audience";
+  return parts.join(" · ");
 }
 
 function describeTicketTargets(form) {
@@ -114,17 +136,26 @@ export default function SalesFormsAdmin({ family = "sales" }) {
     : (locale === "fr" ? "Formulaires prestations & installations" : "Professional services & installation forms");
   const cardDescription = isSupport
     ? (locale === "fr"
-      ? "Créez des types de ticket (incident, demande, problème, changement) et les champs affichés à la création, y compris l’accès public."
-      : "Create ticket types (incident, request, problem, change) and fields shown at creation, including public access.")
+      ? "Créez des formulaires par type de ticket (incident, demande, problème, changement), visibles côté agents et/ou portail client."
+      : "Create forms by ticket type (incident, request, problem, change), visible to agents and/or the client portal.")
     : (locale === "fr"
       ? "Créez des types de demande (prestation ou installation) et les champs affichés à la création."
       : "Create request types (professional service or installation) and fields shown when creating a request.");
   const defaultKind = isSupport ? "incident" : "prestation";
 
+  const formsIcon = isSupport ? "mdi:headset" : "mdi:briefcase-outline";
+
   return <>
-      <Card title={cardTitle} description={cardDescription} fill action={<Btn icon="mdi:plus" onClick={openCreateModal}>
+      <SettingsSection
+        title={cardTitle}
+        description={cardDescription}
+        icon={formsIcon}
+        action={
+          <Btn icon="mdi:plus" onClick={openCreateModal}>
             {locale === "fr" ? "Nouveau formulaire" : "New form"}
-          </Btn>}>
+          </Btn>
+        }
+      >
         <div className={styles.subSectionHead} style={{ marginBottom: "1rem" }}>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             {kindFilters.map(item => <button key={item.key || "all"} type="button" className={`${pageLayout.chip} ${kindFilter === item.key ? pageLayout.chipActive : ""}`} onClick={() => setKindFilter(item.key)}>
@@ -168,7 +199,7 @@ export default function SalesFormsAdmin({ family = "sales" }) {
                   </td>
                   <td>{form.fields?.length || 0}</td>
                   <td>{Number(form.usageCount) || 0}</td>
-                  <td>{describeFormVisibility(form, locale)}</td>
+                  <td>{describeFormVisibility(form, locale, isSupport)}</td>
                   <td>
                     {isSupport
                       ? (form.publicEnabled ? (form.publicSlug || (locale === "fr" ? "Oui" : "Yes")) : (locale === "fr" ? "Non" : "No"))
@@ -189,7 +220,7 @@ export default function SalesFormsAdmin({ family = "sales" }) {
             </tbody>
           </table>
         </div>
-      </Card>
+      </SettingsSection>
 
       <SalesFormModal
         open={modalOpen}

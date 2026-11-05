@@ -17,7 +17,8 @@ import { interpolate } from "../../i18n/translate";
 import { formatSupportSettingsCount, formatSupportSettingsRange } from "./adminSupportSettingsI18n";
 import { getServiceCategoriesCopy } from "./adminServiceCategoriesI18n";
 import { useAdminSupportSettingsCopy } from "../../hooks/useAdminCopy";
-import { Card, Btn, ConfirmModal, EntityStatus, Pagination } from "./AdminUi";
+import { Btn, ConfirmModal, EntityStatus, Pagination } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import { useTablePagination } from "./useTablePagination";
 import ItilCategoryFormModal from "./ItilCategoryFormModal";
 import ItilCategorySectionFormModal from "./ItilCategorySectionFormModal";
@@ -304,11 +305,7 @@ export default function SalesCategoriesAdmin() {
 
   return (
     <>
-      <Card
-        title={copy.title}
-        description={copy.description}
-        fill
-      >
+      <SettingsSection title={copy.title} description={copy.description} icon="mdi:tag-multiple-outline">
         <div className={s.tableSplitColumns}>
           <div className={s.tableSplitColumn}>
             <div className={s.tableSplitColumnHead}>
@@ -484,7 +481,7 @@ export default function SalesCategoriesAdmin() {
             </div>
           </div>
         </div>
-      </Card>
+      </SettingsSection>
 
       <ConfirmModal
         open={Boolean(sectionDeleteTarget)}

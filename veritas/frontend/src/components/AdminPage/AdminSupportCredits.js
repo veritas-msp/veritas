@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import styles from "./AdminSupportCredits.module.css";
 import adminUi from "./AdminUi.module.css";
-import { Badge, Btn, Card, ConfirmModal, Pagination, Select, Table, Toolbar } from "./AdminUi";
+import { Badge, Btn, ConfirmModal, Pagination, Select, Table, Toolbar } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import SupportCreditPackModal from "./SupportCreditPackModal";
 import { deleteSupportCreditPack, fetchAllSupportCreditPacks, fetchClientsList } from "../../api/clients";
 import { getClientNameWithoutCode } from "../../utils/clientDisplay";
@@ -118,15 +120,10 @@ export default function AdminSupportCredits() {
   }, [search, statusFilter, sortKey, sortDir, pageSize]);
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const totals = useMemo(() => {
-    const enterprises = new Set(packs.map(pack => pack.client_id));
-    const available = packs.filter(pack => pack.status === "active").reduce((sum, pack) => sum + Number(pack.remaining_amount || 0), 0);
-    return {
-      enterprises: enterprises.size,
-      packs: packs.length,
-      available
-    };
-  }, [packs]);
+  const availableCredits = useMemo(
+    () => packs.filter(pack => pack.status === "active").reduce((sum, pack) => sum + Number(pack.remaining_amount || 0), 0),
+    [packs]
+  );
   const toggleSort = key => {
     const next = cycleSortState({
       column: key,
@@ -225,42 +222,29 @@ export default function AdminSupportCredits() {
   }];
   const rangeStart = filtered.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, filtered.length);
-  return <div className={styles.wrap}>
-      <div className={styles.summaryRow}>
-        <div className={styles.summaryCard}>
-          <span className={styles.summaryValue}>{totals.enterprises}</span>
-          <span className={styles.summaryLabel}>{copy.summary.enterprises}</span>
-        </div>
-        <div className={styles.summaryCard}>
-          <span className={styles.summaryValue}>{totals.packs}</span>
-          <span className={styles.summaryLabel}>{copy.summary.packs}</span>
-        </div>
-        <div className={styles.summaryCard}>
-          <span className={styles.summaryValue}>{totals.available}</span>
-          <span className={styles.summaryLabel}>{copy.summary.availableCredits}</span>
-        </div>
-      </div>
+  return <>
+      <AdminPlatformShell>
+          <SettingsSection title={copy.page.title} description={copy.page.description} icon="mdi:ticket-percent-outline" action={<Btn icon="mdi:plus" onClick={openCreateModal}>
+                {copy.page.newPack}
+              </Btn>}>
+            <Toolbar search={search} searchPlaceholder={copy.searchPlaceholder} onSearchChange={setSearch} meta={formatPackMeta(locale, filtered.length, availableCredits)} action={<Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{
+            minWidth: 160
+          }}>
+                  {statusFilterOptions.map(option => <option key={option.value || "all"} value={option.value}>
+                      {option.label}
+                    </option>)}
+                </Select>} />
 
-      <Card title={copy.page.title} description={copy.page.description} fill action={<Btn icon="mdi:plus" onClick={openCreateModal}>
-            {copy.page.newPack}
-          </Btn>}>
-        <Toolbar search={search} searchPlaceholder={copy.searchPlaceholder} onSearchChange={setSearch} meta={formatPackMeta(locale, filtered.length, totals.available)} action={<Select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{
-        minWidth: 160
-      }}>
-              {statusFilterOptions.map(option => <option key={option.value || "all"} value={option.value}>
-                  {option.label}
-                </option>)}
-            </Select>} />
-
-        {loading ? <p className={adminUi.adminMutedText}>{copy.emptyLoading}</p> : <>
-            <Table columns={columns} rows={pageRows} emptyMessage={copy.empty} />
-            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={setPageSize} rangeLabel={interpolate(copy.range, {
-          start: rangeStart,
-          end: rangeEnd,
-          total: filtered.length
-        })} />
-          </>}
-      </Card>
+            {loading ? <AdminGeneralSettingsLoading message={copy.emptyLoading} /> : <>
+                <Table columns={columns} rows={pageRows} emptyMessage={copy.empty} />
+                <Pagination page={page} totalPages={totalPages} onPageChange={setPage} pageSize={pageSize} onPageSizeChange={setPageSize} rangeLabel={interpolate(copy.range, {
+              start: rangeStart,
+              end: rangeEnd,
+              total: filtered.length
+            })} />
+              </>}
+          </SettingsSection>
+      </AdminPlatformShell>
 
       <SupportCreditPackModal open={modalOpen} mode={modalMode} pack={selectedPack} clients={clients} onClose={() => setModalOpen(false)} onSaved={loadPacks} />
 
@@ -269,5 +253,5 @@ export default function AdminSupportCredits() {
       enterprise: getEnterpriseLabel(deletePack),
       amount: deletePack.remaining_amount
     }) : ""} confirmLabel={common.delete} confirmVariant="dangerSolid" confirmLoading={deleting} />
-    </div>;
+    </>;
 }

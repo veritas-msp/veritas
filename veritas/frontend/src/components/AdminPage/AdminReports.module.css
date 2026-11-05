@@ -1,23 +1,33 @@
+.shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.95fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 0;
   align-items: stretch;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  padding: 0;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
 .editor {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0;
   min-width: 0;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
 .previewColumn {
@@ -27,16 +37,70 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--msp-surface, #fff);
 }
 
-.previewSticky {
+.previewPanel {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  flex: 1 1 auto;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
+}
+
+.previewPanelHeader {
+  flex-shrink: 0;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  background: color-mix(in srgb, var(--msp-surface-2, #f4f7fb) 70%, var(--msp-surface, #fff));
+}
+
+.previewPanelTitleBlock {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.previewPanelIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: var(--msp-radius-btn, 8px);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.previewPanelTitle {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.previewPanelDesc {
+  margin: 0.15rem 0 0;
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.previewStage {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--msp-surface-2, #f4f7fb);
+  padding: 0.85rem;
 }
 
 .previewShell {
@@ -46,9 +110,10 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 0;
+  border-radius: 12px;
   overflow: hidden;
   background: #f8fafc;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .previewHeader {
@@ -359,6 +424,8 @@
 
   .editor {
     overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
   }
 
   .previewColumn {
@@ -368,7 +435,11 @@
     overflow: visible;
   }
 
+  .previewStage {
+    min-height: min(420px, 58vh);
+  }
+
   .previewShell {
-    min-height: min(520px, 70vh);
+    min-height: min(400px, 55vh);
   }
 }

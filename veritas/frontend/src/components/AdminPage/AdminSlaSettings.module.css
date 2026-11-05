@@ -1,3 +1,48 @@
+.paneFill {
+  overflow: hidden;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.leftCol,
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.leftCol {
+  overflow: auto;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.rightCol {
+  overflow: hidden;
+}
+
+.rightCol > section {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rightCol > section > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .modeHint {
   display: flex;
   gap: 8px;
@@ -12,7 +57,12 @@
 }
 
 .scheduleWrap {
-  overflow-x: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
 }
 
 .scheduleTable {
@@ -30,6 +80,10 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2, #f4f7fb);
 }
 
 .scheduleTable td {
@@ -69,6 +123,8 @@
   background: var(--admin-input-bg, #fff);
   color: inherit;
   min-width: 120px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .timeInput:disabled {
@@ -83,6 +139,7 @@
   margin: 14px 0 0;
   font-size: 13px;
   color: var(--admin-text-muted, #64748b);
+  flex-shrink: 0;
 }
 
 .bulletList {
@@ -97,17 +154,40 @@
   margin-top: 6px;
 }
 
-.saveRow {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .leftCol {
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+    overflow: visible;
+  }
+
+  .rightCol {
+    overflow: visible;
+  }
+
+  .rightCol > section {
+    overflow: visible;
+  }
+
+  .scheduleWrap {
+    overflow: visible;
+  }
 }
 
-:global(body.dark-mode) .modeHint {
+:global(body.dark-mode) .modeHint,
+:global(html.dark) .modeHint,
+:global(body.dark) .modeHint {
   background: rgba(255, 255, 255, 0.04);
 }
 
-:global(body.dark-mode) .timeInput {
+:global(body.dark-mode) .timeInput,
+:global(html.dark) .timeInput,
+:global(body.dark) .timeInput {
   background: rgba(15, 23, 42, 0.5);
   border-color: rgba(148, 163, 184, 0.2);
 }

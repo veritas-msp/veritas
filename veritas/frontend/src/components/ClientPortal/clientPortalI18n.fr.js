@@ -815,6 +815,17 @@ export default {
       formSectionTitle: "Formulaire",
       noForms: "Aucun formulaire de déclaration n'est disponible pour le moment.",
       noFormsForKind: "Aucun formulaire disponible pour ce type de déclaration.",
+      wizard: {
+        typeTitle: "Quel type de ticket support ?",
+        typeHint: "Choisissez la catégorie qui correspond le mieux à votre demande.",
+        formTitle: "Quelle nature de demande ?",
+        formHint: "Sélectionnez le formulaire adapté pour continuer.",
+        back: "Retour",
+        changeType: "Changer de type",
+        changeForm: "Changer de formulaire",
+        loadingForms: "Chargement des formulaires…",
+        noForms: "Aucun formulaire disponible pour ce type."
+      },
       subject: "Sujet",
       description: "Description détaillée",
       attemptedActions: "Manipulations déjà tentées",

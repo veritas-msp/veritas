@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { Card, Pagination } from "./AdminUi";
+import { Pagination } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import { useTablePagination } from "./useTablePagination";
 import { fetchClientsList } from "../../api/clients";
 import API_BASE_URL from "../../config";
@@ -55,7 +56,7 @@ export default function AdminNotificationLogs() {
     }
   };
   return <div className={catalogStyles.layout}>
-      <Card title={copy.logs.title} description={copy.logs.description} fill>
+      <SettingsSection title={copy.logs.title} description={copy.logs.description} icon="mdi:clipboard-text-clock-outline">
       <div className={catalogStyles.tableShell}>
         <table className={catalogStyles.table}>
           <thead>
@@ -97,6 +98,6 @@ export default function AdminNotificationLogs() {
         </table>
       </div>
       {logs.length > 0 ? <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={pagination.setPage} pageSize={pagination.pageSize} onPageSizeChange={pagination.setPageSize} rangeLabel={pagination.rangeLabel} /> : null}
-    </Card>
+    </SettingsSection>
     </div>;
 }

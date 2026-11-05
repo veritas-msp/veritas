@@ -1,16 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { Page, SubTabs } from "./AdminUi";
 import AdminSystemNotifications from "./AdminSystemNotifications";
 import AdminNotificationCatalog from "./AdminNotificationCatalog";
 import AdminNotificationTemplates from "./AdminNotificationTemplates";
 import AdminNotificationLogs from "./AdminNotificationLogs";
 import AdminWebhooksSettings from "./AdminWebhooksSettings";
 import { getAdminNotificationCenterCopy } from "./adminNotificationCenterI18n";
+import AdminPlatformShell from "./AdminPlatformShell";
 import hubStyles from "./AdminNotificationsHub.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const HUB_VIEW_DEFS = [{
   key: "system",
@@ -58,6 +56,11 @@ export default function AdminNotificationsHub({
     label: hubCopy.tabs[view.key],
     proOnly: isCommunity && Boolean(view.proOnly)
   })), [hubCopy, isCommunity]);
+  const tabs = useMemo(() => views.map(view => ({
+    key: view.key,
+    label: view.label,
+    icon: view.icon
+  })), [views]);
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("veritas_admin_hub_view");
@@ -76,17 +79,17 @@ export default function AdminNotificationsHub({
     }
     setActiveView(key);
   };
-  const heroCopy = getAdminPanelCopy(locale).items.notifications;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:bell-badge-outline" />
-      <SubTabs items={views} active={activeView} onChange={handleViewChange} fullWidth />
-      <div className={hubStyles.panel} data-page-fill>
-        {activeView === "system" ? <AdminSystemNotifications /> : null}
-        {activeView === "catalog" ? <AdminNotificationCatalog /> : null}
-        {activeView === "templates" ? <AdminNotificationTemplates /> : null}
-        {activeView === "connectors" ? <AdminWebhooksSettings isCommunity={isCommunity} /> : null}
-        {activeView === "logs" ? <AdminNotificationLogs /> : null}
-      </div>
+
+  return <>
+      <AdminPlatformShell tabs={tabs} activeTab={activeView} onTabChange={handleViewChange} tabsAriaLabel={hubCopy.tabs.system} fill>
+        <div className={hubStyles.panel} data-page-fill>
+          {activeView === "system" ? <AdminSystemNotifications /> : null}
+          {activeView === "catalog" ? <AdminNotificationCatalog /> : null}
+          {activeView === "templates" ? <AdminNotificationTemplates /> : null}
+          {activeView === "connectors" ? <AdminWebhooksSettings isCommunity={isCommunity} /> : null}
+          {activeView === "logs" ? <AdminNotificationLogs /> : null}
+        </div>
+      </AdminPlatformShell>
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
-    </Page>;
+    </>;
 }

@@ -6,10 +6,13 @@ import { Icon } from "@iconify/react";
 import { createContractModuleOption, deleteContractModuleOption, fetchContractModuleOptionsAdmin, resetContractModuleOptions, updateContractModuleOption } from "../../api/contractModuleOptions";
 import ContractModuleOptionFormModal from "./ContractModuleOptionFormModal";
 import { buildContractModuleOptionDraftFromModule, buildDefaultContractModuleOptionDraft } from "./contractModuleOptionConstants";
-import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
+import { Btn, ConfirmModal, Switch, Table, Toolbar } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
 import adminUi from "./AdminUi.module.css";
 const EMPTY_FORM = buildDefaultContractModuleOptionDraft();
-export default function AdminContractModuleOptions() {
+export default function AdminContractModuleOptions({ embedded = false }) {
   const copy = useAdminPageCopy("contractModules");
   const adminCopy = useAdminCommonCopy();
   const [modules, setModules] = useState([]);
@@ -181,24 +184,28 @@ export default function AdminContractModuleOptions() {
         </div>;
     }
   }];
-  return <Page>
-      <Card title={copy.title} description={copy.description} fill action={<Btn icon="mdi:plus" onClick={openCreate}>
-            {copy.addOption}
-          </Btn>}>
-        <Toolbar meta={(() => {
-        const total = modules.length;
-        const active = modules.filter(m => m.enabled).length;
-        const key = total > 1 && active > 1 ? "metaBothPlural" : total > 1 ? "metaPlural" : active > 1 ? "metaActivePlural" : "meta";
-        return interpolate(copy[key], {
-          total,
-          active
-        });
-      })()} action={<Btn variant="secondary" size="sm" icon="mdi:restore" onClick={() => setConfirmReset(true)}>
-              {adminCopy.reset}
-            </Btn>} />
+  const content = (
+    <SettingsSection title={copy.title} description={copy.description} icon="mdi:puzzle-outline" action={<Btn icon="mdi:plus" onClick={openCreate}>
+          {copy.addOption}
+        </Btn>}>
+      <Toolbar meta={(() => {
+      const total = modules.length;
+      const active = modules.filter(m => m.enabled).length;
+      const key = total > 1 && active > 1 ? "metaBothPlural" : total > 1 ? "metaPlural" : active > 1 ? "metaActivePlural" : "meta";
+      return interpolate(copy[key], {
+        total,
+        active
+      });
+    })()} action={<Btn variant="secondary" size="sm" icon="mdi:restore" onClick={() => setConfirmReset(true)}>
+            {adminCopy.reset}
+          </Btn>} />
 
-        {loading ? <p className={adminUi.adminMutedText}>{adminCopy.loading}</p> : <Table columns={columns} rows={modules} emptyMessage={copy.empty} />}
-      </Card>
+      {loading ? <AdminGeneralSettingsLoading message={adminCopy.loading} /> : <Table columns={columns} rows={modules} emptyMessage={copy.empty} />}
+    </SettingsSection>
+  );
+
+  return <>
+      {embedded ? content : <AdminPlatformShell>{content}</AdminPlatformShell>}
 
       <ContractModuleOptionFormModal open={modalOpen} mode={editing ? "edit" : "create"} draft={form} setDraft={setForm} saving={saving} onClose={closeModal} onSave={saveModule} />
 
@@ -207,5 +214,5 @@ export default function AdminContractModuleOptions() {
       <ConfirmModal open={Boolean(confirmDelete)} onClose={() => !saving && setConfirmDelete(null)} onConfirm={handleDelete} title={copy.deleteTitle} message={interpolate(copy.deleteMessage, {
       label: confirmDelete?.label || ""
     })} confirmLabel={adminCopy.delete} />
-    </Page>;
+    </>;
 }

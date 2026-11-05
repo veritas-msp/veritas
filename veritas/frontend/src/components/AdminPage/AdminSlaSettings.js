@@ -24,11 +24,10 @@ import {
   getWeekdayLabel,
   getWeekdayShortLabel
 } from "./adminSlaI18n";
-import { Page, Card, Field, Select, Btn, FormGrid } from "./AdminUi";
-import adminUi from "./AdminUi.module.css";
+import { Field, Select, Btn, FormGrid } from "./AdminUi";
 import styles from "./AdminSlaSettings.module.css";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
+import AdminPlatformShell, { adminPlatformStyles as platform } from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 
 function cloneSettings(data) {
   return {
@@ -131,179 +130,177 @@ export default function AdminSlaSettings() {
     }
   };
 
-  const heroCopy = getAdminPanelCopy(locale).items.sla;
-  const hero = (
-    <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:timer-cog-outline" />
-  );
-
   if (loading) {
     return (
-      <Page>
-        {hero}
-        <p className={adminUi.adminMutedText}>{copy.loading}</p>
-      </Page>
+      <AdminPlatformShell fill loading loadingMessage={copy.loading} />
     );
   }
 
   return (
-    <Page>
-      {hero}
-      <Card title={copy.modeTitle} description={copy.modeDescription}>
-        <FormGrid cols={2}>
-          <Field label={copy.timeModeLabel}>
-            <Select value={form.timeMode} onChange={e => setTimeMode(e.target.value)}>
-              {SLA_TIME_MODES.map(mode => (
-                <option key={mode} value={mode}>
-                  {getSlaTimeModeLabel(locale, mode)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
-          <Field label={copy.timezoneLabel} hint={copy.timezoneHint}>
-            <Select value={form.timezone} onChange={e => setTimezone(e.target.value)}>
-              {timezoneGroups.map(group => (
-                <optgroup key={group.offsetLabel} label={group.offsetLabel}>
-                  {group.options.map(({ value, label }) => (
-                    <option key={value} value={value}>
-                      {label}
+    <AdminPlatformShell fill paneClassName={styles.paneFill}>
+      <div className={styles.layout}>
+        <div className={styles.leftCol}>
+          <SettingsSection title={copy.modeTitle} description={copy.modeDescription} icon="mdi:clock-outline">
+            <FormGrid cols={1}>
+              <Field label={copy.timeModeLabel}>
+                <Select value={form.timeMode} onChange={e => setTimeMode(e.target.value)}>
+                  {SLA_TIME_MODES.map(mode => (
+                    <option key={mode} value={mode}>
+                      {getSlaTimeModeLabel(locale, mode)}
                     </option>
                   ))}
-                </optgroup>
-              ))}
-            </Select>
-          </Field>
-        </FormGrid>
+                </Select>
+              </Field>
 
-        <p className={styles.modeHint}>
-          <Icon icon="mdi:information-outline" aria-hidden />
-          {getSlaTimeModeHint(locale, form.timeMode)}
-        </p>
-      </Card>
+              <Field label={copy.timezoneLabel} hint={copy.timezoneHint}>
+                <Select value={form.timezone} onChange={e => setTimezone(e.target.value)}>
+                  {timezoneGroups.map(group => (
+                    <optgroup key={group.offsetLabel} label={group.offsetLabel}>
+                      {group.options.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </Select>
+              </Field>
+            </FormGrid>
 
-      <Card
-        title={copy.scheduleTitle}
-        description={copy.scheduleDescription}
-        action={
-          <Btn variant="secondary" size="sm" icon="mdi:calendar-week" onClick={applyWeekdaysTemplate}>
-            {copy.weekdaysTemplate}
-          </Btn>
-        }
-      >
-        <div className={styles.scheduleWrap}>
-          <table className={styles.scheduleTable}>
-            <thead>
-              <tr>
-                <th>{copy.dayColumn}</th>
-                <th>{copy.openColumn}</th>
-                <th>{copy.startColumn}</th>
-                <th>{copy.endColumn}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[1, 2, 3, 4, 5, 6, 0].map(day => {
-                const row = (form.weekSchedule || []).find(item => item.day === day) || {
-                  day,
-                  enabled: false,
-                  open: "09:00",
-                  close: "18:00"
-                };
-                return (
-                  <tr key={day} className={row.enabled ? "" : styles.scheduleRowOff}>
-                    <td className={styles.dayCell}>{getWeekdayLabel(locale, day)}</td>
-                    <td>
-                      <label className={styles.toggleCell}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(row.enabled)}
-                          onChange={e =>
-                            patchDay(day, {
-                              enabled: e.target.checked
-                            })
-                          }
-                        />
-                        <span>{row.enabled ? adminCopy.yes : adminCopy.closed}</span>
-                      </label>
-                    </td>
-                    <td>
-                      <input
-                        type="time"
-                        className={styles.timeInput}
-                        value={row.open}
-                        disabled={!row.enabled}
-                        onChange={e =>
-                          patchDay(day, {
-                            open: e.target.value
-                          })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="time"
-                        className={styles.timeInput}
-                        value={row.close}
-                        disabled={!row.enabled}
-                        onChange={e =>
-                          patchDay(day, {
-                            close: e.target.value
-                          })
-                        }
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            <p className={styles.modeHint}>
+              <Icon icon="mdi:information-outline" aria-hidden />
+              {getSlaTimeModeHint(locale, form.timeMode)}
+            </p>
+          </SettingsSection>
+
+          <SettingsSection title={copy.weeklyTitle} description={copy.weeklyDescription} icon="mdi:calendar-clock">
+            <FormGrid cols={1}>
+              <Field label={copy.weeklyLabel} hint={copy.weeklyHint}>
+                <input
+                  type="number"
+                  className={styles.timeInput}
+                  min={MIN_WEEKLY_WORKED_HOURS}
+                  max={MAX_WEEKLY_WORKED_HOURS}
+                  step={0.5}
+                  value={form.weeklyWorkedHours ?? DEFAULT_WEEKLY_WORKED_HOURS}
+                  onChange={e => setWeeklyWorkedHours(e.target.value)}
+                  onBlur={() =>
+                    setWeeklyWorkedHours(
+                      normalizeWeeklyWorkedHours(form.weeklyWorkedHours, DEFAULT_WEEKLY_WORKED_HOURS)
+                    )
+                  }
+                />
+              </Field>
+            </FormGrid>
+            <p className={styles.scheduleSummary}>
+              <Icon icon="mdi:calendar-clock" aria-hidden />
+              {weeklyDistribution
+                ? interpolate(copy.weeklyDistribution, { summary: weeklyDistribution })
+                : copy.weeklyNoOpenDays}
+            </p>
+          </SettingsSection>
+
+          <SettingsSection title={copy.applicationTitle} description={copy.applicationDescription} icon="mdi:information-outline">
+            <ul className={styles.bulletList}>
+              <li>{copy.bullet1}</li>
+              <li>{copy.bullet2}</li>
+              <li>{copy.bullet3}</li>
+            </ul>
+          </SettingsSection>
         </div>
 
-        <p className={styles.scheduleSummary}>
-          <Icon icon="mdi:clock-outline" aria-hidden />
-          {scheduleSummary}
-        </p>
-      </Card>
+        <div className={styles.rightCol}>
+          <SettingsSection
+            title={copy.scheduleTitle}
+            description={copy.scheduleDescription}
+            icon="mdi:calendar-week"
+            action={
+              <Btn variant="secondary" size="sm" icon="mdi:calendar-week" onClick={applyWeekdaysTemplate}>
+                {copy.weekdaysTemplate}
+              </Btn>
+            }
+          >
+            <div className={styles.scheduleWrap}>
+              <table className={styles.scheduleTable}>
+                <thead>
+                  <tr>
+                    <th>{copy.dayColumn}</th>
+                    <th>{copy.openColumn}</th>
+                    <th>{copy.startColumn}</th>
+                    <th>{copy.endColumn}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5, 6, 0].map(day => {
+                    const row = (form.weekSchedule || []).find(item => item.day === day) || {
+                      day,
+                      enabled: false,
+                      open: "09:00",
+                      close: "18:00"
+                    };
+                    return (
+                      <tr key={day} className={row.enabled ? "" : styles.scheduleRowOff}>
+                        <td className={styles.dayCell}>{getWeekdayLabel(locale, day)}</td>
+                        <td>
+                          <label className={styles.toggleCell}>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row.enabled)}
+                              onChange={e =>
+                                patchDay(day, {
+                                  enabled: e.target.checked
+                                })
+                              }
+                            />
+                            <span>{row.enabled ? adminCopy.yes : adminCopy.closed}</span>
+                          </label>
+                        </td>
+                        <td>
+                          <input
+                            type="time"
+                            className={styles.timeInput}
+                            value={row.open}
+                            disabled={!row.enabled}
+                            onChange={e =>
+                              patchDay(day, {
+                                open: e.target.value
+                              })
+                            }
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="time"
+                            className={styles.timeInput}
+                            value={row.close}
+                            disabled={!row.enabled}
+                            onChange={e =>
+                              patchDay(day, {
+                                close: e.target.value
+                              })
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-      <Card title={copy.weeklyTitle} description={copy.weeklyDescription}>
-        <FormGrid cols={2}>
-          <Field label={copy.weeklyLabel} hint={copy.weeklyHint}>
-            <input
-              type="number"
-              className={styles.timeInput}
-              min={MIN_WEEKLY_WORKED_HOURS}
-              max={MAX_WEEKLY_WORKED_HOURS}
-              step={0.5}
-              value={form.weeklyWorkedHours ?? DEFAULT_WEEKLY_WORKED_HOURS}
-              onChange={e => setWeeklyWorkedHours(e.target.value)}
-              onBlur={() =>
-                setWeeklyWorkedHours(
-                  normalizeWeeklyWorkedHours(form.weeklyWorkedHours, DEFAULT_WEEKLY_WORKED_HOURS)
-                )
-              }
-            />
-          </Field>
-        </FormGrid>
-        <p className={styles.scheduleSummary}>
-          <Icon icon="mdi:calendar-clock" aria-hidden />
-          {weeklyDistribution
-            ? interpolate(copy.weeklyDistribution, { summary: weeklyDistribution })
-            : copy.weeklyNoOpenDays}
-        </p>
-      </Card>
+            <p className={styles.scheduleSummary}>
+              <Icon icon="mdi:clock-outline" aria-hidden />
+              {scheduleSummary}
+            </p>
+          </SettingsSection>
+        </div>
+      </div>
 
-      <Card title={copy.applicationTitle} description={copy.applicationDescription}>
-        <ul className={styles.bulletList}>
-          <li>{copy.bullet1}</li>
-          <li>{copy.bullet2}</li>
-          <li>{copy.bullet3}</li>
-        </ul>
-      </Card>
-
-      <div className={styles.saveRow}>
+      <div className={platform.footerBar}>
         <Btn icon="mdi:content-save-outline" onClick={save} disabled={saving}>
           {saving ? commonCopy.saving : copy.saveBtn}
         </Btn>
       </div>
-    </Page>
+    </AdminPlatformShell>
   );
 }

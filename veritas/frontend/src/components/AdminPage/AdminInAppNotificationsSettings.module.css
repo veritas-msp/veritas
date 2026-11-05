@@ -35,6 +35,12 @@
   gap: 8px;
 }
 
+.group + .group {
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
 .groupHeader {
   display: flex;
   align-items: baseline;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
@@ -20,12 +21,42 @@ import {
   resolveLoginAssetUrl,
   sideFormToFlat
 } from "../../utils/loginBrandingUtils";
-import { Page, Card, Field, Input, Textarea, Btn, Switch, FormGrid, SubTabs, SegmentField } from "./AdminUi";
+import { Page, Field, Input, Textarea, Btn, Switch, FormGrid, SegmentField } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import s from "./AdminLoginBranding.module.css";
-import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
+import gs from "./AdminGeneralSettingsPlatform.module.css";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
+import { useFinderNavIndicator } from "../UiKit";
+import { AdminShellTab } from "./AdminPlatformShell";
+
+function AnimatedTabs({ items, active, onChange, ariaLabel, disabled = false }) {
+  const { trackRef, indicator } = useFinderNavIndicator([active, items.map(item => item.key).join("|")]);
+  return (
+    <div className={gs.tabs} ref={trackRef} role="tablist" aria-label={ariaLabel}>
+      {indicator.ready ? (
+        <span
+          className={gs.tabIndicator}
+          style={{
+            transform: `translate3d(${indicator.left}px, 0, 0)`,
+            width: indicator.width,
+            height: indicator.height
+          }}
+          aria-hidden
+        />
+      ) : null}
+      {items.map(item => (
+        <AdminShellTab
+          key={item.key}
+          item={item}
+          isActive={active === item.key}
+          onSelect={onChange}
+          disabled={disabled}
+        />
+      ))}
+    </div>
+  );
+}
 
 const SIZE_ICONS = {
   sm: "mdi:format-font-size-decrease",
@@ -75,9 +106,12 @@ const EMPTY_SIDE = {
 };
 
 const SECTION_TABS = [
+  { key: "general", icon: "mdi:toggle-switch-outline" },
   { key: "content", icon: "mdi:text-box-outline" },
+  { key: "media", icon: "mdi:palette-outline" },
+  { key: "typography", icon: "mdi:format-font" },
   { key: "layout", icon: "mdi:page-layout-sidebar-left" },
-  { key: "appearance", icon: "mdi:palette-outline" }
+  { key: "html", icon: "mdi:code-tags" }
 ];
 
 function ColorField({ label, hint, value, onChange, fallback }) {
@@ -134,7 +168,7 @@ function AssetUploadField({
     </Field>;
 }
 
-function LoginPreview({ side, form, copy, onCanvasPosChange }) {
+function LoginPreview({ side, form, copy, onCanvasPosChange, embedded = false }) {
   const leftRef = useRef(null);
   const rightRef = useRef(null);
   const defaults = DEFAULT_SIDE_COLORS[side];
@@ -214,8 +248,13 @@ function LoginPreview({ side, form, copy, onCanvasPosChange }) {
     >{children}</Tag>;
   };
 
-  return <div className={s.previewShell}>
-      <p className={s.previewLabel}>{copy.previewLabel}{isCanvas ? <span className={s.previewCanvasHint}> · {copy.canvasDragHint || "Drag elements"}</span> : null}</p>
+  return <div className={embedded ? s.previewShellEmbedded : s.previewShell}>
+      {!embedded ? (
+        <p className={s.previewLabel}>
+          {copy.previewLabel}
+          {isCanvas ? <span className={s.previewCanvasHint}> · {copy.canvasDragHint || "Drag elements"}</span> : null}
+        </p>
+      ) : null}
       <div className={s.previewFrame}>
         <aside ref={leftRef} className={`${s.previewLeft}${isCanvas ? ` ${s.previewLeftCanvas}` : ""}`} style={panelStyle}>
           {isCanvas ? <>
@@ -290,13 +329,10 @@ function LoginPreview({ side, form, copy, onCanvasPosChange }) {
 }
 
 export default function AdminLoginBranding({ isCommunity = false }) {
-  const locale = useAppLocale();
   const copy = useAdminPageCopy("loginBranding");
   const common = useCommonCopy();
-  const heroCopy = getAdminPanelCopy(locale).items["login-branding"];
-  const hero = <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:palette-outline" />;
   const [activeSide, setActiveSide] = useState("agent");
-  const [activeSection, setActiveSection] = useState("content");
+  const [activeSection, setActiveSection] = useState("general");
   const [forms, setForms] = useState({
     agent: { ...EMPTY_SIDE },
     client: { ...EMPTY_SIDE }
@@ -343,20 +379,21 @@ export default function AdminLoginBranding({ isCommunity = false }) {
   })), [copy.tabs, isCommunity]);
   const sectionTabs = useMemo(() => {
     const labels = {
+      general: copy.generalTab || "Général",
       content: copy.contentTitle || "Contenu",
+      html: copy.htmlTitle || "HTML",
       layout: copy.layoutTitle || "Mise en page",
-      appearance: copy.visualTitle || "Apparence"
+      typography: copy.typoTitle || "Typographie",
+      media: copy.colorsTitle || copy.visualTitle || "Médias"
     };
     return SECTION_TABS.map(tab => ({ ...tab, label: labels[tab.key] }));
   }, [copy]);
-  const resolvedSection =
-    activeSection === "html"
-      ? "content"
-      : ["typo", "visual"].includes(activeSection)
-        ? "appearance"
-        : ["content", "layout", "appearance"].includes(activeSection)
-          ? activeSection
-          : "content";
+  const resolvedSection = useMemo(() => {
+    if (activeSection === "appearance" || activeSection === "visual") return "media";
+    if (activeSection === "typo") return "typography";
+    if (SECTION_TABS.some(tab => tab.key === activeSection)) return activeSection;
+    return "general";
+  }, [activeSection]);
   const load = useCallback(async () => {
     if (isCommunity) {
       setLoading(false);
@@ -468,265 +505,448 @@ export default function AdminLoginBranding({ isCommunity = false }) {
       setUploading(null);
     }
   };
-  if (loading) {
-    return <Page>
-        {hero}
-        <p className={adminUi.adminMutedText}>{copy.loading}</p>
-      </Page>;
-  }
   if (isCommunity) {
-    return <Page>
-        {hero}
-        <Card title={copy.title} description={copy.communityLocked}>
-          <p className={adminUi.adminMutedText}>{copy.communityHint}</p>
-        </Card>
-      </Page>;
-  }
-  return <Page>
-      {hero}
-      <SubTabs items={sideTabs} active={activeSide} onChange={setActiveSide} fullWidth />
-      <SubTabs
-        items={sectionTabs}
-        active={resolvedSection}
-        onChange={setActiveSection}
-        fullWidth
-        action={
-          <Btn icon="mdi:content-save-outline" onClick={save} disabled={saving}>
-            {saving ? common.saving : common.save}
-          </Btn>
-        }
-      />
-
-      <div className={s.workspace} data-page-fill>
-        <div className={s.editor}>
-          <Card>
-            <div className={s.enabledBlock}>
-              <Switch checked={form.enabled} onChange={checked => setField("enabled", checked)} label={copy.enabledLabel} />
-              <p className={s.enabledHint}>{copy.enabledHint}</p>
+    return (
+      <Page>
+        <div className={gs.shell} data-page-fill>
+          <div className={gs.shellBody}>
+            <div className={gs.shellPane}>
+              <SettingsSection title={copy.title} description={copy.communityLocked} icon="mdi:palette-outline">
+                <p className={adminUi.adminMutedText}>{copy.communityHint}</p>
+              </SettingsSection>
             </div>
-          </Card>
+          </div>
+        </div>
+      </Page>
+    );
+  }
 
-          {resolvedSection === "content" ? (
-            <Card title={copy.contentTitle || "Contenu"} description={copy.contentDescription || copy.description}>
-              <FormGrid cols={2}>
-                <Field label={copy.headline1Label} hint={copy.blankFieldHint}>
-                  <Input value={form.headlineLine1} onChange={e => setField("headlineLine1", e.target.value)} placeholder={copy.previewHeadline1} />
-                </Field>
-                <Field label={copy.headline2Label} hint={copy.blankFieldHint}>
-                  <Input value={form.headlineLine2} onChange={e => setField("headlineLine2", e.target.value)} placeholder={copy.previewHeadline2} />
-                </Field>
-                <Field label={copy.subLabel} spanFull hint={copy.blankFieldHint}>
-                  <Textarea value={form.sub} onChange={e => setField("sub", e.target.value)} rows={2} placeholder={copy.previewSub} />
-                </Field>
-                <Field label={copy.featuresLabel} spanFull hint={copy.featuresHint}>
-                  <Textarea value={form.features} onChange={e => setField("features", e.target.value)} rows={4} placeholder={copy.featuresPlaceholder} />
-                </Field>
-                <Field label={copy.brandNameLabel} hint={copy.blankFieldHint}>
-                  <Input value={form.brandName} onChange={e => setField("brandName", e.target.value)} placeholder="Veritas" />
-                </Field>
-                <Field label={copy.footerLabel} hint={copy.blankFieldHint}>
-                  <Input value={form.footerText} onChange={e => setField("footerText", e.target.value)} placeholder={copy.footerPlaceholder} />
-                </Field>
-              </FormGrid>
+  return (
+    <Page>
+      <div className={gs.shell} data-page-fill>
+        <AnimatedTabs
+          items={sideTabs}
+          active={activeSide}
+          onChange={setActiveSide}
+          ariaLabel={sideTabs.map(tab => tab.label).join(" / ")}
+          disabled={loading}
+        />
+        <AnimatedTabs
+          items={sectionTabs}
+          active={resolvedSection}
+          onChange={setActiveSection}
+          ariaLabel={sectionTabs.map(tab => tab.label).join(" / ")}
+          disabled={loading}
+        />
 
-              <h3 className={s.sectionInlineTitle}>{copy.htmlTitle || "Bloc HTML"}</h3>
-              <p className={s.sectionInlineHint}>{copy.htmlDescription}</p>
-              <FormGrid cols={1}>
-                {form.layoutMode !== "canvas" ? (
-                  <SelectField
-                    label={copy.htmlPositionLabel}
-                    hint={copy.htmlPositionHint}
-                    value={form.htmlPosition}
-                    onChange={v => setField("htmlPosition", v)}
-                    options={LOGIN_TYPO_OPTIONS.htmlPosition}
-                    optionLabels={opt.htmlPosition}
-                  />
-                ) : null}
-                <Field label={copy.htmlBlockLabel} hint={copy.htmlBlockHint}>
-                  <Textarea value={form.htmlBlock} onChange={e => setField("htmlBlock", e.target.value)} rows={6} placeholder={copy.htmlBlockPlaceholder} className={s.codeArea} />
-                </Field>
-                <Field label={copy.formHtmlLabel} hint={copy.formHtmlHint}>
-                  <Textarea value={form.formHtml} onChange={e => setField("formHtml", e.target.value)} rows={4} placeholder={copy.formHtmlPlaceholder} className={s.codeArea} />
-                </Field>
-              </FormGrid>
-            </Card>
-          ) : null}
+        <div className={gs.shellBody}>
+          {loading ? (
+            <div className={gs.shellPane} key="pane-loading">
+              <AdminGeneralSettingsLoading message={copy.loading} />
+            </div>
+          ) : (
+            <div className={gs.shellPane} key={`pane-${activeSide}-${resolvedSection}`}>
+              <div className={s.workspace}>
+                <div className={s.editor}>
+                  {resolvedSection === "general" ? (
+                    <SettingsSection title={copy.enabledLabel} description={copy.enabledHint} icon="mdi:toggle-switch-outline">
+                      <div className={s.enabledBlock}>
+                        <Switch
+                          checked={form.enabled}
+                          onChange={checked => setField("enabled", checked)}
+                          label={copy.enabledLabel}
+                        />
+                      </div>
+                    </SettingsSection>
+                  ) : null}
 
-          {resolvedSection === "layout" ? (
-            <Card title={copy.layoutTitle} description={copy.layoutDescription}>
-              <FormGrid cols={2}>
-                <SegmentField
-                  label={copy.layoutModeLabel || "Layout mode"}
-                  hint={copy.layoutModeHint}
-                  value={form.layoutMode || "flow"}
-                  onChange={v => setField("layoutMode", v)}
-                  options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.layoutMode, opt.layoutMode, {
-                    flow: "mdi:view-sequential-outline",
-                    canvas: "mdi:cursor-move"
-                  })}
-                />
-              </FormGrid>
-              {form.layoutMode !== "canvas" ? (
-                <FormGrid cols={3}>
-                  <SegmentField
-                    label={copy.contentAlignLabel}
-                    value={form.contentAlign}
-                    onChange={v => setField("contentAlign", v)}
-                    options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.contentAlign, opt.align, {
-                      left: "mdi:format-align-left",
-                      center: "mdi:format-align-center"
-                    })}
-                  />
-                  <SegmentField
-                    label={copy.contentValignLabel}
-                    hint={copy.contentValignHint}
-                    value={form.contentValign}
-                    onChange={v => setField("contentValign", v)}
-                    options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.contentValign, opt.valign, {
-                      top: "mdi:align-vertical-top",
-                      center: "mdi:align-vertical-center",
-                      bottom: "mdi:align-vertical-bottom"
-                    })}
-                  />
-                  <SegmentField
-                    label={copy.logoAlignLabel}
-                    value={form.logoAlign}
-                    onChange={v => setField("logoAlign", v)}
-                    options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.logoAlign, opt.align, {
-                      left: "mdi:format-align-left",
-                      center: "mdi:format-align-center"
-                    })}
-                  />
-                </FormGrid>
-              ) : (
-                <>
-                  <h3 className={s.sectionInlineTitle}>{copy.canvasTitle || "Positionnement"}</h3>
-                  <p className={s.canvasHint}>{copy.canvasHint || "Coordinates are percentages of each panel (0–95). Drag elements in the live preview."}</p>
-                  <div className={s.canvasGrid}>
-                    {LOGIN_CANVAS_ELEMENTS.map(key => {
-                      const pos = normalizeCanvasPositions(form.canvasPositions)[key];
-                      const label = opt.canvasElements?.[key] || key;
-                      return <div key={key} className={s.canvasRow}>
-                          <span className={s.canvasRowLabel}>{label}</span>
-                          <label className={s.canvasAxis}>
-                            <span>X</span>
-                            <Input type="number" min={0} max={95} step={0.1} value={pos.x} onChange={e => setCanvasAxis(key, "x", e.target.value)} />
-                          </label>
-                          <label className={s.canvasAxis}>
-                            <span>Y</span>
-                            <Input type="number" min={0} max={95} step={0.1} value={pos.y} onChange={e => setCanvasAxis(key, "y", e.target.value)} />
-                          </label>
-                        </div>;
-                    })}
+                  {resolvedSection === "content" ? (
+                    <SettingsSection title={copy.contentTitle || "Contenu"} description={copy.contentDescription || copy.description} icon="mdi:text-box-outline">
+                      <FormGrid cols={1}>
+                        <Field label={copy.headline1Label} hint={copy.blankFieldHint}>
+                          <Input
+                            value={form.headlineLine1}
+                            onChange={e => setField("headlineLine1", e.target.value)}
+                            placeholder={copy.previewHeadline1}
+                          />
+                        </Field>
+                        <Field label={copy.headline2Label} hint={copy.blankFieldHint}>
+                          <Input
+                            value={form.headlineLine2}
+                            onChange={e => setField("headlineLine2", e.target.value)}
+                            placeholder={copy.previewHeadline2}
+                          />
+                        </Field>
+                        <Field label={copy.subLabel} hint={copy.blankFieldHint}>
+                          <Textarea
+                            value={form.sub}
+                            onChange={e => setField("sub", e.target.value)}
+                            rows={3}
+                            placeholder={copy.previewSub}
+                          />
+                        </Field>
+                        <Field label={copy.featuresLabel} hint={copy.featuresHint}>
+                          <Textarea
+                            value={form.features}
+                            onChange={e => setField("features", e.target.value)}
+                            rows={5}
+                            placeholder={copy.featuresPlaceholder}
+                          />
+                        </Field>
+                        <Field label={copy.brandNameLabel} hint={copy.blankFieldHint}>
+                          <Input
+                            value={form.brandName}
+                            onChange={e => setField("brandName", e.target.value)}
+                            placeholder="Veritas"
+                          />
+                        </Field>
+                        <Field label={copy.footerLabel} hint={copy.blankFieldHint}>
+                          <Input
+                            value={form.footerText}
+                            onChange={e => setField("footerText", e.target.value)}
+                            placeholder={copy.footerPlaceholder}
+                          />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {resolvedSection === "html" ? (
+                    <SettingsSection title={copy.htmlTitle || "HTML"} description={copy.htmlDescription} icon="mdi:code-tags">
+                      <FormGrid cols={1}>
+                        {form.layoutMode !== "canvas" ? (
+                          <SelectField
+                            label={copy.htmlPositionLabel}
+                            hint={copy.htmlPositionHint}
+                            value={form.htmlPosition}
+                            onChange={v => setField("htmlPosition", v)}
+                            options={LOGIN_TYPO_OPTIONS.htmlPosition}
+                            optionLabels={opt.htmlPosition}
+                          />
+                        ) : null}
+                        <Field label={copy.htmlBlockLabel} hint={copy.htmlBlockHint}>
+                          <Textarea
+                            value={form.htmlBlock}
+                            onChange={e => setField("htmlBlock", e.target.value)}
+                            rows={8}
+                            placeholder={copy.htmlBlockPlaceholder}
+                            className={s.codeArea}
+                          />
+                        </Field>
+                        <Field label={copy.formHtmlLabel} hint={copy.formHtmlHint}>
+                          <Textarea
+                            value={form.formHtml}
+                            onChange={e => setField("formHtml", e.target.value)}
+                            rows={6}
+                            placeholder={copy.formHtmlPlaceholder}
+                            className={s.codeArea}
+                          />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {resolvedSection === "layout" ? (
+                    <SettingsSection title={copy.layoutTitle} description={copy.layoutDescription} icon="mdi:page-layout-sidebar-left">
+                      <FormGrid cols={1}>
+                        <SegmentField
+                          label={copy.layoutModeLabel || "Layout mode"}
+                          hint={copy.layoutModeHint}
+                          value={form.layoutMode || "flow"}
+                          onChange={v => setField("layoutMode", v)}
+                          options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.layoutMode, opt.layoutMode, {
+                            flow: "mdi:view-sequential-outline",
+                            canvas: "mdi:cursor-move"
+                          })}
+                        />
+                        {form.layoutMode !== "canvas" ? (
+                          <>
+                            <SegmentField
+                              label={copy.contentAlignLabel}
+                              value={form.contentAlign}
+                              onChange={v => setField("contentAlign", v)}
+                              options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.contentAlign, opt.align, {
+                                left: "mdi:format-align-left",
+                                center: "mdi:format-align-center"
+                              })}
+                            />
+                            <SegmentField
+                              label={copy.contentValignLabel}
+                              hint={copy.contentValignHint}
+                              value={form.contentValign}
+                              onChange={v => setField("contentValign", v)}
+                              options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.contentValign, opt.valign, {
+                                top: "mdi:align-vertical-top",
+                                center: "mdi:align-vertical-center",
+                                bottom: "mdi:align-vertical-bottom"
+                              })}
+                            />
+                            <SegmentField
+                              label={copy.logoAlignLabel}
+                              value={form.logoAlign}
+                              onChange={v => setField("logoAlign", v)}
+                              options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.logoAlign, opt.align, {
+                                left: "mdi:format-align-left",
+                                center: "mdi:format-align-center"
+                              })}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <p className={adminUi.adminMutedText} style={{ margin: "0 0 8px" }}>
+                              {copy.canvasHint ||
+                                "Coordinates are percentages of each panel (0–95). Drag elements in the live preview."}
+                            </p>
+                            <div className={s.canvasGrid}>
+                              {LOGIN_CANVAS_ELEMENTS.map(key => {
+                                const pos = normalizeCanvasPositions(form.canvasPositions)[key];
+                                const label = opt.canvasElements?.[key] || key;
+                                return (
+                                  <div key={key} className={s.canvasRow}>
+                                    <span className={s.canvasRowLabel}>{label}</span>
+                                    <label className={s.canvasAxis}>
+                                      <span>X</span>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        max={95}
+                                        step={0.1}
+                                        value={pos.x}
+                                        onChange={e => setCanvasAxis(key, "x", e.target.value)}
+                                      />
+                                    </label>
+                                    <label className={s.canvasAxis}>
+                                      <span>Y</span>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        max={95}
+                                        step={0.1}
+                                        value={pos.y}
+                                        onChange={e => setCanvasAxis(key, "y", e.target.value)}
+                                      />
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className={s.canvasActions}>
+                              <Btn
+                                variant="secondary"
+                                icon="mdi:restore"
+                                onClick={() => setField("canvasPositions", { ...DEFAULT_CANVAS_POSITIONS })}
+                              >
+                                {copy.canvasReset || "Reset positions"}
+                              </Btn>
+                            </div>
+                          </>
+                        )}
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {resolvedSection === "typography" ? (
+                    <SettingsSection title={copy.typoTitle} description={copy.typoDescription} icon="mdi:format-font">
+                      <FormGrid cols={1}>
+                        <SelectField
+                          label={copy.fontFamilyLabel}
+                          value={form.fontFamily}
+                          onChange={v => setField("fontFamily", v)}
+                          options={LOGIN_TYPO_OPTIONS.fontFamily}
+                          optionLabels={opt.fontFamily}
+                        />
+                        <SegmentField
+                          label={copy.brandNameSizeLabel}
+                          value={form.brandNameSize}
+                          onChange={v => setField("brandNameSize", v)}
+                          options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.brandNameSize, opt.size)}
+                        />
+                        <SegmentField
+                          label={copy.headlineSizeLabel}
+                          value={form.headlineSize}
+                          onChange={v => setField("headlineSize", v)}
+                          options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.headlineSize, opt.size)}
+                        />
+                        <SegmentField
+                          label={copy.headlineWeightLabel}
+                          value={form.headlineWeight}
+                          onChange={v => setField("headlineWeight", v)}
+                          options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.headlineWeight, opt.weight)}
+                        />
+                        <SegmentField
+                          label={copy.headlineTrackingLabel}
+                          value={form.headlineTracking}
+                          onChange={v => setField("headlineTracking", v)}
+                          options={[
+                            { value: "tight", icon: "mdi:arrow-collapse-horizontal", title: opt.tracking?.tight || "Serré" },
+                            { value: "normal", icon: "mdi:minus", title: opt.tracking?.normal || "Normal" },
+                            { value: "wide", icon: "mdi:arrow-expand-horizontal", title: opt.tracking?.wide || "Large" }
+                          ]}
+                        />
+                        <SegmentField
+                          label={copy.subSizeLabel}
+                          value={form.subSize}
+                          onChange={v => setField("subSize", v)}
+                          options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.subSize, opt.size)}
+                        />
+                        <SegmentField
+                          label={copy.subWeightLabel}
+                          value={form.subWeight}
+                          onChange={v => setField("subWeight", v)}
+                          options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.subWeight, opt.weight)}
+                        />
+                        <SegmentField
+                          label={copy.subLineHeightLabel}
+                          value={form.subLineHeight}
+                          onChange={v => setField("subLineHeight", v)}
+                          options={[
+                            { value: "tight", icon: "mdi:arrow-collapse-vertical", title: opt.lineHeight?.tight || "Serré" },
+                            { value: "normal", icon: "mdi:minus", title: opt.lineHeight?.normal || "Normal" },
+                            { value: "relaxed", icon: "mdi:arrow-expand-vertical", title: opt.lineHeight?.relaxed || "Aéré" }
+                          ]}
+                        />
+                        <SegmentField
+                          label={copy.featuresSizeLabel}
+                          value={form.featuresSize}
+                          onChange={v => setField("featuresSize", v)}
+                          options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.featuresSize, opt.size)}
+                        />
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {resolvedSection === "media" ? (
+                    <SettingsSection title={copy.colorsTitle || copy.visualTitle || "Médias"} description={copy.visualDescription} icon="mdi:palette-outline">
+                      <FormGrid cols={1}>
+                        <ColorField
+                          label={copy.bgStartLabel}
+                          value={form.bgColorStart}
+                          fallback={defaults.bgColorStart}
+                          onChange={value => setField("bgColorStart", value)}
+                        />
+                        <ColorField
+                          label={copy.bgEndLabel}
+                          value={form.bgColorEnd}
+                          fallback={defaults.bgColorEnd}
+                          onChange={value => setField("bgColorEnd", value)}
+                        />
+                        <ColorField
+                          label={copy.accentLabel}
+                          value={form.accentColor}
+                          fallback={defaults.accentColor}
+                          onChange={value => setField("accentColor", value)}
+                        />
+                        <ColorField
+                          label={copy.rightBgLabel}
+                          value={form.rightBgColor}
+                          fallback={defaults.rightBgColor}
+                          onChange={value => setField("rightBgColor", value)}
+                        />
+                      </FormGrid>
+
+                      <div className={s.visualAssetsStack}>
+                        <AssetUploadField
+                          label={copy.logoLabel}
+                          hint={copy.logoHint}
+                          path={form.logoPath}
+                          uploading={uploading === "logo"}
+                          chooseLabel={copy.chooseFile}
+                          removeLabel={copy.removeFile}
+                          previewBackground={
+                            form.logoPath && form.logoTransparent
+                              ? form.logoBgColor || defaults.logoBgColor
+                              : undefined
+                          }
+                          onUpload={file => handleUpload("logo", file)}
+                          onDelete={() => handleDeleteAsset("logo")}
+                        />
+                        <AssetUploadField
+                          label={copy.bgImageLabel}
+                          hint={copy.bgImageHint}
+                          path={form.bgImagePath}
+                          uploading={uploading === "background"}
+                          chooseLabel={copy.chooseFile}
+                          removeLabel={copy.removeFile}
+                          onUpload={file => handleUpload("background", file)}
+                          onDelete={() => handleDeleteAsset("background")}
+                        />
+                        <AssetUploadField
+                          label={copy.rightBgImageLabel}
+                          hint={copy.rightBgImageHint}
+                          path={form.rightBgImagePath}
+                          uploading={uploading === "right-background"}
+                          chooseLabel={copy.chooseFile}
+                          removeLabel={copy.removeFile}
+                          onUpload={file => handleUpload("right-background", file)}
+                          onDelete={() => handleDeleteAsset("right-background")}
+                        />
+                      </div>
+
+                      {form.logoPath ? (
+                        <div className={s.switchBlock}>
+                          <Field label={copy.logoTransparentLabel} hint={copy.logoTransparentHint}>
+                            <div className={s.switchRow}>
+                              <Switch
+                                checked={form.logoTransparent}
+                                onChange={checked => setField("logoTransparent", checked)}
+                                label={copy.logoTransparentSwitch}
+                              />
+                            </div>
+                          </Field>
+                          {form.logoTransparent ? (
+                            <ColorField
+                              label={copy.logoBgLabel}
+                              hint={copy.logoBgHint}
+                              value={form.logoBgColor}
+                              fallback={defaults.logoBgColor}
+                              onChange={value => setField("logoBgColor", value)}
+                            />
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </SettingsSection>
+                  ) : null}
+                </div>
+
+                <aside className={s.previewColumn}>
+                  <div className={s.previewPanel}>
+                    <header className={s.previewPanelHeader}>
+                      <div className={s.previewPanelTitleBlock}>
+                        <span className={s.previewPanelIcon} aria-hidden>
+                          <Icon icon="mdi:monitor-screenshot" />
+                        </span>
+                        <div>
+                          <h3 className={s.previewPanelTitle}>{copy.previewTitle}</h3>
+                          <p className={s.previewPanelDesc}>
+                            {form.layoutMode === "canvas"
+                              ? copy.canvasDragHint || copy.previewDescription
+                              : copy.previewDescription}
+                          </p>
+                        </div>
+                      </div>
+                    </header>
+                    <div className={s.previewStage}>
+                      <LoginPreview
+                        embedded
+                        side={activeSide}
+                        form={form}
+                        copy={copy}
+                        onCanvasPosChange={setCanvasPos}
+                      />
+                    </div>
                   </div>
-                  <div className={s.canvasActions}>
-                    <Btn variant="secondary" icon="mdi:restore" onClick={() => setField("canvasPositions", { ...DEFAULT_CANVAS_POSITIONS })}>
-                      {copy.canvasReset || "Reset positions"}
-                    </Btn>
-                  </div>
-                </>
-              )}
-            </Card>
-          ) : null}
-
-          {resolvedSection === "appearance" ? (
-            <Card title={copy.visualTitle} description={`${copy.typoDescription || ""} ${copy.visualDescription || ""}`.trim()}>
-              <h3 className={s.sectionInlineTitle} style={{ marginTop: 0 }}>{copy.typoTitle}</h3>
-              <p className={s.sectionInlineHint}>{copy.typoDescription}</p>
-              <FormGrid cols={2}>
-                <SelectField label={copy.fontFamilyLabel} value={form.fontFamily} onChange={v => setField("fontFamily", v)} options={LOGIN_TYPO_OPTIONS.fontFamily} optionLabels={opt.fontFamily} />
-                <SegmentField
-                  label={copy.brandNameSizeLabel}
-                  value={form.brandNameSize}
-                  onChange={v => setField("brandNameSize", v)}
-                  options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.brandNameSize, opt.size)}
-                />
-                <SegmentField
-                  label={copy.headlineSizeLabel}
-                  value={form.headlineSize}
-                  onChange={v => setField("headlineSize", v)}
-                  options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.headlineSize, opt.size)}
-                />
-                <SegmentField
-                  label={copy.headlineWeightLabel}
-                  value={form.headlineWeight}
-                  onChange={v => setField("headlineWeight", v)}
-                  options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.headlineWeight, opt.weight)}
-                />
-                <SegmentField
-                  label={copy.headlineTrackingLabel}
-                  value={form.headlineTracking}
-                  onChange={v => setField("headlineTracking", v)}
-                  options={[
-                    { value: "tight", icon: "mdi:arrow-collapse-horizontal", title: opt.tracking?.tight || "Serré" },
-                    { value: "normal", icon: "mdi:minus", title: opt.tracking?.normal || "Normal" },
-                    { value: "wide", icon: "mdi:arrow-expand-horizontal", title: opt.tracking?.wide || "Large" }
-                  ]}
-                />
-                <SegmentField
-                  label={copy.subSizeLabel}
-                  value={form.subSize}
-                  onChange={v => setField("subSize", v)}
-                  options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.subSize, opt.size)}
-                />
-                <SegmentField
-                  label={copy.subWeightLabel}
-                  value={form.subWeight}
-                  onChange={v => setField("subWeight", v)}
-                  options={labeledSegmentOptions(LOGIN_TYPO_OPTIONS.subWeight, opt.weight)}
-                />
-                <SegmentField
-                  label={copy.subLineHeightLabel}
-                  value={form.subLineHeight}
-                  onChange={v => setField("subLineHeight", v)}
-                  options={[
-                    { value: "tight", icon: "mdi:arrow-collapse-vertical", title: opt.lineHeight?.tight || "Serré" },
-                    { value: "normal", icon: "mdi:minus", title: opt.lineHeight?.normal || "Normal" },
-                    { value: "relaxed", icon: "mdi:arrow-expand-vertical", title: opt.lineHeight?.relaxed || "Aéré" }
-                  ]}
-                />
-                <SegmentField
-                  label={copy.featuresSizeLabel}
-                  value={form.featuresSize}
-                  onChange={v => setField("featuresSize", v)}
-                  options={sizeSegmentOptions(LOGIN_TYPO_OPTIONS.featuresSize, opt.size)}
-                />
-              </FormGrid>
-
-              <h3 className={s.sectionInlineTitle}>{copy.colorsTitle || "Couleurs & médias"}</h3>
-              <FormGrid cols={2}>
-                <ColorField label={copy.bgStartLabel} value={form.bgColorStart} fallback={defaults.bgColorStart} onChange={value => setField("bgColorStart", value)} />
-                <ColorField label={copy.bgEndLabel} value={form.bgColorEnd} fallback={defaults.bgColorEnd} onChange={value => setField("bgColorEnd", value)} />
-                <ColorField label={copy.accentLabel} value={form.accentColor} fallback={defaults.accentColor} onChange={value => setField("accentColor", value)} />
-                <ColorField label={copy.rightBgLabel} value={form.rightBgColor} fallback={defaults.rightBgColor} onChange={value => setField("rightBgColor", value)} />
-              </FormGrid>
-
-              <div className={s.visualAssets}>
-                <AssetUploadField label={copy.logoLabel} hint={copy.logoHint} path={form.logoPath} uploading={uploading === "logo"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} previewBackground={form.logoPath && form.logoTransparent ? form.logoBgColor || defaults.logoBgColor : undefined} onUpload={file => handleUpload("logo", file)} onDelete={() => handleDeleteAsset("logo")} />
-                <AssetUploadField label={copy.bgImageLabel} hint={copy.bgImageHint} path={form.bgImagePath} uploading={uploading === "background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("background", file)} onDelete={() => handleDeleteAsset("background")} />
-                <AssetUploadField label={copy.rightBgImageLabel} hint={copy.rightBgImageHint} path={form.rightBgImagePath} uploading={uploading === "right-background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("right-background", file)} onDelete={() => handleDeleteAsset("right-background")} />
+                </aside>
               </div>
 
-              {form.logoPath ? <div className={s.switchBlock}>
-                  <Field label={copy.logoTransparentLabel} hint={copy.logoTransparentHint}>
-                    <div className={s.switchRow}>
-                      <Switch checked={form.logoTransparent} onChange={checked => setField("logoTransparent", checked)} label={copy.logoTransparentSwitch} />
-                    </div>
-                  </Field>
-                  {form.logoTransparent ? <ColorField label={copy.logoBgLabel} hint={copy.logoBgHint} value={form.logoBgColor} fallback={defaults.logoBgColor} onChange={value => setField("logoBgColor", value)} /> : null}
-                </div> : null}
-            </Card>
-          ) : null}
+              <div className={gs.footerBar}>
+                <Btn icon="mdi:content-save-outline" onClick={save} disabled={saving}>
+                  {saving ? common.saving : common.save}
+                </Btn>
+              </div>
+            </div>
+          )}
         </div>
-
-        <aside className={s.previewColumn}>
-          <div className={s.previewSticky}>
-            <Card title={copy.previewTitle} description={copy.previewDescription} noPadding fill fillNoScroll>
-              <LoginPreview side={activeSide} form={form} copy={copy} onCanvasPosChange={setCanvasPos} />
-            </Card>
-          </div>
-        </aside>
       </div>
-
-    </Page>;
+    </Page>
+  );
 }

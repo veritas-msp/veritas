@@ -208,27 +208,10 @@ const ADMIN_MENU_SECTIONS = [
         description: "Fiches clients MSP"
       },
       {
-        key: "nav-client-config",
+        key: "fiche-config",
         icon: "mdi:tune-variant",
-        label: "Configuration client",
-        description: "Modules, familles, cartographie",
-        children: [
-          {
-            key: "contract-modules",
-            label: "Modules contrat",
-            description: "Options contractuelles"
-          },
-          {
-            key: "equipment-families",
-            label: "Familles d’équipements",
-            description: "Taxonomie parc"
-          },
-          {
-            key: "infrastructure-map",
-            label: "Cartographie",
-            description: "Vue infrastructure"
-          }
-        ]
+        label: "Configuration fiche",
+        description: "Options contrat et familles matériel"
       }
     ]
   },

@@ -37,7 +37,7 @@ export const INTEGRATIONS_CATALOG = [{
   id: "ai",
   name: "Veritas AI",
   category: "ai",
-  status: AVAILABLE,
+  status: COMING_SOON,
   icon: "mdi:robot-outline",
   iconColor: "#0ea5e9",
   description: "LLM provider for ticket copilots, runbooks and briefings.",

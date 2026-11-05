@@ -18,6 +18,15 @@
   overflow: hidden;
 }
 
+.page > [data-page-fill],
+.page > .pageFillLock {
+  flex: 1 1 auto;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
 .adminMutedText {
   color: var(--msp-muted);
   padding: 12px 0;
@@ -142,6 +151,25 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+}
+
+.cardFlat {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.cardFlat .cardHeader {
+  padding: 0.35rem 0 0.85rem;
+  border-bottom: 1px solid var(--msp-border-light);
+}
+
+.cardFlat .cardBody,
+.cardFlat .cardBodyFlush {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .cardFill {
@@ -402,11 +430,28 @@
 
 .btnIcon:hover:not(:disabled) { background: var(--msp-surface-3); color: var(--msp-accent); border-color: #b8c8de; }
 .btnIcon:disabled { opacity: 0.4; cursor: not-allowed; }
-.btnIcon_danger:hover:not(:disabled) { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+
+.btnIcon_primary {
+  background: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+.btnIcon_primary:hover:not(:disabled) {
+  background: var(--msp-accent-dark, #1a3d75);
+  border-color: var(--msp-accent-dark, #1a3d75);
+  color: #fff;
+}
+
+.btnIcon_danger {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.btnIcon_danger:hover:not(:disabled) { color: #dc2626; border-color: #fecaca; background: #fee2e2; }
 
 
 .tableSection {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -417,9 +462,10 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border: 1px solid var(--msp-border);
-  border-radius: 10px;
-  background: var(--msp-surface);
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
 }
 
 .table {
@@ -1726,6 +1772,13 @@
 
 :global(html.dark) .btnIcon:hover:not(:disabled) {
   border-color: var(--msp-border);
+}
+
+:global(html.dark) .tableWrap,
+:global(body.dark) .tableWrap {
+  border-color: var(--msp-border, #2a3a55);
+  background: var(--msp-surface, #1a2540);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 :global(html.dark) .tableUsageWarn {

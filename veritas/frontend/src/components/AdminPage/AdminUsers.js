@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
+import { AnimatePresence, motion } from "framer-motion";
 import { fetchUsers, fetchUser, createUser, updateUser, deleteUser, releaseUserMfa, resetPassword, buildUserUpdatePayload, impersonateUser } from "../../api/users";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
@@ -13,20 +14,128 @@ import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import CommunityFeatureBadge from "../Misc/ProFeature/CommunityFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import API_BASE_URL from "../../config";
-import { Modal, ConfirmModal, ModalFooterBar, Field, Input, Badge, Btn, Card, Page, SubTabs, EntityStatus } from "./AdminUi";
+import { Modal, ConfirmModal, ModalFooterBar, Field, Input, Badge, Btn, Page, EntityStatus, Switch } from "./AdminUi";
 import AgentFormModal from "./AgentFormModal";
 import ProfileFormModal from "./ProfileFormModal";
+import AdminTeams from "./AdminTeams";
+import AdminPlanning from "./AdminPlanning";
 import { buildDefaultAgentDraft, buildDefaultProfileDraft, buildAgentDraftFromUser } from "./adminOrgFormConstants";
 import { getAccessColumns, getUserAdminViews, getMfaStatus, getAdminUsersCopy, interpolate } from "./adminUsersI18n";
 import { getAdminPermissionsCopy, getLocalizedProfileName, getLocalizedProfileLabel } from "./adminPermissionsI18n";
 import { normalizeProfileName, isSuperAdminProtectedProfile } from "../../utils/profileProtection";
 import { fetchTeams } from "../../api/teams";
+import {
+  AudioLinesIcon,
+  BookTextIcon,
+  BriefcaseBusinessIcon,
+  CalendarDaysIcon,
+  ChartColumnIncreasingIcon,
+  CloudUploadIcon,
+  FileTextIcon,
+  HeartHandshakeIcon,
+  HomeIcon,
+  LaptopMinimalCheckIcon,
+  MessageSquareIcon,
+  RadioIcon,
+  ShieldCheckIcon,
+  SlidersHorizontalIcon,
+  UsersIcon
+} from "../Misc/Sidebar/lucideAnimated";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
-import { UiKitPageHero, uiKitLayoutsStyles as kit } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
+import platform from "./AdminGeneralSettingsPlatform.module.css";
+import { AdminShellTab } from "./AdminPlatformShell";
+import { uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
+
+const PAGE_ACCESS_LUCIDE = {
+  HomeIcon,
+  UsersIcon,
+  HeartHandshakeIcon,
+  MessageSquareIcon,
+  BriefcaseBusinessIcon,
+  CalendarDaysIcon,
+  RadioIcon,
+  AudioLinesIcon,
+  LaptopMinimalCheckIcon,
+  ShieldCheckIcon,
+  CloudUploadIcon,
+  ChartColumnIncreasingIcon,
+  BookTextIcon,
+  FileTextIcon,
+  SlidersHorizontalIcon
+};
+
+const PAGE_ACCESS_CARD_EASE = [0.22, 1, 0.36, 1];
+const pageAccessCardVariants = {
+  initial: { opacity: 0, y: 8, scale: 0.98 },
+  animate: index => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.22,
+      ease: PAGE_ACCESS_CARD_EASE,
+      delay: Math.min(index, 12) * 0.018
+    }
+  }),
+  exit: {
+    opacity: 0,
+    y: -4,
+    scale: 0.98,
+    transition: { duration: 0.14, ease: "easeIn" }
+  }
+};
+
+function PageAccessCard({
+  label,
+  lucide,
+  iconify,
+  isEnabled,
+  isLocked,
+  lockedBadge,
+  title,
+  onToggle,
+  index = 0
+}) {
+  const iconRef = useRef(null);
+  const LucideIcon = lucide ? PAGE_ACCESS_LUCIDE[lucide] : null;
+  return (
+    <motion.div
+      className={`${s.pageAccessCard}${isEnabled ? ` ${s.pageAccessCardOn}` : ""}${isLocked ? ` ${s.pageAccessCardLocked}` : ""}`}
+      title={title}
+      custom={index}
+      variants={pageAccessCardVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      layout
+      onMouseEnter={() => iconRef.current?.startAnimation?.()}
+      onMouseLeave={() => iconRef.current?.stopAnimation?.()}
+    >
+      <div className={s.pageAccessCardMain}>
+        <span className={s.pageAccessCardIcon} aria-hidden>
+          {LucideIcon ? (
+            <LucideIcon ref={iconRef} size={18} className={s.pageAccessLucideIcon} />
+          ) : (
+            <Icon icon={iconify || "mdi:file-outline"} />
+          )}
+        </span>
+        <div className={s.pageAccessCardText}>
+          <span className={s.pageAccessCardLabel}>{label}</span>
+          {isLocked ? (
+            <span className={s.pageAccessCardBadge}>
+              <Icon icon="mdi:lock-outline" aria-hidden />
+              {lockedBadge}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <Switch checked={isEnabled} disabled={isLocked} onChange={onToggle} />
+    </motion.div>
+  );
+}
 const COMMUNITY_ACCESS_MODULE_KEYS = new Set(["entreprise", "contact", "tickets"]);
 const PROFILE_MODAL_WIDTH = "760px";
 const SYSTEM_PROFILE_NAMES = new Set([
@@ -57,11 +166,13 @@ const resolveAgentProfileName = (profilesList = []) => {
   return agentProfile?.name || DEFAULT_USER_PROFILE;
 };
 const COMMUNITY_PRO_TAB_PROMO = {
+  teams: "adminTeams",
+  planning: "planning",
   profiles: "adminProfiles",
   access: "adminAccess"
 };
+const AGENT_TAB_KEYS = new Set(["users", "teams", "planning", "profiles", "access"]);
 const PROFILES_PER_PAGE = 10;
-const ACCESS_ROWS_PER_PAGE = 10;
 const profileFetchInit = {
   credentials: "include"
 };
@@ -83,7 +194,9 @@ function MfaStatusBadge({
     </span>;
 }
 export default function AdminUsers({
-  isCommunity = false
+  isCommunity = false,
+  agentView = null,
+  onAgentViewConsumed
 }) {
   const locale = useAppLocale();
   const copy = useAdminUsersCopy();
@@ -117,7 +230,7 @@ export default function AdminUsers({
   const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profilesPage, setProfilesPage] = useState(1);
-  const [accessPage, setAccessPage] = useState(1);
+  const [accessProfileName, setAccessProfileName] = useState("");
   const [newActive] = useState(true);
   const [sortKey, setSortKey] = useState("email");
   const [sortDir, setSortDir] = useState("asc");
@@ -135,7 +248,16 @@ export default function AdminUsers({
   const canImpersonateAgents = isSuperAdminProtectedProfile(currentUserProfile) && !impersonating;
   const [teams, setTeams] = useState([]);
   const [profilesSearchTerm, setProfilesSearchTerm] = useState("");
-  const [activeView, setActiveView] = useState("users");
+  const [activeView, setActiveView] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem("veritas_admin_agent_view");
+      if (stored && AGENT_TAB_KEYS.has(stored)) {
+        sessionStorage.removeItem("veritas_admin_agent_view");
+        return stored;
+      }
+    } catch {}
+    return "users";
+  });
   const [confirmReleaseMfa, setConfirmReleaseMfa] = useState(false);
   const [mfaReleaseTarget, setMfaReleaseTarget] = useState(null);
   const [releasingMfa, setReleasingMfa] = useState(false);
@@ -143,6 +265,11 @@ export default function AdminUsers({
   const accessColumns = useMemo(() => getAccessColumns(locale), [locale]);
   const permissionsCopy = useMemo(() => getAdminPermissionsCopy(locale), [locale]);
   const userAdminViews = useMemo(() => getUserAdminViews(locale, isCommunity), [locale, isCommunity]);
+  const { trackRef: tabsRef, indicator: tabIndicator } = useFinderNavIndicator([
+    activeView,
+    locale,
+    userAdminViews.map(view => view.key).join("|")
+  ]);
   const activeMspAgentCount = useMemo(() => users.filter(row => row.is_active !== false && String(row.role || "").toLowerCase() !== "client").length, [users]);
   const agentAtLimit = maxMspAgents != null && activeMspAgentCount >= maxMspAgents;
   useEffect(() => {
@@ -150,6 +277,17 @@ export default function AdminUsers({
       setActiveView("users");
     }
   }, [activeView, userAdminViews]);
+  useEffect(() => {
+    if (!agentView || !AGENT_TAB_KEYS.has(agentView)) return;
+    const promoKey = isCommunity ? COMMUNITY_PRO_TAB_PROMO[agentView] : null;
+    if (promoKey) {
+      setProPromoFeature(promoKey);
+      onAgentViewConsumed?.();
+      return;
+    }
+    setActiveView(agentView);
+    onAgentViewConsumed?.();
+  }, [agentView, isCommunity, onAgentViewConsumed]);
   const handleAdminViewChange = key => {
     const promoKey = isCommunity ? COMMUNITY_PRO_TAB_PROMO[key] : null;
     if (promoKey) {
@@ -209,8 +347,16 @@ export default function AdminUsers({
   }, []);
   useEffect(() => {
     setProfilesPage(1);
-    setAccessPage(1);
   }, [profiles]);
+  useEffect(() => {
+    if (!profiles.length) {
+      setAccessProfileName("");
+      return;
+    }
+    if (!accessProfileName || !profiles.some(p => p.name === accessProfileName)) {
+      setAccessProfileName(profiles[0].name);
+    }
+  }, [profiles, accessProfileName]);
   const openCreateAgentModal = () => {
     if (agentAtLimit) {
       toast.warn(interpolate(copy.agents.limitWarn, {
@@ -518,9 +664,42 @@ export default function AdminUsers({
   const totalProfilesPages = Math.max(1, Math.ceil(filteredProfiles.length / PROFILES_PER_PAGE));
   const currentProfilesPage = Math.min(profilesPage, totalProfilesPages);
   const paginatedProfiles = filteredProfiles.slice((currentProfilesPage - 1) * PROFILES_PER_PAGE, currentProfilesPage * PROFILES_PER_PAGE);
-  const totalAccessPages = Math.max(1, Math.ceil(profiles.length / ACCESS_ROWS_PER_PAGE));
-  const currentAccessPage = Math.min(accessPage, totalAccessPages);
-  const paginatedAccessProfiles = profiles.slice((currentAccessPage - 1) * ACCESS_ROWS_PER_PAGE, currentAccessPage * ACCESS_ROWS_PER_PAGE);
+  const accessProfile = useMemo(
+    () => profiles.find(p => p.name === accessProfileName) || null,
+    [profiles, accessProfileName]
+  );
+  const resolvePageAccess = (profile, col) => {
+    if (!profile) {
+      return { isLocked: true, isEnabled: false, title: copy.access.selectProfile };
+    }
+    const communityLocked = isCommunity;
+    const isCommunityModule = COMMUNITY_ACCESS_MODULE_KEYS.has(col.key);
+    const profileLocked = isSuperAdminProtectedProfile(profile.name);
+    const isLocked = col.locked || !col.accessKey || communityLocked || profileLocked;
+    const isEnabled = profileLocked
+      ? true
+      : communityLocked
+        ? isCommunityModule
+        : col.locked
+          ? true
+          : !!profile[col.accessKey];
+    const title = profileLocked
+      ? copy.access.toggleLocked
+      : communityLocked
+        ? isCommunityModule
+          ? copy.access.toggleCommunityActive
+          : copy.access.toggleCommunityInactive
+        : isLocked
+          ? copy.access.toggleLocked
+          : isEnabled
+            ? copy.access.toggleDisable
+            : copy.access.toggleEnable;
+    return { isLocked, isEnabled, title };
+  };
+  const countEnabledPages = profile => {
+    if (!profile) return 0;
+    return accessColumns.reduce((acc, col) => acc + (resolvePageAccess(profile, col).isEnabled ? 1 : 0), 0);
+  };
   const openEditUser = async row => {
     try {
       const full = await fetchUser(row.id);
@@ -654,271 +833,369 @@ export default function AdminUsers({
   const isLastAdmin = userRow => userRow?.role === "admin" && adminCount <= 1;
   const cannotDeleteEditAgent = !editAgentDraft || editAgentDraft.id === currentUserId || isLastAdmin(editAgentDraft);
   const editAgentDeleteDescription = editAgentDraft?.id === currentUserId ? copy.deleteAgent.self : isLastAdmin(editAgentDraft) ? copy.deleteAgent.lastAdmin : copy.deleteAgent.default;
-  const heroCopy = getAdminPanelCopy(locale).items.users;
   return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:account-group-outline" />
-      <SubTabs items={userAdminViews} active={activeView} onChange={handleAdminViewChange} />
+      <div className={`${platform.shell} ${s.shell}`} data-page-fill>
+        <div
+          className={platform.tabs}
+          ref={tabsRef}
+          role="tablist"
+          aria-label={userAdminViews.map(view => view.label).join(" / ")}
+        >
+          {tabIndicator.ready ? (
+            <span
+              className={platform.tabIndicator}
+              style={{
+                transform: `translate3d(${tabIndicator.left}px, 0, 0)`,
+                width: tabIndicator.width,
+                height: tabIndicator.height
+              }}
+              aria-hidden
+            />
+          ) : null}
+          {userAdminViews.map(item => (
+            <AdminShellTab
+              key={item.key}
+              item={{
+                ...item,
+                badge: item.proOnly ? <ProFeatureBadge variant="inline" className={s.proBadgeInline} /> : null
+              }}
+              isActive={activeView === item.key}
+              onSelect={handleAdminViewChange}
+            />
+          ))}
+        </div>
 
-      {activeView === "users" && <Card title={copy.agents.title} description={copy.agents.description} fill action={<Btn icon="mdi:plus" onClick={openCreateAgentModal} disabled={agentAtLimit} title={agentAtLimit ? interpolate(copy.agents.limitTitle, {
-      max: maxMspAgents
-    }) : undefined}>
-              {copy.agents.newAgent}
-            </Btn>}>
-            <div className={ui.toolRow}>
-              <div className={ui.toolLeft}>
-                <div className={kit.searchBox}>
-                  <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
-                  <input type="search" className={kit.searchInput} placeholder={copy.agents.searchPlaceholder} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} aria-label={copy.agents.searchPlaceholder} autoComplete="off" />
+        <div className={platform.shellBody}>
+          {activeView === "teams" ? (
+            <div className={platform.shellPane} key="pane-teams">
+              <div className={s.paneInner}>
+                <div className={`${s.paneContent} ${s.paneContentFlush}`}>
+                  <AdminTeams embedded />
                 </div>
-                <span className={ui.count}>
-                  {filteredUsers.length === 1 ? interpolate(copy.agents.agentCount, {
-              count: filteredUsers.length
-            }) : interpolate(copy.agents.agentCountPlural, {
-              count: filteredUsers.length
-            })}
-                </span>
               </div>
             </div>
-            {maxMspAgents != null && <p className={s.limitHint}>
-                <CommunityFeatureBadge variant="inline" className={s.proBadgeInline} />
-                {agentAtLimit ? <>
-                    {interpolate(copy.agents.limitReached, {
-            current: activeMspAgentCount,
-            max: maxMspAgents
-          })}{" "}
+          ) : null}
+
+          {activeView === "planning" ? (
+            <div className={platform.shellPane} key="pane-planning">
+              <div className={s.paneInner}>
+                <div className={s.paneContent}>
+                  <AdminPlanning embedded />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeView === "users" ? (
+            <div className={platform.shellPane} key="pane-users">
+              <div className={s.paneInner}>
+                <div className={s.paneToolbar}>
+                  <div className={s.paneToolbarLeft}>
+                    <div className={kit.searchBox}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                      <input type="search" className={kit.searchInput} placeholder={copy.agents.searchPlaceholder} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} aria-label={copy.agents.searchPlaceholder} autoComplete="off" />
+                    </div>
+                    <span className={ui.count}>
+                      {filteredUsers.length === 1 ? interpolate(copy.agents.agentCount, {
+                        count: filteredUsers.length
+                      }) : interpolate(copy.agents.agentCountPlural, {
+                        count: filteredUsers.length
+                      })}
+                    </span>
+                  </div>
+                  <div className={s.paneToolbarRight}>
+                    <Btn
+                      icon="mdi:plus"
+                      onClick={openCreateAgentModal}
+                      disabled={agentAtLimit}
+                      title={agentAtLimit ? interpolate(copy.agents.limitTitle, { max: maxMspAgents }) : undefined}
+                    >
+                      {copy.agents.newAgent}
+                    </Btn>
+                  </div>
+                </div>
+                {maxMspAgents != null ? (
+                  <p className={s.paneHint}>
+                    <CommunityFeatureBadge variant="inline" className={s.proBadgeInline} />
+                    {agentAtLimit ? <>
+                        {interpolate(copy.agents.limitReached, {
+                          current: activeMspAgentCount,
+                          max: maxMspAgents
+                        })}{" "}
+                        <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
+                      </> : <>{interpolate(copy.agents.quota, {
+                        current: activeMspAgentCount,
+                        max: maxMspAgents
+                      })}</>}
+                  </p>
+                ) : null}
+
+                <div className={s.paneContent}>
+                  <div className={s.tableSection}>
+                    <div className={s.tableWrap}>
+                      <table className={s.table}>
+                        <thead>
+                          <tr>
+                            <th><ThSort label={copy.agents.columns.user} col="email" /></th>
+                            <th><ThSort label={copy.agents.columns.status} col="is_active" /></th>
+                            <th><ThSort label={copy.agents.columns.mfa} col="mfa_enabled" /></th>
+                            <th><ThSort label={copy.agents.columns.profile} col="profile" /></th>
+                            <th><ThSort label={copy.agents.columns.created} col="created_at" /></th>
+                            <th><ThSort label={copy.agents.columns.lastLogin} col="last_login_at" /></th>
+                            <th style={{ width: canImpersonateAgents ? 84 : 48 }} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedUsers.length === 0 ? <tr>
+                              <td colSpan={7} className={s.empty}>
+                                {isLoading ? copy.agents.emptyLoading : copy.agents.empty}
+                              </td>
+                            </tr> : paginatedUsers.map(row => <tr key={row.id}>
+                                <td>
+                                  <div className={s.userCell}>
+                                    <div className={s.avatar}>{getInitials(row)}</div>
+                                    <div className={s.userInfo}>
+                                      <div className={s.userEmail}>{row.email}</div>
+                                      {row.username && <div className={s.userName}>{row.username}</div>}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <EntityStatus active={Boolean(row.is_active)} />
+                                </td>
+                                <td>
+                                  <MfaStatusBadge user={row} locale={locale} />
+                                </td>
+                                <td>
+                                  <span className={s.badge}>{getProfileLabel(row.profile)}</span>
+                                  {Array.isArray(row.profiles) && row.profiles.length > 1 ? (
+                                    <span className={s.badge} style={{ marginLeft: 6 }} title={row.profiles.map(getProfileLabel).join(", ")}>
+                                      +{row.profiles.length - 1}
+                                    </span>
+                                  ) : null}
+                                </td>
+                                <td className={s.dateCell}>
+                                  {row.created_at ? formatDate(row.created_at) : "-"}
+                                </td>
+                                <td className={s.dateCell}>
+                                  {row.last_login_at ? formatDate(row.last_login_at) : "-"}
+                                </td>
+                                <td>
+                                  <div className={s.actions}>
+                                    {canImpersonateAgents && row.id !== currentUserId && row.is_active !== false ? <button type="button" className={s.actionBtn} title={copy.impersonation.actionTitle} aria-label={copy.impersonation.actionTitle} onClick={() => handleImpersonateUser(row)}>
+                                        <Icon icon="mdi:account-switch-outline" />
+                                      </button> : null}
+                                    <button type="button" className={s.actionBtn} title={adminCopy.edit} onClick={() => openEditUser(row)}>
+                                      <Icon icon="mdi:pencil-outline" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>)}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {sortedUsers.length > 0 && <Pager page={currentPage} totalPages={totalPages} onPageChange={setPage} pageSize={usersPageSize} onPageSizeChange={setUsersPageSize} rangeLabel={interpolate(copy.agents.range, {
+                      start: usersPageStartIndex,
+                      end: usersPageEndIndex,
+                      total: sortedUsers.length
+                    })} />}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeView === "profiles" ? (
+            <div className={platform.shellPane} key="pane-profiles">
+              <div className={s.paneInner}>
+                <div className={s.paneToolbar}>
+                  <div className={s.paneToolbarLeft}>
+                    <div className={kit.searchBox}>
+                      <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
+                      <input type="search" className={kit.searchInput} placeholder={copy.profiles.searchPlaceholder} value={profilesSearchTerm} onChange={e => setProfilesSearchTerm(e.target.value)} aria-label={copy.profiles.searchPlaceholder} autoComplete="off" />
+                    </div>
+                    <span className={ui.count}>
+                      {filteredProfiles.length === 1 ? interpolate(copy.profiles.profileCount, {
+                        count: filteredProfiles.length
+                      }) : interpolate(copy.profiles.profileCountPlural, {
+                        count: filteredProfiles.length
+                      })}
+                    </span>
+                  </div>
+                  <div className={s.paneToolbarRight}>
+                    <Btn
+                      icon="mdi:plus"
+                      onClick={openCreateProfileModal}
+                      disabled={isCommunity}
+                      title={isCommunity ? copy.profiles.createProTitle : undefined}
+                    >
+                      {copy.profiles.newProfile}
+                      {isCommunity ? <ProFeatureBadge variant="inline" className={s.proBadgeInline} /> : null}
+                    </Btn>
+                  </div>
+                </div>
+
+                <div className={s.paneContent}>
+                  <div className={s.tableSection}>
+                    {profilesLoading ? <div className={`${s.scrollBody} ${s.listShell}`}>
+                        <div className={s.empty}>{copy.profiles.emptyLoading}</div>
+                      </div> : filteredProfiles.length === 0 ? <div className={`${s.scrollBody} ${s.listShell}`}>
+                        <div className={s.empty}>{copy.profiles.empty}</div>
+                      </div> : <div className={`${s.scrollBody} ${s.listShell}`}>
+                      <div className={s.profileGrid}>
+                        {paginatedProfiles.map(p => {
+                          const isProtected = isProfileProtected(p.name);
+                          const displayName = getProfileLabel(p.name);
+                          const displayDesc = getProfileDescription(p.name, p.label);
+                          const profileAgents = getUsersForProfile(p.name);
+                          const mfaEnabledCount = profileAgents.filter(u => u.mfa_enabled).length;
+                          return <div key={p.name} className={s.profileCard}>
+                                  <div className={s.profileCardHead}>
+                                    <div className={s.profileCardIcon}>
+                                      <Icon icon="mdi:account-cog-outline" />
+                                    </div>
+                                    <div className={s.profileCardMeta}>
+                                      <div className={s.profileCardTitleRow}>
+                                        <p className={s.profileCardName}>{displayName}</p>
+                                        <span className={isProtected ? s.systemTag : s.customTag}>
+                                          {isProtected ? copy.profiles.systemTag : copy.profiles.customBadge}
+                                        </span>
+                                      </div>
+                                      <p className={s.profileCardDesc}>{displayDesc || "\u00A0"}</p>
+                                      {p.parent_profile ? <span className={s.profileParentBadge}>
+                                          <Icon icon="mdi:source-branch" />
+                                          {interpolate(copy.profiles.inherits, {
+                                            parent: getProfileLabel(p.parent_profile)
+                                          })}
+                                        </span> : null}
+                                      <p className={s.profileCardStats}>
+                                        {profileAgents.length === 1 ? interpolate(copy.profiles.stats, {
+                                          count: profileAgents.length,
+                                          mfa: mfaEnabledCount,
+                                          total: profileAgents.length
+                                        }) : interpolate(copy.profiles.statsPlural, {
+                                          count: profileAgents.length,
+                                          mfa: mfaEnabledCount,
+                                          total: profileAgents.length
+                                        })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className={s.profileCardActions}>
+                                    <button type="button" className={s.profileCardBtn} onClick={() => {
+                                      setProfileModalMode("edit");
+                                      setProfileModalTarget(p.name);
+                                      setProfileNameInput(p.name);
+                                      setProfileLabelInput(displayDesc || p.label || p.name);
+                                      setShowProfileModal(true);
+                                    }}>
+                                      <Icon icon={isProtected ? "mdi:eye-outline" : "mdi:pencil-outline"} />
+                                      {isProtected ? copy.profiles.view : copy.profiles.edit}
+                                    </button>
+                                  </div>
+                                </div>;
+                        })}
+                      </div>
+                      </div>}
+
+                    {filteredProfiles.length > 0 && <Pager page={currentProfilesPage} totalPages={totalProfilesPages} onPageChange={setProfilesPage} />}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeView === "access" ? (
+            <div className={platform.shellPane} key="pane-access">
+              <div className={s.paneInner}>
+                {isCommunity ? (
+                  <p className={s.paneHint}>
+                    {copy.access.communityHint}{" "}
                     <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
-                  </> : <>{interpolate(copy.agents.quota, {
-            current: activeMspAgentCount,
-            max: maxMspAgents
-          })}</>}
-              </p>}
+                  </p>
+                ) : null}
 
-            <div className={s.tableSection}>
-            <div className={s.tableWrap}>
-              <table className={s.table}>
-                <thead>
-                  <tr>
-                    <th><ThSort label={copy.agents.columns.user} col="email" /></th>
-                    <th><ThSort label={copy.agents.columns.status} col="is_active" /></th>
-                    <th><ThSort label={copy.agents.columns.mfa} col="mfa_enabled" /></th>
-                    <th><ThSort label={copy.agents.columns.profile} col="profile" /></th>
-                    <th><ThSort label={copy.agents.columns.created} col="created_at" /></th>
-                    <th><ThSort label={copy.agents.columns.lastLogin} col="last_login_at" /></th>
-                    <th style={{
-                  width: canImpersonateAgents ? 84 : 48
-                }} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedUsers.length === 0 ? <tr>
-                      <td colSpan={7} className={s.empty}>
-                        {isLoading ? copy.agents.emptyLoading : copy.agents.empty}
-                      </td>
-                    </tr> : paginatedUsers.map(row => <tr key={row.id}>
-                        <td>
-                          <div className={s.userCell}>
-                            <div className={s.avatar}>{getInitials(row)}</div>
-                            <div className={s.userInfo}>
-                              <div className={s.userEmail}>{row.email}</div>
-                              {row.username && <div className={s.userName}>{row.username}</div>}
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <EntityStatus active={Boolean(row.is_active)} />
-                        </td>
-                        <td>
-                          <MfaStatusBadge user={row} locale={locale} />
-                        </td>
-                        <td>
-                          <span className={s.badge}>{getProfileLabel(row.profile)}</span>
-                          {Array.isArray(row.profiles) && row.profiles.length > 1 ? (
-                            <span className={s.badge} style={{ marginLeft: 6 }} title={row.profiles.map(getProfileLabel).join(", ")}>
-                              +{row.profiles.length - 1}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td className={s.dateCell}>
-                          {row.created_at ? formatDate(row.created_at) : "-"}
-                        </td>
-                        <td className={s.dateCell}>
-                          {row.last_login_at ? formatDate(row.last_login_at) : "-"}
-                        </td>
-                        <td>
-                          <div className={s.actions}>
-                            {canImpersonateAgents && row.id !== currentUserId && row.is_active !== false ? <button type="button" className={s.actionBtn} title={copy.impersonation.actionTitle} aria-label={copy.impersonation.actionTitle} onClick={() => handleImpersonateUser(row)}>
-                                <Icon icon="mdi:account-switch-outline" />
-                              </button> : null}
-                            <button type="button" className={s.actionBtn} title={adminCopy.edit} onClick={() => openEditUser(row)}>
-                              <Icon icon="mdi:pencil-outline" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>)}
-                </tbody>
-              </table>
-            </div>
-
-            {sortedUsers.length > 0 && <Pager page={currentPage} totalPages={totalPages} onPageChange={setPage} pageSize={usersPageSize} onPageSizeChange={setUsersPageSize} rangeLabel={interpolate(copy.agents.range, {
-          start: usersPageStartIndex,
-          end: usersPageEndIndex,
-          total: sortedUsers.length
-        })} />}
-            </div>
-        </Card>}
-
-      {activeView === "profiles" && <Card title={copy.profiles.title} description={isCommunity ? copy.profiles.descriptionCommunity : copy.profiles.description} fill action={<Btn icon="mdi:plus" onClick={openCreateProfileModal} disabled={isCommunity} title={isCommunity ? copy.profiles.createProTitle : undefined}>
-              {copy.profiles.newProfile}
-              {isCommunity ? <ProFeatureBadge variant="inline" className={s.proBadgeInline} /> : null}
-            </Btn>}>
-            <div className={ui.toolRow}>
-              <div className={ui.toolLeft}>
-                <div className={kit.searchBox}>
-                  <Icon icon="mdi:magnify" className={kit.searchIcon} aria-hidden />
-                  <input type="search" className={kit.searchInput} placeholder={copy.profiles.searchPlaceholder} value={profilesSearchTerm} onChange={e => setProfilesSearchTerm(e.target.value)} aria-label={copy.profiles.searchPlaceholder} autoComplete="off" />
-                </div>
-                <span className={ui.count}>
-                  {filteredProfiles.length === 1 ? interpolate(copy.profiles.profileCount, {
-              count: filteredProfiles.length
-            }) : interpolate(copy.profiles.profileCountPlural, {
-              count: filteredProfiles.length
-            })}
-                </span>
-              </div>
-            </div>
-
-            <div className={s.tableSection}>
-            {profilesLoading ? <div className={s.scrollBody}>
-                <div className={s.empty}>{copy.profiles.emptyLoading}</div>
-              </div> : filteredProfiles.length === 0 ? <div className={s.scrollBody}>
-                <div className={s.empty}>{copy.profiles.empty}</div>
-              </div> : <div className={s.scrollBody}>
-              <div className={s.profileGrid}>
-                {paginatedProfiles.map(p => {
-              const isProtected = isProfileProtected(p.name);
-              const displayName = getProfileLabel(p.name);
-              const displayDesc = getProfileDescription(p.name, p.label);
-              const profileAgents = getUsersForProfile(p.name);
-              const mfaEnabledCount = profileAgents.filter(u => u.mfa_enabled).length;
-              return <div key={p.name} className={s.profileCard}>
-                      <div className={s.profileCardHead}>
-                        <div className={s.profileCardIcon}>
-                          <Icon icon="mdi:account-cog-outline" />
-                        </div>
-                        <div className={s.profileCardMeta}>
-                          <div className={s.profileCardTitleRow}>
-                            <p className={s.profileCardName}>{displayName}</p>
-                            <span className={isProtected ? s.systemTag : s.customTag}>
-                              {isProtected ? copy.profiles.systemTag : copy.profiles.customBadge}
-                            </span>
-                          </div>
-                          <p className={s.profileCardDesc}>{displayDesc || "\u00A0"}</p>
-                          {p.parent_profile ? <span className={s.profileParentBadge}>
-                              <Icon icon="mdi:source-branch" />
-                              {interpolate(copy.profiles.inherits, {
-                        parent: getProfileLabel(p.parent_profile)
-                      })}
-                            </span> : null}
-                          <p className={s.profileCardStats}>
-                            {profileAgents.length === 1 ? interpolate(copy.profiles.stats, {
-                        count: profileAgents.length,
-                        mfa: mfaEnabledCount,
-                        total: profileAgents.length
-                      }) : interpolate(copy.profiles.statsPlural, {
-                        count: profileAgents.length,
-                        mfa: mfaEnabledCount,
-                        total: profileAgents.length
-                      })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className={s.profileCardActions}>
-                        <button type="button" className={s.profileCardBtn} onClick={() => {
-                    setProfileModalMode("edit");
-                    setProfileModalTarget(p.name);
-                    setProfileNameInput(p.name);
-                    setProfileLabelInput(displayDesc || p.label || p.name);
-                    setShowProfileModal(true);
-                  }}>
-                          <Icon icon={isProtected ? "mdi:eye-outline" : "mdi:pencil-outline"} />
-                          {isProtected ? copy.profiles.view : copy.profiles.edit}
-                        </button>
-                      </div>
-                    </div>;
-            })}
-              </div>
-              </div>}
-
-            {filteredProfiles.length > 0 && <Pager page={currentProfilesPage} totalPages={totalProfilesPages} onPageChange={setProfilesPage} />}
-            </div>
-        </Card>}
-
-      {activeView === "access" && <Card title={copy.access.title} description={isCommunity ? copy.access.descriptionCommunity : copy.access.description} fill>
-            {isCommunity && <p className={s.limitHint}>
-                {copy.access.communityHint}{" "}
-                <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
-              </p>}
-            <div className={s.accessHeader}>
-              <div />
-              <div className={s.accessLegend}>
-                <span className={s.legendItem}>
-                  <span className={`${s.legendDot} ${s.legendOn}`} /> {copy.access.legendOn}
-                </span>
-                <span className={s.legendItem}>
-                  <span className={`${s.legendDot} ${s.legendOff}`} /> {copy.access.legendOff}
-                </span>
-                <span className={s.legendItem}>
-                  <span className={`${s.legendDot} ${s.legendLock}`} /> {copy.access.legendLock}
-                </span>
-              </div>
-            </div>
-
-            <div className={s.tableSection}>
-            <div className={s.accessWrap}>
-              <table className={s.accessTable}>
-                <thead>
-                  <tr>
-                    <th>{copy.access.profileColumn}</th>
-                    {accessColumns.map(col => <th key={col.key}>{col.label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAccessProfiles.length === 0 ? <tr>
-                      <td colSpan={accessColumns.length + 1} className={s.empty}>
-                        {copy.access.empty}
-                      </td>
-                    </tr> : paginatedAccessProfiles.map(p => <tr key={p.name}>
-                        <td>
-                          <div className={s.accessProfileCell}>
-                            <span className={s.accessProfileName}>{getProfileLabel(p.name)}</span>
-                            {getProfileDescription(p.name, p.label) ? <span className={s.accessProfileDesc}>{getProfileDescription(p.name, p.label)}</span> : null}
-                            {p.parent_profile ? <span className={s.accessProfileDesc}>
-                                {interpolate(copy.profiles.inherits, {
-                        parent: getProfileLabel(p.parent_profile)
-                      })}
-                              </span> : null}
-                          </div>
-                        </td>
-                        {accessColumns.map(col => {
-                  const communityLocked = isCommunity;
-                  const isCommunityModule = COMMUNITY_ACCESS_MODULE_KEYS.has(col.key);
-                  const profileLocked = isSuperAdminProtectedProfile(p.name);
-                  const isLocked = col.locked || !col.accessKey || communityLocked || profileLocked;
-                  const isEnabled = profileLocked ? true : communityLocked ? isCommunityModule : col.locked ? true : !!p[col.accessKey];
-                  return <td key={col.key}>
-                              <button type="button" className={`${s.toggle} ${isLocked ? s.toggleLocked : isEnabled ? s.toggleOn : s.toggleOff}`} disabled={isLocked} title={profileLocked ? copy.access.toggleLocked : communityLocked ? isCommunityModule ? copy.access.toggleCommunityActive : copy.access.toggleCommunityInactive : isLocked ? copy.access.toggleLocked : isEnabled ? copy.access.toggleDisable : copy.access.toggleEnable} onClick={() => !isLocked && toggle(p.name, col.accessKey)}>
-                                <Icon icon={isLocked ? "mdi:lock-outline" : isEnabled ? "mdi:check" : "mdi:minus"} />
+                <div className={`${s.paneContent} ${s.paneContentFlush}`}>
+                  {profiles.length === 0 ? (
+                    <p className={s.empty}>{copy.access.empty}</p>
+                  ) : (
+                    <div className={s.pageAccessLayout}>
+                      <aside className={s.pageAccessProfiles} aria-label={copy.access.profilesTitle}>
+                        <div className={s.pageAccessProfileList}>
+                          {profiles.map(p => {
+                            const active = p.name === accessProfileName;
+                            const enabledCount = countEnabledPages(p);
+                            return (
+                              <button
+                                key={p.name}
+                                type="button"
+                                className={`${s.pageAccessProfileBtn}${active ? ` ${s.pageAccessProfileBtnActive}` : ""}`}
+                                onClick={() => setAccessProfileName(p.name)}
+                                aria-current={active ? "true" : undefined}
+                              >
+                                <span className={s.pageAccessProfileBtnMain}>
+                                  <span className={s.pageAccessProfileName}>{getProfileLabel(p.name)}</span>
+                                  {getProfileDescription(p.name, p.label) ? (
+                                    <span className={s.pageAccessProfileDesc}>{getProfileDescription(p.name, p.label)}</span>
+                                  ) : null}
+                                </span>
+                                <span className={s.pageAccessProfileCount}>
+                                  {interpolate(copy.access.enabledCount, {
+                                    count: enabledCount,
+                                    total: accessColumns.length
+                                  })}
+                                </span>
                               </button>
-                            </td>;
-                })}
-                      </tr>)}
-                </tbody>
-              </table>
-            </div>
+                            );
+                          })}
+                        </div>
+                      </aside>
 
-            {profiles.length > 0 && <Pager page={currentAccessPage} totalPages={totalAccessPages} onPageChange={setAccessPage} />}
+                      <div className={s.pageAccessPages}>
+                        {accessProfile ? (
+                          <motion.div
+                            key={accessProfile.name}
+                            className={s.pageAccessGrid}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.18, ease: PAGE_ACCESS_CARD_EASE }}
+                          >
+                            <AnimatePresence mode="popLayout" initial={false}>
+                              {accessColumns.map((col, index) => {
+                                const { isLocked, isEnabled, title } = resolvePageAccess(accessProfile, col);
+                                return (
+                                  <PageAccessCard
+                                    key={`${accessProfile.name}-${col.key}`}
+                                    index={index}
+                                    label={col.label}
+                                    lucide={col.lucide}
+                                    iconify={col.iconify}
+                                    isEnabled={isEnabled}
+                                    isLocked={isLocked}
+                                    lockedBadge={copy.access.lockedBadge}
+                                    title={title}
+                                    onToggle={on => {
+                                      if (isLocked || !col.accessKey) return;
+                                      if (on !== isEnabled) toggle(accessProfile.name, col.accessKey);
+                                    }}
+                                  />
+                                );
+                              })}
+                            </AnimatePresence>
+                          </motion.div>
+                        ) : (
+                          <p className={s.empty}>{copy.access.selectProfile}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-        </Card>}
+          ) : null}
+        </div>
+      </div>
 
       <AgentFormModal open={showModal} draft={agentDraft} setDraft={setAgentDraft} saving={creatingAgent} profiles={profiles} onClose={closeCreateAgentModal} onSave={handleCreateUser} />
 

@@ -3,12 +3,12 @@ import { toast } from "react-toastify";
 import { getMaintenanceStatus, toggleMaintenance } from "../../api/maintenance";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
-import { Page, Card, Field, Textarea, Btn, Switch, FormGrid, Select, NumberStepper } from "./AdminUi";
+import { Field, Textarea, Btn, Switch, FormGrid, Select, NumberStepper } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import ui from "./AdminUi.module.css";
 import s from "./AdminMaintenance.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { UiKitPageHero } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
 
 const COLOR_KEYS = [{
   key: "blue",
@@ -42,8 +42,7 @@ function normalizeSpeed(value) {
 export default function AdminMaintenance() {
   const locale = useAppLocale();
   const copy = useAdminPageCopy("maintenance");
-  const heroCopy = getAdminPanelCopy(locale).items.maintenance;
-  const adminCopy = useAdminCommonCopy();
+const adminCopy = useAdminCommonCopy();
   const commonCopy = useCommonCopy();
   const previewBannerRef = useRef(null);
   const colorPresets = useMemo(() => COLOR_KEYS.map(preset => ({
@@ -135,9 +134,8 @@ export default function AdminMaintenance() {
   const safeGap = normalizeGap(gap);
   const safeSpeed = normalizeSpeed(speed);
 
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:bullhorn-outline" />
-      <Card fill>
+  return <AdminPlatformShell>
+      <SettingsSection icon="mdi:bullhorn-outline" description={copy.messageHint}>
         <div className={ui.toolRow}>
           <div className={ui.toolLeft}>
             <Switch checked={enabled} onChange={handleToggle} label={enabled ? copy.switchEnabled : copy.switchDisabled} />
@@ -193,6 +191,6 @@ export default function AdminMaintenance() {
             </div>
           </div>
         </div>
-      </Card>
-    </Page>;
+      </SettingsSection>
+    </AdminPlatformShell>;
 }

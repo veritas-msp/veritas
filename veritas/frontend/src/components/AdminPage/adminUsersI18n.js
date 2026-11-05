@@ -3,8 +3,10 @@ const USERS_COPY = {
   fr: {
     views: {
       users: "Agents",
+      teams: "Équipes",
+      planning: "Planning",
       profiles: "Profils",
-      access: "Permissions"
+      access: "Accès pages"
     },
     accessColumns: {
       entreprise: "Entreprise",
@@ -109,20 +111,22 @@ const USERS_COPY = {
       }
     },
     access: {
-      title: "Matrice des modules",
-      description: "Définissez les modules accessibles pour chaque profil (alignés sur la barre latérale). Entreprise et Contact sont toujours actifs.",
-      descriptionCommunity: "En édition Community, tous les agents accèdent à Entreprise, Contact et Support uniquement.",
-      communityHint: "La personnalisation des droits d'accès est réservée à Veritas Pro.",
-      legendOn: "Activé",
-      legendOff: "Désactivé",
-      legendLock: "Verrouillé",
-      profileColumn: "Profil",
+      title: "Accès aux pages",
+      description: "Pour chaque profil, choisissez les pages visibles dans la navigation de l’application.",
+      descriptionCommunity: "En édition Community, les agents n’accèdent qu’à Entreprise, Contact et Support.",
+      communityHint: "La personnalisation de l’accès aux pages est réservée à Veritas Pro.",
+      profilesTitle: "Profils",
+      pagesTitle: "Pages de l’application",
+      pagesForProfile: "Pages pour « {name} »",
+      enabledCount: "{count}/{total} pages",
+      lockedBadge: "Toujours actif",
       empty: "Aucun profil",
+      selectProfile: "Sélectionnez un profil pour gérer ses pages.",
       toggleCommunityActive: "Toujours actif en Community",
       toggleCommunityInactive: "Non disponible en Community",
       toggleLocked: "Toujours actif",
-      toggleDisable: "Cliquer pour désactiver",
-      toggleEnable: "Cliquer pour activer"
+      toggleDisable: "Désactiver l’accès à cette page",
+      toggleEnable: "Activer l’accès à cette page"
     },
     toast: {
       loadUsersError: "Erreur de chargement des utilisateurs",
@@ -174,8 +178,10 @@ const USERS_COPY = {
   en: {
     views: {
       users: "Agents",
+      teams: "Teams",
+      planning: "Planning",
       profiles: "Profiles",
-      access: "Permissions"
+      access: "Page access"
     },
     accessColumns: {
       entreprise: "Enterprise",
@@ -280,20 +286,22 @@ const USERS_COPY = {
       }
     },
     access: {
-      title: "Module matrix",
-      description: "Define accessible modules per profile (matching the sidebar). Enterprise and Contact are always active.",
-      descriptionCommunity: "In Community edition, all agents access Enterprise, Contact and Support only.",
-      communityHint: "Access customization requires Veritas Pro.",
-      legendOn: "Enabled",
-      legendOff: "Disabled",
-      legendLock: "Locked",
-      profileColumn: "Profile",
+      title: "Page access",
+      description: "For each profile, choose which application pages appear in navigation.",
+      descriptionCommunity: "In Community edition, agents only access Enterprise, Contact and Support.",
+      communityHint: "Page access customization requires Veritas Pro.",
+      profilesTitle: "Profiles",
+      pagesTitle: "Application pages",
+      pagesForProfile: "Pages for “{name}”",
+      enabledCount: "{count}/{total} pages",
+      lockedBadge: "Always on",
       empty: "No profiles",
+      selectProfile: "Select a profile to manage its pages.",
       toggleCommunityActive: "Always active in Community",
       toggleCommunityInactive: "Not available in Community",
       toggleLocked: "Always active",
-      toggleDisable: "Click to disable",
-      toggleEnable: "Click to enable"
+      toggleDisable: "Disable access to this page",
+      toggleEnable: "Enable access to this page"
     },
     toast: {
       loadUsersError: "Error loading users",
@@ -345,8 +353,10 @@ const USERS_COPY = {
   de: {
     views: {
       users: "Agenten",
+      teams: "Teams",
+      planning: "Planung",
       profiles: "Profile",
-      access: "Rechte"
+      access: "Seitenrechte"
     },
     accessColumns: {
       entreprise: "Unternehmen",
@@ -451,20 +461,22 @@ const USERS_COPY = {
       }
     },
     access: {
-      title: "Modulmatrix",
-      description: "Module pro Profil definieren. Unternehmen und Kontakt sind immer aktiv.",
-      descriptionCommunity: "In Community haben alle Agenten nur Zugriff auf Unternehmen, Kontakt und Support.",
-      communityHint: "Rechteanpassung erfordert Veritas Pro.",
-      legendOn: "Aktiv",
-      legendOff: "Deaktiviert",
-      legendLock: "Gesperrt",
-      profileColumn: "Profil",
+      title: "Seitenzugriff",
+      description: "Legen Sie pro Profil fest, welche Anwendungsseiten in der Navigation sichtbar sind.",
+      descriptionCommunity: "In Community haben Agenten nur Zugriff auf Unternehmen, Kontakt und Support.",
+      communityHint: "Anpassung des Seitenzugriffs erfordert Veritas Pro.",
+      profilesTitle: "Profile",
+      pagesTitle: "Anwendungsseiten",
+      pagesForProfile: "Seiten für „{name}“",
+      enabledCount: "{count}/{total} Seiten",
+      lockedBadge: "Immer aktiv",
       empty: "Keine Profile",
+      selectProfile: "Wählen Sie ein Profil, um die Seiten zu verwalten.",
       toggleCommunityActive: "In Community immer aktiv",
       toggleCommunityInactive: "In Community nicht verfügbar",
       toggleLocked: "Immer aktiv",
-      toggleDisable: "Klicken zum Deaktivieren",
-      toggleEnable: "Klicken zum Aktivieren"
+      toggleDisable: "Zugriff auf diese Seite deaktivieren",
+      toggleEnable: "Zugriff auf diese Seite aktivieren"
     },
     toast: {
       loadUsersError: "Fehler beim Laden der Benutzer",
@@ -516,8 +528,10 @@ const USERS_COPY = {
   it: {
     views: {
       users: "Agenti",
+      teams: "Team",
+      planning: "Pianificazione",
       profiles: "Profili",
-      access: "Permessi"
+      access: "Accesso pagine"
     },
     accessColumns: {
       entreprise: "Azienda",
@@ -622,20 +636,22 @@ const USERS_COPY = {
       }
     },
     access: {
-      title: "Matrice moduli",
-      description: "Moduli accessibili per profilo. Azienda e Contatto sono sempre attivi.",
-      descriptionCommunity: "In Community tutti gli agenti accedono solo ad Azienda, Contatto e Supporto.",
-      communityHint: "Personalizzazione permessi riservata a Veritas Pro.",
-      legendOn: "Attivo",
-      legendOff: "Disattivato",
-      legendLock: "Bloccato",
-      profileColumn: "Profilo",
+      title: "Accesso alle pagine",
+      description: "Per ogni profilo, scegliete le pagine dell’applicazione visibili nella navigazione.",
+      descriptionCommunity: "In Community gli agenti accedono solo ad Azienda, Contatto e Supporto.",
+      communityHint: "La personalizzazione dell’accesso alle pagine è riservata a Veritas Pro.",
+      profilesTitle: "Profili",
+      pagesTitle: "Pagine dell’applicazione",
+      pagesForProfile: "Pagine per « {name} »",
+      enabledCount: "{count}/{total} pagine",
+      lockedBadge: "Sempre attivo",
       empty: "Nessun profilo",
+      selectProfile: "Selezionate un profilo per gestirne le pagine.",
       toggleCommunityActive: "Sempre attivo in Community",
       toggleCommunityInactive: "Non disponibile in Community",
       toggleLocked: "Sempre attivo",
-      toggleDisable: "Clicca per disattivare",
-      toggleEnable: "Clicca per attivare"
+      toggleDisable: "Disattiva l’accesso a questa pagina",
+      toggleEnable: "Attiva l’accesso a questa pagina"
     },
     toast: {
       loadUsersError: "Errore caricamento utenti",
@@ -687,8 +703,10 @@ const USERS_COPY = {
   es: {
     views: {
       users: "Agentes",
+      teams: "Equipos",
+      planning: "Planificación",
       profiles: "Perfiles",
-      access: "Permisos"
+      access: "Acceso páginas"
     },
     accessColumns: {
       entreprise: "Empresa",
@@ -793,20 +811,22 @@ const USERS_COPY = {
       }
     },
     access: {
-      title: "Matriz de módulos",
-      description: "Módulos accesibles por perfil. Empresa y Contacto siempre activos.",
-      descriptionCommunity: "En Community todos los agentes acceden solo a Empresa, Contacto y Soporte.",
-      communityHint: "Personalización de permisos reservada a Veritas Pro.",
-      legendOn: "Activo",
-      legendOff: "Desactivado",
-      legendLock: "Bloqueado",
-      profileColumn: "Perfil",
+      title: "Acceso a las páginas",
+      description: "Para cada perfil, elija las páginas de la aplicación visibles en la navegación.",
+      descriptionCommunity: "En Community los agentes solo acceden a Empresa, Contacto y Soporte.",
+      communityHint: "La personalización del acceso a páginas está reservada a Veritas Pro.",
+      profilesTitle: "Perfiles",
+      pagesTitle: "Páginas de la aplicación",
+      pagesForProfile: "Páginas para « {name} »",
+      enabledCount: "{count}/{total} páginas",
+      lockedBadge: "Siempre activo",
       empty: "Ningún perfil",
+      selectProfile: "Seleccione un perfil para gestionar sus páginas.",
       toggleCommunityActive: "Siempre activo en Community",
       toggleCommunityInactive: "No disponible en Community",
       toggleLocked: "Siempre activo",
-      toggleDisable: "Clic para desactivar",
-      toggleEnable: "Clic para activar"
+      toggleDisable: "Desactivar el acceso a esta página",
+      toggleEnable: "Activar el acceso a esta página"
     },
     toast: {
       loadUsersError: "Error al cargar usuarios",
@@ -859,67 +879,96 @@ const USERS_COPY = {
 const ACCESS_COLUMN_KEYS = [{
   key: "entreprise",
   accessKey: "contrat_enabled",
-  locked: true
+  locked: true,
+  lucide: "HomeIcon"
 }, {
   key: "contact",
   accessKey: "contact_enabled",
-  locked: true
+  locked: true,
+  lucide: "UsersIcon"
 }, {
   key: "prestataire",
-  accessKey: "prestataire_enabled"
+  accessKey: "prestataire_enabled",
+  lucide: "HeartHandshakeIcon"
 }, {
   key: "tickets",
-  accessKey: "tickets_enabled"
+  accessKey: "tickets_enabled",
+  lucide: "MessageSquareIcon"
 }, {
   key: "ticketSales",
-  accessKey: "sales_enabled"
+  accessKey: "sales_enabled",
+  lucide: "BriefcaseBusinessIcon"
 }, {
   key: "planning",
-  accessKey: "planning_enabled"
+  accessKey: "planning_enabled",
+  lucide: "CalendarDaysIcon"
 }, {
   key: "infrastructure",
-  accessKey: "infrastructure_enabled"
+  accessKey: "infrastructure_enabled",
+  lucide: "RadioIcon"
 }, {
   key: "campaigns",
-  accessKey: "campaigns_enabled"
+  accessKey: "campaigns_enabled",
+  lucide: "AudioLinesIcon"
 }, {
   key: "inventory",
-  accessKey: "equipment_inventory_enabled"
+  accessKey: "equipment_inventory_enabled",
+  lucide: "LaptopMinimalCheckIcon"
 }, {
   key: "cybersecurite",
-  accessKey: "cybersecurite_enabled"
+  accessKey: "cybersecurite_enabled",
+  lucide: "ShieldCheckIcon"
 }, {
   key: "services",
-  accessKey: "service_enabled"
+  accessKey: "service_enabled",
+  lucide: "CloudUploadIcon"
 }, {
   key: "dashboard",
-  accessKey: "dashboard_enabled"
-}, {
-  key: "documents",
-  accessKey: "documents_enabled"
+  accessKey: "dashboard_enabled",
+  lucide: "ChartColumnIncreasingIcon"
 }, {
   key: "knowledgeBase",
-  accessKey: "knowledge_base_enabled"
+  accessKey: "knowledge_base_enabled",
+  lucide: "BookTextIcon"
+}, {
+  key: "documents",
+  accessKey: "documents_enabled",
+  iconify: "mdi:folder-multiple-outline"
 }, {
   key: "rapports",
-  accessKey: "monitoring_enabled"
+  accessKey: "monitoring_enabled",
+  lucide: "FileTextIcon"
 }, {
   key: "administration",
-  accessKey: "administration_enabled"
+  accessKey: "administration_enabled",
+  lucide: "SlidersHorizontalIcon"
 }];
 export const getAdminUsersCopy = createLocaleGetter(USERS_COPY);
 export function getUserAdminViews(locale, isCommunity = false) {
   const copy = getAdminUsersCopy(locale);
   return [{
     key: "users",
-    label: copy.views.users
+    label: copy.views.users,
+    icon: "mdi:account-group-outline"
+  }, {
+    key: "teams",
+    label: copy.views.teams,
+    icon: "mdi:account-multiple-outline",
+    proOnly: true
+  }, {
+    key: "planning",
+    label: copy.views.planning,
+    icon: "mdi:calendar-clock-outline",
+    proOnly: true
   }, {
     key: "profiles",
     label: copy.views.profiles,
+    icon: "mdi:account-cog-outline",
     proOnly: true
   }, {
     key: "access",
     label: copy.views.access,
+    icon: "mdi:view-dashboard-outline",
     proOnly: true
   }].map(view => ({
     ...view,

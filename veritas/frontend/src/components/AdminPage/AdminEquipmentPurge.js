@@ -5,7 +5,9 @@ import { toast } from "react-toastify";
 import { deleteEquipment, getEquipmentPurgeList } from "../../api/equipment";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { Page, Card, Btn, ConfirmModal, Pagination } from "./AdminUi";
+import { Btn, ConfirmModal, Pagination } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import ui from "./AdminUi.module.css";
 import { useTablePagination } from "./useTablePagination";
 import { getAdminEquipmentPurgeCopy, interpolate } from "./adminEquipmentPurgeI18n";
@@ -361,8 +363,9 @@ export default function AdminEquipmentPurge() {
   const selectedCount = selectedIds.size;
   const hasFilters = Boolean(search.trim() || clientFilter || typeFilter);
 
-  return <Page>
-      <Card title={copy.title} description={copy.subtitle}>
+  return <>
+      <AdminPlatformShell>
+        <SettingsSection title={copy.title} description={copy.subtitle} icon="mdi:delete-sweep-outline">
         <div className={s.wrap}>
           <div className={s.panelInner}>
             <div className={ui.toolRow}>
@@ -501,7 +504,8 @@ export default function AdminEquipmentPurge() {
             <p className={s.hint}>{copy.hint}</p>
           </div>
         </div>
-      </Card>
+        </SettingsSection>
+      </AdminPlatformShell>
 
       <ConfirmModal
         open={deleteTargets.length > 0}
@@ -527,5 +531,5 @@ export default function AdminEquipmentPurge() {
             </ul>
           </div>}
       />
-    </Page>;
+    </>;
 }

@@ -9,8 +9,76 @@
   height: 100%;
 }
 
+.rootFlat {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 1.1rem 1.25rem 0.85rem;
+  flex-shrink: 0;
+}
+
+.pageHeaderIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 8px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.pageHeaderText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.pageDesc {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .toolbar {
   justify-content: flex-start;
+  flex-shrink: 0;
+}
+
+.rootFlat > .toolbar {
+  padding: 0 1.25rem 0.85rem;
 }
 
 .toolbar :global([class*="toolbarActions"]) {
@@ -33,6 +101,14 @@
   border: 1px solid var(--msp-border-light, #c5d0de);
   border-radius: 12px;
   background: var(--msp-surface, #fff);
+}
+
+.bodyFlat {
+  border: none;
+  border-radius: 0;
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  background: transparent;
+  box-shadow: none;
 }
 
 .sidebar {

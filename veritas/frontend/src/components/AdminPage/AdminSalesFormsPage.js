@@ -1,7 +1,10 @@
-import { Page } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
 import SalesFormsAdmin from "./SalesFormsAdmin";
+
 export default function AdminSalesFormsPage() {
-  return <Page>
+  return (
+    <AdminPlatformShell>
       <SalesFormsAdmin />
-    </Page>;
+    </AdminPlatformShell>
+  );
 }

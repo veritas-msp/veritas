@@ -4,7 +4,8 @@ import { toast } from "react-toastify";
 import { fetchAdminTicketViews, deleteTicketView } from "../../api/tickets";
 import { describeViewCriteria, describeViewAssignments } from "../../utils/ticketViewConstants";
 import TicketViewModal from "../TicketPage/TicketViewModal";
-import { Btn, Card, ConfirmModal, Pagination } from "./AdminUi";
+import { Btn, ConfirmModal, Pagination } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
 import { useTablePagination } from "./useTablePagination";
@@ -93,9 +94,10 @@ export default function AdminTicketViews({
 
   const cardTitle = supportViewMeta[viewMetaKey]?.title || supportViewMeta["ticket-views"].title;
   const cardDescription = supportViewMeta[viewMetaKey]?.description || tv.cardDescription;
+  const sectionIcon = pageScope === "ticket_sales" ? "mdi:view-dashboard-outline" : "mdi:view-list-outline";
 
   return <>
-      <Card title={cardTitle} description={cardDescription} fill action={<Btn icon="mdi:plus" onClick={openCreate}>
+      <SettingsSection title={cardTitle} description={cardDescription} icon={sectionIcon} action={<Btn icon="mdi:plus" onClick={openCreate}>
             {tv.newViewBtn}
           </Btn>}>
         <div className={ui.toolRow}>
@@ -177,7 +179,7 @@ export default function AdminTicketViews({
           </div>
           {!loading && filteredViews.length > 0 && <Pagination page={viewsPagination.page} totalPages={viewsPagination.totalPages} onPageChange={viewsPagination.setPage} pageSize={viewsPagination.pageSize} onPageSizeChange={viewsPagination.setPageSize} rangeLabel={viewsPagination.rangeLabel} />}
         </div>
-      </Card>
+      </SettingsSection>
 
       <TicketViewModal open={modalOpen} onClose={() => {
       setModalOpen(false);

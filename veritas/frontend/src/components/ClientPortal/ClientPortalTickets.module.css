@@ -1,6 +1,8 @@
 .portalPageHero {
-  margin: 0;
-  width: 100%;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  align-self: stretch;
   box-sizing: border-box;
 }
 

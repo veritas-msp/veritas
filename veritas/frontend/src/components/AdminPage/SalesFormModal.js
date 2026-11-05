@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { UiKitButton } from "../UiKit";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, rectIntersection, useSensor, useSensors } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import {
@@ -105,6 +105,11 @@ const EMPTY_FORM = {
   displayOrder: 0,
   enabled: true,
   visibility: "public",
+  visibleToAgents: true,
+  visibleToPortal: false,
+  portalVisibleToAll: false,
+  portalClientIds: [],
+  portalContactIds: [],
   publicEnabled: false,
   publicSlug: "",
   profileNames: [],
@@ -265,6 +270,37 @@ function FieldHint({
 }) {
   return <p className={modalStyles.hint}>{children}</p>;
 }
+function VisibilitySwitch({
+  label,
+  hint,
+  checked,
+  onChange,
+  onLabel,
+  offLabel,
+  disabled = false
+}) {
+  return <div className={modalStyles.visibilitySwitchRow}>
+      <div className={modalStyles.visibilitySwitchCopy}>
+        <span className={layout.label}>{label}</span>
+        {hint ? <p className={modalStyles.visibilitySwitchHint}>{hint}</p> : null}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        className={`${modalStyles.visibilitySwitch} ${checked ? modalStyles.visibilitySwitchOn : ""}`.trim()}
+        onClick={() => onChange?.(!checked)}
+        disabled={disabled}
+      >
+        <span className={modalStyles.visibilitySwitchTrack}>
+          <span className={modalStyles.visibilitySwitchThumb} />
+        </span>
+        <span className={modalStyles.visibilitySwitchState}>
+          {checked ? onLabel : offLabel}
+        </span>
+      </button>
+    </div>;
+}
 function ticketTargetsFromInitial(form) {
   return normalizeTicketTargetsDraft(form?.ticketTargets || {});
 }
@@ -274,6 +310,11 @@ function formFromInitial(initialForm, kindDefault = "prestation", family = "sale
     return {
       ...EMPTY_FORM,
       kind: fallbackKind,
+      visibleToAgents: true,
+      visibleToPortal: false,
+      portalVisibleToAll: false,
+      portalClientIds: [],
+      portalContactIds: [],
       publicEnabled: false,
       publicSlug: "",
       ticketTargets: {
@@ -291,6 +332,11 @@ function formFromInitial(initialForm, kindDefault = "prestation", family = "sale
     displayOrder: initialForm.displayOrder || 0,
     enabled: initialForm.enabled !== false,
     visibility: initialForm.visibility === "assigned" ? "assigned" : "public",
+    visibleToAgents: initialForm.visibleToAgents !== false,
+    visibleToPortal: initialForm.visibleToPortal === true,
+    portalVisibleToAll: initialForm.portalVisibleToAll === true,
+    portalClientIds: Array.isArray(initialForm.portalClientIds) ? initialForm.portalClientIds.map(String) : [],
+    portalContactIds: Array.isArray(initialForm.portalContactIds) ? initialForm.portalContactIds.map(String) : [],
     publicEnabled: initialForm.publicEnabled === true,
     publicSlug: initialForm.publicSlug || "",
     profileNames: Array.isArray(initialForm.profileNames) ? [...initialForm.profileNames] : [],
@@ -340,6 +386,9 @@ export default function SalesFormModal({
   const [previewValues, setPreviewValues] = useState({});
   const [previewClients, setPreviewClients] = useState([]);
   const [previewContacts, setPreviewContacts] = useState([]);
+  const [audienceClients, setAudienceClients] = useState([]);
+  const [audienceContacts, setAudienceContacts] = useState([]);
+  const [visibilityTab, setVisibilityTab] = useState("agents");
   const previewLookupsLoadedRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
@@ -362,6 +411,7 @@ export default function SalesFormModal({
     setPreviewValues({});
     previewLookupsLoadedRef.current = false;
     setFieldDeleteTarget(null);
+    setVisibilityTab("agents");
     resetFieldSelection();
   }, [open, initialForm, resolvedKindDefault, family, resetFieldSelection]);
   useEffect(() => {
@@ -378,14 +428,23 @@ export default function SalesFormModal({
     (async () => {
       try {
         const loadCategories = isSupport ? fetchTicketCategories : fetchSalesTicketCategories;
-        const [profileRows, userRows, teamRows, nextCategories] = await Promise.all([fetch(`${API_BASE_URL}/profiles`, {
-          credentials: "include"
-        }).then(r => r.ok ? r.json() : []).catch(() => []), fetchUsers().catch(() => []), fetchTeams().catch(() => []), loadCategories().catch(() => [])]);
+        const [profileRows, userRows, teamRows, nextCategories, clientRows, contactRows] = await Promise.all([
+          fetch(`${API_BASE_URL}/profiles`, {
+            credentials: "include"
+          }).then(r => r.ok ? r.json() : []).catch(() => []),
+          fetchUsers().catch(() => []),
+          fetchTeams().catch(() => []),
+          loadCategories().catch(() => []),
+          isSupport ? fetchClientsList().catch(() => []) : Promise.resolve([]),
+          isSupport ? fetchContactsList().catch(() => []) : Promise.resolve([])
+        ]);
         if (!cancelled) {
           setProfiles(Array.isArray(profileRows) ? profileRows : []);
           setUsers(Array.isArray(userRows) ? userRows : []);
           setTeams(Array.isArray(teamRows) ? teamRows : []);
           setCategoryRows(Array.isArray(nextCategories) ? nextCategories : []);
+          setAudienceClients(Array.isArray(clientRows) ? clientRows : []);
+          setAudienceContacts(Array.isArray(contactRows) ? contactRows : []);
         }
       } catch {
         if (!cancelled) {
@@ -393,6 +452,8 @@ export default function SalesFormModal({
           setUsers([]);
           setTeams([]);
           setCategoryRows([]);
+          setAudienceClients([]);
+          setAudienceContacts([]);
         }
       }
     })();
@@ -418,18 +479,43 @@ export default function SalesFormModal({
     id: String(team.id),
     label: team.name || `Team #${team.id}`
   })), [teams]);
+  const portalClientOptions = useMemo(() => audienceClients.filter(row => row?.id).map(row => ({
+    id: String(row.id),
+    label: row.name || row.nom || `#${row.id}`
+  })), [audienceClients]);
+  const portalContactOptions = useMemo(() => audienceContacts.filter(row => row?.id).map(row => {
+    const name = `${row.prenom || ""} ${row.nom || ""}`.trim();
+    return {
+      id: String(row.id),
+      label: name || row.email || `#${row.id}`,
+      hint: row.email || ""
+    };
+  }), [audienceContacts]);
   const previewFields = useMemo(() => {
     if (selectedFieldId && fieldDraft) {
       return fields.map(field => String(field.id) === String(selectedFieldId) ? applyDraftToField(field, fieldDraft) : field);
     }
     return fields;
   }, [fields, selectedFieldId, fieldDraft]);
-  const sectionMeta = useMemo(() => ({
-    builder: fields.length > 0,
-    preview: fields.length > 0,
-    settings: Boolean(String(formDraft.label || "").trim()) && (formDraft.visibility !== "assigned" || formDraft.profileNames.length > 0 || formDraft.userIds.length > 0 || formDraft.teamIds.length > 0),
-    rules: (formDraft.ticketTargets?.rules || []).some(rule => rule.enabled !== false && (rule.always || (rule.conditions || []).length > 0 || rule.targets?.priority || rule.targets?.status || (rule.targets?.assigneeUserIds?.length || 0) > 0 || (rule.targets?.watcherUserIds?.length || 0) > 0 || (rule.targets?.teamIds?.length || 0) > 0))
-  }), [formDraft, fields.length]);
+  const sectionMeta = useMemo(() => {
+    const hasLabel = Boolean(String(formDraft.label || "").trim());
+    const agentsOk = !isSupport || formDraft.visibleToAgents !== true
+      ? true
+      : formDraft.visibility !== "assigned" || formDraft.profileNames.length > 0 || formDraft.userIds.length > 0 || formDraft.teamIds.length > 0;
+    const portalOk = !isSupport || formDraft.visibleToPortal !== true
+      ? true
+      : formDraft.portalVisibleToAll === true || formDraft.portalClientIds.length > 0 || formDraft.portalContactIds.length > 0;
+    const audienceOk = !isSupport || formDraft.visibleToAgents === true || formDraft.visibleToPortal === true;
+    const assignedOk = isSupport
+      ? true
+      : formDraft.visibility !== "assigned" || formDraft.profileNames.length > 0 || formDraft.userIds.length > 0 || formDraft.teamIds.length > 0;
+    return {
+      builder: fields.length > 0,
+      preview: fields.length > 0,
+      settings: hasLabel && audienceOk && agentsOk && portalOk && assignedOk,
+      rules: (formDraft.ticketTargets?.rules || []).some(rule => rule.enabled !== false && (rule.always || (rule.conditions || []).length > 0 || rule.targets?.priority || rule.targets?.status || (rule.targets?.assigneeUserIds?.length || 0) > 0 || (rule.targets?.watcherUserIds?.length || 0) > 0 || (rule.targets?.teamIds?.length || 0) > 0))
+    };
+  }, [formDraft, fields.length, isSupport]);
   const switchBuilderMode = modeId => {
     if (modeId === "preview" && selectedFieldId && fieldDraft) {
       setFields(prev => prev.map(field => String(field.id) === String(selectedFieldId) ? applyDraftToField(field, fieldDraft) : field));
@@ -451,6 +537,9 @@ export default function SalesFormModal({
   };
   const buildFormPayload = () => {
     const key = String(formDraft.key || "").trim() || slugifyKey(formDraft.label);
+    const visibleToAgents = isSupport ? formDraft.visibleToAgents !== false : true;
+    const visibleToPortal = isSupport ? formDraft.visibleToPortal === true : false;
+    const agentVisibility = visibleToAgents && formDraft.visibility === "assigned" ? "assigned" : "public";
     const payload = {
       kind: formDraft.kind,
       key,
@@ -460,13 +549,18 @@ export default function SalesFormModal({
       description: String(formDraft.description || "").trim(),
       displayOrder: Number(formDraft.displayOrder || 0),
       enabled: formDraft.enabled !== false,
-      visibility: formDraft.visibility === "assigned" ? "assigned" : "public",
-      profileNames: formDraft.visibility === "assigned" ? formDraft.profileNames : [],
-      userIds: formDraft.visibility === "assigned" ? formDraft.userIds : [],
-      teamIds: formDraft.visibility === "assigned" ? formDraft.teamIds : [],
+      visibility: agentVisibility,
+      profileNames: agentVisibility === "assigned" ? formDraft.profileNames : [],
+      userIds: agentVisibility === "assigned" ? formDraft.userIds : [],
+      teamIds: agentVisibility === "assigned" ? formDraft.teamIds : [],
       ticketTargets: serializeTicketTargetsDraft(formDraft.ticketTargets)
     };
     if (isSupport) {
+      payload.visibleToAgents = visibleToAgents;
+      payload.visibleToPortal = visibleToPortal;
+      payload.portalVisibleToAll = visibleToPortal && formDraft.portalVisibleToAll === true;
+      payload.portalClientIds = visibleToPortal && !payload.portalVisibleToAll ? formDraft.portalClientIds : [];
+      payload.portalContactIds = visibleToPortal && !payload.portalVisibleToAll ? formDraft.portalContactIds : [];
       payload.publicEnabled = formDraft.publicEnabled === true;
       if (formDraft.publicEnabled === true) {
         payload.publicSlug = slugifyPublicSlug(formDraft.publicSlug, key);
@@ -476,12 +570,22 @@ export default function SalesFormModal({
   };
   const validateForm = ({ notify = true } = {}) => {
     if (!String(formDraft.label || "").trim()) {
-      if (notify) toast.error("Label is required");
+      if (notify) toast.error(locale === "fr" ? "Le libellé est obligatoire" : "Label is required");
       setBuilderMode("settings");
       return false;
     }
-    if (formDraft.visibility === "assigned" && formDraft.profileNames.length === 0 && formDraft.userIds.length === 0 && formDraft.teamIds.length === 0) {
-      if (notify) toast.error("Select at least one profile, agent or team");
+    if (isSupport && formDraft.visibleToAgents !== true && formDraft.visibleToPortal !== true) {
+      if (notify) toast.error(locale === "fr" ? "Choisissez au moins une audience : agents ou portail client" : "Select at least one audience: agents or client portal");
+      setBuilderMode("settings");
+      return false;
+    }
+    if ((!isSupport || formDraft.visibleToAgents === true) && formDraft.visibility === "assigned" && formDraft.profileNames.length === 0 && formDraft.userIds.length === 0 && formDraft.teamIds.length === 0) {
+      if (notify) toast.error(locale === "fr" ? "Sélectionnez au moins un profil, agent ou équipe" : "Select at least one profile, agent or team");
+      setBuilderMode("settings");
+      return false;
+    }
+    if (isSupport && formDraft.visibleToPortal === true && formDraft.portalVisibleToAll !== true && formDraft.portalClientIds.length === 0 && formDraft.portalContactIds.length === 0) {
+      if (notify) toast.error(locale === "fr" ? "Sélectionnez au moins une entreprise ou un contact pour le portail" : "Select at least one company or contact for the portal");
       setBuilderMode("settings");
       return false;
     }
@@ -781,11 +885,11 @@ export default function SalesFormModal({
   };
   const renderGeneralSection = () => <section className={modalStyles.settingsBlock}>
       <header className={modalStyles.settingsBlockHead}>
-        <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Nom du formulaire" : "Form name"}</h3>
+        <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Identité" : "Identity"}</h3>
         <p className={modalStyles.settingsBlockDesc}>
           {isSupport
-            ? (locale === "fr" ? "Nom et type affichés aux agents à la création d’un ticket support." : "Name and type shown to agents when creating a support ticket.")
-            : (locale === "fr" ? "Nom et type affichés aux agents à la création d’une demande." : "Name and type shown to agents when creating a request.")}
+            ? (locale === "fr" ? "Nom et type affichés à la création d’un ticket support." : "Name and type shown when creating a support ticket.")
+            : (locale === "fr" ? "Nom et type affichés à la création d’une demande." : "Name and type shown when creating a request.")}
         </p>
       </header>
       <div className={modalStyles.formBlocks}>
@@ -807,24 +911,23 @@ export default function SalesFormModal({
           <FieldHint>{locale === "fr" ? "Nom visible lors de la création." : "Name shown during creation."}</FieldHint>
         </div>
 
-        <div className={modalStyles.typeOrderRow}>
-          <div className={layout.field}>
-            <label className={layout.label}>{locale === "fr" ? "Type" : "Type"}</label>
-            <select className={layout.input} value={formDraft.kind} onChange={e => setFormDraft(prev => ({
-            ...prev,
-            kind: e.target.value,
-            categorySlug: slugifyCategory(e.target.value, prev.key)
-          }))}>
-              {kindOptions.map(opt => <option key={opt.value} value={opt.value}>{locale === "en" ? opt.labelEn : opt.label}</option>)}
-            </select>
-          </div>
-          <div className={`${layout.field} ${modalStyles.orderField}`}>
-            <label className={layout.label}>{locale === "fr" ? "Ordre" : "Order"}</label>
-            <input type="number" className={layout.input} value={formDraft.displayOrder} onChange={e => setFormDraft(prev => ({
-            ...prev,
-            displayOrder: Number(e.target.value || 0)
-          }))} />
-          </div>
+        <div className={layout.field}>
+          <label className={layout.label}>{locale === "fr" ? "Type" : "Type"}</label>
+          <select className={layout.input} value={formDraft.kind} onChange={e => setFormDraft(prev => ({
+          ...prev,
+          kind: e.target.value,
+          categorySlug: slugifyCategory(e.target.value, prev.key)
+        }))}>
+            {kindOptions.map(opt => <option key={opt.value} value={opt.value}>{locale === "en" ? opt.labelEn : opt.label}</option>)}
+          </select>
+        </div>
+
+        <div className={layout.field}>
+          <label className={layout.label}>{locale === "fr" ? "Ordre" : "Order"}</label>
+          <input type="number" className={layout.input} value={formDraft.displayOrder} onChange={e => setFormDraft(prev => ({
+          ...prev,
+          displayOrder: Number(e.target.value || 0)
+        }))} />
         </div>
 
         <div className={modalStyles.iconSection}>
@@ -850,23 +953,66 @@ export default function SalesFormModal({
 
         <div className={layout.field}>
           <label className={layout.label}>Description</label>
-          <textarea className={layout.input} rows={3} value={formDraft.description} onChange={e => setFormDraft(prev => ({
+          <textarea className={layout.input} rows={2} value={formDraft.description} onChange={e => setFormDraft(prev => ({
           ...prev,
           description: e.target.value
         }))} placeholder={locale === "fr" ? "Courte description affichée aux agents" : "Short description shown to agents"} />
         </div>
 
-        <label className={modalStyles.inlineActive}>
-          <input type="checkbox" checked={formDraft.enabled !== false} onChange={e => setFormDraft(prev => ({
+        <VisibilitySwitch
+          label={locale === "fr" ? "Formulaire actif" : "Form active"}
+          hint={locale === "fr" ? "Désactivé : le formulaire n’apparaît plus à la création." : "Disabled: the form no longer appears at creation."}
+          checked={formDraft.enabled !== false}
+          onChange={enabled => setFormDraft(prev => ({
           ...prev,
-          enabled: e.target.checked
-        }))} />
-          {locale === "fr" ? "Formulaire actif" : "Form active"}
-        </label>
+          enabled
+        }))}
+          onLabel={locale === "fr" ? "Actif" : "Active"}
+          offLabel={locale === "fr" ? "Inactif" : "Inactive"}
+        />
       </div>
     </section>;
-  const renderPublicAccessSection = () => {
+  const renderPublicAccessSection = ({ embedded = false } = {}) => {
     if (!isSupport) return null;
+    const body = <div className={modalStyles.formBlocks}>
+        <VisibilitySwitch
+          label={locale === "fr" ? "Formulaire public" : "Public form"}
+          hint={locale === "fr"
+            ? "Activé : soumission sans authentification via une URL dédiée (captcha obligatoire)."
+            : "Enabled: unauthenticated submissions via a dedicated URL (captcha required)."}
+          checked={formDraft.publicEnabled === true}
+          onChange={enabled => setFormDraft(prev => ({
+            ...prev,
+            publicEnabled: enabled,
+            publicSlug: enabled
+              ? slugifyPublicSlug(prev.publicSlug || prev.key || prev.label)
+              : prev.publicSlug
+          }))}
+          onLabel={locale === "fr" ? "Visible" : "Visible"}
+          offLabel={locale === "fr" ? "Masqué" : "Hidden"}
+        />
+        {formDraft.publicEnabled ? <>
+            <div className={layout.field}>
+              <label className={layout.label}>{locale === "fr" ? "Slug public" : "Public slug"}</label>
+              <input className={layout.input} value={formDraft.publicSlug || ""} onChange={e => setFormDraft(prev => ({
+              ...prev,
+              publicSlug: slugifyPublicSlug(e.target.value, prev.key || prev.label)
+            }))} placeholder="incident-reseau" />
+              <FieldHint>{locale === "fr" ? "Utilisé dans l’URL publique." : "Used in the public URL."}</FieldHint>
+            </div>
+            {publicUrl ? <div className={layout.field}>
+                <label className={layout.label}>{locale === "fr" ? "URL publique" : "Public URL"}</label>
+                <div className={modalStyles.publicUrlRow}>
+                  <input className={layout.input} value={publicUrl} readOnly />
+                  <button type="button" className={layout.ghostBtn} onClick={copyPublicUrl}>
+                    <Icon icon="mdi:content-copy" aria-hidden />
+                    {locale === "fr" ? "Copier" : "Copy"}
+                  </button>
+                </div>
+              </div> : null}
+          </> : <p className={modalStyles.emptyRuleHint}>{locale === "fr" ? "Désactivé — aucune URL publique." : "Disabled — no public URL."}</p>}
+      </div>;
+    if (embedded) return body;
     return <section className={modalStyles.settingsBlock}>
         <header className={modalStyles.settingsBlockHead}>
           <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Accès public" : "Public access"}</h3>
@@ -876,52 +1022,10 @@ export default function SalesFormModal({
               : "Allow unauthenticated submissions via a dedicated URL (captcha required)."}
           </p>
         </header>
-        <div className={modalStyles.formBlocks}>
-          <label className={modalStyles.inlineActive}>
-            <input type="checkbox" checked={formDraft.publicEnabled === true} onChange={e => setFormDraft(prev => {
-              const enabled = e.target.checked;
-              return {
-                ...prev,
-                publicEnabled: enabled,
-                publicSlug: enabled
-                  ? slugifyPublicSlug(prev.publicSlug || prev.key || prev.label)
-                  : prev.publicSlug
-              };
-            })} />
-            {locale === "fr" ? "Formulaire public activé" : "Public form enabled"}
-          </label>
-          {formDraft.publicEnabled ? <>
-              <div className={layout.field}>
-                <label className={layout.label}>{locale === "fr" ? "Slug public" : "Public slug"}</label>
-                <input className={layout.input} value={formDraft.publicSlug || ""} onChange={e => setFormDraft(prev => ({
-                ...prev,
-                publicSlug: slugifyPublicSlug(e.target.value, prev.key || prev.label)
-              }))} placeholder="incident-reseau" />
-                <FieldHint>{locale === "fr" ? "Utilisé dans l’URL publique." : "Used in the public URL."}</FieldHint>
-              </div>
-              {publicUrl ? <div className={layout.field}>
-                  <label className={layout.label}>{locale === "fr" ? "URL publique" : "Public URL"}</label>
-                  <div style={{
-                display: "flex",
-                gap: "0.5rem",
-                alignItems: "center"
-              }}>
-                    <input className={layout.input} value={publicUrl} readOnly />
-                    <button type="button" className={layout.ghostBtn} onClick={copyPublicUrl}>
-                      <Icon icon="mdi:content-copy" aria-hidden />
-                      {locale === "fr" ? "Copier" : "Copy"}
-                    </button>
-                  </div>
-                </div> : null}
-            </> : null}
-        </div>
+        {body}
       </section>;
   };
-  const renderVisibilitySection = () => <section className={modalStyles.settingsBlock}>
-      <header className={modalStyles.settingsBlockHead}>
-        <h3 className={modalStyles.settingsBlockTitle}>Visibilité</h3>
-        <p className={modalStyles.settingsBlockDesc}>Qui peut utiliser ce formulaire à la création d’une demande.</p>
-      </header>
+  const renderAgentVisibilityControls = () => <>
       <div className={layout.field}>
         <div className={modalStyles.chipRow}>
           {VISIBILITY_OPTIONS.map(opt => <button key={opt.value} type="button" className={`${pageLayout.chip} ${formDraft.visibility === opt.value ? pageLayout.chipActive : ""}`} onClick={() => setFormDraft(prev => ({
@@ -937,28 +1041,182 @@ export default function SalesFormModal({
         <FieldHint>{VISIBILITY_OPTIONS.find(opt => opt.value === formDraft.visibility)?.hint}</FieldHint>
       </div>
       {formDraft.visibility === "assigned" && <div className={layout.field}>
-          <label className={layout.label}>Qui peut utiliser ce formulaire ?</label>
-          <FieldHint>Tapez pour filtrer, puis sélectionnez dans la liste.</FieldHint>
-          <div className={modalStyles.suggestGrid}>
-            <MultiSuggestPicker inputId="sales-form-visibility-users" label="Agents" placeholder="Rechercher un agent…" options={userOptions} selectedIds={formDraft.userIds} emptyHint="Aucun agent" onChange={userIds => setFormDraft(prev => ({
+          <label className={layout.label}>{locale === "fr" ? "Qui peut utiliser ce formulaire ?" : "Who can use this form?"}</label>
+          <FieldHint>{locale === "fr" ? "Tapez pour filtrer, puis sélectionnez dans la liste." : "Type to filter, then select from the list."}</FieldHint>
+          <div className={modalStyles.suggestStack}>
+            <MultiSuggestPicker inputId="sales-form-visibility-users" label={locale === "fr" ? "Agents" : "Agents"} placeholder={locale === "fr" ? "Rechercher un agent…" : "Search an agent…"} options={userOptions} selectedIds={formDraft.userIds} emptyHint={locale === "fr" ? "Aucun agent" : "No agent"} onChange={userIds => setFormDraft(prev => ({
           ...prev,
           userIds
         }))} />
-            <MultiSuggestPicker inputId="sales-form-visibility-profiles" label="Profils" placeholder="Rechercher un profil…" options={profileOptions} selectedIds={formDraft.profileNames} emptyHint="Aucun profil" onChange={profileNames => setFormDraft(prev => ({
+            <MultiSuggestPicker inputId="sales-form-visibility-profiles" label={locale === "fr" ? "Profils" : "Profiles"} placeholder={locale === "fr" ? "Rechercher un profil…" : "Search a profile…"} options={profileOptions} selectedIds={formDraft.profileNames} emptyHint={locale === "fr" ? "Aucun profil" : "No profile"} onChange={profileNames => setFormDraft(prev => ({
           ...prev,
           profileNames
         }))} />
-            <MultiSuggestPicker inputId="sales-form-visibility-teams" label="Équipes" placeholder="Rechercher une équipe…" options={teamOptions} selectedIds={formDraft.teamIds} emptyHint="Aucune équipe" onChange={teamIds => setFormDraft(prev => ({
+            <MultiSuggestPicker inputId="sales-form-visibility-teams" label={locale === "fr" ? "Équipes" : "Teams"} placeholder={locale === "fr" ? "Rechercher une équipe…" : "Search a team…"} options={teamOptions} selectedIds={formDraft.teamIds} emptyHint={locale === "fr" ? "Aucune équipe" : "No team"} onChange={teamIds => setFormDraft(prev => ({
           ...prev,
           teamIds
         }))} />
           </div>
         </div>}
-    </section>;
-  const renderTargetsSection = () => <>
-      <div className={layout.sectionHead}>
-        <h3 className={layout.sectionTitle}>Ticket targets</h3>
+    </>;
+  const renderPortalVisibilityControls = () => <>
+      <div className={layout.field}>
+        <label className={layout.label}>{locale === "fr" ? "Audience portail" : "Portal audience"}</label>
+        <div className={modalStyles.chipRow}>
+          <button type="button" className={`${pageLayout.chip} ${formDraft.portalVisibleToAll ? pageLayout.chipActive : ""}`} onClick={() => setFormDraft(prev => ({
+          ...prev,
+          portalVisibleToAll: true,
+          portalClientIds: [],
+          portalContactIds: []
+        }))}>
+            {locale === "fr" ? "Tout le monde" : "Everyone"}
+          </button>
+          <button type="button" className={`${pageLayout.chip} ${!formDraft.portalVisibleToAll ? pageLayout.chipActive : ""}`} onClick={() => setFormDraft(prev => ({
+          ...prev,
+          portalVisibleToAll: false
+        }))}>
+            {locale === "fr" ? "Entreprises / contacts" : "Companies / contacts"}
+          </button>
+        </div>
+        <FieldHint>
+          {formDraft.portalVisibleToAll
+            ? (locale === "fr" ? "Tous les utilisateurs du portail voient ce formulaire." : "All portal users can see this form.")
+            : (locale === "fr" ? "Restreignez à des entreprises entières et/ou des contacts précis." : "Restrict to whole companies and/or specific contacts.")}
+        </FieldHint>
       </div>
+      {!formDraft.portalVisibleToAll ? <div className={layout.field}>
+          <div className={modalStyles.suggestStack}>
+            <MultiSuggestPicker inputId="support-form-portal-clients" label={locale === "fr" ? "Entreprises" : "Companies"} placeholder={locale === "fr" ? "Rechercher une entreprise…" : "Search a company…"} options={portalClientOptions} selectedIds={formDraft.portalClientIds} emptyHint={locale === "fr" ? "Aucune entreprise" : "No company"} onChange={portalClientIds => setFormDraft(prev => ({
+          ...prev,
+          portalClientIds
+        }))} />
+            <MultiSuggestPicker inputId="support-form-portal-contacts" label={locale === "fr" ? "Contacts" : "Contacts"} placeholder={locale === "fr" ? "Rechercher un contact…" : "Search a contact…"} options={portalContactOptions} selectedIds={formDraft.portalContactIds} emptyHint={locale === "fr" ? "Aucun contact" : "No contact"} onChange={portalContactIds => setFormDraft(prev => ({
+          ...prev,
+          portalContactIds
+        }))} />
+          </div>
+        </div> : null}
+    </>;
+  const renderVisibilitySection = () => {
+    if (!isSupport) {
+      return <section className={modalStyles.settingsBlock}>
+          <header className={modalStyles.settingsBlockHead}>
+            <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Visibilité" : "Visibility"}</h3>
+            <p className={modalStyles.settingsBlockDesc}>{locale === "fr" ? "Qui peut utiliser ce formulaire à la création d’une demande." : "Who can use this form when creating a request."}</p>
+          </header>
+          {renderAgentVisibilityControls()}
+        </section>;
+    }
+
+    const tabs = [
+      {
+        id: "agents",
+        icon: "mdi:account-hard-hat-outline",
+        label: locale === "fr" ? "Agents" : "Agents",
+        enabled: formDraft.visibleToAgents !== false
+      },
+      {
+        id: "portal",
+        icon: "mdi:domain",
+        label: locale === "fr" ? "Portail" : "Portal",
+        enabled: formDraft.visibleToPortal === true
+      },
+      {
+        id: "public",
+        icon: "mdi:earth",
+        label: locale === "fr" ? "Public" : "Public",
+        enabled: formDraft.publicEnabled === true
+      }
+    ];
+    const activeTab = tabs.some(tab => tab.id === visibilityTab) ? visibilityTab : "agents";
+
+    return <section className={modalStyles.settingsBlock}>
+        <header className={modalStyles.settingsBlockHead}>
+          <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Visibilité" : "Visibility"}</h3>
+          <p className={modalStyles.settingsBlockDesc}>
+            {locale === "fr"
+              ? "Agents, portail client ou lien public — un onglet par audience."
+              : "Agents, client portal or public link — one tab per audience."}
+          </p>
+        </header>
+
+        <div className={modalStyles.visibilityTabs} role="tablist">
+          {tabs.map(tab => <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={`${modalStyles.visibilityTab} ${activeTab === tab.id ? modalStyles.visibilityTabActive : ""}`.trim()}
+            onClick={() => setVisibilityTab(tab.id)}
+          >
+            <Icon icon={tab.icon} aria-hidden />
+            <span>{tab.label}</span>
+            <span className={`${modalStyles.visibilityTabBadge} ${tab.enabled ? modalStyles.visibilityTabBadgeOn : ""}`.trim()}>
+              {tab.enabled ? (locale === "fr" ? "On" : "On") : (locale === "fr" ? "Off" : "Off")}
+            </span>
+          </button>)}
+        </div>
+
+        <div className={modalStyles.visibilityPanel} role="tabpanel">
+          {activeTab === "agents" ? <>
+              <VisibilitySwitch
+                label={locale === "fr" ? "Visible côté agents" : "Visible to agents"}
+                hint={locale === "fr"
+                  ? "Activé : apparaît à la création de ticket agent (type puis formulaires). Désactivé : réservé aux autres audiences."
+                  : "Enabled: shown in agent ticket creation (type then forms). Disabled: reserved for other audiences."}
+                checked={formDraft.visibleToAgents !== false}
+                onChange={enabled => setFormDraft(prev => ({
+                ...prev,
+                visibleToAgents: enabled,
+                visibility: enabled ? prev.visibility : "public",
+                profileNames: enabled ? prev.profileNames : [],
+                userIds: enabled ? prev.userIds : [],
+                teamIds: enabled ? prev.teamIds : []
+              }))}
+                onLabel={locale === "fr" ? "Visible" : "Visible"}
+                offLabel={locale === "fr" ? "Masqué" : "Hidden"}
+              />
+              {formDraft.visibleToAgents !== false ? renderAgentVisibilityControls() : <p className={modalStyles.emptyRuleHint}>{locale === "fr" ? "Désactivé — les agents ne verront pas ce formulaire." : "Disabled — agents will not see this form."}</p>}
+            </> : null}
+
+          {activeTab === "portal" ? <>
+              <VisibilitySwitch
+                label={locale === "fr" ? "Visible côté portail client" : "Visible on client portal"}
+                hint={locale === "fr"
+                  ? "Activé : le contact peut utiliser ce formulaire. Désactivé : réservé aux agents."
+                  : "Enabled: contacts can use this form. Disabled: reserved for agents."}
+                checked={formDraft.visibleToPortal === true}
+                onChange={enabled => setFormDraft(prev => ({
+                  ...prev,
+                  visibleToPortal: enabled,
+                  portalVisibleToAll: enabled ? prev.portalVisibleToAll || (!prev.portalClientIds.length && !prev.portalContactIds.length) : false,
+                  portalClientIds: enabled ? prev.portalClientIds : [],
+                  portalContactIds: enabled ? prev.portalContactIds : []
+                }))}
+                onLabel={locale === "fr" ? "Visible" : "Visible"}
+                offLabel={locale === "fr" ? "Masqué" : "Hidden"}
+              />
+              {formDraft.visibleToPortal === true ? renderPortalVisibilityControls() : <p className={modalStyles.emptyRuleHint}>{locale === "fr" ? "Désactivé — le portail client ne verra pas ce formulaire." : "Disabled — the client portal will not see this form."}</p>}
+            </> : null}
+
+          {activeTab === "public" ? renderPublicAccessSection({ embedded: true }) : null}
+        </div>
+      </section>;
+  };
+  const renderSettingsSection = () => <div className={`${builderStyles.builderContent} ${builderStyles.settingsContent}`}>
+      <div className={`${builderStyles.settingsPanelWide} ${modalStyles.settingsPanelTwoCol}`}>
+        <div className={modalStyles.settingsTwoCol}>
+          <div className={modalStyles.settingsCol}>
+            {renderGeneralSection()}
+          </div>
+          <div className={modalStyles.settingsColDivider} aria-hidden />
+          <div className={modalStyles.settingsCol}>
+            {renderVisibilitySection()}
+          </div>
+        </div>
+      </div>
+    </div>;
+  const renderRulesSection = () => <div className={`${builderStyles.builderContent} ${builderStyles.settingsContent} ${modalStyles.targetRulesPage}`}>
       <SalesFormTargetRulesEditor rules={formDraft.ticketTargets?.rules?.length ? formDraft.ticketTargets.rules : [createEmptyTargetRule(0)]} formFields={fields} formKind={formDraft.kind} categoryOptions={categoryOptions} userOptions={userOptions} teamOptions={teamOptions} onChange={rules => setFormDraft(prev => ({
       ...prev,
       ticketTargets: {
@@ -966,22 +1224,6 @@ export default function SalesFormModal({
         rules
       }
     }))} />
-    </>;
-  const renderSettingsSection = () => <div className={`${builderStyles.builderContent} ${builderStyles.settingsContent}`}>
-      <div className={builderStyles.settingsPanelWide}>
-        <div className={modalStyles.settingsStack}>
-          {renderGeneralSection()}
-          <hr className={modalStyles.sectionDivider} />
-          {renderVisibilitySection()}
-          {isSupport ? <>
-              <hr className={modalStyles.sectionDivider} />
-              {renderPublicAccessSection()}
-            </> : null}
-        </div>
-      </div>
-    </div>;
-  const renderRulesSection = () => <div className={`${builderStyles.builderContent} ${builderStyles.settingsContent}`}>
-      <div className={builderStyles.settingsPanelWide}>{renderTargetsSection()}</div>
     </div>;
   const renderPreviewSection = () => <div className={builderStyles.previewWrap}>
       <div className={builderStyles.previewPanel}>
@@ -1048,9 +1290,16 @@ export default function SalesFormModal({
               <p className={layout.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={savingForm || savingField} aria-label="Close">
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={savingForm || savingField}
+            aria-label={common.close}
+            icon="mdi:close"
+          />
         </header>
 
         <div className={`${layout.body} ${builderStyles.builderBody}`}>
@@ -1069,21 +1318,23 @@ export default function SalesFormModal({
             {isSupport && formDraft.publicEnabled ? ` · ${locale === "fr" ? "Public" : "Public"}` : ""}
           </span>
           <div className={layout.footerActions}>
-            <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={savingForm || savingField}>
-              Close
-            </button>
-            <button type="button" className={layout.primaryBtn} onClick={handleSaveForm} disabled={savingForm || savingField || Boolean(activeDragType)}>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={savingForm || savingField}>
+              {common.close}
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={handleSaveForm}
+              disabled={savingForm || savingField || Boolean(activeDragType)}
+              icon={savingForm ? undefined : formId ? "mdi:content-save-outline" : "mdi:check"}
+            >
               {savingForm ? <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-                  Saving…
-                </> : formId ? <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  Save
-                </> : <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  Create form
-                </>}
-            </button>
+                  {locale === "fr" ? "Enregistrement…" : "Saving…"}
+                </> : formId
+                  ? (locale === "fr" ? "Enregistrer" : "Save")
+                  : (locale === "fr" ? "Créer le formulaire" : "Create form")}
+            </UiKitButton>
           </div>
         </footer>
       </div>

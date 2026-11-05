@@ -5,9 +5,10 @@ import { toast } from "react-toastify";
 import styles from "./AdminTickets.module.css";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
-import { UiKitPageHero, uiKitLayoutsStyles as kit } from "../UiKit";
-import { getAdminPanelCopy } from "./adminPanelI18n";
-import { Page, SubTabs, Card, Btn, ConfirmModal, EntityStatus, Badge, Pagination } from "./AdminUi";
+import { uiKitLayoutsStyles as kit } from "../UiKit";
+import { Btn, ConfirmModal, EntityStatus, Badge, Pagination } from "./AdminUi";
+import AdminPlatformShell from "./AdminPlatformShell";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import { useTablePagination } from "./useTablePagination";
 import CollectorFormModal from "./CollectorFormModal";
 import CollectorDeleteModal from "./CollectorDeleteModal";
@@ -58,6 +59,24 @@ import { interpolate } from "../../i18n/translate";
 import { describeLocalizedExclusionRuleFilters, describeLocalizedRuleCollector, getAdminMailCollectCopy, getRuleActionLabel } from "./adminMailCollectI18n";
 import SupportFormsAdmin from "./SupportFormsAdmin";
 const TICKET_ADMIN_VIEWS_EXCLUDED = new Set(["notifications", "webhooks", "support-credits", "collectors", "email-ingestion", "sales-forms"]);
+const TICKET_ADMIN_TAB_ICONS = {
+  templates: "mdi:file-document-outline",
+  macros: "mdi:lightning-bolt-outline",
+  "solution-catalog": "mdi:book-check-outline",
+  "support-forms": "mdi:form-select",
+  categories: "mdi:shape-outline",
+  "ticket-views": "mdi:view-dashboard-outline"
+};
+const TICKET_VIEW_SECTION_ICONS = {
+  templates: "mdi:file-document-outline",
+  categories: "mdi:shape-outline",
+  "solution-catalog": "mdi:book-check-outline",
+  macros: "mdi:lightning-bolt-outline",
+  collectors: "mdi:inbox-multiple-outline",
+  "email-ingestion": "mdi:filter-variant",
+  notifications: "mdi:bell-outline",
+  webhooks: "mdi:link-variant"
+};
 const TICKET_VIEW_META = {
   collectors: {
     title: "Mailboxes to collect",
@@ -553,6 +572,10 @@ export default function AdminTickets({
   const maxTemplates = isCommunity ? getCommunityTicketTemplatesLimit(limits) : null;
   const maxMacros = isCommunity ? getCommunityTicketMacrosLimit(limits) : null;
   const ticketAdminViews = useMemo(() => restrictedView ? [] : getTicketAdminViews(locale).filter(view => !TICKET_ADMIN_VIEWS_EXCLUDED.has(view.key)), [restrictedView, locale]);
+  const ticketAdminTabs = useMemo(() => ticketAdminViews.map(view => ({
+    ...view,
+    icon: TICKET_ADMIN_TAB_ICONS[view.key]
+  })), [ticketAdminViews]);
   const allowedTicketViews = useMemo(() => restrictedView ? [restrictedView] : ticketAdminViews.map(view => view.key), [restrictedView, ticketAdminViews]);
   const [activeView, setActiveView] = useState(restrictedView || "templates");
   useEffect(() => {
@@ -2883,13 +2906,9 @@ export default function AdminTickets({
       {action.type === "add_attachment" && !proLocked && <div className={macroModalStyles.hintText}>{ss.macros.placeholders.manualAttachmentHint}</div>}
     </>;
   };
-  const heroCopy = getAdminPanelCopy(locale).items.tickets;
-  return <Page>
-      <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:ticket-outline" />
-      {!restrictedView ? <SubTabs items={ticketAdminViews} active={activeView} onChange={setActiveView} fullWidth /> : null}
 
-      <div className={styles.content}>
-        {activeView === "templates" && <Card title={supportViewMeta.templates.title} description={supportViewMeta.templates.description} fill action={<Btn icon="mdi:plus" onClick={openCreateTemplateModal} disabled={templatesAtLimit} title={templatesAtLimit ? interpolate(ss.templates.limitTitle, {
+  const ticketSettingsContent = <div className={styles.content}>
+        {activeView === "templates" && <SettingsSection title={supportViewMeta.templates.title} description={supportViewMeta.templates.description} icon={TICKET_VIEW_SECTION_ICONS.templates} action={<Btn icon="mdi:plus" onClick={openCreateTemplateModal} disabled={templatesAtLimit} title={templatesAtLimit ? interpolate(ss.templates.limitTitle, {
         max: maxTemplates
       }) : undefined}>
                 {ss.templates.addBtn}
@@ -2944,9 +2963,9 @@ export default function AdminTickets({
               </div>
               {commentTemplates.length > 0 && <Pagination page={templatesPagination.page} totalPages={templatesPagination.totalPages} onPageChange={templatesPagination.setPage} pageSize={templatesPagination.pageSize} onPageSizeChange={templatesPagination.setPageSize} rangeLabel={templatesPagination.rangeLabel} />}
             </div>
-          </Card>}
+          </SettingsSection>}
 
-        {activeView === "categories" && <Card title={supportViewMeta.categories.title} description={supportViewMeta.categories.description} fill>
+        {activeView === "categories" && <SettingsSection title={supportViewMeta.categories.title} description={supportViewMeta.categories.description} icon={TICKET_VIEW_SECTION_ICONS.categories}>
             <div className={s.tableSplitColumns}>
               <div className={s.tableSplitColumn}>
                 <div className={s.tableSplitColumnHead}>
@@ -3079,9 +3098,9 @@ export default function AdminTickets({
                 </div>
               </div>
             </div>
-          </Card>}
+          </SettingsSection>}
 
-        {activeView === "solution-catalog" && <Card title={supportViewMeta["solution-catalog"].title} description={supportViewMeta["solution-catalog"].description} fill>
+        {activeView === "solution-catalog" && <SettingsSection title={supportViewMeta["solution-catalog"].title} description={supportViewMeta["solution-catalog"].description} icon={TICKET_VIEW_SECTION_ICONS["solution-catalog"]}>
             <div className={s.tableSplitColumns}>
               <div className={s.tableSplitColumn}>
                 <div className={s.tableSplitColumnHead}>
@@ -3215,13 +3234,13 @@ export default function AdminTickets({
                 </div>
               </div>
             </div>
-          </Card>}
+          </SettingsSection>}
 
         {activeView === "ticket-views" && <AdminTicketViews profiles={ticketViewProfiles} users={ticketViewUsers} teams={ticketViewTeams} />}
 
         {activeView === "support-forms" && <SupportFormsAdmin />}
 
-        {activeView === "macros" && <Card title={supportViewMeta.macros.title} description={supportViewMeta.macros.description} fill action={<Btn icon="mdi:plus" onClick={openCreateMacroModal} disabled={macrosAtLimit} title={macrosAtLimit ? interpolate(ss.macros.limitTitle, {
+        {activeView === "macros" && <SettingsSection title={supportViewMeta.macros.title} description={supportViewMeta.macros.description} icon={TICKET_VIEW_SECTION_ICONS.macros} action={<Btn icon="mdi:plus" onClick={openCreateMacroModal} disabled={macrosAtLimit} title={macrosAtLimit ? interpolate(ss.macros.limitTitle, {
         max: maxMacros
       }) : undefined}>
                 {ss.macros.addBtn}
@@ -3275,9 +3294,9 @@ export default function AdminTickets({
               </div>
               {macros.length > 0 && <Pagination page={macrosPagination.page} totalPages={macrosPagination.totalPages} onPageChange={macrosPagination.setPage} pageSize={macrosPagination.pageSize} onPageSizeChange={macrosPagination.setPageSize} rangeLabel={macrosPagination.rangeLabel} />}
             </div>
-          </Card>}
+          </SettingsSection>}
 
-        {activeView === "collectors" && <Card title={mc.collectors.title} description={mc.collectors.description} fill action={<Btn icon="mdi:plus" onClick={openCreateCollectorModal}>
+        {activeView === "collectors" && <SettingsSection title={mc.collectors.title} description={mc.collectors.description} icon={TICKET_VIEW_SECTION_ICONS.collectors} action={<Btn icon="mdi:plus" onClick={openCreateCollectorModal}>
                 {mc.collectors.addBtn}
               </Btn>}>
             <div className={styles.userTableWrapper}>
@@ -3402,9 +3421,9 @@ export default function AdminTickets({
                 </tbody>
               </table>
             </div>
-          </Card>}
+          </SettingsSection>}
 
-        {activeView === "email-ingestion" && <Card title={mc.rules.title} description={mc.rules.description} fill action={<div style={{
+        {activeView === "email-ingestion" && <SettingsSection title={mc.rules.title} description={mc.rules.description} icon={TICKET_VIEW_SECTION_ICONS["email-ingestion"]} action={<div style={{
         display: "flex",
         gap: "0.5rem",
         alignItems: "center"
@@ -3507,9 +3526,9 @@ export default function AdminTickets({
               </div>
             </div>
 
-          </Card>}
+          </SettingsSection>}
 
-        {activeView === "notifications" && <Card title={TICKET_VIEW_META.notifications.title} description={TICKET_VIEW_META.notifications.description} fill action={<div style={{
+        {activeView === "notifications" && <SettingsSection title={TICKET_VIEW_META.notifications.title} description={TICKET_VIEW_META.notifications.description} icon={TICKET_VIEW_SECTION_ICONS.notifications} action={<div style={{
         display: "inline-flex",
         gap: "0.45rem"
       }}>
@@ -3670,9 +3689,9 @@ export default function AdminTickets({
                 </div>}
             </div>
 
-          </Card>}
+          </SettingsSection>}
 
-        {activeView === "webhooks" && <Card title={TICKET_VIEW_META.webhooks.title} description={TICKET_VIEW_META.webhooks.description} fill action={<Btn icon="mdi:plus" onClick={addNotificationWebhook}>
+        {activeView === "webhooks" && <SettingsSection title={TICKET_VIEW_META.webhooks.title} description={TICKET_VIEW_META.webhooks.description} icon={TICKET_VIEW_SECTION_ICONS.webhooks} action={<Btn icon="mdi:plus" onClick={addNotificationWebhook}>
                 Add webhook
               </Btn>}>
             <div className={styles.settingRow}>
@@ -3749,9 +3768,14 @@ export default function AdminTickets({
                 </table>
               </div>
             </div>
-          </Card>}
+          </SettingsSection>}
 
-      </div>
+      </div>;
+
+  return <>
+      {restrictedView ? ticketSettingsContent : <AdminPlatformShell tabs={ticketAdminTabs} activeTab={activeView} onTabChange={setActiveView} tabsAriaLabel={ss.tabs.templates} fill>
+          {ticketSettingsContent}
+        </AdminPlatformShell>}
 
       <IngestionRuleFormModal open={showExclusionRuleModal} copy={mc} mode={exclusionRuleModalMode} draft={exclusionRuleDraft} setDraft={setExclusionRuleDraft} mailCollectors={mailCollectors} saving={savingExclusionRule} onClose={closeExclusionRuleModal} onSave={saveExclusionRuleFromModal} />
 
@@ -4089,5 +4113,5 @@ export default function AdminTickets({
       action,
       onChange
     })} />
-    </Page>;
+    </>;
 }

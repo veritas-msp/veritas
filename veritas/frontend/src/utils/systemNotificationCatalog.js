@@ -207,6 +207,16 @@ export const SYSTEM_NOTIFICATION_DEFAULTS = {
     inAppTitle: "Commentaire · #{{ticket.ticket_number}}",
     inAppBody: "{{comment.author}} : {{comment.preview}}"
   },
+  "tickets.mentioned": {
+    enabled: false,
+    emailEnabled: false,
+    inAppEnabled: false,
+    subject: "Vous avez été mentionné sur le ticket #{{ticket.ticket_number}}",
+    title: "Mention ticket",
+    body: "<p>Bonjour {{user.username}},</p><p>{{comment.author}} vous a mentionné sur le ticket <strong>#{{ticket.ticket_number}} — {{ticket.title}}</strong></p><p>{{comment.preview}}</p>",
+    inAppTitle: "Mention · #{{ticket.ticket_number}}",
+    inAppBody: "{{comment.author}} vous a mentionné : {{comment.preview}}"
+  },
   "tickets.resolved": {
     enabled: false,
     emailEnabled: false,
@@ -279,10 +289,21 @@ export const SYSTEM_NOTIFICATION_DEFAULTS = {
   }
 };
 
+const EMPTY_NOTIFICATION_FALLBACK = {
+  enabled: false,
+  emailEnabled: false,
+  inAppEnabled: false,
+  subject: "",
+  title: "",
+  body: "",
+  inAppTitle: "",
+  inAppBody: ""
+};
+
 export function normalizeSystemNotifications(raw = {}) {
   const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   return Object.fromEntries(SYSTEM_NOTIFICATION_DEFS.map(def => {
-    const fallback = SYSTEM_NOTIFICATION_DEFAULTS[def.key];
+    const fallback = SYSTEM_NOTIFICATION_DEFAULTS[def.key] || EMPTY_NOTIFICATION_FALLBACK;
     const item = source[def.key] && typeof source[def.key] === "object" ? source[def.key] : {};
     return [def.key, {
       ...fallback,
@@ -290,9 +311,9 @@ export function normalizeSystemNotifications(raw = {}) {
       enabled: item.enabled !== undefined ? item.enabled !== false : fallback.enabled,
       emailEnabled: item.emailEnabled !== undefined ? item.emailEnabled === true : fallback.emailEnabled,
       inAppEnabled: item.inAppEnabled !== undefined ? item.inAppEnabled === true : fallback.inAppEnabled,
-      subject: String(item.subject || fallback.subject),
-      title: String(item.title || fallback.title),
-      body: String(item.body || item.content || fallback.body),
+      subject: String(item.subject || fallback.subject || ""),
+      title: String(item.title || fallback.title || ""),
+      body: String(item.body || item.content || fallback.body || ""),
       inAppTitle: String(item.inAppTitle || fallback.inAppTitle || ""),
       inAppBody: String(item.inAppBody || fallback.inAppBody || "")
     }];

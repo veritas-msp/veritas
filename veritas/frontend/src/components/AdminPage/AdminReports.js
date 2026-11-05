@@ -10,10 +10,14 @@ import {
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { createLocaleGetter } from "../../i18n/translate";
 import { resolveLoginAssetUrl } from "../../utils/loginBrandingUtils";
-import { Page, Card, Field, Input, Textarea, Btn, FormGrid, Switch, SubTabs, SegmentField } from "./AdminUi";
+import { Page, Field, Input, Textarea, Btn, FormGrid, Switch, SegmentField } from "./AdminUi";
 import s from "./AdminReports.module.css";
-import { UiKitPageHero } from "../UiKit";
+import platform from "./AdminGeneralSettingsPlatform.module.css";
+import SettingsSection from "./AdminGeneralSettingsSection";
+import AdminGeneralSettingsLoading from "./AdminGeneralSettingsLoading";
+import { useFinderNavIndicator } from "../UiKit";
 import { getAdminPanelCopy } from "./adminPanelI18n";
+import { AdminShellTab } from "./AdminPlatformShell";
 
 const REPORT_SIZE_PRESETS = {
   report_brand_size: { sm: "0.62", md: "0.72", lg: "0.88" },
@@ -56,9 +60,14 @@ function reportSizeSegmentOptions(copy) {
 
 const REPORT_TABS = [
   { key: "identity", icon: "mdi:badge-account-horizontal-outline" },
+  { key: "logos", icon: "mdi:image-outline" },
   { key: "header", icon: "mdi:page-layout-header" },
   { key: "footer", icon: "mdi:page-layout-footer" },
-  { key: "appearance", icon: "mdi:palette-outline" }
+  { key: "contact", icon: "mdi:card-account-phone-outline" },
+  { key: "socials", icon: "mdi:share-variant-outline" },
+  { key: "colors", icon: "mdi:palette-outline" },
+  { key: "fonts", icon: "mdi:format-font" },
+  { key: "sizes", icon: "mdi:format-size" }
 ];
 
 const EMPTY = {
@@ -208,6 +217,7 @@ const COPY = {
   fr: {
     title: "Rapports",
     subtitle: "En-tête et pied de page globaux appliqués à tous les rapports (intervention, audit, supervision, etc.).",
+    loading: "Chargement des paramètres rapports…",
     identity: "Identité",
     identityHint: "Contenus repris dans les rapports. Si un champ est vide, Veritas peut reprendre les paramètres généraux de l’organisation.",
     companyName: "Nom de la société",
@@ -215,6 +225,7 @@ const COPY = {
     brandLabel: "Marque / signature",
     brandLabelHint: "Petite ligne type « PSI × Veritas ».",
     logos: "Logos",
+    logosHint: "Logos utilisés dans l’en-tête et le pied de page des rapports.",
     logoHeader: "Logo en-tête",
     logoHeaderHint: "Affiché en haut à gauche des rapports (PNG, JPG ou WebP, max 8 Mo).",
     logoFooter: "Logo pied de page",
@@ -225,11 +236,12 @@ const COPY = {
     logoUploadError: "Impossible d’envoyer le logo.",
     logoDeleteError: "Impossible de retirer le logo.",
     contact: "Coordonnées",
+    contactHint: "Coordonnées affichées dans le pied de page des rapports.",
     supportEmail: "E-mail support",
     supportPhone: "Téléphone",
     website: "Site web",
     address: "Adresse",
-    socials: "Réseaux sociaux",
+    socials: "Réseaux",
     socialsHint: "Seules les URLs renseignées apparaissent dans le pied de page.",
     socialDisplay: "Affichage des réseaux",
     socialDisplayIcons: "Icônes",
@@ -267,10 +279,13 @@ const COPY = {
     appearance: "Apparence",
     appearanceHint: "Polices, couleurs et tailles de l’en-tête et du pied de page pour tous les rapports.",
     fonts: "Polices",
+    fontsHint: "Polices utilisées pour le corps du document et les titres d’en-tête.",
     fontSans: "Police du corps / footer",
     fontSerif: "Police des titres (header)",
     fontSearchPlaceholder: "Rechercher une police…",
     fontEmpty: "Aucune police trouvée",
+    colors: "Couleurs",
+    colorsHint: "Palette de l’en-tête, du pied de page et du document.",
     headerColors: "Couleurs de l’en-tête",
     headerBg: "Fond",
     headerText: "Texte",
@@ -285,6 +300,7 @@ const COPY = {
     accent: "Accent",
     navy: "Titres / navy",
     sizes: "Tailles",
+    sizesHint: "Échelle typographique de l’en-tête et du pied de page.",
     brandSize: "Signature header",
     companySize: "Nom société header",
     clientSize: "Nom client (titre)",
@@ -295,6 +311,7 @@ const COPY = {
     sizeLarge: "Grand",
     resetAppearance: "Réinitialiser l’apparence",
     livePreview: "Aperçu en direct",
+    previewDescription: "Mise à jour instantanée de l’en-tête et du pied de page selon vos réglages.",
     previewClient: "Entreprise exemple",
     previewPeriod: "Exemple de période ou référence",
     previewPill: "Rapport",
@@ -313,6 +330,7 @@ const COPY = {
   en: {
     title: "Reports",
     subtitle: "Global header and footer applied to all reports (intervention, audit, supervision, etc.).",
+    loading: "Loading report settings…",
     identity: "Identity",
     identityHint: "Content reused across reports. Empty fields may fall back to general organization settings.",
     companyName: "Company name",
@@ -320,6 +338,7 @@ const COPY = {
     brandLabel: "Brand / signature",
     brandLabelHint: "Small line such as “PSI × Veritas”.",
     logos: "Logos",
+    logosHint: "Logos used in the report header and footer.",
     logoHeader: "Header logo",
     logoHeaderHint: "Shown top-left on reports (PNG, JPG or WebP, max 8 MB).",
     logoFooter: "Footer logo",
@@ -329,12 +348,13 @@ const COPY = {
     logoUploading: "Uploading…",
     logoUploadError: "Unable to upload logo.",
     logoDeleteError: "Unable to remove logo.",
-    contact: "Contact details",
+    contact: "Contact",
+    contactHint: "Contact details shown in the report footer.",
     supportEmail: "Support email",
     supportPhone: "Phone",
     website: "Website",
     address: "Address",
-    socials: "Social networks",
+    socials: "Social",
     socialsHint: "Only filled URLs appear in the footer.",
     socialDisplay: "Social display",
     socialDisplayIcons: "Icons",
@@ -372,10 +392,13 @@ const COPY = {
     appearance: "Appearance",
     appearanceHint: "Fonts, colors and sizes for the header and footer across all reports.",
     fonts: "Fonts",
+    fontsHint: "Fonts used for document body and header titles.",
     fontSans: "Body / footer font",
     fontSerif: "Title font (header)",
     fontSearchPlaceholder: "Search a font…",
     fontEmpty: "No font found",
+    colors: "Colors",
+    colorsHint: "Header, footer and document color palette.",
     headerColors: "Header colors",
     headerBg: "Background",
     headerText: "Text",
@@ -390,6 +413,7 @@ const COPY = {
     accent: "Accent",
     navy: "Titles / navy",
     sizes: "Sizes",
+    sizesHint: "Typographic scale for the header and footer.",
     brandSize: "Header signature",
     companySize: "Header company name",
     clientSize: "Client title",
@@ -400,6 +424,7 @@ const COPY = {
     sizeLarge: "Large",
     resetAppearance: "Reset appearance",
     livePreview: "Live preview",
+    previewDescription: "Instant update of the header and footer based on your settings.",
     previewClient: "Sample company",
     previewPeriod: "Sample period or reference",
     previewPill: "Report",
@@ -910,12 +935,18 @@ export default function AdminReports({ isCommunity = false }) {
   const tabItems = useMemo(() => {
     const labels = {
       identity: copy.identity,
+      logos: copy.logos,
+      contact: copy.contact,
+      socials: copy.socials,
       header: copy.header,
       footer: copy.footer,
-      appearance: copy.appearance
+      fonts: copy.fonts,
+      colors: copy.colors,
+      sizes: copy.sizes
     };
     return REPORT_TABS.map(tab => ({ ...tab, label: labels[tab.key] }));
   }, [copy]);
+  const { trackRef: tabsRef, indicator: tabIndicator } = useFinderNavIndicator([activeTab, locale]);
 
   const setField = (key, value) =>
     setForm(prev => {
@@ -1018,295 +1049,356 @@ export default function AdminReports({ isCommunity = false }) {
     });
   };
 
-  const heroCopy = getAdminPanelCopy(locale).items.reports;
-  const hero = (
-    <UiKitPageHero title={heroCopy.label} subtitle={heroCopy.description} icon="mdi:file-document-outline" />
-  );
-
   if (isCommunity) {
+    const heroCopy = getAdminPanelCopy(locale).items.reports;
     return (
       <Page>
-        {hero}
-        <Card title={copy.title} description={copy.communityLocked}>
-          <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--msp-muted, #5c6b82)" }}>{copy.communityHint}</p>
-        </Card>
+        <div className={platform.shell}>
+          <SettingsSection title={heroCopy.label} description={copy.communityLocked} icon="mdi:file-document-outline">
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--msp-muted, #5c6b82)" }}>{copy.communityHint}</p>
+          </SettingsSection>
+        </div>
       </Page>
     );
   }
-
-  const saveBtn = (
-    <Btn icon="mdi:content-save-outline" disabled={loading || saving} onClick={handleSave}>
-      {saving ? copy.saving : copy.save}
-    </Btn>
-  );
 
   const disabled = loading || saving;
 
   return (
     <Page>
-      {hero}
-      <SubTabs items={tabItems} active={activeTab} onChange={setActiveTab} fullWidth action={saveBtn} />
-
-      <div className={s.workspace} data-page-fill>
-        <div className={s.editor}>
-          {activeTab === "identity" ? (
-            <Card title={copy.identity} description={copy.identityHint}>
-              <FormGrid>
-                <Field label={copy.companyName} hint={copy.companyNameHint}>
-                  <Input
-                    value={form.report_company_name}
-                    onChange={e => setField("report_company_name", e.target.value)}
-                    placeholder={preview?.companyName || "Veritas"}
-                    maxLength={120}
-                    disabled={disabled}
-                  />
-                </Field>
-                <Field label={copy.brandLabel} hint={copy.brandLabelHint}>
-                  <Input
-                    value={form.report_brand_label}
-                    onChange={e => setField("report_brand_label", e.target.value)}
-                    placeholder="PSI × Veritas"
-                    maxLength={80}
-                    disabled={disabled}
-                  />
-                </Field>
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.logos}</h3>
-              <FormGrid>
-                <LogoUploadField
-                  label={copy.logoHeader}
-                  hint={copy.logoHeaderHint}
-                  path={form.report_logo_path}
-                  disabled={disabled}
-                  uploading={uploadingLogo === "logo"}
-                  chooseLabel={copy.chooseLogo}
-                  removeLabel={copy.removeLogo}
-                  onUpload={file => handleLogoUpload("logo", file)}
-                  onDelete={() => handleLogoDelete("logo")}
-                />
-                <LogoUploadField
-                  label={copy.logoFooter}
-                  hint={copy.logoFooterHint}
-                  path={form.report_footer_logo_path}
-                  disabled={disabled}
-                  uploading={uploadingLogo === "footer-logo"}
-                  chooseLabel={copy.chooseLogo}
-                  removeLabel={copy.removeLogo}
-                  onUpload={file => handleLogoUpload("footer-logo", file)}
-                  onDelete={() => handleLogoDelete("footer-logo")}
-                />
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.contact}</h3>
-              <FormGrid>
-                <Field label={copy.supportEmail}>
-                  <Input type="email" value={form.report_support_email} onChange={e => setField("report_support_email", e.target.value)} placeholder="support@exemple.fr" maxLength={200} disabled={disabled} />
-                </Field>
-                <Field label={copy.supportPhone}>
-                  <Input value={form.report_support_phone} onChange={e => setField("report_support_phone", e.target.value)} placeholder="09 00 00 00 00" maxLength={40} disabled={disabled} />
-                </Field>
-                <Field label={copy.website}>
-                  <Input type="url" value={form.report_website} onChange={e => setField("report_website", e.target.value)} placeholder="https://www.exemple.fr" maxLength={200} disabled={disabled} />
-                </Field>
-                <Field label={copy.address}>
-                  <Input value={form.report_address} onChange={e => setField("report_address", e.target.value)} placeholder="10 rue Example, 33000 Bordeaux" maxLength={300} disabled={disabled} />
-                </Field>
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.socials}</h3>
-              <p style={{ margin: "0 0 0.75rem", fontSize: "0.8rem", color: "var(--msp-muted, #5c6b82)" }}>{copy.socialsHint}</p>
-              <div style={{ marginBottom: "0.9rem" }}>
-                <SegmentField
-                  label={copy.socialDisplay}
-                  value={["icons", "links", "both"].includes(form.report_social_display) ? form.report_social_display : "icons"}
-                  onChange={value => setField("report_social_display", value)}
-                  disabled={disabled}
-                  options={[
-                    { value: "icons", icon: "mdi:emoticon-outline", title: copy.socialDisplayIcons, label: copy.socialDisplayIcons },
-                    { value: "links", icon: "mdi:link-variant", title: copy.socialDisplayLinks, label: copy.socialDisplayLinks },
-                    { value: "both", icon: "mdi:multimedia", title: copy.socialDisplayBoth, label: copy.socialDisplayBoth }
-                  ]}
-                />
-              </div>
-              <FormGrid>
-                <Field label={copy.linkedin}>
-                  <Input type="url" value={form.report_social_linkedin} onChange={e => setField("report_social_linkedin", e.target.value)} placeholder="https://www.linkedin.com/company/…" disabled={disabled} />
-                </Field>
-                <Field label={copy.facebook}>
-                  <Input type="url" value={form.report_social_facebook} onChange={e => setField("report_social_facebook", e.target.value)} placeholder="https://www.facebook.com/…" disabled={disabled} />
-                </Field>
-                <Field label={copy.x}>
-                  <Input type="url" value={form.report_social_x} onChange={e => setField("report_social_x", e.target.value)} placeholder="https://x.com/…" disabled={disabled} />
-                </Field>
-                <Field label={copy.youtube}>
-                  <Input type="url" value={form.report_social_youtube} onChange={e => setField("report_social_youtube", e.target.value)} placeholder="https://www.youtube.com/…" disabled={disabled} />
-                </Field>
-              </FormGrid>
-            </Card>
+      <div className={`${platform.shell} ${s.shell}`} data-page-fill>
+        <div
+          className={platform.tabs}
+          ref={tabsRef}
+          role="tablist"
+          aria-label={tabItems.map(tab => tab.label).join(" / ")}
+        >
+          {tabIndicator.ready ? (
+            <span
+              className={platform.tabIndicator}
+              style={{
+                transform: `translate3d(${tabIndicator.left}px, 0, 0)`,
+                width: tabIndicator.width,
+                height: tabIndicator.height
+              }}
+              aria-hidden
+            />
           ) : null}
-
-          {activeTab === "header" ? (
-            <Card title={copy.header} description={copy.headerVisibilityHint}>
-              <FormGrid>
-                <Field label={copy.showHeaderLogo}>
-                  <Switch checked={formFlagOn(form, "report_show_header_logo")} onChange={on => setField("report_show_header_logo", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showHeaderBrand}>
-                  <Switch checked={formFlagOn(form, "report_show_header_brand")} onChange={on => setField("report_show_header_brand", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showHeaderCompany}>
-                  <Switch checked={formFlagOn(form, "report_show_header_company")} onChange={on => setField("report_show_header_company", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showHeaderClient}>
-                  <Switch checked={formFlagOn(form, "report_show_header_client")} onChange={on => setField("report_show_header_client", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showHeaderPeriod}>
-                  <Switch checked={formFlagOn(form, "report_show_header_period")} onChange={on => setField("report_show_header_period", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showHeaderPill}>
-                  <Switch checked={formFlagOn(form, "report_show_header_pill")} onChange={on => setField("report_show_header_pill", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showHeaderGeneratedAt}>
-                  <Switch checked={formFlagOn(form, "report_show_header_generated_at")} onChange={on => setField("report_show_header_generated_at", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-              </FormGrid>
-            </Card>
-          ) : null}
-
-          {activeTab === "footer" ? (
-            <Card title={copy.footer} description={copy.footerVisibilityHint}>
-              <Field label={copy.footerNote}>
-                <Textarea value={form.report_footer_note} onChange={e => setField("report_footer_note", e.target.value)} rows={3} maxLength={200} disabled={disabled} />
-              </Field>
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.footerVisibility}</h3>
-              <FormGrid>
-                <Field label={copy.showFooterLogo}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_logo")} onChange={on => setField("report_show_footer_logo", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterCompany}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_company")} onChange={on => setField("report_show_footer_company", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterBrand}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_brand")} onChange={on => setField("report_show_footer_brand", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterEmail}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_email")} onChange={on => setField("report_show_footer_email", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterPhone}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_phone")} onChange={on => setField("report_show_footer_phone", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterWebsite}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_website")} onChange={on => setField("report_show_footer_website", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterAddress}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_address")} onChange={on => setField("report_show_footer_address", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterSocials}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_socials")} onChange={on => setField("report_show_footer_socials", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showFooterNote}>
-                  <Switch checked={formFlagOn(form, "report_show_footer_note")} onChange={on => setField("report_show_footer_note", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-                <Field label={copy.showGeneratedAt}>
-                  <Switch checked={formFlagOn(form, "report_show_generated_at")} onChange={on => setField("report_show_generated_at", on ? "true" : "false")} disabled={disabled} />
-                </Field>
-              </FormGrid>
-            </Card>
-          ) : null}
-
-          {activeTab === "appearance" ? (
-            <Card
-              title={copy.appearance}
-              description={copy.appearanceHint}
-              action={
-                <Btn variant="ghost" icon="mdi:restore" disabled={disabled} onClick={resetAppearance}>
-                  {copy.resetAppearance}
-                </Btn>
-              }
-            >
-              <h3 style={{ margin: "0 0 0.65rem", fontSize: "0.92rem" }}>{copy.fonts}</h3>
-              <FormGrid>
-                <Field label={copy.fontSans}>
-                  <FontPicker
-                    value={form.report_font_sans}
-                    options={fontOptions}
-                    disabled={disabled}
-                    placeholder={copy.fontSearchPlaceholder}
-                    emptyLabel={copy.fontEmpty}
-                    onChange={id => setField("report_font_sans", id)}
-                    onHover={id => setHoverFont({ role: "sans", id })}
-                    onHoverEnd={clearHoverFont}
-                  />
-                </Field>
-                <Field label={copy.fontSerif}>
-                  <FontPicker
-                    value={form.report_font_serif}
-                    options={fontOptions}
-                    disabled={disabled}
-                    placeholder={copy.fontSearchPlaceholder}
-                    emptyLabel={copy.fontEmpty}
-                    onChange={id => setField("report_font_serif", id)}
-                    onHover={id => setHoverFont({ role: "serif", id })}
-                    onHoverEnd={clearHoverFont}
-                  />
-                </Field>
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.headerColors}</h3>
-              <FormGrid>
-                <ColorField label={copy.headerBg} value={form.report_header_bg} onChange={v => setField("report_header_bg", v)} disabled={disabled} />
-                <ColorField label={copy.headerText} value={form.report_header_text} onChange={v => setField("report_header_text", v)} disabled={disabled} />
-                <ColorField label={copy.headerBrandColor} value={form.report_header_brand_color} onChange={v => setField("report_header_brand_color", v)} disabled={disabled} />
-                <ColorField label={copy.headerAccentBar} value={form.report_header_accent_bar} onChange={v => setField("report_header_accent_bar", v)} disabled={disabled} />
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.footerColors}</h3>
-              <FormGrid>
-                <ColorField label={copy.footerBg} value={form.report_footer_bg} onChange={v => setField("report_footer_bg", v)} disabled={disabled} />
-                <ColorField label={copy.footerText} value={form.report_footer_text} onChange={v => setField("report_footer_text", v)} disabled={disabled} />
-                <ColorField label={copy.footerMuted} value={form.report_footer_muted} onChange={v => setField("report_footer_muted", v)} disabled={disabled} />
-                <ColorField label={copy.footerLink} value={form.report_footer_link} onChange={v => setField("report_footer_link", v)} disabled={disabled} />
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.themeColors}</h3>
-              <FormGrid>
-                <ColorField label={copy.accent} value={form.report_accent} onChange={v => setField("report_accent", v)} disabled={disabled} />
-                <ColorField label={copy.navy} value={form.report_navy} onChange={v => setField("report_navy", v)} disabled={disabled} />
-              </FormGrid>
-
-              <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.sizes}</h3>
-              <FormGrid>
-                {[
-                  ["report_brand_size", copy.brandSize],
-                  ["report_company_size", copy.companySize],
-                  ["report_client_size", copy.clientSize],
-                  ["report_footer_brand_size", copy.footerBrandSize],
-                  ["report_footer_note_size", copy.footerNoteSize]
-                ].map(([key, label]) => (
-                  <SegmentField
-                    key={key}
-                    label={label}
-                    value={nearestReportSizePreset(key, form[key])}
-                    onChange={preset => setField(key, REPORT_SIZE_PRESETS[key][preset])}
-                    options={reportSizeSegmentOptions(copy)}
-                    disabled={disabled}
-                  />
-                ))}
-              </FormGrid>
-            </Card>
-          ) : null}
+          {tabItems.map(item => (
+            <AdminShellTab
+              key={item.key}
+              item={item}
+              isActive={activeTab === item.key}
+              onSelect={setActiveTab}
+              disabled={loading}
+            />
+          ))}
         </div>
 
-        <aside className={s.previewColumn}>
-          <div className={s.previewSticky}>
-            <Card title={copy.livePreview} noPadding fill fillNoScroll>
-              <LivePreview form={form} preview={preview} copy={copy} hoverFont={hoverFont} />
-            </Card>
-          </div>
-        </aside>
-      </div>
+        <div className={platform.shellBody}>
+          {loading ? (
+            <div className={platform.shellPane} key="pane-loading">
+              <AdminGeneralSettingsLoading message={copy.loading} />
+            </div>
+          ) : (
+            <div className={platform.shellPane} key={`pane-${activeTab}`}>
+              <div className={s.workspace}>
+                <div className={s.editor}>
+                  {activeTab === "identity" ? (
+                    <SettingsSection title={copy.identity} description={copy.identityHint} icon="mdi:badge-account-horizontal-outline">
+                      <FormGrid cols={2}>
+                        <Field label={copy.companyName} hint={copy.companyNameHint}>
+                          <Input
+                            value={form.report_company_name}
+                            onChange={e => setField("report_company_name", e.target.value)}
+                            placeholder={preview?.companyName || "Veritas"}
+                            maxLength={120}
+                            disabled={disabled}
+                          />
+                        </Field>
+                        <Field label={copy.brandLabel} hint={copy.brandLabelHint}>
+                          <Input
+                            value={form.report_brand_label}
+                            onChange={e => setField("report_brand_label", e.target.value)}
+                            placeholder="PSI × Veritas"
+                            maxLength={80}
+                            disabled={disabled}
+                          />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
 
+                  {activeTab === "logos" ? (
+                    <div className={platform.sectionRow}>
+                      <SettingsSection title={copy.logoHeader} description={copy.logoHeaderHint} icon="mdi:image-outline">
+                        <LogoUploadField
+                          label={copy.logoHeader}
+                          hint={copy.logoHeaderHint}
+                          path={form.report_logo_path}
+                          disabled={disabled}
+                          uploading={uploadingLogo === "logo"}
+                          chooseLabel={copy.chooseLogo}
+                          removeLabel={copy.removeLogo}
+                          onUpload={file => handleLogoUpload("logo", file)}
+                          onDelete={() => handleLogoDelete("logo")}
+                        />
+                      </SettingsSection>
+                      <SettingsSection title={copy.logoFooter} description={copy.logoFooterHint} icon="mdi:image-frame">
+                        <LogoUploadField
+                          label={copy.logoFooter}
+                          hint={copy.logoFooterHint}
+                          path={form.report_footer_logo_path}
+                          disabled={disabled}
+                          uploading={uploadingLogo === "footer-logo"}
+                          chooseLabel={copy.chooseLogo}
+                          removeLabel={copy.removeLogo}
+                          onUpload={file => handleLogoUpload("footer-logo", file)}
+                          onDelete={() => handleLogoDelete("footer-logo")}
+                        />
+                      </SettingsSection>
+                    </div>
+                  ) : null}
+
+                  {activeTab === "contact" ? (
+                    <SettingsSection title={copy.contact} description={copy.contactHint} icon="mdi:card-account-phone-outline">
+                      <FormGrid cols={2}>
+                        <Field label={copy.supportEmail}>
+                          <Input type="email" value={form.report_support_email} onChange={e => setField("report_support_email", e.target.value)} placeholder="support@exemple.fr" maxLength={200} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.supportPhone}>
+                          <Input value={form.report_support_phone} onChange={e => setField("report_support_phone", e.target.value)} placeholder="09 00 00 00 00" maxLength={40} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.website}>
+                          <Input type="url" value={form.report_website} onChange={e => setField("report_website", e.target.value)} placeholder="https://www.exemple.fr" maxLength={200} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.address}>
+                          <Input value={form.report_address} onChange={e => setField("report_address", e.target.value)} placeholder="10 rue Example, 33000 Bordeaux" maxLength={300} disabled={disabled} />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {activeTab === "socials" ? (
+                    <SettingsSection title={copy.socials} description={copy.socialsHint} icon="mdi:share-variant-outline">
+                      <SegmentField
+                        label={copy.socialDisplay}
+                        value={["icons", "links", "both"].includes(form.report_social_display) ? form.report_social_display : "icons"}
+                        onChange={value => setField("report_social_display", value)}
+                        disabled={disabled}
+                        options={[
+                          { value: "icons", icon: "mdi:emoticon-outline", title: copy.socialDisplayIcons, label: copy.socialDisplayIcons },
+                          { value: "links", icon: "mdi:link-variant", title: copy.socialDisplayLinks, label: copy.socialDisplayLinks },
+                          { value: "both", icon: "mdi:multimedia", title: copy.socialDisplayBoth, label: copy.socialDisplayBoth }
+                        ]}
+                      />
+                      <FormGrid cols={2}>
+                        <Field label={copy.linkedin}>
+                          <Input type="url" value={form.report_social_linkedin} onChange={e => setField("report_social_linkedin", e.target.value)} placeholder="https://www.linkedin.com/company/…" disabled={disabled} />
+                        </Field>
+                        <Field label={copy.facebook}>
+                          <Input type="url" value={form.report_social_facebook} onChange={e => setField("report_social_facebook", e.target.value)} placeholder="https://www.facebook.com/…" disabled={disabled} />
+                        </Field>
+                        <Field label={copy.x}>
+                          <Input type="url" value={form.report_social_x} onChange={e => setField("report_social_x", e.target.value)} placeholder="https://x.com/…" disabled={disabled} />
+                        </Field>
+                        <Field label={copy.youtube}>
+                          <Input type="url" value={form.report_social_youtube} onChange={e => setField("report_social_youtube", e.target.value)} placeholder="https://www.youtube.com/…" disabled={disabled} />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {activeTab === "header" ? (
+                    <SettingsSection title={copy.header} description={copy.headerVisibilityHint} icon="mdi:page-layout-header">
+                      <FormGrid cols={2}>
+                        <Field label={copy.showHeaderLogo}>
+                          <Switch checked={formFlagOn(form, "report_show_header_logo")} onChange={on => setField("report_show_header_logo", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.showHeaderBrand}>
+                          <Switch checked={formFlagOn(form, "report_show_header_brand")} onChange={on => setField("report_show_header_brand", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.showHeaderCompany}>
+                          <Switch checked={formFlagOn(form, "report_show_header_company")} onChange={on => setField("report_show_header_company", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.showHeaderClient}>
+                          <Switch checked={formFlagOn(form, "report_show_header_client")} onChange={on => setField("report_show_header_client", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.showHeaderPeriod}>
+                          <Switch checked={formFlagOn(form, "report_show_header_period")} onChange={on => setField("report_show_header_period", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.showHeaderPill}>
+                          <Switch checked={formFlagOn(form, "report_show_header_pill")} onChange={on => setField("report_show_header_pill", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                        <Field label={copy.showHeaderGeneratedAt}>
+                          <Switch checked={formFlagOn(form, "report_show_header_generated_at")} onChange={on => setField("report_show_header_generated_at", on ? "true" : "false")} disabled={disabled} />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {activeTab === "footer" ? (
+                    <div className={platform.sectionRow}>
+                      <SettingsSection title={copy.footerNote} description={copy.footerVisibilityHint} icon="mdi:text-box-outline">
+                        <Field label={copy.footerNote}>
+                          <Textarea value={form.report_footer_note} onChange={e => setField("report_footer_note", e.target.value)} rows={4} maxLength={200} disabled={disabled} />
+                        </Field>
+                      </SettingsSection>
+                      <SettingsSection title={copy.footerVisibility} description={copy.footerVisibilityHint} icon="mdi:eye-outline">
+                        <FormGrid cols={1}>
+                          <Field label={copy.showFooterLogo}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_logo")} onChange={on => setField("report_show_footer_logo", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterCompany}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_company")} onChange={on => setField("report_show_footer_company", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterBrand}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_brand")} onChange={on => setField("report_show_footer_brand", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterEmail}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_email")} onChange={on => setField("report_show_footer_email", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterPhone}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_phone")} onChange={on => setField("report_show_footer_phone", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterWebsite}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_website")} onChange={on => setField("report_show_footer_website", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterAddress}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_address")} onChange={on => setField("report_show_footer_address", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterSocials}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_socials")} onChange={on => setField("report_show_footer_socials", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showFooterNote}>
+                            <Switch checked={formFlagOn(form, "report_show_footer_note")} onChange={on => setField("report_show_footer_note", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                          <Field label={copy.showGeneratedAt}>
+                            <Switch checked={formFlagOn(form, "report_show_generated_at")} onChange={on => setField("report_show_generated_at", on ? "true" : "false")} disabled={disabled} />
+                          </Field>
+                        </FormGrid>
+                      </SettingsSection>
+                    </div>
+                  ) : null}
+
+                  {activeTab === "fonts" ? (
+                    <SettingsSection title={copy.fonts} description={copy.fontsHint} icon="mdi:format-font">
+                      <FormGrid cols={2}>
+                        <Field label={copy.fontSans}>
+                          <FontPicker
+                            value={form.report_font_sans}
+                            options={fontOptions}
+                            disabled={disabled}
+                            placeholder={copy.fontSearchPlaceholder}
+                            emptyLabel={copy.fontEmpty}
+                            onChange={id => setField("report_font_sans", id)}
+                            onHover={id => setHoverFont({ role: "sans", id })}
+                            onHoverEnd={clearHoverFont}
+                          />
+                        </Field>
+                        <Field label={copy.fontSerif}>
+                          <FontPicker
+                            value={form.report_font_serif}
+                            options={fontOptions}
+                            disabled={disabled}
+                            placeholder={copy.fontSearchPlaceholder}
+                            emptyLabel={copy.fontEmpty}
+                            onChange={id => setField("report_font_serif", id)}
+                            onHover={id => setHoverFont({ role: "serif", id })}
+                            onHoverEnd={clearHoverFont}
+                          />
+                        </Field>
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+
+                  {activeTab === "colors" ? (
+                    <>
+                      <div className={platform.sectionRow}>
+                        <SettingsSection title={copy.headerColors} description={copy.colorsHint} icon="mdi:palette-outline">
+                          <FormGrid cols={1}>
+                            <ColorField label={copy.headerBg} value={form.report_header_bg} onChange={v => setField("report_header_bg", v)} disabled={disabled} />
+                            <ColorField label={copy.headerText} value={form.report_header_text} onChange={v => setField("report_header_text", v)} disabled={disabled} />
+                            <ColorField label={copy.headerBrandColor} value={form.report_header_brand_color} onChange={v => setField("report_header_brand_color", v)} disabled={disabled} />
+                            <ColorField label={copy.headerAccentBar} value={form.report_header_accent_bar} onChange={v => setField("report_header_accent_bar", v)} disabled={disabled} />
+                          </FormGrid>
+                        </SettingsSection>
+                        <SettingsSection title={copy.footerColors} description={copy.colorsHint} icon="mdi:format-color-fill">
+                          <FormGrid cols={1}>
+                            <ColorField label={copy.footerBg} value={form.report_footer_bg} onChange={v => setField("report_footer_bg", v)} disabled={disabled} />
+                            <ColorField label={copy.footerText} value={form.report_footer_text} onChange={v => setField("report_footer_text", v)} disabled={disabled} />
+                            <ColorField label={copy.footerMuted} value={form.report_footer_muted} onChange={v => setField("report_footer_muted", v)} disabled={disabled} />
+                            <ColorField label={copy.footerLink} value={form.report_footer_link} onChange={v => setField("report_footer_link", v)} disabled={disabled} />
+                          </FormGrid>
+                        </SettingsSection>
+                      </div>
+                      <SettingsSection title={copy.themeColors} description={copy.colorsHint} icon="mdi:eyedropper-variant">
+                        <FormGrid cols={2}>
+                          <ColorField label={copy.accent} value={form.report_accent} onChange={v => setField("report_accent", v)} disabled={disabled} />
+                          <ColorField label={copy.navy} value={form.report_navy} onChange={v => setField("report_navy", v)} disabled={disabled} />
+                        </FormGrid>
+                      </SettingsSection>
+                    </>
+                  ) : null}
+
+                  {activeTab === "sizes" ? (
+                    <SettingsSection title={copy.sizes} description={copy.sizesHint} icon="mdi:format-size">
+                      <FormGrid cols={2}>
+                        {[
+                          ["report_brand_size", copy.brandSize],
+                          ["report_company_size", copy.companySize],
+                          ["report_client_size", copy.clientSize],
+                          ["report_footer_brand_size", copy.footerBrandSize],
+                          ["report_footer_note_size", copy.footerNoteSize]
+                        ].map(([key, label]) => (
+                          <SegmentField
+                            key={key}
+                            label={label}
+                            value={nearestReportSizePreset(key, form[key])}
+                            onChange={preset => setField(key, REPORT_SIZE_PRESETS[key][preset])}
+                            options={reportSizeSegmentOptions(copy)}
+                            disabled={disabled}
+                          />
+                        ))}
+                      </FormGrid>
+                    </SettingsSection>
+                  ) : null}
+                </div>
+
+                <aside className={s.previewColumn}>
+                  <div className={s.previewPanel}>
+                    <header className={s.previewPanelHeader}>
+                      <div className={s.previewPanelTitleBlock}>
+                        <span className={s.previewPanelIcon} aria-hidden>
+                          <Icon icon="mdi:monitor-screenshot" />
+                        </span>
+                        <div>
+                          <h3 className={s.previewPanelTitle}>{copy.livePreview}</h3>
+                          <p className={s.previewPanelDesc}>{copy.previewDescription}</p>
+                        </div>
+                      </div>
+                    </header>
+                    <div className={s.previewStage}>
+                      <LivePreview form={form} preview={preview} copy={copy} hoverFont={hoverFont} />
+                    </div>
+                  </div>
+                </aside>
+              </div>
+
+              <div className={platform.footerBar}>
+                {["fonts", "colors", "sizes"].includes(activeTab) ? (
+                  <Btn variant="secondary" icon="mdi:restore" disabled={disabled} onClick={resetAppearance}>
+                    {copy.resetAppearance}
+                  </Btn>
+                ) : null}
+                <Btn icon="mdi:content-save-outline" disabled={disabled} onClick={handleSave}>
+                  {saving ? copy.saving : copy.save}
+                </Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </Page>
   );
 }

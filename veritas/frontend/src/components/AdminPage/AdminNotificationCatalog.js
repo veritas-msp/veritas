@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { Btn, BtnIcon, Card, Switch } from "./AdminUi";
+import { BtnIcon, Switch } from "./AdminUi";
+import SettingsSection from "./AdminGeneralSettingsSection";
 import NotificationEventFormModal from "./NotificationEventFormModal";
 import NotificationVariablesModal from "./NotificationVariablesModal";
 import styles from "./AdminNotificationCatalog.module.css";
@@ -270,14 +271,14 @@ export default function AdminNotificationCatalog() {
   };
   const inAppEventOption = draft ? IN_APP_EVENT_OPTIONS.find(item => item.key === getInAppEventKey(draft.source, draft.element)) : null;
   return <div className={styles.layout}>
-      <Card title={copy.catalog.title} description={copy.catalog.description} fill>
+      <SettingsSection title={copy.catalog.title} description={copy.catalog.description} icon="mdi:tune-variant">
         <div className={styles.searchRow}>
           <input className={styles.search} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={copy.catalog.searchPlaceholder} />
         </div>
         {groups.length === 0 ? <p className={styles.empty}>{interpolate(copy.catalog.emptySearch, {
         query
       })}</p> : <div className={styles.groups}>
-            {groups.map(source => <section key={source.key}>
+            {groups.map(source => <section key={source.key} className={styles.group}>
                 <header className={styles.groupHeader}>
                   <h3 className={styles.groupTitle}>{source.label}</h3>
                 </header>
@@ -305,9 +306,7 @@ export default function AdminNotificationCatalog() {
                         </div>
                         <Switch checked={state.active} onChange={value => toggleRow(source, element, value)} label={state.active ? copy.catalog.masterOn : copy.catalog.masterOff} />
                         <div className={styles.rowActions}>
-                          <Btn size="sm" variant="secondary" icon="mdi:pencil-outline" onClick={() => openEditor(source, element, state.globalRule)}>
-                            {copy.catalog.edit}
-                          </Btn>
+                          <BtnIcon icon="mdi:pencil-outline" title={copy.catalog.edit} onClick={() => openEditor(source, element, state.globalRule)} />
                           {!isInAppOnlyEvent(source.key, element.key) ? <BtnIcon icon="mdi:office-building-plus-outline" title={copy.catalog.addOverride} onClick={() => openEditor(source, element, {
                     ...buildDefaultNotificationEvent(),
                     id: newEventId(),
@@ -321,10 +320,7 @@ export default function AdminNotificationCatalog() {
                       </article>
                       {state.overrides.map(override => {
                 const company = clients.find(client => String(client?.id) === String(override.enterpriseId));
-                return <article key={override.id} className={`${styles.row} ${override.enabled === false ? styles.rowOff : ""}`} style={{
-                  marginLeft: 18,
-                  marginTop: 6
-                }}>
+                return <article key={override.id} className={`${styles.row} ${styles.overrideRow} ${override.enabled === false ? styles.rowOff : ""}`}>
                           <div className={styles.rowMain}>
                             <p className={styles.rowTitle}>{company?.name || override.enterpriseId || "Entreprise"}</p>
                             <div className={styles.rowMeta}>
@@ -333,9 +329,7 @@ export default function AdminNotificationCatalog() {
                           </div>
                           <div />
                           <div className={styles.rowActions}>
-                            <Btn size="sm" variant="secondary" icon="mdi:pencil-outline" onClick={() => openEditor(source, element, override)}>
-                              {copy.catalog.edit}
-                            </Btn>
+                            <BtnIcon icon="mdi:pencil-outline" title={copy.catalog.edit} onClick={() => openEditor(source, element, override)} />
                             <BtnIcon icon="mdi:delete-outline" title={copy.templates.delete} onClick={() => deleteRule(override.id)} />
                           </div>
                         </article>;
@@ -345,7 +339,7 @@ export default function AdminNotificationCatalog() {
                 </div>
               </section>)}
           </div>}
-      </Card>
+      </SettingsSection>
 
       <NotificationEventFormModal open={Boolean(draft)} mode={modalMode} draft={draft} setDraft={setDraft} saving={saving} availableClients={clients} webhooks={webhooks} notificationTemplates={templates} availableChannels={draft ? catalogChannelsFor(draft.source, draft.element).filter(channel => draft.scopeType !== "enterprise" || channel !== "inapp") : ["mail", "webhook"]} inAppEventOption={inAppEventOption} inAppEventSettings={inAppDraft} onInAppEventSettingsChange={setInAppDraft} formCopy={copy.form} editorRef={editorRef} onClose={closeEditor} onSave={saveEditor} onOpenVariables={() => setVariablesOpen(true)} />
       <NotificationVariablesModal open={variablesOpen} source={draft?.source} element={draft?.element} title={copy.variables.title} intro={copy.variables.intro} closeLabel={copy.variables.close} onClose={() => setVariablesOpen(false)} onInsert={token => {
