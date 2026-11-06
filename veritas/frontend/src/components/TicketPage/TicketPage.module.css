@@ -854,7 +854,6 @@
     border-right-color 0.2s ease;
 }
 
-.viewsFinderSolo .viewsPaneAside,
 .viewsFinderNoPane .viewsPaneAside {
   flex: 0 0 0;
   width: 0;
@@ -863,6 +862,17 @@
   transform: translateX(-12px);
   pointer-events: none;
   border-right-color: transparent;
+}
+
+/* Rail icônes uniquement (panneau replié) */
+.viewsFinderRail .viewsPaneAside {
+  flex: 0 0 3.15rem;
+  width: 3.15rem;
+  max-width: 3.15rem;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  border-right-color: var(--msp-border-light);
 }
 
 .viewsPaneAsideInner {
@@ -874,6 +884,60 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+.viewsFinderRail .viewsPaneAsideInner {
+  width: 3.15rem;
+  min-width: 3.15rem;
+  max-width: 3.15rem;
+}
+
+.viewsFinderRail .viewsFinderHeader {
+  justify-content: center;
+  margin-bottom: 0.2rem;
+  padding-inline: 0.2rem;
+}
+
+.viewsFinderRail .viewsFinderHeader :global([class*="finderSecTitle"]) {
+  display: none;
+}
+
+.viewsFinderRail .viewsHeaderActions {
+  width: 100%;
+  justify-content: center;
+}
+
+.viewsFinderRail .viewsHeaderActions .viewsRailOnlyHidden,
+.viewsFinderRail .viewsReorderHint,
+.viewsFinderRail .viewsEmpty,
+.viewsFinderRail .viewsCreateLink,
+.viewsFinderRail .viewsSecGroupToggle,
+.viewsFinderRail :global([class*="finderSecItemLabel"]),
+.viewsFinderRail :global([class*="finderSecMeta"]),
+.viewsFinderRail .viewItemEditBtn,
+.viewsFinderRail .viewItemDragHandle {
+  display: none !important;
+}
+
+.viewsFinderRail :global([class*="finderSecGroup"]) {
+  margin: 0;
+}
+
+.viewsFinderRail :global([class*="finderSecItem"]),
+.viewsFinderRail .viewItemRow {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+}
+
+.viewsFinderRail :global([class*="finderSecondaryShell"]),
+.viewsFinderRail :global([class*="finderSecondary"]) {
+  padding-inline: 0.2rem;
+}
+
+.viewsFinderRail :global([class*="finderSecNav"]) {
+  align-items: stretch;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1344,7 +1408,6 @@
       border-bottom-color 0.28s ease;
   }
 
-  .viewsFinderSolo .viewsPaneAside,
   .viewsFinderNoPane .viewsPaneAside {
     flex-basis: 0;
     width: 100%;
@@ -1355,10 +1418,40 @@
     border-bottom-color: transparent;
   }
 
+  .viewsFinderRail .viewsPaneAside {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    border-bottom-color: var(--msp-border-light);
+  }
+
   .viewsPaneAsideInner {
     width: 100%;
     min-width: 0;
     max-width: none;
+  }
+
+  .viewsFinderRail .viewsPaneAsideInner {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .viewsFinderRail :global([class*="finderSecNav"]) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 0.15rem;
+  }
+
+  .viewsFinderRail :global([class*="finderSecItem"]),
+  .viewsFinderRail .viewItemRow {
+    width: 2.5rem;
+    flex: 0 0 2.5rem;
   }
 
   .viewsFinderContent {

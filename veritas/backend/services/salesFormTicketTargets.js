@@ -419,12 +419,9 @@ export function buildTicketTitle(baseTitle, rule, context = {}) {
   const base = String(baseTitle || "").trim();
   if (template && String(template).trim()) {
     const resolved = resolveSalesFormTicketTemplate(template, context).trim();
-    if (!resolved) return base;
-    // Prefer the client-resolved subject when a template concatenates description + title.
-    if (base && resolved !== base && resolved.includes(base) && resolved.length > base.length + 10) {
-      return base;
-    }
-    return resolved;
+    // Le modèle de titre du formulaire prime toujours sur le titre client (ex. sujet d’alerte supervision).
+    if (resolved) return resolved;
+    return base;
   }
   const suffix = rule?.targets?.titleSuffix || rule?.label;
   if (!suffix || suffix === "Primary ticket" || suffix === "Ticket principal") return base;

@@ -4,6 +4,7 @@ export default function ResizableTableHeaderCell({
   children,
   onClick,
   onResizeStart,
+  onResizeAutoFit,
   resizeLabel,
   style,
   className = "",
@@ -26,6 +27,11 @@ export default function ResizableTableHeaderCell({
         aria-label={resizeLabel}
         title={resizeLabel}
         onMouseDown={onResizeStart}
+        onDoubleClick={event => {
+          event.preventDefault();
+          event.stopPropagation();
+          onResizeAutoFit?.(event);
+        }}
         onClick={event => {
           event.preventDefault();
           event.stopPropagation();

@@ -31,7 +31,11 @@ export const BUILTIN_TICKET_VIEW_SECTION_IDS = {
 
 /** Support-only MSP surveillance views (hidden on sales). */
 export const BUILTIN_TICKET_MSP_VIEW_IDS = new Set([
-  BUILTIN_TICKET_VIEW_IDS.CRITICAL,
+  BUILTIN_TICKET_VIEW_IDS.CRITICAL
+]);
+
+/** Former MSP defaults kept for override / deep-link compatibility only. */
+export const BUILTIN_TICKET_RETIRED_VIEW_IDS = new Set([
   BUILTIN_TICKET_VIEW_IDS.SLA_OVERDUE,
   BUILTIN_TICKET_VIEW_IDS.TO_PLAN
 ]);
@@ -163,10 +167,11 @@ export const BUILTIN_TICKET_VIEWS = [{
 
 export function listBuiltinTicketViewsForScope(pageScope = "ticket") {
   const scope = String(pageScope || "ticket");
+  const active = BUILTIN_TICKET_VIEWS.filter(view => !BUILTIN_TICKET_RETIRED_VIEW_IDS.has(view.id));
   if (scope === "ticket_sales") {
-    return BUILTIN_TICKET_VIEWS.filter(view => !BUILTIN_TICKET_MSP_VIEW_IDS.has(view.id));
+    return active.filter(view => !BUILTIN_TICKET_MSP_VIEW_IDS.has(view.id));
   }
-  return BUILTIN_TICKET_VIEWS;
+  return active;
 }
 
 export function resolveBuiltinViewRules(viewId) {

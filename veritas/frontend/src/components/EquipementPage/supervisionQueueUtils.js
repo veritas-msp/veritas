@@ -3,8 +3,15 @@ import { fetchContacts } from "../../api/clients";
 import { createTicket, fetchSupportForm } from "../../api/tickets";
 import { linkSupervisionAlert } from "../../api/supervisionAlerts";
 import { resolveTicketContentFromSupportForm, stringifyFormValue } from "../../utils/supportFormTicketContent";
+import { resolveMatchingRules } from "../../utils/salesFormTargetRules";
 import { serializeEquipmentInfo } from "../TicketPage/ticketEquipmentUtils";
 import { SUPERVISION_FAMILIES, resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
+
+function matchingTargetHasTemplate(matchingRules, key) {
+  return (Array.isArray(matchingRules) ? matchingRules : []).some(rule =>
+    String(rule?.targets?.[key] || "").trim()
+  );
+}
 
 const SUPERVISION_FAMILY_KEYS = new Set(SUPERVISION_FAMILIES.map(f => f.key));
 
@@ -354,7 +361,7 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   if (item?.label && item.label !== item.title) lines.push(`Détail : ${item.label}`);
   lines.push("", "Ticket créé depuis le centre de supervision.");
 
-  const title = item?.ticketSubject || [deviceName, item?.title].filter(Boolean).join(" — ") || "";
+  const alertSubject = item?.ticketSubject || [deviceName, item?.title].filter(Boolean).join(" — ") || "";
   const description = lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000);
 
   const criterionKey = String(item?.criterionKey || item?.meta?.criterionKey || item?.alertState?.meta?.criterionKey || "").trim();
@@ -363,14 +370,26 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   const subjectFieldKey = rule?.subjectFieldKey ? String(rule.subjectFieldKey) : null;
   const descriptionFieldKey = rule?.descriptionFieldKey ? String(rule.descriptionFieldKey) : null;
   const supportFormValues = {};
-  if (subjectFieldKey && title) supportFormValues[subjectFieldKey] = title;
-  if (descriptionFieldKey && description) supportFormValues[descriptionFieldKey] = description;
+
+  // Avec un formulaire support lié aux cibles ticket (titre / description / priorité…),
+  // on ne force PAS le sujet d’alerte (« host — Critical — Filesystem… ») :
+  // le template du formulaire doit primer. Le détail d’alerte reste en description de secours.
+  if (!supportFormId) {
+    if (subjectFieldKey && alertSubject) supportFormValues[subjectFieldKey] = alertSubject;
+    if (descriptionFieldKey && description) supportFormValues[descriptionFieldKey] = description;
+  } else if (descriptionFieldKey && description) {
+    // Description d’alerte injectée uniquement si le formulaire n’a pas de descriptionTemplate
+    // (décidé plus bas une fois le formulaire chargé). Ici on garde le contexte pour le fallback.
+    supportFormValues[descriptionFieldKey] = description;
+  }
 
   return {
     clientId,
     equipmentId,
-    title,
+    // Titre vide quand un formulaire est lié : le createTicket / titleTemplate du formulaire prend le relais.
+    title: supportFormId ? "" : alertSubject,
     description,
+    alertSubject,
     category: "monitoring",
     preferPrimaryContact: true,
     familyKey,
@@ -421,33 +440,52 @@ export async function createSupervisionSupportTicket(item, rules = null) {
     const type = String(field.fieldType || "").toLowerCase();
     if (type === "client" && clientId != null) values[key] = clientId;
     else if (type === "equipment" && equipmentId) values[key] = equipmentId;
-    else if (type === "text" || type === "textarea" || type === "string") {
-      // already mapped via subject/description keys when configured
-    }
   }
 
-  // Ensure mapped subject/description keys are filled even if rule keys were empty but auto-detected later.
+  const matchingRules = resolveMatchingRules(form.ticketTargets || {}, values);
+  const hasTitleTemplate = matchingTargetHasTemplate(matchingRules, "titleTemplate");
+  const hasDescriptionTemplate = matchingTargetHasTemplate(matchingRules, "descriptionTemplate");
+
+  // Ne pas coller le sujet d’alerte dans le champ objet : le titleTemplate du formulaire s’en charge.
+  const subjectKey = prefill.subjectFieldKey ? String(prefill.subjectFieldKey) : null;
+  if (subjectKey && (hasTitleTemplate || prefill.supportFormId)) {
+    delete values[subjectKey];
+  }
+  const descriptionKey = prefill.descriptionFieldKey ? String(prefill.descriptionFieldKey) : null;
+  if (descriptionKey && hasDescriptionTemplate) {
+    delete values[descriptionKey];
+  }
+
+  const fallbackTitle = hasTitleTemplate ? "" : String(form.label || "").trim();
+  const fallbackDescription = hasDescriptionTemplate ? "" : prefill.description;
+
   const resolvedPreview = resolveTicketContentFromSupportForm({
     fields,
     values,
     displayValues: values,
     formLabel: form.label,
-    fallbackTitle: prefill.title,
-    fallbackDescription: prefill.description,
+    fallbackTitle,
+    fallbackDescription,
     subjectFieldKey: prefill.subjectFieldKey,
     descriptionFieldKey: prefill.descriptionFieldKey
   });
-  if (resolvedPreview.subjectFieldKey && !stringifyFormValue(values[resolvedPreview.subjectFieldKey])) {
-    values[resolvedPreview.subjectFieldKey] = resolvedPreview.title;
-  }
-  if (resolvedPreview.descriptionFieldKey && !stringifyFormValue(values[resolvedPreview.descriptionFieldKey])) {
-    values[resolvedPreview.descriptionFieldKey] = resolvedPreview.description;
+  // Remplir description d’alerte seulement si le champ est vide ET aucun template description.
+  if (
+    !hasDescriptionTemplate &&
+    resolvedPreview.descriptionFieldKey &&
+    !stringifyFormValue(values[resolvedPreview.descriptionFieldKey]) &&
+    fallbackDescription
+  ) {
+    values[resolvedPreview.descriptionFieldKey] = fallbackDescription;
   }
 
   const missingRequired = fields.filter(field => {
     if (!field?.required || !field.fieldKey) return false;
     const type = String(field.fieldType || "").toLowerCase();
     if (type === "section" || type === "file") return false;
+    // Objet / description couverts par les templates du formulaire : pas bloquants.
+    if (hasTitleTemplate && subjectKey && String(field.fieldKey) === subjectKey) return false;
+    if (hasDescriptionTemplate && descriptionKey && String(field.fieldKey) === descriptionKey) return false;
     return !stringifyFormValue(values[field.fieldKey]);
   });
   if (missingRequired.length) {
@@ -455,6 +493,7 @@ export async function createSupervisionSupportTicket(item, rules = null) {
       needsManual: true,
       prefill: {
         ...prefill,
+        title: fallbackTitle,
         supportFormValues: values,
         subjectFieldKey: resolvedPreview.subjectFieldKey || prefill.subjectFieldKey,
         descriptionFieldKey: resolvedPreview.descriptionFieldKey || prefill.descriptionFieldKey
@@ -486,8 +525,8 @@ export async function createSupervisionSupportTicket(item, rules = null) {
     values,
     displayValues,
     formLabel: form.label,
-    fallbackTitle: prefill.title,
-    fallbackDescription: prefill.description,
+    fallbackTitle,
+    fallbackDescription,
     subjectFieldKey: prefill.subjectFieldKey,
     descriptionFieldKey: prefill.descriptionFieldKey
   });
@@ -512,13 +551,15 @@ export async function createSupervisionSupportTicket(item, rules = null) {
     clientId
   });
 
+  const primaryTargets = matchingRules[0]?.targets || {};
   const created = await createTicket({
-    title: resolved.title,
-    description: resolved.description,
-    priority: item?.severity === "critical" ? "high" : "normal",
-    status: "new",
+    // Titre volontairement minimal : buildTicketTitle côté API applique titleTemplate.
+    title: hasTitleTemplate ? fallbackTitle || String(form.label || "").trim() || "Ticket" : resolved.title,
+    description: hasDescriptionTemplate ? "" : resolved.description,
+    priority: primaryTargets.priority || (item?.severity === "critical" ? "high" : "normal"),
+    status: primaryTargets.status || "new",
     type: supportFormData.kind || "incident",
-    category: String(form.categorySlug || prefill.category || "monitoring").trim(),
+    category: "",
     channel: "web",
     clientId: clientId || null,
     requesterUserId: null,

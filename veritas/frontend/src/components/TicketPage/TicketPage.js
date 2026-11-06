@@ -362,7 +362,8 @@ export default function TicketPage({
   const {
     isResizing: isResizingColumns,
     getColumnStyle,
-    beginResize: beginColumnResize
+    beginResize: beginColumnResize,
+    autoFitColumn: autoFitColumnWidth
   } = useResizableTableColumns({
     storageKey: TICKET_COLUMN_WIDTHS_KEY
   });
@@ -1190,13 +1191,17 @@ export default function TicketPage({
     );
   };
   const setViewsPaneCollapsedState = useCallback(collapsed => {
+    if (collapsed) {
+      setViewsReorderMode(false);
+      setCustomViewsOrder(null);
+    }
     setViewsPaneCollapsed(collapsed);
     writeViewsPaneCollapsed(collapsed);
   }, []);
   const isViewSectionCollapsed = useCallback(sectionKey => {
-    if (viewsReorderMode) return false;
+    if (viewsReorderMode || viewsPaneCollapsed) return false;
     return Boolean(collapsedViewSections[sectionKey]);
-  }, [collapsedViewSections, viewsReorderMode]);
+  }, [collapsedViewSections, viewsReorderMode, viewsPaneCollapsed]);
   const toggleViewSection = useCallback(sectionKey => {
     setCollapsedViewSections(prev => {
       const next = {
@@ -1221,6 +1226,7 @@ export default function TicketPage({
           aria-label={interpolate(collapsed ? pageCopy.views.expandSection : pageCopy.views.collapseSection, {
             name: label
           })}
+          tabIndex={viewsPaneCollapsed ? -1 : undefined}
         >
           <span className={styles.viewsSecGroupToggleLabel}>{label}</span>
           <Icon icon={collapsed ? "mdi:chevron-right" : "mdi:chevron-down"} className={styles.viewsSecGroupChevron} aria-hidden />
@@ -1282,7 +1288,8 @@ export default function TicketPage({
     viewsLoading,
     viewsReorderMode,
     viewMode,
-    collapsedViewSections
+    collapsedViewSections,
+    viewsPaneCollapsed
   ]);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
   const paginatedTickets = tickets;
@@ -1459,12 +1466,7 @@ export default function TicketPage({
         </button>
       ) : null}
     </>;
-  const viewsExpandLeading = viewMode !== "trash" && viewsPaneCollapsed ? (
-    <button type="button" className={styles.viewsExpandBtn} onClick={() => setViewsPaneCollapsedState(false)} aria-label={pageCopy.views.expandPane}>
-      <FaChevronRight aria-hidden />
-      <span>{pageCopy.views.title}</span>
-    </button>
-  ) : null;
+  const viewsExpandLeading = null;
   useEffect(() => {
     if (!satisfactionMoreMenuOpen) return undefined;
     const onPointerDown = event => {
@@ -1535,28 +1537,34 @@ export default function TicketPage({
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${layout.contentNoHero}`}>
             <h1 className={layout.srOnly}>{pageCopy.pageTitle}</h1>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-        <div className={`${kit.finderLayout} ${styles.viewsFinder} ${viewMode === "trash" ? styles.viewsFinderNoPane : ""} ${viewMode !== "trash" && viewsPaneCollapsed ? styles.viewsFinderSolo : ""} ${viewsPaneMotionReady ? styles.viewsFinderAnimated : ""}`.trim()}>
+        <div className={`${kit.finderLayout} ${styles.viewsFinder} ${viewMode === "trash" ? styles.viewsFinderNoPane : ""} ${viewMode !== "trash" && viewsPaneCollapsed ? styles.viewsFinderRail : ""} ${viewsPaneMotionReady ? styles.viewsFinderAnimated : ""}`.trim()}>
           {viewMode !== "trash" ? (
             <aside
               className={`${kit.finderSidebar} ${styles.viewsPaneAside}`.trim()}
               aria-label={pageCopy.views.paneAria}
-              aria-hidden={viewsPaneCollapsed}
-              {...(viewsPaneCollapsed ? { inert: "" } : {})}
             >
               <div className={styles.viewsPaneAsideInner}>
                 <div className={`${kit.finderSecTitleRow} ${styles.viewsFinderHeader}`.trim()}>
                   <p className={kit.finderSecTitle}>{pageCopy.views.title}</p>
                   <div className={styles.viewsHeaderActions}>
-                    <button type="button" className={kit.finderVaultAddBtn} onClick={() => setViewsPaneCollapsedState(true)} aria-label={pageCopy.views.collapsePane} disabled={viewsReorderMode}>
-                      <FaChevronLeft aria-hidden />
+                    <button
+                      type="button"
+                      className={kit.finderVaultAddBtn}
+                      onClick={() => setViewsPaneCollapsedState(!viewsPaneCollapsed)}
+                      aria-label={viewsPaneCollapsed ? pageCopy.views.expandPane : pageCopy.views.collapsePane}
+                      aria-expanded={!viewsPaneCollapsed}
+                      disabled={viewsReorderMode && !viewsPaneCollapsed}
+                      title={viewsPaneCollapsed ? pageCopy.views.expandPane : pageCopy.views.collapsePane}
+                    >
+                      {viewsPaneCollapsed ? <FaChevronRight aria-hidden /> : <FaChevronLeft aria-hidden />}
                     </button>
                     {hasReorderableViews ? (
-                      <button type="button" className={`${kit.finderVaultAddBtn} ${viewsReorderMode ? styles.viewsEditBtnActive : ""}`.trim()} onClick={toggleViewsReorderMode} aria-label={viewsReorderMode ? pageCopy.views.reorderFinish : pageCopy.views.reorderStart} aria-pressed={viewsReorderMode} disabled={viewsOrderSaving}>
+                      <button type="button" className={`${kit.finderVaultAddBtn} ${styles.viewsRailOnlyHidden} ${viewsReorderMode ? styles.viewsEditBtnActive : ""}`.trim()} onClick={toggleViewsReorderMode} aria-label={viewsReorderMode ? pageCopy.views.reorderFinish : pageCopy.views.reorderStart} aria-pressed={viewsReorderMode} disabled={viewsOrderSaving}>
                         <Icon icon={viewsReorderMode ? "mdi:check" : "mdi:pencil-outline"} aria-hidden />
                       </button>
                     ) : null}
                     {canManageViews ? (
-                      <button type="button" className={kit.finderVaultAddBtn} onClick={openCreateViewModal} aria-label={pageCopy.views.create} disabled={viewsReorderMode}>
+                      <button type="button" className={`${kit.finderVaultAddBtn} ${styles.viewsRailOnlyHidden}`.trim()} onClick={openCreateViewModal} aria-label={pageCopy.views.create} disabled={viewsReorderMode}>
                         <FaPlus aria-hidden />
                       </button>
                     ) : null}
@@ -1569,7 +1577,7 @@ export default function TicketPage({
                 ) : null}
                 <UiKitScrollFadeShell
                   className={kit.finderSecondaryShell}
-                  deps={[activeViewId, viewsLoading, viewsReorderMode, builtinTicketViews.length, visibleSatisfactionViews.length, publicViews.length, assignedViews.length, privateViews.length, collapsedViewSections]}
+                  deps={[activeViewId, viewsLoading, viewsReorderMode, builtinTicketViews.length, visibleSatisfactionViews.length, publicViews.length, assignedViews.length, privateViews.length, collapsedViewSections, viewsPaneCollapsed]}
                 >
                   <div className={kit.finderSecondary}>
                     {viewsLoading ? (
@@ -1687,9 +1695,10 @@ export default function TicketPage({
 {tableColumns.map(columnId => {
                   const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId] || columnId;
                   const label = getTableColumnLabel(columnId);
-                  const resizeLabel = interpolate(pageCopy.table.resizeColumn || "Redimensionner la colonne {name}", {
-                    name: label
-                  });
+                  const resizeLabel = interpolate(
+                    pageCopy.table.resizeColumnHint || pageCopy.table.resizeColumn || "Glisser pour redimensionner · double-clic pour ajuster ({name})",
+                    { name: label }
+                  );
                   return (
                     <ResizableTableHeaderCell
                       key={columnId}
@@ -1697,6 +1706,7 @@ export default function TicketPage({
                       style={getColumnStyle(columnId)}
                       resizeLabel={resizeLabel}
                       onResizeStart={event => beginColumnResize(event, columnId)}
+                      onResizeAutoFit={event => autoFitColumnWidth(event, columnId)}
                     >
                       {label}
                       <SortIcon active={sortBy === sortKey} direction={sortDirection} />

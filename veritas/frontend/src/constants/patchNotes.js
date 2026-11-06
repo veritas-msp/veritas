@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.10",
+    date: "2026-11-06",
+    highlights: [
+      "Listes tickets Support / Prestations : double-clic sur la poignée de colonne pour ajuster la largeur au contenu (type Excel).",
+      "Vues tickets : panneau replié en rail d’icônes (sélection toujours possible).",
+      "Vues support par défaut : retrait de « Tickets en retard » et « Interventions à planifier » (conservé : Tickets prioritaires).",
+      "Centre de supervision : création de ticket via formulaire lié — titre, description et propriétés suivent les templates / cibles du formulaire (plus le sujet brut d’alerte)."
+    ]
+  },
+  {
     version: "2.0.9",
     date: "2026-11-06",
     highlights: [

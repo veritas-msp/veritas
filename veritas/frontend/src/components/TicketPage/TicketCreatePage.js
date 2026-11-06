@@ -995,7 +995,14 @@ export default function TicketCreatePage({
           }
         });
       }
-      if (subjectKey && initialData?.title && !String(next[subjectKey] ?? "").trim()) {
+      // Supervision + formulaire : ne pas écraser l’objet avec le sujet d’alerte
+      // (« host — Critical — … ») — le titleTemplate des cibles ticket s’applique à la création.
+      if (
+        subjectKey &&
+        initialData?.title &&
+        initialData?.prefillSource !== "supervision" &&
+        !String(next[subjectKey] ?? "").trim()
+      ) {
         next[subjectKey] = String(initialData.title);
       }
       if (descriptionKey && initialData?.description && !String(next[descriptionKey] ?? "").trim()) {

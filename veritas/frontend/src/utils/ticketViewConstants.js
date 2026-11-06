@@ -157,6 +157,7 @@ export function getBuiltinTicketViews(locale, { pageScope = "ticket" } = {}) {
   const copy = getTicketViewConstantsCopy(locale);
   const scope = String(pageScope || "ticket");
   return BUILTIN_TICKET_VIEWS
+    .filter(view => !BUILTIN_TICKET_RETIRED_VIEW_IDS.has(view.id))
     .filter(view => scope !== "ticket_sales" || !BUILTIN_TICKET_MSP_VIEW_IDS.has(view.id))
     .map(view => {
       const labels = copy.getBuiltinViewLabels(view.id);
@@ -219,8 +220,13 @@ export const BUILTIN_TICKET_VIEW_SECTION_IDS = {
   MSP: "msp",
   HISTORY: "history"
 };
+/** Vues MSP affichées sur le support (les autres IDs MSP restent en compat. legacy). */
 export const BUILTIN_TICKET_MSP_VIEW_IDS = new Set([
-  BUILTIN_TICKET_VIEW_IDS.CRITICAL,
+  BUILTIN_TICKET_VIEW_IDS.CRITICAL
+]);
+
+/** Anciennes vues MSP retirées des défauts (encore reconnues pour overrides / liens). */
+export const BUILTIN_TICKET_RETIRED_VIEW_IDS = new Set([
   BUILTIN_TICKET_VIEW_IDS.SLA_OVERDUE,
   BUILTIN_TICKET_VIEW_IDS.TO_PLAN
 ]);

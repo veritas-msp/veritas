@@ -71,7 +71,7 @@ const ALERT_RULES_COPY = {
     subjectFieldLabel: "Champ objet / sujet",
     descriptionFieldLabel: "Champ description",
     fieldAuto: "Automatique (détection)",
-    ticketMappingHint: "À la création depuis le centre de supervision, ce formulaire est forcé et l'objet / la description d'alerte sont injectés dans les champs choisis.",
+    ticketMappingHint: "À la création depuis le centre, ce formulaire est forcé. Titre, description et propriétés suivent les cibles ticket du formulaire (templates) ; le détail d’alerte sert de secours si aucun template description n’est défini.",
     toasts: {
       saved: "Règles d'alerte enregistrées",
       saveFailed: "Impossible d'enregistrer les règles"
@@ -198,7 +198,7 @@ const ALERT_RULES_COPY = {
     subjectFieldLabel: "Subject field",
     descriptionFieldLabel: "Description field",
     fieldAuto: "Automatic (detect)",
-    ticketMappingHint: "When creating a ticket from the supervision center, this form is forced and the alert subject/description are injected into the selected fields.",
+    ticketMappingHint: "When creating from the supervision center, this form is forced. Title, description and properties follow the form’s ticket targets (templates); alert details are only used as a fallback if no description template is set.",
     toasts: {
       saved: "Alert rules saved",
       saveFailed: "Unable to save rules"
