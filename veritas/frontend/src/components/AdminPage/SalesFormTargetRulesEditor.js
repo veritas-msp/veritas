@@ -433,7 +433,7 @@ function TargetRuleDetail({
               <select className={layout.input} value={rule.targets?.categorySlug || ""} onChange={e => updateTargets({
               categorySlug: e.target.value
             })}>
-                <option value="">{locale === "fr" ? "Choix de l’agent / défaut du formulaire" : "Agent's choice / form default"}</option>
+                <option value="">{locale === "fr" ? "À catégoriser (aucune catégorie)" : "To categorize (no category)"}</option>
                 {orphanCategory ? <option value={orphanCategory}>{orphanCategory} ({locale === "fr" ? "personnalisée" : "custom"})</option> : null}
                 {categoryGroups.map(([section, items]) => <optgroup key={section} label={section}>
                     {items.map(item => <option key={item.id || item.name} value={item.name}>

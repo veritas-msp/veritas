@@ -154,6 +154,7 @@ const TICKETS_COPY = {
       }
     },
     allTypes: "Tous types",
+    toCategorize: "À catégoriser",
     views: {
       paneAria: "Vues de tickets",
       title: "Vues",
@@ -189,7 +190,9 @@ const TICKETS_COPY = {
       editView: "Modifier la vue",
       editViewNamed: "Modifier la vue {name}",
       collapsePane: "Replier les vues",
-      expandPane: "Afficher les vues"
+      expandPane: "Afficher les vues",
+      collapseSection: "Replier la section {name}",
+      expandSection: "Déplier la section {name}"
     },
     search: {
       placeholder: "Rechercher",
@@ -282,6 +285,7 @@ const TICKETS_COPY = {
       created: "Création",
       updated: "Dernière modification",
       actions: "Actions",
+      resizeColumn: "Redimensionner la colonne {name}",
       loading: "Chargement...",
       noRows: "Aucun ticket",
       majorBadge: "Majeur",
@@ -498,6 +502,7 @@ const TICKETS_COPY = {
       }
     },
     allTypes: "All types",
+    toCategorize: "To categorize",
     views: {
       paneAria: "Ticket views",
       title: "Views",
@@ -533,7 +538,9 @@ const TICKETS_COPY = {
       editView: "Edit view",
       editViewNamed: "Edit view {name}",
       collapsePane: "Collapse views",
-      expandPane: "Show views"
+      expandPane: "Show views",
+      collapseSection: "Collapse section {name}",
+      expandSection: "Expand section {name}"
     },
     search: {
       placeholder: "Search",
@@ -626,6 +633,7 @@ const TICKETS_COPY = {
       created: "Created",
       updated: "Last updated",
       actions: "Actions",
+      resizeColumn: "Resize column {name}",
       loading: "Loading...",
       noRows: "No tickets",
       majorBadge: "Major",
@@ -842,6 +850,7 @@ const TICKETS_COPY = {
       }
     },
     allTypes: "Alle Typen",
+    toCategorize: "Zu kategorisieren",
     views: {
       paneAria: "Ticket-Ansichten",
       title: "Ansichten",
@@ -877,7 +886,9 @@ const TICKETS_COPY = {
       editView: "Ansicht bearbeiten",
       editViewNamed: "Ansicht {name} bearbeiten",
       collapsePane: "Ansichten einklappen",
-      expandPane: "Ansichten anzeigen"
+      expandPane: "Ansichten anzeigen",
+      collapseSection: "Abschnitt {name} einklappen",
+      expandSection: "Abschnitt {name} ausklappen"
     },
     search: {
       placeholder: "Suchen",
@@ -970,6 +981,7 @@ const TICKETS_COPY = {
       created: "Erstellt",
       updated: "Letzte Änderung",
       actions: "Aktionen",
+      resizeColumn: "Spalte {name} skalieren",
       loading: "Laden...",
       noRows: "Keine Tickets",
       majorBadge: "Schwer",
@@ -1186,6 +1198,7 @@ const TICKETS_COPY = {
       }
     },
     allTypes: "Tutti i tipi",
+    toCategorize: "Da categorizzare",
     views: {
       paneAria: "Viste ticket",
       title: "Viste",
@@ -1221,7 +1234,9 @@ const TICKETS_COPY = {
       editView: "Modifica vista",
       editViewNamed: "Modifica vista {name}",
       collapsePane: "Comprimi viste",
-      expandPane: "Mostra viste"
+      expandPane: "Mostra viste",
+      collapseSection: "Comprimi la sezione {name}",
+      expandSection: "Espandi la sezione {name}"
     },
     search: {
       placeholder: "Cerca",
@@ -1314,6 +1329,7 @@ const TICKETS_COPY = {
       created: "Creazione",
       updated: "Ultima modifica",
       actions: "Azioni",
+      resizeColumn: "Ridimensiona colonna {name}",
       loading: "Caricamento...",
       noRows: "Nessun ticket",
       majorBadge: "Grave",
@@ -1530,6 +1546,7 @@ const TICKETS_COPY = {
       }
     },
     allTypes: "Todos los tipos",
+    toCategorize: "Por categorizar",
     views: {
       paneAria: "Vistas de tickets",
       title: "Vistas",
@@ -1565,7 +1582,9 @@ const TICKETS_COPY = {
       editView: "Editar vista",
       editViewNamed: "Editar vista {name}",
       collapsePane: "Contraer vistas",
-      expandPane: "Mostrar vistas"
+      expandPane: "Mostrar vistas",
+      collapseSection: "Contraer la sección {name}",
+      expandSection: "Expandir la sección {name}"
     },
     search: {
       placeholder: "Buscar",
@@ -1658,6 +1677,7 @@ const TICKETS_COPY = {
       created: "Creación",
       updated: "Última modificación",
       actions: "Acciones",
+      resizeColumn: "Cambiar tamaño de la columna {name}",
       loading: "Cargando...",
       noRows: "Ningún ticket",
       majorBadge: "Grave",

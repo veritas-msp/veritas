@@ -38,6 +38,7 @@ import { interpolate } from "../../i18n/translate";
 import SmartTooltip from "../SmartTooltip";
 import { getTicketDetailCopy } from "./ticketDetailPageI18n";
 import { getTicketSalesDetailCopy } from "./ticketSalesDetailI18n";
+import { formatTicketCategoryDisplay, isFormCategorySlug } from "./ticketCategoryDisplay";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import TicketChatPanel from "./TicketChatPanel";
 import SalesTasksPanel from "./SalesTasksPanel";
@@ -819,15 +820,16 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   const filteredCategoryOptions = useMemo(() => {
     const list = categories.filter(item => item?.name && item.enabled !== false);
+    const toCategorize = String(detailCopy.toCategorize || "").trim().toLowerCase();
     const q = categorySearch.trim().toLowerCase();
-    if (!q) return list.slice(0, 40);
+    if (!q || q === toCategorize || isFormCategorySlug(categorySearch)) return list.slice(0, 40);
     const exactCatalogMatch = list.some(item => String(item.name || "").toLowerCase() === q);
     // Orphan values (e.g. form slug like "prestation-…") must not hide the catalog.
     if (!exactCatalogMatch && q === String(ticket?.category || "").trim().toLowerCase()) {
       return list.slice(0, 40);
     }
     return list.filter(item => String(item.name || "").toLowerCase().includes(q) || String(item.section || "").toLowerCase().includes(q)).slice(0, 40);
-  }, [categories, categorySearch, ticket?.category]);
+  }, [categories, categorySearch, ticket?.category, detailCopy.toCategorize]);
 
   const filteredCategoryGroups = useMemo(() => {
     const uncategorized = detailCopy.uncategorized || "—";
@@ -910,11 +912,16 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   }, [ticketEquipmentDisplayName, showEquipmentDropdown]);
 
   const resolveCategorySearchDisplay = useCallback(() => {
-    const current = String(ticket?.category || "");
-    if (!current) return "";
+    const current = String(ticket?.category || "").trim();
+    if (!current) return detailCopy.toCategorize || "À catégoriser";
     const match = categories.find(item => item?.enabled !== false && String(item.name || "") === current);
-    return match ? String(match.name) : current;
-  }, [categories, ticket?.category]);
+    if (match) return String(match.name);
+    if (isFormCategorySlug(current)) return detailCopy.toCategorize || "À catégoriser";
+    return formatTicketCategoryDisplay(current, {
+      emptyLabel: detailCopy.toCategorize || "À catégoriser",
+      catalogNames: categories.filter(item => item?.enabled !== false).map(item => item.name)
+    });
+  }, [categories, ticket?.category, detailCopy.toCategorize]);
 
   useEffect(() => {
     const handleClickOutside = event => {
@@ -2436,9 +2443,10 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         }}
                         onFocus={() => {
                           const list = categories.filter(item => item?.name && item.enabled !== false);
+                          const softLabel = String(detailCopy.toCategorize || "").trim().toLowerCase();
                           const q = categorySearch.trim().toLowerCase();
                           const exactCatalogMatch = list.some(item => String(item.name || "").toLowerCase() === q);
-                          if (q && !exactCatalogMatch) setCategorySearch("");
+                          if (q && (!exactCatalogMatch || q === softLabel || isFormCategorySlug(categorySearch))) setCategorySearch("");
                           setShowCategoryDropdown(true);
                           setCategoryHighlight(0);
                         }}

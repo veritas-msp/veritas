@@ -299,6 +299,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  min-width: 0;
 }
 
 .table th {
@@ -308,6 +309,58 @@
 
 .table th:hover {
   color: var(--msp-accent, #2b5fab);
+}
+
+.tableResizable {
+  table-layout: fixed;
+}
+
+.tableResizable th,
+.tableResizable td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resizableTh {
+  position: relative;
+}
+
+.colResizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  z-index: 2;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.colResizeHandle::after {
+  content: "";
+  position: absolute;
+  top: 20%;
+  bottom: 20%;
+  left: 50%;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transform: translateX(-50%);
+  transition: background 0.12s ease;
+}
+
+.resizableTh:hover .colResizeHandle::after,
+.colResizeHandle:hover::after {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
+}
+
+.table.isResizing,
+.table.isResizing th,
+.table.isResizing td {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .table tbody tr {
@@ -1025,6 +1078,49 @@
 
 .viewsSectionTitleRow :global([class*="finderSecGroupTitle"]) {
   margin: 0;
+}
+
+.viewsSecGroupToggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0 0 0.05rem;
+  padding: 0.2rem var(--finder-nav-pad-x, 0.5rem);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--msp-muted-light, #8a97ab);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.viewsSecGroupToggle:hover {
+  color: var(--msp-muted, #5c6b82);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.viewsSecGroupToggle:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--msp-accent, #2b5fab) 18%, transparent);
+}
+
+.viewsSecGroupToggleLabel {
+  min-width: 0;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.viewsSecGroupChevron {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
 }
 
 .viewsSectionAddBtn {

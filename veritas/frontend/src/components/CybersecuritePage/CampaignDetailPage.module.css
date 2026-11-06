@@ -159,6 +159,42 @@
   width: 100%;
 }
 
+.campaignTabBarAnimated {
+  position: relative;
+}
+
+.campaignTabIndicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 10px;
+  background: var(--msp-accent, #2b5fab);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
+  pointer-events: none;
+  transition:
+    transform var(--msp-duration, 240ms) var(--msp-ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    width var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    height var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  will-change: transform, width, height;
+}
+
+.campaignTab {
+  position: relative;
+  z-index: 1;
+}
+
+.campaignTabActive {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.campaignTabIcon {
+  display: inline-flex !important;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
 .sectionMain {
   flex: 1 1 0;
   min-width: 0;
@@ -167,6 +203,37 @@
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
+}
+
+.sectionMainFadePending {
+  opacity: 0;
+}
+
+.sectionMainFadeIn {
+  animation: campaignSectionFadeIn var(--msp-duration, 240ms) var(--msp-ease, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+@keyframes campaignSectionFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sectionMainFadePending {
+    opacity: 1;
+  }
+
+  .sectionMainFadeIn {
+    animation: none;
+  }
+
+  .campaignTabIndicator {
+    transition: none;
+  }
 }
 
 .sectionMain > * {
@@ -182,37 +249,14 @@
 }
 
 .asideStack {
+  position: relative !important;
+  top: auto !important;
   min-width: 0;
   min-height: 0;
   height: 100%;
-  max-height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  overflow: hidden;
-  overscroll-behavior: contain;
-  position: relative;
-  top: auto;
+  max-height: 100% !important;
   align-self: stretch;
-}
-
-.quickActionsCardFill {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--msp-border) transparent;
-}
-
-.quickActionsCardFill::-webkit-scrollbar {
-  width: 6px;
-}
-
-.quickActionsCardFill::-webkit-scrollbar-thumb {
-  background: var(--msp-border);
-  border-radius: 4px;
+  overscroll-behavior: contain;
 }
 
 .asidePanel {
@@ -488,40 +532,84 @@
   white-space: nowrap;
 }
 
-.quickActionLink {
-  text-decoration: none;
-  color: inherit;
-  box-sizing: border-box;
-  font: inherit;
+.quickActionTooltipWrap {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
-.quickActionLink:visited {
-  color: inherit;
+.resourceLinksBody {
+  padding-top: 0.15rem !important;
 }
 
-.quickActionsShortcuts {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin-top: 0.35rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--msp-border-light, #e2e8f0);
-}
-
-.quickActionsSectionTitle {
+.resourceLinksList {
+  list-style: none;
   margin: 0;
   padding: 0;
-  text-transform: uppercase;
-  color: var(--msp-muted, #5c6b82);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
-.quickActionTooltipWrap {
-  display: block !important;
+.resourceLinkItem {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  text-decoration: none;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 550;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.quickActionTooltipWrap :global(button) {
-  width: 100%;
+.resourceLinkItem:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.resourceLinkItem:visited {
+  color: inherit;
+}
+
+.resourceLinkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.95rem;
+}
+
+.resourceLinkLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resourceLinkChevron {
+  flex-shrink: 0;
+  color: var(--msp-muted-light, #8a97ab);
+  font-size: 1rem;
+}
+
+.resourceLinkItem:hover .resourceLinkChevron {
+  color: var(--msp-accent, #2b5fab);
 }
 
 .lifecycleBtn,

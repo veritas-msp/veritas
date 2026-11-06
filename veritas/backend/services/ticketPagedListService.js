@@ -89,20 +89,21 @@ export function buildTicketListWhere({
 } = {}) {
   const values = [];
   const where = [];
+  const family = String(ticketFamily || "support").toLowerCase();
   const ctx = {
     hasRequesterContact: Boolean(schema.hasRequesterContact),
     hasTicketAssignees: Boolean(schema.hasTicketAssignees),
     hasTicketAssigneeTeams: Boolean(schema.hasTicketAssigneeTeams),
     hasValidationRequests: Boolean(schema.hasValidationRequests),
     hasTicketTags: Boolean(schema.hasTicketTags),
-    currentUserId: currentUserId || null
+    currentUserId: currentUserId || null,
+    ticketFamily: family === "sales" ? "sales" : "support"
   };
   appendLifecycleFilters(where, {
     viewMode,
     hasDeletedAt: schema.hasDeletedAt,
     hasIsDeleted: schema.hasIsDeleted
   });
-  const family = String(ticketFamily || "support").toLowerCase();
   if (family === "sales") {
     appendSalesTicketFilters(where);
   } else if (family !== "all") {

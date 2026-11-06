@@ -317,6 +317,16 @@ function buildRequesterExpr(ctx) {
     LIMIT 1
   ), ''))`;
 }
+function buildCategorySectionExpr(ctx) {
+  const family = String(ctx?.ticketFamily || "support").toLowerCase();
+  const table = family === "sales" ? "v_b_sales_ticket_categories" : "v_b_ticket_categories";
+  return `LOWER(COALESCE((
+    SELECT cat.section
+    FROM ${table} cat
+    WHERE LOWER(TRIM(cat.name)) = LOWER(TRIM(COALESCE(t.category, '')))
+    LIMIT 1
+  ), ''))`;
+}
 function buildFieldExpr(field, ctx) {
   const key = String(field || "").trim();
   switch (key) {
@@ -326,6 +336,8 @@ function buildFieldExpr(field, ctx) {
       return "LOWER(COALESCE(t.description, ''))";
     case "type":
       return "LOWER(CASE WHEN t.type = 'request' THEN 'demande' ELSE COALESCE(t.type, '') END)";
+    case "section":
+      return buildCategorySectionExpr(ctx);
     case "category":
       return "LOWER(COALESCE(t.category, ''))";
     case "status":

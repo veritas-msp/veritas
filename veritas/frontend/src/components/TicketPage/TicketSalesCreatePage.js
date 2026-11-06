@@ -10,6 +10,7 @@ import { fetchActiveUsers } from "../../api/users";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
+import { formatTicketCategoryDisplay } from "./ticketCategoryDisplay";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import { getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
 import { findFormEquipmentFieldKeys, isFileField } from "../../utils/salesFormFieldTypes";
@@ -648,7 +649,9 @@ export default function TicketSalesCreatePage({
         priority: matchingTargetRules.length === 1 && matchingTargetRules[0]?.targets?.priority ? matchingTargetRules[0].targets.priority : priority,
         status: matchingTargetRules.length === 1 && matchingTargetRules[0]?.targets?.status ? matchingTargetRules[0].targets.status : "new",
         type: selectedForm.kind === "installation" ? "installation" : "prestation",
-        category: selectedForm.categorySlug,
+        // Ne pas enregistrer le slug technique du formulaire : la catégorie catalogue
+        // sera posée par les règles cibles (ou restera vide → « À catégoriser »).
+        category: "",
         channel: "web",
         clientId,
         assignedUserId: preAssigneeUserIds[0] || null,
@@ -941,8 +944,15 @@ export default function TicketSalesCreatePage({
                       <Icon icon="mdi:tag-outline" className={s.contractFactIcon} aria-hidden />
                       {copy.context.category}
                     </dt>
-                    <dd className={selectedForm ? s.contractFactCompany : s.contractFactEmpty}>
-                      {selectedForm?.label || "-"}
+                    <dd className={
+                      matchingTargetRules.length === 1 && matchingTargetRules[0]?.targets?.categorySlug
+                        ? s.contractFactCompany
+                        : s.contractFactEmpty
+                    }>
+                      {formatTicketCategoryDisplay(
+                        matchingTargetRules.length === 1 ? matchingTargetRules[0]?.targets?.categorySlug : "",
+                        { emptyLabel: copy.toCategorize || "À catégoriser" }
+                      )}
                     </dd>
                   </div>
                   <div className={s.contractFactRow}>

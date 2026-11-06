@@ -65,6 +65,7 @@ import { getTicketDetailCopy } from "./ticketDetailPageI18n";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
 import { getTicketValidationCopy } from "./ticketValidationI18n";
 import { getTicketSalesDetailCopy } from "./ticketSalesDetailI18n";
+import { isFormCategorySlug } from "./ticketCategoryDisplay";
 import TicketVaultArchiveOptions, {
   collectVaultArchiveEntries,
   createDefaultVaultFileOptions,
@@ -1639,8 +1640,13 @@ export default function TicketDetailPage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   useEffect(() => {
-    setCategorySearch(editForm.category || "");
-  }, [editForm.category]);
+    const raw = String(editForm.category || "").trim();
+    if (!raw || isFormCategorySlug(raw)) {
+      setCategorySearch(copy.toCategorize || "À catégoriser");
+      return;
+    }
+    setCategorySearch(raw);
+  }, [editForm.category, copy.toCategorize]);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
@@ -3764,14 +3770,16 @@ export default function TicketDetailPage({
     return available.filter(opt => opt.label.toLowerCase().includes(q)).slice(0, 50);
   }, [userSearchOptions, followerSearch, watcherUserIds]);
   const filteredCategoryOptions = useMemo(() => {
-    const q = categorySearch.trim().toLowerCase();
+    const toCategorize = String(copy.toCategorize || "").trim().toLowerCase();
+    const rawQ = categorySearch.trim().toLowerCase();
+    const q = !rawQ || rawQ === toCategorize || isFormCategorySlug(categorySearch) ? "" : rawQ;
     const rows = !q ? enabledCategories : enabledCategories.filter(item => {
       const name = String(item?.name || "").toLowerCase();
       const section = String(item?.section || "").toLowerCase();
       return name.includes(q) || section.includes(q);
     });
     return rows.slice(0, 80);
-  }, [enabledCategories, categorySearch]);
+  }, [enabledCategories, categorySearch, copy.toCategorize]);
   const filteredCategoryGroups = useMemo(() => Object.entries(filteredCategoryOptions.reduce((acc, item) => {
     const section = String(item?.section || copy.uncategorized).trim() || copy.uncategorized;
     if (!acc[section]) acc[section] = [];
@@ -5426,7 +5434,7 @@ export default function TicketDetailPage({
                   <div className={fs.contactPicker} ref={categoryDropdownRef}>
                     <div className={`${fs.contactInputWrap} ${showCategoryDropdown ? fs.contactInputWrapOpen : ""}`}>
                       <Icon icon="mdi:magnify" className={fs.contactInputIcon} aria-hidden />
-                      <input type="text" className={fs.contactInput} value={categorySearch} placeholder={copy.searchCategory} disabled={isReadOnly} aria-labelledby="ticket-detail-category-label" aria-expanded={showCategoryDropdown} aria-haspopup="listbox" onChange={e => {
+                      <input type="text" className={fs.contactInput} value={categorySearch} placeholder={copy.searchCategory || copy.toCategorize} disabled={isReadOnly} aria-labelledby="ticket-detail-category-label" aria-expanded={showCategoryDropdown} aria-haspopup="listbox" onChange={e => {
                       const typed = e.target.value;
                       setCategorySearch(typed);
                       if (typed.trim() !== editForm.category) {
@@ -5437,7 +5445,12 @@ export default function TicketDetailPage({
                       }
                       setShowCategoryDropdown(true);
                       setCategoryHighlight(0);
-                    }} onFocus={() => setShowCategoryDropdown(true)} onKeyDown={e => {
+                    }} onFocus={() => {
+                      const softLabel = String(copy.toCategorize || "").trim().toLowerCase();
+                      const q = categorySearch.trim().toLowerCase();
+                      if (q === softLabel || isFormCategorySlug(categorySearch)) setCategorySearch("");
+                      setShowCategoryDropdown(true);
+                    }} onKeyDown={e => {
                       if (!showCategoryDropdown || filteredCategoryOptions.length === 0) return;
                       if (e.key === "ArrowDown") {
                         e.preventDefault();

@@ -71,6 +71,7 @@ const CRITERION_FIELD_ICONS = {
   title: "mdi:text-short",
   description: "mdi:text-long",
   type: "mdi:shape-outline",
+  section: "mdi:file-tree-outline",
   category: "mdi:folder-outline",
   status: "mdi:traffic-light",
   priority: "mdi:flag-outline",

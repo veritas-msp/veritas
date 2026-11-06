@@ -228,6 +228,10 @@ const DETAIL_COPY = {
       tagEmpty: "Aucune étiquette correspondante",
       removeTagAria: "Retirer l'étiquette {label}"
     },
+    searchCategory: "Rechercher une catégorie…",
+    noCategoryFound: "Aucune catégorie trouvée",
+    uncategorized: "Non classée",
+    toCategorize: "À catégoriser",
     searchAgent: "Rechercher un agent ou une équipe…",
     searchAssignee: "Rechercher un agent ou une équipe…",
     noAgentFound: "Aucun résultat",
@@ -850,6 +854,10 @@ const DETAIL_COPY = {
       tagEmpty: "No matching tag",
       removeTagAria: "Remove tag {label}"
     },
+    searchCategory: "Search for a category…",
+    noCategoryFound: "No category found",
+    uncategorized: "Uncategorized",
+    toCategorize: "To categorize",
     searchAgent: "Search for an agent or team…",
     searchAssignee: "Search for an agent or team…",
     noAgentFound: "No results",
@@ -1275,6 +1283,7 @@ DETAIL_COPY.de.statusClosed = "Geschlossen";
 DETAIL_COPY.de.empty.loading = "Laden...";
 DETAIL_COPY.de.empty.notFound = "Ticket nicht gefunden.";
 DETAIL_COPY.de.leftPane.properties = "Eigenschaften";
+DETAIL_COPY.de.toCategorize = "Zu kategorisieren";
 DETAIL_COPY.de.footer.resolve = "Lösen";
 DETAIL_COPY.de.footer.reopen = "Ticket wiedereröffnen";
 DETAIL_COPY.de.reopenModal.title = "Ticket wiedereröffnen";
@@ -1318,6 +1327,7 @@ DETAIL_COPY.it.statusClosed = "Chiuso";
 DETAIL_COPY.it.empty.loading = "Caricamento...";
 DETAIL_COPY.it.empty.notFound = "Ticket non trovato.";
 DETAIL_COPY.it.leftPane.properties = "Proprietà";
+DETAIL_COPY.it.toCategorize = "Da categorizzare";
 DETAIL_COPY.it.footer.resolve = "Risolvi";
 DETAIL_COPY.it.footer.reopen = "Riapri ticket";
 DETAIL_COPY.it.reopenModal.title = "Riapri ticket";
@@ -1361,6 +1371,7 @@ DETAIL_COPY.es.statusClosed = "Cerrado";
 DETAIL_COPY.es.empty.loading = "Cargando...";
 DETAIL_COPY.es.empty.notFound = "Ticket no encontrado.";
 DETAIL_COPY.es.leftPane.properties = "Propiedades";
+DETAIL_COPY.es.toCategorize = "Por categorizar";
 DETAIL_COPY.es.footer.resolve = "Resolver";
 DETAIL_COPY.es.footer.reopen = "Reabrir ticket";
 DETAIL_COPY.es.reopenModal.title = "Reabrir ticket";

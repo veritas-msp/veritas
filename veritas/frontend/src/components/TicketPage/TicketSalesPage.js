@@ -10,7 +10,7 @@ import styles from "./TicketPage.module.css";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import SmartTooltip from "../SmartTooltip";
-import { searchTickets, fetchAllMatchingTickets, restoreTicket, permanentlyDeleteTicket, bulkUpdateTickets, fetchSalesForms, fetchTicketViews, fetchTicketViewCounts, updateTicketView, fetchTicketTableColumns } from "../../api/tickets";
+import { searchTickets, fetchAllMatchingTickets, restoreTicket, permanentlyDeleteTicket, bulkUpdateTickets, fetchSalesForms, fetchTicketViews, fetchBuiltinTicketViews, fetchTicketViewCounts, updateTicketView, fetchTicketTableColumns } from "../../api/tickets";
 import { fetchUsers } from "../../api/users";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -20,7 +20,7 @@ import TicketConfirmModal from "./TicketConfirmModal";
 import TicketViewModal from "./TicketViewModal";
 import TicketColumnsModal from "./TicketColumnsModal";
 import { buildTicketSubjectTooltip } from "./ticketSubjectTooltip";
-import { getBuiltinTicketViews, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
+import { getBuiltinTicketViews, applyBuiltinViewOverrides, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
 import { usePersistedTicketViewId } from "../../utils/ticketLastViewStorage";
 import {
   DEFAULT_TICKET_SALES_TABLE_COLUMNS,
@@ -31,6 +31,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { formatSalesBulkLabel, getTicketSalesPageCopy, interpolate } from "./ticketSalesPageI18n";
 import { getTicketPageCopy } from "./ticketPageI18n";
+import { formatTicketCategoryDisplay } from "./ticketCategoryDisplay";
 import ContextMenu from "../Misc/ContextMenu/ContextMenu";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
@@ -47,9 +48,13 @@ import {
   useFinderNavIndicator
 } from "../UiKit";
 import ActivityStatusSegmented from "../shared/ActivityStatusSegmented/ActivityStatusSegmented";
+import useResizableTableColumns from "../../hooks/useResizableTableColumns";
+import ResizableTableHeaderCell from "./ResizableTableHeaderCell";
 
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_sales_views_collapsed";
+const VIEWS_SECTIONS_COLLAPSED_KEY = "veritas_ticket_sales_views_sections_collapsed";
+const TICKET_SALES_COLUMN_WIDTHS_KEY = "veritas_ticket_sales_table_column_widths_v1";
 const SALES_TICKET_FAMILY = "sales";
 const SALES_PAGE_SCOPE = "ticket_sales";
 
@@ -63,6 +68,21 @@ function readViewsPaneCollapsed() {
 function writeViewsPaneCollapsed(collapsed) {
   try {
     if (collapsed) localStorage.setItem(VIEWS_PANE_COLLAPSED_KEY, "1");else localStorage.removeItem(VIEWS_PANE_COLLAPSED_KEY);
+  } catch {}
+}
+function readCollapsedViewSections() {
+  try {
+    const raw = localStorage.getItem(VIEWS_SECTIONS_COLLAPSED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeCollapsedViewSections(map) {
+  try {
+    localStorage.setItem(VIEWS_SECTIONS_COLLAPSED_KEY, JSON.stringify(map || {}));
   } catch {}
 }
 function orderViewsByIds(views, ids) {
@@ -251,10 +271,11 @@ function SortableViewsSection({
       </SortableContext>
     </DndContext>;
 }
-function getCategoryLabel(category, categoryLabels = {}) {
-  if (categoryLabels[category]) return categoryLabels[category];
-  const prefix = String(category || "").startsWith("installation-") ? "installation-" : "prestation-";
-  return String(category || "").replace(new RegExp(`^${prefix}`), "").replace(/-/g, " ").trim() || "-";
+function getCategoryLabel(category, categoryLabels = {}, emptyLabel = "À catégoriser") {
+  return formatTicketCategoryDisplay(category, {
+    emptyLabel,
+    knownLabels: categoryLabels
+  });
 }
 function normalizeStatus(status) {
   return status === "open" ? "new" : status;
@@ -313,7 +334,14 @@ export default function TicketSalesPage({
   const pageCopy = useMemo(() => getTicketSalesPageCopy(locale), [locale]);
   const supportCopy = useMemo(() => getTicketPageCopy(locale), [locale]);
   const viewsCopy = supportCopy.views;
-  const builtinTicketViews = useMemo(() => getBuiltinTicketViews(locale), [locale]);
+  const defaultBuiltinTicketViews = useMemo(
+    () => getBuiltinTicketViews(locale, { pageScope: SALES_PAGE_SCOPE }),
+    [locale]
+  );
+  const [builtinTicketViews, setBuiltinTicketViews] = useState(defaultBuiltinTicketViews);
+  useEffect(() => {
+    setBuiltinTicketViews(defaultBuiltinTicketViews);
+  }, [defaultBuiltinTicketViews]);
   const isAdmin = userRole === "admin";
   const canCreateSales = can("sales.create");
   const canExportSales = can("sales.export");
@@ -349,6 +377,7 @@ export default function TicketSalesPage({
   const [customViewsOrder, setCustomViewsOrder] = useState(null);
   const [viewsOrderSaving, setViewsOrderSaving] = useState(false);
   const [viewsPaneCollapsed, setViewsPaneCollapsed] = useState(readViewsPaneCollapsed);
+  const [collapsedViewSections, setCollapsedViewSections] = useState(readCollapsedViewSections);
   const [viewsPaneMotionReady, setViewsPaneMotionReady] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -374,6 +403,20 @@ export default function TicketSalesPage({
     [visibleTableColumns]
   );
   const tableColSpan = tableColumns.length + 1 + (viewMode === "trash" ? 1 : 0);
+  const {
+    isResizing: isResizingColumns,
+    getColumnStyle,
+    beginResize: beginColumnResize
+  } = useResizableTableColumns({
+    storageKey: TICKET_SALES_COLUMN_WIDTHS_KEY
+  });
+  const getTableColumnLabel = useCallback(columnId => {
+    if (columnId === "ticket_number") return pageCopy.table.id;
+    if (columnId === "title") return pageCopy.table.subject;
+    if (columnId === "created_at") return pageCopy.table.created;
+    if (columnId === "updated_at") return pageCopy.table.updated || pageCopy.table.created;
+    return pageCopy.table[columnId] || columnId;
+  }, [pageCopy.table]);
   useEffect(() => {
     if (!bootReady) return undefined;
     const controller = createTrackedAbortController();
@@ -462,11 +505,18 @@ export default function TicketSalesPage({
   const loadViews = useCallback(async (signal) => {
     setViewsLoading(true);
     try {
-      const rows = await fetchTicketViews(SALES_PAGE_SCOPE, {
-        signal
-      });
+      const [rows, builtinRows] = await Promise.all([
+        fetchTicketViews(SALES_PAGE_SCOPE, { signal }),
+        fetchBuiltinTicketViews(SALES_PAGE_SCOPE, { signal }).catch(() => [])
+      ]);
       if (signal?.aborted) return;
       setTicketViews(Array.isArray(rows) ? rows : []);
+      setBuiltinTicketViews(
+        applyBuiltinViewOverrides(
+          getBuiltinTicketViews(locale, { pageScope: SALES_PAGE_SCOPE }),
+          builtinRows
+        )
+      );
       if (!signal?.aborted) {
         setViewsLoading(false);
         setViewsLoaded(true);
@@ -476,12 +526,13 @@ export default function TicketSalesPage({
       if (error?.name === "AbortError") return;
       toast.error(error.message || supportCopy.toasts.loadViews);
       setTicketViews([]);
+      setBuiltinTicketViews(getBuiltinTicketViews(locale, { pageScope: SALES_PAGE_SCOPE }));
       if (!signal?.aborted) {
         setViewsLoading(false);
         setViewsLoaded(true);
       }
     }
-  }, [loadViewCounts, supportCopy.toasts.loadViews]);
+  }, [loadViewCounts, locale, supportCopy.toasts.loadViews]);
   useEffect(() => {
     const trimmed = search.trim();
     if (!trimmed) {
@@ -811,6 +862,20 @@ export default function TicketSalesPage({
     setViewsPaneCollapsed(collapsed);
     writeViewsPaneCollapsed(collapsed);
   }, []);
+  const isViewSectionCollapsed = useCallback(sectionKey => {
+    if (viewsReorderMode) return false;
+    return Boolean(collapsedViewSections[sectionKey]);
+  }, [collapsedViewSections, viewsReorderMode]);
+  const toggleViewSection = useCallback(sectionKey => {
+    setCollapsedViewSections(prev => {
+      const next = {
+        ...prev,
+        [sectionKey]: !prev[sectionKey]
+      };
+      writeCollapsedViewSections(next);
+      return next;
+    });
+  }, []);
   const renderViewItem = (view, {
     reorderMode = false
   } = {}) => {
@@ -836,6 +901,28 @@ export default function TicketSalesPage({
       />
     );
   };
+  const renderViewsSectionShell = (sectionKey, label, content) => {
+    const collapsed = isViewSectionCollapsed(sectionKey);
+    const bodyId = `ticket-sales-views-section-${sectionKey}`;
+    return (
+      <div className={kit.finderSecGroup}>
+        <button
+          type="button"
+          className={styles.viewsSecGroupToggle}
+          onClick={() => toggleViewSection(sectionKey)}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          aria-label={interpolate(collapsed ? viewsCopy.expandSection : viewsCopy.collapseSection, {
+            name: label
+          })}
+        >
+          <span className={styles.viewsSecGroupToggleLabel}>{label}</span>
+          <Icon icon={collapsed ? "mdi:chevron-right" : "mdi:chevron-down"} className={styles.viewsSecGroupChevron} aria-hidden />
+        </button>
+        {!collapsed ? <div id={bodyId}>{content}</div> : null}
+      </div>
+    );
+  };
   const renderCustomViewsSection = (sectionKey, label, views) => {
     if (views.length === 0) return null;
     const orderedViews = viewsReorderMode && customViewsOrder ? orderViewsByIds(views, customViewsOrder[sectionKey]) : views;
@@ -847,18 +934,14 @@ export default function TicketSalesPage({
       </SortableViewsSection>
     );
     if (!label) return list;
-    return (
-      <div className={kit.finderSecGroup}>
-        <p className={kit.finderSecGroupTitle}>{label}</p>
-        {list}
-      </div>
-    );
+    return renderViewsSectionShell(sectionKey, label, list);
   };
   const { trackRef: viewsNavTrackRef, indicator: viewsNavIndicator } = useFinderNavIndicator([
     activeViewId,
     viewsLoading,
     viewsReorderMode,
-    viewMode
+    viewMode,
+    collapsedViewSections
   ]);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
   const paginatedTickets = tickets;
@@ -1237,7 +1320,7 @@ export default function TicketSalesPage({
           if (columnId === "ticket_number") return `#${t.ticket_number || "-"}`;
           if (columnId === "title") return t.title || "";
           if (columnId === "type") return getTicketKindLabel(t);
-          if (columnId === "category") return getCategoryLabel(t.category, categoryLabels);
+          if (columnId === "category") return getCategoryLabel(t.category, categoryLabels, pageCopy.toCategorize);
           if (columnId === "client") return resolveClientLabel(t);
           if (columnId === "requester") return resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t));
           if (columnId === "assigned") return resolveAssigneesLabel(t);
@@ -1349,7 +1432,7 @@ export default function TicketSalesPage({
                 ) : null}
                 <UiKitScrollFadeShell
                   className={kit.finderSecondaryShell}
-                  deps={[activeViewId, viewsLoading, viewsReorderMode, builtinTicketViews.length, publicViews.length, assignedViews.length, privateViews.length]}
+                  deps={[activeViewId, viewsLoading, viewsReorderMode, builtinTicketViews.length, publicViews.length, assignedViews.length, privateViews.length, collapsedViewSections]}
                 >
                   <div className={kit.finderSecondary}>
                     {viewsLoading ? (
@@ -1373,10 +1456,11 @@ export default function TicketSalesPage({
                             aria-hidden
                           />
                         ) : null}
-                        <div className={kit.finderSecGroup}>
-                          <p className={kit.finderSecGroupTitle}>{viewsCopy.general}</p>
-                          {builtinTicketViews.map(view => renderViewItem(view))}
-                        </div>
+                        {renderViewsSectionShell(
+                          "general",
+                          viewsCopy.general,
+                          builtinTicketViews.map(view => renderViewItem(view))
+                        )}
                         {renderCustomViewsSection("public", viewsCopy.team, publicViews)}
                         {renderCustomViewsSection("assigned", viewsCopy.assigned, assignedViews)}
                         {renderCustomViewsSection("private", viewsCopy.private, privateViews)}
@@ -1442,7 +1526,14 @@ export default function TicketSalesPage({
                     className={tableKit.tableListFill}
                     deps={[paginatedTickets.length, pageSize, tableColumns.join("|"), viewMode, activeViewId]}
                   >
-                    <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`}>
+                    <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table} ${styles.tableResizable} ${isResizingColumns ? styles.isResizing : ""}`.trim()}>
+                      <colgroup>
+                        <col className={styles.checkboxCell} />
+                        {tableColumns.map(columnId => (
+                          <col key={columnId} style={getColumnStyle(columnId)} />
+                        ))}
+                        {viewMode === "trash" ? <col /> : null}
+                      </colgroup>
                       <thead>
                         <tr>
                           <th className={styles.checkboxCell}>
@@ -1450,25 +1541,25 @@ export default function TicketSalesPage({
                           </th>
                           {tableColumns.map(columnId => {
                             const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
-                            const label = columnId === "ticket_number" ? pageCopy.table.id
-                              : columnId === "title" ? pageCopy.table.subject
-                              : columnId === "created_at" ? pageCopy.table.created
-                              : columnId === "updated_at" ? (pageCopy.table.updated || pageCopy.table.created)
-                              : pageCopy.table[columnId] || columnId;
+                            const label = getTableColumnLabel(columnId);
                             const activeKey = sortKey || (columnId === "kind" ? "type" : columnId);
+                            const resizeLabel = interpolate(pageCopy.table.resizeColumn || "Redimensionner la colonne {name}", {
+                              name: label
+                            });
                             return (
-                              <th
+                              <ResizableTableHeaderCell
                                 key={columnId}
+                                sortable={Boolean(sortKey)}
                                 onClick={sortKey ? () => handleSort(columnId) : undefined}
-                                style={sortKey ? undefined : { cursor: "default" }}
+                                style={getColumnStyle(columnId)}
+                                resizeLabel={resizeLabel}
+                                onResizeStart={event => beginColumnResize(event, columnId)}
                               >
+                                {label}
                                 {sortKey ? (
-                                  <span className={styles.thSortInner}>
-                                    {label}
-                                    <SortIcon active={sortBy === activeKey} direction={sortDirection} />
-                                  </span>
-                                ) : label}
-                              </th>
+                                  <SortIcon active={sortBy === activeKey} direction={sortDirection} />
+                                ) : null}
+                              </ResizableTableHeaderCell>
                             );
                           })}
                           {viewMode === "trash" && <th>{pageCopy.table.actions}</th>}
@@ -1498,7 +1589,7 @@ export default function TicketSalesPage({
                                       <SmartTooltip as="span" className={styles.subjectCellWrap} content={buildTicketSubjectTooltip(t, {
                                         kindLabel: getTicketKindLabel(t),
                                         statusLabel: pageCopy.getStatusBadge(ticketStatus) || t.status,
-                                        category: getCategoryLabel(t.category, categoryLabels),
+                                        category: getCategoryLabel(t.category, categoryLabels, pageCopy.toCategorize),
                                         clientLabel: resolveClientLabel(t),
                                         requesterLabel: resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t)),
                                         commentsCount: Number(t.comments_count ?? 0) || null
@@ -1514,7 +1605,7 @@ export default function TicketSalesPage({
                                   return <td key={columnId}>{getTicketKindLabel(t)}</td>;
                                 }
                                 if (columnId === "category") {
-                                  return <td key={columnId}>{getCategoryLabel(t.category, categoryLabels)}</td>;
+                                  return <td key={columnId}>{getCategoryLabel(t.category, categoryLabels, pageCopy.toCategorize)}</td>;
                                 }
                                 if (columnId === "client") {
                                   const clientLabel = resolveClientLabel(t);

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import { Switch } from "./AdminUi";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./IngestionRuleFormModal.module.css";
 import { useAdminSupportSettingsCopy } from "../../hooks/useAdminCopy";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getItilCategoryFormSections } from "./adminSupportSettingsI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
+import { UiKitButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
+
 export default function ItilCategoryFormModal({
   open,
   mode = "create",
@@ -22,6 +24,7 @@ export default function ItilCategoryFormModal({
   onSave
 }) {
   const locale = useAppLocale();
+  const commonCopy = useCommonCopy();
   const ss = useAdminSupportSettingsCopy();
   const m = messages || ss.modals.itilCategory;
   const itilCategoryFormSections = useMemo(
@@ -30,15 +33,20 @@ export default function ItilCategoryFormModal({
   );
   const isCreate = mode === "create";
   const [activeSection, setActiveSection] = useState("general");
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
+
   useEffect(() => {
     if (!open) return;
     setActiveSection("general");
   }, [open]);
+
   const sectionMeta = useMemo(() => ({
     general: Boolean(String(draft?.name || "").trim() && String(draft?.section || "").trim()),
     details: true
   }), [draft]);
+
   if (!open || !draft) return null;
+
   const patchDraft = patch => setDraft(prev => ({
     ...prev,
     ...patch
@@ -47,6 +55,8 @@ export default function ItilCategoryFormModal({
     name: draft.name || m.editFallback
   });
   const modalSubtitle = isCreate ? m.createSubtitle : m.editSubtitle;
+  const canSave = Boolean(String(draft?.name || "").trim());
+
   const renderSectionContent = () => {
     switch (activeSection) {
       case "general":
@@ -60,21 +70,32 @@ export default function ItilCategoryFormModal({
                 <label className={layout.label} htmlFor="itil-category-section">
                   {m.sectionLabel}
                 </label>
-                <select id="itil-category-section" className={layout.input} value={draft.section || ""} onChange={e => patchDraft({
-                section: e.target.value
-              })}>
-                  {sectionOptions.map(name => <option key={name} value={name}>
+                <select
+                  id="itil-category-section"
+                  className={layout.input}
+                  value={draft.section || ""}
+                  onChange={e => patchDraft({ section: e.target.value })}
+                >
+                  {sectionOptions.map(name => (
+                    <option key={name} value={name}>
                       {name}
-                    </option>)}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className={`${layout.field} ${layout.fieldFull}`}>
                 <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="itil-category-name">
                   {m.nameLabel}
                 </label>
-                <input id="itil-category-name" type="text" className={layout.input} value={draft.name || ""} onChange={e => patchDraft({
-                name: e.target.value
-              })} placeholder={m.namePlaceholder} autoFocus />
+                <input
+                  id="itil-category-name"
+                  type="text"
+                  className={layout.input}
+                  value={draft.name || ""}
+                  onChange={e => patchDraft({ name: e.target.value })}
+                  placeholder={m.namePlaceholder}
+                  autoFocus
+                />
               </div>
             </div>
           </>;
@@ -90,31 +111,46 @@ export default function ItilCategoryFormModal({
                 <div className={styles.statusLabel}>{m.activeLabel}</div>
                 <p className={styles.statusHint}>{m.activeHint}</p>
               </div>
-              <Switch checked={Boolean(draft.enabled)} onChange={on => patchDraft({
-              enabled: on
-            })} label={draft.enabled ? m.activeOn : m.activeOff} />
+              <Switch
+                checked={Boolean(draft.enabled)}
+                onChange={on => patchDraft({ enabled: on })}
+                label={draft.enabled ? m.activeOn : m.activeOff}
+              />
             </div>
 
             <div className={`${layout.field} ${layout.fieldFull}`}>
               <label className={layout.label} htmlFor="itil-category-description">
                 {m.descriptionLabel}
               </label>
-              <textarea id="itil-category-description" className={layout.input} rows={5} value={draft.description || ""} onChange={e => patchDraft({
-              description: e.target.value
-            })} placeholder={m.descriptionPlaceholder} style={{
-              resize: "vertical",
-              minHeight: "120px"
-            }} />
+              <textarea
+                id="itil-category-description"
+                className={layout.input}
+                rows={5}
+                value={draft.description || ""}
+                onChange={e => patchDraft({ description: e.target.value })}
+                placeholder={m.descriptionPlaceholder}
+                style={{
+                  resize: "vertical",
+                  minHeight: "120px"
+                }}
+              />
             </div>
           </>;
       default:
         return null;
     }
   };
-  return createPortal(<div className={layout.overlay} onClick={onClose} role="presentation">
-      <div className={layout.shell} style={{
-      maxWidth: "min(720px, 100%)"
-    }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="itil-category-form-title">
+
+  return createPortal(
+    <div className={layout.overlay} onClick={onClose} role="presentation">
+      <div
+        className={layout.shell}
+        style={{ maxWidth: "min(720px, 100%)" }}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="itil-category-form-title"
+      >
         <div className={layout.accentBar} aria-hidden />
         <header className={layout.header}>
           <div className={layout.headerMain}>
@@ -129,24 +165,59 @@ export default function ItilCategoryFormModal({
               <p className={layout.subtitle}>{modalSubtitle}</p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={m.closeAria}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={m.closeAria || commonCopy.close}
+            icon="mdi:close"
+          />
         </header>
 
         <div className={layout.body}>
-          <nav className={layout.nav} aria-label={m.sectionsAria}>
-            {itilCategoryFormSections.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
-                <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
-                <span className={layout.navItemText}>
-                  <span className={layout.navItemLabel}>{section.label}</span>
-                  <span className={layout.navItemHint}>{section.description}</span>
-                </span>
-                {sectionMeta[section.id] && <span className={layout.navBadge}>✓</span>}
-              </button>)}
-          </nav>
+          <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={m.sectionsAria}>
+            <nav
+              ref={navTrackRef}
+              className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
+            >
+              {navIndicator.ready ? (
+                <div
+                  className={kit.finderNavIndicator}
+                  style={{
+                    transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                    height: navIndicator.height
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {itilCategoryFormSections.map(section => {
+                const active = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    className={`${kit.finderItem} ${kit.finderItemRich} ${active ? kit.finderItemActive : ""}`}
+                    onClick={() => setActiveSection(section.id)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon icon={section.icon} className={kit.finderItemIcon} aria-hidden />
+                    <span className={kit.finderItemStack}>
+                      <span className={kit.finderItemLabel}>{section.label}</span>
+                      {section.description ? <span className={kit.finderItemDesc}>{section.description}</span> : null}
+                    </span>
+                    {sectionMeta[section.id] ? <span className={layout.navBadge}>✓</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
 
-          <div className={layout.content}>{renderSectionContent()}</div>
+          <div className={layout.content} key={activeSection}>
+            <div className={kit.contentFadeUp}>{renderSectionContent()}</div>
+          </div>
         </div>
 
         <footer className={layout.footer}>
@@ -154,23 +225,31 @@ export default function ItilCategoryFormModal({
             {draft.section || m.footerNoSection} · {draft.enabled ? m.activeOn : m.activeOff}
           </span>
           <div className={layout.footerActions}>
-            <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
-              {m.cancel}
-            </button>
-            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving}>
-              {saving ? <>
+            <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
+              {m.cancel || commonCopy.cancel}
+            </UiKitButton>
+            <UiKitButton
+              type="button"
+              variant="primary"
+              onClick={onSave}
+              disabled={saving || !canSave}
+              icon={saving ? undefined : isCreate ? "mdi:check" : "mdi:content-save-outline"}
+            >
+              {saving ? (
+                <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-                  {m.saving}
-                </> : isCreate ? <>
-                  <Icon icon="mdi:check" aria-hidden />
-                  {m.createBtn}
-                </> : <>
-                  <Icon icon="mdi:content-save-outline" aria-hidden />
-                  {m.saveBtn}
-                </>}
-            </button>
+                  {m.saving || commonCopy.saving}
+                </>
+              ) : isCreate ? (
+                m.createBtn
+              ) : (
+                m.saveBtn || commonCopy.save
+              )}
+            </UiKitButton>
           </div>
         </footer>
       </div>
-    </div>, document.getElementById("modal-root") || document.body);
+    </div>,
+    document.getElementById("modal-root") || document.body
+  );
 }

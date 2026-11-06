@@ -109,15 +109,15 @@ async function createTicketFromPublicForm({ form, values, displayValues, fieldLa
     label: "Default",
     targets: {
       priority: "medium",
-      type: form.kind,
-      categorySlug: form.categorySlug
+      type: form.kind
     }
   }];
 
   const createdTickets = [];
   for (const rule of rulesToApply) {
     const ticketType = String(rule.targets?.type || form.kind || "demande").trim() || "demande";
-    const ticketCategory = String(rule.targets?.categorySlug || form.categorySlug || "").trim();
+    // categorySlug du formulaire = clé technique, pas une catégorie catalogue.
+    const ticketCategory = String(rule.targets?.categorySlug || "").trim();
     const ticketPriority = String(rule.targets?.priority || "medium").trim() || "medium";
     const supportFormData = {
       formId: form.id,

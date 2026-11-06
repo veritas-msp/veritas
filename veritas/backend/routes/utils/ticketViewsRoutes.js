@@ -5,7 +5,7 @@ import verifyJWT from "../../middleware/auth.js";
 import { normalizeRules, validateViewRules } from "../../services/ticketViewRules.js";
 import { ensureTicketViewsSchema } from "../../services/ensureTicketViewsSchema.js";
 import { countTickets, countTicketsByStatus, resolveTicketListSchema } from "../../services/ticketPagedListService.js";
-import { BUILTIN_TICKET_VIEWS, BUILTIN_TICKET_VIEW_IDS, resolveBuiltinViewRules } from "../../utils/builtinTicketViews.js";
+import { resolveBuiltinViewRules } from "../../utils/builtinTicketViews.js";
 import { isCommunity } from "../../utils/edition.js";
 import { loadAssignmentsByViewIds, syncViewAssignments, getUserTeamIds, isAssignedVisibility, hasAssignmentTargets, userCanAccessAssignedView, mapViewAssignments } from "../../services/ticketViewAssignments.js";
 import {
@@ -160,7 +160,7 @@ router.get("/counts", verifyJWT, [query("pageScope").optional().isIn(["ticket", 
     }
     let views = {};
     if (scope === "all" || scope === "views") {
-      const builtinViews = pageScope === "ticket_sales" ? BUILTIN_TICKET_VIEWS.filter(view => String(view.id) !== String(BUILTIN_TICKET_VIEW_IDS.MONITORING)) : BUILTIN_TICKET_VIEWS;
+      const builtinViews = await listMergedBuiltinViews(pageScope);
       const viewsToCount = [...builtinViews.map(view => ({
         id: view.id,
         rules: view.rules

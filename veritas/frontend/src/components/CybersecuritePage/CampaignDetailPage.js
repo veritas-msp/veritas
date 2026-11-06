@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import React from "react";
 import { Icon } from "@iconify/react";
 import { FaArrowLeft, FaTimes, FaFlagCheckered, FaSpinner, FaUndo, FaPause, FaPlay, FaDownload, FaFolderOpen } from "react-icons/fa";
@@ -17,6 +17,7 @@ import CampaignAdoptionStats from "./CampaignAdoptionStats";
 import CampaignManagementPanel from "./CampaignManagementPanel";
 import EnterpriseVaultPanel from "../EnterprisesPage/EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "../EnterprisesPage/enterpriseVaultI18n";
+import { EnterpriseQuickActionButton } from "../EnterprisesPage/EnterpriseFinderTabIcon";
 import ReportSyncProgressModal from "../RapportPage/monitoring/ReportSyncProgressModal";
 import { runSupervisionSyncJobs, syncOffice365ForClient, fillSyncCopy } from "../RapportPage/monitoring/supervisionReportSync";
 import API_BASE_URL from "../../config.js";
@@ -33,6 +34,7 @@ import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { getCampaignDetailCopy, formatCampaignDetail, formatMicrosoftSyncError } from "./campaignDetailI18n";
 import { recordCampaignDailyAdoption } from "./campaignAdoptionDaily";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { useFinderNavIndicator } from "../UiKit";
 const CAMPAIGN_TYPES = [{
   value: 'microsoft_security',
   label: 'Microsoft Security'
@@ -136,7 +138,29 @@ export default function CampaignDetailPage({
   const [publishingReport, setPublishingReport] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
+  const [mainContentEnter, setMainContentEnter] = useState(true);
+  const { trackRef: campaignTabTrackRef, indicator: campaignTabIndicator } = useFinderNavIndicator([activeSection]);
   const [dailyAdoptionTrend, setDailyAdoptionTrend] = useState({ today: null, previousDay: null, delta: null });
+
+  useLayoutEffect(() => {
+    setMainContentEnter(false);
+  }, [activeSection]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let innerId = 0;
+    const outerId = requestAnimationFrame(() => {
+      innerId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        setMainContentEnter(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(outerId);
+      cancelAnimationFrame(innerId);
+    };
+  }, [activeSection]);
   const initialData = campaignData?.campaign || campaignData || {};
   const [editForm, setEditForm] = useState({
     client_id: initialData?.client_id || '',
@@ -986,7 +1010,7 @@ export default function CampaignDetailPage({
             <div className={enterpriseStyles.heroIdentityRow}>
               <div className={enterpriseStyles.heroMain}>
                 <span className={enterpriseStyles.heroBrandIcon} aria-hidden>
-                  <Icon icon="mdi:shield-lock" width={30} height={30} />
+                  <Icon icon="mdi:shield-lock" width={18} height={18} />
                 </span>
                 <div className={enterpriseStyles.heroText}>
                   <h1 className={enterpriseStyles.heroTitle}>
@@ -996,56 +1020,55 @@ export default function CampaignDetailPage({
                       {statusInfo.label}
                     </span>
                   </h1>
-                  <div className={enterpriseStyles.heroMeta} aria-label={detailCopy.sidebar?.general || detailCopy.microsoftSecurity}>
-                    {typeInfo?.label ? (
-                      <span className={enterpriseStyles.heroMetaItem}>
-                        <Icon icon="mdi:shield-check-outline" aria-hidden />
-                        {typeInfo.label}
-                      </span>
-                    ) : null}
-                    {clientLabel ? (
-                      onNavigate && campaign?.client_id ? (
-                        <button
-                          type="button"
-                          className={`${enterpriseStyles.heroMetaItem} ${enterpriseStyles.heroMetaLink}`}
-                          onClick={() => onNavigate("ContratDetail", {
-                            clientId: campaign.client_id,
-                            name: clientLabel
-                          })}
-                        >
-                          <Icon icon="mdi:domain" aria-hidden />
-                          {clientLabel}
-                        </button>
-                      ) : (
-                        <span className={enterpriseStyles.heroMetaItem}>
-                          <Icon icon="mdi:domain" aria-hidden />
-                          {clientLabel}
-                        </span>
-                      )
-                    ) : null}
-                    {campaign.tenant_id ? (
-                      <span
-                        className={enterpriseStyles.heroMetaItem}
-                        title={String(campaign.tenant_id)}
-                      >
-                        <Icon icon="mdi:identifier" aria-hidden />
-                        {`${String(campaign.tenant_id).slice(0, 8)}…${String(campaign.tenant_id).slice(-4)}`}
-                      </span>
-                    ) : null}
-                    {campaign.created_at ? (
-                      <span className={enterpriseStyles.heroMetaItem}>
-                        <Icon icon="mdi:calendar-outline" aria-hidden />
-                        {new Date(campaign.created_at).toLocaleDateString(locale, {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric"
-                        })}
-                      </span>
-                    ) : null}
-                  </div>
                 </div>
               </div>
-
+              <div className={enterpriseStyles.heroMeta} aria-label={detailCopy.sidebar?.general || detailCopy.microsoftSecurity}>
+                {typeInfo?.label ? (
+                  <span className={enterpriseStyles.heroMetaItem}>
+                    <Icon icon="mdi:shield-check-outline" aria-hidden />
+                    {typeInfo.label}
+                  </span>
+                ) : null}
+                {clientLabel ? (
+                  onNavigate && campaign?.client_id ? (
+                    <button
+                      type="button"
+                      className={`${enterpriseStyles.heroMetaItem} ${enterpriseStyles.heroMetaLink}`}
+                      onClick={() => onNavigate("ContratDetail", {
+                        clientId: campaign.client_id,
+                        name: clientLabel
+                      })}
+                    >
+                      <Icon icon="mdi:domain" aria-hidden />
+                      {clientLabel}
+                    </button>
+                  ) : (
+                    <span className={enterpriseStyles.heroMetaItem}>
+                      <Icon icon="mdi:domain" aria-hidden />
+                      {clientLabel}
+                    </span>
+                  )
+                ) : null}
+                {campaign.tenant_id ? (
+                  <span
+                    className={enterpriseStyles.heroMetaItem}
+                    title={String(campaign.tenant_id)}
+                  >
+                    <Icon icon="mdi:identifier" aria-hidden />
+                    {`${String(campaign.tenant_id).slice(0, 8)}…${String(campaign.tenant_id).slice(-4)}`}
+                  </span>
+                ) : null}
+                {campaign.created_at ? (
+                  <span className={enterpriseStyles.heroMetaItem}>
+                    <Icon icon="mdi:calendar-outline" aria-hidden />
+                    {new Date(campaign.created_at).toLocaleDateString(locale, {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric"
+                    })}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
@@ -1429,26 +1452,42 @@ export default function CampaignDetailPage({
 
               <div className={styles.mainColumn}>
                 <nav
-                  className={`${enterpriseStyles.heroTabBar} ${styles.campaignTabBar}`.trim()}
+                  ref={campaignTabTrackRef}
+                  className={`${enterpriseStyles.heroTabBar} ${styles.campaignTabBar} ${styles.campaignTabBarAnimated}`.trim()}
                   role="tablist"
                   aria-label={sectionCopy.aria || detailCopy.tabs?.aria || "Sections"}
                 >
+                  {campaignTabIndicator.ready ? (
+                    <div
+                      className={styles.campaignTabIndicator}
+                      style={{
+                        transform: `translate3d(${campaignTabIndicator.left}px, ${campaignTabIndicator.top}px, 0)`,
+                        width: campaignTabIndicator.width,
+                        height: campaignTabIndicator.height
+                      }}
+                      aria-hidden
+                    />
+                  ) : null}
                   {sectionItems.map(item => (
                     <button
                       key={item.id}
                       type="button"
                       role="tab"
                       aria-selected={safeSection === item.id}
-                      className={`${enterpriseStyles.heroTab} ${safeSection === item.id ? enterpriseStyles.heroTabActive : ""}`.trim()}
+                      aria-current={safeSection === item.id ? "page" : undefined}
+                      className={`${enterpriseStyles.heroTab} ${styles.campaignTab} ${safeSection === item.id ? `${enterpriseStyles.heroTabActive}${campaignTabIndicator.ready ? ` ${styles.campaignTabActive}` : ""}` : ""}`.trim()}
                       onClick={() => setActiveSection(item.id)}
                     >
-                      <Icon icon={item.icon} className={enterpriseStyles.heroTabIcon} aria-hidden />
+                      <Icon icon={item.icon} className={`${enterpriseStyles.heroTabIcon} ${styles.campaignTabIcon}`.trim()} aria-hidden />
                       <span className={enterpriseStyles.heroTabLabel}>{item.label}</span>
                     </button>
                   ))}
                 </nav>
 
-                <div className={styles.sectionMain}>
+                <div
+                  className={`${styles.sectionMain} ${mainContentEnter ? styles.sectionMainFadeIn : styles.sectionMainFadePending}`.trim()}
+                  key={safeSection}
+                >
                   {safeSection === "overview" ? (
                     <div className={`${styles.overviewStack} ${styles.sectionFill}`.trim()}>
                       <section className={`${enterpriseStyles.panel} ${styles.sectionPanel} ${styles.overviewTopPanel}`.trim()}>
@@ -1619,100 +1658,89 @@ export default function CampaignDetailPage({
                 </div>
               </div>
 
-              <div className={`${enterpriseStyles.asideStack} ${styles.asideStack}`.trim()}>
-                <section
-                  className={`${enterpriseStyles.quickActionsCard} ${styles.quickActionsCardFill}`.trim()}
-                  aria-label={detailCopy.sidebar.quickActions || "Actions rapides"}
-                >
-                  <h3 className={enterpriseStyles.quickActionsTitle}>
-                    {detailCopy.sidebar.quickActions || "Actions rapides"}
-                  </h3>
-                  <ul className={enterpriseStyles.quickActionsList}>
-                    {isMicrosoftSecurity ? (
-                      <li>
-                        <button
-                          type="button"
-                          className={enterpriseStyles.quickActionItem}
+              <aside
+                className={`${enterpriseStyles.asideStack} ${enterpriseStyles.asidePanel} ${styles.asideStack}`.trim()}
+                aria-label={detailCopy.sidebar.quickActions || "Actions rapides"}
+              >
+                <div className={enterpriseStyles.rightSidebarContent}>
+                  <section
+                    className={`${enterpriseStyles.sidebarSection} ${enterpriseStyles.sidebarActionToolbarSection}`.trim()}
+                    aria-label={detailCopy.sidebar.quickActions || "Actions rapides"}
+                  >
+                    <div className={enterpriseStyles.sidebarActionToolbar}>
+                      {isMicrosoftSecurity ? (
+                        <EnterpriseQuickActionButton
+                          actionId="rmm"
+                          iconify="mdi:sync"
+                          className={enterpriseStyles.sidebarActionIconBtn}
                           onClick={() => { void handleMicrosoftSync(); }}
                           disabled={syncLoading || syncProgress.open}
-                        >
-                          <span className={enterpriseStyles.quickActionIcon} aria-hidden>
-                            {syncLoading || syncProgress.open
-                              ? <Icon icon="mdi:loading" className={styles.spinner} />
-                              : <Icon icon="mdi:sync" />}
-                          </span>
-                          <span className={enterpriseStyles.quickActionLabel}>
-                            {syncLoading || syncProgress.open
+                          loading={syncLoading || syncProgress.open}
+                          loadingClassName={styles.spinner}
+                          aria-label={
+                            syncLoading || syncProgress.open
                               ? (detailCopy.actions.syncing || "Synchronisation…")
-                              : (detailCopy.actions.syncShort || detailCopy.actions.sync || "Synchroniser")}
+                              : (detailCopy.actions.syncShort || detailCopy.actions.sync || "Synchroniser")
+                          }
+                        />
+                      ) : null}
+                      {showLaunchButton ? (
+                        <SmartTooltip content={launchTooltipMessage}>
+                          <span className={styles.quickActionTooltipWrap}>
+                            <EnterpriseQuickActionButton
+                              actionId="schedule"
+                              iconify="mdi:rocket-launch-outline"
+                              className={enterpriseStyles.sidebarActionIconBtn}
+                              onClick={handleLaunchCampaign}
+                              disabled={actionLoading || !canLaunchCampaign}
+                              loading={actionLoading}
+                              loadingClassName={styles.spinner}
+                              aria-label={detailCopy.actions.launch}
+                            />
                           </span>
-                          <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
-                        </button>
-                      </li>
-                    ) : null}
-                    {showLaunchButton ? (
-                      <li>
-                        <SmartTooltip as="div" className={styles.quickActionTooltipWrap} content={launchTooltipMessage}>
-                          <button
-                            type="button"
-                            className={enterpriseStyles.quickActionItem}
-                            onClick={handleLaunchCampaign}
-                            disabled={actionLoading || !canLaunchCampaign}
-                          >
-                            <span className={enterpriseStyles.quickActionIcon} aria-hidden>
-                              {actionLoading
-                                ? <Icon icon="mdi:loading" className={styles.spinner} />
-                                : <Icon icon="mdi:rocket-launch-outline" />}
-                            </span>
-                            <span className={enterpriseStyles.quickActionLabel}>{detailCopy.actions.launch}</span>
-                            <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
-                          </button>
                         </SmartTooltip>
-                      </li>
-                    ) : null}
-                    <li>
-                      <button
-                        type="button"
-                        className={enterpriseStyles.quickActionItem}
+                      ) : null}
+                      <EnterpriseQuickActionButton
+                        actionId="edit"
+                        iconify="mdi:pencil-outline"
+                        className={enterpriseStyles.sidebarActionIconBtn}
                         onClick={openCampaignEditModal}
-                      >
-                        <span className={enterpriseStyles.quickActionIcon} aria-hidden>
-                          <Icon icon="mdi:pencil-outline" />
-                        </span>
-                        <span className={enterpriseStyles.quickActionLabel}>
-                          {detailCopy.actions.editShort || detailCopy.actions.edit || "Éditer"}
-                        </span>
-                        <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
-                      </button>
-                    </li>
-                  </ul>
-                  {portalLinks.length > 0 ? (
-                    <div className={styles.quickActionsShortcuts}>
-                      <h4 className={`${enterpriseStyles.sidebarInfoTitle} ${styles.quickActionsSectionTitle}`.trim()}>
-                        {detailCopy.sidebar.shortcuts || "Raccourcis"}
-                      </h4>
-                      <ul className={enterpriseStyles.quickActionsList}>
-                        {portalLinks.map(item => (
-                          <li key={item.href}>
-                            <a
-                              href={item.href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className={`${enterpriseStyles.quickActionItem} ${styles.quickActionLink}`.trim()}
-                            >
-                              <span className={enterpriseStyles.quickActionIcon} aria-hidden>
-                                <Icon icon={item.icon} />
-                              </span>
-                              <span className={enterpriseStyles.quickActionLabel}>{item.title}</span>
-                              <Icon icon="mdi:chevron-right" className={enterpriseStyles.quickActionChevron} aria-hidden />
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
+                        aria-label={detailCopy.actions.editShort || detailCopy.actions.edit || "Éditer"}
+                      />
                     </div>
+                  </section>
+
+                  {portalLinks.length > 0 ? (
+                    <section className={enterpriseStyles.sidebarSection}>
+                      <div className={enterpriseStyles.sidebarInfoHeader}>
+                        <span className={enterpriseStyles.sidebarInfoTitle}>
+                          {detailCopy.sidebar.shortcuts || "Raccourcis"}
+                        </span>
+                      </div>
+                      <div className={`${enterpriseStyles.sidebarBody} ${styles.resourceLinksBody}`.trim()}>
+                        <ul className={styles.resourceLinksList}>
+                          {portalLinks.map(item => (
+                            <li key={item.href}>
+                              <a
+                                href={item.href}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={styles.resourceLinkItem}
+                              >
+                                <span className={styles.resourceLinkIcon} aria-hidden>
+                                  <Icon icon={item.icon} />
+                                </span>
+                                <span className={styles.resourceLinkLabel}>{item.title}</span>
+                                <Icon icon="mdi:chevron-right" className={styles.resourceLinkChevron} aria-hidden />
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </section>
                   ) : null}
-                </section>
-              </div>
+                </div>
+              </aside>
             </div>
           );
         })()}

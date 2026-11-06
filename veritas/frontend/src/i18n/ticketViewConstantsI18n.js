@@ -1,5 +1,5 @@
 import { interpolate, pickLocaleMessages } from "./translate";
-const FIELD_KEYS = ["title", "description", "type", "category", "status", "priority", "channel", "ticket_number", "client_id", "assigned", "assigned_user_id", "pending_validator_user_id", "requester_contact_id", "tags"];
+const FIELD_KEYS = ["title", "description", "type", "section", "category", "status", "priority", "channel", "ticket_number", "client_id", "assigned", "assigned_user_id", "pending_validator_user_id", "requester_contact_id", "tags"];
 const STATUS_KEYS = ["open", "new", "in_progress", "pending", "resolved", "closed"];
 const OPERATOR_KEYS = ["contains", "not_contains", "equals", "not_equals", "starts_with", "ends_with", "in", "not_in", "is_empty", "is_not_empty"];
 const MATCH_MODE_KEYS = ["all", "any"];
@@ -12,6 +12,7 @@ const TICKET_VIEW_COPY = {
       title: "Sujet",
       description: "Description",
       type: "Type ITIL",
+      section: "Section",
       category: "Catégorie",
       status: "Statut",
       priority: "Priorité",
@@ -133,6 +134,7 @@ const TICKET_VIEW_COPY = {
       title: "Subject",
       description: "Description",
       type: "ITIL type",
+      section: "Section",
       category: "Category",
       status: "Status",
       priority: "Priority",
@@ -254,6 +256,7 @@ const TICKET_VIEW_COPY = {
       title: "Betreff",
       description: "Beschreibung",
       type: "ITIL-Typ",
+      section: "Abschnitt",
       category: "Kategorie",
       status: "Status",
       priority: "Priorität",
@@ -375,6 +378,7 @@ const TICKET_VIEW_COPY = {
       title: "Oggetto",
       description: "Descrizione",
       type: "Tipo ITIL",
+      section: "Sezione",
       category: "Categoria",
       status: "Stato",
       priority: "Priorità",
@@ -496,6 +500,7 @@ const TICKET_VIEW_COPY = {
       title: "Asunto",
       description: "Descripción",
       type: "Tipo ITIL",
+      section: "Sección",
       category: "Categoría",
       status: "Estado",
       priority: "Prioridad",

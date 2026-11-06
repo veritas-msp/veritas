@@ -18,6 +18,7 @@ import { getContactClientOptions, getContactSiteOptions } from "./ticketContactC
 import { formatClientSlaRows, parseClientSla } from "../../utils/ticketSlaUtils";
 import { isFileField, findFormEquipmentFieldKeys, findFormClientFieldKey, findFormSiteFieldKeys, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
 import { collectSupportFormFiles, findFormDescriptionField, findFormSubjectField, resolveTicketContentFromSupportForm } from "../../utils/supportFormTicketContent";
+import { formatTicketCategoryDisplay, resolveCategoryFromFormSlug } from "./ticketCategoryDisplay";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
@@ -446,7 +447,7 @@ function TicketCreateRecap({
     value: channelLabel
   }, {
     label: copy.recapCategory,
-    value: category,
+    value: formatTicketCategoryDisplay(category, { emptyLabel: copy.toCategorize || copy.uncategorized }),
     muted: isEmptyValue(category)
   }, {
     label: copy.recapEquipment,
@@ -1044,11 +1045,16 @@ export default function TicketCreatePage({
   }, [selectedSupportForm?.kind, selectedSupportForm?.id]);
   useEffect(() => {
     if (!hasSupportForms || !selectedSupportForm?.categorySlug) return;
-    const slug = String(selectedSupportForm.categorySlug).trim();
-    if (!slug) return;
-    setCategory(slug);
-    setCategorySearch(slug);
-  }, [hasSupportForms, selectedSupportForm?.categorySlug]);
+    const matched = resolveCategoryFromFormSlug(selectedSupportForm.categorySlug, enabledCategories);
+    if (!matched) {
+      // Ne pas coller le slug technique du formulaire dans le champ catégorie.
+      setCategory("");
+      setCategorySearch("");
+      return;
+    }
+    setCategory(matched);
+    setCategorySearch(matched);
+  }, [hasSupportForms, selectedSupportForm?.categorySlug, enabledCategories]);
   const filteredCategoryOptions = useMemo(() => {
     const q = categorySearch.trim().toLowerCase();
     const rows = !q ? enabledCategories : enabledCategories.filter(item => {
@@ -1562,7 +1568,9 @@ export default function TicketCreatePage({
         model: equipmentModel,
         serial: equipmentSerial
       });
-      const resolvedCategory = String(selectedSupportForm?.categorySlug || category || "").trim();
+      const resolvedCategory = String(
+        category || resolveCategoryFromFormSlug(selectedSupportForm?.categorySlug, enabledCategories) || ""
+      ).trim();
       let supportFormData;
       let resolvedTitle = title.trim();
       let resolvedDescription = description.trim();

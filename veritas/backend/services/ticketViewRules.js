@@ -1,4 +1,4 @@
-const TICKET_VIEW_FIELDS = new Set(["title", "description", "type", "category", "status", "priority", "channel", "client_id", "assigned", "assigned_user_id", "pending_validator_user_id", "requester_contact_id", "requester_user_id", "ticket_number", "tags", "is_major_incident", "sla_breached", "needs_planning"]);
+const TICKET_VIEW_FIELDS = new Set(["title", "description", "type", "section", "category", "status", "priority", "channel", "client_id", "assigned", "assigned_user_id", "pending_validator_user_id", "requester_contact_id", "requester_user_id", "ticket_number", "tags", "is_major_incident", "sla_breached", "needs_planning"]);
 const TICKET_VIEW_OPERATORS = new Set(["contains", "not_contains", "equals", "not_equals", "starts_with", "ends_with", "in", "not_in", "is_empty", "is_not_empty"]);
 function isTruthyFlag(value) {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -128,6 +128,18 @@ function getAssignedSearchText(ticket, context = {}) {
   }
   return parts.filter(Boolean).join(" ");
 }
+function resolveCategorySection(ticket, context = {}) {
+  const explicit = ticket?.category_section ?? ticket?.categorySection;
+  if (explicit != null && String(explicit).trim()) return String(explicit);
+  const categoryName = String(ticket?.category || "").trim().toLowerCase();
+  if (!categoryName) return "";
+  const map = context.categorySectionByName;
+  if (map && typeof map === "object") {
+    const fromMap = map[categoryName] ?? map[String(ticket?.category || "").trim()];
+    if (fromMap != null && String(fromMap).trim()) return String(fromMap);
+  }
+  return "";
+}
 function getFieldValue(ticket, field, context = {}) {
   const key = String(field || "").trim();
   if (!key) return "";
@@ -142,6 +154,9 @@ function getFieldValue(ticket, field, context = {}) {
   }
   if (key === "assigned_user_id") {
     return getAssignedUserIds(ticket).join(",");
+  }
+  if (key === "section") {
+    return resolveCategorySection(ticket, context);
   }
   let value = ticket?.[key];
   if (value === undefined && key.includes("_")) {

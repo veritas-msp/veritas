@@ -10,7 +10,7 @@ import styles from "./TicketPage.module.css";
 import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SortIcon from "../Misc/SortableHeader/SortIcon";
 import SmartTooltip from "../SmartTooltip";
-import { searchTickets, fetchAllMatchingTickets, restoreTicket, permanentlyDeleteTicket, fetchTicketViews, fetchTicketViewCounts, fetchTicketSatisfactionCounts, bulkUpdateTickets, updateTicketView, fetchTicketTableColumns } from "../../api/tickets";
+import { searchTickets, fetchAllMatchingTickets, restoreTicket, permanentlyDeleteTicket, fetchTicketViews, fetchBuiltinTicketViews, fetchTicketViewCounts, fetchTicketSatisfactionCounts, bulkUpdateTickets, updateTicketView, fetchTicketTableColumns } from "../../api/tickets";
 import { fetchUsers } from "../../api/users";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -21,7 +21,7 @@ import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSetting
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
-import { getBuiltinTicketViews, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
+import { getBuiltinTicketViews, applyBuiltinViewOverrides, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
 import { usePersistedTicketViewId } from "../../utils/ticketLastViewStorage";
 import TicketViewModal from "./TicketViewModal";
 import TicketColumnsModal from "./TicketColumnsModal";
@@ -41,6 +41,7 @@ import ClientOnboardingBadge from "../Misc/ClientOnboardingBadge/ClientOnboardin
 import { TICKET_SATISFACTION_VIEWS, TICKET_SATISFACTION_VIEW_IDS, isTicketSatisfactionViewId, resolveTicketSatisfactionScope, localizeTicketSatisfactionViews } from "../../utils/ticketSatisfactionViewConstants";
 import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
 import { getTicketPageCopy } from "./ticketPageI18n";
+import { formatTicketCategoryDisplay } from "./ticketCategoryDisplay";
 import ContextMenu from "../Misc/ContextMenu/ContextMenu";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
@@ -57,9 +58,13 @@ import {
   useFinderNavIndicator
 } from "../UiKit";
 import ActivityStatusSegmented from "../shared/ActivityStatusSegmented/ActivityStatusSegmented";
+import useResizableTableColumns from "../../hooks/useResizableTableColumns";
+import ResizableTableHeaderCell from "./ResizableTableHeaderCell";
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
 const PAGE_SCOPE = "ticket";
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_views_collapsed";
+const VIEWS_SECTIONS_COLLAPSED_KEY = "veritas_ticket_views_sections_collapsed";
+const TICKET_COLUMN_WIDTHS_KEY = "veritas_ticket_table_column_widths_v1";
 function readViewsPaneCollapsed() {
   try {
     return localStorage.getItem(VIEWS_PANE_COLLAPSED_KEY) === "1";
@@ -70,6 +75,21 @@ function readViewsPaneCollapsed() {
 function writeViewsPaneCollapsed(collapsed) {
   try {
     if (collapsed) localStorage.setItem(VIEWS_PANE_COLLAPSED_KEY, "1");else localStorage.removeItem(VIEWS_PANE_COLLAPSED_KEY);
+  } catch {}
+}
+function readCollapsedViewSections() {
+  try {
+    const raw = localStorage.getItem(VIEWS_SECTIONS_COLLAPSED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeCollapsedViewSections(map) {
+  try {
+    localStorage.setItem(VIEWS_SECTIONS_COLLAPSED_KEY, JSON.stringify(map || {}));
   } catch {}
 }
 function orderViewsByIds(views, ids) {
@@ -248,7 +268,11 @@ export default function TicketPage({
   const commonCopy = useCommonCopy();
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getTicketPageCopy(locale), [locale]);
-  const builtinTicketViews = useMemo(() => getBuiltinTicketViews(locale), [locale]);
+  const defaultBuiltinTicketViews = useMemo(() => getBuiltinTicketViews(locale, { pageScope: PAGE_SCOPE }), [locale]);
+  const [builtinTicketViews, setBuiltinTicketViews] = useState(defaultBuiltinTicketViews);
+  useEffect(() => {
+    setBuiltinTicketViews(defaultBuiltinTicketViews);
+  }, [defaultBuiltinTicketViews]);
   const formatDate = useCallback(value => {
     const formatted = formatAppDate(value);
     return formatted === "-" ? "-" : formatted;
@@ -295,6 +319,7 @@ export default function TicketPage({
   const [customViewsOrder, setCustomViewsOrder] = useState(null);
   const [viewsOrderSaving, setViewsOrderSaving] = useState(false);
   const [viewsPaneCollapsed, setViewsPaneCollapsed] = useState(readViewsPaneCollapsed);
+  const [collapsedViewSections, setCollapsedViewSections] = useState(readCollapsedViewSections);
   const [viewsPaneMotionReady, setViewsPaneMotionReady] = useState(false);
   useEffect(() => {
     const id = requestAnimationFrame(() => {
@@ -334,6 +359,32 @@ export default function TicketPage({
     [visibleTableColumns, isCommunity]
   );
   const tableColSpan = tableColumns.length + 1 + (viewMode === "trash" ? 1 : 0);
+  const {
+    isResizing: isResizingColumns,
+    getColumnStyle,
+    beginResize: beginColumnResize
+  } = useResizableTableColumns({
+    storageKey: TICKET_COLUMN_WIDTHS_KEY
+  });
+  const getTableColumnLabel = useCallback(columnId => {
+    const labelMap = {
+      ticket_number: pageCopy.table.id,
+      title: pageCopy.table.subject,
+      channel: pageCopy.table.channel,
+      type: pageCopy.table.type,
+      requester: pageCopy.table.requester,
+      client: pageCopy.table.client,
+      assigned: pageCopy.table.assigned,
+      followers: pageCopy.table.followers,
+      tags: pageCopy.table.tags,
+      status: pageCopy.table.status,
+      priority: pageCopy.table.priority,
+      sla: pageCopy.table.sla,
+      created_at: pageCopy.table.created,
+      updated_at: pageCopy.table.updated
+    };
+    return labelMap[columnId] || columnId;
+  }, [pageCopy.table]);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
@@ -440,11 +491,15 @@ export default function TicketPage({
   const loadViews = useCallback(async (signal) => {
     setViewsLoading(true);
     try {
-      const rows = await fetchTicketViews(PAGE_SCOPE, {
-        signal
-      });
+      const [rows, builtinRows] = await Promise.all([
+        fetchTicketViews(PAGE_SCOPE, { signal }),
+        fetchBuiltinTicketViews(PAGE_SCOPE, { signal }).catch(() => [])
+      ]);
       if (signal?.aborted) return;
       setTicketViews(Array.isArray(rows) ? rows : []);
+      setBuiltinTicketViews(
+        applyBuiltinViewOverrides(getBuiltinTicketViews(locale, { pageScope: PAGE_SCOPE }), builtinRows)
+      );
       if (!signal?.aborted) {
         setViewsLoading(false);
         setViewsLoaded(true);
@@ -455,12 +510,13 @@ export default function TicketPage({
       if (error?.name === "AbortError") return;
       toast.error(error.message || pageCopy.toasts.loadViews);
       setTicketViews([]);
+      setBuiltinTicketViews(getBuiltinTicketViews(locale, { pageScope: PAGE_SCOPE }));
       if (!signal?.aborted) {
         setViewsLoading(false);
         setViewsLoaded(true);
       }
     }
-  }, [loadViewCounts, pageCopy.toasts.loadViews]);
+  }, [loadViewCounts, locale, pageCopy.toasts.loadViews]);
   const loadSatisfactionCounts = useCallback(async (signal) => {
     try {
       const counts = await fetchTicketSatisfactionCounts({
@@ -753,6 +809,7 @@ export default function TicketPage({
           }
           if (columnId === "created_at") return formatDateTime(t.created_at);
           if (columnId === "updated_at") return formatDateTime(t.updated_at);
+          if (columnId === "category") return formatTicketCategoryDisplay(t.category, { emptyLabel: pageCopy.toCategorize });
           return "";
         });
       });
@@ -1132,6 +1189,46 @@ export default function TicketPage({
       />
     );
   };
+  const setViewsPaneCollapsedState = useCallback(collapsed => {
+    setViewsPaneCollapsed(collapsed);
+    writeViewsPaneCollapsed(collapsed);
+  }, []);
+  const isViewSectionCollapsed = useCallback(sectionKey => {
+    if (viewsReorderMode) return false;
+    return Boolean(collapsedViewSections[sectionKey]);
+  }, [collapsedViewSections, viewsReorderMode]);
+  const toggleViewSection = useCallback(sectionKey => {
+    setCollapsedViewSections(prev => {
+      const next = {
+        ...prev,
+        [sectionKey]: !prev[sectionKey]
+      };
+      writeCollapsedViewSections(next);
+      return next;
+    });
+  }, []);
+  const renderViewsSectionShell = (sectionKey, label, content) => {
+    const collapsed = isViewSectionCollapsed(sectionKey);
+    const bodyId = `ticket-views-section-${sectionKey}`;
+    return (
+      <div className={kit.finderSecGroup}>
+        <button
+          type="button"
+          className={styles.viewsSecGroupToggle}
+          onClick={() => toggleViewSection(sectionKey)}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          aria-label={interpolate(collapsed ? pageCopy.views.expandSection : pageCopy.views.collapseSection, {
+            name: label
+          })}
+        >
+          <span className={styles.viewsSecGroupToggleLabel}>{label}</span>
+          <Icon icon={collapsed ? "mdi:chevron-right" : "mdi:chevron-down"} className={styles.viewsSecGroupChevron} aria-hidden />
+        </button>
+        {!collapsed ? <div id={bodyId}>{content}</div> : null}
+      </div>
+    );
+  };
   const renderCustomViewsSection = (sectionKey, label, views) => {
     if (views.length === 0) return null;
     const orderedViews = viewsReorderMode && customViewsOrder ? orderViewsByIds(views, customViewsOrder[sectionKey]) : views;
@@ -1143,17 +1240,8 @@ export default function TicketPage({
       </SortableViewsSection>
     );
     if (!label) return list;
-    return (
-      <div className={kit.finderSecGroup}>
-        <p className={kit.finderSecGroupTitle}>{label}</p>
-        {list}
-      </div>
-    );
+    return renderViewsSectionShell(sectionKey, label, list);
   };
-  const setViewsPaneCollapsedState = useCallback(collapsed => {
-    setViewsPaneCollapsed(collapsed);
-    writeViewsPaneCollapsed(collapsed);
-  }, []);
   const getViewTicketCount = view => {
     if (view?.isSatisfactionView) {
       const key = view.scope === "all" ? "all" : "mine";
@@ -1193,7 +1281,8 @@ export default function TicketPage({
     activeViewId,
     viewsLoading,
     viewsReorderMode,
-    viewMode
+    viewMode,
+    collapsedViewSections
   ]);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
   const paginatedTickets = tickets;
@@ -1480,7 +1569,7 @@ export default function TicketPage({
                 ) : null}
                 <UiKitScrollFadeShell
                   className={kit.finderSecondaryShell}
-                  deps={[activeViewId, viewsLoading, viewsReorderMode, builtinTicketViews.length, visibleSatisfactionViews.length, publicViews.length, assignedViews.length, privateViews.length]}
+                  deps={[activeViewId, viewsLoading, viewsReorderMode, builtinTicketViews.length, visibleSatisfactionViews.length, publicViews.length, assignedViews.length, privateViews.length, collapsedViewSections]}
                 >
                   <div className={kit.finderSecondary}>
                     {viewsLoading ? (
@@ -1504,19 +1593,21 @@ export default function TicketPage({
                             aria-hidden
                           />
                         ) : null}
-                        <div className={kit.finderSecGroup}>
-                          <p className={kit.finderSecGroupTitle}>{pageCopy.views.general}</p>
-                          {builtinTicketViews.map(view => renderViewItem(view))}
-                        </div>
+                        {renderViewsSectionShell(
+                          "general",
+                          pageCopy.views.general,
+                          builtinTicketViews.map(view => renderViewItem(view))
+                        )}
                         {renderCustomViewsSection("public", pageCopy.views.team, publicViews)}
                         {renderCustomViewsSection("assigned", pageCopy.views.assigned, assignedViews)}
                         {renderCustomViewsSection("private", pageCopy.views.private, privateViews)}
-                        {visibleSatisfactionViews.length > 0 ? (
-                          <div className={kit.finderSecGroup}>
-                            <p className={kit.finderSecGroupTitle}>{pageCopy.views.satisfaction}</p>
-                            {visibleSatisfactionViews.map(view => renderViewItem(view))}
-                          </div>
-                        ) : null}
+                        {visibleSatisfactionViews.length > 0
+                          ? renderViewsSectionShell(
+                              "satisfaction",
+                              pageCopy.views.satisfaction,
+                              visibleSatisfactionViews.map(view => renderViewItem(view))
+                            )
+                          : null}
                         {customTicketViews.length === 0 && !viewsReorderMode && !visibleSatisfactionViews.length ? (
                           <div className={styles.viewsEmpty}>
                             <p>{pageCopy.views.emptyHint}</p>
@@ -1580,7 +1671,14 @@ export default function TicketPage({
                 className={tableKit.tableListFill}
                 deps={[tickets.length, pageSize, tableColumns.join("|"), viewMode, activeViewId]}
               >
-                <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`}>
+                <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table} ${styles.tableResizable} ${isResizingColumns ? styles.isResizing : ""}`.trim()}>
+            <colgroup>
+              <col className={styles.checkboxCell} />
+              {tableColumns.map(columnId => (
+                <col key={columnId} style={getColumnStyle(columnId)} />
+              ))}
+              {viewMode === "trash" ? <col /> : null}
+            </colgroup>
             <thead>
               <tr>
                 <th className={styles.checkboxCell}>
@@ -1588,28 +1686,21 @@ export default function TicketPage({
                 </th>
 {tableColumns.map(columnId => {
                   const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId] || columnId;
-                  const labelMap = {
-                    ticket_number: pageCopy.table.id,
-                    title: pageCopy.table.subject,
-                    channel: pageCopy.table.channel,
-                    type: pageCopy.table.type,
-                    requester: pageCopy.table.requester,
-                    client: pageCopy.table.client,
-                    assigned: pageCopy.table.assigned,
-                    followers: pageCopy.table.followers,
-                    status: pageCopy.table.status,
-                    priority: pageCopy.table.priority,
-                    sla: pageCopy.table.sla,
-                    created_at: pageCopy.table.created,
-                    updated_at: pageCopy.table.updated
-                  };
+                  const label = getTableColumnLabel(columnId);
+                  const resizeLabel = interpolate(pageCopy.table.resizeColumn || "Redimensionner la colonne {name}", {
+                    name: label
+                  });
                   return (
-                    <th key={columnId} onClick={() => handleSort(sortKey)}>
-                      <span className={styles.thSortInner}>
-                        {labelMap[columnId] || columnId}
-                        <SortIcon active={sortBy === sortKey} direction={sortDirection} />
-                      </span>
-                    </th>
+                    <ResizableTableHeaderCell
+                      key={columnId}
+                      onClick={() => handleSort(sortKey)}
+                      style={getColumnStyle(columnId)}
+                      resizeLabel={resizeLabel}
+                      onResizeStart={event => beginColumnResize(event, columnId)}
+                    >
+                      {label}
+                      <SortIcon active={sortBy === sortKey} direction={sortDirection} />
+                    </ResizableTableHeaderCell>
                   );
                 })}
                 {viewMode === "trash" && <th>{pageCopy.table.actions}</th>}
@@ -1648,7 +1739,7 @@ export default function TicketPage({
                                 statusLabel: pageCopy.getStatusBadge(ticketStatus) || t.status,
                                 priorityLabel: resolvePriorityLabel(t.priority),
                                 isMajor: majorIncident,
-                                category: t.category || null,
+                                category: formatTicketCategoryDisplay(t.category, { emptyLabel: pageCopy.toCategorize }),
                                 clientLabel: resolveClientLabel(t),
                                 requesterLabel: resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t)),
                                 commentsCount: Number(t.comments_count ?? 0) || null
@@ -1785,6 +1876,9 @@ export default function TicketPage({
                         }
                         if (columnId === "updated_at") {
                           return <td key={columnId}>{formatDateTime(t.updated_at)}</td>;
+                        }
+                        if (columnId === "category") {
+                          return <td key={columnId}>{formatTicketCategoryDisplay(t.category, { emptyLabel: pageCopy.toCategorize })}</td>;
                         }
                         return <td key={columnId}>-</td>;
                       })}

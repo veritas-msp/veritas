@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.9",
+    date: "2026-11-06",
+    highlights: [
+      "Tickets Support / Prestations : colonnes de liste redimensionnables, largeurs mémorisées.",
+      "Vues tickets : filtre par section de catégorie, sections de vues repliables.",
+      "Administration catégories ITIL : modales de création/édition alignées UiKit (animation, fermeture circulaire).",
+      "Fiche campagne : header, onglets, fade et actions rapides alignés sur la fiche entreprise."
+    ]
+  },
+  {
     version: "2.0.8",
     date: "2026-11-05",
     highlights: [

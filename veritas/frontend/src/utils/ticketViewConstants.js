@@ -10,6 +10,9 @@ export const TICKET_VIEW_FIELD_OPTIONS = [{
   value: "type",
   label: "ITIL type"
 }, {
+  value: "section",
+  label: "Section"
+}, {
   value: "category",
   label: "Category"
 }, {
@@ -492,18 +495,28 @@ export function canUserEditTicketView(view, {
   if (visibility === "assigned") return Boolean(isAdmin);
   return false;
 }
+function isMeaningfulBuiltinOverrideName(name, viewId) {
+  const value = String(name || "").trim();
+  if (!value) return false;
+  if (value === String(viewId || "")) return false;
+  if (value.startsWith("__builtin_")) return false;
+  return true;
+}
+
 export function applyBuiltinViewOverrides(baseViews = [], apiViews = []) {
   const byId = new Map((Array.isArray(apiViews) ? apiViews : []).map(view => [String(view.id), view]));
   return (Array.isArray(baseViews) ? baseViews : []).map(base => {
     const override = byId.get(String(base.id));
-    if (!override) return { ...base, isBuiltin: true };
+    if (!override) return { ...base, isBuiltin: true, hasOverride: false };
     const hasOverride = Boolean(override.hasOverride);
     return {
       ...base,
       isBuiltin: true,
       hasOverride,
-      name: hasOverride && override.name ? override.name : base.name,
-      description: hasOverride && override.description != null ? override.description : base.description,
+      name: hasOverride && isMeaningfulBuiltinOverrideName(override.name, base.id) ? override.name : base.name,
+      description: hasOverride && override.description != null && String(override.description).trim() !== ""
+        ? override.description
+        : base.description,
       icon: hasOverride && override.icon ? override.icon : base.icon,
       // Ne jamais remplacer les règles builtin par un payload API sans override réel
       // (sinon critères vides → liste non filtrée / totaux incohérents).
