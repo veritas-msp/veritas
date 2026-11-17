@@ -41,6 +41,34 @@ function checkStatusMeta(check, copy) {
   };
 }
 
+function ScoreChecksList({ checks, copy, className = "", itemClassName = "" }) {
+  if (!checks.length) {
+    return <p className={styles.scoreAsideEmpty}>{copy.breakdownEmpty || "—"}</p>;
+  }
+  return (
+    <ul className={className || styles.scoreAsideChecks}>
+      {checks.map(check => {
+        const meta = checkStatusMeta(check, copy);
+        return (
+          <li
+            key={check.key}
+            className={`${itemClassName || styles.scoreAsideCheck} ${styles[`scoreAsideCheck_${meta.tone}`] || ""}`}
+          >
+            <span className={styles.scoreAsideCheckIcon} aria-hidden>
+              <Icon icon={CHECK_ICONS[check.key] || "mdi:checkbox-marked-circle-outline"} />
+            </span>
+            <span className={styles.scoreAsideCheckBody}>
+              <span className={styles.scoreAsideCheckLabel}>{checkLabel(check.key, copy)}</span>
+              {meta.detail ? <span className={styles.scoreAsideCheckDetail}>{meta.detail}</span> : null}
+            </span>
+            <span className={styles.scoreAsideCheckStatus}>{meta.label}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** Score card + criteria breakdown for the equipment dashboard right rail. */
 export function ScoreAside({
   health,
@@ -74,30 +102,61 @@ export function ScoreAside({
         <p className={styles.scoreAsideBreakdownHint}>{copy.breakdownHint}</p>
       ) : null}
 
-      {checks.length > 0 ? (
-        <ul className={styles.scoreAsideChecks}>
-          {checks.map(check => {
-            const meta = checkStatusMeta(check, copy);
-            return (
-              <li
-                key={check.key}
-                className={`${styles.scoreAsideCheck} ${styles[`scoreAsideCheck_${meta.tone}`] || ""}`}
-              >
-                <span className={styles.scoreAsideCheckIcon} aria-hidden>
-                  <Icon icon={CHECK_ICONS[check.key] || "mdi:checkbox-marked-circle-outline"} />
-                </span>
-                <span className={styles.scoreAsideCheckBody}>
-                  <span className={styles.scoreAsideCheckLabel}>{checkLabel(check.key, copy)}</span>
-                  {meta.detail ? <span className={styles.scoreAsideCheckDetail}>{meta.detail}</span> : null}
-                </span>
-                <span className={styles.scoreAsideCheckStatus}>{meta.label}</span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className={styles.scoreAsideEmpty}>{copy.breakdownEmpty || "—"}</p>
-      )}
+      <ScoreChecksList checks={checks} copy={copy} />
     </aside>
+  );
+}
+
+/** Full-width horizontal score banner for the RMM synthesis top stack. */
+export function ScoreBanner({
+  health,
+  copy,
+  note = null,
+  noteTitle = null
+}) {
+  if (!health && !note) return null;
+  const checks = Array.isArray(health?.checks) ? health.checks : [];
+  return (
+    <section
+      className={`${styles.scoreBanner} ${health ? styles[`scoreBanner_${health.tone}`] || "" : ""}`.trim()}
+      aria-label={copy.scoreTitle || noteTitle || "Note du périphérique"}
+    >
+      {health ? (
+        <div className={styles.scoreBannerScore}>
+          <div className={styles.scoreBannerGrade} aria-hidden>{health.grade}</div>
+          <div className={styles.scoreBannerScoreBody}>
+            <p className={styles.scoreBannerTitle}>{copy.scoreTitle}</p>
+            <p className={styles.scoreBannerValue}>
+              {health.score}<span className={styles.scoreAsideOutOf}>/100</span>
+            </p>
+            <div className={styles.scoreBannerMeter} aria-hidden>
+              <div
+                className={`${styles.meterFill} ${styles[`meter_${health.tone}`] || ""}`}
+                style={{ width: `${health.score}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {health && checks.length > 0 ? (
+        <ScoreChecksList
+          checks={checks}
+          copy={copy}
+          className={styles.scoreBannerChecks}
+          itemClassName={styles.scoreBannerCheck}
+        />
+      ) : null}
+
+      {note ? (
+        <article className={styles.scoreBannerNote}>
+          <header className={styles.scoreBannerNoteHead}>
+            <Icon icon="mdi:note-text-outline" aria-hidden />
+            <span>{noteTitle || "Note"}</span>
+          </header>
+          <p className={styles.scoreBannerNoteBody}>{note}</p>
+        </article>
+      ) : null}
+    </section>
   );
 }

@@ -1100,6 +1100,12 @@ router.get("/agents/:id/metrics/history", verifyJWT, requireAdmin, async (req, r
 });
 router.post("/agents/:id/request-sync", verifyJWT, requireAdmin, async (req, res) => {
   try {
+    const agent = await resolveAgentEquipmentLogTarget(req.params.id);
+    if (!agent) {
+      return res.status(404).json({
+        error: "Agent not found or inactive"
+      });
+    }
     const result = await pool.query(`UPDATE v_b_rmm_agents
        SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('syncRequestedAt', to_jsonb(NOW()::text)),
            updated_at = NOW()
@@ -1110,9 +1116,31 @@ router.post("/agents/:id/request-sync", verifyJWT, requireAdmin, async (req, res
         error: "Agent not found or inactive"
       });
     }
+    const syncRequestedAt = result.rows[0].config?.syncRequestedAt || new Date().toISOString();
+    try {
+      const actor = await resolveRmmActor(req);
+      await logRmmAgentEquipmentActivity(pool, {
+        clientId: agent.client_id,
+        equipmentName: agent.equipment_name || agent.hostname || agent.machine_id,
+        equipmentId: agent.ordinateur_id || null,
+        action: "Full RMM sync requested",
+        userId: actor.userId,
+        userName: actor.userName,
+        details: {
+          kind: "rmm_sync_request",
+          event: "request",
+          source: "console",
+          hostname: agent.hostname || null,
+          machineId: agent.machine_id || null,
+          requestedAt: syncRequestedAt
+        }
+      });
+    } catch (logErr) {
+      console.error("[rmm] request-sync log:", logErr.message);
+    }
     res.json({
       ok: true,
-      sync_requested_at: result.rows[0].config?.syncRequestedAt || new Date().toISOString()
+      sync_requested_at: syncRequestedAt
     });
   } catch (err) {
     console.error("[rmm] request-sync:", err.message);
@@ -1123,6 +1151,12 @@ router.post("/agents/:id/request-sync", verifyJWT, requireAdmin, async (req, res
 });
 router.post("/agents/:id/request-heartbeat", verifyJWT, requireAdmin, async (req, res) => {
   try {
+    const agent = await resolveAgentEquipmentLogTarget(req.params.id);
+    if (!agent) {
+      return res.status(404).json({
+        error: "Agent not found or inactive"
+      });
+    }
     const result = await pool.query(`UPDATE v_b_rmm_agents
        SET config = COALESCE(config, '{}'::jsonb) || jsonb_build_object('heartbeatRequestedAt', to_jsonb(NOW()::text)),
            updated_at = NOW()
@@ -1133,9 +1167,31 @@ router.post("/agents/:id/request-heartbeat", verifyJWT, requireAdmin, async (req
         error: "Agent not found or inactive"
       });
     }
+    const heartbeatRequestedAt = result.rows[0].config?.heartbeatRequestedAt || new Date().toISOString();
+    try {
+      const actor = await resolveRmmActor(req);
+      await logRmmAgentEquipmentActivity(pool, {
+        clientId: agent.client_id,
+        equipmentName: agent.equipment_name || agent.hostname || agent.machine_id,
+        equipmentId: agent.ordinateur_id || null,
+        action: "RMM heartbeat requested",
+        userId: actor.userId,
+        userName: actor.userName,
+        details: {
+          kind: "rmm_heartbeat_request",
+          event: "request",
+          source: "console",
+          hostname: agent.hostname || null,
+          machineId: agent.machine_id || null,
+          requestedAt: heartbeatRequestedAt
+        }
+      });
+    } catch (logErr) {
+      console.error("[rmm] request-heartbeat log:", logErr.message);
+    }
     res.json({
       ok: true,
-      heartbeat_requested_at: result.rows[0].config?.heartbeatRequestedAt || new Date().toISOString()
+      heartbeat_requested_at: heartbeatRequestedAt
     });
   } catch (err) {
     console.error("[rmm] request-heartbeat:", err.message);
@@ -1268,11 +1324,12 @@ router.post("/agents/:id/cancel-update", verifyJWT, requireAdmin, async (req, re
 });
 router.post("/agents/:id/cancel-sync", verifyJWT, requireAdmin, async (req, res) => {
   try {
+    const agent = await resolveAgentEquipmentLogTarget(req.params.id);
     const result = await pool.query(`UPDATE v_b_rmm_agents
        SET config = COALESCE(config, '{}'::jsonb) - 'syncRequestedAt',
            updated_at = NOW()
        WHERE id = $1 AND status = 'active'
-       RETURNING id, config, ordinateur_id`, [req.params.id]);
+       RETURNING id, config, ordinateur_id, client_id, hostname, machine_id`, [req.params.id]);
     if (!result.rows.length) {
       return res.status(404).json({
         error: "Agent not found or inactive"
@@ -1288,6 +1345,27 @@ router.post("/agents/:id/cancel-sync", verifyJWT, requireAdmin, async (req, res)
            - 'SyncRequestedAt',
              updated_at = NOW()
          WHERE id = $1`, [ordinateurId]);
+    }
+    try {
+      const actor = await resolveRmmActor(req);
+      const row = result.rows[0];
+      await logRmmAgentEquipmentActivity(pool, {
+        clientId: agent?.client_id || row.client_id,
+        equipmentName: agent?.equipment_name || row.hostname || row.machine_id,
+        equipmentId: ordinateurId || agent?.ordinateur_id || null,
+        action: "Full RMM sync cancelled",
+        userId: actor.userId,
+        userName: actor.userName,
+        details: {
+          kind: "rmm_sync_cancel",
+          event: "cancel",
+          source: "console",
+          hostname: row.hostname || agent?.hostname || null,
+          machineId: row.machine_id || agent?.machine_id || null
+        }
+      });
+    } catch (logErr) {
+      console.error("[rmm] cancel-sync log:", logErr.message);
     }
     res.json({
       ok: true,

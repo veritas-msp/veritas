@@ -7,6 +7,7 @@ const DETAIL_TABS = new Set([
   "supervision",
   "activity",
   "history",
+  "historique",
   "documents",
   "logs",
   "events",
@@ -28,6 +29,7 @@ export function normalizeEquipmentDetailTab(tab) {
   if (tab === "events" || tab === "stats") return "activity";
   if (tab === "metrics") return "metrics";
   if (tab === "notes" || tab === "fiche" || tab === "hardware") return "fiche";
+  if (tab === "historique") return "historique";
   if (tab === "history" || tab === "maintenance") return "supervision";
   if (tab === "dashboard" || tab === "overview" || tab === "general") return "synthese";
   if (tab === "synthese" || tab === "summary") return "synthese";
@@ -40,8 +42,15 @@ export function normalizeEquipmentActivityPane(pane) {
 }
 
 export function normalizeEquipmentRmmPane(pane) {
-  if (pane === "operations" || pane === "peripherals" || pane === "metrics" || pane === "synthese") {
-    return pane;
+  if (
+    pane === "operations" ||
+    pane === "peripherals" ||
+    pane === "metrics" ||
+    pane === "synthese" ||
+    pane === "historique" ||
+    pane === "history"
+  ) {
+    return pane === "history" ? "historique" : pane;
   }
   return "synthese";
 }

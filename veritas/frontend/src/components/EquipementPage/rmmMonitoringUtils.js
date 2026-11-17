@@ -827,7 +827,7 @@ export function formatRmmExpectedCollectionLabel(equipment, intervalMinutes, {
   withAbsolute = true
 } = {}) {
   if (resolveRmmAgentOnline(equipment) === false) {
-    return "agent hors ligne";
+    return null;
   }
   const resolvedInterval = resolveRmmHeartbeatIntervalMinutes(equipment, intervalMinutes);
   const nextAt = estimateNextRmmCollectionAt(getRmmLastInventoryAt(equipment), resolvedInterval);

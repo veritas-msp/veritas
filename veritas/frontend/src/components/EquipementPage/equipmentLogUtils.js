@@ -256,6 +256,21 @@ export function buildLogDetailRows(parsed, rawDetails) {
     const eventLabel = parsed.event === "install" ? "Installation" : parsed.event === "re_enroll" ? "Ré-enrôlement" : parsed.event === "request" ? "Mise à jour demandée" : parsed.event === "cancel" ? "Mise à jour annulée" : parsed.event === "update" ? "Mise à jour" : parsed.event;
     return [detailRow("Version précédente", parsed.previousVersion), detailRow("Nouvelle version", parsed.newVersion), detailRow("Événement", eventLabel), detailRow("Source", parsed.source), detailRow("Poste", parsed.hostname), detailRow("Demandé le", parsed.requestedAt ? formatLogDateTime(parsed.requestedAt) : null)].filter(Boolean);
   }
+  if (kind === "rmm_sync_request" || kind === "rmm_sync_cancel" || kind === "rmm_heartbeat_request") {
+    const eventLabel =
+      kind === "rmm_sync_request"
+        ? "Sync complet demandé"
+        : kind === "rmm_sync_cancel"
+          ? "Sync complet annulé"
+          : "Heartbeat demandé";
+    return [
+      detailRow("Événement", eventLabel),
+      detailRow("Direction", "Veritas → Agent"),
+      detailRow("Source", parsed.source || "console"),
+      detailRow("Poste", parsed.hostname),
+      detailRow("Demandé le", parsed.requestedAt ? formatLogDateTime(parsed.requestedAt) : null)
+    ].filter(Boolean);
+  }
   if (kind === "rmm_heartbeat" || kind === "rmm_full_sync") {
     const rows = [];
     if (parsed.heartbeatCount != null && parsed.heartbeatCount > 1) {

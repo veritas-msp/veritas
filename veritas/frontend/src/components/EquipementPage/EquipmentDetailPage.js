@@ -18,6 +18,7 @@ import CheckMKMonitoringPanel from "./CheckMKMonitoringPanel";
 import RmmMonitoringPanel, { RmmSyncPendingNotice, RmmCollectionStatusLine } from "./RmmMonitoringPanel";
 import RmmAgentUpdateStatus from "./RmmAgentUpdateStatus";
 import RmmMetricHistoryPanel from "./RmmMetricHistoryPanel";
+import RmmAgentHistoryPanel from "./RmmAgentHistoryPanel";
 import EquipmentAlertSuspensionModal from "./EquipmentAlertSuspensionModal";
 import SupervisionMaintenanceModal from "./SupervisionMaintenanceModal";
 import EquipmentMaintenanceHistoryPanel from "./EquipmentMaintenanceHistoryPanel";
@@ -85,11 +86,12 @@ import {
   rmmSyncTimestampsMatch,
   formatRmmExpectedCollectionLabel,
   resolveRmmHeartbeatIntervalMinutes,
+  resolveRmmOfflineThresholdMinutes,
   agentSupportsImmediateFullSync,
   resolveRmmAgentOnline
 } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
-import { ScoreAside } from "./RmmDeviceScore";
+import { ScoreBanner } from "./RmmDeviceScore";
 import { fetchEquipmentFamilies, mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import {
@@ -244,7 +246,8 @@ export default function EquipmentDetailPage({
         : initialEquipmentUi?.rightPanelTab === "operations" ||
             initialEquipmentUi?.rightPanelTab === "peripherals" ||
             initialEquipmentUi?.rightPanelTab === "synthese" ||
-            initialEquipmentUi?.rightPanelTab === "metrics"
+            initialEquipmentUi?.rightPanelTab === "metrics" ||
+            initialEquipmentUi?.rightPanelTab === "historique"
           ? initialEquipmentUi.rightPanelTab
           : initialEquipmentUi?.rmmPane
     )
@@ -339,7 +342,8 @@ export default function EquipmentDetailPage({
     rightPanelTab === "synthese" ||
     rightPanelTab === "operations" ||
     rightPanelTab === "peripherals" ||
-    rightPanelTab === "metrics";
+    rightPanelTab === "metrics" ||
+    rightPanelTab === "historique";
   useEffect(() => {
     if (isRmmTab) setRmmPane(normalizeEquipmentRmmPane(rightPanelTab));
   }, [isRmmTab, rightPanelTab]);
@@ -362,7 +366,8 @@ export default function EquipmentDetailPage({
         prev === "synthese" ||
         prev === "operations" ||
         prev === "peripherals" ||
-        prev === "metrics"
+        prev === "metrics" ||
+        prev === "historique"
           ? prev
           : rmmPane
       );
@@ -1980,7 +1985,11 @@ export default function EquipmentDetailPage({
     date: createdAtFormatted
   }) : null;
   const equipmentIsActive = readEquipmentIsActive(equipment);
-  const rmmOnline = rmmManaged ? resolveRmmAgentOnline(equipmentWithRmmLive || equipment, rmmHeartbeatMinutes) : null;
+  const rmmOfflineMinutes = resolveRmmOfflineThresholdMinutes(equipmentWithRmmLive || equipment, {
+    offlineThresholdMinutes: rmmOfflineThresholdMinutes,
+    heartbeatIntervalMinutes: rmmHeartbeatMinutes
+  });
+  const rmmOnline = rmmManaged ? resolveRmmAgentOnline(equipmentWithRmmLive || equipment, rmmOfflineMinutes) : null;
   const equipmentStatusOnline = rmmOnline === true;
   const equipmentStatusOffline = rmmOnline === false;
   const equipmentStatusLabel = equipmentStatusOnline
@@ -2422,6 +2431,18 @@ export default function EquipmentDetailPage({
                           {copy.rmmPane?.metrics || copy.tabs.metrics || "Métriques"}
                         </span>
                       </button>
+                      <button
+                        type="button"
+                        className={`${finderKit.finderSecItem} ${rmmPane === "historique" ? finderKit.finderSecItemActive : ""}`.trim()}
+                        aria-current={rmmPane === "historique" ? "page" : undefined}
+                        tabIndex={isRmmTab ? undefined : -1}
+                        onClick={() => selectEquipmentTab("historique")}
+                      >
+                        <Icon icon="mdi:timeline-text-outline" className={finderKit.finderSecItemIcon} aria-hidden />
+                        <span className={finderKit.finderSecItemLabel}>
+                          {copy.rmmPane?.historique || copy.rmm?.history?.nav || "Historique"}
+                        </span>
+                      </button>
                     </nav>
                   </div>
 
@@ -2470,16 +2491,48 @@ export default function EquipmentDetailPage({
           </aside>
 
           <div className={`${finderKit.finderContent} ${styles.equipmentFinderContent}`.trim()}>
-        {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
+        {(rmmManaged && rmmSyncPending) ||
+        (rightPanelTab === "synthese" && showRmmHeroStatus && (rmmDeviceHealth || deviceNote)) ? (
+          <div className={styles.rmmTopBanners}>
+            {rightPanelTab === "synthese" && showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? (
+              <ScoreBanner
+                health={rmmDeviceHealth}
+                note={deviceNote}
+                noteTitle={copy.hero.factNote || copy.specs?.notesTitle || "Note"}
+                copy={{
+                  scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+                  breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+                  statusOk: copy.rmm.overview?.scoreStatusOk,
+                  statusBad: copy.rmm.overview?.scoreStatusBad,
+                  statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+                  statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+                  statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+                  checks: copy.rmm.overview?.scoreChecks,
+                  formatPenalty: points =>
+                    interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                      points: String(points)
+                    })
+                }}
+              />
+            ) : null}
+            {rmmManaged && rmmSyncPending ? (
+              <RmmSyncPendingNotice
+                equipment={equipment}
+                syncRequestedAt={rmmSyncRequestedAt}
+                heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+                onCancel={handleRmmCancelSync}
+                cancelling={rmmSyncRequesting}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
         <div ref={mainContentRef} className={styles.mainContent}>
           {rightPanelTab === "synthese" ? (
               showSyntheseTab ? (
                 <div
                   key="synthese"
-                  className={`${styles.dashboardSplit} ${
-                    showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? "" : styles.dashboardSplitSolo
-                  } ${styles.contentFadeUp}`.trim()}
+                  className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}
                 >
                   <div className={styles.dashboardMain}>
                     <EquipmentOverviewDashboard
@@ -2494,40 +2547,6 @@ export default function EquipmentDetailPage({
                       hidePaneSwitch
                     />
                   </div>
-                  {showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? (
-                    <div className={styles.dashboardAside}>
-                      {rmmDeviceHealth ? (
-                        <ScoreAside
-                          health={rmmDeviceHealth}
-                          copy={{
-                            scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
-                            breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
-                            breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
-                            breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
-                            statusOk: copy.rmm.overview?.scoreStatusOk,
-                            statusBad: copy.rmm.overview?.scoreStatusBad,
-                            statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
-                            statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
-                            statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
-                            checks: copy.rmm.overview?.scoreChecks,
-                            formatPenalty: points =>
-                              interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
-                                points: String(points)
-                              })
-                          }}
-                        />
-                      ) : null}
-                      {deviceNote ? (
-                        <article className={styles.rmmDeviceNoteCard}>
-                          <header className={styles.rmmDeviceNoteHead}>
-                            <Icon icon="mdi:note-text-outline" aria-hidden />
-                            <h3>{copy.hero.factNote || copy.specs?.notesTitle || "Note"}</h3>
-                          </header>
-                          <p className={styles.rmmDeviceNoteBody}>{deviceNote}</p>
-                        </article>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
               ) : (
                 <div key="synthese-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
@@ -2715,20 +2734,35 @@ export default function EquipmentDetailPage({
 
           {rightPanelTab === "operations" ? (
             showRmmOperationsTab ? (
-              <div key="operations" className={`${styles.dashboardSplit} ${styles.dashboardSplitSolo} ${styles.contentFadeUp}`.trim()}>
-                <div className={styles.dashboardMain}>
-                  <RmmMonitoringPanel
-                    equipment={equipmentWithRmmLive}
-                    syncPending={rmmSyncPending}
-                    syncRequestedAt={rmmSyncRequestedAt}
-                    heartbeatIntervalMinutes={rmmHeartbeatMinutes}
-                    variant="operations"
-                    agentStatusInHero={showRmmHeroStatus}
-                  />
-                </div>
+              <div key="operations" className={styles.contentFadeUp}>
+                <RmmMonitoringPanel
+                  equipment={equipmentWithRmmLive}
+                  syncPending={rmmSyncPending}
+                  syncRequestedAt={rmmSyncRequestedAt}
+                  heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+                  variant="operations"
+                  agentStatusInHero={showRmmHeroStatus}
+                />
               </div>
             ) : (
               <div key="operations-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
+                {renderRmmUnavailableEmpty(true)}
+              </div>
+            )
+          ) : null}
+
+          {rightPanelTab === "historique" ? (
+            rmmManaged ? (
+              <div key="rmm-historique" className={`${styles.logsPanelFill} ${styles.contentFadeUp}`.trim()}>
+                <RmmAgentHistoryPanel
+                  equipment={equipmentWithRmmLive || equipment}
+                  equipmentDbId={equipmentDbId}
+                  active={rightPanelTab === "historique"}
+                  copy={copy.rmm || {}}
+                />
+              </div>
+            ) : (
+              <div key="rmm-historique-unavailable" className={`${styles.contentFadeUp} ${styles.rmmEmptyWrap}`.trim()}>
                 {renderRmmUnavailableEmpty(true)}
               </div>
             )

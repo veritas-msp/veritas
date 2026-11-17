@@ -211,13 +211,22 @@ export default function AdminGeneralSettingsEmail() {
     if (!selected || selected.comingSoon) return;
     setProviderKey(key);
     const defaults = selected.defaults || {};
+    const isManualImap = key === "imap-pop3";
     setDraft(prev => ({
       ...prev,
       protocol: defaults.protocol || prev.protocol || "imap",
       security: defaults.security || prev.security || "tls",
       validateCertMode: defaults.validateCertMode || prev.validateCertMode || "no-validate-cert",
-      server: defaults.server !== undefined && defaults.server !== "" ? defaults.server : prev.server,
-      port: defaults.port !== undefined ? defaults.port : prev.port,
+      server: isManualImap
+        ? prev.server || defaults.server || ""
+        : defaults.server !== undefined && defaults.server !== ""
+          ? defaults.server
+          : prev.server,
+      port: isManualImap
+        ? prev.port || defaults.port || ""
+        : defaults.port !== undefined
+          ? defaults.port
+          : prev.port,
       inboxFolder: defaults.inboxFolder || prev.inboxFolder || "INBOX"
     }));
   };

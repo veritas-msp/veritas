@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.13",
+    date: "2026-11-17",
+    highlights: [
+      "Agent RMM : historique des communications agent↔Veritas, score appareil en bannière haute, et détection online/offline corrigée.",
+      "Fiche matériel RMM : Cybersécurité, Software & peripherals et Métriques occupent toute la hauteur de la carte.",
+      "Bannière sync complet : padding et actions peaufinés ; modal collecteur mail agrandie (IMAP en premier, moins de crop)."
+    ]
+  },
+  {
     version: "2.0.12",
     date: "2026-11-17",
     highlights: [

@@ -703,6 +703,21 @@
   box-shadow: none;
 }
 
+.rmmTopBanners {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.85rem 1rem 0.15rem;
+}
+
+.rmmTopBanners > :global([class*="syncPendingBanner"]),
+.rmmTopBanners > :global([class*="scoreBanner"]) {
+  margin: 0;
+}
+
 :global(html.dark) .equipmentFinderContent,
 :global(body.dark) .equipmentFinderContent {
   background: color-mix(in srgb, var(--msp-surface, #1a2540) 78%, #0b1220);
@@ -827,7 +842,6 @@
   background: transparent !important;
 }
 
-.equipmentFinderContent .dashboardMain,
 .equipmentFinderContent .supervisionStack,
 .equipmentFinderContent .supervisionPanelBody {
   overflow-x: hidden;
@@ -836,11 +850,15 @@
 }
 
 .equipmentFinderContent .dashboardMain > :global([class*="root"]),
+.equipmentFinderContent .dashboardMain > :global([class*="panel"]),
 .equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="RmmMonitoring"]),
+.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="panel"]),
 .equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="metricHistory"]),
-.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="embedded"]) {
+.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="embedded"]),
+.equipmentFinderContent .mainContent > .contentFadeUp > :global([class*="root"]) {
   min-height: 0;
   height: 100%;
+  flex: 1 1 0;
 }
 
 .finderItemDimmed,
@@ -1324,6 +1342,9 @@
 
 .mainContent > .contentFadeUp > :global([class*="panel"]),
 .mainContent > .contentFadeUp > :global([class*="RmmMonitoring"]),
+.mainContent > .contentFadeUp > :global([class*="embedded"]),
+.mainContent > .contentFadeUp > :global([class*="standalone"]),
+.mainContent > .contentFadeUp > :global([class*="root"]),
 .mainContent > .contentFadeUp > .dashboardSplit,
 .mainContent > .contentFadeUp > .activityStack,
 .mainContent > .contentFadeUp > .supervisionStack,
@@ -1396,16 +1417,16 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 
 .dashboardMain > :global([class*="root"]),
+.dashboardMain > :global([class*="panel"]),
 .dashboardMain > .ficheOnlyStack {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
-  height: auto;
+  height: 100%;
 }
 
 .dashboardAside {

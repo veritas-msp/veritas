@@ -2342,13 +2342,23 @@ export default function AdminTickets({
     if (!selected || selected.comingSoon) return;
     setCollectorProviderKey(providerKey);
     const defaults = selected.defaults || {};
+    const isManualImap = providerKey === "imap-pop3";
     setCollectorDraft(prev => ({
       ...prev,
       protocol: defaults.protocol || prev.protocol || "imap",
       security: defaults.security || prev.security || "tls",
       validateCertMode: defaults.validateCertMode || prev.validateCertMode || "no-validate-cert",
-      server: defaults.server !== undefined && defaults.server !== "" ? defaults.server : prev.server,
-      port: defaults.port !== undefined ? defaults.port : prev.port,
+      // IMAP manuel : on conserve le serveur déjà saisi. Presets cloud : on applique le host.
+      server: isManualImap
+        ? prev.server || defaults.server || ""
+        : defaults.server !== undefined && defaults.server !== ""
+          ? defaults.server
+          : prev.server,
+      port: isManualImap
+        ? prev.port || defaults.port || ""
+        : defaults.port !== undefined
+          ? defaults.port
+          : prev.port,
       inboxFolder: defaults.inboxFolder || prev.inboxFolder || "INBOX"
     }));
   };

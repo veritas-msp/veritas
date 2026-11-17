@@ -4,7 +4,7 @@ import SmartTooltip from "../SmartTooltip";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import RmmAgentStatusBadge from "./RmmAgentStatusBadge";
 import { formatEquipmentDetailRelative, getEquipmentDetailCopy, interpolate } from "./equipmentDetailPageI18n";
-import { formatDiskUsage, formatRmmDateTime, formatStorageGB, getRmmAgentVersion, getRmmInventoryFromEquipment, getRmmLastInventoryAt, getSecuritySummary, getUpdatesDetail, isRmmManagedEquipment, formatPendingKb, formatRmmExpectedCollectionLabel, repairRmmTextEncoding, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync } from "./rmmMonitoringUtils";
+import { formatDiskUsage, formatRmmDateTime, formatStorageGB, getRmmAgentVersion, getRmmInventoryFromEquipment, getRmmLastInventoryAt, getSecuritySummary, getUpdatesDetail, isRmmManagedEquipment, formatPendingKb, formatRmmExpectedCollectionLabel, repairRmmTextEncoding, resolveRmmHeartbeatIntervalMinutes, resolveRmmAgentOnline, agentSupportsImmediateFullSync } from "./rmmMonitoringUtils";
 import RmmCyberOverview from "./RmmCyberOverview";
 import RmmHardwareOverview from "./RmmHardwareOverview";
 import RmmInventoryOverview from "./RmmInventoryOverview";
@@ -611,18 +611,24 @@ export function RmmCollectionStatusLine({
       when: formatEquipmentDetailRelative(lastFullInventoryAt, locale)
     }));
   }
-  if (nextCollectionLabel) {
+  const agentOffline = equipment ? resolveRmmAgentOnline(equipment) === false : false;
+  if (agentOffline) {
+    parts.push(copy.rmm.agentOfflineStatus || "Agent hors ligne");
+  } else if (nextCollectionLabel) {
     parts.push(interpolate(copy.rmm.nextCollection, {
       when: nextCollectionLabel
     }));
   }
   const label = parts.length ? parts.join(" · ") : copy.rmm.waitingFirstInventory;
+  const nextTooltipWhen = agentOffline
+    ? (copy.rmm.agentOfflineStatus || "Agent hors ligne")
+    : formatRmmExpectedCollectionLabel(equipment, heartbeatMinutes);
   const tooltip = [lastInventoryAt ? interpolate(copy.rmm.heartbeatTooltip, {
     when: formatRmmDateTime(lastInventoryAt)
   }) : null, lastFullInventoryAt ? interpolate(copy.rmm.fullSyncTooltip, {
     when: formatRmmDateTime(lastFullInventoryAt)
-  }) : null, equipment ? interpolate(copy.rmm.nextCollectionTooltip, {
-    when: formatRmmExpectedCollectionLabel(equipment, heartbeatMinutes)
+  }) : null, nextTooltipWhen ? interpolate(copy.rmm.nextCollectionTooltip, {
+    when: nextTooltipWhen
   }) : null].filter(Boolean).join("\n");
   return <SmartTooltip content={tooltip || label}>
       <p className={`${compact ? styles.heroCollectionStatus : styles.subtitle} ${className}`.trim()}>
