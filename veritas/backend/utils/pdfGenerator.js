@@ -2,275 +2,411 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loadReportBranding } from './reportBranding.js';
+import { formatStoredSnapshot } from '../services/campaignMfaSnapshotService.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
-const MARGIN = 50;
+const MARGIN = 48;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
-function parseSnapshotExtra(snap) {
-  let nonAdminCount = (snap.user_count || 0) - (snap.admin_count || 0);
-  let nonAdminMfaPercentage = null;
-  try {
-    const data = typeof snap.snapshot_data === 'string' ? JSON.parse(snap.snapshot_data) : snap.snapshot_data;
-    if (data) {
-      if (data.nonAdminCount != null) nonAdminCount = data.nonAdminCount;
-      if (data.nonAdminMfaPercentage != null) nonAdminMfaPercentage = parseFloat(data.nonAdminMfaPercentage);
-    }
-  } catch (_) {}
-  if (nonAdminMfaPercentage == null && nonAdminCount > 0 && snap.user_count > 0) {
-    const totalMfa = parseFloat(snap.user_mfa_percentage || snap.mfa_percentage || 0) / 100 * snap.user_count;
-    const adminMfa = parseFloat(snap.admin_mfa_percentage || snap.mfa_percentage || 0) / 100 * (snap.admin_count || 0);
-    nonAdminMfaPercentage = Math.round((totalMfa - adminMfa) / nonAdminCount * 10000) / 100;
-  }
-  return {
-    nonAdminCount,
-    nonAdminMfaPercentage: nonAdminMfaPercentage ?? 0
-  };
+const HEADER_H = 78;
+const FOOTER_H = 52;
+const UPLOADS_ROOT = path.join(__dirname, '..', 'uploads');
+
+function resolveUploadPath(publicPath) {
+  const raw = String(publicPath || '').trim().replace(/\\/g, '/');
+  if (!raw || raw.includes('..')) return null;
+  const relative = raw.startsWith('/uploads/') ? raw.slice('/uploads/'.length) : raw.replace(/^\/+/, '');
+  const absolute = path.join(UPLOADS_ROOT, relative);
+  return fs.existsSync(absolute) ? absolute : null;
 }
+
+function fmtPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return `${n.toFixed(1)} %`;
+}
+
+function fmtDelta(value, suffix = '') {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  const sign = n > 0 ? '+' : '';
+  return `${sign}${Number.isInteger(n) ? n : n.toFixed(1)}${suffix}`;
+}
+
+function fmtDate(value, locale = 'fr-FR') {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString(locale, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return String(value);
+  }
+}
+
+function drawBrandedHeader(doc, branding, meta) {
+  const style = branding?.style || {};
+  const bg = style.headerBg || '#0b3d4a';
+  const text = style.headerText || '#f8fafc';
+  const brand = style.headerBrandColor || '#99f6e4';
+  const accent = style.headerAccentBar || '#99f6e4';
+  const accentEnd = style.headerAccentBarEnd || '#fbbf24';
+
+  doc.save();
+  doc.rect(0, 0, PAGE_WIDTH, HEADER_H).fill(bg);
+  doc.rect(0, HEADER_H - 3, PAGE_WIDTH, 3).fill(accent);
+  // thin accent end bar
+  doc.rect(PAGE_WIDTH - 80, HEADER_H - 3, 80, 3).fill(accentEnd);
+
+  let x = MARGIN;
+  const logoPath = branding?.showHeaderLogo ? resolveUploadPath(branding.logoPath) : null;
+  if (logoPath) {
+    try {
+      doc.image(logoPath, x, 16, { height: 36 });
+      x += 52;
+    } catch {
+      // ignore broken logo
+    }
+  }
+
+  let y = 16;
+  if (branding?.showHeaderBrand !== false && branding?.brandLabel) {
+    doc.fillColor(brand).font('Helvetica-Bold').fontSize(8).text(String(branding.brandLabel).toUpperCase(), x, y, {
+      width: CONTENT_WIDTH - (x - MARGIN) - 120
+    });
+    y += 12;
+  }
+  if (branding?.showHeaderCompany !== false) {
+    doc.fillColor(text).font('Helvetica-Bold').fontSize(12).text(branding?.companyName || 'Veritas', x, y, {
+      width: CONTENT_WIDTH - (x - MARGIN) - 120
+    });
+    y += 16;
+  }
+  if (branding?.showHeaderClient !== false) {
+    doc.fillColor(text).font('Helvetica').fontSize(9).text(meta.clientName || '—', x, y, {
+      width: CONTENT_WIDTH - (x - MARGIN) - 120
+    });
+  }
+
+  if (branding?.showHeaderPill !== false) {
+    const pill = 'Campagne MFA';
+    const pillW = 88;
+    doc.roundedRect(PAGE_WIDTH - MARGIN - pillW, 18, pillW, 18, 9).fill(accent);
+    doc.fillColor(bg).font('Helvetica-Bold').fontSize(8).text(pill, PAGE_WIDTH - MARGIN - pillW, 23, {
+      width: pillW,
+      align: 'center'
+    });
+  }
+  if (branding?.showHeaderPeriod !== false && meta.periodLabel) {
+    doc.fillColor(text).font('Helvetica').fontSize(8).text(meta.periodLabel, PAGE_WIDTH - MARGIN - 160, 42, {
+      width: 160,
+      align: 'right'
+    });
+  }
+  if (branding?.showHeaderGeneratedAt !== false && meta.generatedAt) {
+    doc.fillColor(text).font('Helvetica').fontSize(7).text(meta.generatedAt, PAGE_WIDTH - MARGIN - 160, 56, {
+      width: 160,
+      align: 'right'
+    });
+  }
+  doc.restore();
+  doc.y = HEADER_H + 18;
+  doc.x = MARGIN;
+}
+
+function drawBrandedFooter(doc, branding, pageNumber, pageCount) {
+  const style = branding?.style || {};
+  const bg = style.footerBg || '#ffffff';
+  const text = style.footerText || '#1e3a5f';
+  const muted = style.footerMuted || '#64748b';
+  const y0 = PAGE_HEIGHT - FOOTER_H;
+
+  doc.save();
+  doc.rect(0, y0, PAGE_WIDTH, FOOTER_H).fill(bg);
+  doc.moveTo(MARGIN, y0).lineTo(PAGE_WIDTH - MARGIN, y0).strokeColor('#e2e8f0').lineWidth(0.8).stroke();
+
+  let x = MARGIN;
+  const footerLogo = branding?.showFooterLogo ? resolveUploadPath(branding.footerLogoPath || branding.logoPath) : null;
+  if (footerLogo) {
+    try {
+      doc.image(footerLogo, x, y0 + 10, { height: 22 });
+      x += 36;
+    } catch {
+      // ignore
+    }
+  }
+
+  const leftParts = [];
+  if (branding?.showFooterCompany !== false && branding?.companyName) leftParts.push(branding.companyName);
+  if (branding?.showFooterBrand !== false && branding?.brandLabel) leftParts.push(branding.brandLabel);
+  doc.fillColor(text).font('Helvetica-Bold').fontSize(8).text(leftParts.join(' · ') || 'Veritas', x, y0 + 12, {
+    width: 220
+  });
+
+  const contact = [];
+  if (branding?.showFooterEmail !== false && branding?.supportEmail) contact.push(branding.supportEmail);
+  if (branding?.showFooterPhone !== false && branding?.supportPhone) contact.push(branding.supportPhone);
+  if (branding?.showFooterWebsite !== false && branding?.website) contact.push(branding.website);
+  doc.fillColor(muted).font('Helvetica').fontSize(7).text(contact.join('  ·  '), x, y0 + 26, {
+    width: 280
+  });
+
+  if (branding?.showFooterNote !== false && branding?.footerNote) {
+    doc.fillColor(muted).font('Helvetica-Oblique').fontSize(7).text(branding.footerNote, MARGIN, y0 + 38, {
+      width: CONTENT_WIDTH - 80
+    });
+  }
+
+  doc.fillColor(muted).font('Helvetica').fontSize(8).text(`${pageNumber} / ${pageCount}`, PAGE_WIDTH - MARGIN - 50, y0 + 20, {
+    width: 50,
+    align: 'right'
+  });
+  doc.restore();
+}
+
+function ensureSpace(doc, branding, meta, needed = 80) {
+  if (doc.y + needed < PAGE_HEIGHT - FOOTER_H - 8) return;
+  doc.addPage();
+  drawBrandedHeader(doc, branding, meta);
+}
+
+function sectionTitle(doc, branding, meta, title) {
+  ensureSpace(doc, branding, meta, 36);
+  const navy = branding?.style?.navy || '#1e3a5f';
+  const accent = branding?.style?.accent || '#0f766e';
+  doc.fillColor(navy).font('Helvetica-Bold').fontSize(12).text(title, MARGIN, doc.y);
+  doc.moveDown(0.15);
+  doc.rect(MARGIN, doc.y, 36, 2).fill(accent);
+  doc.moveDown(0.55);
+  doc.fillColor('#111827');
+}
+
+function writeKvGrid(doc, rows, branding, meta) {
+  const colW = CONTENT_WIDTH / 2;
+  let y = doc.y;
+  rows.forEach((row, index) => {
+    ensureSpace(doc, branding, meta, 16);
+    if (index % 2 === 0) y = doc.y;
+    const col = index % 2;
+    const x = MARGIN + col * colW;
+    doc.fillColor('#64748b').font('Helvetica').fontSize(8).text(row[0], x, y, { width: colW * 0.55 });
+    doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9).text(row[1], x + colW * 0.55, y, { width: colW * 0.4 });
+    if (col === 1 || index === rows.length - 1) {
+      doc.y = y + 14;
+    }
+  });
+  doc.moveDown(0.4);
+}
+
 export async function generateCampaignReportPDF(campaign, startSnapshot, endSnapshot, comparison, outputPath) {
+  const branding = await loadReportBranding().catch(() => null);
+  const start = formatStoredSnapshot(startSnapshot);
+  const end = formatStoredSnapshot(endSnapshot);
+  const cmp = comparison || {};
+  const locale = 'fr-FR';
+  const periodLabel = `${fmtDate(start?.createdAt, locale)} → ${fmtDate(end?.createdAt, locale)}`;
+  const generatedAt = `Généré le ${fmtDate(new Date(), locale)}`;
+  const meta = {
+    clientName: campaign.client_name || `Client ${campaign.client_id}`,
+    periodLabel,
+    generatedAt
+  };
+
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
-        size: "A4",
+        size: 'A4',
         margin: MARGIN,
-        autoFirstPage: true
+        autoFirstPage: true,
+        bufferPages: true
       });
       const stream = fs.createWriteStream(outputPath);
       doc.pipe(stream);
-      let y = 0;
-      const coverTextTop = 280;
-      doc.save();
-      doc.lineWidth(1);
-      doc.strokeColor('#e5e7eb');
-      doc.opacity(0.08);
-      const hexRadius = 38;
-      const hexHeight = Math.sqrt(3) * hexRadius;
-      const hexWidth = 2 * hexRadius;
-      const cols = Math.ceil(PAGE_WIDTH / (hexWidth * 0.75));
-      const honeycombRows = Math.ceil(PAGE_HEIGHT / hexHeight);
-      for (let row = 0; row < honeycombRows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const x = MARGIN + col * hexWidth * 0.75;
-          const hy = MARGIN + row * hexHeight + (col % 2 === 0 ? 0 : hexHeight / 2);
-          const hexPoints = [];
-          for (let i = 0; i < 6; i++) {
-            const angle = Math.PI / 3 * i;
-            hexPoints.push([x + hexRadius * Math.cos(angle), hy + hexRadius * Math.sin(angle)]);
-          }
-          doc.moveTo(hexPoints[0][0], hexPoints[0][1]);
-          for (let i = 1; i < 6; i++) {
-            doc.lineTo(hexPoints[i][0], hexPoints[i][1]);
-          }
-          doc.closePath();
-          doc.fillAndStroke('#e5e7eb', '#e5e7eb');
-        }
+
+      drawBrandedHeader(doc, branding, meta);
+
+      const navy = branding?.style?.navy || '#1e3a5f';
+      doc.fillColor(navy).font('Helvetica-Bold').fontSize(18).text('Rapport d’adoption MFA', MARGIN, doc.y);
+      doc.moveDown(0.25);
+      doc.fillColor('#334155').font('Helvetica').fontSize(10).text(campaign.name || 'Campagne Microsoft Security', MARGIN, doc.y);
+      doc.moveDown(0.7);
+
+      // Campaign card
+      ensureSpace(doc, branding, meta, 70);
+      const cardY = doc.y;
+      doc.roundedRect(MARGIN, cardY, CONTENT_WIDTH, 58, 6).strokeColor('#cbd5e1').lineWidth(1).stroke();
+      doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9).text('Campagne', MARGIN + 12, cardY + 10);
+      doc.font('Helvetica').fontSize(9).text(campaign.name || '—', MARGIN + 12, cardY + 24);
+      doc.fillColor('#64748b').font('Helvetica').fontSize(8).text(`Client : ${meta.clientName}`, MARGIN + 12, cardY + 38);
+      const goal = campaign.objectif_adoption;
+      if (goal !== undefined && goal !== null && goal !== '' && !Number.isNaN(Number(goal))) {
+        doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(9).text('Objectif', MARGIN + CONTENT_WIDTH - 120, cardY + 10, { width: 100, align: 'right' });
+        doc.font('Helvetica').fontSize(12).text(fmtPct(goal), MARGIN + CONTENT_WIDTH - 120, cardY + 26, { width: 100, align: 'right' });
       }
-      doc.restore();
-      y = coverTextTop;
-      const textOffset = 40;
-      doc.font('Helvetica-Bold').fontSize(22).fillColor('#1a1a2e').text('Cybersecurity campaign report', textOffset, y, {
-        align: 'center',
-        width: PAGE_WIDTH - textOffset
-      });
-      y += 32;
-      doc.font('Helvetica').fontSize(14).fillColor('#333').text('Microsoft Security — Adoption MFA', textOffset, y, {
-        align: 'center',
-        width: PAGE_WIDTH - textOffset
-      });
-      y += 32;
-      doc.font('Helvetica').fontSize(12).fillColor('#333').text(`Client: ${campaign.client_name || `Client ${campaign.client_id}`}`, textOffset, y, {
-        align: 'center',
-        width: PAGE_WIDTH - textOffset
-      });
-      y += 18;
-      doc.text(`Campaign: ${campaign.name || '—'}`, textOffset, y, {
-        align: 'center',
-        width: PAGE_WIDTH - textOffset
-      });
-      y += 18;
-      doc.text(`Period: ${new Date(startSnapshot.created_at).toLocaleDateString('en-US')} to ${new Date(endSnapshot.created_at).toLocaleDateString('en-US')}`, textOffset, y, {
-        align: 'center',
-        width: PAGE_WIDTH - textOffset
-      });
-      y += 32;
-      doc.font('Helvetica-Oblique').fontSize(10).fillColor('#888').text('Confidential document — Do not distribute without authorization', textOffset, y, {
-        align: 'center',
-        width: PAGE_WIDTH - textOffset
-      });
-      const yLogos = PAGE_HEIGHT - 60;
-      const logoCnil = path.join(__dirname, '../../frontend/public/assets/logo/cnil.png');
-      const logoAnssi = path.join(__dirname, '../../frontend/public/assets/logo/anssi.png');
-      if (fs.existsSync(logoCnil)) {
-        doc.image(logoCnil, PAGE_WIDTH / 2 - 90, yLogos + 40, {
-          width: 50
-        });
-      }
-      if (fs.existsSync(logoAnssi)) {
-        doc.image(logoAnssi, PAGE_WIDTH / 2 + 40, yLogos, {
-          width: 50
-        });
-      }
-      doc.addPage();
-      doc.y += 60;
-      const startExtra = parseSnapshotExtra(startSnapshot);
-      const endExtra = parseSnapshotExtra(endSnapshot);
-      doc.rect(0, 0, PAGE_WIDTH, 32).fill('#1a1a2e');
-      doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(11).text('OFFICIAL DOCUMENT', 0, 10, {
-        width: PAGE_WIDTH,
-        align: 'center'
-      });
-      doc.fillColor('#000000');
-      doc.y = 50;
-      doc.font('Helvetica-Bold').fontSize(18).text('Cybersecurity campaign report', MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(1.2);
-      doc.font('Helvetica').fontSize(12).text('Microsoft Security — Adoption MFA', MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(0.8);
-      doc.rect(MARGIN, doc.y, CONTENT_WIDTH, 58).stroke('#cccccc');
+      doc.y = cardY + 70;
+
+      sectionTitle(doc, branding, meta, '1. Synthèse exécutive');
+      const durationDays = Math.max(
+        0,
+        Math.ceil((new Date(end?.createdAt || endSnapshot.created_at) - new Date(start?.createdAt || startSnapshot.created_at)) / 86400000)
+      );
+      doc.fillColor('#334155').font('Helvetica').fontSize(9.5);
+      doc.text(
+        `Période analysée : ${fmtDate(start?.createdAt, locale)} → ${fmtDate(end?.createdAt, locale)} (${durationDays} jour${durationDays > 1 ? 's' : ''}).`,
+        MARGIN,
+        doc.y,
+        { width: CONTENT_WIDTH }
+      );
       doc.moveDown(0.3);
-      const blockTop = doc.y;
-      doc.font('Helvetica-Bold').fontSize(10).text('Campaign', MARGIN + 12, blockTop + 8);
-      doc.font('Helvetica').fontSize(10).text(campaign.name || '—', MARGIN + 12, blockTop + 22).text(`Client: ${campaign.client_name || `Client ${campaign.client_id}`}`, MARGIN + 12, blockTop + 36);
-      doc.font('Helvetica').fontSize(9).fillColor('#555555').text(`Generated on ${new Date().toLocaleString('en-US', {
-        dateStyle: 'long',
-        timeStyle: 'short'
-      })}`, MARGIN + CONTENT_WIDTH - 180, blockTop + 22, {
-        width: 170,
-        align: 'right'
-      });
-      doc.fillColor('#000000');
-      doc.y = blockTop + 62;
+      doc.text(
+        `Taux MFA global : ${fmtPct(cmp.mfaPercentage?.start)} → ${fmtPct(cmp.mfaPercentage?.end)} (${fmtDelta(cmp.mfaPercentage?.change, ' %')}).`,
+        MARGIN,
+        doc.y,
+        { width: CONTENT_WIDTH }
+      );
+      doc.moveDown(0.3);
+      doc.text(
+        `Comptes protégés : ${cmp.mfaEnabledCount?.start ?? '—'} → ${cmp.mfaEnabledCount?.end ?? '—'} (${fmtDelta(cmp.mfaEnabledCount?.change)}). Résistance au phishing : ${fmtPct(cmp.phishingResistantPercentage?.start)} → ${fmtPct(cmp.phishingResistantPercentage?.end)}.`,
+        MARGIN,
+        doc.y,
+        { width: CONTENT_WIDTH }
+      );
       doc.moveDown(0.8);
-      doc.font('Helvetica-Bold').fontSize(12).text('1. Executive summary', MARGIN, doc.y, {
-        underline: true,
-        align: 'left'
-      });
-      doc.moveDown(0.4);
-      doc.font('Helvetica').fontSize(10);
-      const startDate = new Date(startSnapshot.created_at).toLocaleDateString('en-US');
-      const endDate = new Date(endSnapshot.created_at).toLocaleDateString('en-US');
-      const durationDays = Math.max(0, Math.ceil((new Date(endSnapshot.created_at) - new Date(startSnapshot.created_at)) / (1000 * 60 * 60 * 24)));
-      const mfaChange = comparison.mfaPercentage.change;
-      const mfaChangeStr = mfaChange > 0 ? `+${mfaChange.toFixed(2)}` : mfaChange.toFixed(2);
-      doc.text(`Report period: ${startDate} to ${endDate} (${durationDays} day${durationDays !== 1 ? 's' : ''}).`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(0.25);
-      if (campaign.objectif_adoption !== undefined && campaign.objectif_adoption !== null && campaign.objectif_adoption !== '' && !isNaN(Number(campaign.objectif_adoption))) {
-        doc.text(`Adoption target: ${Number(campaign.objectif_adoption).toFixed(2)} %`, MARGIN, doc.y, {
-          align: 'left'
-        });
-        doc.moveDown(0.25);
-      }
-      doc.text(`Overall MFA rate change: ${mfaChangeStr} %.`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(0.25);
-      doc.text(`Users (total): ${comparison.userCount.start} → ${comparison.userCount.end} (${comparison.userCount.change >= 0 ? '+' : ''}${comparison.userCount.change})`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(0.25);
-      doc.text(`Administrators: ${comparison.adminCount.start} → ${comparison.adminCount.end} (${comparison.adminCount.change >= 0 ? '+' : ''}${comparison.adminCount.change})`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(1);
-      doc.font('Helvetica-Bold').fontSize(12).text('2. Start and end snapshots', MARGIN, doc.y, {
-        underline: true,
-        align: 'left'
-      });
-      doc.moveDown(0.5);
-      const colWidth = CONTENT_WIDTH / 2;
-      const labelW = 90;
-      const valueW = 60;
-      function writeSnapshotBlock(label, snap, extra, x, yStart) {
-        doc.font('Helvetica-Bold').fontSize(10).text(label, x, yStart);
-        doc.font('Helvetica').fontSize(9);
-        let y = yStart + 16;
-        doc.text(`Date: ${new Date(snap.created_at).toLocaleDateString('en-US')}`, x, y);
-        y += 14;
-        doc.text('Total users:', x, y);
-        doc.text(String(snap.user_count), x + labelW, y);
-        y += 12;
-        doc.text('Total MFA:', x, y);
-        doc.text(String(snap.mfa_enabled_count), x + labelW, y);
-        y += 12;
-        doc.text('Admins :', x, y);
-        doc.text(String(snap.admin_count), x + labelW, y);
-        y += 12;
-        doc.text('MFA admins :', x, y);
-        doc.text(`${parseFloat(snap.admin_mfa_percentage || snap.mfa_percentage || 0).toFixed(2)} %`, x + labelW, y);
-        y += 12;
-        doc.text('Non admin :', x, y);
-        doc.text(String(extra.nonAdminCount), x + labelW, y);
-        y += 12;
-        doc.text('MFA non admin :', x, y);
-        doc.text(`${extra.nonAdminMfaPercentage.toFixed(2)} %`, x + labelW, y);
-        y += 12;
-        doc.text('MFA enabled:', x, y);
-        doc.text(String(snap.mfa_enabled_count), x + labelW, y);
-        y += 12;
-        doc.text('Without MFA:', x, y);
-        doc.text(String(snap.mfa_disabled_count), x + labelW, y);
-        return yStart + 120;
-      }
-      const snapY = doc.y;
-      writeSnapshotBlock('Start', startSnapshot, startExtra, MARGIN, snapY);
-      writeSnapshotBlock('End', endSnapshot, endExtra, MARGIN + colWidth, snapY);
-      doc.y = snapY + 102;
-      doc.moveDown(0.8);
-      doc.font('Helvetica-Bold').fontSize(12).text('3. Comparison table', MARGIN, doc.y, {
-        underline: true,
-        align: 'left'
-      });
-      doc.moveDown(0.4);
-      const tableLeft = MARGIN;
-      const rowH = 20;
-      const cw = [140, 90, 90, 90];
+
+      sectionTitle(doc, branding, meta, '2. Snapshots début / fin');
+      const snapshotPairs = [
+        ['Utilisateurs actifs', start?.userCount, end?.userCount],
+        ['Administrateurs', start?.adminCount, end?.adminCount],
+        ['Non-admins', start?.nonAdminCount, end?.nonAdminCount],
+        ['MFA activé', start?.mfaEnabledCount, end?.mfaEnabledCount],
+        ['Sans MFA', start?.mfaDisabledCount, end?.mfaDisabledCount],
+        ['Taux MFA global', fmtPct(start?.mfaPercentage), fmtPct(end?.mfaPercentage)],
+        ['Taux MFA admins', fmtPct(start?.adminMfaPercentage), fmtPct(end?.adminMfaPercentage)],
+        ['Taux MFA non-admins', fmtPct(start?.nonAdminMfaPercentage), fmtPct(end?.nonAdminMfaPercentage)],
+        ['Phishing-resistant', `${start?.phishingResistantCount ?? 0} (${fmtPct(start?.phishingResistantPercentage)})`, `${end?.phishingResistantCount ?? 0} (${fmtPct(end?.phishingResistantPercentage)})`],
+        ['Inscriptions MFA 30 j', start?.recentlyRegisteredMfa ?? 0, end?.recentlyRegisteredMfa ?? 0]
+      ];
+
+      ensureSpace(doc, branding, meta, 40);
+      const cw = [190, 110, 110, 90];
       let ty = doc.y;
-      doc.font('Helvetica-Bold').fontSize(9);
-      doc.rect(tableLeft, ty - 4, cw[0] + cw[1] + cw[2] + cw[3], rowH + 4).fill('#f0f0f0').stroke();
-      doc.fillColor('#000000').text('Metric', tableLeft + 6, ty + 2).text('Start', tableLeft + cw[0] + 6, ty + 2).text('End', tableLeft + cw[0] + cw[1] + 6, ty + 2).text('Change', tableLeft + cw[0] + cw[1] + cw[2] + 6, ty + 2);
-      ty += rowH;
-      doc.font('Helvetica').fontSize(9);
-      const tableRows = [['Users (total)', String(startSnapshot.user_count), String(endSnapshot.user_count), `${comparison.userCount.change >= 0 ? '+' : ''}${comparison.userCount.change}`], ['Total MFA', String(startSnapshot.mfa_enabled_count), String(endSnapshot.mfa_enabled_count), `${comparison.mfaEnabledCount.change >= 0 ? '+' : ''}${comparison.mfaEnabledCount.change}`], ['Administrators', String(startSnapshot.admin_count), String(endSnapshot.admin_count), `${comparison.adminCount.change >= 0 ? '+' : ''}${comparison.adminCount.change}`], ['MFA admins (%)', `${parseFloat(startSnapshot.admin_mfa_percentage || startSnapshot.mfa_percentage || 0).toFixed(2)} %`, `${parseFloat(endSnapshot.admin_mfa_percentage || endSnapshot.mfa_percentage || 0).toFixed(2)} %`, `${(parseFloat(endSnapshot.admin_mfa_percentage || endSnapshot.mfa_percentage || 0) - parseFloat(startSnapshot.admin_mfa_percentage || startSnapshot.mfa_percentage || 0)).toFixed(2)} %`], ['Non admin', String(startExtra.nonAdminCount), String(endExtra.nonAdminCount), `${endExtra.nonAdminCount - startExtra.nonAdminCount >= 0 ? '+' : ''}${endExtra.nonAdminCount - startExtra.nonAdminCount}`], ['MFA non admin (%)', `${startExtra.nonAdminMfaPercentage.toFixed(2)} %`, `${endExtra.nonAdminMfaPercentage.toFixed(2)} %`, `${(endExtra.nonAdminMfaPercentage - startExtra.nonAdminMfaPercentage).toFixed(2)} %`], ['MFA enabled', String(startSnapshot.mfa_enabled_count), String(endSnapshot.mfa_enabled_count), `${comparison.mfaEnabledCount.change >= 0 ? '+' : ''}${comparison.mfaEnabledCount.change}`], ['Without MFA', String(startSnapshot.mfa_disabled_count), String(endSnapshot.mfa_disabled_count), `${endSnapshot.mfa_disabled_count - startSnapshot.mfa_disabled_count >= 0 ? '+' : ''}${endSnapshot.mfa_disabled_count - startSnapshot.mfa_disabled_count}`]];
-      tableRows.forEach((row, i) => {
-        doc.rect(tableLeft, ty - 2, cw[0] + cw[1] + cw[2] + cw[3], rowH).stroke();
-        doc.text(row[0], tableLeft + 6, ty + 4).text(row[1], tableLeft + cw[0] + 6, ty + 4).text(row[2], tableLeft + cw[0] + cw[1] + 6, ty + 4).text(row[3], tableLeft + cw[0] + cw[1] + cw[2] + 6, ty + 4);
-        ty += rowH;
+      doc.rect(MARGIN, ty, CONTENT_WIDTH, 18).fill('#f1f5f9');
+      doc.fillColor('#0f172a').font('Helvetica-Bold').fontSize(8);
+      doc.text('Indicateur', MARGIN + 6, ty + 5);
+      doc.text('Début', MARGIN + cw[0] + 6, ty + 5);
+      doc.text('Fin', MARGIN + cw[0] + cw[1] + 6, ty + 5);
+      doc.text('Écart', MARGIN + cw[0] + cw[1] + cw[2] + 6, ty + 5);
+      ty += 18;
+      doc.font('Helvetica').fontSize(8);
+      snapshotPairs.forEach((row, i) => {
+        ensureSpace(doc, branding, meta, 18);
+        if (doc.y > ty) ty = doc.y;
+        if (i % 2 === 0) doc.rect(MARGIN, ty, CONTENT_WIDTH, 16).fill('#fafafa');
+        const change =
+          typeof row[1] === 'number' && typeof row[2] === 'number'
+            ? fmtDelta(row[2] - row[1])
+            : '—';
+        doc.fillColor('#334155').text(String(row[0]), MARGIN + 6, ty + 4, { width: cw[0] - 8 });
+        doc.text(String(row[1] ?? '—'), MARGIN + cw[0] + 6, ty + 4, { width: cw[1] - 8 });
+        doc.text(String(row[2] ?? '—'), MARGIN + cw[0] + cw[1] + 6, ty + 4, { width: cw[2] - 8 });
+        doc.text(change, MARGIN + cw[0] + cw[1] + cw[2] + 6, ty + 4, { width: cw[3] - 8 });
+        ty += 16;
+        doc.y = ty;
       });
-      doc.y = ty + 12;
-      doc.moveDown(0.6);
-      doc.font('Helvetica-Bold').fontSize(12).text('4. Changes', MARGIN, doc.y, {
-        underline: true,
-        align: 'left'
-      });
+      doc.moveDown(0.8);
+
+      sectionTitle(doc, branding, meta, '3. Méthodes d’authentification');
+      const methodRows = [
+        ['Authenticator', start?.methods?.authenticator, end?.methods?.authenticator],
+        ['Téléphone / SMS', start?.methods?.phone, end?.methods?.phone],
+        ['E-mail', start?.methods?.email, end?.methods?.email],
+        ['FIDO2 / Passkey', start?.methods?.fido2, end?.methods?.fido2],
+        ['OTP logiciel', start?.methods?.softwareOath, end?.methods?.softwareOath],
+        ['Windows Hello', start?.methods?.windowsHello, end?.methods?.windowsHello]
+      ];
+      writeKvGrid(
+        doc,
+        methodRows.map(([label, a, b]) => [label, `${a ?? 0} → ${b ?? 0} (${fmtDelta((b ?? 0) - (a ?? 0))})`]),
+        branding,
+        meta
+      );
+
+      sectionTitle(doc, branding, meta, '4. Comptes encore sans MFA (fin de campagne)');
+      const without = end?.withoutMfa;
+      doc.fillColor('#334155').font('Helvetica').fontSize(9);
+      doc.text(
+        `Total sans MFA : ${without?.total ?? end?.mfaDisabledCount ?? 0} (admins : ${without?.adminTotal ?? '—'}, utilisateurs : ${without?.userTotal ?? '—'}).`,
+        MARGIN,
+        doc.y,
+        { width: CONTENT_WIDTH }
+      );
       doc.moveDown(0.4);
-      doc.font('Helvetica').fontSize(10);
-      doc.text(`• MFA rate: ${mfaChangeStr} %`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.text(`• Users (total): ${comparison.userCount.change >= 0 ? '+' : ''}${comparison.userCount.change}`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.text(`• Administrators: ${comparison.adminCount.change >= 0 ? '+' : ''}${comparison.adminCount.change}`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.text(`• MFA enabled: ${comparison.mfaEnabledCount.change >= 0 ? '+' : ''}${comparison.mfaEnabledCount.change}`, MARGIN, doc.y, {
-        align: 'left'
-      });
-      doc.moveDown(1);
-      const footerY = PAGE_HEIGHT - MARGIN - 24;
-      doc.rect(0, footerY, PAGE_WIDTH, 24).fill('#f5f5f5').stroke('#ddd');
-      doc.fillColor('#333333').font('Helvetica').fontSize(9).text('Official document', MARGIN, footerY + 6).text(`Generated on ${new Date().toLocaleString('en-US')}`, MARGIN, footerY + 18);
-      doc.text('Cybersecurity campaign report — Do not distribute without authorization.', PAGE_WIDTH - MARGIN - 320, footerY + 12, {
-        width: 320,
-        align: 'right'
-      });
-      doc.fillColor('#000000');
+      const samples = [
+        ...(without?.admins || []).map(u => ({ ...u, role: 'Admin' })),
+        ...(without?.users || []).map(u => ({ ...u, role: 'User' }))
+      ].slice(0, 24);
+      if (!samples.length) {
+        doc.fillColor('#15803d').font('Helvetica-Bold').fontSize(9).text('Aucun compte actif sans MFA dans l’échantillon.', MARGIN, doc.y);
+        doc.moveDown(0.6);
+      } else {
+        samples.forEach(user => {
+          ensureSpace(doc, branding, meta, 14);
+          doc.fillColor('#0f172a').font('Helvetica').fontSize(8).text(
+            `• [${user.role}] ${user.displayName || user.userPrincipalName || user.userId}${user.adminRole ? ` — ${user.adminRole}` : ''}`,
+            MARGIN,
+            doc.y,
+            { width: CONTENT_WIDTH }
+          );
+          doc.moveDown(0.15);
+        });
+        if (without?.truncated) {
+          doc.moveDown(0.2);
+          doc.fillColor('#64748b').font('Helvetica-Oblique').fontSize(8).text('Liste tronquée — échantillon représentatif uniquement.', MARGIN, doc.y);
+        }
+        doc.moveDown(0.6);
+      }
+
+      sectionTitle(doc, branding, meta, '5. Conclusion');
+      const reached =
+        goal !== undefined && goal !== null && goal !== '' && !Number.isNaN(Number(goal))
+          ? Number(end?.mfaPercentage || 0) >= Number(goal)
+          : null;
+      doc.fillColor('#334155').font('Helvetica').fontSize(9.5);
+      if (reached === true) {
+        doc.text(`L’objectif d’adoption (${fmtPct(goal)}) est atteint en fin de campagne (${fmtPct(end?.mfaPercentage)}).`, MARGIN, doc.y, {
+          width: CONTENT_WIDTH
+        });
+      } else if (reached === false) {
+        doc.text(
+          `L’objectif d’adoption (${fmtPct(goal)}) n’est pas encore atteint (${fmtPct(end?.mfaPercentage)} en fin de campagne).`,
+          MARGIN,
+          doc.y,
+          { width: CONTENT_WIDTH }
+        );
+      } else {
+        doc.text(`Taux MFA final constaté : ${fmtPct(end?.mfaPercentage)}.`, MARGIN, doc.y, { width: CONTENT_WIDTH });
+      }
+      doc.moveDown(0.35);
+      doc.text(
+        'Ce rapport compare les snapshots capturés au lancement et à l’arrêt de la campagne, sur la base des données Microsoft Entra synchronisées dans Veritas.',
+        MARGIN,
+        doc.y,
+        { width: CONTENT_WIDTH }
+      );
+
+      const pages = doc.bufferedPageRange();
+      for (let i = 0; i < pages.count; i += 1) {
+        doc.switchToPage(pages.start + i);
+        drawBrandedFooter(doc, branding, i + 1, pages.count);
+      }
+
       stream.on('finish', () => resolve(outputPath));
       stream.on('error', err => reject(err));
       doc.end();

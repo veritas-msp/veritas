@@ -4,15 +4,17 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { Switch } from "./AdminUi";
 import {
-  getLocalizedCollectorFormSections,
   getLocalizedCollectorProviders,
   interpolate
 } from "./adminMailCollectI18n";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./CollectorFormModal.module.css";
 
-const FEATURED_PROVIDER_KEYS = ["imap-pop3", "gmail", "outlook-com", "o365"];
-const STEP_ORDER = ["provider", "connection", "ingestion"];
+const QUICK_PROVIDER_KEYS = ["gmail", "outlook-com", "o365", "ovh", "imap-pop3"];
+
+function looksLikeEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
 
 export default function CollectorFormModal({
   open,
@@ -29,109 +31,59 @@ export default function CollectorFormModal({
   onSave,
   onTestConnection,
   onPeekMailbox,
-  onBrowseFolders,
-  initialSection
+  onBrowseFolders
 }) {
   const cf = copy.collectorForm;
   const isCreate = mode === "create";
-  const [activeSection, setActiveSection] = useState("provider");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showMoreProviders, setShowMoreProviders] = useState(false);
 
   const providerPresets = useMemo(() => getLocalizedCollectorProviders(copy), [copy]);
-  const formSections = useMemo(() => getLocalizedCollectorFormSections(copy), [copy]);
   const selectedProvider = useMemo(
     () => providerPresets.find(item => item.key === providerKey) || null,
     [providerKey, providerPresets]
   );
 
   const featuredProviders = useMemo(
-    () =>
-      FEATURED_PROVIDER_KEYS.map(key => providerPresets.find(item => item.key === key)).filter(
-        Boolean
-      ),
+    () => QUICK_PROVIDER_KEYS.map(key => providerPresets.find(item => item.key === key)).filter(Boolean),
     [providerPresets]
   );
   const extraProviders = useMemo(
-    () => providerPresets.filter(item => !FEATURED_PROVIDER_KEYS.includes(item.key)),
+    () => providerPresets.filter(item => !QUICK_PROVIDER_KEYS.includes(item.key)),
     [providerPresets]
   );
 
+  const isCustomImap = !providerKey || providerKey === "imap-pop3";
+  const serverLocked = Boolean(selectedProvider?.defaults?.server) && !isCustomImap;
+
   useEffect(() => {
     if (!open) return;
-    setActiveSection(initialSection || (isCreate ? "provider" : "connection"));
-    setShowAdvanced(Boolean(draft?.port));
-    setShowMoreProviders(Boolean(providerKey) && !FEATURED_PROVIDER_KEYS.includes(providerKey));
-  }, [open, initialSection, isCreate, draft?.port, providerKey]);
+    setShowAdvanced(!isCreate);
+    setShowMoreProviders(Boolean(providerKey) && !QUICK_PROVIDER_KEYS.includes(providerKey));
+  }, [open, isCreate, providerKey]);
 
-  const hasLogin = Boolean(String(draft?.username || "").trim());
-  const hasServer = Boolean(String(draft?.server || "").trim());
+  const emailOrLogin = String(draft?.username || "").trim();
   const hasPassword = Boolean(String(draft?.password || "").trim()) || !isCreate;
-
-  const connectionString = useMemo(() => {
-    const host = String(draft?.server || "").trim();
-    if (!host) return "";
-    const protocol = String(draft?.protocol || "imap").toLowerCase() || "imap";
-    const security = String(draft?.security || "tls").toLowerCase();
-    const certMode = String(draft?.validateCertMode || "no-validate-cert").toLowerCase();
-    const folder = String(draft?.inboxFolder || "INBOX").trim() || "INBOX";
-    const parts = [host, protocol];
-    parts.push(certMode === "validate-cert" ? "validate-cert" : "novalidate-cert");
-    if (security === "ssl") parts.push("ssl");
-    else if (security === "tls" || security === "starttls") parts.push("tls");
-    return `{${parts.join("/")}}${folder}`;
-  }, [draft?.server, draft?.protocol, draft?.security, draft?.validateCertMode, draft?.inboxFolder]);
-
-  const sectionMeta = useMemo(
-    () => ({
-      provider: Boolean(providerKey),
-      connection: Boolean(providerKey && hasLogin && hasServer && hasPassword),
-      ingestion: Boolean(draft?.inboxFolder)
-    }),
-    [draft?.inboxFolder, hasLogin, hasPassword, hasServer, providerKey]
-  );
+  const hasServer = Boolean(String(draft?.server || "").trim());
+  const canSave = Boolean(providerKey && emailOrLogin && hasPassword && hasServer);
+  const credentialsReady = Boolean(emailOrLogin && hasServer && hasPassword);
 
   if (!open || !draft) return null;
 
   const patchDraft = patch => setDraft(prev => ({ ...prev, ...patch }));
 
-  const canOpenSection = sectionId => {
-    if (sectionId === "provider") return true;
-    if (!providerKey) return false;
-    if (sectionId === "connection") return true;
-    if (sectionId === "ingestion") {
-      if (!isCreate) return true;
-      return sectionMeta.connection;
-    }
-    return false;
-  };
-
-  const handleSectionChange = sectionId => {
-    if (!canOpenSection(sectionId)) return;
-    setActiveSection(sectionId);
-  };
-
   const handleProviderSelect = key => {
     const provider = providerPresets.find(item => item.key === key);
     if (!provider || provider.comingSoon) return;
     onProviderChange?.(key);
-    if (isCreate) setActiveSection("connection");
   };
 
-  const stepIndex = STEP_ORDER.indexOf(activeSection);
-  const canGoBack = stepIndex > 0;
-  const canGoNext = stepIndex < STEP_ORDER.length - 1 && canOpenSection(STEP_ORDER[stepIndex + 1]);
-  const canSave =
-    Boolean(providerKey) && ((isCreate && sectionMeta.connection) || (!isCreate && hasLogin));
-
-  const goBack = () => {
-    if (!canGoBack) return;
-    setActiveSection(STEP_ORDER[stepIndex - 1]);
-  };
-
-  const goNext = () => {
-    if (!canGoNext) return;
-    setActiveSection(STEP_ORDER[stepIndex + 1]);
+  const handleEmailChange = value => {
+    const next = { username: value };
+    if (!String(draft.name || "").trim() || String(draft.name).trim() === String(draft.username || "").trim()) {
+      next.name = looksLikeEmail(value) ? value.trim() : draft.name;
+    }
+    patchDraft(next);
   };
 
   const intervalMinutes = Number(draft.checkIntervalMinutes ?? 5);
@@ -146,454 +98,30 @@ export default function CollectorFormModal({
       ? interpolate(cf.editTitle, { name: draft.name })
       : cf.editTitleFallback;
   const modalSubtitle = isCreate ? cf.createSubtitle : cf.editSubtitle;
-  const identitySummary = [
-    String(draft.username || "").trim() || cf.identityMissingLogin,
-    String(draft.server || "").trim() || cf.identityMissingServer,
-    String(draft.inboxFolder || "INBOX").trim() || "INBOX"
-  ].join(" · ");
 
-  const credentialsReady =
-    hasLogin && hasServer && (!isCreate || Boolean(String(draft.password || "").trim()));
-
-  const renderProviderCard = provider => {
+  const renderProviderChip = provider => {
     const selected = providerKey === provider.key;
     const disabled = Boolean(provider.comingSoon);
-    const comingSoonLabel = copy.providers[provider.key]?.comingSoon ?? copy.common.comingSoon;
     return (
       <button
         key={provider.key}
         type="button"
-        className={`${styles.providerCard}${selected ? ` ${styles.providerCardActive}` : ""}`}
+        className={`${styles.providerChip}${selected ? ` ${styles.providerChipActive}` : ""}`}
         onClick={() => handleProviderSelect(provider.key)}
         disabled={disabled}
         aria-pressed={selected}
+        title={provider.comingSoon ? copy.common.comingSoon : provider.hint}
       >
-        {provider.comingSoon ? (
-          <span className={styles.comingSoonBadge}>{comingSoonLabel}</span>
-        ) : null}
-        <span className={styles.providerIconWrap} aria-hidden>
-          <Icon icon={provider.icon} />
-        </span>
-        <span className={styles.providerText}>
-          <span className={styles.providerLabel}>{provider.label}</span>
-          <span className={styles.providerHint}>
-            {provider.comingSoon ? copy.common.notAvailable : provider.hint}
-          </span>
-        </span>
-        <span className={styles.providerCheck} aria-hidden>
-          <Icon icon="mdi:check" />
-        </span>
+        <Icon icon={provider.icon} aria-hidden />
+        <span>{provider.label}</span>
       </button>
     );
-  };
-
-  const renderProviderStep = () => (
-    <>
-      <div className={layout.sectionHead}>
-        <h3 className={layout.sectionTitle}>{cf.providerTitle}</h3>
-        <p className={layout.sectionDesc}>{cf.providerDesc}</p>
-      </div>
-      <div className={styles.providerList}>
-        {featuredProviders.map(renderProviderCard)}
-        {showMoreProviders ? extraProviders.map(renderProviderCard) : null}
-      </div>
-      {extraProviders.length > 0 ? (
-        <button
-          type="button"
-          className={styles.moreProvidersBtn}
-          onClick={() => setShowMoreProviders(prev => !prev)}
-          aria-expanded={showMoreProviders}
-        >
-          <Icon icon={showMoreProviders ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
-          {showMoreProviders ? cf.hideProviders : cf.moreProviders}
-        </button>
-      ) : null}
-    </>
-  );
-
-  const renderConnectionStep = () => (
-    <>
-      <div className={layout.sectionHead}>
-        <h3 className={layout.sectionTitle}>
-          {selectedProvider?.connectionTitle || cf.connectionDefaultTitle}
-        </h3>
-        <p className={layout.sectionDesc}>
-          {selectedProvider?.connectionDescription || cf.connectionDefaultDesc}
-        </p>
-      </div>
-
-      <div className={styles.summaryBar} role="status">
-        <span className={styles.summaryBarIcon} aria-hidden>
-          <Icon icon={selectedProvider?.icon || "mdi:mailbox-outline"} />
-        </span>
-        <div className={styles.summaryBarText}>
-          <span className={styles.summaryBarLabel}>
-            {selectedProvider?.label || cf.identityTitle}
-          </span>
-          <span className={styles.summaryBarValue}>{identitySummary}</span>
-        </div>
-      </div>
-
-      <div className={layout.fieldGrid2}>
-        <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-login">
-            {cf.emailLabel}
-          </label>
-          <input
-            id="collector-login"
-            type="text"
-            className={layout.input}
-            value={draft.username || ""}
-            onChange={e => patchDraft({ username: e.target.value })}
-            placeholder={cf.emailPlaceholder}
-            autoComplete="username"
-            spellCheck={false}
-          />
-          <p className={styles.fieldHint}>{cf.emailHint}</p>
-        </div>
-
-        <div className={layout.field}>
-          <label
-            className={`${layout.label}${isCreate ? ` ${layout.labelRequired}` : ""}`}
-            htmlFor="collector-password"
-          >
-            {cf.passwordLabel}
-          </label>
-          <input
-            id="collector-password"
-            type="password"
-            className={layout.input}
-            value={draft.password || ""}
-            onChange={e => patchDraft({ password: e.target.value })}
-            placeholder={isCreate ? cf.passwordPlaceholder : cf.passwordKeepPlaceholder}
-            autoComplete="new-password"
-          />
-          <p className={styles.fieldHint}>{isCreate ? cf.passwordHint : cf.passwordKeepHint}</p>
-        </div>
-
-        <div className={`${layout.field} ${layout.fieldFull}`}>
-          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-server">
-            {cf.serverLabel}
-          </label>
-          <input
-            id="collector-server"
-            type="text"
-            className={layout.input}
-            value={draft.server || ""}
-            onChange={e => patchDraft({ server: e.target.value })}
-            placeholder={cf.serverPlaceholder}
-          />
-        </div>
-
-        <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-security">
-            {cf.securityLabel}
-          </label>
-          <select
-            id="collector-security"
-            className={layout.input}
-            value={draft.security || "tls"}
-            onChange={e => patchDraft({ security: e.target.value })}
-          >
-            <option value="tls">{copy.securityOptions?.tls || "TLS"}</option>
-            <option value="ssl">{copy.securityOptions?.ssl || "SSL"}</option>
-            <option value="none">{copy.securityOptions?.none || "None"}</option>
-          </select>
-          <p className={styles.fieldHint}>{cf.securityHint}</p>
-        </div>
-
-        <div className={layout.field}>
-          <label className={layout.label} htmlFor="collector-cert">
-            {cf.certLabel}
-          </label>
-          <select
-            id="collector-cert"
-            className={layout.input}
-            value={draft.validateCertMode || "no-validate-cert"}
-            onChange={e => patchDraft({ validateCertMode: e.target.value })}
-          >
-            <option value="no-validate-cert">{copy.certOptions.noValidate}</option>
-            <option value="validate-cert">{copy.certOptions.validate}</option>
-          </select>
-        </div>
-
-        <div className={`${layout.field} ${layout.fieldFull}`}>
-          <label className={layout.label} htmlFor="collector-name">
-            {cf.nameLabel}
-          </label>
-          <input
-            id="collector-name"
-            type="text"
-            className={layout.input}
-            value={draft.name || ""}
-            onChange={e => patchDraft({ name: e.target.value })}
-            placeholder={cf.namePlaceholder}
-          />
-        </div>
-
-        {connectionString ? (
-          <div className={`${layout.field} ${layout.fieldFull}`}>
-            <label className={layout.label} htmlFor="collector-conn-string">
-              {cf.connectionStringLabel}
-            </label>
-            <input
-              id="collector-conn-string"
-              type="text"
-              className={layout.input}
-              value={connectionString}
-              readOnly
-            />
-            <p className={styles.fieldHint}>{cf.connectionStringHint}</p>
-          </div>
-        ) : null}
-      </div>
-
-      <button
-        type="button"
-        className={styles.advancedToggle}
-        onClick={() => setShowAdvanced(prev => !prev)}
-        aria-expanded={showAdvanced}
-      >
-        <Icon icon={showAdvanced ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
-        {cf.advancedToggle}
-      </button>
-
-      {showAdvanced ? (
-        <div className={layout.fieldGrid2}>
-          <div className={layout.field}>
-            <label className={layout.label} htmlFor="collector-port">
-              {cf.portLabel}
-            </label>
-            <input
-              id="collector-port"
-              type="text"
-              className={layout.input}
-              value={draft.port || ""}
-              onChange={e => patchDraft({ port: e.target.value })}
-              placeholder={cf.portPlaceholder}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      <div className={styles.actionsRow}>
-        <button
-          type="button"
-          className={styles.secondaryBtn}
-          onClick={onTestConnection}
-          disabled={saving || testing || !credentialsReady}
-        >
-          {testing ? (
-            <>
-              <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-              {cf.testingConnection}
-            </>
-          ) : (
-            <>
-              <Icon icon="mdi:connection" aria-hidden />
-              {cf.testConnection}
-            </>
-          )}
-        </button>
-        <button
-          type="button"
-          className={styles.secondaryBtn}
-          onClick={onPeekMailbox}
-          disabled={saving || testing || peeking || !credentialsReady}
-        >
-          {peeking ? (
-            <>
-              <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-              {cf.peekingMailbox}
-            </>
-          ) : (
-            <>
-              <Icon icon="mdi:email-search-outline" aria-hidden />
-              {cf.peekMailbox}
-            </>
-          )}
-        </button>
-      </div>
-    </>
-  );
-
-  const renderIngestionStep = () => {
-    const section = formSections.find(item => item.id === "ingestion");
-    return (
-      <>
-        <div className={layout.sectionHead}>
-          <h3 className={layout.sectionTitle}>{section?.label}</h3>
-          <p className={layout.sectionDesc}>
-            {cf.ingestionDescBefore}
-            <strong>{cf.ingestionDescTab}</strong>
-            {cf.ingestionDescAfter}
-          </p>
-        </div>
-
-        <div className={styles.statusCard}>
-          <div>
-            <div className={styles.statusLabel}>{cf.statusLabel}</div>
-            <p className={styles.statusHint}>{cf.statusHint}</p>
-          </div>
-          <Switch
-            checked={Boolean(draft.enabled)}
-            onChange={on => patchDraft({ enabled: on })}
-            label={draft.enabled ? copy.common.active : copy.common.inactive}
-          />
-        </div>
-
-        <div className={styles.block}>
-          <h4 className={styles.blockTitle}>{cf.scanFolderTitle}</h4>
-          <div className={layout.field}>
-            <label className={layout.label} htmlFor="collector-inbox">
-              {cf.inboxLabel}
-            </label>
-            <div className={`${styles.folderRow} ${styles.folderRowPeek}`}>
-              <input
-                id="collector-inbox"
-                type="text"
-                className={layout.input}
-                value={draft.inboxFolder || ""}
-                onChange={e => patchDraft({ inboxFolder: e.target.value })}
-                placeholder={cf.inboxPlaceholder}
-              />
-              <button
-                type="button"
-                className={styles.browseBtn}
-                title={copy.common.browseFolders}
-                onClick={() => onBrowseFolders("inboxFolder")}
-              >
-                <Icon icon="mdi:folder-search-outline" />
-              </button>
-              <button
-                type="button"
-                className={styles.browseBtn}
-                title={cf.peekMailbox}
-                onClick={onPeekMailbox}
-                disabled={peeking}
-              >
-                <Icon
-                  icon={peeking ? "mdi:loading" : "mdi:email-search-outline"}
-                  className={peeking ? layout.spinning : undefined}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.block}>
-          <h4 className={styles.blockTitle}>{cf.moveFolderTitle}</h4>
-          <p className={styles.blockHint}>{cf.moveFolderHint}</p>
-          <div className={layout.fieldGrid2}>
-            <div className={layout.field}>
-              <label className={layout.label} htmlFor="collector-accepted">
-                {cf.acceptedLabel}
-              </label>
-              <div className={styles.folderRow}>
-                <input
-                  id="collector-accepted"
-                  type="text"
-                  className={layout.input}
-                  value={draft.acceptedFolder || ""}
-                  onChange={e => patchDraft({ acceptedFolder: e.target.value })}
-                  placeholder={cf.acceptedPlaceholder}
-                />
-                <button
-                  type="button"
-                  className={styles.browseBtn}
-                  title={copy.common.browseFolders}
-                  onClick={() => onBrowseFolders("acceptedFolder")}
-                >
-                  <Icon icon="mdi:folder-search-outline" />
-                </button>
-              </div>
-            </div>
-            <div className={layout.field}>
-              <label className={layout.label} htmlFor="collector-refused">
-                {cf.refusedLabel}
-              </label>
-              <div className={styles.folderRow}>
-                <input
-                  id="collector-refused"
-                  type="text"
-                  className={layout.input}
-                  value={draft.refusedFolder || ""}
-                  onChange={e => patchDraft({ refusedFolder: e.target.value })}
-                  placeholder={cf.refusedPlaceholder}
-                />
-                <button
-                  type="button"
-                  className={styles.browseBtn}
-                  title={copy.common.browseFolders}
-                  onClick={() => onBrowseFolders("refusedFolder")}
-                >
-                  <Icon icon="mdi:folder-search-outline" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.block}>
-          <h4 className={styles.blockTitle}>{cf.behaviorTitle}</h4>
-          <div className={styles.toggleGrid}>
-            <div className={styles.toggleCard}>
-              <span className={styles.toggleCardLabel}>{cf.autoIngestLabel}</span>
-              <Switch
-                checked={Boolean(draft.ingestEnabled)}
-                onChange={on => patchDraft({ ingestEnabled: on })}
-              />
-            </div>
-            <div className={styles.toggleCard}>
-              <div>
-                <span className={styles.toggleCardLabel}>{cf.unreadOnlyLabel}</span>
-                <p className={styles.toggleCardHint}>{cf.unreadOnlyHint}</p>
-              </div>
-              <Switch
-                checked={draft.unreadOnly !== false}
-                onChange={on => patchDraft({ unreadOnly: on })}
-              />
-            </div>
-          </div>
-
-          <div className={styles.rangeBlock}>
-            <label className={layout.label} htmlFor="collector-interval">
-              {cf.intervalLabel}
-            </label>
-            <input
-              id="collector-interval"
-              type="range"
-              className={styles.rangeInput}
-              min="1"
-              max="120"
-              step="1"
-              value={intervalMinutes}
-              onChange={e => patchDraft({ checkIntervalMinutes: Number(e.target.value || 5) })}
-            />
-            <div className={styles.rangeHint}>{intervalHint}</div>
-          </div>
-        </div>
-      </>
-    );
-  };
-
-  const renderSectionContent = () => {
-    switch (activeSection) {
-      case "provider":
-        return renderProviderStep();
-      case "connection":
-        return renderConnectionStep();
-      case "ingestion":
-        return renderIngestionStep();
-      default:
-        return null;
-    }
   };
 
   return createPortal(
     <div className={layout.overlay} onClick={onClose} role="presentation">
       <div
-        className={`${layout.shell} ${styles.shell}`}
+        className={`${layout.shell} ${styles.shell} ${styles.shellSimple}`}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -604,7 +132,7 @@ export default function CollectorFormModal({
         <header className={layout.header}>
           <div className={layout.headerMain}>
             <div className={layout.headerIconWrap} aria-hidden>
-              <Icon icon={isCreate ? "mdi:inbox-arrow-down-outline" : "mdi:email-sync-outline"} />
+              <Icon icon={isCreate ? "mdi:email-plus-outline" : "mdi:email-sync-outline"} />
             </div>
             <div className={layout.headerText}>
               <p className={layout.eyebrow}>{cf.eyebrow}</p>
@@ -625,62 +153,347 @@ export default function CollectorFormModal({
           </button>
         </header>
 
-        <nav className={styles.stepper} aria-label={cf.sectionsAria}>
-          {formSections.map((section, index) => {
-            const locked = !canOpenSection(section.id);
-            const isActive = activeSection === section.id;
-            const isDone = Boolean(sectionMeta[section.id]) && !isActive;
-            return (
-              <button
-                key={section.id}
-                type="button"
-                className={`${styles.step}${isActive ? ` ${styles.stepActive}` : ""}${
-                  isDone ? ` ${styles.stepDone}` : ""
-                }`}
-                onClick={() => handleSectionChange(section.id)}
-                aria-current={isActive ? "step" : undefined}
-                disabled={locked}
-              >
-                <span className={styles.stepIndex} aria-hidden>
-                  {isDone ? <Icon icon="mdi:check" /> : index + 1}
-                </span>
-                <span className={styles.stepLabel}>
-                  <span className={styles.stepTitle}>{section.label}</span>
-                  <span className={styles.stepHint}>{section.description}</span>
-                </span>
-              </button>
-            );
-          })}
-        </nav>
-
         <div className={`${layout.bodySingle} ${styles.body}`}>
           <div className={layout.content}>
-            <div className={styles.stepPane} key={activeSection}>
-              <div className={styles.stepScroll}>{renderSectionContent()}</div>
+            <div className={styles.simplePane}>
+              <section className={styles.simpleSection}>
+                <h3 className={styles.simpleSectionTitle}>{cf.providerTitle}</h3>
+                <div className={styles.providerChips}>
+                  {featuredProviders.map(renderProviderChip)}
+                  {showMoreProviders ? extraProviders.map(renderProviderChip) : null}
+                </div>
+                {extraProviders.length > 0 ? (
+                  <button
+                    type="button"
+                    className={styles.moreProvidersBtn}
+                    onClick={() => setShowMoreProviders(prev => !prev)}
+                    aria-expanded={showMoreProviders}
+                  >
+                    <Icon icon={showMoreProviders ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
+                    {showMoreProviders ? cf.hideProviders : cf.moreProviders}
+                  </button>
+                ) : null}
+                {selectedProvider ? (
+                  <p className={styles.providerHelp}>{selectedProvider.connectionDescription || selectedProvider.hint}</p>
+                ) : (
+                  <p className={styles.providerHelp}>{cf.providerDesc}</p>
+                )}
+              </section>
+
+              <section className={styles.simpleSection}>
+                <h3 className={styles.simpleSectionTitle}>{cf.accountTitle || cf.connectionDefaultTitle}</h3>
+                <div className={layout.fieldGrid2}>
+                  <div className={`${layout.field} ${layout.fieldFull}`}>
+                    <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-email">
+                      {cf.emailLabel}
+                    </label>
+                    <input
+                      id="collector-email"
+                      type="text"
+                      className={layout.input}
+                      value={draft.username || ""}
+                      onChange={e => handleEmailChange(e.target.value)}
+                      placeholder={cf.emailPlaceholder}
+                      autoComplete="username"
+                      spellCheck={false}
+                      autoFocus={isCreate}
+                    />
+                    <p className={styles.fieldHint}>{cf.emailHint}</p>
+                  </div>
+
+                  <div className={`${layout.field} ${layout.fieldFull}`}>
+                    <label
+                      className={`${layout.label}${isCreate ? ` ${layout.labelRequired}` : ""}`}
+                      htmlFor="collector-password"
+                    >
+                      {cf.passwordLabel}
+                    </label>
+                    <input
+                      id="collector-password"
+                      type="password"
+                      className={layout.input}
+                      value={draft.password || ""}
+                      onChange={e => patchDraft({ password: e.target.value })}
+                      placeholder={isCreate ? cf.passwordPlaceholder : cf.passwordKeepPlaceholder}
+                      autoComplete="new-password"
+                    />
+                    <p className={styles.fieldHint}>{isCreate ? cf.passwordHint : cf.passwordKeepHint}</p>
+                  </div>
+
+                  {isCustomImap || !serverLocked ? (
+                    <div className={`${layout.field} ${layout.fieldFull}`}>
+                      <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-server">
+                        {cf.serverLabel}
+                      </label>
+                      <input
+                        id="collector-server"
+                        type="text"
+                        className={layout.input}
+                        value={draft.server || ""}
+                        onChange={e => patchDraft({ server: e.target.value })}
+                        placeholder={cf.serverPlaceholder}
+                      />
+                    </div>
+                  ) : (
+                    <div className={`${layout.field} ${layout.fieldFull}`}>
+                      <label className={layout.label} htmlFor="collector-server-ro">
+                        {cf.serverLabel}
+                      </label>
+                      <input
+                        id="collector-server-ro"
+                        type="text"
+                        className={layout.input}
+                        value={draft.server || ""}
+                        readOnly
+                        disabled
+                      />
+                      <p className={styles.fieldHint}>{cf.serverPresetHint || cf.connectionDefaultDesc}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.actionsRow}>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={onTestConnection}
+                    disabled={saving || testing || !credentialsReady}
+                  >
+                    {testing ? (
+                      <>
+                        <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+                        {cf.testingConnection}
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="mdi:connection" aria-hidden />
+                        {cf.testConnection}
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={onPeekMailbox}
+                    disabled={saving || testing || peeking || !credentialsReady}
+                  >
+                    {peeking ? (
+                      <>
+                        <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+                        {cf.peekingMailbox}
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="mdi:email-search-outline" aria-hidden />
+                        {cf.peekMailbox}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </section>
+
+              <button
+                type="button"
+                className={styles.advancedToggle}
+                onClick={() => setShowAdvanced(prev => !prev)}
+                aria-expanded={showAdvanced}
+              >
+                <Icon icon={showAdvanced ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
+                {cf.advancedToggle}
+              </button>
+
+              {showAdvanced ? (
+                <section className={styles.simpleSection}>
+                  <div className={styles.statusCard}>
+                    <div>
+                      <div className={styles.statusLabel}>{cf.statusLabel}</div>
+                      <p className={styles.statusHint}>{cf.statusHint}</p>
+                    </div>
+                    <Switch
+                      checked={Boolean(draft.enabled)}
+                      onChange={on => patchDraft({ enabled: on })}
+                      label={draft.enabled ? copy.common.active : copy.common.inactive}
+                    />
+                  </div>
+
+                  <div className={layout.fieldGrid2}>
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-name">
+                        {cf.nameLabel}
+                      </label>
+                      <input
+                        id="collector-name"
+                        type="text"
+                        className={layout.input}
+                        value={draft.name || ""}
+                        onChange={e => patchDraft({ name: e.target.value })}
+                        placeholder={cf.namePlaceholder}
+                      />
+                    </div>
+
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-inbox">
+                        {cf.inboxLabel}
+                      </label>
+                      <div className={`${styles.folderRow} ${styles.folderRowPeek}`}>
+                        <input
+                          id="collector-inbox"
+                          type="text"
+                          className={layout.input}
+                          value={draft.inboxFolder || ""}
+                          onChange={e => patchDraft({ inboxFolder: e.target.value })}
+                          placeholder={cf.inboxPlaceholder}
+                        />
+                        <button
+                          type="button"
+                          className={styles.browseBtn}
+                          title={copy.common.browseFolders}
+                          onClick={() => onBrowseFolders?.("inboxFolder")}
+                        >
+                          <Icon icon="mdi:folder-search-outline" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-accepted">
+                        {cf.acceptedLabel}
+                      </label>
+                      <div className={styles.folderRow}>
+                        <input
+                          id="collector-accepted"
+                          type="text"
+                          className={layout.input}
+                          value={draft.acceptedFolder || ""}
+                          onChange={e => patchDraft({ acceptedFolder: e.target.value })}
+                          placeholder={cf.acceptedPlaceholder}
+                        />
+                        <button
+                          type="button"
+                          className={styles.browseBtn}
+                          title={copy.common.browseFolders}
+                          onClick={() => onBrowseFolders?.("acceptedFolder")}
+                        >
+                          <Icon icon="mdi:folder-search-outline" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-refused">
+                        {cf.refusedLabel}
+                      </label>
+                      <div className={styles.folderRow}>
+                        <input
+                          id="collector-refused"
+                          type="text"
+                          className={layout.input}
+                          value={draft.refusedFolder || ""}
+                          onChange={e => patchDraft({ refusedFolder: e.target.value })}
+                          placeholder={cf.refusedPlaceholder}
+                        />
+                        <button
+                          type="button"
+                          className={styles.browseBtn}
+                          title={copy.common.browseFolders}
+                          onClick={() => onBrowseFolders?.("refusedFolder")}
+                        >
+                          <Icon icon="mdi:folder-search-outline" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-security">
+                        {cf.securityLabel}
+                      </label>
+                      <select
+                        id="collector-security"
+                        className={layout.input}
+                        value={draft.security || "tls"}
+                        onChange={e => patchDraft({ security: e.target.value })}
+                      >
+                        <option value="tls">{copy.securityOptions?.tls || "TLS"}</option>
+                        <option value="ssl">{copy.securityOptions?.ssl || "SSL"}</option>
+                        <option value="none">{copy.securityOptions?.none || "None"}</option>
+                      </select>
+                    </div>
+
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-port">
+                        {cf.portLabel}
+                      </label>
+                      <input
+                        id="collector-port"
+                        type="text"
+                        className={layout.input}
+                        value={draft.port || ""}
+                        onChange={e => patchDraft({ port: e.target.value })}
+                        placeholder={cf.portPlaceholder}
+                      />
+                    </div>
+
+                    <div className={layout.field}>
+                      <label className={layout.label} htmlFor="collector-cert">
+                        {cf.certLabel}
+                      </label>
+                      <select
+                        id="collector-cert"
+                        className={layout.input}
+                        value={draft.validateCertMode || "no-validate-cert"}
+                        onChange={e => patchDraft({ validateCertMode: e.target.value })}
+                      >
+                        <option value="no-validate-cert">{copy.certOptions.noValidate}</option>
+                        <option value="validate-cert">{copy.certOptions.validate}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className={styles.toggleGrid}>
+                    <div className={styles.toggleCard}>
+                      <span className={styles.toggleCardLabel}>{cf.autoIngestLabel}</span>
+                      <Switch
+                        checked={Boolean(draft.ingestEnabled)}
+                        onChange={on => patchDraft({ ingestEnabled: on })}
+                      />
+                    </div>
+                    <div className={styles.toggleCard}>
+                      <div>
+                        <span className={styles.toggleCardLabel}>{cf.unreadOnlyLabel}</span>
+                        <p className={styles.toggleCardHint}>{cf.unreadOnlyHint}</p>
+                      </div>
+                      <Switch
+                        checked={draft.unreadOnly !== false}
+                        onChange={on => patchDraft({ unreadOnly: on })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.rangeBlock}>
+                    <label className={layout.label} htmlFor="collector-interval">
+                      {cf.intervalLabel}
+                    </label>
+                    <input
+                      id="collector-interval"
+                      type="range"
+                      className={styles.rangeInput}
+                      min="1"
+                      max="120"
+                      step="1"
+                      value={intervalMinutes}
+                      onChange={e => patchDraft({ checkIntervalMinutes: Number(e.target.value || 5) })}
+                    />
+                    <div className={styles.rangeHint}>{intervalHint}</div>
+                  </div>
+                </section>
+              ) : null}
             </div>
           </div>
         </div>
 
         <footer className={layout.footer}>
           <div className={styles.footerLeft}>
-            {canGoBack ? (
-              <button
-                type="button"
-                className={layout.ghostBtn}
-                onClick={goBack}
-                disabled={saving || testing}
-              >
-                <Icon icon="mdi:arrow-left" aria-hidden />
-                {cf.backBtn}
-              </button>
-            ) : (
-              <span className={layout.footerHint}>
-                {interpolate(cf.stepOf || "Étape {current} sur {total}", {
-                  current: stepIndex + 1,
-                  total: STEP_ORDER.length
-                })}
-              </span>
-            )}
+            <span className={layout.footerHint}>{cf.footerHint || ""}</span>
           </div>
           <div className={layout.footerActions}>
             <button
@@ -691,41 +504,29 @@ export default function CollectorFormModal({
             >
               {copy.common.cancel}
             </button>
-            {isCreate && activeSection !== "ingestion" ? (
-              <button
-                type="button"
-                className={layout.primaryBtn}
-                onClick={goNext}
-                disabled={saving || testing || !canGoNext}
-              >
-                {cf.nextBtn}
-                <Icon icon="mdi:arrow-right" aria-hidden />
-              </button>
-            ) : (
-              <button
-                type="button"
-                className={layout.primaryBtn}
-                onClick={onSave}
-                disabled={saving || testing || !canSave}
-              >
-                {saving ? (
-                  <>
-                    <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-                    {copy.common.saving}
-                  </>
-                ) : isCreate ? (
-                  <>
-                    <Icon icon="mdi:check" aria-hidden />
-                    {cf.createBtn}
-                  </>
-                ) : (
-                  <>
-                    <Icon icon="mdi:content-save-outline" aria-hidden />
-                    {copy.common.save}
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              type="button"
+              className={layout.primaryBtn}
+              onClick={onSave}
+              disabled={saving || testing || !canSave}
+            >
+              {saving ? (
+                <>
+                  <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+                  {copy.common.saving}
+                </>
+              ) : isCreate ? (
+                <>
+                  <Icon icon="mdi:check" aria-hidden />
+                  {cf.createBtn}
+                </>
+              ) : (
+                <>
+                  <Icon icon="mdi:content-save-outline" aria-hidden />
+                  {copy.common.save}
+                </>
+              )}
+            </button>
           </div>
         </footer>
       </div>

@@ -16,6 +16,11 @@ import {
 
 const TICKET_TABLE_LIMIT = 12;
 
+function isOpenAssignedHomeTicket(ticket) {
+  const status = String(ticket?.status || "").trim().toLowerCase();
+  return status !== "resolved" && status !== "closed";
+}
+
 function getAssignedTicketKpis(stats) {
   const source = stats || {};
   const neu = Number(source.new) || 0;
@@ -354,14 +359,16 @@ export default function HomeSupervisionSection({
   );
 
   const supportTickets = useMemo(() => {
-    const list = (Array.isArray(recentTickets) ? recentTickets : []).filter(ticket => !isSalesTicket(ticket));
+    const list = (Array.isArray(recentTickets) ? recentTickets : []).filter(
+      ticket => !isSalesTicket(ticket) && isOpenAssignedHomeTicket(ticket)
+    );
     list.sort((a, b) => Number(Boolean(b.isMajorIncident)) - Number(Boolean(a.isMajorIncident)));
     return list.slice(0, TICKET_TABLE_LIMIT);
   }, [recentTickets]);
   const salesTickets = useMemo(
     () =>
       (Array.isArray(recentTickets) ? recentTickets : [])
-        .filter(ticket => isSalesTicket(ticket))
+        .filter(ticket => isSalesTicket(ticket) && isOpenAssignedHomeTicket(ticket))
         .slice(0, TICKET_TABLE_LIMIT),
     [recentTickets]
   );

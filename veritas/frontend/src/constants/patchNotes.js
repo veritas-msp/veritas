@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.12",
+    date: "2026-11-17",
+    highlights: [
+      "Campagnes MFA : snapshots enrichis (méthodes, phishing-resistant), stats d’adoption avant/après et rapport PDF brandé.",
+      "Fiche campagne : statut en lecture seule, pilotage via actions Lancer / Pause / Arrêter.",
+      "Collecte mail : modal simplifiée (messagerie + adresse + mot de passe, options avancées).",
+      "Accueil : tickets ouverts attribués à l’agent (individuel ou équipe) ; panneau satisfaction tickets peaufiné."
+    ]
+  },
+  {
     version: "2.0.11",
     date: "2026-11-17",
     highlights: [

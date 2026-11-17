@@ -11,6 +11,12 @@ import fs from 'fs';
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
 import { resolveFileUploadedBy } from "../../utils/fileUploadedBy.js";
 import { ensureVisibleToClientColumn, hasVisibleToClientColumn, parseVisibleToClient } from "../../utils/clientFilesVisibility.js";
+import {
+  buildCampaignSnapshotInsertPayload,
+  buildRichSnapshotComparison,
+  collectClientMfaSnapshot,
+  formatStoredSnapshot
+} from "../../services/campaignMfaSnapshotService.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CAMPAIGN_REPORTS_DIR = path.join(__dirname, "..", "..", "uploads", "campaign-reports");
@@ -25,45 +31,47 @@ if (!fs.existsSync(CLIENT_FILES_DIR)) {
     recursive: true
   });
 }
-function buildSnapshotComparison(startSnapshot, endSnapshot) {
-  return {
-    adminCount: {
-      start: startSnapshot.admin_count,
-      end: endSnapshot.admin_count,
-      change: endSnapshot.admin_count - startSnapshot.admin_count
-    },
-    userCount: {
-      start: startSnapshot.user_count,
-      end: endSnapshot.user_count,
-      change: endSnapshot.user_count - startSnapshot.user_count
-    },
-    mfaPercentage: {
-      start: parseFloat(startSnapshot.mfa_percentage),
-      end: parseFloat(endSnapshot.mfa_percentage),
-      change: parseFloat(endSnapshot.mfa_percentage) - parseFloat(startSnapshot.mfa_percentage)
-    },
-    mfaEnabledCount: {
-      start: startSnapshot.mfa_enabled_count,
-      end: endSnapshot.mfa_enabled_count,
-      change: endSnapshot.mfa_enabled_count - startSnapshot.mfa_enabled_count
-    }
-  };
+async function insertCampaignSnapshot(campaignId, snapshotType, stats) {
+  const payload = buildCampaignSnapshotInsertPayload(stats);
+  const result = await pool.query(
+    `INSERT INTO v_b_clients_c_campaign_snapshot
+       (campaign_id, snapshot_type, admin_count, user_count, mfa_percentage, admin_mfa_percentage, user_mfa_percentage, mfa_enabled_count, mfa_disabled_count, snapshot_data)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+     RETURNING *`,
+    [
+      campaignId,
+      snapshotType,
+      payload.adminCount,
+      payload.userCount,
+      payload.mfaPercentage,
+      payload.adminMfaPercentage,
+      payload.userMfaPercentage,
+      payload.mfaEnabledCount,
+      payload.mfaDisabledCount,
+      JSON.stringify(payload.snapshotData)
+    ]
+  );
+  return result.rows[0];
 }
-async function ensureCampaignReportPdf(clientId, campaignId) {
+async function ensureCampaignReportPdf(clientId, campaignId, { force = false } = {}) {
   const pdfPath = path.join(CAMPAIGN_REPORTS_DIR, `campaign_${campaignId}_report.pdf`);
-  if (fs.existsSync(pdfPath)) {
+  if (!force && fs.existsSync(pdfPath)) {
     return pdfPath;
   }
-  const [startResult, endResult, campaignResult] = await Promise.all([pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start'`, [campaignId]), pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'end'`, [campaignId]), pool.query(`SELECT c.*, cl.name as client_name
+  const [startResult, endResult, campaignResult] = await Promise.all([
+    pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start'`, [campaignId]),
+    pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'end'`, [campaignId]),
+    pool.query(`SELECT c.*, cl.name as client_name
        FROM v_b_clients_c_campaign c
        LEFT JOIN v_b_clients cl ON c.client_id::text = cl.id::text
-       WHERE c.id = $1 AND c.client_id::text = $2::text`, [campaignId, clientId])]);
+       WHERE c.id = $1 AND c.client_id::text = $2::text`, [campaignId, clientId])
+  ]);
   if (!campaignResult.rows[0] || !startResult.rows[0] || !endResult.rows[0]) {
     return null;
   }
   const startSnapshot = startResult.rows[0];
   const endSnapshot = endResult.rows[0];
-  const comparison = buildSnapshotComparison(startSnapshot, endSnapshot);
+  const comparison = buildRichSnapshotComparison(startSnapshot, endSnapshot);
   await generateCampaignReportPDF(campaignResult.rows[0], startSnapshot, endSnapshot, comparison, pdfPath);
   return fs.existsSync(pdfPath) ? pdfPath : null;
 }
@@ -108,62 +116,27 @@ function normalizeNumericColumn(v) {
   return Number.isFinite(n) ? n : null;
 }
 async function getClientMfaStatsFromDb(clientId) {
-  const result = await pool.query(`
-    SELECT
-      COUNT(*) as total_users,
-      COUNT(CASE WHEN is_admin = true THEN 1 END) as admin_count,
-      COUNT(CASE WHEN is_admin = false THEN 1 END) as non_admin_count,
-      COUNT(CASE WHEN has_mfa = true THEN 1 END) as users_with_mfa,
-      COUNT(CASE WHEN has_mfa = true AND is_admin = true THEN 1 END) as admins_with_mfa,
-      COUNT(CASE WHEN has_mfa = true AND is_admin = false THEN 1 END) as non_admins_with_mfa,
-      MAX(last_sync) as last_sync
-    FROM v_b_clients_c_azure_mfa
-    WHERE client_id = $1 AND account_enabled = true
-  `, [clientId]);
-  if (result.rows.length === 0 || !result.rows[0].total_users || parseInt(result.rows[0].total_users) === 0) {
-    return null;
-  }
-  const row = result.rows[0];
-  const totalUsers = parseInt(row.total_users);
-  const adminCount = parseInt(row.admin_count);
-  const nonAdminCount = parseInt(row.non_admin_count);
-  const usersWithMfa = parseInt(row.users_with_mfa);
-  const adminsWithMfa = parseInt(row.admins_with_mfa);
-  const nonAdminsWithMfa = parseInt(row.non_admins_with_mfa);
-  const adminMfaPercentage = adminCount > 0 ? Math.round(adminsWithMfa / adminCount * 10000) / 100 : 0;
-  const nonAdminMfaPercentage = nonAdminCount > 0 ? Math.round(nonAdminsWithMfa / nonAdminCount * 10000) / 100 : 0;
-  const userMfaPercentage = totalUsers > 0 ? Math.round(usersWithMfa / totalUsers * 10000) / 100 : 0;
-  const mfaPercentage = userMfaPercentage;
-  const mfaEnabledCount = usersWithMfa;
-  const mfaDisabledCount = Math.max(0, totalUsers - usersWithMfa);
-  return {
-    adminCount,
-    nonAdminCount,
-    userCount: totalUsers,
-    adminMfaPercentage,
-    nonAdminMfaPercentage,
-    userMfaPercentage,
-    mfaPercentage,
-    mfaEnabledCount,
-    mfaDisabledCount,
-    lastSync: row.last_sync
-  };
+  return collectClientMfaSnapshot(clientId);
 }
 function formatCurrentMfaStats(stats) {
   if (!stats) return null;
   return {
     adminCount: stats.adminCount,
     userCount: stats.userCount,
-    adminMfaCount: Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
+    adminMfaCount: stats.adminMfaCount ?? Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
     userMfaCount: stats.mfaEnabledCount,
     adminMfaPercentage: stats.adminMfaPercentage,
     userMfaPercentage: stats.userMfaPercentage,
     mfaPercentage: stats.mfaPercentage,
     mfaEnabledCount: stats.mfaEnabledCount,
     mfaDisabledCount: stats.mfaDisabledCount,
-    regularUserCount: stats.userCount - stats.adminCount,
-    regularUserMfaCount: stats.mfaEnabledCount - Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
-    nonAdminMfaPercentage: stats.nonAdminMfaPercentage
+    regularUserCount: stats.nonAdminCount ?? stats.userCount - stats.adminCount,
+    regularUserMfaCount: stats.nonAdminMfaCount ?? stats.mfaEnabledCount - Math.round(stats.adminCount * stats.adminMfaPercentage / 100),
+    nonAdminMfaPercentage: stats.nonAdminMfaPercentage,
+    phishingResistantCount: stats.phishingResistantCount ?? 0,
+    phishingResistantPercentage: stats.phishingResistantPercentage ?? 0,
+    recentlyRegisteredMfa: stats.recentlyRegisteredMfa ?? 0,
+    methods: stats.methods || null
   };
 }
 function normalizeAssignedUserIds(raw, fallbackId = null) {
@@ -528,9 +501,9 @@ router.put('/:id/campaigns/:campaignId', requirePermission('clients_detail.campa
       updates.push(`type = $${paramIndex++}`);
       values.push(type);
     }
+    // Statut piloté uniquement via launch / pause / resume / finish / reset.
     if (status !== undefined) {
-      updates.push(`status = $${paramIndex++}`);
-      values.push(status);
+      console.warn(`[campaign] Ignoring status update via PUT for campaign ${campaignId} (use lifecycle endpoints)`);
     }
     if (start_date !== undefined) {
       updates.push(`start_date = $${paramIndex++}`);
@@ -783,24 +756,7 @@ router.post('/:id/campaigns/:campaignId/launch', requirePermission('clients_deta
           error: 'Last synchronization is too old. Perform a recent sync (less than 24h) before launching the campaign.'
         });
       }
-      const snapshotData = {
-        source: 'db',
-        lastSync: stats.lastSync,
-        adminCount: stats.adminCount,
-        nonAdminCount: stats.nonAdminCount,
-        userCount: stats.userCount,
-        mfaPercentage: stats.mfaPercentage,
-        adminMfaPercentage: stats.adminMfaPercentage,
-        nonAdminMfaPercentage: stats.nonAdminMfaPercentage,
-        userMfaPercentage: stats.userMfaPercentage,
-        mfaEnabledCount: stats.mfaEnabledCount,
-        mfaDisabledCount: stats.mfaDisabledCount
-      };
-      const snapshotResult = await pool.query(`INSERT INTO v_b_clients_c_campaign_snapshot 
-         (campaign_id, snapshot_type, admin_count, user_count, mfa_percentage, admin_mfa_percentage, user_mfa_percentage, mfa_enabled_count, mfa_disabled_count, snapshot_data)
-         VALUES ($1, 'start', $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`, [campaignId, stats.adminCount, stats.userCount, stats.mfaPercentage, stats.adminMfaPercentage, stats.userMfaPercentage, stats.mfaEnabledCount, stats.mfaDisabledCount, JSON.stringify(snapshotData)]);
-      snapshot = snapshotResult.rows[0];
+      snapshot = await insertCampaignSnapshot(campaignId, "start", stats);
     } else {
       const snapshotResult = await pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start' LIMIT 1`, [campaignId]);
       snapshot = snapshotResult.rows[0];
@@ -809,6 +765,7 @@ router.post('/:id/campaigns/:campaignId/launch', requirePermission('clients_deta
     res.json({
       success: true,
       snapshot: snapshot,
+      status: "active",
       message: existingSnapshot.rows.length > 0 ? 'Campaign status updated successfully' : 'Campaign launched successfully'
     });
   } catch (error) {
@@ -930,26 +887,9 @@ router.post('/:id/campaigns/:campaignId/finish', requirePermission('clients_deta
         error: 'No synchronization data. Synchronize Microsoft data (Sync button) before completing the campaign.'
       });
     }
-    const snapshotData = {
-      source: 'db',
-      lastSync: stats.lastSync,
-      adminCount: stats.adminCount,
-      nonAdminCount: stats.nonAdminCount,
-      userCount: stats.userCount,
-      mfaPercentage: stats.mfaPercentage,
-      adminMfaPercentage: stats.adminMfaPercentage,
-      nonAdminMfaPercentage: stats.nonAdminMfaPercentage,
-      userMfaPercentage: stats.userMfaPercentage,
-      mfaEnabledCount: stats.mfaEnabledCount,
-      mfaDisabledCount: stats.mfaDisabledCount
-    };
-    const endSnapshotResult = await pool.query(`INSERT INTO v_b_clients_c_campaign_snapshot 
-       (campaign_id, snapshot_type, admin_count, user_count, mfa_percentage, admin_mfa_percentage, user_mfa_percentage, mfa_enabled_count, mfa_disabled_count, snapshot_data)
-       VALUES ($1, 'end', $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING *`, [campaignId, stats.adminCount, stats.userCount, stats.mfaPercentage, stats.adminMfaPercentage, stats.userMfaPercentage, stats.mfaEnabledCount, stats.mfaDisabledCount, JSON.stringify(snapshotData)]);
+    const endSnapshot = await insertCampaignSnapshot(campaignId, "end", stats);
     const startSnapshot = startSnapshotResult.rows[0];
-    const endSnapshot = endSnapshotResult.rows[0];
-    const comparison = buildSnapshotComparison(startSnapshot, endSnapshot);
+    const comparison = buildRichSnapshotComparison(startSnapshot, endSnapshot);
     const fullCampaignResult = await pool.query(`SELECT c.*, cl.name as client_name 
        FROM v_b_clients_c_campaign c
        LEFT JOIN v_b_clients cl ON c.client_id::text = cl.id::text
@@ -965,8 +905,9 @@ router.post('/:id/campaigns/:campaignId/finish', requirePermission('clients_deta
     const pdfUrl = `/api/clients/${id}/campaigns/${campaignId}/report.pdf`;
     res.json({
       success: true,
-      snapshot: endSnapshotResult.rows[0],
-      comparison: comparison,
+      snapshot: endSnapshot,
+      comparison,
+      status: "inactive",
       pdfUrl: pdfUrl,
       message: 'Campaign completed successfully'
     });
@@ -1046,123 +987,26 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('campaigns.v
         hasSnapshots: false
       });
     }
-    const parseSnapshotExtra = snap => {
-      let nonAdminCount = (snap.user_count || 0) - (snap.admin_count || 0);
-      let nonAdminMfaPercentage = null;
-      try {
-        const data = typeof snap.snapshot_data === 'string' ? JSON.parse(snap.snapshot_data) : snap.snapshot_data;
-        if (data) {
-          if (data.nonAdminCount != null) nonAdminCount = data.nonAdminCount;
-          if (data.nonAdminMfaPercentage != null) nonAdminMfaPercentage = parseFloat(data.nonAdminMfaPercentage);
-        }
-      } catch (_) {}
-      if (nonAdminMfaPercentage == null && nonAdminCount > 0 && snap.user_count > 0) {
-        const totalMfa = parseFloat(snap.user_mfa_percentage || snap.mfa_percentage || 0) / 100 * snap.user_count;
-        const adminMfa = parseFloat(snap.admin_mfa_percentage || snap.mfa_percentage || 0) / 100 * (snap.admin_count || 0);
-        nonAdminMfaPercentage = Math.round((totalMfa - adminMfa) / nonAdminCount * 10000) / 100;
-      }
-      return {
-        nonAdminCount,
-        nonAdminMfaPercentage: nonAdminMfaPercentage ?? 0
-      };
-    };
     if (startSnapshot && endSnapshot) {
-      const startExtra = parseSnapshotExtra(startSnapshot);
-      const endExtra = parseSnapshotExtra(endSnapshot);
-      const startAdminMfa = parseFloat(startSnapshot.admin_mfa_percentage || startSnapshot.mfa_percentage || 0);
-      const endAdminMfa = parseFloat(endSnapshot.admin_mfa_percentage || endSnapshot.mfa_percentage || 0);
-      const startUserMfa = parseFloat(startSnapshot.user_mfa_percentage || startSnapshot.mfa_percentage || 0);
-      const endUserMfa = parseFloat(endSnapshot.user_mfa_percentage || endSnapshot.mfa_percentage || 0);
-      const startNonAdminMfa = parseFloat(startExtra.nonAdminMfaPercentage ?? startUserMfa);
-      const endNonAdminMfa = parseFloat(endExtra.nonAdminMfaPercentage ?? endUserMfa);
-      const comparison = {
-        adminCount: {
-          start: startSnapshot.admin_count,
-          end: endSnapshot.admin_count,
-          change: endSnapshot.admin_count - startSnapshot.admin_count
-        },
-        userCount: {
-          start: startSnapshot.user_count,
-          end: endSnapshot.user_count,
-          change: endSnapshot.user_count - startSnapshot.user_count
-        },
-        adminMfaPercentage: {
-          start: startAdminMfa,
-          end: endAdminMfa,
-          change: endAdminMfa - startAdminMfa
-        },
-        nonAdminMfaPercentage: {
-          start: startNonAdminMfa,
-          end: endNonAdminMfa,
-          change: endNonAdminMfa - startNonAdminMfa
-        },
-        userMfaPercentage: {
-          start: startUserMfa,
-          end: endUserMfa,
-          change: endUserMfa - startUserMfa
-        },
-        mfaPercentage: {
-          start: parseFloat(startSnapshot.mfa_percentage || 0),
-          end: parseFloat(endSnapshot.mfa_percentage || 0),
-          change: parseFloat(endSnapshot.mfa_percentage || 0) - parseFloat(startSnapshot.mfa_percentage || 0)
-        },
-        mfaEnabledCount: {
-          start: startSnapshot.mfa_enabled_count,
-          end: endSnapshot.mfa_enabled_count,
-          change: endSnapshot.mfa_enabled_count - startSnapshot.mfa_enabled_count
-        }
-      };
       return res.json({
-        start: {
-          adminCount: startSnapshot.admin_count,
-          nonAdminCount: startExtra.nonAdminCount,
-          userCount: startSnapshot.user_count,
-          adminMfaPercentage: parseFloat(startSnapshot.admin_mfa_percentage || startSnapshot.mfa_percentage || 0),
-          nonAdminMfaPercentage: startExtra.nonAdminMfaPercentage,
-          userMfaPercentage: parseFloat(startSnapshot.user_mfa_percentage || startSnapshot.mfa_percentage || 0),
-          mfaPercentage: parseFloat(startSnapshot.mfa_percentage || 0),
-          mfaEnabledCount: startSnapshot.mfa_enabled_count,
-          mfaDisabledCount: startSnapshot.mfa_disabled_count,
-          createdAt: startSnapshot.created_at
-        },
-        end: {
-          adminCount: endSnapshot.admin_count,
-          nonAdminCount: endExtra.nonAdminCount,
-          userCount: endSnapshot.user_count,
-          adminMfaPercentage: parseFloat(endSnapshot.admin_mfa_percentage || endSnapshot.mfa_percentage || 0),
-          nonAdminMfaPercentage: endExtra.nonAdminMfaPercentage,
-          userMfaPercentage: parseFloat(endSnapshot.user_mfa_percentage || endSnapshot.mfa_percentage || 0),
-          mfaPercentage: parseFloat(endSnapshot.mfa_percentage || 0),
-          mfaEnabledCount: endSnapshot.mfa_enabled_count,
-          mfaDisabledCount: endSnapshot.mfa_disabled_count,
-          createdAt: endSnapshot.created_at
-        },
-        comparison: comparison,
+        start: formatStoredSnapshot(startSnapshot),
+        end: formatStoredSnapshot(endSnapshot),
+        comparison: buildRichSnapshotComparison(startSnapshot, endSnapshot),
         current: currentPayload,
         lastSync: effectiveLastSync,
-        hasSnapshots: true
+        hasSnapshots: true,
+        canDownloadReport: true
       });
     }
     if (startSnapshot) {
-      const startExtra = parseSnapshotExtra(startSnapshot);
       return res.json({
-        start: {
-          adminCount: startSnapshot.admin_count,
-          nonAdminCount: startExtra.nonAdminCount,
-          userCount: startSnapshot.user_count,
-          adminMfaPercentage: parseFloat(startSnapshot.admin_mfa_percentage || startSnapshot.mfa_percentage || 0),
-          nonAdminMfaPercentage: startExtra.nonAdminMfaPercentage,
-          userMfaPercentage: parseFloat(startSnapshot.user_mfa_percentage || startSnapshot.mfa_percentage || 0),
-          mfaPercentage: parseFloat(startSnapshot.mfa_percentage || 0),
-          mfaEnabledCount: startSnapshot.mfa_enabled_count,
-          mfaDisabledCount: startSnapshot.mfa_disabled_count,
-          createdAt: startSnapshot.created_at
-        },
+        start: formatStoredSnapshot(startSnapshot),
         end: null,
         comparison: null,
         current: currentPayload,
         lastSync: effectiveLastSync,
-        hasSnapshots: true
+        hasSnapshots: true,
+        canDownloadReport: false
       });
     }
     res.json({
@@ -1171,7 +1015,8 @@ router.get('/:id/campaigns/:campaignId/stats', requireAnyPermission('campaigns.v
       comparison: null,
       current: currentPayload,
       lastSync: effectiveLastSync,
-      hasSnapshots: false
+      hasSnapshots: false,
+      canDownloadReport: false
     });
   } catch (error) {
     console.error('Error fetching statistics:', error);
@@ -1187,14 +1032,12 @@ router.get('/:id/campaigns/:campaignId/report.pdf', requireAnyPermission('campai
       id,
       campaignId
     } = req.params;
-    let pdfPath = path.join(CAMPAIGN_REPORTS_DIR, `campaign_${campaignId}_report.pdf`);
-    if (!fs.existsSync(pdfPath)) {
-      try {
-        pdfPath = await ensureCampaignReportPdf(id, campaignId);
-      } catch (regenError) {
-        console.error('Error regenerating campaign PDF:', regenError);
-        pdfPath = null;
-      }
+    let pdfPath = null;
+    try {
+      pdfPath = await ensureCampaignReportPdf(id, campaignId, { force: true });
+    } catch (regenError) {
+      console.error('Error regenerating campaign PDF:', regenError);
+      pdfPath = null;
     }
     if (!pdfPath || !fs.existsSync(pdfPath)) {
       return res.status(404).json({
@@ -1245,7 +1088,7 @@ router.post('/:id/campaigns/:campaignId/publish-report', requirePermission('docu
     }
     let pdfPath;
     try {
-      pdfPath = await ensureCampaignReportPdf(id, campaignId);
+      pdfPath = await ensureCampaignReportPdf(id, campaignId, { force: true });
     } catch (pdfError) {
       console.error('Error ensuring campaign PDF for publish:', pdfError);
       return res.status(500).json({

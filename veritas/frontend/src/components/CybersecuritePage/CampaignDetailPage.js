@@ -749,28 +749,6 @@ export default function CampaignDetailPage({
     }
   };
 
-  const handleStatusChange = async nextStatus => {
-    if (!campaign || !nextStatus || nextStatus === campaign.status) return;
-    if (campaign.status === "en_preparation" && nextStatus === "active") {
-      await handleLaunchCampaign();
-      return;
-    }
-    if (campaign.status === "active" && nextStatus === "suspendue") {
-      await handlePauseCampaign();
-      return;
-    }
-    if (campaign.status === "suspendue" && nextStatus === "active") {
-      await handleResumeCampaign();
-      return;
-    }
-    if ((campaign.status === "active" || campaign.status === "suspendue") && nextStatus === "inactive") {
-      await handleFinishCampaign();
-      return;
-    }
-    await patchCampaignFields({ status: nextStatus }, detailCopy.toasts.statusUpdated || detailCopy.toasts.updated);
-    await loadCampaignDetails({ refreshStats: false, skipCache: true });
-  };
-
   const handleDateFieldChange = async (field, value) => {
     if (!campaign) return;
     const current = campaign[field] ? String(campaign[field]).slice(0, 10) : "";
@@ -1265,21 +1243,16 @@ export default function CampaignDetailPage({
                       <label className={ticketFs.equipmentFieldLabel} htmlFor="campaign-left-status">
                         {leftPaneCopy.status || detailCopy.sidebar.status}
                       </label>
-                      <select
+                      <input
                         id="campaign-left-status"
-                        className={ticketFs.select}
-                        value={campaign.status || "en_preparation"}
-                        disabled={actionLoading}
-                        onChange={e => {
-                          void handleStatusChange(e.target.value);
-                        }}
-                      >
-                        {CAMPAIGN_STATUSES.map(item => (
-                          <option key={item.value} value={item.value}>
-                            {campaignsCopy?.statuses?.[item.value] || item.label}
-                          </option>
-                        ))}
-                      </select>
+                        type="text"
+                        className={ticketFs.input}
+                        value={statusInfo?.label || campaign.status || "—"}
+                        disabled
+                        readOnly
+                        aria-readonly="true"
+                        title={detailCopy.sidebar?.statusReadOnlyHint || "Le statut évolue via les actions (lancer, pause, arrêter)."}
+                      />
                     </div>
 
                     <div className={ticketFs.equipmentField}>
@@ -1395,7 +1368,7 @@ export default function CampaignDetailPage({
                             </SmartTooltip>
                           ) : null}
                           {showFinishButton ? (
-                            <SmartTooltip content={detailCopy.actions.finishTooltip}>
+                            <SmartTooltip content={detailCopy.actions.stopTooltip || detailCopy.actions.finishTooltip}>
                               <button
                                 type="button"
                                 className={styles.leftActionPrimary}
@@ -1403,7 +1376,7 @@ export default function CampaignDetailPage({
                                 disabled={actionLoading}
                               >
                                 {actionLoading ? <FaSpinner className={styles.spinner} /> : <FaFlagCheckered />}
-                                <span>{detailCopy.actions.finish}</span>
+                                <span>{detailCopy.actions.stop || detailCopy.actions.finish}</span>
                               </button>
                             </SmartTooltip>
                           ) : null}
@@ -1696,6 +1669,54 @@ export default function CampaignDetailPage({
                               loading={actionLoading}
                               loadingClassName={styles.spinner}
                               aria-label={detailCopy.actions.launch}
+                            />
+                          </span>
+                        </SmartTooltip>
+                      ) : null}
+                      {showPauseButton ? (
+                        <SmartTooltip content={detailCopy.actions.pauseTooltip}>
+                          <span className={styles.quickActionTooltipWrap}>
+                            <EnterpriseQuickActionButton
+                              actionId="pause"
+                              iconify="mdi:pause-circle-outline"
+                              className={enterpriseStyles.sidebarActionIconBtn}
+                              onClick={handlePauseCampaign}
+                              disabled={actionLoading}
+                              loading={actionLoading}
+                              loadingClassName={styles.spinner}
+                              aria-label={detailCopy.actions.pause}
+                            />
+                          </span>
+                        </SmartTooltip>
+                      ) : null}
+                      {showResumeButton ? (
+                        <SmartTooltip content={detailCopy.actions.resumeTooltip}>
+                          <span className={styles.quickActionTooltipWrap}>
+                            <EnterpriseQuickActionButton
+                              actionId="resume"
+                              iconify="mdi:play-circle-outline"
+                              className={enterpriseStyles.sidebarActionIconBtn}
+                              onClick={handleResumeCampaign}
+                              disabled={actionLoading}
+                              loading={actionLoading}
+                              loadingClassName={styles.spinner}
+                              aria-label={detailCopy.actions.resume}
+                            />
+                          </span>
+                        </SmartTooltip>
+                      ) : null}
+                      {showFinishButton ? (
+                        <SmartTooltip content={detailCopy.actions.stopTooltip || detailCopy.actions.finishTooltip}>
+                          <span className={styles.quickActionTooltipWrap}>
+                            <EnterpriseQuickActionButton
+                              actionId="stop"
+                              iconify="mdi:stop-circle-outline"
+                              className={enterpriseStyles.sidebarActionIconBtn}
+                              onClick={handleFinishCampaign}
+                              disabled={actionLoading}
+                              loading={actionLoading}
+                              loadingClassName={styles.spinner}
+                              aria-label={detailCopy.actions.stop || detailCopy.actions.finish}
                             />
                           </span>
                         </SmartTooltip>

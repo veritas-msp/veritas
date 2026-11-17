@@ -593,30 +593,49 @@ async function hasTicketAssigneesTable() {
   const result = await pool.query(`SELECT to_regclass('v_b_ticket_assignees') IS NOT NULL AS has_table`);
   return Boolean(result.rows?.[0]?.has_table);
 }
+async function hasTicketAssigneeTeamsTable() {
+  const result = await pool.query(`SELECT to_regclass('v_b_ticket_assignee_teams') IS NOT NULL AS has_table`);
+  return Boolean(result.rows?.[0]?.has_table);
+}
+function buildHomeAssignedToUserClause({
+  userParam,
+  hasTicketAssignees,
+  hasTicketAssigneeTeams
+}) {
+  const parts = [`t.assigned_user_id = ${userParam}::uuid`];
+  if (hasTicketAssignees) {
+    parts.push(`EXISTS (
+      SELECT 1 FROM v_b_ticket_assignees a
+      WHERE a.ticket_id = t.id AND a.user_id = ${userParam}::uuid
+    )`);
+  }
+  if (hasTicketAssigneeTeams) {
+    parts.push(`EXISTS (
+      SELECT 1 FROM v_b_ticket_assignee_teams tat
+      JOIN v_b_team_members tm ON tm.team_id = tat.team_id
+      WHERE tat.ticket_id = t.id AND tm.user_id = ${userParam}::uuid
+    )`);
+  }
+  return `(${parts.join(" OR ")})`;
+}
 async function fetchHomeTicketsForUser({
   hasMajorIncident,
   hasSlaInfo,
   userId,
-  hasTicketAssignees
+  hasTicketAssignees,
+  hasTicketAssigneeTeams
 }) {
-  const values = [];
-  let where = `t.status NOT IN ('resolved', 'closed')`;
-  if (userId) {
-    values.push(userId);
-    const userParam = `$${values.length}`;
-    if (hasTicketAssignees) {
-      where += ` AND (
-        t.assigned_user_id = ${userParam}::uuid
-        OR EXISTS (
-          SELECT 1 FROM v_b_ticket_assignees a
-          WHERE a.ticket_id = t.id AND a.user_id = ${userParam}::uuid
-        )
-      )`;
-    } else {
-      where += ` AND t.assigned_user_id = ${userParam}::uuid`;
-    }
-  }
-  const sql = `SELECT t.id, t.ticket_number, t.title, t.description, t.status, t.priority, t.type, t.category, t.client_id, t.updated_at, t.created_at,
+  // Accueil : uniquement tickets ouverts attribués à l'agent connecté.
+  if (!userId) return { rows: [] };
+  const values = [userId];
+  const userParam = `$1`;
+  const assignedClause = buildHomeAssignedToUserClause({
+    userParam,
+    hasTicketAssignees,
+    hasTicketAssigneeTeams
+  });
+  const baseWhere = `t.status NOT IN ('resolved', 'closed') AND ${assignedClause}`;
+  const selectSql = (whereSql) => `SELECT t.id, t.ticket_number, t.title, t.description, t.status, t.priority, t.type, t.category, t.client_id, t.updated_at, t.created_at,
             ${hasMajorIncident ? "COALESCE(t.is_major_incident, false) AS is_major_incident," : "false AS is_major_incident,"}
             ${hasSlaInfo ? "t.sla_info," : ""}
             c.contrat AS client_contrat,
@@ -624,9 +643,22 @@ async function fetchHomeTicketsForUser({
             c.name AS client_name
            FROM v_b_tickets t
            LEFT JOIN v_b_clients c ON c.id = t.client_id
-           WHERE ${where}
+           WHERE ${whereSql}
            LIMIT ${HOME_TICKETS_POOL_LIMIT}`;
-  return pool.query(sql, values);
+  try {
+    return await pool.query(
+      selectSql(`${baseWhere}
+           AND COALESCE(t.deleted_at, NULL) IS NULL
+           AND COALESCE(t.is_deleted, FALSE) = FALSE`),
+      values
+    );
+  } catch (err) {
+    // Soft-delete columns may be missing before migration.
+    if (err?.code === "42703") {
+      return pool.query(selectSql(baseWhere), values);
+    }
+    throw err;
+  }
 }
 async function fetchPendingValidationTicketsForUser(userId) {
   if (!userId) return { rows: [] };
@@ -898,7 +930,7 @@ function summarizeHomeTicketSla(rows, {
 router.get("/home-dashboard", verifyJWT, async (req, res) => {
   try {
     const userId = req.user?.id || null;
-    const [hasMajorIncident, hasSlaInfo, hasTicketAssignees, slaSettings, monitorableEquipment] = await Promise.all([hasTicketColumn("is_major_incident"), hasTicketColumn("sla_info"), hasTicketAssigneesTable(), loadSlaSettings().catch(err => {
+    const [hasMajorIncident, hasSlaInfo, hasTicketAssignees, hasTicketAssigneeTeams, slaSettings, monitorableEquipment] = await Promise.all([hasTicketColumn("is_major_incident"), hasTicketColumn("sla_info"), hasTicketAssigneesTable(), hasTicketAssigneeTeamsTable(), loadSlaSettings().catch(err => {
       console.error("home-dashboard slaSettings", err);
       return null;
     }), safeMonitorableEquipmentStats()]);
@@ -912,10 +944,12 @@ router.get("/home-dashboard", verifyJWT, async (req, res) => {
       hasMajorIncident,
       hasSlaInfo,
       userId,
-      hasTicketAssignees
-    }).catch(() => ({
-      rows: []
-    })), fetchPendingValidationTicketsForUser(userId).catch(() => ({
+      hasTicketAssignees,
+      hasTicketAssigneeTeams
+    }).catch(err => {
+      console.error("home-dashboard assigned tickets", err);
+      return { rows: [] };
+    }), fetchPendingValidationTicketsForUser(userId).catch(() => ({
       rows: []
     })), pool.query(`SELECT e.id, e.title, e.type, e.start, e."end", e.client_id, e.description, e.assigned_user_id, c.name AS client_name
            FROM v_b_events e

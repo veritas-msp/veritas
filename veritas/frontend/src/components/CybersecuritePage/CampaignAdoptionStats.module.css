@@ -190,10 +190,49 @@
   color: var(--msp-text, #0f1c2e);
 }
 
+.snapshotKpiMuted {
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+}
+
+.methodsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .snapshotEmpty {
   font-size: 0.8125rem;
   color: var(--msp-muted, #5c6b82);
   padding: 0.5rem 0;
+}
+
+.downloadBtn {
+  width: auto;
+  min-width: 2.5rem;
+  height: auto;
+  min-height: 2.35rem;
+  padding: 0.4rem 0.75rem;
+  gap: 0.45rem;
+}
+
+.downloadBtnLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.reportHint {
+  margin: 0;
+  max-width: 16rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+  text-align: right;
 }
 
 

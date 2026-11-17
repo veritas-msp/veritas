@@ -43,7 +43,23 @@ function SentimentBadge({
       {sentiment.label}
     </span>;
 }
-export default function TicketSatisfiedPanel({
+
+function formatCriteriaSummary(criteria, ratings) {
+  const parts = (Array.isArray(criteria) ? criteria : []).map(({ key, label }) => {
+    const score = ratings?.[key] ?? "-";
+    const shortLabel = String(label || "").trim().split(/\s+/)[0] || key;
+    return {
+      short: `${shortLabel} ${score}`,
+      full: `${label || key} ${score}/5`
+    };
+  });
+  return {
+    summary: parts.map(part => part.short).join(" · ") || "—",
+    tooltip: parts.map(part => part.full).join("\n")
+  };
+}
+
+export default function TicketSatisfactionsPanel({
   scope = "mine",
   onNavigate,
   leadingToolbarContent = null,
@@ -129,170 +145,190 @@ export default function TicketSatisfiedPanel({
     return row.ticket?.assignedUserName || "-";
   };
   const columns = sp.columns || {};
-  return <>
-      <UiKitCrmListToolbar
-        className={styles.toolbarGrow}
-        searchVariant="embedded"
-        disableTooltips
-        leading={leadingToolbarContent}
-        searchValue={search}
-        onSearchChange={setSearch}
-        onSearchClear={() => setSearch("")}
-        searchPlaceholder={sp.searchPlaceholder}
-        searchAriaLabel={sp.searchAria}
-        clearSearchLabel={sp.clearSearchAria}
-        searchPending={loading}
-        extraActions={
-          <>
-            <span className={layout.toolbarMeta}>{formatFeedbackCount(totalCount)}</span>
-            <select
-              className={layout.sortSelect}
-              value={sentiment}
-              onChange={e => setSentiment(e.target.value)}
-              aria-label={sp.sentimentFilterAria}
-            >
-              {sentimentFilters.map(item => (
-                <option key={item.key || "all"} value={item.key}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-            {trailingToolbarContent}
-          </>
-        }
-      />
-
-      {loading ? <div className={layout.stateBox}>
-          <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-          <span>{sp.loading}</span>
-        </div> : totalCount === 0 ? <div className={layout.emptyStateInCard}>
-          <UiKitEmptyState
-            bare
-            icon="mdi:star-outline"
-            title={sp.emptyTitle}
-            text={scope === "mine" ? sp.emptyMine : sp.emptyFiltered}
+  return (
+    <div className={layout.listBody}>
+      <div className={layout.listArea}>
+        <div className={`${layout.panelCard} ${styles.viewsFinderPanel}`}>
+          <UiKitCrmListToolbar
+            className={styles.toolbarGrow}
+            searchVariant="embedded"
+            disableTooltips
+            leading={leadingToolbarContent}
+            searchValue={search}
+            onSearchChange={setSearch}
+            onSearchClear={() => setSearch("")}
+            searchPlaceholder={sp.searchPlaceholder}
+            searchAriaLabel={sp.searchAria}
+            clearSearchLabel={sp.clearSearchAria}
+            searchPending={loading}
+            extraActions={
+              <>
+                <span className={layout.toolbarMeta}>{formatFeedbackCount(totalCount)}</span>
+                <select
+                  className={layout.sortSelect}
+                  value={sentiment}
+                  onChange={e => setSentiment(e.target.value)}
+                  aria-label={sp.sentimentFilterAria}
+                >
+                  {sentimentFilters.map(item => (
+                    <option key={item.key || "all"} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                {trailingToolbarContent}
+              </>
+            }
           />
-        </div> : <>
-          <div className={styles.tablePanel}>
-            <UiKitTable
-              fill
-              fadeTop
-              fadeTopInset="2.85rem"
-              className={tableKit.tableListFill}
-              deps={[items.length, pageSize, search, sentiment, sortBy, sortDirection]}
-            >
-              <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table}`}>
-                <thead>
-                  <tr>
-                    <th onClick={() => handleSort("ticket_number")}>
-                      <span className={styles.thSortInner}>
-                        {columns.ticket}
-                        <SortIcon active={sortBy === "ticket_number"} direction={sortDirection} />
-                      </span>
-                    </th>
-                    <th>{columns.company}</th>
-                    <th>{columns.assignee}</th>
-                    <th onClick={() => handleSort("rating")}>
-                      <span className={styles.thSortInner}>
-                        {columns.rating}
-                        <SortIcon active={sortBy === "rating"} direction={sortDirection} />
-                      </span>
-                    </th>
-                    <th>{columns.sentiment}</th>
-                    <th>{columns.criteria}</th>
-                    <th>{columns.comment}</th>
-                    <th>{columns.author}</th>
-                    <th onClick={() => handleSort("created_at")}>
-                      <span className={styles.thSortInner}>
-                        {columns.date}
-                        <SortIcon active={sortBy === "created_at"} direction={sortDirection} />
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(row => {
-                const ratings = resolveDisplayRatings(row);
-                const average = row.averageRating ?? computeSatisfactionAverage(ratings);
-                const ticket = row.ticket || {};
-                return <tr key={row.id} className={styles.satisfactionRow} onClick={() => onNavigate?.("TicketDetail", {
-                  ticketId: ticket.id,
-                  ticketNumber: ticket.ticketNumber,
-                  title: ticket.title
-                })} tabIndex={0} onKeyDown={event => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onNavigate?.("TicketDetail", {
-                      ticketId: ticket.id,
-                      ticketNumber: ticket.ticketNumber,
-                      title: ticket.title
-                    });
-                  }
-                }} role="link">
-                        <td>
-                          <span className={styles.ticketIdCell}>#{ticket.ticketNumber || "-"}</span>
-                          <span className={styles.satisfactionTicketTitle}>{ticket.title || sp.untitled}</span>
-                        </td>
-                        <td>{ticket.clientName || "-"}</td>
-                        <td>{resolveAssigneesLabel(row)}</td>
-                        <td>
-                          <div className={styles.satisfactionRatingCell}>
-                            <SatisfactionStars rating={average} starsAriaTemplate={sp.starsAria} />
-                            <strong>{average}/5</strong>
-                          </div>
-                        </td>
-                        <td>
-                          <SentimentBadge averageRating={average} sentimentLabels={sp.sentiments} />
-                        </td>
-                        <td>
-                          <div className={styles.satisfactionCriteriaCompact}>
-                            {satisfactionCriteria.map(({
-                        key,
-                        label
-                      }) => <span key={key} aria-label={label}>
-                                {label.split(" ")[0]} {ratings?.[key] ?? "-"}/5
-                              </span>)}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={styles.satisfactionMessageCell}>
-                            {row.message?.trim() ? row.message.trim() : "-"}
-                          </span>
-                        </td>
-                        <td>{row.authorName || sp.clientFallback}</td>
-                        <td>{formatSatisfactionDate(row.createdAt, localeTag)}</td>
-                      </tr>;
-              })}
-                </tbody>
-              </table>
-            </UiKitTable>
-          </div>
 
-          <div className={layout.pagination}>
-            <div className={layout.paginationLeft}>
-              <span className={layout.paginationLabel}>{sp.perPage}</span>
-              <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={sp.perPageAria}>
-                {[10, 25, 50, 100].map(size => <option key={size} value={size}>
-                    {size}
-                  </option>)}
-              </select>
+          {loading ? (
+            <div className={layout.stateBox}>
+              <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+              <span>{sp.loading}</span>
             </div>
-            <div className={layout.paginationRight}>
-              <button type="button" className={layout.pageBtn} disabled={currentPage <= 1} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} aria-label={sp.prevPageAria}>
-                <FaChevronLeft />
-              </button>
-              <span className={layout.paginationInfo}>
-                {interpolate(sp.pageInfo || "Page {page} / {total} · {count}", {
-              page: String(currentPage),
-              total: String(totalPages),
-              count: formatFeedbackCount(totalCount)
-            })}
-              </span>
-              <button type="button" className={layout.pageBtn} disabled={currentPage >= totalPages} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} aria-label={sp.nextPageAria}>
-                <FaChevronRight />
-              </button>
+          ) : totalCount === 0 ? (
+            <div className={layout.emptyStateInCard}>
+              <UiKitEmptyState
+                bare
+                icon="mdi:star-outline"
+                title={sp.emptyTitle}
+                text={scope === "mine" ? sp.emptyMine : sp.emptyFiltered}
+              />
             </div>
-          </div>
-        </>}
-    </>;
+          ) : (
+            <>
+              <div className={styles.contentFadeUp}>
+                <UiKitTable
+                  fill
+                  fadeTop
+                  fadeTopInset="2.85rem"
+                  className={tableKit.tableListFill}
+                  deps={[items.length, pageSize, search, sentiment, sortBy, sortDirection]}
+                >
+                  <table className={`${tableKit.table} ${tableKit.tableList} ${styles.table} ${styles.satisfactionTable}`}>
+                    <thead>
+                      <tr>
+                        <th onClick={() => handleSort("ticket_number")}>
+                          <span className={styles.thSortInner}>
+                            {columns.ticket}
+                            <SortIcon active={sortBy === "ticket_number"} direction={sortDirection} />
+                          </span>
+                        </th>
+                        <th>{columns.company}</th>
+                        <th>{columns.assignee}</th>
+                        <th onClick={() => handleSort("rating")}>
+                          <span className={styles.thSortInner}>
+                            {columns.rating}
+                            <SortIcon active={sortBy === "rating"} direction={sortDirection} />
+                          </span>
+                        </th>
+                        <th>{columns.sentiment}</th>
+                        <th>{columns.criteria}</th>
+                        <th>{columns.comment}</th>
+                        <th>{columns.author}</th>
+                        <th onClick={() => handleSort("created_at")}>
+                          <span className={styles.thSortInner}>
+                            {columns.date}
+                            <SortIcon active={sortBy === "created_at"} direction={sortDirection} />
+                          </span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map(row => {
+                        const ratings = resolveDisplayRatings(row);
+                        const average = row.averageRating ?? computeSatisfactionAverage(ratings);
+                        const ticket = row.ticket || {};
+                        const criteria = formatCriteriaSummary(satisfactionCriteria, ratings);
+                        return (
+                          <tr
+                            key={row.id}
+                            className={styles.satisfactionRow}
+                            onClick={() => onNavigate?.("TicketDetail", {
+                              ticketId: ticket.id,
+                              ticketNumber: ticket.ticketNumber,
+                              title: ticket.title
+                            })}
+                            tabIndex={0}
+                            onKeyDown={event => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                onNavigate?.("TicketDetail", {
+                                  ticketId: ticket.id,
+                                  ticketNumber: ticket.ticketNumber,
+                                  title: ticket.title
+                                });
+                              }
+                            }}
+                            role="link"
+                          >
+                            <td>
+                              <span className={styles.ticketIdCell}>#{ticket.ticketNumber || "-"}</span>
+                              <span className={styles.satisfactionTicketTitle}>{ticket.title || sp.untitled}</span>
+                            </td>
+                            <td>{ticket.clientName || "-"}</td>
+                            <td>{resolveAssigneesLabel(row)}</td>
+                            <td>
+                              <div className={styles.satisfactionRatingCell}>
+                                <SatisfactionStars rating={average} starsAriaTemplate={sp.starsAria} />
+                                <strong>{average}/5</strong>
+                              </div>
+                            </td>
+                            <td>
+                              <SentimentBadge averageRating={average} sentimentLabels={sp.sentiments} />
+                            </td>
+                            <td>
+                              <span
+                                className={styles.satisfactionCriteriaCompact}
+                                title={criteria.tooltip}
+                              >
+                                {criteria.summary}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={styles.satisfactionMessageCell}>
+                                {row.message?.trim() ? row.message.trim() : "-"}
+                              </span>
+                            </td>
+                            <td>{row.authorName || sp.clientFallback}</td>
+                            <td>{formatSatisfactionDate(row.createdAt, localeTag)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </UiKitTable>
+              </div>
+
+              <div className={layout.pagination}>
+                <div className={layout.paginationLeft}>
+                  <span className={layout.paginationLabel}>{sp.perPage}</span>
+                  <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={sp.perPageAria}>
+                    {[10, 25, 50, 100].map(size => <option key={size} value={size}>
+                        {size}
+                      </option>)}
+                  </select>
+                </div>
+                <div className={layout.paginationRight}>
+                  <button type="button" className={layout.pageBtn} disabled={currentPage <= 1} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} aria-label={sp.prevPageAria}>
+                    <FaChevronLeft />
+                  </button>
+                  <span className={layout.paginationInfo}>
+                    {interpolate(sp.pageInfo || "Page {page} / {total} · {count}", {
+                      page: String(currentPage),
+                      total: String(totalPages),
+                      count: formatFeedbackCount(totalCount)
+                    })}
+                  </span>
+                  <button type="button" className={layout.pageBtn} disabled={currentPage >= totalPages} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} aria-label={sp.nextPageAria}>
+                    <FaChevronRight />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }

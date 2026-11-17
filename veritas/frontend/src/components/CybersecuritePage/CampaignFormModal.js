@@ -456,18 +456,19 @@ export default function CampaignFormModal({
                       <label className={styles.label} htmlFor="campaign-form-status">
                         {modalCopy.status}
                       </label>
-                      <select
+                      <input
                         id="campaign-form-status"
+                        type="text"
                         className={styles.input}
-                        value={formData.status || ""}
-                        onChange={e => patchForm({ status: e.target.value })}
-                      >
-                        {statusOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        value={
+                          statusOptions.find(opt => opt.value === formData.status)?.label ||
+                          formData.status ||
+                          "—"
+                        }
+                        disabled
+                        readOnly
+                        aria-readonly="true"
+                      />
                     </div>
                     <div className={styles.field}>
                       <label className={styles.label} htmlFor="campaign-form-goal">
