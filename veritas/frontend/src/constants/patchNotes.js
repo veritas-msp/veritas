@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.11",
+    date: "2026-11-17",
+    highlights: [
+      "Modal résolution de ticket : correctifs d’espacement / crop, navigation Finder et fermeture circulaire alignées UiKit.",
+      "Coffre-fort documents : téléchargement et prévisualisation fiabilisés (nom de fichier, Content-Disposition, contournement service worker)."
+    ]
+  },
+  {
     version: "2.0.10",
     date: "2026-11-06",
     highlights: [

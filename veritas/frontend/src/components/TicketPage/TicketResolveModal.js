@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
+import { UiKitButton, uiKitLayoutsStyles as kit, useFinderNavIndicator } from "../UiKit";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import exclusionStyles from "./TicketExclusionModal.module.css";
 import modalStyles from "./TicketResolveModal.module.css";
@@ -94,6 +94,7 @@ export default function TicketResolveModal({
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [activeSection, setActiveSection] = useState("solution");
   const [perPackAmount, setPerPackAmount] = useState(0);
+  const { trackRef: navTrackRef, indicator: navIndicator } = useFinderNavIndicator([activeSection, open]);
   const localizedInterventionOptions = useMemo(() => localizeSolutionCatalogOptions(interventionOptions, locale), [interventionOptions, locale]);
   const filteredActionOptions = useMemo(() => {
     const selected = String(interventionType || "").trim();
@@ -262,39 +263,74 @@ export default function TicketResolveModal({
               <p className={layout.subtitle}>{copy.subtitle}</p>
             </div>
           </div>
-          <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={copy.closeAria}>
-            <FaTimes />
-          </button>
+          <UiKitButton
+            type="button"
+            square
+            variant="secondary"
+            className={layout.closeBtn}
+            onClick={onClose}
+            disabled={saving}
+            aria-label={copy.closeAria}
+            icon="mdi:close"
+          />
         </header>
 
         <form className={modalStyles.form} onSubmit={handleSubmit}>
           <div className={layout.body}>
-            <nav className={layout.nav} aria-label={copy.navAria}>
-              {visibleSections.map(section => {
-              const isCreditsLocked = section.id === "credits" && creditsProLocked;
-              return <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id && !isCreditsLocked ? layout.navItemActive : ""} ${isCreditsLocked ? modalStyles.navItemProLocked : ""}`} onClick={() => handleSectionClick(section.id)} aria-current={activeSection === section.id && !isCreditsLocked ? "step" : undefined} aria-disabled={isCreditsLocked || undefined}>
-                    <Icon icon={section.icon || "mdi:circle-outline"} className={layout.navItemIcon} aria-hidden />
-                    <span className={layout.navItemText}>
-                      <span className={modalStyles.navItemLabelRow}>
-                        <span className={`${layout.navItemLabel} ${section.id === "solution" && solutionIncomplete ? layout.navItemLabelRequired : ""}`}>
-                          {section.label}
+            <aside className={`${kit.finderSidebar} ${layout.modalNav}`} aria-label={copy.navAria}>
+              <nav
+                ref={navTrackRef}
+                className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${layout.modalNavTrack}`}
+              >
+                {navIndicator.ready ? (
+                  <div
+                    className={kit.finderNavIndicator}
+                    style={{
+                      transform: `translate3d(0, ${navIndicator.top}px, 0)`,
+                      height: navIndicator.height
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+                {visibleSections.map(section => {
+                  const isCreditsLocked = section.id === "credits" && creditsProLocked;
+                  const active = activeSection === section.id && !isCreditsLocked;
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className={`${kit.finderItem} ${kit.finderItemRich} ${active ? kit.finderItemActive : ""} ${isCreditsLocked ? modalStyles.navItemProLocked : ""}`}
+                      onClick={() => handleSectionClick(section.id)}
+                      aria-current={active ? "page" : undefined}
+                      aria-disabled={isCreditsLocked || undefined}
+                    >
+                      <Icon icon={section.icon || "mdi:circle-outline"} className={kit.finderItemIcon} aria-hidden />
+                      <span className={kit.finderItemStack}>
+                        <span
+                          className={`${kit.finderItemLabel}${section.id === "solution" && solutionIncomplete ? ` ${layout.navItemLabelRequired}` : ""}`}
+                        >
+                          <span className={modalStyles.navItemLabelRow}>
+                            {section.label}
+                            {isCreditsLocked ? <ProFeatureBadge variant="inline" className={modalStyles.navItemProBadge} /> : null}
+                          </span>
                         </span>
-                        {isCreditsLocked ? <ProFeatureBadge variant="inline" className={modalStyles.navItemProBadge} /> : null}
+                        {section.description ? <span className={kit.finderItemDesc}>{section.description}</span> : null}
                       </span>
-                      <span className={layout.navItemHint}>{section.description}</span>
-                    </span>
-                  </button>;
-            })}
-            </nav>
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
 
-            <div className={`${layout.content} ${modalStyles.content}`}>
-              <div className={exclusionStyles.ticketContextCard}>
+            <div className={`${layout.content} ${modalStyles.content}`} key={activeSection}>
+              <div className={`${kit.contentFadeUp} ${modalStyles.contentScroll}`}>
+              <div className={`${exclusionStyles.ticketContextCard} ${modalStyles.ticketContextCard}`}>
                 <div className={exclusionStyles.ticketContextIcon} aria-hidden>
                   <Icon icon="mdi:ticket-confirmation-outline" />
                 </div>
                 <div className={exclusionStyles.ticketContextText}>
                   <div className={exclusionStyles.ticketContextLabel}>{copy.ticketLabel}</div>
-                  <div className={exclusionStyles.ticketContextTitle}>
+                  <div className={`${exclusionStyles.ticketContextTitle} ${modalStyles.ticketContextTitle}`}>
                     #{ticketNumber} · {ticketTitle}
                   </div>
                 </div>
@@ -305,7 +341,7 @@ export default function TicketResolveModal({
                   <span>{copy.pendingReplyHint}</span>
                 </div> : null}
 
-              <div className={layout.sectionHead}>
+              <div className={`${layout.sectionHead} ${modalStyles.sectionHead}`}>
                 <h3 className={layout.sectionTitle}>{activeMeta?.label}</h3>
                 <p className={layout.sectionDesc}>{activeMeta?.description}</p>
               </div>
@@ -422,21 +458,36 @@ export default function TicketResolveModal({
                         </div> : null}
                     </> : null}
                 </div> : null}
+              </div>
             </div>
           </div>
 
           <footer className={layout.footer}>
             <span className={layout.footerHint}>{copy.footerHint}</span>
             <div className={layout.footerActions}>
-              <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
+              <UiKitButton type="button" variant="secondary" onClick={onClose} disabled={saving}>
                 {copy.cancel}
-              </button>
-              <button type="submit" className={layout.primaryBtn} disabled={!canSubmit}>
-                {confirmLabel}
-              </button>
+              </UiKitButton>
+              <UiKitButton
+                type="submit"
+                variant="primary"
+                disabled={!canSubmit}
+                icon={saving ? undefined : "mdi:check-circle-outline"}
+              >
+                {saving ? (
+                  <>
+                    <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+                    {confirmLabel}
+                  </>
+                ) : (
+                  confirmLabel
+                )}
+              </UiKitButton>
             </div>
           </footer>
         </form>
       </div>
-    </div>, document.body);
+    </div>,
+    document.getElementById("modal-root") || document.body
+  );
 }

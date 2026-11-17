@@ -18,6 +18,15 @@ registerRoute(
     if (url.pathname.startsWith('/_')) {
       return false;
     }
+    // Ne jamais servir index.html pour l’API / uploads (preview iframe, téléchargements…).
+    if (
+      url.pathname.startsWith('/api/') ||
+      url.pathname.startsWith('/uploads/') ||
+      url.pathname.includes('/preview') ||
+      url.pathname.includes('/download')
+    ) {
+      return false;
+    }
     if (url.pathname.match(fileExtensionRegexp)) {
       return false;
     }

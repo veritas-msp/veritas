@@ -36,6 +36,7 @@ import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import { repairFilenameEncoding } from "../../utils/repairFilenameEncoding";
+import { downloadVaultFileFromUrl } from "../../utils/vaultFileDownload";
 import { isVeritasInternalVaultFile } from "../../utils/uploadReportToClientVault";
 import { fetchTicketTableColumns } from "../../api/tickets";
 import {
@@ -570,15 +571,21 @@ export default forwardRef(function EnterpriseVaultPanel({
     });
   }, []);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
-  const downloadFile = useCallback(file => {
+  const downloadFile = useCallback(async file => {
     if (!file?.id) return;
-    const anchor = document.createElement("a");
-    anchor.href = getDownloadUrl(file.id);
-    anchor.download = displayFileName(file);
-    anchor.rel = "noopener";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
+    try {
+      await downloadVaultFileFromUrl(getDownloadUrl(file.id), displayFileName(file), {
+        mimeType: file.mime_type
+      });
+    } catch {
+      const anchor = document.createElement("a");
+      anchor.href = getDownloadUrl(file.id);
+      anchor.download = displayFileName(file);
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    }
   }, []);
   const handlePanelDragEnter = useCallback(e => {
     if (!hasExternalFiles(e.dataTransfer)) return;
@@ -1119,6 +1126,7 @@ export default forwardRef(function EnterpriseVaultPanel({
                         visibleColumns={tableColumns}
                         dragLabel={copy.panel.dragHandleAria}
                         onPreview={setPreviewFile}
+                        onDownload={downloadFile}
                         onToggleVisibility={toggleFileVisibility}
                         onEdit={setEditingFile}
                         onDelete={requestDeleteFile}
@@ -1485,6 +1493,7 @@ function VaultFileRow({
   visibleColumns = DEFAULT_ENTERPRISE_VAULT_TABLE_COLUMNS,
   dragLabel,
   onPreview,
+  onDownload,
   onToggleVisibility,
   onEdit,
   onDelete,
@@ -1577,7 +1586,7 @@ function VaultFileRow({
           ) : (
             <span className={styles.actionSlot} aria-hidden />
           )}
-          <a href={getDownloadUrl(file.id)} download={fileName} className={styles.actionBtn} title={copy.card.downloadTitle}><Icon icon="mdi:download-outline" aria-hidden /></a>
+          <button type="button" className={styles.actionBtn} onClick={() => onDownload?.(file)} title={copy.card.downloadTitle} aria-label={copy.card.downloadTitle}><Icon icon="mdi:download-outline" aria-hidden /></button>
           <button type="button" className={styles.actionBtn} onClick={() => onEdit(file)} title={copy.card.editDescriptionTitle}><Icon icon="mdi:pencil-outline" aria-hidden /></button>
           <button type="button" className={`${styles.actionBtn} ${styles.actionDelete}`} onClick={() => onDelete(file)} title={copy.card.removeTitle}><Icon icon="mdi:trash-can-outline" aria-hidden /></button>
         </div>

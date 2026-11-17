@@ -1,11 +1,15 @@
 .overlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   z-index: var(--modal-stack-overlay-z-index, calc(var(--modal-overlay-z-index, 11000) + 100));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
+  box-sizing: border-box;
   background: rgba(6, 10, 18, 0.72);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -18,11 +22,14 @@
 }
 
 .shell {
-  width: min(980px, 92vw);
-  height: min(72vh, 680px);
-  height: min(72dvh, 680px);
+  width: min(1100px, 94vw);
+  height: min(88vh, 860px);
+  height: min(88dvh, 860px);
+  min-height: min(72vh, 620px);
+  min-height: min(72dvh, 620px);
   max-height: calc(100vh - 2.5rem);
   max-height: calc(100dvh - 2.5rem);
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-radius: 16px;
@@ -101,6 +108,11 @@
 }
 
 .downloadLink {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -113,10 +125,15 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.downloadLink:hover {
+.downloadLink:hover:not(:disabled) {
   color: #b8d6f8;
   background: rgba(125, 179, 240, 0.1);
   text-decoration: none;
+}
+
+.downloadLink:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .closeBtn {
@@ -142,11 +159,12 @@
 }
 
 .previewBody {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: min(55vh, 480px);
+  min-height: min(55dvh, 480px);
   overflow: hidden;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   background: #0a101c;
 }
@@ -162,8 +180,12 @@
 }
 
 .previewPdf {
+  display: block;
+  flex: 1 1 auto;
   width: 100%;
   height: 100%;
+  min-height: min(50vh, 440px);
+  min-height: min(50dvh, 440px);
   align-self: stretch;
   border: none;
   background: #0a101c;
@@ -193,6 +215,10 @@
 }
 
 .unsupportedDownload {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -290,9 +316,11 @@
   }
 
   .shell {
-    width: min(100%, 92vw);
-    height: min(78vh, 620px);
-    height: min(78dvh, 620px);
+    width: min(100%, 94vw);
+    height: min(88vh, 820px);
+    height: min(88dvh, 820px);
+    min-height: min(70vh, 520px);
+    min-height: min(70dvh, 520px);
     border-radius: 12px;
   }
 

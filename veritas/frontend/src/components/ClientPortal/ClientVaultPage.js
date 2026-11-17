@@ -16,6 +16,7 @@ import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/Vault
 import ClientVaultSecretDeleteModal from "./ClientVaultSecretDeleteModal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import { getClientPortalCopy } from "./clientPortalI18n";
+import { downloadVaultFileFromUrl } from "../../utils/vaultFileDownload";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 export default function ClientVaultPage() {
   const locale = useAppLocale();
@@ -107,6 +108,16 @@ export default function ClientVaultPage() {
       setRevealingId(null);
     }
   };
+  const handleDownloadFile = useCallback(async file => {
+    if (!file?.id) return;
+    try {
+      await downloadVaultFileFromUrl(getPortalVaultDownloadUrl(file.id), file.file_name, {
+        mimeType: file.mime_type
+      });
+    } catch (error) {
+      toast.error(error.message || t.downloadError || t.loadError);
+    }
+  }, [t.downloadError, t.loadError]);
   const handleRequestRevocation = async secretId => {
     if (!secretId || revokingId) return;
     setRevokingId(secretId);
@@ -199,7 +210,7 @@ export default function ClientVaultPage() {
                   className={`${pageStyles.panelContent} ${pageStyles.panelContentGrid}`}
                   deps={[files.length, search, categoryFilter]}
                 >
-                  {files.map(file => <ClientVaultFileCard key={file.id} file={file} copy={copy} onPreview={() => setPreviewFile(file)} />)}
+                  {files.map(file => <ClientVaultFileCard key={file.id} file={file} copy={copy} onPreview={() => setPreviewFile(file)} onDownload={() => handleDownloadFile(file)} />)}
                 </UiKitScrollFadeShell>
               </div> : secrets.length === 0 ? <div className={layout.emptyStateInCard}>
               <UiKitEmptyState bare icon="mdi:key-variant" title={t.emptySecretsTitle} text={t.emptySecretsHint} />
@@ -259,7 +270,8 @@ export default function ClientVaultPage() {
 function ClientVaultFileCard({
   file,
   copy,
-  onPreview
+  onPreview,
+  onDownload
 }) {
   const t = copy.vault;
   const isImage = IMAGE_MIMES.has(file.mime_type);
@@ -282,9 +294,9 @@ function ClientVaultFileCard({
         <button type="button" className={pageStyles.docCardActionBtn} onClick={onPreview} title={t.previewTitle}>
           <Icon icon="mdi:eye-outline" aria-hidden />
         </button>
-        <a href={getPortalVaultDownloadUrl(file.id)} download={file.file_name} className={pageStyles.docCardActionBtn} title={t.downloadTitle}>
+        <button type="button" className={pageStyles.docCardActionBtn} title={t.downloadTitle} onClick={onDownload}>
           <Icon icon="mdi:download-outline" aria-hidden />
-        </a>
+        </button>
       </div>
     </article>;
 }

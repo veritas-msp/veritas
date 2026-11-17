@@ -203,6 +203,7 @@ const ENTERPRISE_VAULT_COPY = {
     previewModal: {
       download: "Télécharger",
       closeAria: "Fermer",
+      loadingPreview: "Chargement de l’aperçu…",
       unsupported: "Aperçu non disponible pour ce type de fichier.",
       noDescription: "Aucune description",
       editDescriptionTitle: "Modifier la description",
@@ -426,6 +427,7 @@ const ENTERPRISE_VAULT_COPY = {
     previewModal: {
       download: "Download",
       closeAria: "Close",
+      loadingPreview: "Loading preview…",
       unsupported: "Preview not available for this file type.",
       noDescription: "No description",
       editDescriptionTitle: "Edit description",
@@ -605,6 +607,7 @@ const ENTERPRISE_VAULT_COPY = {
     previewModal: {
       download: "Herunterladen",
       closeAria: "Schließen",
+      loadingPreview: "Vorschau wird geladen…",
       unsupported: "Vorschau für diesen Dateityp nicht verfügbar.",
       noDescription: "Keine Beschreibung",
       editDescriptionTitle: "Beschreibung bearbeiten",
@@ -784,6 +787,7 @@ const ENTERPRISE_VAULT_COPY = {
     previewModal: {
       download: "Scarica",
       closeAria: "Chiudi",
+      loadingPreview: "Caricamento anteprima…",
       unsupported: "Anteprima non disponibile per questo tipo di file.",
       noDescription: "Nessuna descrizione",
       editDescriptionTitle: "Modifica descrizione",
@@ -963,6 +967,7 @@ const ENTERPRISE_VAULT_COPY = {
     previewModal: {
       download: "Descargar",
       closeAria: "Cerrar",
+      loadingPreview: "Cargando vista previa…",
       unsupported: "Vista previa no disponible para este tipo de archivo.",
       noDescription: "Sin descripción",
       editDescriptionTitle: "Editar descripción",

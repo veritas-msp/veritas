@@ -23,6 +23,7 @@ import SortableHeader from "../Misc/SortableHeader/SortableHeader";
 import styles from "./DocumentsHubPage.module.css";
 import { UiKitCrmListToolbar, UiKitEmptyState, UiKitScrollFadeShell } from "../UiKit";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { downloadVaultFileFromUrl } from "../../utils/vaultFileDownload";
 import { cycleSortState } from "../Misc/SortableHeader/cycleSortState";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 function formatSize(bytes, locale) {
@@ -244,6 +245,16 @@ export default function DocumentsHubPage() {
   const handleDelete = file => {
     setDeleteTarget(file);
   };
+  const handleDownload = useCallback(async file => {
+    if (!file?.id) return;
+    try {
+      await downloadVaultFileFromUrl(getDownloadUrl(file.id), file.file_name, {
+        mimeType: file.mime_type
+      });
+    } catch (err) {
+      toast.error(err?.message || copy.downloadError || copy.deleteError);
+    }
+  }, [copy.downloadError, copy.deleteError]);
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -465,9 +476,9 @@ export default function DocumentsHubPage() {
                                       <td className={styles.mutedCell}>{formatSize(file.size_bytes, locale)}</td>
                                       <td>
                                         <div className={styles.rowActions}>
-                                          <a href={getDownloadUrl(file.id)} download={file.file_name} className={styles.iconAction} title={copy.download}>
+                                          <button type="button" className={styles.iconAction} title={copy.download} onClick={() => handleDownload(file)}>
                                             <Icon icon="mdi:download-outline" />
-                                          </a>
+                                          </button>
                                           {canEdit ? (
                                             <button type="button" className={styles.iconAction} title={copy.edit} onClick={() => handleRowEdit(file)}>
                                               <Icon icon="mdi:pencil-outline" />

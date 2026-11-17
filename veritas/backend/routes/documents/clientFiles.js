@@ -12,6 +12,7 @@ import { ensureClientFileFoldersSchema, hasClientFileFoldersTable } from "../../
 import { notifyVaultDocumentShared } from "../../services/systemNotificationService.js";
 import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
 import { decodeMulterFilename, mapFileRowFilename, repairStoredFilename } from "../../utils/multerFilename.js";
+import { buildContentDisposition, ensureFileNameExtension } from "../../utils/contentDisposition.js";
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, "..", "..", "uploads", "client-files");
@@ -52,7 +53,7 @@ function resolveUploadOriginalName(file) {
   return decodeMulterFilename(file?.originalname);
 }
 
-function sanitizeDisplayFileName(raw, fallback = "") {
+function sanitizeDisplayFileName(raw, fallback = "", { mimeType = "" } = {}) {
   let name = String(raw || "")
     .trim()
     .replace(/[/\\]+/g, "_")
@@ -64,6 +65,7 @@ function sanitizeDisplayFileName(raw, fallback = "") {
       .replace(/[\u0000-\u001f\u007f]/g, "");
   }
   if (!name) name = "document";
+  name = ensureFileNameExtension(name, { mimeType, sourceName: fallback });
   if (name.length > 255) name = name.slice(0, 255);
   return name;
 }
@@ -498,7 +500,8 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
     const originalName = resolveUploadOriginalName(req.file);
     const displayName = sanitizeDisplayFileName(
       fileName || file_name || bodyDisplayName,
-      originalName
+      originalName,
+      { mimeType }
     );
     const columns = ["client_id", "client_name", "file_name", "file_path", "mime_type", "size_bytes", "category", "description", "uploaded_by"];
     const values = [resolvedClientId, clientName || null, displayName, req.file.filename, mimeType, req.file.size, safeCategory, description, resolveFileUploadedBy(req.user)];
@@ -549,9 +552,9 @@ router.get("/:id/download", verifyJWT, requireAnyPermission("documents.view", "c
     if (!fs.existsSync(fullPath)) return res.status(404).json({
       error: "File missing on disk."
     });
-    const safeName = repairStoredFilename(file_name);
-    res.setHeader("Content-Type", mime_type);
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(safeName)}"`);
+    const safeName = ensureFileNameExtension(repairStoredFilename(file_name), { mimeType: mime_type });
+    res.setHeader("Content-Type", mime_type || "application/octet-stream");
+    res.setHeader("Content-Disposition", buildContentDisposition("attachment", safeName));
     fs.createReadStream(fullPath).pipe(res);
   } catch (err) {
     console.error("[GET /client-files/:id/download]", err.message);
@@ -575,9 +578,9 @@ router.get("/:id/preview", verifyJWT, requireAnyPermission("documents.view", "cl
     if (!fs.existsSync(fullPath)) return res.status(404).json({
       error: "File missing on disk."
     });
-    const safeName = repairStoredFilename(file_name);
-    res.setHeader("Content-Type", mime_type);
-    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(safeName)}"`);
+    const safeName = ensureFileNameExtension(repairStoredFilename(file_name), { mimeType: mime_type });
+    res.setHeader("Content-Type", mime_type || "application/octet-stream");
+    res.setHeader("Content-Disposition", buildContentDisposition("inline", safeName));
     allowAssetEmbedding(res);
     fs.createReadStream(fullPath).pipe(res);
   } catch (err) {
@@ -611,8 +614,19 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
     const sets = [];
     const values = [];
     if (hasFileName) {
+      const current = await pool.query(
+        `SELECT file_name, mime_type FROM v_b_client_files WHERE id = $1 AND is_deleted = FALSE`,
+        [req.params.id]
+      );
+      if (!current.rows.length) {
+        return res.status(404).json({
+          error: "File not found."
+        });
+      }
       const nextName = sanitizeDisplayFileName(
-        req.body.fileName ?? req.body.file_name ?? req.body.name
+        req.body.fileName ?? req.body.file_name ?? req.body.name,
+        current.rows[0].file_name,
+        { mimeType: current.rows[0].mime_type }
       );
       if (!nextName) {
         return res.status(400).json({

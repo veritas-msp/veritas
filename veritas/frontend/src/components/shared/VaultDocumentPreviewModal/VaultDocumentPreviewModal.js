@@ -3,6 +3,11 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { repairFilenameEncoding } from "../../../utils/repairFilenameEncoding";
+import {
+  downloadVaultFileFromUrl,
+  ensureVaultDownloadFileName,
+  fetchVaultMediaObjectUrl
+} from "../../../utils/vaultFileDownload";
 import styles from "./VaultDocumentPreviewModal.module.css";
 
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -15,7 +20,8 @@ const FALLBACK_COPY = {
     unsupported: "Preview not available for this file type.",
     noDescription: "No description",
     editDescriptionTitle: "Edit description",
-    editDescriptionAria: "Edit description"
+    editDescriptionAria: "Edit description",
+    loadingPreview: "Loading preview…"
   },
   getCategoryLabel: category => category,
   formatDate: value => {
@@ -47,7 +53,12 @@ export default function VaultDocumentPreviewModal({
   const formatDate = copy?.formatDate ?? FALLBACK_COPY.formatDate;
   const formatSize = copy?.formatSize ?? FALLBACK_COPY.formatSize;
   const [exiting, setExiting] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState(null);
+  const [mediaError, setMediaError] = useState(false);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const closeTimerRef = useRef(null);
+  const mediaUrlRef = useRef(null);
 
   const requestClose = useCallback(() => {
     if (exiting) return;
@@ -60,6 +71,10 @@ export default function VaultDocumentPreviewModal({
   useEffect(
     () => () => {
       if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+      if (mediaUrlRef.current) {
+        URL.revokeObjectURL(mediaUrlRef.current);
+        mediaUrlRef.current = null;
+      }
     },
     []
   );
@@ -72,12 +87,72 @@ export default function VaultDocumentPreviewModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [requestClose]);
 
+  const fileName = ensureVaultDownloadFileName(
+    repairFilenameEncoding(file?.file_name),
+    file?.mime_type
+  );
+  const isImage = IMAGE_MIMES.has(file?.mime_type);
+  const isPdf = file?.mime_type === "application/pdf";
+  const hasMediaPreview = Boolean(file && (isImage || isPdf));
+
+  useEffect(() => {
+    if (!hasMediaPreview || !previewUrl) {
+      setMediaUrl(null);
+      setMediaError(false);
+      setMediaLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setMediaLoading(true);
+    setMediaError(false);
+    setMediaUrl(null);
+    (async () => {
+      try {
+        const objectUrl = await fetchVaultMediaObjectUrl(previewUrl);
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        if (mediaUrlRef.current) URL.revokeObjectURL(mediaUrlRef.current);
+        mediaUrlRef.current = objectUrl;
+        setMediaUrl(objectUrl);
+      } catch {
+        if (!cancelled) setMediaError(true);
+      } finally {
+        if (!cancelled) setMediaLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (mediaUrlRef.current) {
+        URL.revokeObjectURL(mediaUrlRef.current);
+        mediaUrlRef.current = null;
+      }
+    };
+  }, [hasMediaPreview, previewUrl]);
+
+  const handleDownload = useCallback(async event => {
+    event?.preventDefault?.();
+    if (!downloadUrl || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadVaultFileFromUrl(downloadUrl, fileName, { mimeType: file?.mime_type });
+    } catch {
+      // Fallback navigation if blob download fails.
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = fileName;
+      anchor.rel = "noopener";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } finally {
+      setDownloading(false);
+    }
+  }, [downloadUrl, downloading, fileName, file?.mime_type]);
+
   if (!file) return null;
 
-  const fileName = repairFilenameEncoding(file.file_name);
-  const isImage = IMAGE_MIMES.has(file.mime_type);
-  const isPdf = file.mime_type === "application/pdf";
-  const hasMediaPreview = isImage || isPdf;
   const badgeClass = [styles.categoryBadge, categoryBadgeClassName].filter(Boolean).join(" ");
   const previewBodyClass = [
     styles.previewBody,
@@ -87,6 +162,7 @@ export default function VaultDocumentPreviewModal({
     .join(" ");
   const metaDate = file.created_at ? formatDate(file.created_at) : "-";
   const metaSize = file.size_bytes != null ? formatSize(file.size_bytes) : null;
+  const resolvedMediaUrl = mediaUrl || null;
 
   return createPortal(
     <div
@@ -106,9 +182,9 @@ export default function VaultDocumentPreviewModal({
             {fileName}
           </span>
           <div className={styles.headerActions}>
-            <a href={downloadUrl} download={fileName} className={styles.downloadLink}>
+            <button type="button" className={styles.downloadLink} onClick={handleDownload} disabled={downloading}>
               <Icon icon="mdi:download-outline" aria-hidden /> {labels.download}
-            </a>
+            </button>
             <button type="button" className={styles.closeBtn} onClick={requestClose} aria-label={labels.closeAria}>
               <FaTimes />
             </button>
@@ -116,15 +192,30 @@ export default function VaultDocumentPreviewModal({
         </header>
 
         <div className={previewBodyClass}>
-          {isImage ? <img src={previewUrl} alt={fileName} className={styles.previewImage} /> : null}
-          {isPdf ? <iframe src={previewUrl} title={fileName} className={styles.previewPdf} /> : null}
+          {hasMediaPreview && mediaLoading ? (
+            <div className={styles.previewUnsupported}>
+              <Icon icon="mdi:loading" className={styles.previewUnsupportedIcon} aria-hidden />
+              <p>{labels.loadingPreview || FALLBACK_COPY.previewModal.loadingPreview}</p>
+            </div>
+          ) : null}
+          {hasMediaPreview && !mediaLoading && mediaError ? (
+            <div className={styles.previewUnsupported}>
+              <Icon icon="mdi:file-alert-outline" className={styles.previewUnsupportedIcon} aria-hidden />
+              <p>{labels.unsupported}</p>
+              <button type="button" className={styles.unsupportedDownload} onClick={handleDownload}>
+                <Icon icon="mdi:download-outline" aria-hidden /> {labels.download}
+              </button>
+            </div>
+          ) : null}
+          {isImage && resolvedMediaUrl ? <img src={resolvedMediaUrl} alt={fileName} className={styles.previewImage} /> : null}
+          {isPdf && resolvedMediaUrl ? <iframe src={resolvedMediaUrl} title={fileName} className={styles.previewPdf} /> : null}
           {!hasMediaPreview ? (
             <div className={styles.previewUnsupported}>
               <Icon icon="mdi:file-document-outline" className={styles.previewUnsupportedIcon} aria-hidden />
               <p>{labels.unsupported}</p>
-              <a href={downloadUrl} download={fileName} className={styles.unsupportedDownload}>
+              <button type="button" className={styles.unsupportedDownload} onClick={handleDownload}>
                 <Icon icon="mdi:download-outline" aria-hidden /> {labels.download}
-              </a>
+              </button>
             </div>
           ) : null}
         </div>

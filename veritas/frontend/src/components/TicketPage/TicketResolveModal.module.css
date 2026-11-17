@@ -7,18 +7,44 @@
 
 .shell {
   width: min(780px, 100%);
+  height: min(94vh, 900px);
   max-height: min(94vh, 900px);
 }
 
 .content {
+  overflow: hidden;
+  padding: 1.15rem 1.35rem 1.2rem;
+}
+
+.content > .contentScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding-right: 0.15rem;
+}
+
+.sectionHead {
+  margin-bottom: 0;
+}
+
+.ticketContextCard {
+  margin-bottom: 0;
+}
+
+.ticketContextTitle {
+  line-height: 1.45;
+  word-break: break-word;
 }
 
 .catalogGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.85rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
 }
 
 .infoBanner {
@@ -26,7 +52,7 @@
   align-items: flex-start;
   gap: 0.55rem;
   padding: 0.72rem 0.85rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   border-radius: 10px;
   border: 1px solid rgba(43, 95, 171, 0.18);
   background: rgba(43, 95, 171, 0.06);
@@ -47,7 +73,7 @@
   align-items: flex-start;
   gap: 0.55rem;
   padding: 0.65rem 0.85rem;
-  margin: 0.85rem 0 0;
+  margin: 0;
   border-radius: 10px;
   border: 1px solid rgba(16, 185, 129, 0.22);
   background: rgba(16, 185, 129, 0.08);
@@ -67,7 +93,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  margin-top: 1.25rem;
+  margin-top: 0;
   padding: 0.95rem 1.05rem;
   border-radius: 12px;
   border: 1px solid var(--msp-border, #dde3ed);
