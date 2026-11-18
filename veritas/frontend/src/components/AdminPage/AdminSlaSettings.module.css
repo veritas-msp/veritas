@@ -23,6 +23,15 @@
   border-right: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
+/* Les sections admin ont min-height: 0 (et parfois flex: 1 + overflow: hidden).
+   Dans cette colonne, elles se compressent alors sous leur contenu et le texte
+   d’une section se peint par-dessus le titre de la suivante. */
+.paneFill .leftCol > section {
+  flex: 0 0 auto;
+  min-height: min-content;
+  overflow: visible;
+}
+
 .rightCol {
   overflow: hidden;
 }

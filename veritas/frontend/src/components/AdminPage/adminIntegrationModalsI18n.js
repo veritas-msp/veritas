@@ -1152,248 +1152,328 @@ const OVH_GUIDE = {
 const AI = {
   fr: {
     title: "Veritas AI",
-    subtitle: "Fournisseur LLM pour le copilote",
+    subtitle: "IA pour les tickets support",
     configNavAria: "Sections de configuration Veritas AI",
     sections: {
       connection: {
         description: "Fournisseur et clé API"
       },
+      tickets: {
+        label: "Tickets",
+        description: "Actions sur les tickets"
+      },
       guide: {
         description: "Obtenir une clé API"
-      },
-      info: {
-        description: "Usage et copilote"
       }
     },
-    apiCredentials: "Identifiants LLM",
-    connectionDesc: "Choisissez un fournisseur compatible, renseignez la clé API, puis activez l'intégration. Les quotas et fonctionnalités se gèrent dans Administration → IA · Copilote.",
+    apiCredentials: "Fournisseur IA",
+    connectionDesc: "Choisissez le fournisseur, collez la clé API et testez. Les actions cochées dans Tickets apparaissent sur la fiche ticket une fois l’intégration enregistrée.",
     provider: "Fournisseur",
+    providerGroup: "Choix du fournisseur",
     model: "Modèle",
-    modelHint: "Laissez vide pour utiliser le modèle recommandé du fournisseur.",
+    modelHint: "Laissez vide pour le modèle recommandé du fournisseur.",
     providers: {
-      openai: "OpenAI (API compatible)",
-      anthropic: "Anthropic Claude",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
       mammouth: "Mammouth AI"
     },
     howToGetCredentials: "Comment obtenir une clé API ?",
     fillApiKeyBeforeTest: "Renseignez la clé API avant de tester.",
     footerActive: "Veritas AI actif",
     footerInactive: "Veritas AI inactif",
-    testSubtitleSuccess: "Connexion LLM établie",
+    testSubtitleSuccess: "Connexion établie",
     testSubtitleFail: "Échec de la connexion",
-    testApiSuccess: "Le fournisseur LLM a répondu correctement.",
-    guideTitle: "Obtenir vos identifiants",
-    guideDesc: "Créez une clé API chez votre fournisseur LLM, puis testez la connexion dans Veritas.",
+    testApiSuccess: "Le fournisseur a répondu correctement.",
+    ticketFeaturesTitle: "Actions sur les tickets support",
+    ticketFeaturesDesc: "Chaque action activée apparaît sur la fiche ticket : priorité, réponse et aide technicien.",
+    ticketFeaturesLocked: "Activez l’intégration et enregistrez une clé API pour les afficher sur les tickets.",
+    quotasHint: "Les plafonds journaliers se règlent dans Administration → IA · Copilote.",
+    features: {
+      autoPriority: {
+        title: "Priorité automatique",
+        desc: "Propose une priorité à partir du titre et du contenu du ticket."
+      },
+      suggestReply: {
+        title: "Réponse et reformulation",
+        desc: "Suggère une réponse au client et enrichit le texte déjà saisi."
+      },
+      ticketRunbook: {
+        title: "Aide technicien",
+        desc: "Ouvre un runbook sur le ticket : diagnostic, causes probables et pistes d’action."
+      }
+    },
+    guideTitle: "Brancher le fournisseur",
+    guideDesc: "Une clé API suffit. Les actions tickets se choisissent dans l’onglet Tickets.",
     guideSteps: [{
-      title: "Choisissez un fournisseur",
-      desc: "OpenAI (ou API compatible), Anthropic Claude, ou Mammouth AI."
-    }, {
       title: "Créez une clé API",
-      desc: "Dans le portail du fournisseur, créez une clé avec les droits d'appel au modèle choisi."
+      desc: "Chez OpenAI, Anthropic Claude ou Mammouth AI, avec le droit d’appeler le modèle choisi."
     }, {
-      title: "Renseignez et testez",
-      desc: "Collez la clé ici, choisissez éventuellement un modèle, testez puis enregistrez."
-    }],
-    infoTitle: "À propos de cette intégration",
-    infoDesc: "Veritas AI alimente le copilote tickets, les runbooks, les briefings et l'enrichissement des alertes de supervision.",
-    infoApis: ["Suggestion de réponses et notes internes", "Brouillons de résolution et runbooks", "Briefings dashboard / supervision / entreprise"],
-    infoFooter: "Après configuration, ouvrez Administration → IA · Copilote pour les quotas journaliers et les bascules de fonctionnalités."
+      title: "Testez la connexion",
+      desc: "Collez la clé ici, choisissez éventuellement un modèle, puis lancez le test."
+    }, {
+      title: "Activez les actions tickets",
+      desc: "Dans Tickets, cochez priorité, réponse ou aide technicien, puis enregistrez."
+    }]
   },
   en: {
     title: "Veritas AI",
-    subtitle: "LLM provider for the copilote",
+    subtitle: "AI for support tickets",
     configNavAria: "Veritas AI configuration sections",
     sections: {
       connection: {
         description: "Provider and API key"
       },
+      tickets: {
+        label: "Tickets",
+        description: "Actions on tickets"
+      },
       guide: {
         description: "Get an API key"
-      },
-      info: {
-        description: "Usage and copilote"
       }
     },
-    apiCredentials: "LLM credentials",
-    connectionDesc: "Pick a compatible provider, enter the API key, then enable the integration. Quotas and features are managed in Administration → AI · Copilot.",
+    apiCredentials: "AI provider",
+    connectionDesc: "Pick a provider, paste the API key and test. Actions enabled under Tickets show on the ticket once the integration is saved.",
     provider: "Provider",
+    providerGroup: "Provider choice",
     model: "Model",
-    modelHint: "Leave empty to use the provider recommended model.",
+    modelHint: "Leave empty to use the provider’s recommended model.",
     providers: {
-      openai: "OpenAI (compatible API)",
-      anthropic: "Anthropic Claude",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
       mammouth: "Mammouth AI"
     },
     howToGetCredentials: "How do I get an API key?",
     fillApiKeyBeforeTest: "Enter the API key before testing.",
     footerActive: "Veritas AI active",
     footerInactive: "Veritas AI inactive",
-    testSubtitleSuccess: "LLM connection established",
+    testSubtitleSuccess: "Connection established",
     testSubtitleFail: "Connection failed",
-    testApiSuccess: "The LLM provider responded successfully.",
-    guideTitle: "Get your credentials",
-    guideDesc: "Create an API key with your LLM provider, then test the connection in Veritas.",
+    testApiSuccess: "The provider responded successfully.",
+    ticketFeaturesTitle: "Support ticket actions",
+    ticketFeaturesDesc: "Each enabled action appears on the ticket: priority, reply and technician assist.",
+    ticketFeaturesLocked: "Enable the integration and save an API key to show them on tickets.",
+    quotasHint: "Daily caps are set in Administration → AI · Copilot.",
+    features: {
+      autoPriority: {
+        title: "Automatic priority",
+        desc: "Suggests a priority from the ticket title and body."
+      },
+      suggestReply: {
+        title: "Reply and rewrite",
+        desc: "Suggests a customer reply and enriches text already typed."
+      },
+      ticketRunbook: {
+        title: "Technician assist",
+        desc: "Opens a ticket runbook: diagnosis, likely causes and next steps."
+      }
+    },
+    guideTitle: "Connect the provider",
+    guideDesc: "An API key is enough. Ticket actions are chosen in the Tickets tab.",
     guideSteps: [{
-      title: "Choose a provider",
-      desc: "OpenAI (or compatible API), Anthropic Claude, or Mammouth AI."
-    }, {
       title: "Create an API key",
-      desc: "In the provider portal, create a key with permission to call the selected model."
+      desc: "At OpenAI, Anthropic Claude or Mammouth AI, with permission to call the selected model."
     }, {
-      title: "Enter and test",
-      desc: "Paste the key here, optionally set a model, test, then save."
-    }],
-    infoTitle: "About this integration",
-    infoDesc: "Veritas AI powers the ticket copilote, runbooks, briefings and monitoring alert enrichment.",
-    infoApis: ["Reply and internal note suggestions", "Resolution drafts and runbooks", "Dashboard / supervision / enterprise briefings"],
-    infoFooter: "After setup, open Administration → AI · Copilot for daily quotas and feature toggles."
+      title: "Test the connection",
+      desc: "Paste the key here, optionally set a model, then run the test."
+    }, {
+      title: "Enable ticket actions",
+      desc: "In Tickets, turn on priority, reply or technician assist, then save."
+    }]
   },
   de: {
     title: "Veritas AI",
-    subtitle: "LLM-Anbieter für den Copilot",
+    subtitle: "KI für Support-Tickets",
     configNavAria: "Veritas-AI-Konfigurationsbereiche",
     sections: {
       connection: {
         description: "Anbieter und API-Schlüssel"
       },
+      tickets: {
+        label: "Tickets",
+        description: "Aktionen auf Tickets"
+      },
       guide: {
         description: "API-Schlüssel erhalten"
-      },
-      info: {
-        description: "Nutzung und Copilot"
       }
     },
-    apiCredentials: "LLM-Zugangsdaten",
-    connectionDesc: "Wählen Sie einen kompatiblen Anbieter, geben Sie den API-Schlüssel ein und aktivieren Sie die Integration. Kontingente und Funktionen verwalten Sie unter Administration → KI · Copilot.",
+    apiCredentials: "KI-Anbieter",
+    connectionDesc: "Anbieter wählen, API-Schlüssel einfügen und testen. Aktivierte Aktionen unter Tickets erscheinen auf dem Ticket, sobald die Integration gespeichert ist.",
     provider: "Anbieter",
+    providerGroup: "Anbieterwahl",
     model: "Modell",
     modelHint: "Leer lassen, um das empfohlene Modell des Anbieters zu verwenden.",
     providers: {
-      openai: "OpenAI (kompatible API)",
-      anthropic: "Anthropic Claude",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
       mammouth: "Mammouth AI"
     },
     howToGetCredentials: "Wie erhalte ich einen API-Schlüssel?",
     fillApiKeyBeforeTest: "Geben Sie den API-Schlüssel ein, bevor Sie testen.",
     footerActive: "Veritas AI aktiv",
     footerInactive: "Veritas AI inaktiv",
-    testSubtitleSuccess: "LLM-Verbindung hergestellt",
+    testSubtitleSuccess: "Verbindung hergestellt",
     testSubtitleFail: "Verbindung fehlgeschlagen",
-    testApiSuccess: "Der LLM-Anbieter hat korrekt geantwortet.",
-    guideTitle: "Zugangsdaten erhalten",
-    guideDesc: "Erstellen Sie einen API-Schlüssel bei Ihrem LLM-Anbieter und testen Sie die Verbindung in Veritas.",
+    testApiSuccess: "Der Anbieter hat korrekt geantwortet.",
+    ticketFeaturesTitle: "Aktionen auf Support-Tickets",
+    ticketFeaturesDesc: "Jede aktivierte Aktion erscheint auf dem Ticket: Priorität, Antwort und Technikerhilfe.",
+    ticketFeaturesLocked: "Aktivieren Sie die Integration und speichern Sie einen API-Schlüssel, damit sie auf Tickets erscheinen.",
+    quotasHint: "Tageslimits stellen Sie unter Administration → KI · Copilot ein.",
+    features: {
+      autoPriority: {
+        title: "Automatische Priorität",
+        desc: "Schlägt eine Priorität aus Titel und Inhalt des Tickets vor."
+      },
+      suggestReply: {
+        title: "Antwort und Umformulierung",
+        desc: "Schlägt eine Kundenantwort vor und reichert bereits eingegebenen Text an."
+      },
+      ticketRunbook: {
+        title: "Technikerhilfe",
+        desc: "Öffnet ein Runbook am Ticket: Diagnose, wahrscheinliche Ursachen und nächste Schritte."
+      }
+    },
+    guideTitle: "Anbieter anbinden",
+    guideDesc: "Ein API-Schlüssel genügt. Ticket-Aktionen wählen Sie im Tab Tickets.",
     guideSteps: [{
-      title: "Anbieter wählen",
-      desc: "OpenAI (oder kompatible API), Anthropic Claude oder Mammouth AI."
-    }, {
       title: "API-Schlüssel erstellen",
-      desc: "Erstellen Sie im Anbieterportal einen Schlüssel mit Aufrufrechten für das gewählte Modell."
+      desc: "Bei OpenAI, Anthropic Claude oder Mammouth AI, mit Recht zum Aufruf des gewählten Modells."
     }, {
-      title: "Eingeben und testen",
-      desc: "Schlüssel hier einfügen, optional Modell setzen, testen und speichern."
-    }],
-    infoTitle: "Über diese Integration",
-    infoDesc: "Veritas AI betreibt den Ticket-Copilot, Runbooks, Briefings und die Anreicherung von Monitoring-Alerten.",
-    infoApis: ["Antwort- und Notizvorschläge", "Abschlussentwürfe und Runbooks", "Dashboard-/Supervision-/Unternehmens-Briefings"],
-    infoFooter: "Nach der Einrichtung öffnen Sie Administration → KI · Copilot für Tageskontingente und Funktions-Schalter."
+      title: "Verbindung testen",
+      desc: "Schlüssel hier einfügen, optional ein Modell setzen, dann den Test starten."
+    }, {
+      title: "Ticket-Aktionen aktivieren",
+      desc: "Unter Tickets Priorität, Antwort oder Technikerhilfe einschalten und speichern."
+    }]
   },
   it: {
     title: "Veritas AI",
-    subtitle: "Provider LLM per il copilota",
+    subtitle: "IA per i ticket di supporto",
     configNavAria: "Sezioni di configurazione Veritas AI",
     sections: {
       connection: {
         description: "Provider e chiave API"
       },
+      tickets: {
+        label: "Ticket",
+        description: "Azioni sui ticket"
+      },
       guide: {
         description: "Ottenere una chiave API"
-      },
-      info: {
-        description: "Utilizzo e copilota"
       }
     },
-    apiCredentials: "Credenziali LLM",
-    connectionDesc: "Scegliete un provider compatibile, inserite la chiave API e attivate l'integrazione. Quote e funzionalità si gestiscono in Amministrazione → IA · Copilota.",
+    apiCredentials: "Provider IA",
+    connectionDesc: "Scegliete il provider, incollate la chiave API e testate. Le azioni attivate in Ticket compaiono sulla scheda una volta salvata l’integrazione.",
     provider: "Provider",
+    providerGroup: "Scelta del provider",
     model: "Modello",
-    modelHint: "Lasciate vuoto per usare il modello consigliato del provider.",
+    modelHint: "Lasciate vuoto per il modello consigliato del provider.",
     providers: {
-      openai: "OpenAI (API compatibile)",
-      anthropic: "Anthropic Claude",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
       mammouth: "Mammouth AI"
     },
     howToGetCredentials: "Come ottenere una chiave API?",
     fillApiKeyBeforeTest: "Inserite la chiave API prima di testare.",
     footerActive: "Veritas AI attivo",
     footerInactive: "Veritas AI inattivo",
-    testSubtitleSuccess: "Connessione LLM stabilita",
+    testSubtitleSuccess: "Connessione stabilita",
     testSubtitleFail: "Connessione non riuscita",
-    testApiSuccess: "Il provider LLM ha risposto correttamente.",
-    guideTitle: "Ottenere le credenziali",
-    guideDesc: "Create una chiave API presso il provider LLM, poi testate la connessione in Veritas.",
+    testApiSuccess: "Il provider ha risposto correttamente.",
+    ticketFeaturesTitle: "Azioni sui ticket di supporto",
+    ticketFeaturesDesc: "Ogni azione attivata compare sul ticket: priorità, risposta e aiuto tecnico.",
+    ticketFeaturesLocked: "Attivate l’integrazione e salvate una chiave API per mostrarle sui ticket.",
+    quotasHint: "I tetti giornalieri si impostano in Amministrazione → IA · Copilota.",
+    features: {
+      autoPriority: {
+        title: "Priorità automatica",
+        desc: "Propone una priorità a partire da titolo e contenuto del ticket."
+      },
+      suggestReply: {
+        title: "Risposta e riformulazione",
+        desc: "Suggerisce una risposta al cliente e arricchisce il testo già scritto."
+      },
+      ticketRunbook: {
+        title: "Aiuto tecnico",
+        desc: "Apre un runbook sul ticket: diagnosi, cause probabili e prossimi passi."
+      }
+    },
+    guideTitle: "Collegare il provider",
+    guideDesc: "Basta una chiave API. Le azioni ticket si scelgono nella scheda Ticket.",
     guideSteps: [{
-      title: "Scegliete un provider",
-      desc: "OpenAI (o API compatibile), Anthropic Claude o Mammouth AI."
-    }, {
       title: "Create una chiave API",
-      desc: "Nel portale del provider, create una chiave con diritti di chiamata al modello scelto."
+      desc: "Su OpenAI, Anthropic Claude o Mammouth AI, con diritto di chiamata al modello scelto."
     }, {
-      title: "Inserite e testate",
-      desc: "Incollate la chiave qui, impostate eventualmente un modello, testate e salvate."
-    }],
-    infoTitle: "Informazioni sull'integrazione",
-    infoDesc: "Veritas AI alimenta il copilota ticket, i runbook, i briefing e l'arricchimento degli alert di supervisione.",
-    infoApis: ["Suggerimenti di risposta e note interne", "Bozze di risoluzione e runbook", "Briefing dashboard / supervisione / azienda"],
-    infoFooter: "Dopo la configurazione, aprite Amministrazione → IA · Copilota per le quote giornaliere e i toggle delle funzionalità."
+      title: "Testate la connessione",
+      desc: "Incollate la chiave qui, impostate eventualmente un modello, poi avviate il test."
+    }, {
+      title: "Attivate le azioni ticket",
+      desc: "In Ticket, attivate priorità, risposta o aiuto tecnico, poi salvate."
+    }]
   },
   es: {
     title: "Veritas AI",
-    subtitle: "Proveedor LLM para el copiloto",
+    subtitle: "IA para tickets de soporte",
     configNavAria: "Secciones de configuración Veritas AI",
     sections: {
       connection: {
         description: "Proveedor y clave API"
       },
+      tickets: {
+        label: "Tickets",
+        description: "Acciones en los tickets"
+      },
       guide: {
         description: "Obtener una clave API"
-      },
-      info: {
-        description: "Uso y copiloto"
       }
     },
-    apiCredentials: "Credenciales LLM",
-    connectionDesc: "Elija un proveedor compatible, introduzca la clave API y active la integración. Las cuotas y funciones se gestionan en Administración → IA · Copiloto.",
+    apiCredentials: "Proveedor de IA",
+    connectionDesc: "Elija el proveedor, pegue la clave API y pruebe. Las acciones activadas en Tickets aparecen en la ficha al guardar la integración.",
     provider: "Proveedor",
+    providerGroup: "Elección del proveedor",
     model: "Modelo",
     modelHint: "Déjelo vacío para usar el modelo recomendado del proveedor.",
     providers: {
-      openai: "OpenAI (API compatible)",
-      anthropic: "Anthropic Claude",
+      openai: "OpenAI",
+      anthropic: "Anthropic",
       mammouth: "Mammouth AI"
     },
     howToGetCredentials: "¿Cómo obtener una clave API?",
     fillApiKeyBeforeTest: "Introduzca la clave API antes de probar.",
     footerActive: "Veritas AI activo",
     footerInactive: "Veritas AI inactivo",
-    testSubtitleSuccess: "Conexión LLM establecida",
+    testSubtitleSuccess: "Conexión establecida",
     testSubtitleFail: "Conexión fallida",
-    testApiSuccess: "El proveedor LLM respondió correctamente.",
-    guideTitle: "Obtener sus credenciales",
-    guideDesc: "Cree una clave API en su proveedor LLM y pruebe la conexión en Veritas.",
+    testApiSuccess: "El proveedor respondió correctamente.",
+    ticketFeaturesTitle: "Acciones en los tickets de soporte",
+    ticketFeaturesDesc: "Cada acción activada aparece en el ticket: prioridad, respuesta y ayuda al técnico.",
+    ticketFeaturesLocked: "Active la integración y guarde una clave API para mostrarlas en los tickets.",
+    quotasHint: "Los topes diarios se configuran en Administración → IA · Copiloto.",
+    features: {
+      autoPriority: {
+        title: "Prioridad automática",
+        desc: "Propone una prioridad a partir del título y el contenido del ticket."
+      },
+      suggestReply: {
+        title: "Respuesta y reformulación",
+        desc: "Sugiere una respuesta al cliente y enriquece el texto ya escrito."
+      },
+      ticketRunbook: {
+        title: "Ayuda al técnico",
+        desc: "Abre un runbook en el ticket: diagnóstico, causas probables y siguientes pasos."
+      }
+    },
+    guideTitle: "Conectar el proveedor",
+    guideDesc: "Basta una clave API. Las acciones de ticket se eligen en la pestaña Tickets.",
     guideSteps: [{
-      title: "Elija un proveedor",
-      desc: "OpenAI (o API compatible), Anthropic Claude o Mammouth AI."
-    }, {
       title: "Cree una clave API",
-      desc: "En el portal del proveedor, cree una clave con permisos para llamar al modelo elegido."
+      desc: "En OpenAI, Anthropic Claude o Mammouth AI, con permiso para llamar al modelo elegido."
     }, {
-      title: "Introduzca y pruebe",
-      desc: "Pegue la clave aquí, opcionalmente defina un modelo, pruebe y guarde."
-    }],
-    infoTitle: "Acerca de esta integración",
-    infoDesc: "Veritas AI alimenta el copiloto de tickets, runbooks, briefings y el enriquecimiento de alertas de supervisión.",
-    infoApis: ["Sugerencias de respuesta y notas internas", "Borradores de resolución y runbooks", "Briefings de dashboard / supervisión / empresa"],
-    infoFooter: "Tras la configuración, abra Administración → IA · Copiloto para las cuotas diarias y los interruptores de funciones."
+      title: "Pruebe la conexión",
+      desc: "Pegue la clave aquí, defina un modelo si quiere y lance la prueba."
+    }, {
+      title: "Active las acciones de ticket",
+      desc: "En Tickets, active prioridad, respuesta o ayuda al técnico y guarde."
+    }]
   }
 };
 const CHECKMK = {

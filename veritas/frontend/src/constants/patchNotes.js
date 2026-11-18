@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.16",
+    date: "2026-11-18",
+    highlights: [
+      "Intégration IA : activation par fonctionnalité tickets (priorité auto, suggestion de réponse, runbook technicien).",
+      "Modal IA revue (providers, section tickets, i18n) et catalogue recentré sur le support tickets.",
+      "Polissage CSS des modales d’intégration et des réglages admin / formulaire entreprise."
+    ]
+  },
+  {
     version: "2.0.15",
     date: "2026-11-18",
     highlights: [

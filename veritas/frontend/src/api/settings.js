@@ -183,6 +183,18 @@ const settingsMapping = {
   'AI_MODEL': {
     section: 'ai',
     label: 'AI model'
+  },
+  'AI_FEATURE_AUTO_PRIORITY': {
+    section: 'ai',
+    label: 'IA · priorité automatique'
+  },
+  'AI_FEATURE_SUGGEST_REPLY': {
+    section: 'ai',
+    label: 'IA · réponse automatique'
+  },
+  'AI_FEATURE_TICKET_RUNBOOK': {
+    section: 'ai',
+    label: 'IA · aide technicien (runbook)'
   }
 };
 export const updateSetting = async (key, value) => {

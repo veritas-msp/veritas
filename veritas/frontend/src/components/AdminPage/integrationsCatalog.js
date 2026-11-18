@@ -1,6 +1,6 @@
 export const INTEGRATION_CATEGORIES = [{
   id: "ai",
-  label: "AI & copilote",
+  label: "Support tickets",
   icon: "mdi:robot-outline"
 }, {
   id: "email-security",
@@ -37,10 +37,10 @@ export const INTEGRATIONS_CATALOG = [{
   id: "ai",
   name: "Veritas AI",
   category: "ai",
-  status: COMING_SOON,
+  status: AVAILABLE,
   icon: "mdi:robot-outline",
   iconColor: "#0ea5e9",
-  description: "LLM provider for ticket copilots, runbooks and briefings.",
+  description: "Connect an AI provider to enable priority, replies and technician assist on support tickets.",
   enabledKey: "INTEGRATION_AI_ENABLED",
   fields: [{
     key: "AI_PROVIDER",

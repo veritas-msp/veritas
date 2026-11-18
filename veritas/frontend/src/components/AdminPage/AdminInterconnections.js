@@ -32,6 +32,15 @@ const FILTER_AVAILABLE = "available";
 const FILTER_SOON = "soon";
 const isTrue = value => `${value ?? ""}`.toLowerCase() === "true";
 const isFalse = value => `${value ?? ""}`.toLowerCase() === "false";
+const AI_TICKET_FEATURE_KEYS = {
+  autoPriority: "AI_FEATURE_AUTO_PRIORITY",
+  suggestReply: "AI_FEATURE_SUGGEST_REPLY",
+  ticketRunbook: "AI_FEATURE_TICKET_RUNBOOK"
+};
+function aiFeatureOn(value) {
+  if (value === undefined || value === null || `${value}`.trim() === "") return true;
+  return isTrue(value);
+}
 function IntegrationCard({
   item,
   active,
@@ -146,6 +155,12 @@ export default function AdminInterconnections({
       }) => [key, settings[key] ?? ""]), [selected.enabledKey, selectedEnabled ? "true" : "false"]];
       if (selected.id === "mailinblack") {
         updates.push(["MAILINBLACK_CLIENT_ID", extras.authClientId ?? settings.MAILINBLACK_CLIENT_ID ?? ""]);
+      }
+      if (selected.id === "ai") {
+        for (const key of Object.values(AI_TICKET_FEATURE_KEYS)) {
+          const raw = settings[key];
+          updates.push([key, raw === undefined || raw === null || `${raw}`.trim() === "" ? "true" : raw]);
+        }
       }
       await Promise.all(updates.map(([key, value]) => updateSetting(key, value)));
       if (selected.id === "mailinblack") {
@@ -328,7 +343,11 @@ export default function AdminInterconnections({
 
       <OvhIntegrationModal open={selected?.id === "ovh"} enabled={selectedEnabled} applicationKey={settings.OVH_APPLICATION_KEY || ""} applicationSecret={settings.OVH_APPLICATION_SECRET || ""} consumerKey={settings.OVH_CONSUMER_KEY || ""} onEnabledChange={on => handleFieldChange(selected?.enabledKey, on ? "true" : "false")} onApplicationKeyChange={value => handleFieldChange("OVH_APPLICATION_KEY", value)} onApplicationSecretChange={value => handleFieldChange("OVH_APPLICATION_SECRET", value)} onConsumerKeyChange={value => handleFieldChange("OVH_CONSUMER_KEY", value)} onClose={() => !saving && setSelected(null)} onSave={handleSave} saving={saving} />
 
-      <AiIntegrationModal open={selected?.id === "ai"} enabled={selectedEnabled} provider={settings.AI_PROVIDER || "openai"} apiKey={settings.AI_API_KEY || ""} model={settings.AI_MODEL || ""} onEnabledChange={on => handleFieldChange(selected?.enabledKey, on ? "true" : "false")} onProviderChange={value => handleFieldChange("AI_PROVIDER", value)} onApiKeyChange={value => handleFieldChange("AI_API_KEY", value)} onModelChange={value => handleFieldChange("AI_MODEL", value)} onClose={() => !saving && setSelected(null)} onSave={handleSave} saving={saving} />
+      <AiIntegrationModal open={selected?.id === "ai"} enabled={selectedEnabled} provider={settings.AI_PROVIDER || "openai"} apiKey={settings.AI_API_KEY || ""} model={settings.AI_MODEL || ""} ticketFeatures={{
+        autoPriority: aiFeatureOn(settings.AI_FEATURE_AUTO_PRIORITY),
+        suggestReply: aiFeatureOn(settings.AI_FEATURE_SUGGEST_REPLY),
+        ticketRunbook: aiFeatureOn(settings.AI_FEATURE_TICKET_RUNBOOK)
+      }} onEnabledChange={on => handleFieldChange(selected?.enabledKey, on ? "true" : "false")} onProviderChange={value => handleFieldChange("AI_PROVIDER", value)} onApiKeyChange={value => handleFieldChange("AI_API_KEY", value)} onModelChange={value => handleFieldChange("AI_MODEL", value)} onTicketFeatureChange={(id, on) => handleFieldChange(AI_TICKET_FEATURE_KEYS[id], on ? "true" : "false")} onClose={() => !saving && setSelected(null)} onSave={handleSave} saving={saving} />
 
       <CheckmkIntegrationModal
         open={selected?.id === "checkmk"}

@@ -1,7 +1,7 @@
 export const INTEGRATIONS_CATALOG_I18N = {
   "fr": {
     "categories": {
-      "ai": "IA & copilote",
+      "ai": "Tickets support",
       "email-security": "Antispam & protection mail",
       "endpoint-security": "Antivirus, EDR & XDR",
       "cloud": "Cloud & identité",
@@ -12,7 +12,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
     },
     "descriptions": {
       "ai": {
-        "description": "Fournisseur LLM pour copilotes tickets, runbooks et briefings."
+        "description": "Branchez une IA pour activer la priorité, les réponses et l’aide technicien sur les tickets support."
       },
       "checkmk": {
         "description": "Supervision des hôtes, services et rapports de monitoring."
@@ -187,7 +187,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
   },
   "en": {
     "categories": {
-      "ai": "AI & copilote",
+      "ai": "Support tickets",
       "email-security": "Antispam & email protection",
       "endpoint-security": "Antivirus, EDR & XDR",
       "cloud": "Cloud & identity",
@@ -198,7 +198,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
     },
     "descriptions": {
       "ai": {
-        "description": "LLM provider for ticket copilots, runbooks and briefings."
+        "description": "Connect an AI provider to enable priority, replies and technician assist on support tickets."
       },
       "checkmk": {
         "description": "Host, service and monitoring report supervision."
@@ -373,7 +373,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
   },
   "de": {
     "categories": {
-      "ai": "KI & Copilot",
+      "ai": "Support-Tickets",
       "email-security": "Antispam & E-Mail-Schutz",
       "endpoint-security": "Antivirus, EDR & XDR",
       "cloud": "Cloud & Identität",
@@ -384,7 +384,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
     },
     "descriptions": {
       "ai": {
-        "description": "LLM-Anbieter für Ticket-Copiloten, Runbooks und Briefings."
+        "description": "KI-Anbieter anbinden, um Priorität, Antworten und Technikerhilfe auf Support-Tickets zu aktivieren."
       },
       "checkmk": {
         "description": "Supervision des hôtes, services et rapports de monitoring."
@@ -559,7 +559,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
   },
   "it": {
     "categories": {
-      "ai": "IA & copilota",
+      "ai": "Ticket di supporto",
       "email-security": "Antispam & protezione email",
       "endpoint-security": "Antivirus, EDR & XDR",
       "cloud": "Cloud & identità",
@@ -570,7 +570,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
     },
     "descriptions": {
       "ai": {
-        "description": "Provider LLM per copiloti ticket, runbook e briefing."
+        "description": "Collegate un’IA per attivare priorità, risposte e aiuto tecnico sui ticket di supporto."
       },
       "checkmk": {
         "description": "Supervision des hôtes, services et rapports de monitoring."
@@ -745,7 +745,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
   },
   "es": {
     "categories": {
-      "ai": "IA y copiloto",
+      "ai": "Tickets de soporte",
       "email-security": "Antispam y protección de correo",
       "endpoint-security": "Antivirus, EDR y XDR",
       "cloud": "Cloud e identidad",
@@ -756,7 +756,7 @@ export const INTEGRATIONS_CATALOG_I18N = {
     },
     "descriptions": {
       "ai": {
-        "description": "Proveedor LLM para copilotos de tickets, runbooks y briefings."
+        "description": "Conecte una IA para activar prioridad, respuestas y ayuda al técnico en los tickets de soporte."
       },
       "checkmk": {
         "description": "Supervision des hôtes, services et rapports de monitoring."

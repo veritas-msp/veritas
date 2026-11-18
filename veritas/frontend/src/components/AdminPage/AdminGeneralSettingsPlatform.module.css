@@ -190,13 +190,25 @@
   gap: 1rem;
   padding: 1.35rem 1.4rem 1.5rem;
   min-width: 0;
-  min-height: 0;
+  /* Hauteur du contenu : un min-height: 0 dans une colonne flex fait déborder
+     le texte sur le titre de la section suivante. */
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+  background: var(--msp-surface, #fff);
   box-sizing: border-box;
 }
 
-.shellPane > .section:only-child,
+/* Une section seule remplit la carte (listes, tables) et scrolle en interne. */
+.shellPane > .section:only-child {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .shellPane:has(> :only-child) .section {
   flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -309,19 +321,31 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
   min-width: 0;
-  flex: 1 1 auto;
-  min-height: 0;
+  /* La rangée suit son contenu. Si elle rétrécit, les colonnes débordent
+     sur la section du dessous (ex. Maintenance, couleurs de rapport). */
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
 }
 
-.sectionRow > .section {
-  height: 100%;
-  min-height: 0;
+.sectionRow > .section,
+.shellPane:has(.sectionRow) .sectionRow > .section {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
 }
 
-.shellPane > .sectionRow:only-child {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
+.shellPane > .sectionRow:only-child,
+.shellPane:has(> .sectionRow:only-child) > .sectionRow {
+  flex: 0 0 auto;
+  min-height: auto;
+  height: auto;
+  overflow: visible;
+}
+
+.shellPane:has(> .sectionRow:only-child) {
+  overflow: auto;
 }
 
 .sectionRow > .section + .section {

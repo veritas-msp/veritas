@@ -12,19 +12,33 @@ import aiStyles from "./AiIntegrationModal.module.css";
 
 const AI_PROVIDERS = [{
   id: "openai",
+  icon: "simple-icons:openai",
   defaultModel: "gpt-4o-mini"
 }, {
   id: "anthropic",
+  icon: "simple-icons:anthropic",
   defaultModel: "claude-3-5-haiku-latest"
 }, {
   id: "mammouth",
+  icon: "mdi:elephant",
   defaultModel: "mammouth-recommended"
+}];
+
+const TICKET_FEATURES = [{
+  id: "autoPriority",
+  icon: "mdi:flag-outline"
+}, {
+  id: "suggestReply",
+  icon: "mdi:message-reply-text-outline"
+}, {
+  id: "ticketRunbook",
+  icon: "mdi:book-open-page-variant-outline"
 }];
 
 const SECTION_ICONS = {
   connection: "mdi:key-variant",
-  guide: "mdi:book-open-outline",
-  info: "mdi:information-outline"
+  tickets: "mdi:ticket-confirmation-outline",
+  guide: "mdi:book-open-outline"
 };
 
 function normalizeProvider(raw) {
@@ -111,17 +125,19 @@ export default function AiIntegrationModal({
   provider,
   apiKey,
   model,
+  ticketFeatures,
   onEnabledChange,
   onProviderChange,
   onApiKeyChange,
   onModelChange,
+  onTicketFeatureChange,
   onClose,
   onSave,
   saving = false
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getAiIntegrationModalCopy(locale), [locale]);
-  const sections = useMemo(() => ["connection", "guide", "info"].map(id => ({
+  const sections = useMemo(() => ["connection", "tickets", "guide"].map(id => ({
     id,
     label: copy.sections[id].label,
     description: copy.sections[id].description,
@@ -133,6 +149,12 @@ export default function AiIntegrationModal({
   const [testError, setTestError] = useState(null);
   const [showTestModal, setShowTestModal] = useState(false);
   const normalizedProvider = normalizeProvider(provider);
+  const features = {
+    autoPriority: ticketFeatures?.autoPriority !== false,
+    suggestReply: ticketFeatures?.suggestReply !== false,
+    ticketRunbook: ticketFeatures?.ticketRunbook !== false
+  };
+  const readyForTickets = Boolean(enabled && String(apiKey || "").trim());
 
   useEffect(() => {
     if (open) {
@@ -202,18 +224,18 @@ export default function AiIntegrationModal({
         <p className={formStyles.sectionDesc}>{copy.connectionDesc}</p>
       </div>
 
-      <div className={formStyles.fieldStack}>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="ai-provider">
-            {copy.provider}
-          </label>
-          <select id="ai-provider" className={formStyles.input} value={normalizedProvider} onChange={e => handleProviderChange(e.target.value)} disabled={saving || testing}>
-            {AI_PROVIDERS.map(item => <option key={item.id} value={item.id}>
-                {copy.providers[item.id] || item.id}
-              </option>)}
-          </select>
-        </div>
+      <div className={aiStyles.providerGrid} role="radiogroup" aria-label={copy.providerGroup}>
+        {AI_PROVIDERS.map(item => {
+          const selected = normalizedProvider === item.id;
+          return <button key={item.id} type="button" role="radio" aria-checked={selected} className={`${aiStyles.providerCard} ${selected ? aiStyles.providerCardActive : ""}`} onClick={() => handleProviderChange(item.id)} disabled={saving || testing}>
+              <Icon icon={item.icon} className={aiStyles.providerIcon} aria-hidden />
+              <span className={aiStyles.providerName}>{copy.providers[item.id] || item.id}</span>
+              <span className={aiStyles.providerModel}>{item.defaultModel}</span>
+            </button>;
+        })}
+      </div>
 
+      <div className={formStyles.fieldStack}>
         <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="ai-api-key">
             {copy.apiKey}
@@ -230,9 +252,42 @@ export default function AiIntegrationModal({
             {copy.model}
           </label>
           <input id="ai-model" type="text" className={formStyles.input} value={model || ""} placeholder={defaultModelFor(normalizedProvider)} onChange={e => onModelChange(e.target.value)} disabled={saving || testing} autoComplete="off" />
-          <p className={formStyles.sectionDesc}>{copy.modelHint}</p>
+          <p className={aiStyles.fieldHint}>{copy.modelHint}</p>
         </div>
       </div>
+    </>;
+
+  const renderTickets = () => <>
+      <div className={formStyles.sectionHead}>
+        <h3 className={formStyles.sectionTitle}>{copy.ticketFeaturesTitle}</h3>
+        <p className={formStyles.sectionDesc}>{copy.ticketFeaturesDesc}</p>
+      </div>
+      {!readyForTickets ? <p className={aiStyles.lockNotice}>
+          <Icon icon="mdi:information-outline" aria-hidden />
+          {copy.ticketFeaturesLocked}
+        </p> : null}
+      <ul className={aiStyles.featureList}>
+        {TICKET_FEATURES.map(feature => {
+          const text = copy.features?.[feature.id] || {};
+          const checked = Boolean(features[feature.id]);
+          return <li key={feature.id} className={aiStyles.featureRow}>
+              <span className={aiStyles.featureIcon} aria-hidden>
+                <Icon icon={feature.icon} />
+              </span>
+              <span className={aiStyles.featureText}>
+                <span className={aiStyles.featureTitle}>{text.title}</span>
+                <span className={aiStyles.featureDesc}>{text.desc}</span>
+              </span>
+              <label className={formStyles.switchWrap}>
+                <input type="checkbox" className={formStyles.switchInput} checked={checked} onChange={e => onTicketFeatureChange?.(feature.id, e.target.checked)} disabled={saving || testing} aria-label={text.title} />
+                <span className={formStyles.switchTrack} aria-hidden>
+                  <span className={formStyles.switchThumb} />
+                </span>
+              </label>
+            </li>;
+        })}
+      </ul>
+      <p className={aiStyles.fieldHint}>{copy.quotasHint}</p>
     </>;
 
   const renderGuide = () => <>
@@ -240,9 +295,9 @@ export default function AiIntegrationModal({
         <h3 className={formStyles.sectionTitle}>{copy.guideTitle}</h3>
         <p className={formStyles.sectionDesc}>{copy.guideDesc}</p>
       </div>
-      <ol className={styles.guideSteps}>
+      <ol className={`${styles.guideSteps} ${aiStyles.guideSteps}`}>
         {copy.guideSteps.map((step, index) => <li key={step.title} className={styles.guideStep}>
-            <span className={styles.guideStepNum} aria-hidden>
+            <span className={`${styles.guideStepNum} ${aiStyles.guideStepNum}`} aria-hidden>
               {index + 1}
             </span>
             <div className={styles.guideStepBody}>
@@ -253,23 +308,12 @@ export default function AiIntegrationModal({
       </ol>
     </>;
 
-  const renderInfo = () => <>
-      <div className={formStyles.sectionHead}>
-        <h3 className={formStyles.sectionTitle}>{copy.infoTitle}</h3>
-        <p className={formStyles.sectionDesc}>{copy.infoDesc}</p>
-      </div>
-      <ul className={styles.apiList}>
-        {copy.infoApis.map(item => <li key={item}>{item}</li>)}
-      </ul>
-      <p className={formStyles.sectionDesc}>{copy.infoFooter}</p>
-    </>;
-
   if (!open) return null;
 
   return createPortal(<>
       <div className={formStyles.overlay} onClick={saving || testing ? undefined : onClose} role="presentation">
         <div className={formStyles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ai-integration-modal-title">
-          <div className={aiStyles.accentBarAi} aria-hidden />
+          <div className={`${formStyles.accentBar} ${aiStyles.accentBarAi}`} aria-hidden />
           <header className={formStyles.header}>
             <div className={formStyles.headerMain}>
               <div className={`${formStyles.headerIconWrap} ${aiStyles.headerIconAi}`} aria-hidden>
@@ -300,7 +344,7 @@ export default function AiIntegrationModal({
             </nav>
 
             <div className={formStyles.content}>
-              {activeSection === "guide" ? renderGuide() : activeSection === "info" ? renderInfo() : renderConnection()}
+              {activeSection === "tickets" ? renderTickets() : activeSection === "guide" ? renderGuide() : renderConnection()}
             </div>
           </div>
 
