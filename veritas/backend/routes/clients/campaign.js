@@ -108,7 +108,6 @@ router.use((req, res, next) => {
   next();
 });
 router.use(verifyJWT, requirePro);
-const RECENT_SYNC_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 function normalizeNumericColumn(v) {
   if (v === undefined || v === null) return null;
   if (typeof v === 'string' && v.trim() === '') return null;
@@ -720,53 +719,28 @@ router.post('/:id/campaigns/:campaignId/launch', requirePermission('clients_deta
       });
     }
     const campaign = campaignResult.rows[0];
-    if (campaign.type !== 'microsoft_security') {
-      return res.status(400).json({
-        error: 'This feature is only available for microsoft_security campaigns'
-      });
-    }
-    if (campaign.status !== 'en_preparation') {
-      return res.status(400).json({
-        error: campaign.status === 'suspendue' ? 'Campaign paused. Use « Resume » to reactivate it.' : campaign.status === 'inactive' ? 'Campaign completed. Reset it before restarting.' : 'Campaign must be in preparation to be launched.'
-      });
-    }
-    const existingEnd = await pool.query(`SELECT id FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'end' LIMIT 1`, [campaignId]);
-    if (existingEnd.rows.length > 0) {
-      return res.status(400).json({
-        error: 'An end snapshot already exists. Reset the campaign before restarting.'
-      });
-    }
-    const existingSnapshot = await pool.query(`SELECT id FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start'`, [campaignId]);
     let snapshot = null;
-    if (existingSnapshot.rows.length === 0) {
-      const stats = await getClientMfaStatsFromDb(id);
-      if (!stats) {
-        return res.status(400).json({
-          error: 'No synchronization data. Synchronize Microsoft data (Sync button) before launching the campaign.'
-        });
+    if (campaign.type === 'microsoft_security') {
+      const existingSnapshot = await pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start' LIMIT 1`, [campaignId]);
+      if (existingSnapshot.rows.length > 0) {
+        snapshot = existingSnapshot.rows[0];
+      } else {
+        try {
+          const stats = await getClientMfaStatsFromDb(id);
+          if (stats) {
+            snapshot = await insertCampaignSnapshot(campaignId, "start", stats);
+          }
+        } catch (snapshotError) {
+          console.warn(`[campaign] Launch start snapshot skipped for ${campaignId}:`, snapshotError.message);
+        }
       }
-      if (!stats.lastSync) {
-        return res.status(400).json({
-          error: 'No synchronization date. Synchronize Microsoft data before launching the campaign.'
-        });
-      }
-      const lastSyncAge = Date.now() - new Date(stats.lastSync).getTime();
-      if (lastSyncAge > RECENT_SYNC_MAX_AGE_MS) {
-        return res.status(400).json({
-          error: 'Last synchronization is too old. Perform a recent sync (less than 24h) before launching the campaign.'
-        });
-      }
-      snapshot = await insertCampaignSnapshot(campaignId, "start", stats);
-    } else {
-      const snapshotResult = await pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start' LIMIT 1`, [campaignId]);
-      snapshot = snapshotResult.rows[0];
     }
     await pool.query(`UPDATE v_b_clients_c_campaign SET status = 'active', updated_at = NOW() WHERE id = $1`, [campaignId]);
     res.json({
       success: true,
-      snapshot: snapshot,
+      snapshot,
       status: "active",
-      message: existingSnapshot.rows.length > 0 ? 'Campaign status updated successfully' : 'Campaign launched successfully'
+      message: 'Campaign launched successfully'
     });
   } catch (error) {
     console.error('Error launching campaign:', error);
@@ -786,12 +760,6 @@ router.post('/:id/campaigns/:campaignId/pause', requirePermission('clients_detai
     if (campaignResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Campaign not found'
-      });
-    }
-    const campaign = campaignResult.rows[0];
-    if (campaign.status !== 'active') {
-      return res.status(400).json({
-        error: 'Only an active campaign can be paused'
       });
     }
     await pool.query(`UPDATE v_b_clients_c_campaign SET status = 'suspendue', updated_at = NOW() WHERE id = $1`, [campaignId]);
@@ -818,18 +786,6 @@ router.post('/:id/campaigns/:campaignId/resume', requirePermission('clients_deta
     if (campaignResult.rows.length === 0) {
       return res.status(404).json({
         error: 'Campaign not found'
-      });
-    }
-    const campaign = campaignResult.rows[0];
-    if (campaign.status !== 'suspendue') {
-      return res.status(400).json({
-        error: 'Only a paused campaign can be resumed'
-      });
-    }
-    const endSnap = await pool.query(`SELECT id FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'end' LIMIT 1`, [campaignId]);
-    if (endSnap.rows.length > 0) {
-      return res.status(400).json({
-        error: 'An end snapshot exists. Reset the campaign before restarting.'
       });
     }
     await pool.query(`UPDATE v_b_clients_c_campaign SET status = 'active', updated_at = NOW() WHERE id = $1`, [campaignId]);
@@ -859,56 +815,48 @@ router.post('/:id/campaigns/:campaignId/finish', requirePermission('clients_deta
       });
     }
     const campaign = campaignResult.rows[0];
-    if (campaign.type !== 'microsoft_security') {
-      return res.status(400).json({
-        error: 'This feature is only available for microsoft_security campaigns'
-      });
-    }
-    if (campaign.status !== 'active' && campaign.status !== 'suspendue') {
-      return res.status(400).json({
-        error: 'Campaign must be active or paused to be completed'
-      });
-    }
-    const startSnapshotResult = await pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start'`, [campaignId]);
-    if (startSnapshotResult.rows.length === 0) {
-      return res.status(400).json({
-        error: 'No start snapshot found. Please launch the campaign first.'
-      });
-    }
-    const existingEndSnapshot = await pool.query(`SELECT id FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'end'`, [campaignId]);
-    if (existingEndSnapshot.rows.length > 0) {
-      return res.status(400).json({
-        error: 'An end snapshot already exists for this campaign'
-      });
-    }
-    const stats = await getClientMfaStatsFromDb(id);
-    if (!stats) {
-      return res.status(400).json({
-        error: 'No synchronization data. Synchronize Microsoft data (Sync button) before completing the campaign.'
-      });
-    }
-    const endSnapshot = await insertCampaignSnapshot(campaignId, "end", stats);
-    const startSnapshot = startSnapshotResult.rows[0];
-    const comparison = buildRichSnapshotComparison(startSnapshot, endSnapshot);
-    const fullCampaignResult = await pool.query(`SELECT c.*, cl.name as client_name 
-       FROM v_b_clients_c_campaign c
-       LEFT JOIN v_b_clients cl ON c.client_id::text = cl.id::text
-       WHERE c.id = $1`, [campaignId]);
-    const fullCampaign = fullCampaignResult.rows[0];
-    const pdfPath = path.join(CAMPAIGN_REPORTS_DIR, `campaign_${campaignId}_report.pdf`);
-    try {
-      await generateCampaignReportPDF(fullCampaign, startSnapshot, endSnapshot, comparison, pdfPath);
-    } catch (pdfError) {
-      console.error('Error generating PDF:', pdfError);
+    let endSnapshot = null;
+    let comparison = null;
+    let pdfUrl = null;
+    if (campaign.type === 'microsoft_security') {
+      const startSnapshotResult = await pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'start' LIMIT 1`, [campaignId]);
+      const existingEndSnapshot = await pool.query(`SELECT * FROM v_b_clients_c_campaign_snapshot WHERE campaign_id = $1 AND snapshot_type = 'end' LIMIT 1`, [campaignId]);
+      if (existingEndSnapshot.rows.length > 0) {
+        endSnapshot = existingEndSnapshot.rows[0];
+      } else {
+        try {
+          const stats = await getClientMfaStatsFromDb(id);
+          if (stats) {
+            endSnapshot = await insertCampaignSnapshot(campaignId, "end", stats);
+          }
+        } catch (snapshotError) {
+          console.warn(`[campaign] Finish end snapshot skipped for ${campaignId}:`, snapshotError.message);
+        }
+      }
+      const startSnapshot = startSnapshotResult.rows[0] || null;
+      if (startSnapshot && endSnapshot) {
+        comparison = buildRichSnapshotComparison(startSnapshot, endSnapshot);
+        const fullCampaignResult = await pool.query(`SELECT c.*, cl.name as client_name 
+           FROM v_b_clients_c_campaign c
+           LEFT JOIN v_b_clients cl ON c.client_id::text = cl.id::text
+           WHERE c.id = $1`, [campaignId]);
+        const fullCampaign = fullCampaignResult.rows[0];
+        const pdfPath = path.join(CAMPAIGN_REPORTS_DIR, `campaign_${campaignId}_report.pdf`);
+        try {
+          await generateCampaignReportPDF(fullCampaign, startSnapshot, endSnapshot, comparison, pdfPath);
+          pdfUrl = `/api/clients/${id}/campaigns/${campaignId}/report.pdf`;
+        } catch (pdfError) {
+          console.error('Error generating PDF:', pdfError);
+        }
+      }
     }
     await pool.query(`UPDATE v_b_clients_c_campaign SET status = 'inactive', updated_at = NOW() WHERE id = $1`, [campaignId]);
-    const pdfUrl = `/api/clients/${id}/campaigns/${campaignId}/report.pdf`;
     res.json({
       success: true,
       snapshot: endSnapshot,
       comparison,
       status: "inactive",
-      pdfUrl: pdfUrl,
+      pdfUrl,
       message: 'Campaign completed successfully'
     });
   } catch (error) {

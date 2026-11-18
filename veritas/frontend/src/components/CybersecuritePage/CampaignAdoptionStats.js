@@ -100,60 +100,47 @@ export default function CampaignAdoptionStats({
   const renderSnapshot = (label, data, pendingLabel) => {
     if (!data) {
       return (
-        <div className={styles.snapshotBlock}>
-          <div className={styles.snapshotBlockTitle}>{label}</div>
-          <div className={styles.snapshotEmpty}>{pendingLabel || "—"}</div>
-        </div>
+        <article className={styles.snapshotCard}>
+          <header className={styles.snapshotCardHead}>
+            <h4 className={styles.snapshotBlockTitle}>{label}</h4>
+          </header>
+          <p className={styles.snapshotEmpty}>{pendingLabel || "—"}</p>
+        </article>
       );
     }
+    const kpis = [
+      { label: adoption.users || "Utilisateurs", value: data.userCount ?? "—" },
+      { label: adoption.mfaEnabled || "MFA activé", value: data.mfaEnabledCount ?? "—" },
+      { label: adoption.admins, value: data.adminCount ?? "—" },
+      { label: adoption.nonAdmin, value: data.nonAdminCount ?? "—" },
+      { label: adoption.mfaGlobal || "Taux MFA", value: fmtPct(data.mfaPercentage) },
+      { label: adoption.mfaAdmins, value: fmtPct(data.adminMfaPercentage) },
+      { label: adoption.mfaNonAdmin, value: fmtPct(data.nonAdminMfaPercentage) },
+      {
+        label: adoption.phishingResistant || "Phishing-resistant",
+        value: (
+          <>
+            {data.phishingResistantCount ?? 0}
+            <span className={styles.snapshotKpiMuted}> ({fmtPct(data.phishingResistantPercentage)})</span>
+          </>
+        )
+      },
+      { label: adoption.withoutMfa || "Sans MFA", value: data.mfaDisabledCount ?? "—" },
+      { label: adoption.recentMfa || "Inscriptions 30 j", value: data.recentlyRegisteredMfa ?? 0 }
+    ];
     return (
-      <div className={styles.snapshotBlock}>
-        <div className={styles.snapshotBlockTitle}>{label}</div>
-        <div className={styles.snapshotBlockDate}>{fmtDate(data.createdAt || data.capturedAt, locale)}</div>
+      <article className={styles.snapshotCard}>
+        <header className={styles.snapshotCardHead}>
+          <h4 className={styles.snapshotBlockTitle}>{label}</h4>
+          <time className={styles.snapshotBlockDate}>{fmtDate(data.createdAt || data.capturedAt, locale)}</time>
+        </header>
         <dl className={styles.snapshotKpis}>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.users || "Utilisateurs"}</dt>
-            <dd>{data.userCount ?? "—"}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.mfaEnabled || "MFA activé"}</dt>
-            <dd>{data.mfaEnabledCount ?? "—"}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.admins}</dt>
-            <dd>{data.adminCount ?? "—"}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.nonAdmin}</dt>
-            <dd>{data.nonAdminCount ?? "—"}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.mfaGlobal || "Taux MFA"}</dt>
-            <dd>{fmtPct(data.mfaPercentage)}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.mfaAdmins}</dt>
-            <dd>{fmtPct(data.adminMfaPercentage)}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.mfaNonAdmin}</dt>
-            <dd>{fmtPct(data.nonAdminMfaPercentage)}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.phishingResistant || "Phishing-resistant"}</dt>
-            <dd>
-              {data.phishingResistantCount ?? 0}
-              <span className={styles.snapshotKpiMuted}> ({fmtPct(data.phishingResistantPercentage)})</span>
-            </dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.withoutMfa || "Sans MFA"}</dt>
-            <dd>{data.mfaDisabledCount ?? "—"}</dd>
-          </div>
-          <div className={styles.snapshotKpi}>
-            <dt>{adoption.recentMfa || "Inscriptions 30 j"}</dt>
-            <dd>{data.recentlyRegisteredMfa ?? 0}</dd>
-          </div>
+          {kpis.map(item => (
+            <div key={item.label} className={styles.snapshotKpi}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
         </dl>
         {data.methods ? (
           <div className={styles.methodsRow} title={adoption.methodsHint || ""}>
@@ -163,7 +150,7 @@ export default function CampaignAdoptionStats({
             <span>OTP {data.methods.softwareOath || 0}</span>
           </div>
         ) : null}
-      </div>
+      </article>
     );
   };
 
@@ -228,30 +215,22 @@ export default function CampaignAdoptionStats({
 
       {!hasStartSnapshot ? (
         <div className={`${styles.adoptionEmpty} ${compact ? styles.adoptionEmptyCompact : ""}`.trim()}>
-          <Icon icon="mdi:chart-timeline-variant" className={styles.adoptionEmptyIcon} />
+          <Icon icon="mdi:camera-timer" className={styles.adoptionEmptyIcon} />
           <p className={styles.adoptionEmptyTitle}>{adoption.emptyTitle}</p>
           <p className={styles.adoptionEmptyText}>{adoption.emptyText}</p>
         </div>
       ) : (
-        <>
-          <div className={`${styles.snapshotsRow} ${compact ? styles.snapshotsRowCompact : ""}`.trim()}>
-            {renderSnapshot(adoption.start, stats.start)}
-            {renderSnapshot(adoption.end, stats.end, adoption.endPending || adoption.end)}
-          </div>
+        <div className={styles.adoptionLayout}>
+          <section className={styles.snapshotsSection} aria-label={adoption.snapshotsSection || adoption.title}>
+            <div className={`${styles.snapshotsRow} ${compact ? styles.snapshotsRowCompact : ""}`.trim()}>
+              {renderSnapshot(adoption.start, stats.start)}
+              {renderSnapshot(adoption.end, stats.end, adoption.endPending || adoption.end)}
+            </div>
+          </section>
 
-          {(canDownload || comparisonItems.length > 0) && (
-            <div className={`${styles.comparisonRow} ${compact ? styles.comparisonRowCompact : ""}`.trim()}>
-              <div className={styles.comparisonKpis}>
-                {comparisonItems.map(item => (
-                  <div key={item.label} className={styles.comparisonKpi}>
-                    <span className={styles.comparisonKpiLabel}>{item.label}</span>
-                    <span className={styles.comparisonKpiVal}>
-                      {item.value}
-                      {item.delta ? <span className={styles.comparisonDelta}> {item.delta}</span> : null}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          <section className={`${styles.comparisonSection} ${compact ? styles.comparisonRowCompact : ""}`.trim()}>
+            <div className={styles.comparisonHead}>
+              <h4 className={styles.comparisonTitle}>{adoption.comparisonTitle || "Évolution"}</h4>
               {canDownload ? (
                 <SmartTooltip as="span" content={adoption.downloadPdf}>
                   <button
@@ -269,8 +248,23 @@ export default function CampaignAdoptionStats({
                 <p className={styles.reportHint}>{adoption.reportHint || "Arrêtez la campagne pour générer le rapport début/fin."}</p>
               )}
             </div>
-          )}
-        </>
+            {comparisonItems.length > 0 ? (
+              <div className={styles.comparisonGrid}>
+                {comparisonItems.map(item => (
+                  <div key={item.label} className={styles.comparisonKpi}>
+                    <span className={styles.comparisonKpiLabel}>{item.label}</span>
+                    <span className={styles.comparisonKpiVal}>
+                      {item.value}
+                      {item.delta ? <span className={styles.comparisonDelta}>{item.delta}</span> : null}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.comparisonPending}>{adoption.comparisonPending || adoption.endPending}</p>
+            )}
+          </section>
+        </div>
       )}
     </div>
   );

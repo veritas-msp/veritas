@@ -60,7 +60,6 @@ const CAMPAIGN_TYPES = [{
   value: 'compliance_audit',
   label: 'Compliance audit'
 }];
-const RECENT_SYNC_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CAMPAIGN_STATUSES = [{
   value: 'en_preparation',
   label: 'In preparation',
@@ -140,7 +139,15 @@ export default function CampaignDetailPage({
   const [activeSection, setActiveSection] = useState("overview");
   const [mainContentEnter, setMainContentEnter] = useState(true);
   const { trackRef: campaignTabTrackRef, indicator: campaignTabIndicator } = useFinderNavIndicator([activeSection]);
-  const [dailyAdoptionTrend, setDailyAdoptionTrend] = useState({ today: null, previousDay: null, delta: null });
+  const [dailyAdoptionTrend, setDailyAdoptionTrend] = useState({
+    today: null,
+    previousDay: null,
+    delta: null,
+    day7: null,
+    delta7: null,
+    day30: null,
+    delta30: null
+  });
 
   useLayoutEffect(() => {
     setMainContentEnter(false);
@@ -660,15 +667,8 @@ export default function CampaignDetailPage({
     if (!campaign) return;
     try {
       setActionLoading(true);
-      if (campaign.type === 'microsoft_security') {
-        await launchCampaign(campaign.client_id, campaign.id);
-        toast.success(detailCopy.toasts.launched);
-      } else {
-        await updateClientCampaign(campaign.client_id, campaign.id, {
-          status: 'active'
-        });
-        toast.success(detailCopy.toasts.launched);
-      }
+      await launchCampaign(campaign.client_id, campaign.id);
+      toast.success(detailCopy.toasts.launched);
       await loadCampaignDetails();
       if (campaign.type === 'microsoft_security') {
         await loadCampaignStats({
@@ -686,13 +686,7 @@ export default function CampaignDetailPage({
     if (!campaign) return;
     try {
       setActionLoading(true);
-      if (campaign.type === 'microsoft_security') {
-        await pauseCampaign(campaign.client_id, campaign.id);
-      } else {
-        await updateClientCampaign(campaign.client_id, campaign.id, {
-          status: 'suspendue'
-        });
-      }
+      await pauseCampaign(campaign.client_id, campaign.id);
       toast.success(detailCopy.toasts.paused);
       await loadCampaignDetails();
       if (campaign.type === 'microsoft_security') {
@@ -711,13 +705,7 @@ export default function CampaignDetailPage({
     if (!campaign) return;
     try {
       setActionLoading(true);
-      if (campaign.type === 'microsoft_security') {
-        await resumeCampaign(campaign.client_id, campaign.id);
-      } else {
-        await updateClientCampaign(campaign.client_id, campaign.id, {
-          status: 'active'
-        });
-      }
+      await resumeCampaign(campaign.client_id, campaign.id);
       toast.success(detailCopy.toasts.resumed);
       await loadCampaignDetails();
       if (campaign.type === 'microsoft_security') {
@@ -764,16 +752,11 @@ export default function CampaignDetailPage({
     if (!campaign) return;
     try {
       setActionLoading(true);
+      await finishCampaign(campaign.client_id, campaign.id);
+      toast.success(detailCopy.toasts.finished);
       if (campaign.type === 'microsoft_security') {
-        await finishCampaign(campaign.client_id, campaign.id);
-        toast.success(detailCopy.toasts.finished);
         setPublishVisibleToClient(false);
         setShowPublishReportModal(true);
-      } else {
-        await updateClientCampaign(campaign.client_id, campaign.id, {
-          status: 'inactive'
-        });
-        toast.success(detailCopy.toasts.finished);
       }
       await loadCampaignDetails();
       if (campaign.type === 'microsoft_security') {
@@ -929,7 +912,15 @@ export default function CampaignDetailPage({
 
   useEffect(() => {
     if (!campaign?.id || campaign.type !== "microsoft_security" || currentMfaRate == null) {
-      setDailyAdoptionTrend({ today: null, previousDay: null, delta: null });
+      setDailyAdoptionTrend({
+        today: null,
+        previousDay: null,
+        delta: null,
+        day7: null,
+        delta7: null,
+        day30: null,
+        delta30: null
+      });
       return;
     }
     setDailyAdoptionTrend(recordCampaignDailyAdoption(campaign.id, currentMfaRate));
@@ -973,10 +964,7 @@ export default function CampaignDetailPage({
   const showReportActions = campaign.type === 'microsoft_security' && isFinished;
   const showResetButton = campaign.type === 'microsoft_security' && (isActive || isPaused || isFinished || campaignStats?.hasSnapshots);
   const displayLastSync = campaignStats?.lastSync || lastSyncO365;
-  const lastSync = displayLastSync ? new Date(displayLastSync) : null;
-  const canLaunchBecauseOfSync = campaign.type !== 'microsoft_security' || lastSync && Date.now() - lastSync.getTime() <= RECENT_SYNC_MAX_AGE_MS;
-  const canLaunchCampaign = campaignStepsCount > 0 && (campaign.type !== 'microsoft_security' || office365Credentials !== null) && canLaunchBecauseOfSync;
-  const launchTooltipMessage = !canLaunchBecauseOfSync && campaign.type === 'microsoft_security' ? lastSync ? detailCopy.actions.syncTooOld : detailCopy.actions.syncMissing : !canLaunchCampaign ? campaignStepsCount === 0 ? detailCopy.actions.needSteps : detailCopy.actions.needEntra : detailCopy.actions.launchTooltip;
+  const launchTooltipMessage = detailCopy.actions.launchTooltip;
   const isMicrosoftSecurity = campaign.type === "microsoft_security";
   const campaignTitle = campaign.name || typeInfo?.label || campaignsCopy?.types?.microsoft_security || detailCopy.fallbackName;
 
@@ -1085,7 +1073,7 @@ export default function CampaignDetailPage({
             ...(isMicrosoftSecurity
               ? [
                   { id: "users", icon: "mdi:account-group-outline", label: sectionCopy.users || "Utilisateurs" },
-                  { id: "adoption", icon: "mdi:chart-line", label: sectionCopy.adoption || detailCopy.adoptionPanel || "Adoption" }
+                  { id: "adoption", icon: "mdi:camera-timer", label: sectionCopy.adoption || detailCopy.adoptionPanel || "Snapshots" }
                 ]
               : []),
             { id: "management", icon: "mdi:clipboard-text-clock-outline", label: sectionCopy.management || detailCopy.tabs?.management || "Gestion" },
@@ -1136,11 +1124,13 @@ export default function CampaignDetailPage({
             return `${sign}${n.toFixed(n % 1 === 0 ? 0 : 1)} pt`;
           };
 
+          const trendIcon = delta =>
+            delta == null ? "mdi:minus" : delta > 0 ? "mdi:trending-up" : delta < 0 ? "mdi:trending-down" : "mdi:minus";
+
           const overviewKpis = [
             {
               key: "progress",
               icon: "mdi:progress-check",
-              tone: "blue",
               label: overviewCopy.progress || "Progression globale",
               value: formatPct(progressPct),
               sub: formatCampaignDetail(detailCopy.sidebar.stepProgress, {
@@ -1151,7 +1141,6 @@ export default function CampaignDetailPage({
             {
               key: "goal",
               icon: "mdi:flag-checkered",
-              tone: "violet",
               label: overviewCopy.goal || "Objectif d'adoption",
               value: adoptionGoal != null ? formatPct(adoptionGoal) : "—",
               sub:
@@ -1166,7 +1155,6 @@ export default function CampaignDetailPage({
                   {
                     key: "current",
                     icon: "mdi:shield-key-outline",
-                    tone: "green",
                     label: overviewCopy.currentRate || "Taux MFA actuel",
                     value: formatPct(currentRateRaw),
                     sub:
@@ -1177,23 +1165,8 @@ export default function CampaignDetailPage({
                         : lastSyncLabel
                   },
                   {
-                    key: "trend",
-                    icon:
-                      dailyTrend.delta == null
-                        ? "mdi:minus"
-                        : dailyTrend.delta > 0
-                          ? "mdi:trending-up"
-                          : dailyTrend.delta < 0
-                            ? "mdi:trending-down"
-                            : "mdi:minus",
-                    tone:
-                      dailyTrend.delta == null
-                        ? "amber"
-                        : dailyTrend.delta > 0
-                          ? "green"
-                          : dailyTrend.delta < 0
-                            ? "red"
-                            : "amber",
+                    key: "trend1",
+                    icon: trendIcon(dailyTrend.delta),
                     label: overviewCopy.trendDay || "Tendance j-1",
                     value: formatDelta(dailyTrend.delta) || "—",
                     sub:
@@ -1204,9 +1177,32 @@ export default function CampaignDetailPage({
                         : overviewCopy.trendPending || "Pas encore de donnée j-1"
                   },
                   {
+                    key: "trend7",
+                    icon: trendIcon(dailyTrend.delta7),
+                    label: overviewCopy.trendWeek || "Tendance j-7",
+                    value: formatDelta(dailyTrend.delta7) || "—",
+                    sub:
+                      dailyTrend.day7 != null
+                        ? formatCampaignDetail(overviewCopy.weekAgo || "J-7 : {rate}", {
+                            rate: formatPct(dailyTrend.day7)
+                          })
+                        : overviewCopy.trendWeekPending || "Pas encore de donnée j-7"
+                  },
+                  {
+                    key: "trend30",
+                    icon: trendIcon(dailyTrend.delta30),
+                    label: overviewCopy.trendMonth || "Tendance j-30",
+                    value: formatDelta(dailyTrend.delta30) || "—",
+                    sub:
+                      dailyTrend.day30 != null
+                        ? formatCampaignDetail(overviewCopy.monthAgo || "J-30 : {rate}", {
+                            rate: formatPct(dailyTrend.day30)
+                          })
+                        : overviewCopy.trendMonthPending || "Pas encore de donnée j-30"
+                  },
+                  {
                     key: "vsStart",
                     icon: "mdi:compare-horizontal",
-                    tone: vsStart == null ? "teal" : vsStart >= 0 ? "teal" : "coral",
                     label: overviewCopy.vsStart || "Vs début campagne",
                     value: formatDelta(vsStart) || "—",
                     sub:
@@ -1480,7 +1476,7 @@ export default function CampaignDetailPage({
                               <div
                                 key={kpi.key}
                                 role="listitem"
-                                className={`${styles.overviewKpiCard} ${styles[`kpiTone_${kpi.tone}`] || ""}`.trim()}
+                                className={styles.overviewKpiCard}
                               >
                                 <div className={styles.overviewKpiTop}>
                                   <span className={styles.overviewKpiIcon} aria-hidden>
@@ -1570,6 +1566,9 @@ export default function CampaignDetailPage({
                       <div className={enterpriseStyles.panelHeader}>
                         <div className={enterpriseStyles.panelHeaderMain}>
                           <h2 className={enterpriseStyles.panelTitle}>{detailCopy.adoptionPanel}</h2>
+                          <p className={styles.sectionHint}>
+                            {detailCopy.adoption?.snapshotsSection || "Captures début / fin"}
+                          </p>
                         </div>
                       </div>
                       <div className={`${enterpriseStyles.panelBody} ${styles.sectionPanelBodyFill}`.trim()}>
@@ -1665,7 +1664,7 @@ export default function CampaignDetailPage({
                               iconify="mdi:rocket-launch-outline"
                               className={enterpriseStyles.sidebarActionIconBtn}
                               onClick={handleLaunchCampaign}
-                              disabled={actionLoading || !canLaunchCampaign}
+                              disabled={actionLoading}
                               loading={actionLoading}
                               loadingClassName={styles.spinner}
                               aria-label={detailCopy.actions.launch}

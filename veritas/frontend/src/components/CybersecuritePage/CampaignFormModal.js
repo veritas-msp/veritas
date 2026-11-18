@@ -279,9 +279,9 @@ export default function CampaignFormModal({
     switch (activeSection) {
       case "dates":
         return (
-          <div className={styles.sectionFill}>
+          <div className={`${styles.sectionFill} ${localStyles.sectionFillCampaign}`}>
             {renderSectionHead("dates")}
-            <div className={styles.sectionScroll}>
+            <div className={`${styles.sectionScroll} ${localStyles.sectionScrollCampaign}`}>
               <div className={styles.fieldGrid2}>
                 <div className={styles.field}>
                   <label className={styles.label} htmlFor="campaign-form-start">
@@ -314,9 +314,9 @@ export default function CampaignFormModal({
       case "general":
       default:
         return (
-          <div className={styles.sectionFill}>
+          <div className={`${styles.sectionFill} ${localStyles.sectionFillCampaign}`}>
             {renderSectionHead("general")}
-            <div className={styles.sectionScroll}>
+            <div className={`${styles.sectionScroll} ${localStyles.sectionScrollCampaign}`}>
               <div className={styles.fieldStack}>
                 <div className={`${styles.field} ${styles.fieldFull}`}>
                   <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="campaign-form-enterprise">
@@ -508,7 +508,7 @@ export default function CampaignFormModal({
     }
   };
   return createPortal(<div className={styles.overlay} onClick={saving ? undefined : onClose} role="presentation">
-      <div className={styles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="campaign-form-modal-title">
+      <div className={`${styles.shell} ${localStyles.shellCampaign}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="campaign-form-modal-title">
         <div className={styles.accentBar} aria-hidden />
         <header className={styles.header}>
           <div className={styles.headerMain}>
@@ -536,11 +536,11 @@ export default function CampaignFormModal({
         </header>
 
         <form className={localStyles.form} onSubmit={handleSubmit}>
-          <div className={styles.body}>
-            <aside className={`${kit.finderSidebar} ${styles.modalNav}`} aria-label={modalCopy.sectionsNavAria}>
+          <div className={`${styles.body} ${localStyles.bodyCampaign}`}>
+            <aside className={`${kit.finderSidebar} ${styles.modalNav} ${localStyles.modalNavCampaign}`} aria-label={modalCopy.sectionsNavAria}>
               <nav
                 ref={navTrackRef}
-                className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack}`}
+                className={`${kit.finderPrimary} ${kit.finderPrimaryAnimated} ${styles.modalNavTrack} ${localStyles.modalNavTrackCampaign}`}
               >
                 {navIndicator.ready ? (
                   <div
@@ -570,7 +570,7 @@ export default function CampaignFormModal({
               </nav>
             </aside>
 
-            <div className={styles.content}>
+            <div className={`${styles.content} ${localStyles.contentCampaign}`}>
               <div className={kit.contentFadeUp} key={activeSection}>
                 {renderSectionContent()}
               </div>

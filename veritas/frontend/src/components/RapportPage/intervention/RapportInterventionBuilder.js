@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import SignatureCanvas from "react-signature-canvas";
 import { toast } from "react-toastify";
 import { fetchClientGeneral } from "../../../api/clients";
-import { getDownloadUrl } from "../../../api/clientFiles";
+import { deleteClientFile, getDownloadUrl } from "../../../api/clientFiles";
 import {
   fetchMonitoringDocuments,
   isMonitoringDocumentNameTaken,
@@ -12,20 +12,16 @@ import {
   updateMonitoringDocument
 } from "../../../api/monitoringDocuments";
 import { addTicketComment, fetchTickets } from "../../../api/tickets";
+import { useAuthContext } from "../../../contexts/AuthContext";
 import { useAppGeneralSettings, useAppLocale } from "../../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../../i18n/translate";
 import { getModalDropdownZIndex } from "../../../utils/dropdownPortal";
+import { uploadReportPdfToClientVault } from "../../../utils/uploadReportToClientVault";
 import { REPORT_TYPE_IDS } from "../reportTypeConstants";
 import ConfirmModal from "../../Misc/ConfirmModal/ConfirmModal";
 import { getTicketLinkLabel, getTicketLinkSearchText } from "../../TicketPage/ticketLinkUtils";
-import {
-  getEquipmentPickerLabel,
-  getEquipmentSearchText,
-  loadClientEquipments
-} from "../../TicketPage/ticketEquipmentUtils";
 import InterventionSaveModal from "./InterventionSaveModal";
-import { replaceOrUploadReportHtmlToClientVault } from "../../../utils/uploadReportToClientVault";
-import { exportBrandedReportHtmlFromElement } from "../exportBrandedReportHtmlFromElement";
+import { exportInterventionPdfFromElement } from "./exportInterventionPdf";
 import cyberStyles from "../../CybersecuritePage/CybersecuritePage.module.css";
 import shellStyles from "../RapportBuilderPlaceholder.module.css";
 import formStyles from "../reportBuilderForm.module.css";
@@ -39,18 +35,22 @@ import {
   buildDefaultInterventionData,
   buildDefaultSaveName,
   buildInterventionReportPeriod,
-  createTaskItem,
-  deriveMaterielFieldsFromEquipments,
+  createMovementItem,
+  createOperationItem,
+  createPhotoItem,
+  deriveSousContratFromClient,
   isDuplicateMonitoringSaveResult,
   mergeInterventionData,
   getInterventionStepValidationAlert,
-  normalizeLinkedEquipments,
+  resolveTechnicianName,
   serializeInterventionSavePayload,
   validateInterventionStep
 } from "./interventionReportModel";
+
 const TICKET_DROPDOWN_MAX_HEIGHT = 240;
 const TICKET_SUGGESTION_LIMIT = 40;
-const EQUIPMENT_SUGGESTION_LIMIT = 40;
+const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
+const MAX_PHOTOS = 8;
 
 function normalizeTicketList(payload) {
   if (Array.isArray(payload)) return payload;
@@ -71,8 +71,6 @@ function resolveAbsoluteUrl(pathOrUrl) {
   }
 }
 
-const MAX_PHOTO_BYTES = 4 * 1024 * 1024;
-
 function Field({ label, hint, children, full = false, required = false }) {
   return (
     <label className={`${formStyles.field} ${full ? formStyles.formGridFull : ""}`.trim()}>
@@ -84,6 +82,19 @@ function Field({ label, hint, children, full = false, required = false }) {
       {hint ? <span className={formStyles.fieldHint}>{hint}</span> : null}
     </label>
   );
+}
+
+function operationStatusLabel(status, opsCopy) {
+  if (status === "ok") return opsCopy.statusOk;
+  if (status === "pending") return opsCopy.statusPending;
+  if (status === "ko") return opsCopy.statusKo;
+  return "—";
+}
+
+function movementOperationLabel(operation, matCopy) {
+  if (operation === "depot") return matCopy.depot;
+  if (operation === "recuperation") return matCopy.recuperation;
+  return "—";
 }
 
 export default function ReportInterventionBuilder({
@@ -100,6 +111,8 @@ export default function ReportInterventionBuilder({
 }) {
   const locale = useAppLocale();
   const { settings } = useAppGeneralSettings();
+  const { user } = useAuthContext() || {};
+  const technicianName = useMemo(() => resolveTechnicianName(user), [user]);
   const interventionCopy = useMemo(
     () => getInterventionReportCopy(pageCopy?.localeCode || locale),
     [pageCopy?.localeCode, locale]
@@ -112,6 +125,7 @@ export default function ReportInterventionBuilder({
         client,
         organizationName: settings?.app_organization_name || "",
         organizationAddress: settings?.app_organization_address || "",
+        technicianName,
         copy: interventionCopy
       }),
       initialData
@@ -130,12 +144,6 @@ export default function ReportInterventionBuilder({
   const [ticketMenuOpen, setTicketMenuOpen] = useState(false);
   const [ticketHighlight, setTicketHighlight] = useState(0);
   const [ticketMenuStyle, setTicketMenuStyle] = useState(null);
-  const [clientEquipments, setClientEquipments] = useState([]);
-  const [equipmentsLoading, setEquipmentsLoading] = useState(false);
-  const [equipmentSearch, setEquipmentSearch] = useState("");
-  const [equipmentMenuOpen, setEquipmentMenuOpen] = useState(false);
-  const [equipmentHighlight, setEquipmentHighlight] = useState(0);
-  const [equipmentMenuStyle, setEquipmentMenuStyle] = useState(null);
   const prestataireRef = useRef(null);
   const clientSignRef = useRef(null);
   const previewDocRef = useRef(null);
@@ -143,13 +151,18 @@ export default function ReportInterventionBuilder({
   const ticketPickerRef = useRef(null);
   const ticketAnchorRef = useRef(null);
   const ticketMenuRef = useRef(null);
-  const equipmentPickerRef = useRef(null);
-  const equipmentAnchorRef = useRef(null);
-  const equipmentMenuRef = useRef(null);
   const saveNameTouchedRef = useRef(Boolean(documentName?.trim()));
   const saveNameInitializedRef = useRef(Boolean(documentName?.trim()));
   const clientLabel =
     client?.name || client?.nom || (client?.id ? pageCopy.create.getClientLabel(client.id) : "-");
+
+  useEffect(() => {
+    if (!technicianName) return;
+    setFormData(prev => {
+      if (String(prev.technicien || "").trim()) return prev;
+      return { ...prev, technicien: technicianName };
+    });
+  }, [technicianName]);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +179,10 @@ export default function ReportInterventionBuilder({
           const firstSite = Array.isArray(generalData?.sites) ? generalData.sites[0] : null;
           if (!String(next.adresse || "").trim() && firstSite?.address) {
             next.adresse = firstSite.address;
+          }
+          if (typeof next.sousContrat !== "boolean") {
+            const derived = deriveSousContratFromClient({ ...client, ...generalData });
+            if (typeof derived === "boolean") next.sousContrat = derived;
           }
           return next;
         });
@@ -195,30 +212,6 @@ export default function ReportInterventionBuilder({
       })
       .finally(() => {
         if (!cancelled) setTicketsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [client]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const clientId = client?.id ?? client?.uuid;
-    if (!clientId) {
-      setClientEquipments([]);
-      setEquipmentsLoading(false);
-      return undefined;
-    }
-    setEquipmentsLoading(true);
-    loadClientEquipments(clientId)
-      .then(rows => {
-        if (!cancelled) setClientEquipments(Array.isArray(rows) ? rows : []);
-      })
-      .catch(() => {
-        if (!cancelled) setClientEquipments([]);
-      })
-      .finally(() => {
-        if (!cancelled) setEquipmentsLoading(false);
       });
     return () => {
       cancelled = true;
@@ -286,109 +279,124 @@ export default function ReportInterventionBuilder({
     updateField({ [name]: value });
   };
 
-  const updateTaskList = (listKey, updater) => {
+  const updateList = (listKey, updater) => {
     setFormData(prev => {
       const current = Array.isArray(prev[listKey]) ? prev[listKey] : [];
-      const next = updater(current);
-      return { ...prev, [listKey]: next };
+      return { ...prev, [listKey]: updater(current) };
     });
   };
 
-  const handleTaskChange = (listKey, index, value) => {
-    updateTaskList(listKey, list =>
-      list.map((task, i) => (i === index ? { ...task, label: value } : task))
+  const handleOperationChange = (index, patch) => {
+    updateList("operations", list =>
+      list.map((item, i) => {
+        if (i !== index) return item;
+        const next = { ...item, ...patch };
+        if (patch.description != null) {
+          next.label = String(patch.description);
+        }
+        return next;
+      })
     );
   };
 
-  const addTask = listKey => {
-    updateTaskList(listKey, list => [...list, createTaskItem("")]);
+  const addOperation = () => {
+    updateList("operations", list => [...list, createOperationItem()]);
   };
 
-  const removeTask = (listKey, index) => {
-    updateTaskList(listKey, list => {
+  const removeOperation = index => {
+    updateList("operations", list => {
       const next = list.filter((_, i) => i !== index);
-      return next.length ? next : [createTaskItem("")];
+      return next.length ? next : [createOperationItem()];
     });
   };
 
-  const renderTaskSection = ({
-    listKey,
-    title,
-    hint,
-    addLabel,
-    placeholder,
-    emptyLabel,
-    removeLabel,
-    required = false
-  }) => {
-    const tasks = Array.isArray(formData[listKey]) ? formData[listKey] : [];
-    return (
-      <section className={formStyles.sectionCard}>
-        <header className={formStyles.sectionHead}>
-          <div className={formStyles.sectionHeadRow}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h3 className={formStyles.sectionTitle}>
-                {title}
-                {required ? <span className={formStyles.requiredMark} aria-hidden>*</span> : null}
-              </h3>
-              {hint ? <p className={formStyles.sectionHint}>{hint}</p> : null}
-            </div>
-            <button type="button" className={formStyles.addBtn} onClick={() => addTask(listKey)}>
-              <Icon icon="mdi:plus" aria-hidden />
-              {addLabel}
-            </button>
-          </div>
-        </header>
-        <div className={styles.taskList}>
-          {tasks.length === 0 ? (
-            <p className={formStyles.sectionHint}>{emptyLabel}</p>
-          ) : (
-            tasks.map((task, index) => (
-              <div key={task.id || `${listKey}-${index}`} className={styles.taskRow}>
-                <span className={styles.taskIndex} aria-hidden>
-                  {index + 1}
-                </span>
-                <input
-                  className={styles.taskInput}
-                  value={task.label || ""}
-                  onChange={e => handleTaskChange(listKey, index, e.target.value)}
-                  placeholder={placeholder}
-                  aria-label={`${placeholder} ${index + 1}`}
-                />
-                <button
-                  type="button"
-                  className={styles.taskRemove}
-                  onClick={() => removeTask(listKey, index)}
-                  aria-label={removeLabel}
-                >
-                  <Icon icon="mdi:close" aria-hidden />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
+  const handleMovementChange = (index, patch) => {
+    updateList("mouvements", list =>
+      list.map((item, i) => (i === index ? { ...item, ...patch } : item))
     );
+  };
+
+  const addMovement = () => {
+    updateList("mouvements", list => [...list, createMovementItem()]);
+  };
+
+  const removeMovement = index => {
+    updateList("mouvements", list => {
+      const next = list.filter((_, i) => i !== index);
+      return next.length ? next : [createMovementItem()];
+    });
   };
 
   const handlePhotoSelect = event => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!file) return;
-    if (!String(file.type || "").startsWith("image/")) {
-      toast.error(interventionCopy.alerts.photoInvalid);
+    if (!files.length) return;
+
+    const current = Array.isArray(formData.photos) ? formData.photos : [];
+    const remaining = MAX_PHOTOS - current.length;
+    if (remaining <= 0) {
+      toast.error(interventionCopy.alerts.photoLimit);
       return;
     }
-    if (file.size > MAX_PHOTO_BYTES) {
-      toast.error(interventionCopy.alerts.photoTooLarge);
-      return;
+
+    const accepted = files.slice(0, remaining);
+    if (files.length > remaining) {
+      toast.error(interventionCopy.alerts.photoLimit);
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateField({ photoInstallation: String(reader.result || "") });
-    };
-    reader.onerror = () => toast.error(interventionCopy.alerts.photoInvalid);
-    reader.readAsDataURL(file);
+
+    const readers = accepted.map(
+      file =>
+        new Promise(resolve => {
+          if (!String(file.type || "").startsWith("image/")) {
+            toast.error(interventionCopy.alerts.photoInvalid);
+            resolve(null);
+            return;
+          }
+          if (file.size > MAX_PHOTO_BYTES) {
+            toast.error(interventionCopy.alerts.photoTooLarge);
+            resolve(null);
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve(createPhotoItem(String(reader.result || ""), file.name || ""));
+          };
+          reader.onerror = () => {
+            toast.error(interventionCopy.alerts.photoInvalid);
+            resolve(null);
+          };
+          reader.readAsDataURL(file);
+        })
+    );
+
+    Promise.all(readers).then(items => {
+      const valid = items.filter(Boolean);
+      if (!valid.length) return;
+      setFormData(prev => {
+        const photos = [...(Array.isArray(prev.photos) ? prev.photos : []), ...valid].slice(
+          0,
+          MAX_PHOTOS
+        );
+        return {
+          ...prev,
+          photos,
+          photoInstallation: photos[0]?.dataUrl || ""
+        };
+      });
+    });
+  };
+
+  const removePhoto = photoId => {
+    setFormData(prev => {
+      const photos = (Array.isArray(prev.photos) ? prev.photos : []).filter(
+        item => String(item.id) !== String(photoId)
+      );
+      return {
+        ...prev,
+        photos,
+        photoInstallation: photos[0]?.dataUrl || ""
+      };
+    });
   };
 
   const getSignatureDataUrl = ref => {
@@ -598,124 +606,6 @@ export default function ReportInterventionBuilder({
     }
   };
 
-  const linkedEquipmentIds = useMemo(
-    () => new Set(normalizeLinkedEquipments(formData.linkedEquipments).map(item => String(item.id))),
-    [formData.linkedEquipments]
-  );
-
-  const filteredEquipments = useMemo(() => {
-    const q = equipmentSearch.trim().toLowerCase();
-    const available = clientEquipments.filter(eq => !linkedEquipmentIds.has(String(eq.id)));
-    const base = q
-      ? available.filter(eq => getEquipmentSearchText(eq, locale).includes(q))
-      : available;
-    return base.slice(0, EQUIPMENT_SUGGESTION_LIMIT);
-  }, [clientEquipments, equipmentSearch, linkedEquipmentIds, locale]);
-
-  const updateEquipmentMenuPosition = useCallback(() => {
-    const anchor = equipmentAnchorRef.current;
-    if (!anchor) return;
-    const rect = anchor.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    const spaceAbove = rect.top - 8;
-    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(120, Math.min(TICKET_DROPDOWN_MAX_HEIGHT, openUp ? spaceAbove : spaceBelow));
-    setEquipmentMenuStyle({
-      position: "fixed",
-      left: rect.left,
-      width: rect.width,
-      zIndex: getModalDropdownZIndex(),
-      maxHeight,
-      pointerEvents: "auto",
-      ...(openUp
-        ? { top: rect.top - 4, transform: "translateY(-100%)" }
-        : { top: rect.bottom - 1 })
-    });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!equipmentMenuOpen) {
-      setEquipmentMenuStyle(null);
-      return undefined;
-    }
-    updateEquipmentMenuPosition();
-    return undefined;
-  }, [equipmentMenuOpen, updateEquipmentMenuPosition, filteredEquipments.length]);
-
-  useEffect(() => {
-    if (!equipmentMenuOpen) return undefined;
-    const handleClickOutside = event => {
-      const target = event.target;
-      if (equipmentPickerRef.current?.contains(target) || equipmentMenuRef.current?.contains(target)) return;
-      setEquipmentMenuOpen(false);
-    };
-    const onReposition = () => updateEquipmentMenuPosition();
-    document.addEventListener("pointerdown", handleClickOutside);
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("scroll", onReposition, true);
-    return () => {
-      document.removeEventListener("pointerdown", handleClickOutside);
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("scroll", onReposition, true);
-    };
-  }, [equipmentMenuOpen, updateEquipmentMenuPosition]);
-
-  useEffect(() => {
-    setEquipmentHighlight(0);
-  }, [equipmentSearch, equipmentMenuOpen]);
-
-  const applyLinkedEquipments = nextList => {
-    const linkedEquipments = normalizeLinkedEquipments(nextList);
-    updateField({
-      linkedEquipments,
-      ...deriveMaterielFieldsFromEquipments(linkedEquipments)
-    });
-  };
-
-  const addLinkedEquipment = equipment => {
-    if (!equipment) return;
-    const id = String(equipment.id);
-    if (linkedEquipmentIds.has(id)) return;
-    const row = {
-      id,
-      name: String(equipment.name || equipment.model || "").trim(),
-      type: String(equipment.type || "").trim(),
-      serial: String(equipment.serial || "").trim(),
-      manufacturer: String(equipment.manufacturer || "").trim(),
-      model: String(equipment.model || "").trim(),
-      label: getEquipmentPickerLabel(equipment, { locale })
-    };
-    applyLinkedEquipments([...(formData.linkedEquipments || []), row]);
-    setEquipmentSearch("");
-    setEquipmentMenuOpen(false);
-  };
-
-  const removeLinkedEquipment = equipmentId => {
-    applyLinkedEquipments(
-      (formData.linkedEquipments || []).filter(item => String(item.id) !== String(equipmentId))
-    );
-  };
-
-  const handleEquipmentSearchKeyDown = event => {
-    if (!equipmentMenuOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-      setEquipmentMenuOpen(true);
-      return;
-    }
-    if (!equipmentMenuOpen || filteredEquipments.length === 0) return;
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      setEquipmentHighlight(h => Math.min(h + 1, filteredEquipments.length - 1));
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      setEquipmentHighlight(h => Math.max(h - 1, 0));
-    } else if (event.key === "Enter") {
-      event.preventDefault();
-      addLinkedEquipment(filteredEquipments[equipmentHighlight]);
-    } else if (event.key === "Escape") {
-      setEquipmentMenuOpen(false);
-    }
-  };
-
   const interventionTypeOptions = useMemo(() => {
     const fromCopy = Array.isArray(interventionCopy?.context?.interventionTypes)
       ? interventionCopy.context.interventionTypes
@@ -725,17 +615,17 @@ export default function ReportInterventionBuilder({
     return fromCopy;
   }, [interventionCopy?.context?.interventionTypes, formData.typeIntervention]);
 
-  const buildInterventionHtmlBlob = async (_payload, docName) => {
-    const fileName = `${docName}.html`;
+  const buildInterventionPdfBlob = async (_payload, docName) => {
+    const fileName = `${docName}.pdf`;
     if (!previewDocRef.current) {
-      throw new Error("Aperçu du rapport indisponible pour l'export HTML");
+      throw new Error("Aperçu du rapport indisponible pour l'export PDF");
     }
-    const blob = await exportBrandedReportHtmlFromElement(previewDocRef.current, {
+    const blob = await exportInterventionPdfFromElement(previewDocRef.current, {
       asBlob: true,
       fileName,
       documentTitle: docName
     });
-    if (!blob) throw new Error("HTML generation failed");
+    if (!blob) throw new Error("PDF generation failed");
     return blob;
   };
 
@@ -748,10 +638,16 @@ export default function ReportInterventionBuilder({
     const clientId = client?.id ?? client?.uuid;
     if (!clientId) return { skipped: true };
     try {
-      const blob = await buildInterventionHtmlBlob(payload, docName);
-      if (!blob) throw new Error("HTML generation failed");
-      const uploaded = await replaceOrUploadReportHtmlToClientVault({
-        existingFileId: vaultFileId,
+      const blob = await buildInterventionPdfBlob(payload, docName);
+      if (!blob) throw new Error("PDF generation failed");
+      if (vaultFileId) {
+        try {
+          await deleteClientFile(vaultFileId);
+        } catch (err) {
+          console.warn("Impossible de supprimer l'ancien PDF coffre:", err);
+        }
+      }
+      const uploaded = await uploadReportPdfToClientVault({
         blob,
         fileName: docName,
         clientId,
@@ -788,26 +684,26 @@ export default function ReportInterventionBuilder({
     }
   };
 
-  const handleDownloadHtml = async () => {
+  const handleDownloadPdf = async () => {
     const payload = captureSignatures();
     if (!validateInterventionStep(2, payload)) {
       toast.error(getStepAlert(2, payload));
       return;
     }
     if (!previewDocRef.current) {
-      toast.error("Aperçu du rapport indisponible pour l'export HTML");
+      toast.error("Aperçu du rapport indisponible pour l'export PDF");
       return;
     }
     const safeName = (saveName.trim() || "rapport-intervention").replace(/[^\w\- ]+/g, "");
-    const fileName = `${safeName}.html`;
+    const fileName = `${safeName}.pdf`;
     try {
-      await exportBrandedReportHtmlFromElement(previewDocRef.current, {
+      await exportInterventionPdfFromElement(previewDocRef.current, {
         fileName,
         documentTitle: safeName
       });
     } catch (err) {
-      console.warn("HTML preview export failed:", err);
-      toast.error(err?.message || "Impossible de générer le HTML à partir de l'aperçu");
+      console.warn("PDF preview export failed:", err);
+      toast.error(err?.message || "Impossible de générer le PDF à partir de l'aperçu");
     }
   };
 
@@ -944,9 +840,13 @@ export default function ReportInterventionBuilder({
   const isLast = stepIndex >= steps.length - 1;
   const ctx = interventionCopy.context;
   const opsCopy = interventionCopy.operations;
+  const matCopy = interventionCopy.material;
+  const photosCopy = interventionCopy.photos;
   const rem = interventionCopy.remarks;
   const val = interventionCopy.validation;
-  const orgLabel = formData.companyName || rem.providerFallback;
+  const photos = Array.isArray(formData.photos) ? formData.photos : [];
+  const operations = Array.isArray(formData.operations) ? formData.operations : [];
+  const mouvements = Array.isArray(formData.mouvements) ? formData.mouvements : [];
 
   const renderContextStep = () => (
     <div className={formStyles.formStack}>
@@ -955,6 +855,14 @@ export default function ReportInterventionBuilder({
           <h3 className={formStyles.sectionTitle}>{ctx.sectionClient}</h3>
         </header>
         <div className={formStyles.formGrid}>
+          <Field label={ctx.numeroClient}>
+            <input
+              className={formStyles.fieldInput}
+              name="numeroClient"
+              value={formData.numeroClient || ""}
+              onChange={handleChange}
+            />
+          </Field>
           <Field label={ctx.client} required>
             <input
               className={formStyles.fieldInput}
@@ -963,11 +871,34 @@ export default function ReportInterventionBuilder({
               onChange={handleChange}
             />
           </Field>
-          <Field label={ctx.adresse} required>
+          <Field label={ctx.typeIntervention} required full>
+            <select
+              className={formStyles.fieldSelect}
+              name="typeIntervention"
+              value={formData.typeIntervention || ""}
+              onChange={handleChange}
+            >
+              <option value="">{ctx.typeInterventionPlaceholder}</option>
+              {interventionTypeOptions.map(type => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </section>
+
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{ctx.sectionDetails}</h3>
+        </header>
+        <div className={formStyles.formGrid}>
+          <Field label={ctx.technicien} required>
             <input
               className={formStyles.fieldInput}
-              name="adresse"
-              value={formData.adresse || ""}
+              name="technicien"
+              value={formData.technicien || ""}
               onChange={handleChange}
             />
           </Field>
@@ -1057,198 +988,52 @@ export default function ReportInterventionBuilder({
                 : null}
             </div>
           </Field>
-          <Field label={ctx.typeIntervention} required>
-            <select
-              className={formStyles.fieldSelect}
-              name="typeIntervention"
-              value={formData.typeIntervention || ""}
-              onChange={handleChange}
-            >
-              <option value="">{ctx.typeInterventionPlaceholder}</option>
-              {interventionTypeOptions.map(type => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </Field>
         </div>
-      </section>
 
-      <section className={formStyles.sectionCard}>
-        <header className={formStyles.sectionHead}>
-          <h3 className={formStyles.sectionTitle}>{ctx.sectionEquipment}</h3>
-          {ctx.sectionEquipmentHint ? (
-            <p className={formStyles.sectionHint}>{ctx.sectionEquipmentHint}</p>
-          ) : null}
-        </header>
-        <div className={formStyles.ticketPickWrap} ref={equipmentPickerRef}>
-          <div
-            ref={equipmentAnchorRef}
-            className={`${formStyles.ticketSearchWrap} ${equipmentMenuOpen ? formStyles.ticketSearchWrapOpen : ""}`.trim()}
-          >
-            <Icon icon="mdi:magnify" className={formStyles.ticketSearchIcon} aria-hidden />
+        <div className={styles.dateRangeRow}>
+          <Field label={ctx.dateFrom} required>
             <input
-              id="intervention-equipment-search"
-              className={formStyles.ticketSearchInput}
-              type="text"
-              value={equipmentSearch}
-              onChange={e => {
-                setEquipmentSearch(e.target.value);
-                setEquipmentMenuOpen(true);
-              }}
-              onFocus={() => !equipmentsLoading && setEquipmentMenuOpen(true)}
-              onKeyDown={handleEquipmentSearchKeyDown}
-              placeholder={equipmentsLoading ? ctx.equipmentLoading : ctx.equipmentSearchPlaceholder}
-              disabled={equipmentsLoading}
-              autoComplete="off"
-              aria-label={ctx.sectionEquipment}
-              aria-expanded={equipmentMenuOpen}
-              aria-haspopup="listbox"
-              aria-autocomplete="list"
-            />
-            {equipmentSearch ? (
-              <button
-                type="button"
-                className={formStyles.ticketSearchClear}
-                onClick={() => {
-                  setEquipmentSearch("");
-                  setEquipmentMenuOpen(false);
-                }}
-                aria-label={ctx.equipmentClear}
-              >
-                <Icon icon="mdi:close" aria-hidden />
-              </button>
-            ) : null}
-          </div>
-          {equipmentMenuOpen && equipmentMenuStyle && typeof document !== "undefined"
-            ? createPortal(
-                <div
-                  ref={equipmentMenuRef}
-                  className={formStyles.ticketDropdown}
-                  style={equipmentMenuStyle}
-                  role="listbox"
-                  aria-label={ctx.sectionEquipment}
-                >
-                  {filteredEquipments.length === 0 ? (
-                    <div className={formStyles.ticketDropdownEmpty}>
-                      {equipmentsLoading
-                        ? ctx.equipmentLoading
-                        : !clientEquipments.length
-                          ? ctx.equipmentEmpty
-                          : ctx.equipmentNoMatch}
-                    </div>
-                  ) : (
-                    filteredEquipments.map((equipment, idx) => (
-                      <button
-                        key={equipment.id}
-                        type="button"
-                        role="option"
-                        aria-selected={idx === equipmentHighlight}
-                        className={`${formStyles.ticketOption} ${
-                          idx === equipmentHighlight ? formStyles.ticketOptionActive : ""
-                        }`.trim()}
-                        onMouseEnter={() => setEquipmentHighlight(idx)}
-                        onClick={() => addLinkedEquipment(equipment)}
-                      >
-                        <span className={formStyles.ticketOptionLabel}>
-                          {getEquipmentPickerLabel(equipment, { locale })}
-                        </span>
-                        {equipment.serial ? (
-                          <span className={formStyles.ticketOptionMeta}>
-                            {ctx.equipmentSerial}: {equipment.serial}
-                          </span>
-                        ) : null}
-                      </button>
-                    ))
-                  )}
-                </div>,
-                document.body
-              )
-            : null}
-        </div>
-        <div className={`${formStyles.listStack} ${formStyles.equipmentLinkedList}`.trim()}>
-          {(formData.linkedEquipments || []).length === 0 ? (
-            <p className={formStyles.sectionHint}>{ctx.equipmentLinkedEmpty}</p>
-          ) : (
-            (formData.linkedEquipments || []).map(item => (
-              <div key={item.id} className={formStyles.equipmentLinkRow}>
-                <div className={formStyles.equipmentLinkBody}>
-                  <span className={formStyles.equipmentLinkLabel}>
-                    {item.label || [item.type, item.name].filter(Boolean).join(" · ") || item.id}
-                  </span>
-                  {item.serial ? (
-                    <span className={formStyles.equipmentLinkMeta}>
-                      {ctx.equipmentSerial}: {item.serial}
-                    </span>
-                  ) : null}
-                </div>
-                <button
-                  type="button"
-                  className={formStyles.iconBtn}
-                  onClick={() => removeLinkedEquipment(item.id)}
-                  aria-label={ctx.equipmentClear}
-                  title={ctx.equipmentClear}
-                >
-                  <Icon icon="mdi:close" aria-hidden />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className={formStyles.sectionCard}>
-        <header className={formStyles.sectionHead}>
-          <h3 className={formStyles.sectionTitle}>{ctx.sectionTech}</h3>
-        </header>
-        <div className={formStyles.formGrid}>
-          <Field label={ctx.salle}>
-            <input
+              type="date"
               className={formStyles.fieldInput}
-              name="salle"
-              value={formData.salle || ""}
+              name="dateDebut"
+              value={formData.dateDebut || ""}
+              onChange={handleChange}
+            />
+          </Field>
+          <Field label={ctx.dateTo} required>
+            <input
+              type="date"
+              className={formStyles.fieldInput}
+              name="dateFin"
+              value={formData.dateFin || ""}
               onChange={handleChange}
             />
           </Field>
         </div>
 
-        <div className={formStyles.photoBlock}>
-          <div className={formStyles.photoHead}>
-            <span className={formStyles.fieldLabel}>{ctx.photoLabel}</span>
-            <div className={formStyles.photoActions}>
-              <button
-                type="button"
-                className={formStyles.addBtn}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                <Icon icon="mdi:camera-outline" aria-hidden />
-                {formData.photoInstallation ? ctx.photoChange : ctx.photoAdd}
-              </button>
-              {formData.photoInstallation ? (
-                <button
-                  type="button"
-                  className={formStyles.linkBtn}
-                  onClick={() => updateField({ photoInstallation: "" })}
-                >
-                  {ctx.photoRemove}
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            className={formStyles.srOnly}
-            onChange={handlePhotoSelect}
-          />
-          <div className={formStyles.photoPreview}>
-            {formData.photoInstallation ? (
-              <img src={formData.photoInstallation} alt={ctx.photoLabel} />
-            ) : (
-              <span>{ctx.photoMissing}</span>
-            )}
+        <div className={styles.contractToggle} role="group" aria-label={ctx.sousContrat}>
+          <span className={formStyles.fieldLabel}>{ctx.sousContrat}</span>
+          <div className={styles.contractToggleButtons}>
+            <button
+              type="button"
+              className={`${styles.contractToggleBtn} ${
+                formData.sousContrat === true ? styles.contractToggleBtnActive : ""
+              }`.trim()}
+              aria-pressed={formData.sousContrat === true}
+              onClick={() => updateField({ sousContrat: true })}
+            >
+              {ctx.sousContratOui}
+            </button>
+            <button
+              type="button"
+              className={`${styles.contractToggleBtn} ${
+                formData.sousContrat === false ? styles.contractToggleBtnActive : ""
+              }`.trim()}
+              aria-pressed={formData.sousContrat === false}
+              onClick={() => updateField({ sousContrat: false })}
+            >
+              {ctx.sousContratNon}
+            </button>
           </div>
         </div>
       </section>
@@ -1257,39 +1042,233 @@ export default function ReportInterventionBuilder({
 
   const renderOperationsStep = () => (
     <div className={formStyles.formStack}>
-      <p className={formStyles.sectionHint}>{opsCopy.hint}</p>
-      {renderTaskSection({
-        listKey: "tasksDone",
-        title: opsCopy.doneTitle,
-        hint: opsCopy.doneHint,
-        addLabel: opsCopy.addDone,
-        placeholder: opsCopy.placeholderDone,
-        emptyLabel: opsCopy.emptyDone,
-        removeLabel: opsCopy.remove,
-        required: true
-      })}
-      {renderTaskSection({
-        listKey: "tasksTodo",
-        title: opsCopy.todoTitle,
-        hint: opsCopy.todoHint,
-        addLabel: opsCopy.addTodo,
-        placeholder: opsCopy.placeholderTodo,
-        emptyLabel: opsCopy.emptyTodo,
-        removeLabel: opsCopy.remove
-      })}
       <section className={formStyles.sectionCard}>
         <header className={formStyles.sectionHead}>
-          <h3 className={formStyles.sectionTitle}>{opsCopy.commentLabel}</h3>
+          <div className={formStyles.sectionHeadRow}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 className={formStyles.sectionTitle}>
+                {opsCopy.title}
+                <span className={formStyles.requiredMark} aria-hidden>
+                  *
+                </span>
+              </h3>
+              {opsCopy.hint ? <p className={formStyles.sectionHint}>{opsCopy.hint}</p> : null}
+            </div>
+            <button type="button" className={formStyles.addBtn} onClick={addOperation}>
+              <Icon icon="mdi:plus" aria-hidden />
+              {opsCopy.add}
+            </button>
+          </div>
         </header>
-        <textarea
-          className={formStyles.fieldTextarea}
-          name="operationsComment"
-          value={formData.operationsComment || ""}
-          onChange={handleChange}
-          placeholder={opsCopy.commentPlaceholder}
-          rows={5}
-          aria-label={opsCopy.commentLabel}
+        <div className={styles.cardStack}>
+          {operations.length === 0 ? (
+            <p className={formStyles.sectionHint}>{opsCopy.empty}</p>
+          ) : (
+            operations.map((op, index) => (
+              <article key={op.id || `op-${index}`} className={styles.opCard}>
+                <div className={styles.cardTop}>
+                  <span className={styles.cardIndex}>{index + 1}</span>
+                  <button
+                    type="button"
+                    className={styles.cardRemove}
+                    onClick={() => removeOperation(index)}
+                    aria-label={opsCopy.remove}
+                  >
+                    <Icon icon="mdi:close" aria-hidden />
+                  </button>
+                </div>
+                <Field label={opsCopy.description} required>
+                  <textarea
+                    className={formStyles.fieldTextarea}
+                    value={op.description || ""}
+                    onChange={e => handleOperationChange(index, { description: e.target.value })}
+                    placeholder={opsCopy.descriptionPlaceholder}
+                    rows={3}
+                  />
+                </Field>
+                <Field label={opsCopy.status}>
+                  <div className={styles.statusToggle} role="group" aria-label={opsCopy.status}>
+                    {[
+                      { value: "ok", label: opsCopy.statusOk },
+                      { value: "pending", label: opsCopy.statusPending },
+                      { value: "ko", label: opsCopy.statusKo }
+                    ].map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        className={`${styles.statusChip} ${
+                          op.status === option.value
+                            ? styles[`statusChip_${option.value}`]
+                            : ""
+                        }`.trim()}
+                        aria-pressed={op.status === option.value}
+                        onClick={() =>
+                          handleOperationChange(index, {
+                            status: op.status === option.value ? "" : option.value
+                          })
+                        }
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                <Field label={opsCopy.observations}>
+                  <textarea
+                    className={formStyles.fieldTextarea}
+                    value={op.observations || ""}
+                    onChange={e => handleOperationChange(index, { observations: e.target.value })}
+                    placeholder={opsCopy.observationsPlaceholder}
+                    rows={2}
+                  />
+                </Field>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <div className={formStyles.sectionHeadRow}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 className={formStyles.sectionTitle}>{matCopy.title}</h3>
+              {matCopy.hint ? <p className={formStyles.sectionHint}>{matCopy.hint}</p> : null}
+            </div>
+            <button type="button" className={formStyles.addBtn} onClick={addMovement}>
+              <Icon icon="mdi:plus" aria-hidden />
+              {matCopy.add}
+            </button>
+          </div>
+        </header>
+        <div className={styles.cardStack}>
+          {mouvements.length === 0 ? (
+            <p className={formStyles.sectionHint}>{matCopy.empty}</p>
+          ) : null}
+          {mouvements.map((mov, index) => (
+            <article key={mov.id || `mov-${index}`} className={styles.matCard}>
+              <div className={styles.cardTop}>
+                <span className={styles.cardIndex}>{index + 1}</span>
+                <button
+                  type="button"
+                  className={styles.cardRemove}
+                  onClick={() => removeMovement(index)}
+                  aria-label={matCopy.remove}
+                >
+                  <Icon icon="mdi:close" aria-hidden />
+                </button>
+              </div>
+              <div className={styles.matGrid}>
+                <Field label={matCopy.qte}>
+                  <input
+                    className={formStyles.fieldInput}
+                    inputMode="numeric"
+                    value={mov.qte || ""}
+                    onChange={e => handleMovementChange(index, { qte: e.target.value })}
+                  />
+                </Field>
+                <Field label={matCopy.reference}>
+                  <input
+                    className={formStyles.fieldInput}
+                    value={mov.reference || ""}
+                    onChange={e => handleMovementChange(index, { reference: e.target.value })}
+                  />
+                </Field>
+                <Field label={matCopy.serial}>
+                  <input
+                    className={formStyles.fieldInput}
+                    value={mov.serial || ""}
+                    onChange={e => handleMovementChange(index, { serial: e.target.value })}
+                  />
+                </Field>
+                <Field label={matCopy.operation}>
+                  <div className={styles.contractToggleButtons} role="group">
+                    <button
+                      type="button"
+                      className={`${styles.contractToggleBtn} ${
+                        mov.operation === "depot" ? styles.contractToggleBtnActive : ""
+                      }`.trim()}
+                      aria-pressed={mov.operation === "depot"}
+                      onClick={() =>
+                        handleMovementChange(index, {
+                          operation: mov.operation === "depot" ? "" : "depot"
+                        })
+                      }
+                    >
+                      {matCopy.depot}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.contractToggleBtn} ${
+                        mov.operation === "recuperation" ? styles.contractToggleBtnActive : ""
+                      }`.trim()}
+                      aria-pressed={mov.operation === "recuperation"}
+                      onClick={() =>
+                        handleMovementChange(index, {
+                          operation: mov.operation === "recuperation" ? "" : "recuperation"
+                        })
+                      }
+                    >
+                      {matCopy.recuperation}
+                    </button>
+                  </div>
+                </Field>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={formStyles.sectionCard}>
+        <header className={formStyles.sectionHead}>
+          <div className={formStyles.sectionHeadRow}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 className={formStyles.sectionTitle}>{photosCopy.title}</h3>
+              {photosCopy.hint ? <p className={formStyles.sectionHint}>{photosCopy.hint}</p> : null}
+            </div>
+            <button
+              type="button"
+              className={formStyles.addBtn}
+              onClick={() => photoInputRef.current?.click()}
+              disabled={photos.length >= MAX_PHOTOS}
+            >
+              <Icon icon="mdi:camera-outline" aria-hidden />
+              {photosCopy.add}
+            </button>
+          </div>
+        </header>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className={formStyles.srOnly}
+          onChange={handlePhotoSelect}
         />
+        {photos.length === 0 ? (
+          <p className={formStyles.sectionHint}>{photosCopy.missing}</p>
+        ) : (
+          <>
+            <p className={formStyles.sectionHint}>
+              {interpolate(photosCopy.count || "{count}", { count: photos.length })}
+            </p>
+            <div className={styles.photoGrid}>
+              {photos.map(photo => (
+                <div key={photo.id} className={styles.photoTile}>
+                  <img src={photo.dataUrl} alt={photo.name || photosCopy.title} />
+                  <button
+                    type="button"
+                    className={styles.photoRemove}
+                    onClick={() => removePhoto(photo.id)}
+                    aria-label={photosCopy.remove}
+                  >
+                    <Icon icon="mdi:close" aria-hidden />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );
@@ -1311,74 +1290,16 @@ export default function ReportInterventionBuilder({
         </Field>
 
         <div className={formStyles.softPanel}>
-          <div className={formStyles.formGrid}>
-            <Field label={rem.signataireNom} required>
-              <input
-                className={formStyles.fieldInput}
-                name="signataireNom"
-                value={formData.signataireNom || ""}
-                onChange={handleChange}
-              />
-            </Field>
-            <Field label={rem.signataireFonction}>
-              <input
-                className={formStyles.fieldInput}
-                name="signataireFonction"
-                value={formData.signataireFonction || ""}
-                onChange={handleChange}
-              />
-            </Field>
-          </div>
           <p className={formStyles.softPanelHint}>{rem.certifyHint}</p>
-        </div>
-
-        <div className={formStyles.formGrid}>
-          <Field label={rem.place} required>
-            <input
-              className={formStyles.fieldInput}
-              name="signatureLieu"
-              value={formData.signatureLieu || ""}
-              onChange={handleChange}
-            />
-          </Field>
-          <Field label={rem.date} required>
-            <input
-              type="date"
-              className={formStyles.fieldInput}
-              name="signatureDate"
-              value={formData.signatureDate || ""}
-              onChange={handleChange}
-            />
-          </Field>
         </div>
 
         <div className={styles.signatureGrid}>
           <div className={styles.signaturePad}>
             <span className={formStyles.fieldLabel}>
-              {rem.clientSignTitle}
-              <span className={formStyles.requiredMark} aria-hidden>*</span>
-            </span>
-            <span className={styles.signatureSub}>{rem.nameAndSignature}</span>
-            <SignatureCanvas
-              ref={clientSignRef}
-              penColor="currentColor"
-              canvasProps={{ className: styles.signatureCanvas }}
-              onEnd={syncSignatureToForm}
-            />
-            <button
-              type="button"
-              className={formStyles.linkBtn}
-              onClick={() => {
-                clientSignRef.current?.clear();
-                updateField({ signatureClient: "" });
-              }}
-            >
-              {rem.clear}
-            </button>
-          </div>
-          <div className={styles.signaturePad}>
-            <span className={formStyles.fieldLabel}>
-              {rem.providerSignTitle.replace("{org}", orgLabel)}
+              {rem.providerSignTitle}
+              <span className={formStyles.requiredMark} aria-hidden>
+                *
+              </span>
             </span>
             <span className={styles.signatureSub}>{rem.nameAndSignature}</span>
             <SignatureCanvas
@@ -1398,6 +1319,31 @@ export default function ReportInterventionBuilder({
               {rem.clear}
             </button>
           </div>
+          <div className={styles.signaturePad}>
+            <span className={formStyles.fieldLabel}>
+              {rem.clientSignTitle}
+              <span className={formStyles.requiredMark} aria-hidden>
+                *
+              </span>
+            </span>
+            <span className={styles.signatureSub}>{rem.nameAndSignature}</span>
+            <SignatureCanvas
+              ref={clientSignRef}
+              penColor="currentColor"
+              canvasProps={{ className: styles.signatureCanvas }}
+              onEnd={syncSignatureToForm}
+            />
+            <button
+              type="button"
+              className={formStyles.linkBtn}
+              onClick={() => {
+                clientSignRef.current?.clear();
+                updateField({ signatureClient: "" });
+              }}
+            >
+              {rem.clear}
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -1405,11 +1351,27 @@ export default function ReportInterventionBuilder({
 
   const renderValidationStep = () => {
     const previewData = captureSignatures();
-    const visibleDone = (previewData.tasksDone || []).filter(task => String(task?.label || "").trim());
-    const visibleTodo = (previewData.tasksTodo || []).filter(task => String(task?.label || "").trim());
+    const previewOps = (previewData.operations || []).filter(op =>
+      String(op?.description || op?.label || "").trim()
+    );
+    const previewMovements = (previewData.mouvements || []).filter(
+      mov =>
+        String(mov?.reference || "").trim() ||
+        String(mov?.serial || "").trim() ||
+        mov?.operation
+    );
+    const previewPhotos = Array.isArray(previewData.photos) ? previewData.photos : [];
+    const previewSousContrat =
+      previewData.sousContrat === true
+        ? ctx.sousContratOui
+        : previewData.sousContrat === false
+          ? ctx.sousContratNon
+          : ctx.sousContratUnknown;
+
     return (
       <ReportValidationLayout
         previewRef={previewDocRef}
+        previewClassName={styles.previewLandscape}
         clientName={previewData.client || clientLabel}
         periodLabel={buildInterventionReportPeriod(previewData)}
         reportType="intervention"
@@ -1423,107 +1385,120 @@ export default function ReportInterventionBuilder({
         }}
         nameConflict={nameConflict}
         nameConflictMessage={val.nameExists}
-        downloadLabel={val.downloadHtml}
+        downloadLabel={val.downloadPdf || val.downloadHtml}
         saveLabel={val.saveLibrary}
         modifyLabel={val.modify}
         saving={saving}
-        onDownload={handleDownloadHtml}
+        onDownload={handleDownloadPdf}
         onSave={openSaveModal}
         onModify={() => setStepIndex(0)}
       >
-        <ReportPreviewBlock title={ctx.sectionClient}>
+        <ReportPreviewBlock title={val.details || ctx.sectionDetails}>
           <div className={valStyles.previewBox}>
             <div>
-              <strong>{ctx.client}</strong> : {previewData.client || "-"}
+              <strong>{ctx.numeroClient}</strong> : {previewData.numeroClient || "—"}
             </div>
             <div>
-              <strong>{ctx.adresse}</strong> : {previewData.adresse || "-"}
+              <strong>{ctx.client}</strong> : {previewData.client || "—"}
             </div>
             <div>
-              <strong>{ctx.numeroTicket}</strong> : {previewData.numeroTicket || "-"}
+              <strong>{ctx.typeIntervention}</strong> : {previewData.typeIntervention || "—"}
             </div>
             <div>
-              <strong>{ctx.typeIntervention}</strong> : {previewData.typeIntervention || "-"}
+              <strong>{ctx.technicien}</strong> : {previewData.technicien || "—"}
+            </div>
+            <div>
+              <strong>{ctx.numeroTicket}</strong> : {previewData.numeroTicket || "—"}
+            </div>
+            <div>
+              <strong>{ctx.dateRange}</strong> :{" "}
+              {previewData.dateDebut || "—"}
+              {previewData.dateFin && previewData.dateFin !== previewData.dateDebut
+                ? ` → ${previewData.dateFin}`
+                : ""}
+            </div>
+            <div>
+              <strong>{ctx.sousContrat}</strong> : {previewSousContrat}
             </div>
           </div>
-        </ReportPreviewBlock>
-
-        <ReportPreviewBlock title={ctx.sectionEquipment}>
-          <div className={valStyles.previewBox}>
-            {(previewData.linkedEquipments || []).length ? (
-              (previewData.linkedEquipments || []).map(item => (
-                <div key={item.id}>
-                  {item.label || [item.type, item.name].filter(Boolean).join(" · ") || item.id}
-                  {item.serial ? ` · ${ctx.equipmentSerial}: ${item.serial}` : ""}
-                </div>
-              ))
-            ) : (
-              <div>{ctx.equipmentLinkedEmpty}</div>
-            )}
-          </div>
-        </ReportPreviewBlock>
-
-        <ReportPreviewBlock title={ctx.sectionTech}>
-          <div className={valStyles.previewBox}>
-            <div>
-              <strong>{ctx.salle}</strong> : {previewData.salle || "-"}
-            </div>
-          </div>
-          {previewData.photoInstallation ? (
-            <img src={previewData.photoInstallation} alt={ctx.photoLabel} className={valStyles.previewPhoto} />
-          ) : null}
         </ReportPreviewBlock>
 
         <ReportPreviewBlock title={val.operations}>
           <div className={valStyles.previewBox}>
-            <div>
-              <strong>{opsCopy.doneTitle}</strong>
-              {visibleDone.length ? (
-                <ul className={valStyles.previewTaskList}>
-                  {visibleDone.map((task, index) => (
-                    <li key={task.id || `done-${index}`}>{task.label}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={valStyles.previewText}>{opsCopy.emptyDone}</p>
-              )}
-            </div>
-            <div>
-              <strong>{opsCopy.todoTitle}</strong>
-              {visibleTodo.length ? (
-                <ul className={valStyles.previewTaskList}>
-                  {visibleTodo.map((task, index) => (
-                    <li key={task.id || `todo-${index}`}>{task.label}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={valStyles.previewText}>{opsCopy.emptyTodo}</p>
-              )}
-            </div>
-            {previewData.operationsComment ? (
-              <div>
-                <strong>{opsCopy.commentLabel}</strong>
-                <p className={valStyles.previewText}>{previewData.operationsComment}</p>
-              </div>
-            ) : null}
+            {previewOps.length ? (
+              <ul className={valStyles.previewTaskList}>
+                {previewOps.map((op, index) => (
+                  <li key={op.id || `preview-op-${index}`}>
+                    <strong>{op.description || op.label}</strong>
+                    {op.status ? ` · ${operationStatusLabel(op.status, opsCopy)}` : ""}
+                    {op.observations ? ` — ${op.observations}` : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={valStyles.previewText}>{opsCopy.empty}</p>
+            )}
           </div>
         </ReportPreviewBlock>
+
+        <ReportPreviewBlock title={val.material}>
+          <div className={valStyles.previewBox}>
+            {previewMovements.length ? (
+              <ul className={valStyles.previewTaskList}>
+                {previewMovements.map((mov, index) => (
+                  <li key={mov.id || `preview-mov-${index}`}>
+                    {[
+                      mov.qte ? `${matCopy.qte}: ${mov.qte}` : null,
+                      mov.reference || null,
+                      mov.serial ? `${matCopy.serial}: ${mov.serial}` : null,
+                      movementOperationLabel(mov.operation, matCopy)
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={valStyles.previewText}>{matCopy.empty}</p>
+            )}
+          </div>
+        </ReportPreviewBlock>
+
+        {previewPhotos.length ? (
+          <ReportPreviewBlock title={val.photos}>
+            <div className={styles.previewPhotoGrid}>
+              {previewPhotos.map(photo => (
+                <img
+                  key={photo.id}
+                  src={photo.dataUrl}
+                  alt={photo.name || val.photos}
+                  className={valStyles.previewPhoto}
+                />
+              ))}
+            </div>
+          </ReportPreviewBlock>
+        ) : null}
 
         <ReportPreviewBlock title={val.remarks}>
           <div className={valStyles.previewBox}>
             <div>
-              <strong>{rem.reservesClient}</strong> {previewData.reservesClient || "-"}
+              <strong>{rem.reservesClient}</strong> {previewData.reservesClient || "—"}
             </div>
-            <div>
-              <strong>{rem.signataireNom}</strong> : {previewData.signataireNom || "-"}
-              {previewData.signataireFonction ? ` · ${previewData.signataireFonction}` : ""}
-            </div>
-            <div>
-              <strong>{rem.place}</strong> : {previewData.signatureLieu || "-"} · <strong>{rem.date}</strong> :{" "}
-              {previewData.signatureDate || "-"}
-            </div>
+            <p className={valStyles.previewText}>{rem.certifyHint}</p>
           </div>
           <div className={valStyles.previewSignatureGrid}>
+            <div className={valStyles.previewSignatureBox}>
+              <span className={valStyles.fieldLabel}>{rem.providerSignTitle}</span>
+              {previewData.signaturePrestataire ? (
+                <img
+                  src={previewData.signaturePrestataire}
+                  alt={rem.providerSignTitle}
+                  className={valStyles.previewSignatureImage}
+                />
+              ) : (
+                <div className={valStyles.previewSignatureEmpty}>—</div>
+              )}
+            </div>
             <div className={valStyles.previewSignatureBox}>
               <span className={valStyles.fieldLabel}>{rem.clientSignTitle}</span>
               {previewData.signatureClient ? (
@@ -1533,19 +1508,7 @@ export default function ReportInterventionBuilder({
                   className={valStyles.previewSignatureImage}
                 />
               ) : (
-                <div className={valStyles.previewSignatureEmpty}>-</div>
-              )}
-            </div>
-            <div className={valStyles.previewSignatureBox}>
-              <span className={valStyles.fieldLabel}>{rem.providerSignTitle.replace("{org}", orgLabel)}</span>
-              {previewData.signaturePrestataire ? (
-                <img
-                  src={previewData.signaturePrestataire}
-                  alt={orgLabel}
-                  className={valStyles.previewSignatureImage}
-                />
-              ) : (
-                <div className={valStyles.previewSignatureEmpty}>-</div>
+                <div className={valStyles.previewSignatureEmpty}>—</div>
               )}
             </div>
           </div>

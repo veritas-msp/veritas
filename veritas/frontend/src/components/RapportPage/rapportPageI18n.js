@@ -125,7 +125,7 @@ const RAPPORT_PAGE = {
       },
       intervention: {
         title: "Rapport d'intervention",
-        description: "Fiche d'intervention terrain : contexte, opérations OK/PB, photo et signatures."
+        description: "Fiche terrain mobile : client, opérations, matériel, photos et signatures — PDF paysage."
       },
       cahierRecette: {
         title: "Cahier de recette",

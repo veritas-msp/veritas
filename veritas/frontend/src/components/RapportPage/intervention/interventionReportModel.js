@@ -8,11 +8,24 @@ export function formatClientAddress(client) {
   return parts.join(", ");
 }
 
-export function createOperationItem(label = "", status = "") {
+export function normalizeOperationStatus(status) {
+  const value = String(status || "").trim().toLowerCase();
+  if (value === "ok" || value === "done" || value === "effectue") return "ok";
+  if (value === "pending" || value === "attente" || value === "en_attente" || value === "en attente") {
+    return "pending";
+  }
+  if (value === "ko" || value === "pb" || value === "nok" || value === "fail") return "ko";
+  return "";
+}
+
+export function createOperationItem(description = "", status = "", observations = "") {
+  const label = String(description || "").trim();
   return {
     id: `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    description: label,
     label,
-    status: status === "ok" || status === "pb" ? status : ""
+    status: normalizeOperationStatus(status),
+    observations: String(observations || "")
   };
 }
 
@@ -20,6 +33,29 @@ export function createTaskItem(label = "") {
   return {
     id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     label: String(label || "").trim() ? String(label) : ""
+  };
+}
+
+export function createMovementItem({
+  qte = "1",
+  reference = "",
+  serial = "",
+  operation = ""
+} = {}) {
+  return {
+    id: `mov-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    qte: String(qte ?? "1"),
+    reference: String(reference || ""),
+    serial: String(serial || ""),
+    operation: String(operation || "") === "recuperation" ? "recuperation" : String(operation || "") === "depot" ? "depot" : ""
+  };
+}
+
+export function createPhotoItem(dataUrl = "", name = "") {
+  return {
+    id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    dataUrl: String(dataUrl || ""),
+    name: String(name || "")
   };
 }
 
@@ -41,35 +77,114 @@ function normalizeTaskList(list) {
     .filter(Boolean);
 }
 
-function migrateLegacyTasks(initial = {}) {
-  const done = normalizeTaskList(initial.tasksDone);
-  const todo = normalizeTaskList(initial.tasksTodo ?? initial.tasksRemaining);
-  if (done.length || todo.length) {
-    return { tasksDone: done, tasksTodo: todo };
+function normalizeOperationList(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(item => {
+      if (typeof item === "string") {
+        const description = item.trim();
+        return description ? createOperationItem(description) : null;
+      }
+      if (!item || typeof item !== "object") return null;
+      const description = String(item.description || item.label || item.text || "").trim();
+      return {
+        id: item.id || createOperationItem().id,
+        description,
+        label: description,
+        status: normalizeOperationStatus(item.status),
+        observations: String(item.observations || item.comment || "").trim()
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeMovementList(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(item => {
+      if (!item || typeof item !== "object") return null;
+      const operationRaw = String(item.operation || item.type || "").toLowerCase();
+      let operation = "";
+      if (operationRaw.includes("recup") || operationRaw.includes("remove") || operationRaw === "retrait") {
+        operation = "recuperation";
+      } else if (operationRaw.includes("depot") || operationRaw.includes("deposit") || operationRaw === "ajout") {
+        operation = "depot";
+      }
+      return {
+        id: item.id || createMovementItem().id,
+        qte: String(item.qte ?? item.quantity ?? item.qty ?? "1"),
+        reference: String(item.reference || item.ref || item.name || "").trim(),
+        serial: String(item.serial || item.numerosSerie || item.sn || "").trim(),
+        operation
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizePhotoList(list, legacySingle = "") {
+  const fromList = Array.isArray(list)
+    ? list
+        .map(item => {
+          if (typeof item === "string" && item.trim()) {
+            return createPhotoItem(item.trim());
+          }
+          if (!item || typeof item !== "object") return null;
+          const dataUrl = String(item.dataUrl || item.src || item.url || "").trim();
+          if (!dataUrl) return null;
+          return {
+            id: item.id || createPhotoItem().id,
+            dataUrl,
+            name: String(item.name || item.fileName || "").trim()
+          };
+        })
+        .filter(Boolean)
+    : [];
+  if (fromList.length) return fromList;
+  const legacy = String(legacySingle || "").trim();
+  return legacy ? [createPhotoItem(legacy)] : [];
+}
+
+function migrateLegacyOperations(initial = {}) {
+  const existing = normalizeOperationList(initial.operations);
+  if (existing.some(op => op.description || op.status || op.observations)) {
+    return existing.length ? existing : [createOperationItem()];
   }
 
-  const legacyOps = Array.isArray(initial.operations) ? initial.operations : [];
-  const migratedDone = [];
-  const migratedTodo = [];
-  legacyOps.forEach(op => {
-    const label = typeof op === "string" ? op : op?.label || op?.text || "";
-    if (!String(label).trim()) return;
-    const status = String(op?.status || "").toLowerCase();
-    if (status === "pb" || op?.done === false) migratedTodo.push(createTaskItem(label));
-    else migratedDone.push(createTaskItem(label));
+  const done = normalizeTaskList(initial.tasksDone);
+  const todo = normalizeTaskList(initial.tasksTodo ?? initial.tasksRemaining);
+  const migrated = [];
+
+  done.forEach(task => {
+    if (!task.label) return;
+    migrated.push(createOperationItem(task.label, "ok"));
+  });
+  todo.forEach(task => {
+    if (!task.label) return;
+    migrated.push(createOperationItem(task.label, "pending"));
   });
 
   const legacyTodos = Array.isArray(initial.todos) ? initial.todos : [];
   legacyTodos.forEach(item => {
     const label = typeof item === "string" ? item : item?.text || item?.label || "";
     if (!String(label).trim()) return;
-    if (item?.done === true) migratedDone.push(createTaskItem(label));
-    else migratedTodo.push(createTaskItem(label));
+    migrated.push(createOperationItem(label, item?.done === true ? "ok" : "pending"));
   });
 
+  return migrated.length ? migrated : [createOperationItem()];
+}
+
+function operationsToLegacyTasks(operations) {
+  const rows = normalizeOperationList(operations);
+  const tasksDone = [];
+  const tasksTodo = [];
+  rows.forEach(op => {
+    if (!op.description) return;
+    if (op.status === "ok") tasksDone.push(createTaskItem(op.description));
+    else tasksTodo.push(createTaskItem(op.description));
+  });
   return {
-    tasksDone: migratedDone.length ? migratedDone : [createTaskItem("")],
-    tasksTodo: migratedTodo.length ? migratedTodo : [createTaskItem("")]
+    tasksDone: tasksDone.length ? tasksDone : [createTaskItem("")],
+    tasksTodo: tasksTodo.length ? tasksTodo : [createTaskItem("")]
   };
 }
 
@@ -101,34 +216,69 @@ export function deriveMaterielFieldsFromEquipments(equipments) {
   };
 }
 
+export function deriveSousContratFromClient(client) {
+  if (!client || typeof client !== "object") return null;
+  if (client.contrat?.suspendu === true || client.contract_suspended === true) return false;
+  const expiration = client.contrat?.expiration || client.contract_expiration || client.contractExpiration;
+  if (expiration) {
+    const exp = new Date(expiration);
+    if (!Number.isNaN(exp.getTime())) return exp >= new Date();
+  }
+  const modules = client.contrat?.modules || client.options;
+  if (modules && typeof modules === "object") {
+    return Object.values(modules).some(Boolean);
+  }
+  if (typeof client.sous_contrat === "boolean") return client.sous_contrat;
+  if (typeof client.sousContrat === "boolean") return client.sousContrat;
+  return null;
+}
+
+export function resolveTechnicianName(user) {
+  if (!user || typeof user !== "object") return "";
+  return (
+    String(user.username || "").trim() ||
+    String(user.profile?.display_name || user.profile?.displayName || "").trim() ||
+    String(user.email || "").trim() ||
+    ""
+  );
+}
+
 export function buildDefaultInterventionData({
   client,
   organizationName = "",
   organizationAddress = "",
+  technicianName = "",
   copy = null
 } = {}) {
   const clientName = client?.name || client?.nom || "";
   const today = new Date().toISOString().split("T")[0];
   const firstSite = Array.isArray(client?.sites) ? client.sites[0] : null;
+  const sousContrat = deriveSousContratFromClient(client);
   return {
     companyName: organizationName || "",
     companyAddress: organizationAddress || "",
+    numeroClient: client?.client_number || client?.clientNumber || "",
     client: clientName,
     adresse: formatClientAddress(client) || formatClientAddress(firstSite) || "",
     typeIntervention: "",
+    technicien: technicianName || "",
     numeroTicket: "",
     linkedTicketId: null,
     postTicketFollowUp: true,
+    dateDebut: today,
+    dateFin: today,
+    sousContrat,
     salle: "",
     linkedEquipments: [],
     materiels: "",
     numerosSerie: "",
     photoInstallation: "",
+    photos: [],
+    operations: [createOperationItem()],
+    mouvements: [createMovementItem()],
     tasksDone: [createTaskItem("")],
     tasksTodo: [createTaskItem("")],
     operationsComment: "",
-    // Legacy mirror for older readers
-    operations: [],
     reservesClient: "",
     signataireNom: "",
     signataireFonction: "",
@@ -136,7 +286,6 @@ export function buildDefaultInterventionData({
     signatureDate: today,
     signaturePrestataire: "",
     signatureClient: "",
-    // Legacy fields kept for older saved documents
     companyTaxId: "",
     contactSite: "",
     dateIntervention: today,
@@ -145,7 +294,6 @@ export function buildDefaultInterventionData({
     descriptionDemande: "",
     compteRendu: "",
     todos: [],
-    mouvements: [],
     requireSignature: true,
     signatureMotif: "",
     signatureNom: "",
@@ -153,21 +301,6 @@ export function buildDefaultInterventionData({
     signatureAccord: false,
     documentSigne: false
   };
-}
-
-function tasksToLegacyOperations(tasksDone, tasksTodo) {
-  return [
-    ...normalizeTaskList(tasksDone).map(task => ({
-      id: task.id,
-      label: task.label,
-      status: "ok"
-    })),
-    ...normalizeTaskList(tasksTodo).map(task => ({
-      id: task.id,
-      label: task.label,
-      status: "pb"
-    }))
-  ];
 }
 
 export function mergeInterventionData(defaults, initial) {
@@ -178,21 +311,40 @@ export function mergeInterventionData(defaults, initial) {
   const derivedMateriel = linkedEquipments.length
     ? deriveMaterielFieldsFromEquipments(linkedEquipments)
     : null;
-  const migratedTasks = migrateLegacyTasks(initial);
+  const operations = migrateLegacyOperations(initial);
+  const legacyTasks = operationsToLegacyTasks(operations);
+  const photos = normalizePhotoList(initial.photos, initial.photoInstallation || defaults.photoInstallation);
+  const mouvements = normalizeMovementList(initial.mouvements);
+  const sousContrat =
+    typeof initial.sousContrat === "boolean"
+      ? initial.sousContrat
+      : initial.sousContrat === "oui" || initial.sousContrat === "yes"
+        ? true
+        : initial.sousContrat === "non" || initial.sousContrat === "no"
+          ? false
+          : defaults.sousContrat;
+
   const merged = {
     ...defaults,
     ...initial,
+    numeroClient: String(initial.numeroClient ?? initial.clientNumber ?? defaults.numeroClient ?? ""),
+    technicien: String(initial.technicien ?? initial.technician ?? defaults.technicien ?? ""),
+    dateDebut: String(initial.dateDebut ?? initial.dateIntervention ?? defaults.dateDebut ?? ""),
+    dateFin: String(initial.dateFin ?? initial.dateIntervention ?? defaults.dateFin ?? ""),
+    sousContrat,
     linkedEquipments,
     materiels: derivedMateriel?.materiels || initial.materiels || defaults.materiels,
     numerosSerie: derivedMateriel?.numerosSerie || initial.numerosSerie || defaults.numerosSerie,
-    tasksDone: migratedTasks.tasksDone,
-    tasksTodo: migratedTasks.tasksTodo,
+    operations,
+    mouvements: mouvements.length ? mouvements : defaults.mouvements,
+    photos,
+    photoInstallation: photos[0]?.dataUrl || "",
+    tasksDone: legacyTasks.tasksDone,
+    tasksTodo: legacyTasks.tasksTodo,
     operationsComment: String(initial.operationsComment ?? initial.compteRendu ?? defaults.operationsComment ?? ""),
-    operations: tasksToLegacyOperations(migratedTasks.tasksDone, migratedTasks.tasksTodo),
-    mouvements: Array.isArray(initial.mouvements) ? initial.mouvements : defaults.mouvements,
     todos: Array.isArray(initial.todos) ? initial.todos : defaults.todos
   };
-  // Map legacy signature fields
+
   if (!merged.signataireNom && merged.signatureNom) merged.signataireNom = merged.signatureNom;
   if (!merged.reservesClient && merged.signatureReserve) merged.reservesClient = merged.signatureReserve;
   if (!merged.numeroTicket && merged.numeroIntervention) merged.numeroTicket = merged.numeroIntervention;
@@ -219,19 +371,19 @@ export function validateInterventionStep(stepIndex, data) {
     case 0:
       return (
         String(data.client || "").trim() &&
-        String(data.adresse || "").trim() &&
-        String(data.typeIntervention || "").trim()
+        String(data.typeIntervention || "").trim() &&
+        String(data.technicien || "").trim() &&
+        String(data.dateDebut || "").trim() &&
+        String(data.dateFin || "").trim()
       );
     case 1: {
-      const done = Array.isArray(data.tasksDone) ? data.tasksDone : [];
-      return done.some(task => String(task?.label || "").trim());
+      const operations = Array.isArray(data.operations) ? data.operations : [];
+      return operations.some(op => String(op?.description || op?.label || "").trim());
     }
     case 2:
       return (
-        String(data.signataireNom || "").trim() &&
-        String(data.signatureLieu || "").trim() &&
-        String(data.signatureDate || "").trim() &&
-        String(data.signatureClient || "").trim()
+        String(data.signatureClient || "").trim() &&
+        String(data.signaturePrestataire || "").trim()
       );
     case 3:
       return true;
@@ -245,9 +397,7 @@ export function getInterventionStepValidationAlert(stepIndex, data, alerts) {
   if (stepIndex === 0) return alerts.stepContext;
   if (stepIndex === 1) return alerts.stepOperations;
   if (stepIndex === 2) {
-    if (!String(data.signataireNom || "").trim()) return alerts.signatureNom;
-    if (!String(data.signatureLieu || "").trim()) return alerts.signatureLieu;
-    if (!String(data.signatureDate || "").trim()) return alerts.signatureDate;
+    if (!String(data.signaturePrestataire || "").trim()) return alerts.signatureTechRequired;
     if (!String(data.signatureClient || "").trim()) return alerts.signatureClientRequired;
     return alerts.signatureFields;
   }
@@ -255,10 +405,12 @@ export function getInterventionStepValidationAlert(stepIndex, data, alerts) {
 }
 
 export function buildInterventionReportPeriod(data) {
-  const date = data?.signatureDate || data?.dateIntervention;
+  const start = data?.dateDebut || data?.signatureDate || data?.dateIntervention;
+  const end = data?.dateFin || start;
   const ticket = String(data?.numeroTicket || data?.numeroIntervention || "").trim();
-  if (ticket && date) return `Intervention ${ticket} · ${date}`;
-  if (date) return `Intervention du ${date}`;
+  const range = start && end && start !== end ? `${start} → ${end}` : start || end || "";
+  if (ticket && range) return `Intervention ${ticket} · ${range}`;
+  if (range) return `Intervention du ${range}`;
   if (ticket) return `Intervention ${ticket}`;
   return "Rapport d'intervention";
 }
@@ -281,6 +433,8 @@ export function serializeInterventionClient(client) {
     uuid: client.uuid ?? client.id ?? null,
     name: client.name ?? client.nom ?? null,
     nom: client.nom ?? client.name ?? null,
+    client_number: client.client_number ?? client.clientNumber ?? null,
+    clientNumber: client.clientNumber ?? client.client_number ?? null,
     sites: Array.isArray(client.sites)
       ? client.sites.map(site => ({
           id: site?.id ?? site?.uuid ?? null,
@@ -295,24 +449,35 @@ export function serializeInterventionClient(client) {
 
 function serializeInterventionFormPayload(payload) {
   if (!payload || typeof payload !== "object") return {};
+  const operations = normalizeOperationList(payload.operations);
+  const legacyTasks = operationsToLegacyTasks(operations);
+  const photos = normalizePhotoList(payload.photos, payload.photoInstallation);
+  const mouvements = normalizeMovementList(payload.mouvements);
   return {
     companyName: payload.companyName ?? "",
     companyAddress: payload.companyAddress ?? "",
+    numeroClient: payload.numeroClient ?? "",
     client: payload.client ?? "",
     adresse: payload.adresse ?? "",
     typeIntervention: payload.typeIntervention ?? "",
+    technicien: payload.technicien ?? "",
     numeroTicket: payload.numeroTicket ?? "",
     linkedTicketId: payload.linkedTicketId ?? null,
     postTicketFollowUp: payload.postTicketFollowUp !== false,
+    dateDebut: payload.dateDebut ?? "",
+    dateFin: payload.dateFin ?? "",
+    sousContrat: typeof payload.sousContrat === "boolean" ? payload.sousContrat : null,
     salle: payload.salle ?? "",
     linkedEquipments: normalizeLinkedEquipments(payload.linkedEquipments),
     materiels: payload.materiels ?? "",
     numerosSerie: payload.numerosSerie ?? "",
-    photoInstallation: payload.photoInstallation ?? "",
-    tasksDone: normalizeTaskList(payload.tasksDone),
-    tasksTodo: normalizeTaskList(payload.tasksTodo ?? payload.tasksRemaining),
+    photoInstallation: photos[0]?.dataUrl || "",
+    photos,
+    operations,
+    mouvements,
+    tasksDone: legacyTasks.tasksDone,
+    tasksTodo: legacyTasks.tasksTodo,
     operationsComment: payload.operationsComment ?? "",
-    operations: tasksToLegacyOperations(payload.tasksDone, payload.tasksTodo ?? payload.tasksRemaining),
     reservesClient: payload.reservesClient ?? "",
     signataireNom: payload.signataireNom ?? "",
     signataireFonction: payload.signataireFonction ?? "",

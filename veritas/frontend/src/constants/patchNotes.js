@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.14",
+    date: "2026-11-18",
+    highlights: [
+      "Campagnes MFA : KPIs uniformisés, tendances j-1 / j-7 / j-30, onglet Snapshots remis au propre, et pilotage Lancer / Pause / Arrêter sans restriction inutile.",
+      "Modal création / édition de campagne : correctifs de crop (scroll, nav, textarea).",
+      "Rapport d’intervention : builder et export PDF peaufinés (détails, opérations, signatures).",
+      "Historique Agent RMM : zone de scroll dédiée pour une meilleure lecture."
+    ]
+  },
+  {
     version: "2.0.13",
     date: "2026-11-17",
     highlights: [

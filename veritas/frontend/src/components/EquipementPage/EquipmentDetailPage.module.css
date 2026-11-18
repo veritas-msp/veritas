@@ -745,6 +745,8 @@
 }
 
 .logsPanelFill > :global([class*="logsPanel"]),
+.logsPanelFill > :global([class*="panel"]),
+.logsPanelFill > :global([class*="wrap"]),
 .documentsPanelFill > :global([class*="embeddedRoot"]) {
   flex: 1 1 0;
   min-height: 0;
@@ -753,6 +755,9 @@
   border-radius: 0 !important;
   background: var(--msp-surface, #fff);
   box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .documentsPanelFill > :global([class*="embeddedRoot"]),

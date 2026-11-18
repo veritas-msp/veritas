@@ -460,6 +460,32 @@
   .sectionCard {
     padding: 1.05rem 1.1rem;
   }
+
+  .fieldInput,
+  .fieldTextarea,
+  .fieldSelect,
+  .ticketSearchInput,
+  .addBtn,
+  .linkBtn,
+  .iconBtn {
+    min-height: 2.75rem;
+  }
+
+  .addBtn,
+  .linkBtn,
+  .iconBtn {
+    min-width: 2.75rem;
+    padding: 0.7rem 0.95rem;
+  }
+
+  .ticketSearchWrap {
+    min-height: 2.75rem;
+  }
+
+  .ticketOption {
+    min-height: 2.75rem;
+    padding: 0.75rem 0.9rem;
+  }
 }
 
 :global(html.dark) .sectionCard {
@@ -607,4 +633,34 @@
 :global(html.dark) .iconBtn:hover {
   background: rgba(248, 113, 113, 0.12);
   color: #f87171;
+}
+
+@media (max-width: 700px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionCard {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .sectionHeadRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .addBtn {
+    width: 100%;
+    justify-content: center;
+    min-height: 2.75rem;
+  }
+
+  .fieldInput,
+  .fieldTextarea,
+  .fieldSelect,
+  .ticketSearchInput {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
 }

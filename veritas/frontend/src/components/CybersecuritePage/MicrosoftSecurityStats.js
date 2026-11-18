@@ -393,7 +393,6 @@ export default function MicrosoftSecurityStats({
       key: "all",
       filter: "all",
       icon: "mdi:account-multiple",
-      tone: "blue",
       label: mfaCopy.totalUsers,
       value: currentStats.user_count || 0,
       sub: formatCampaignDetail(mfaCopy.mfaLine, {
@@ -406,7 +405,6 @@ export default function MicrosoftSecurityStats({
       key: "admins",
       filter: "admins",
       icon: "mdi:shield-account",
-      tone: "teal",
       label: mfaCopy.admin,
       value: currentStats.admin_count || 0,
       sub: formatCampaignDetail(mfaCopy.mfaLine, {
@@ -419,7 +417,6 @@ export default function MicrosoftSecurityStats({
       key: "users",
       filter: "users",
       icon: "mdi:account-outline",
-      tone: "purple",
       label: mfaCopy.nonAdmin,
       value: currentStats.regular_user_count || 0,
       sub: formatCampaignDetail(mfaCopy.mfaLine, {
@@ -431,10 +428,10 @@ export default function MicrosoftSecurityStats({
   ];
 
   const methodKpis = [
-    ["phoneauthenticationmethod", mfaMethodStats.phoneauthenticationmethod, "amber", mfaCopy.methodCalls],
-    ["emailauthenticationmethod", mfaMethodStats.emailauthenticationmethod, "rose", mfaCopy.methodEmail],
-    ["microsoftauthenticatorauthenticationmethod", mfaMethodStats.microsoftauthenticatorauthenticationmethod, "green", mfaCopy.methodAuthenticator],
-    ["softwareoathauthenticationmethod", mfaMethodStats.softwareoathauthenticationmethod, "orange", mfaCopy.methodSoftware]
+    ["phoneauthenticationmethod", mfaMethodStats.phoneauthenticationmethod, mfaCopy.methodCalls],
+    ["emailauthenticationmethod", mfaMethodStats.emailauthenticationmethod, mfaCopy.methodEmail],
+    ["microsoftauthenticatorauthenticationmethod", mfaMethodStats.microsoftauthenticatorauthenticationmethod, mfaCopy.methodAuthenticator],
+    ["softwareoathauthenticationmethod", mfaMethodStats.softwareoathauthenticationmethod, mfaCopy.methodSoftware]
   ].filter(([, count]) => count !== undefined);
 
   return (
@@ -449,7 +446,7 @@ export default function MicrosoftSecurityStats({
                 <SmartTooltip as="div" className={styles.kpiTooltipWrap} content={card.tooltip}>
                   <button
                     type="button"
-                    className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${userFilter === card.filter ? styles.ticketKpiCardActive : ""} ${Number(card.value) > 0 ? styles.kpiLive : ""}`.trim()}
+                    className={`${styles.ticketKpiCard} ${userFilter === card.filter ? styles.ticketKpiCardActive : ""} ${Number(card.value) > 0 ? styles.kpiLive : ""}`.trim()}
                     onClick={() => {
                       if (kpisOnly && typeof onOpenUsers === "function") {
                         onOpenUsers();
@@ -473,7 +470,7 @@ export default function MicrosoftSecurityStats({
           </div>
           <div className={styles.kpiDivider} role="separator" aria-orientation="vertical" />
           <div className={styles.kpiGroup} role="presentation">
-            {methodKpis.map(([methodType, count, tone, label]) => {
+            {methodKpis.map(([methodType, count, label]) => {
               const methodInfo = getMethodDisplayInfo(methodType);
               const isActive = methodFilter === methodType;
               return (
@@ -481,7 +478,7 @@ export default function MicrosoftSecurityStats({
                   <SmartTooltip as="div" className={styles.kpiTooltipWrap} content={label}>
                     <button
                       type="button"
-                      className={`${styles.ticketKpiCard} ${styles.ticketKpiCardMethod} ${styles[`kpiTone_${tone}`]} ${isActive ? styles.ticketKpiCardActive : ""}`.trim()}
+                      className={`${styles.ticketKpiCard} ${styles.ticketKpiCardMethod} ${isActive ? styles.ticketKpiCardActive : ""}`.trim()}
                       onClick={() => {
                         if (kpisOnly && typeof onOpenUsers === "function") {
                           onOpenUsers();

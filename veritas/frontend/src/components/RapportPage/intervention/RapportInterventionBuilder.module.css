@@ -13,6 +13,192 @@
   background: var(--msp-surface-2, #f4f7fb);
 }
 
+.cardStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.opCard,
+.matCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardIndex {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.cardRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.cardRemove:hover {
+  color: #b91c1c;
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.matGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.dateRangeRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.contractToggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.95rem;
+}
+
+.contractToggleButtons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.contractToggleBtn {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.contractToggleBtnActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, var(--msp-surface, #fff));
+  color: var(--msp-accent-dark, #1a3d75);
+}
+
+.statusToggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.statusChip {
+  min-height: 2.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.statusChip_ok {
+  border-color: color-mix(in srgb, #27ae60 55%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #27ae60 14%, var(--msp-surface, #fff));
+  color: #168a3c;
+}
+
+.statusChip_pending {
+  border-color: color-mix(in srgb, #e67e22 55%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #e67e22 14%, var(--msp-surface, #fff));
+  color: #b9770e;
+}
+
+.statusChip_ko {
+  border-color: color-mix(in srgb, #c0392b 55%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #c0392b 12%, var(--msp-surface, #fff));
+  color: #c0392b;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.photoTile {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #eef3f8);
+}
+
+.photoTile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoRemove {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: none;
+  border-radius: 8px;
+  background: rgba(15, 28, 46, 0.65);
+  color: #fff;
+  cursor: pointer;
+}
+
+.previewLandscape {
+  max-width: 1100px;
+  width: 100%;
+}
+
+.previewPhotoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.65rem;
+}
+
 .formGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1087,6 +1273,31 @@
   background: color-mix(in srgb, var(--msp-surface, #1a2540) 88%, #000);
 }
 
+:global(html.dark) .opCard,
+:global(html.dark) .matCard,
+:global(html.dark) .photoTile,
+:global(html.dark) .contractToggleBtn {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .contractToggleBtnActive {
+  border-color: var(--msp-accent, #5a9de0);
+  background: rgba(74, 143, 212, 0.16);
+  color: var(--msp-accent, #5a9de0);
+}
+
+:global(html.dark) .cardIndex {
+  background: rgba(74, 143, 212, 0.18);
+  color: var(--msp-accent, #5a9de0);
+}
+
+:global(html.dark) .cardRemove:hover {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
 :global(html.dark) .operationsRow {
   background: var(--msp-surface-2, #152038);
 }
@@ -1150,8 +1361,23 @@
   .signatureGrid,
   .previewGrid,
   .previewSignatureGrid,
-  .validationLayout {
+  .validationLayout,
+  .dateRangeRow,
+  .matGrid {
     grid-template-columns: 1fr;
+  }
+
+  .opCard,
+  .matCard {
+    padding: 1rem;
+  }
+
+  .contractToggleBtn,
+  .statusChip,
+  .cardRemove,
+  .photoRemove {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
   }
 
   .infoRow,

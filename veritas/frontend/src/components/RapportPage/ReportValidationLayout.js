@@ -19,6 +19,7 @@ export function ReportPreviewBlock({ title, children }) {
  */
 export default function ReportValidationLayout({
   previewRef,
+  previewClassName = "",
   clientName = "",
   periodLabel = "",
   reportType = "intervention",
@@ -46,7 +47,7 @@ export default function ReportValidationLayout({
       <div className={styles.previewPanel}>
         <ReportBrandingChrome
           ref={previewRef}
-          className={styles.previewDocBranded}
+          className={`${styles.previewDocBranded} ${previewClassName || ""}`.trim()}
           clientName={clientName}
           periodLabel={periodLabel}
           reportType={reportType}
@@ -76,7 +77,7 @@ export default function ReportValidationLayout({
           ) : null}
         </label>
         <button type="button" className={shellStyles.primaryBtn} onClick={handleDownload} disabled={saving}>
-          <Icon icon="mdi:language-html5" aria-hidden />
+          <Icon icon="mdi:file-pdf-box" aria-hidden />
           {downloadLabel}
         </button>
         <button type="button" className={shellStyles.primaryBtn} disabled={saving} onClick={onSave}>

@@ -213,77 +213,79 @@ export default function RmmAgentHistoryPanel({
         </span>
       </div>
 
-      {loading && logs.length === 0 ? (
-        <div className={styles.loadingState}>
-          <Icon icon="mdi:loading" className={styles.spin} aria-hidden />
-          <span>{hist.loading || "Chargement de l’historique…"}</span>
-        </div>
-      ) : null}
+      <div className={styles.scrollBody}>
+        {loading && logs.length === 0 ? (
+          <div className={styles.loadingState}>
+            <Icon icon="mdi:loading" className={styles.spin} aria-hidden />
+            <span>{hist.loading || "Chargement de l’historique…"}</span>
+          </div>
+        ) : null}
 
-      {empty ? (
-        <UiKitEmptyState
-          icon="mdi:timeline-clock-outline"
-          title={hist.emptyTitle || "Aucune communication RMM"}
-          description={hist.emptyHint || "Les heartbeats, syncs et commandes apparaîtront ici dès que l’agent échange avec Veritas."}
-        />
-      ) : null}
+        {empty ? (
+          <UiKitEmptyState
+            icon="mdi:timeline-clock-outline"
+            title={hist.emptyTitle || "Aucune communication RMM"}
+            description={hist.emptyHint || "Les heartbeats, syncs et commandes apparaîtront ici dès que l’agent échange avec Veritas."}
+          />
+        ) : null}
 
-      {!empty ? (
-        <ol className={styles.timeline} aria-label={hist.timelineAria || "Journal des communications RMM"}>
-          {logs.map(log => {
-            const details = parseLogDetails(log) || {};
-            const kind = String(details.kind || "");
-            const direction = resolveDirection(log);
-            const summary = summarizeLog(log, hist);
-            const when = formatWhen(details.lastHeartbeatAt || log.created_at, locale);
-            return (
-              <li key={log.id} className={`${styles.item} ${direction === "outbound" ? styles.itemOutbound : styles.itemInbound}`}>
-                <div className={styles.rail} aria-hidden>
-                  <span className={styles.dot}>
-                    <Icon icon={resolveKindIcon(kind, direction)} />
-                  </span>
-                </div>
-                <button type="button" className={styles.card} onClick={() => setSelectedLog(log)}>
-                  <div className={styles.cardTop}>
-                    <span className={`${styles.direction} ${direction === "outbound" ? styles.directionOutbound : styles.directionInbound}`}>
-                      {direction === "outbound" ? hist.outboundShort || "Veritas → Agent" : hist.inboundShort || "Agent → Veritas"}
-                    </span>
-                    <time className={styles.when} dateTime={log.created_at || undefined}>
-                      {when}
-                    </time>
-                  </div>
-                  <div className={styles.action}>{log.action || hist.unknownAction || "Événement RMM"}</div>
-                  {summary ? <p className={styles.summary}>{summary}</p> : null}
-                  <div className={styles.cardFoot}>
-                    <span className={styles.actor}>
-                      <Icon icon="mdi:account-outline" aria-hidden />
-                      {log.user_name || "—"}
-                    </span>
-                    <span className={styles.detailsLink}>
-                      {hist.viewDetails || "Détails"}
-                      <Icon icon="mdi:chevron-right" aria-hidden />
+        {!empty ? (
+          <ol className={styles.timeline} aria-label={hist.timelineAria || "Journal des communications RMM"}>
+            {logs.map(log => {
+              const details = parseLogDetails(log) || {};
+              const kind = String(details.kind || "");
+              const direction = resolveDirection(log);
+              const summary = summarizeLog(log, hist);
+              const when = formatWhen(details.lastHeartbeatAt || log.created_at, locale);
+              return (
+                <li key={log.id} className={`${styles.item} ${direction === "outbound" ? styles.itemOutbound : styles.itemInbound}`}>
+                  <div className={styles.rail} aria-hidden>
+                    <span className={styles.dot}>
+                      <Icon icon={resolveKindIcon(kind, direction)} />
                     </span>
                   </div>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      ) : null}
+                  <button type="button" className={styles.card} onClick={() => setSelectedLog(log)}>
+                    <div className={styles.cardTop}>
+                      <span className={`${styles.direction} ${direction === "outbound" ? styles.directionOutbound : styles.directionInbound}`}>
+                        {direction === "outbound" ? hist.outboundShort || "Veritas → Agent" : hist.inboundShort || "Agent → Veritas"}
+                      </span>
+                      <time className={styles.when} dateTime={log.created_at || undefined}>
+                        {when}
+                      </time>
+                    </div>
+                    <div className={styles.action}>{log.action || hist.unknownAction || "Événement RMM"}</div>
+                    {summary ? <p className={styles.summary}>{summary}</p> : null}
+                    <div className={styles.cardFoot}>
+                      <span className={styles.actor}>
+                        <Icon icon="mdi:account-outline" aria-hidden />
+                        {log.user_name || "—"}
+                      </span>
+                      <span className={styles.detailsLink}>
+                        {hist.viewDetails || "Détails"}
+                        <Icon icon="mdi:chevron-right" aria-hidden />
+                      </span>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        ) : null}
 
-      {hasMore ? (
-        <div className={styles.loadMoreWrap}>
-          <button
-            type="button"
-            className={styles.loadMoreBtn}
-            disabled={loadingMore}
-            onClick={() => fetchPage(page + 1, { append: true })}
-          >
-            <Icon icon={loadingMore ? "mdi:loading" : "mdi:history"} className={loadingMore ? styles.spin : undefined} aria-hidden />
-            {loadingMore ? hist.loadingMore || "Chargement…" : hist.loadMore || "Charger plus"}
-          </button>
-        </div>
-      ) : null}
+        {hasMore ? (
+          <div className={styles.loadMoreWrap}>
+            <button
+              type="button"
+              className={styles.loadMoreBtn}
+              disabled={loadingMore}
+              onClick={() => fetchPage(page + 1, { append: true })}
+            >
+              <Icon icon={loadingMore ? "mdi:loading" : "mdi:history"} className={loadingMore ? styles.spin : undefined} aria-hidden />
+              {loadingMore ? hist.loadingMore || "Chargement…" : hist.loadMore || "Charger plus"}
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       <EquipmentLogDetailModal
         log={selectedLog}

@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 
-const PDF_CAPTURE_WIDTH = 794;
+const PDF_CAPTURE_WIDTH_PORTRAIT = 794;
+const PDF_CAPTURE_WIDTH_LANDSCAPE = 1123;
 /** Seuil (mm) sous lequel on n'ajoute pas de page quasi vide. */
 const BLANK_PAGE_SLACK_MM = 3;
 
@@ -131,9 +132,13 @@ function trimCanvasBottom(canvas) {
   }
 }
 
-function canvasToPdf(sourceCanvas, { asBlob, fileName }) {
+function canvasToPdf(sourceCanvas, { asBlob, fileName, orientation = "portrait" }) {
   const canvas = trimCanvasBottom(sourceCanvas);
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pdf = new jsPDF({
+    orientation: orientation === "landscape" ? "landscape" : "portrait",
+    unit: "mm",
+    format: "a4"
+  });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const imgWidth = pageWidth;
@@ -169,14 +174,17 @@ function canvasToPdf(sourceCanvas, { asBlob, fileName }) {
 
 /**
  * Capture simple de la preview brandée → PDF A4 (même mise en page).
+ * @param {{ asBlob?: boolean, fileName?: string, orientation?: "portrait"|"landscape" }} [options]
  */
 export async function exportBrandedReportPdfFromElement(
   sourceEl,
-  { asBlob = false, fileName = "rapport.pdf" } = {}
+  { asBlob = false, fileName = "rapport.pdf", orientation = "portrait" } = {}
 ) {
   if (!sourceEl || typeof document === "undefined") {
     throw new Error("Preview element missing");
   }
+  const captureWidth =
+    orientation === "landscape" ? PDF_CAPTURE_WIDTH_LANDSCAPE : PDF_CAPTURE_WIDTH_PORTRAIT;
   if (sourceEl.getAttribute("data-loading") === "true") {
     await new Promise(resolve => {
       const started = Date.now();
@@ -201,7 +209,7 @@ export async function exportBrandedReportPdfFromElement(
     "position:fixed",
     "left:0",
     "top:0",
-    `width:${PDF_CAPTURE_WIDTH}px`,
+    `width:${captureWidth}px`,
     "background:#ffffff",
     "color:#0f172a",
     "opacity:0",
@@ -212,6 +220,8 @@ export async function exportBrandedReportPdfFromElement(
 
   const clone = sourceEl.cloneNode(true);
   prepareCloneForPdf(clone);
+  clone.style.width = `${captureWidth}px`;
+  clone.style.maxWidth = `${captureWidth}px`;
   await inlineImagesAsDataUrls(clone);
   wrap.appendChild(clone);
   document.body.appendChild(wrap);
@@ -227,16 +237,16 @@ export async function exportBrandedReportPdfFromElement(
       allowTaint: false,
       backgroundColor: "#ffffff",
       logging: false,
-      width: PDF_CAPTURE_WIDTH,
-      windowWidth: PDF_CAPTURE_WIDTH,
+      width: captureWidth,
+      windowWidth: captureWidth,
       onclone: (_doc, el) => {
-        el.style.width = `${PDF_CAPTURE_WIDTH}px`;
-        el.style.maxWidth = `${PDF_CAPTURE_WIDTH}px`;
+        el.style.width = `${captureWidth}px`;
+        el.style.maxWidth = `${captureWidth}px`;
         el.style.opacity = "1";
         prepareCloneForPdf(el);
       }
     });
-    return canvasToPdf(canvas, { asBlob, fileName });
+    return canvasToPdf(canvas, { asBlob, fileName, orientation });
   } finally {
     wrap.remove();
   }

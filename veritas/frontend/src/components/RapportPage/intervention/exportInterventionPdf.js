@@ -224,6 +224,7 @@ function drawRemarksBlock(doc, data, labels, y, margin, pageWidth, font) {
 export async function exportInterventionPdfFromElement(sourceEl, options = {}) {
   return exportBrandedReportPdfFromElement(sourceEl, {
     fileName: "rapport-intervention.pdf",
+    orientation: "landscape",
     ...options
   });
 }

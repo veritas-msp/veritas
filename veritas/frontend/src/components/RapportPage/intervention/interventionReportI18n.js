@@ -3,16 +3,17 @@ import { normalizeLocale, pickLocaleMessages } from "../../../i18n/translate";
 const INTERVENTION_REPORT = {
   fr: {
     alerts: {
-      stepContext: "Renseignez le client, l'adresse et le type d'intervention.",
-      stepOperations: "Ajoutez au moins une tâche effectuée.",
-      stepReport: "Complétez les remarques et la signature client.",
+      stepContext: "Renseignez le client, le type d'intervention, le technicien et les dates.",
+      stepOperations: "Ajoutez au moins une opération réalisée.",
+      stepReport: "Complétez les réserves et les deux signatures.",
       stepValidation: "Vérifiez l'aperçu avant d'enregistrer.",
-      signatureFields: "Complétez les champs de signature obligatoires.",
-      signatureDrawing: "La signature du représentant établissement est requise.",
+      signatureFields: "Les signatures technicien et représentant sont requises.",
+      signatureDrawing: "La signature du représentant de l'établissement est requise.",
       signatureNom: "Indiquez le nom du signataire.",
       signatureLieu: "Indiquez le lieu (Fait à).",
       signatureDate: "Indiquez la date.",
-      signatureClientRequired: "La signature du représentant établissement est requise.",
+      signatureClientRequired: "La signature du représentant de l'établissement est requise.",
+      signatureTechRequired: "La signature du technicien est requise.",
       saveName: "Indiquez un nom pour enregistrer le rapport.",
       saveError: "Erreur lors de la sauvegarde.",
       saveSuccess: "Rapport enregistré dans la bibliothèque.",
@@ -26,14 +27,15 @@ const INTERVENTION_REPORT = {
       overwriteConfirm: "Oui, écraser",
       overwriteCancel: "Annuler",
       photoTooLarge: "Photo trop volumineuse (max. 4 Mo).",
-      photoInvalid: "Format de photo non supporté."
+      photoInvalid: "Format de photo non supporté.",
+      photoLimit: "Maximum 8 photos par rapport."
     },
     saveModal: {
       eyebrow: "Rapport d'intervention",
       title: "Enregistrer le rapport",
       subtitle: "Confirmez l'enregistrement dans la bibliothèque.",
       documentLabel: "Document",
-      vaultNote: "Un PDF sera généré et archivé dans le coffre-fort documentaire de l'entreprise.",
+      vaultNote: "Un PDF paysage sera généré et archivé dans le coffre-fort documentaire de l'entreprise.",
       ticketFollowUpLabel: "Ajouter un suivi sur le ticket",
       ticketFollowUpHint: "Poste un commentaire « rapport généré » avec le lien du PDF sur le ticket lié.",
       ticketFollowUpMissing: "Liez un ticket à l'étape Contexte pour activer le suivi.",
@@ -52,13 +54,15 @@ const INTERVENTION_REPORT = {
     },
     context: {
       sectionClient: "Informations client",
+      sectionDetails: "Détails de l'intervention",
       sectionTech: "Informations techniques",
       sectionEquipment: "Matériel concerné",
       sectionEquipmentHint: "Liez un ou plusieurs équipements du parc client.",
-      client: "Nom - Client",
+      numeroClient: "N° client",
+      client: "Nom du client",
       adresse: "Adresse",
       typeIntervention: "Type d'intervention",
-      typeInterventionPlaceholder: "Choisir un type…",
+      typeInterventionPlaceholder: "Choisir…",
       interventionTypes: [
         "Installation",
         "Mise en service",
@@ -72,7 +76,15 @@ const INTERVENTION_REPORT = {
         "Diagnostic",
         "Autre"
       ],
+      technicien: "Technicien",
       numeroTicket: "Numéro de ticket",
+      dateFrom: "Du",
+      dateTo: "Au",
+      dateRange: "Date",
+      sousContrat: "Sous contrat",
+      sousContratOui: "Oui",
+      sousContratNon: "Non",
+      sousContratUnknown: "Non renseigné",
       ticketPickerHint: "Recherchez par numéro ou titre, ou saisissez un numéro librement.",
       ticketPickerPlaceholder: "Choisir un ticket…",
       ticketSearchPlaceholder: "Rechercher par numéro ou titre…",
@@ -91,60 +103,97 @@ const INTERVENTION_REPORT = {
       equipmentClear: "Retirer",
       equipmentLinkedEmpty: "Aucun matériel lié pour le moment.",
       equipmentSerial: "N° de série",
-      photoLabel: "Photo de l'installation ci-dessous",
+      photoLabel: "Photos",
       photoMissing: "Aucune photo",
       photoAdd: "Ajouter une photo",
       photoChange: "Changer la photo",
-      photoRemove: "Retirer la photo"
+      photoRemove: "Retirer"
     },
     operations: {
-      title: "Tâches & commentaire",
-      hint: "Indiquez ce qui a été fait, ce qu’il reste à faire, puis ajoutez un commentaire si besoin.",
+      title: "Opérations réalisées",
+      hint: "Décrivez chaque opération, son statut et vos observations.",
+      description: "Description de l'opération",
+      descriptionPlaceholder: "Ex. Remplacement du switch accès…",
+      status: "Statut",
+      statusPlaceholder: "Choisir…",
+      statusOk: "OK",
+      statusPending: "En attente",
+      statusKo: "KO",
+      observations: "Observations",
+      observationsPlaceholder: "Notes, anomalies, suite à donner…",
+      add: "Ajouter une opération",
+      remove: "Supprimer",
+      empty: "Aucune opération renseignée.",
       doneTitle: "Tâches effectuées",
       doneHint: "Actions réalisées pendant l’intervention.",
       todoTitle: "Tâches restantes",
       todoHint: "Actions encore à réaliser après l’intervention.",
       addDone: "Ajouter une tâche effectuée",
       addTodo: "Ajouter une tâche à faire",
-      remove: "Supprimer",
       placeholderDone: "Ex. Mise à jour du firmware…",
       placeholderTodo: "Ex. Commander un module de rechange…",
       commentLabel: "Commentaire",
       commentPlaceholder: "Précisions, observations, contexte…",
       emptyDone: "Aucune tâche effectuée.",
-      emptyTodo: "Aucune tâche restante.",
-      empty: "Aucune tâche renseignée."
+      emptyTodo: "Aucune tâche restante."
+    },
+    material: {
+      title: "Gestion de matériel",
+      hint: "Saisissez les mouvements de matériel (dépôt ou récupération).",
+      qte: "Qté",
+      reference: "Référence",
+      serial: "S/N",
+      operation: "Opération",
+      operationPlaceholder: "Choisir…",
+      depot: "Dépôt",
+      recuperation: "Récupération",
+      add: "Ajouter une ligne",
+      remove: "Supprimer",
+      empty: "Aucun mouvement de matériel.",
+      fromEquipment: "Depuis le parc"
+    },
+    photos: {
+      title: "Photos",
+      hint: "Ajoutez des photos prises sur site (caméra ou galerie).",
+      add: "Ajouter des photos",
+      remove: "Retirer",
+      missing: "Aucune photo ajoutée.",
+      count: "{count} photo(s)"
     },
     remarks: {
-      title: "Remarques sur la prestation",
-      reservesClient: "Réserves client :",
+      title: "Réserves & signatures",
+      reservesClient: "Réserves client",
       reservesPlaceholder: "Notes ou réserves éventuelles du client…",
       signataireNom: "Je soussigné(e)",
       signataireFonction: "ayant la fonction de",
       certifyHint:
-        "certifie avoir pris connaissance de ce document et atteste du bon fonctionnement des solutions informatiques.",
+        "Je soussigné(e), certifie avoir pris connaissance du présent rapport d'intervention incluant les actions réalisées, les éventuels dysfonctionnements constatés et les actions restant à traiter.",
       certifyTemplate:
-        "Je soussigné(e), {name} ayant la fonction de {role}, certifie avoir pris connaissance de ce document et atteste du bon fonctionnement des solutions informatiques.",
+        "Je soussigné(e), certifie avoir pris connaissance du présent rapport d'intervention incluant les actions réalisées, les éventuels dysfonctionnements constatés et les actions restant à traiter.",
       place: "Fait à",
       date: "Le",
-      clientSignTitle: "Pour le représentant de l'établissement,",
-      providerSignTitle: "Pour {org},",
-      providerFallback: "le prestataire",
-      nameAndSignature: "Nom & Signature",
+      clientSignTitle: "Signature du représentant de l'établissement",
+      providerSignTitle: "Signature du technicien",
+      providerFallback: "le technicien",
+      nameAndSignature: "Signature",
       clear: "Effacer"
     },
     validation: {
       previewTitle: "Aperçu du rapport",
-      downloadHtml: "Télécharger le HTML",
+      downloadHtml: "Télécharger le PDF",
+      downloadPdf: "Télécharger le PDF",
       saveLibrary: "Enregistrer dans la bibliothèque",
       saveNameLabel: "Nom du document",
       saveNamePlaceholder: "Rapport d'intervention · {client}",
       nameExists: "Un document porte déjà ce nom dans la bibliothèque.",
       modify: "Modifier",
       finish: "Terminer",
-      title: "Rapport d'intervention",
-      operations: "Opérations",
-      remarks: "Remarques & signatures"
+      title: "Rapport d'intervention sur site",
+      details: "Détails de l'intervention",
+      operations: "Opérations réalisées",
+      material: "Gestion de matériel",
+      photos: "Photos",
+      remarks: "Réserves & signatures"
     }
   },
   en: {
@@ -159,7 +208,9 @@ const INTERVENTION_REPORT = {
       signatureLieu: "Enter the location.",
       signatureDate: "Enter the date.",
       signatureClientRequired: "The establishment representative signature is required.",
+      signatureTechRequired: "The technician signature is required.",
       saveName: "Enter a name to save the report.",
+      photoLimit: "Maximum 8 photos per report.",
       saveError: "Error while saving.",
       saveSuccess: "Report saved to the library.",
       saveSuccessVisible: "Report saved and shared with the company on the client portal.",
@@ -280,16 +331,20 @@ const INTERVENTION_REPORT = {
     },
     validation: {
       previewTitle: "Report preview",
-      downloadHtml: "Download HTML",
+      downloadHtml: "Download PDF",
+      downloadPdf: "Download PDF",
       saveLibrary: "Save to library",
       saveNameLabel: "Document name",
       saveNamePlaceholder: "Intervention report · {client}",
       nameExists: "A document with this name already exists in the library.",
       modify: "Edit",
       finish: "Finish",
-      title: "Intervention report",
-      operations: "Operations",
-      remarks: "Remarks & signatures"
+      title: "On-site intervention report",
+      details: "Intervention details",
+      operations: "Completed operations",
+      material: "Equipment handling",
+      photos: "Photos",
+      remarks: "Reservations & signatures"
     }
   },
   de: {
@@ -732,7 +787,33 @@ const INTERVENTION_REPORT = {
   }
 };
 
+function deepMergeMessages(base, override) {
+  if (!override || typeof override !== "object") return base;
+  if (!base || typeof base !== "object") return override;
+  if (Array.isArray(base) || Array.isArray(override)) return override;
+  const out = { ...base };
+  Object.keys(override).forEach(key => {
+    const left = base[key];
+    const right = override[key];
+    if (
+      left &&
+      right &&
+      typeof left === "object" &&
+      typeof right === "object" &&
+      !Array.isArray(left) &&
+      !Array.isArray(right)
+    ) {
+      out[key] = deepMergeMessages(left, right);
+    } else if (right !== undefined) {
+      out[key] = right;
+    }
+  });
+  return out;
+}
+
 export function getInterventionReportCopy(locale = "fr") {
   const code = normalizeLocale(locale);
-  return pickLocaleMessages(INTERVENTION_REPORT, code) || INTERVENTION_REPORT.fr;
+  const local = pickLocaleMessages(INTERVENTION_REPORT, code) || INTERVENTION_REPORT.fr;
+  if (code === "fr") return local;
+  return deepMergeMessages(INTERVENTION_REPORT.fr, local);
 }
