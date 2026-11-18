@@ -4,7 +4,7 @@ import { interpolate } from "../../i18n/translate";
 import { getLicenseDisplayName } from "../ServicePage/TenantDetailTabs/utils";
 import { ExchangePortalPanel, TeamsPortalPanel, AppPanelHeader } from "./ClientPortalTenantApps";
 import portalStyles from "./ClientDashboard.module.css";
-import tableStyles from "../TicketPage/TicketPage.module.css";
+import portalTable from "./ClientPortalTable.module.css";
 import listStyles from "./ClientDevicesListTab.module.css";
 import PortalTabBar from "./PortalTabBar";
 import styles from "./ClientServicesDetailView.module.css";
@@ -34,25 +34,27 @@ function ServiceTable({ columns, rows, emptyLabel, tableClassName }) {
     return <p className={listStyles.emptyCategory}>{emptyLabel}</p>;
   }
   return (
-    <div className={styles.tenantTableWrap}>
-      <table className={`${tableStyles.table} ${tableClassName || styles.serviceTable}`}>
-        <thead>
-          <tr>
-            {columns.map(col => (
-              <th key={col.key}>{col.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.id || `${row.email || row.name || "row"}-${index}`}>
+    <div className={portalTable.tablePanel}>
+      <div className={`${portalTable.tableScroll} ${styles.tenantTableWrap}`}>
+        <table className={`${portalTable.table} ${tableClassName || styles.serviceTable}`}>
+          <thead>
+            <tr>
               {columns.map(col => (
-                <td key={col.key}>{col.render(row)}</td>
+                <th key={col.key}>{col.label}</th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={row.id || `${row.email || row.name || "row"}-${index}`}>
+                {columns.map(col => (
+                  <td key={col.key}>{col.render(row)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

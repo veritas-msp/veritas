@@ -9,7 +9,8 @@ import { interpolate } from "../../i18n/translate";
 import { VAULT_CATEGORIES, fetchPortalVaultFiles, fetchPortalVaultSecrets, getPortalVaultDownloadUrl, getPortalVaultPreviewUrl, revealPortalVaultSecret, requestPortalVaultSecretRevocation } from "../../api/clientPortalVault";
 import portalLayout from "./ClientDashboard.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import tableStyles from "../TicketPage/TicketPage.module.css";
+import ticketStyles from "../TicketPage/TicketPage.module.css";
+import portalTable from "./ClientPortalTable.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
@@ -135,7 +136,7 @@ export default function ClientVaultPage() {
     }
   };
   return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
-      <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
+      <div className={`${portalLayout.portalShell} ${ticketStyles.ticketShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}
           eyebrow={t.eyebrow}
@@ -160,10 +161,10 @@ export default function ClientVaultPage() {
         })}
           </div> : null}
 
-        <div className={tableStyles.mainColumn}>
+        <div className={ticketStyles.mainColumn}>
           {activeTab === "documents" ? (
             <UiKitCrmListToolbar
-              className={tableStyles.toolbarGrow}
+              className={ticketStyles.toolbarGrow}
               searchValue={search}
               onSearchChange={setSearch}
               onSearchClear={() => setSearch("")}
@@ -190,7 +191,7 @@ export default function ClientVaultPage() {
             />
           ) : (
             <UiKitCrmListToolbar
-              className={tableStyles.toolbarGrow}
+              className={ticketStyles.toolbarGrow}
               extraActions={<span className={layout.toolbarMeta}>{countLabel}</span>}
             />
           )}
@@ -205,7 +206,7 @@ export default function ClientVaultPage() {
                   title={t.emptyDocumentsTitle}
                   text={t.emptyDocumentsHint}
                 />
-              </div> : <div className={tableStyles.tablePanel}>
+              </div> : <div className={portalTable.tablePanel}>
                 <UiKitScrollFadeShell
                   className={`${pageStyles.panelContent} ${pageStyles.panelContentGrid}`}
                   deps={[files.length, search, categoryFilter]}
@@ -214,7 +215,7 @@ export default function ClientVaultPage() {
                 </UiKitScrollFadeShell>
               </div> : secrets.length === 0 ? <div className={layout.emptyStateInCard}>
               <UiKitEmptyState bare icon="mdi:key-variant" title={t.emptySecretsTitle} text={t.emptySecretsHint} />
-            </div> : <div className={tableStyles.tablePanel}>
+            </div> : <div className={portalTable.tablePanel}>
               <UiKitScrollFadeShell className={pageStyles.panelContent} deps={[secrets.length]}>
                 <div className={pageStyles.secretsList}>
                   {secrets.map(secret => <article key={secret.id} className={pageStyles.secretCard}>

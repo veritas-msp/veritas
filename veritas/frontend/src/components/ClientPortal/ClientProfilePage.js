@@ -16,7 +16,8 @@ import { validateContactCommunicationsLocalized } from "../ContactsPage/contactF
 import { getClientPortalCopy } from "./clientPortalI18n";
 import portalLayout from "./ClientDashboard.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import tableStyles from "../TicketPage/TicketPage.module.css";
+import ticketStyles from "../TicketPage/TicketPage.module.css";
+import portalTable from "./ClientPortalTable.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import contactStyles from "../ContactsPage/ContactDetailPage.module.css";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
@@ -245,7 +246,7 @@ export default function ClientProfilePage() {
     await performSaveContact(portalEmailConfirm.communications);
   };
   return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
-      <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
+      <div className={`${portalLayout.portalShell} ${ticketStyles.ticketShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}
           eyebrow={t.eyebrow}
@@ -259,11 +260,11 @@ export default function ClientProfilePage() {
           ) : null}
         />
 
-        <div className={tableStyles.mainColumn}>
+        <div className={ticketStyles.mainColumn}>
           {loading ? <div className={layout.stateBox}>
               <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
               <span>{t.loadingProfile}</span>
-            </div> : <div className={tableStyles.tablePanel}>
+            </div> : <div className={portalTable.tablePanel}>
               <div className={pageStyles.panelContent}>
                 <div className={pageStyles.profileStack}>
                   <section className={pageStyles.profileSection}>

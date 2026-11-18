@@ -46,6 +46,27 @@ table.deviceTable {
   min-width: 720px;
 }
 
+@media (max-width: 767px) {
+  .panelActions {
+    width: 100%;
+  }
+
+  .toolBtn,
+  .exportBtn {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 2.5rem;
+  }
+
+  .toolBtnLabel {
+    display: inline;
+  }
+
+  table.deviceTable {
+    min-width: 640px;
+  }
+}
+
 .nameCell,
 .osCell {
   display: inline-flex;

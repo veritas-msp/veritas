@@ -99,7 +99,6 @@
 }
 
 .tenantTableWrap {
-  overflow: auto;
   margin-top: 4px;
   max-height: 560px;
 }
@@ -170,16 +169,64 @@
   color: #f87171;
 }
 
+@media (max-width: 900px) {
+  .tenantFacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
+  .root,
+  .tenantRoot {
+    gap: 0.85rem;
+  }
+
+  .tenantTabBar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .serviceTable {
     min-width: 560px;
   }
 
+  .tenantSearch {
+    width: 100%;
+    margin: 0.65rem 0;
+  }
+
+  .tenantPicker {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tenantPicker select {
+    min-width: 0;
+    width: 100%;
+  }
+
   .tenantAppsGrid {
     grid-template-columns: 1fr;
+    gap: 0.85rem;
   }
 
   .tenantQuotaGrid {
     grid-template-columns: 1fr;
+  }
+
+  .tenantTableWrap {
+    max-height: min(70vh, 420px);
+  }
+}
+
+@media (max-width: 480px) {
+  .tenantFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceTable {
+    min-width: 480px;
   }
 }

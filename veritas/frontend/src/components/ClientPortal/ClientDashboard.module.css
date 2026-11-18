@@ -470,9 +470,9 @@
 }
 
 .mainScroll {
-  --portal-scroll-pad-top: 20px;
-  --portal-scroll-pad-x: 24px;
-  --portal-scroll-pad-bottom: 32px;
+  --portal-scroll-pad-top: 1.25rem;
+  --portal-scroll-pad-x: 1.5rem;
+  --portal-scroll-pad-bottom: 1.75rem;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
@@ -481,6 +481,7 @@
   padding: var(--portal-scroll-pad-top) var(--portal-scroll-pad-x) var(--portal-scroll-pad-bottom);
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 
 .impersonationBanner {
@@ -1251,28 +1252,47 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 0.8125rem;
+  color: var(--msp-text, var(--portal-text));
+}
+
+.table thead {
+  background: var(--msp-surface-2, #f4f7fb);
 }
 
 .table th {
   text-align: left;
-  padding: 6px 10px;
+  padding: 0.7rem 0.75rem;
+  min-height: 2.85rem;
   font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
   color: var(--msp-muted, var(--portal-text-muted));
-  border-bottom: 1px solid var(--msp-border, var(--portal-border));
+  border-bottom: 1px solid var(--msp-border-light, var(--portal-border));
+  background: var(--msp-surface-2, #f4f7fb);
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .table td {
-  padding: 8px 10px;
+  padding: 0.7rem 0.75rem;
+  min-height: 2.85rem;
   color: var(--msp-text, var(--portal-text));
-  border-bottom: 1px solid var(--msp-border, var(--portal-border-light));
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, var(--portal-border-light)) 70%, transparent);
+  vertical-align: middle;
+  background: var(--msp-surface, var(--portal-surface));
+}
+
+.table tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, var(--portal-surface-alt));
 }
 
 .table tr:last-child td { border-bottom: none; }
-.table tr:hover td { background: var(--msp-surface-2, var(--portal-hover-strong)); }
+.table tr:hover td,
+.table tbody tr:nth-child(even):hover td {
+  background: var(--msp-accent-soft, var(--portal-hover-strong));
+}
 
 .badge {
   display: inline-flex;
@@ -1317,6 +1337,12 @@
 }
 
 
+@media (max-width: 1200px) {
+  .kpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1024px) {
   .twoCol { grid-template-columns: 1fr; }
   .healthBars { grid-template-columns: 1fr 1fr; }
@@ -1326,35 +1352,65 @@
   .main {
     margin-left: 0;
   }
-}
 
-@media (max-width: 1200px) {
-  .kpiRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .mainScroll {
+    --portal-scroll-pad-top: 1rem;
+    --portal-scroll-pad-x: 1rem;
+    --portal-scroll-pad-bottom: 5.5rem;
+    padding: var(--portal-scroll-pad-top) var(--portal-scroll-pad-x) var(--portal-scroll-pad-bottom);
+  }
+
+  .impersonationBanner {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .impersonationBannerBtn {
+    width: 100%;
+    justify-content: center;
   }
 }
 
 @media (max-width: 768px) {
   .mainScroll {
-    --portal-scroll-pad-top: 14px;
-    --portal-scroll-pad-x: 14px;
-    --portal-scroll-pad-bottom: 14px;
-    padding: var(--portal-scroll-pad-top) var(--portal-scroll-pad-x) var(--portal-scroll-pad-bottom);
+    --portal-scroll-pad-top: 0.85rem;
+    --portal-scroll-pad-x: 0.85rem;
+    --portal-scroll-pad-bottom: 5.5rem;
   }
+
   .healthBars { grid-template-columns: 1fr; }
-  .cloudGrid { grid-template-columns: 1fr 1fr; }
+  .cloudGrid { grid-template-columns: 1fr; }
   .twoCol { grid-template-columns: 1fr; }
-  .kpiGrid { grid-template-columns: repeat(2, 1fr); }
+  .kpiGrid { grid-template-columns: 1fr 1fr; }
   .kpiRow {
+    grid-template-columns: 1fr;
+  }
+
+  .portalShell {
+    gap: 12px;
+  }
+
+  .table {
+    min-width: 560px;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.85rem 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpiGrid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (min-width: 1600px) {
   .mainScroll {
-    --portal-scroll-pad-top: 24px;
-    --portal-scroll-pad-x: 32px;
-    --portal-scroll-pad-bottom: 24px;
+    --portal-scroll-pad-top: 1.5rem;
+    --portal-scroll-pad-x: 2rem;
+    --portal-scroll-pad-bottom: 1.5rem;
     padding: var(--portal-scroll-pad-top) var(--portal-scroll-pad-x) var(--portal-scroll-pad-bottom);
   }
 }

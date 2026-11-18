@@ -31,8 +31,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .pageSubtitle {
@@ -812,4 +812,44 @@
 .fieldError {
   font-size: 0.78rem;
   color: #dc2626;
+}
+
+@media (max-width: 720px) {
+  .pageHeader,
+  .detailHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterRow,
+  .typeRow {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .filterBtn,
+  .typeBtn {
+    flex: 0 0 auto;
+  }
+
+  .ticketCardTop,
+  .messageHead,
+  .replyActions,
+  .formActions,
+  .validationActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryBtn,
+  .secondaryBtn,
+  .ghostBtn,
+  .validationRejectBtn,
+  .validationAcceptBtn {
+    width: 100%;
+    justify-content: center;
+  }
 }

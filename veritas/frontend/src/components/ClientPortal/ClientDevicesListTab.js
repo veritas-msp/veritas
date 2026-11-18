@@ -33,7 +33,7 @@ import {
   getPortalTableColumns
 } from "./portalEquipmentTables";
 import portalStyles from "./ClientDashboard.module.css";
-import tableStyles from "../TicketPage/TicketPage.module.css";
+import tableStyles from "./ClientPortalTable.module.css";
 import styles from "./ClientDevicesListTab.module.css";
 
 const COLUMNS_STORAGE_PREFIX = "veritas_portal_device_columns_v1_";

@@ -33,6 +33,7 @@
   border-radius: var(--msp-radius-sm, 10px);
   background: var(--msp-surface-2, var(--portal-surface-alt, #f4f6f8));
   border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  max-width: 100%;
 }
 
 .tab {
@@ -186,7 +187,8 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0.85rem 1rem 1rem;
+  padding: 0.85rem 1rem 1.1rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .panelContentGrid {
@@ -724,10 +726,63 @@
   color: #fbbf24;
 }
 
+@media (max-width: 900px) {
+  .kpiRowFamily {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 720px) {
+  .portalPageHero {
+    border-radius: 12px;
+  }
+
+  .tabBar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    flex: 0 0 auto;
+  }
+
   .kpiRow2,
   .kpiRowFamily {
     grid-template-columns: 1fr;
+  }
+
+  .panelContent {
+    padding: 0.85rem 0.85rem 1rem;
+  }
+
+  .panelContentGrid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .profileSection {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .profileSectionHead,
+  .profileSettingRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .profileSettingAction,
+  .profileContactActions {
+    width: 100%;
+  }
+
+  .profileContactActions {
+    justify-content: stretch;
+  }
+
+  .profileContactActions > * {
+    flex: 1;
   }
 
   .secretCard {
@@ -741,6 +796,17 @@
   .secretCardActions button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .panelContent {
+    padding: 0.75rem;
+  }
+
+  .tab {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.76rem;
   }
 }
 

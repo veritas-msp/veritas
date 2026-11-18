@@ -269,55 +269,103 @@ export default function ClientPortalSidebar({
     closeLangMenu();
     closeMobileMenu();
   };
-  const renderPreferencesSection = () => {
-    const renderThemeToggleBtn = () => {
-      const btn = <button type="button" className={portalStyles.settingsSquareBtn} onClick={toggleTheme} aria-label={themeTooltip}>
-          <Icon icon={themeMenuIcon} className={portalStyles.settingsSquareBtnIcon} aria-hidden />
-        </button>;
-      if (showIconTooltip) {
-        return <SidebarTooltip as="span" content={themeTooltip}>
-            {btn}
-          </SidebarTooltip>;
-      }
-      return btn;
-    };
-    const renderLangBtn = () => {
-      const btn = <button type="button" className={`${portalStyles.settingsSquareBtn} ${langMenuOpen ? portalStyles.settingsSquareBtnActive : ""}`.trim()} onClick={() => {
-        setLangMenuOpen(open => !open);
-        closeUserMenu();
-      }} aria-expanded={langMenuOpen} aria-haspopup="listbox" aria-label={t.languageAria}>
-          <span className={portalStyles.settingsSquareBtnFlag} aria-hidden>
-            {currentLocale.flag}
-          </span>
-        </button>;
-      if (showIconTooltip) {
-        return <SidebarTooltip as="span" content={t.languageTitle}>
-            {btn}
-          </SidebarTooltip>;
-      }
-      return btn;
-    };
-    const renderHelpBtn = () => {
-      const helpAria = portalGuide.helpAria;
-      const btn = <button type="button" className={`${portalStyles.settingsSquareBtn} ${portalGuideOpen ? portalStyles.settingsSquareBtnActive : ""}`.trim()} onClick={startPortalGuide} aria-label={helpAria}>
-          <span className={portalStyles.helpBtnLabel} aria-hidden>
-            ?
-          </span>
-        </button>;
-      if (showIconTooltip) {
-        return <SidebarTooltip as="span" content={helpAria}>
-            {btn}
-          </SidebarTooltip>;
-      }
-      return btn;
-    };
-    return <div className={portalStyles.settingsSection} ref={langMenuRef} data-portal-guide="utilities">
-        <div className={portalStyles.settingsBtnRow} role="group" aria-label={t.themeAria}>
-          {renderThemeToggleBtn()}
-          {renderLangBtn()}
-          {renderHelpBtn()}
-        </div>
-      </div>;
+  const renderThemeToggleBtn = () => {
+    const btn = (
+      <button
+        type="button"
+        className={portalStyles.settingsSquareBtn}
+        onClick={toggleTheme}
+        aria-label={themeTooltip}
+      >
+        <Icon icon={themeMenuIcon} className={portalStyles.settingsSquareBtnIcon} aria-hidden />
+      </button>
+    );
+    if (showIconTooltip) {
+      return (
+        <SidebarTooltip as="span" content={themeTooltip}>
+          {btn}
+        </SidebarTooltip>
+      );
+    }
+    return btn;
+  };
+
+  const renderLangBtn = () => {
+    const btn = (
+      <button
+        type="button"
+        className={`${portalStyles.settingsSquareBtn} ${langMenuOpen ? portalStyles.settingsSquareBtnActive : ""}`.trim()}
+        onClick={() => {
+          setLangMenuOpen(open => !open);
+          closeUserMenu();
+        }}
+        aria-expanded={langMenuOpen}
+        aria-haspopup="listbox"
+        aria-label={t.languageAria}
+      >
+        <span className={portalStyles.settingsSquareBtnFlag} aria-hidden>
+          {currentLocale.flag}
+        </span>
+      </button>
+    );
+    if (showIconTooltip) {
+      return (
+        <SidebarTooltip as="span" content={t.languageTitle}>
+          {btn}
+        </SidebarTooltip>
+      );
+    }
+    return btn;
+  };
+
+  const renderHelpBtn = () => {
+    const helpAria = portalGuide.helpAria;
+    const btn = (
+      <button
+        type="button"
+        className={`${portalStyles.settingsSquareBtn} ${portalGuideOpen ? portalStyles.settingsSquareBtnActive : ""}`.trim()}
+        onClick={startPortalGuide}
+        aria-label={helpAria}
+      >
+        <span className={portalStyles.helpBtnLabel} aria-hidden>
+          ?
+        </span>
+      </button>
+    );
+    if (showIconTooltip) {
+      return (
+        <SidebarTooltip as="span" content={helpAria}>
+          {btn}
+        </SidebarTooltip>
+      );
+    }
+    return btn;
+  };
+
+  const renderAccountBtn = () => {
+    const btn = (
+      <button
+        type="button"
+        className={`${portalStyles.settingsSquareBtn} ${portalStyles.accountBtn} ${userMenuOpen ? portalStyles.settingsSquareBtnActive : ""} ${isProfileActive ? portalStyles.accountBtnActive : ""}`.trim()}
+        onClick={() => {
+          closeLangMenu();
+          setUserMenuOpen(o => !o);
+        }}
+        aria-expanded={userMenuOpen}
+        aria-haspopup="menu"
+        aria-label={t.accountMenuAria}
+      >
+        <UserAvatar user={user} name={user?.username || user?.email} size={28} variant="client" />
+      </button>
+    );
+    if (showIconTooltip) {
+      return (
+        <SidebarTooltip as="span" content={t.accountMenu}>
+          {btn}
+        </SidebarTooltip>
+      );
+    }
+    return btn;
   };
   return <>
       {isMobile && !showMenu ? <button type="button" className={sidebarStyles.burgerButton} onClick={() => setShowMenu(true)} aria-expanded={false} aria-label={t.openMenu || "Ouvrir le menu"}>
@@ -419,46 +467,50 @@ export default function ClientPortalSidebar({
 
             <div className={portalStyles.navSpacer} aria-hidden />
 
-            {renderPreferencesSection()}
-
-            <div className={sidebarStyles.userSection} ref={userMenuRef} data-portal-guide="account">
-              <div className={`${sidebarStyles.userMenuTriggerRow} ${isCollapsed && !isMobile ? sidebarStyles.userMenuTriggerRowCollapsed : ""}`}>
-                {showIconTooltip ? <SidebarTooltip as="span" content={t.accountMenu} className={sidebarStyles.userAvatarTooltipHost}>
-                    <button type="button" className={`${sidebarStyles.userAvatarButton} ${userMenuOpen ? sidebarStyles.userAvatarButtonOpen : ""} ${isProfileActive ? sidebarStyles.userAvatarButtonActive : ""}`} onClick={() => {
-                closeLangMenu();
-                setUserMenuOpen(o => !o);
-              }} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={t.accountMenuAria}>
-                      <UserAvatar user={user} name={user?.username || user?.email} size={32} variant="client" />
-                    </button>
-                  </SidebarTooltip> : <button type="button" className={`${sidebarStyles.userAvatarButton} ${userMenuOpen ? sidebarStyles.userAvatarButtonOpen : ""} ${isProfileActive ? sidebarStyles.userAvatarButtonActive : ""}`} onClick={() => {
-              closeLangMenu();
-              setUserMenuOpen(o => !o);
-            }} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={t.accountMenuAria}>
-                    <UserAvatar user={user} name={user?.username || user?.email} size={32} variant="client" />
-                  </button>}
-                {!isCollapsed && <button type="button" className={sidebarStyles.userMenuLabelButton} onClick={() => {
-              closeLangMenu();
-              setUserMenuOpen(o => !o);
-            }} aria-expanded={userMenuOpen} aria-haspopup="menu">
-                    <span className={sidebarStyles.userMenuLabelTitle}>{t.navProfile}</span>
-                    {user?.email ? <span className={sidebarStyles.userMenuLabelSubtitle} title={user.email}>
-                        {user.email}
-                      </span> : null}
-                  </button>}
+            <div className={`${sidebarStyles.sidebarFooter} ${portalStyles.portalFooter}`}>
+              <div className={portalStyles.settingsSection} data-portal-guide="utilities">
+                <div className={portalStyles.settingsBtnRow} role="group" aria-label={t.themeAria}>
+                  {renderThemeToggleBtn()}
+                  <span ref={langMenuRef} className={portalStyles.settingsBtnSlot}>
+                    {renderLangBtn()}
+                  </span>
+                  {renderHelpBtn()}
+                  <span ref={userMenuRef} className={portalStyles.settingsBtnSlot} data-portal-guide="account">
+                    {renderAccountBtn()}
+                  </span>
+                </div>
               </div>
 
-              {userMenuOpen && userMenuFixedStyle && createPortal(<div ref={userMenuDropdownRef} className={sidebarStyles.userMenuDropdown} style={userMenuFixedStyle} role="menu">
-                    <div className={sidebarStyles.userMenuDropdownTitle}>{t.accountMenu}</div>
-                    <button type="button" role="menuitem" className={`${sidebarStyles.userMenuItem} ${isProfileActive ? sidebarStyles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => navigate("/client/profile"))}>
-                      <Icon icon="mdi:account-circle-outline" className={sidebarStyles.userMenuItemIcon} />
-                      {t.navProfile}
-                    </button>
-                    <div className={sidebarStyles.userMenuDivider} role="separator" />
-                    <button type="button" role="menuitem" className={`${sidebarStyles.userMenuItem} ${sidebarStyles.userMenuItemDanger}`} onClick={() => runUserMenuAction(onLogout)}>
-                      <Icon icon="mingcute:exit-fill" className={sidebarStyles.userMenuItemIcon} />
-                      {t.logout}
-                    </button>
-                  </div>, document.body)}
+              {userMenuOpen && userMenuFixedStyle && createPortal(
+                <div ref={userMenuDropdownRef} className={sidebarStyles.userMenuDropdown} style={userMenuFixedStyle} role="menu">
+                  <div className={sidebarStyles.userMenuDropdownTitle}>{t.accountMenu}</div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`${sidebarStyles.userMenuItem} ${isProfileActive ? sidebarStyles.userMenuItemActive : ""}`}
+                    onClick={() => runUserMenuAction(() => navigate("/client/profile"))}
+                  >
+                    <Icon icon="mdi:account-circle-outline" className={sidebarStyles.userMenuItemIcon} />
+                    {t.navProfile}
+                  </button>
+                  {user?.email ? (
+                    <div className={portalStyles.userMenuEmail} title={user.email}>
+                      {user.email}
+                    </div>
+                  ) : null}
+                  <div className={sidebarStyles.userMenuDivider} role="separator" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`${sidebarStyles.userMenuItem} ${sidebarStyles.userMenuItemDanger}`}
+                    onClick={() => runUserMenuAction(onLogout)}
+                  >
+                    <Icon icon="mingcute:exit-fill" className={sidebarStyles.userMenuItemIcon} />
+                    {t.logout}
+                  </button>
+                </div>,
+                document.body
+              )}
             </div>
           </div>
         </motion.nav>}

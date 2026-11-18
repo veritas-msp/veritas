@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.15",
+    date: "2026-11-18",
+    highlights: [
+      "Portail client : sidebar revue (boutons bas alignés) et navigation mobile avec libellés.",
+      "Mise en page responsive sur tous les menus (paddings, onglets, KPI).",
+      "Tables portail (équipements, tickets, coffre, services) alignées sur le style UI kit / CRM agent."
+    ]
+  },
+  {
     version: "2.0.14",
     date: "2026-11-18",
     highlights: [

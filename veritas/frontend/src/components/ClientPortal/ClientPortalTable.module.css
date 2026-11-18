@@ -1,0 +1,147 @@
+/* Tables portail — alignées UI Kit / CRM agent (tableList) */
+
+.tablePanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+}
+
+.tableScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-family: var(--msp-font, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif);
+  font-size: 0.8125rem;
+  color: var(--msp-text, var(--portal-text, #0f1c2e));
+}
+
+.table thead {
+  background: var(--msp-surface-2, #f4f7fb);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.table th {
+  padding: 0.7rem 0.75rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--msp-muted, #5c6b82);
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #e8edf5) 85%, transparent);
+  background: var(--msp-surface-2, #f4f7fb);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.table th[aria-sort] {
+  cursor: pointer;
+  user-select: none;
+}
+
+.table th[aria-sort]:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.table tbody tr[role="link"] {
+  cursor: pointer;
+}
+
+.table td {
+  padding: 0.7rem 0.75rem;
+  min-height: 2.85rem;
+  height: 2.85rem;
+  box-sizing: border-box;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  border-bottom: 1px solid color-mix(in srgb, var(--msp-border-light, #eef2f7) 70%, transparent);
+  vertical-align: middle;
+  color: var(--msp-text, #0f1c2e);
+  background: var(--msp-surface, #ffffff);
+  transition: background 0.12s;
+}
+
+.table tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.table tbody tr:hover td,
+.table tbody tr:nth-child(even):hover td {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+:global(html.dark) .tablePanel {
+  border-color: var(--msp-border, #3d5478);
+  background: var(--msp-surface, #1f2d4a);
+  box-shadow: none;
+}
+
+:global(html.dark) .table thead,
+:global(html.dark) .table th {
+  background: var(--msp-surface-2, #162338);
+  color: var(--msp-muted, #9bb0c9);
+  border-bottom-color: var(--msp-border, #3d5478);
+}
+
+:global(html.dark) .table th[aria-sort]:hover {
+  color: #a8d4ff;
+}
+
+:global(html.dark) .table td {
+  background: var(--msp-surface, #1f2d4a);
+  color: var(--msp-text, #f0f4fa);
+  border-bottom-color: var(--msp-border-light, #2c3d5a);
+}
+
+:global(html.dark) .table tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2, #162338);
+}
+
+:global(html.dark) .table tbody tr:hover td,
+:global(html.dark) .table tbody tr:nth-child(even):hover td {
+  background: rgba(90, 157, 224, 0.12);
+}
+
+/* Cartes mobiles pour listes denses */
+@media (max-width: 767px) {
+  .tablePanel {
+    border-radius: 12px;
+  }
+
+  .tableScroll {
+    overflow-x: auto;
+  }
+
+  .table {
+    min-width: 640px;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.85rem 0.7rem;
+    min-height: 3rem;
+    height: auto;
+  }
+}

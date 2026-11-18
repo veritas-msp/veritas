@@ -4,7 +4,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import portalStyles from "./ClientDashboard.module.css";
-import tableStyles from "../TicketPage/TicketPage.module.css";
+import portalTable from "./ClientPortalTable.module.css";
 import listStyles from "./ClientDevicesListTab.module.css";
 import PortalTabBar from "./PortalTabBar";
 import ClientPortalTenantView from "./ClientPortalTenantView";
@@ -74,9 +74,9 @@ function ServiceTable({ columns, rows, emptyLabel }) {
     return <p className={listStyles.emptyCategory}>{emptyLabel}</p>;
   }
   return (
-    <div className={tableStyles.tablePanel}>
-      <div className={tableStyles.tableScroll}>
-        <table className={`${tableStyles.table} ${styles.serviceTable}`}>
+    <div className={portalTable.tablePanel}>
+      <div className={portalTable.tableScroll}>
+        <table className={`${portalTable.table} ${styles.serviceTable}`}>
           <thead>
             <tr>
               {columns.map(col => (

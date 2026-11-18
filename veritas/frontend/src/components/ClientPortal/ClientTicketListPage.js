@@ -7,7 +7,8 @@ import { fetchPortalTickets } from "../../api/clientPortalTickets";
 import { showError } from "../../utils/toast";
 import portalLayout from "./ClientDashboard.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import tableStyles from "../TicketPage/TicketPage.module.css";
+import ticketStyles from "../TicketPage/TicketPage.module.css";
+import portalTable from "./ClientPortalTable.module.css";
 import portalStyles from "./ClientPortalTickets.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
@@ -106,7 +107,7 @@ export default function ClientTicketListPage() {
   const totalCount = sortedTickets.length;
   const isSupervisor = dashboard?.portalRole === "supervisor";
   return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
-      <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
+      <div className={`${portalLayout.portalShell} ${ticketStyles.ticketShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}
           eyebrow={t.eyebrow}
@@ -115,7 +116,7 @@ export default function ClientTicketListPage() {
           icon="mdi:lifebuoy"
         />
 
-        {!loading ? <div className={tableStyles.kpiRow4}>
+        {!loading ? <div className={ticketStyles.kpiRow4}>
             {statusFilters.map(item => {
           const count = statusCounts[item.key] || 0;
           const active = filter === item.key;
@@ -131,9 +132,9 @@ export default function ClientTicketListPage() {
         })}
           </div> : null}
 
-        <div className={tableStyles.mainColumn}>
+        <div className={ticketStyles.mainColumn}>
           <UiKitCrmListToolbar
-            className={tableStyles.toolbarGrow}
+            className={ticketStyles.toolbarGrow}
             searchValue={search}
             onSearchChange={setSearch}
             onSearchClear={() => setSearch("")}
@@ -158,70 +159,70 @@ export default function ClientTicketListPage() {
                 <Icon icon="mdi:plus" aria-hidden />
                 {t.newTicket}
               </Link>
-            </div> : <div className={tableStyles.tablePanel}>
+            </div> : <div className={portalTable.tablePanel}>
               <UiKitScrollFadeShell
-                className={tableStyles.tableScroll}
+                className={portalTable.tableScroll}
                 deps={[sortedTickets.length, filter, search, sortBy, sortDirection]}
               >
-                <table className={tableStyles.table}>
+                <table className={portalTable.table}>
                   <thead>
                     <tr>
                       <th scope="col" aria-sort={getColumnAriaSort("ticket_number")} onClick={() => handleSort("ticket_number")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableId}
                           <SortIcon active={sortBy === "ticket_number"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("title")} onClick={() => handleSort("title")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableSubject}
                           <SortIcon active={sortBy === "title"} direction={sortDirection} />
                         </span>
                       </th>
                       {isSupervisor ? <th scope="col" aria-sort={getColumnAriaSort("requester_name")} onClick={() => handleSort("requester_name")}>
-                          <span className={tableStyles.thSortInner}>
+                          <span className={ticketStyles.thSortInner}>
                             {t.tableRequester}
                             <SortIcon active={sortBy === "requester_name"} direction={sortDirection} />
                           </span>
                         </th> : null}
                       <th scope="col" aria-sort={getColumnAriaSort("channel")} onClick={() => handleSort("channel")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableChannel}
                           <SortIcon active={sortBy === "channel"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("type")} onClick={() => handleSort("type")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableType}
                           <SortIcon active={sortBy === "type"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("status")} onClick={() => handleSort("status")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableStatus}
                           <SortIcon active={sortBy === "status"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("priority")} onClick={() => handleSort("priority")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tablePriority}
                           <SortIcon active={sortBy === "priority"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("created_at")} onClick={() => handleSort("created_at")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableCreated}
                           <SortIcon active={sortBy === "created_at"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("updated_at")} onClick={() => handleSort("updated_at")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableUpdated}
                           <SortIcon active={sortBy === "updated_at"} direction={sortDirection} />
                         </span>
                       </th>
                       <th scope="col" aria-sort={getColumnAriaSort("rating")} onClick={() => handleSort("rating")}>
-                        <span className={tableStyles.thSortInner}>
+                        <span className={ticketStyles.thSortInner}>
                           {t.tableRating}
                           <SortIcon active={sortBy === "rating"} direction={sortDirection} />
                         </span>
@@ -241,33 +242,33 @@ export default function ClientTicketListPage() {
                     }
                   }} role="link" aria-label={copy.formatOpenTicketAria(ticket.ticket_number || ticket.id)}>
                           <td>
-                            <span className={tableStyles.ticketIdCell}>
+                            <span className={ticketStyles.ticketIdCell}>
                               #{ticket.ticket_number || ticket.id}
                             </span>
                           </td>
                           <td>
-                            <span className={tableStyles.subjectCell}>
-                              <span className={tableStyles.subjectCellText}>
+                            <span className={ticketStyles.subjectCell}>
+                              <span className={ticketStyles.subjectCellText}>
                                 {ticket.title || copy.common.noTitle}
                               </span>
                             </span>
                           </td>
                           {isSupervisor ? <td>{ticket.requester_name || "—"}</td> : null}
                           <td>
-                            <span className={tableStyles.channelCell} title={channelMeta.label}>
-                              <Icon icon={channelMeta.icon} className={tableStyles.channelIcon} aria-hidden />
+                            <span className={ticketStyles.channelCell} title={channelMeta.label}>
+                              <Icon icon={channelMeta.icon} className={ticketStyles.channelIcon} aria-hidden />
                             </span>
                           </td>
                           <td>{copy.getTicketTypeLabel(ticket.type)}</td>
                           <td>
                             {actionBadge ? <span className={portalStyles.validationPendingBadge}>
                                 {actionBadge.label}
-                              </span> : <span className={tableStyles.statusBadge}>
+                              </span> : <span className={ticketStyles.statusBadge}>
                                 {copy.getTicketStatus(ticket.status)}
                               </span>}
                           </td>
                           <td>
-                            <span className={tableStyles.priorityIndicator} title={priorityVisual.label} aria-label={priorityVisual.label}>
+                            <span className={ticketStyles.priorityIndicator} title={priorityVisual.label} aria-label={priorityVisual.label}>
                               <Icon icon={priorityVisual.icon} aria-hidden />
                             </span>
                           </td>

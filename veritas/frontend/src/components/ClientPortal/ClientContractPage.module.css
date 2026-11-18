@@ -6,23 +6,39 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
+@media (max-width: 900px) {
+  .referentFacts,
+  .infoFacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   .referentFacts,
   .infoFacts {
     grid-template-columns: 1fr;
+  }
+
+  .optionChip {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .optionChipLabel {
+    max-width: none;
+    white-space: normal;
   }
 }
 
 .optionGroups {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 1.1rem;
 }
 
 .optionGroup {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0.65rem;
 }
 
 .optionGroupTitle {

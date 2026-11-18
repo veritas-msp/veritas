@@ -1,3 +1,13 @@
+.portalSidebar {
+  --sidebar-expanded-width: 240px;
+  --sidebar-drawer-width: 300px;
+  --sb-icon-inset: 10px;
+  --sb-util-btn-size: 36px;
+  --sb-util-gap: 8px;
+  width: 240px;
+  padding: 14px 12px 14px 10px;
+}
+
 .navBadge {
   margin-left: auto;
   flex-shrink: 0;
@@ -23,7 +33,9 @@
 .portalSidebar :global(.navList) {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
 }
 
 .portalSidebar .navLink {
@@ -49,43 +61,59 @@
   letter-spacing: 0;
 }
 
-.settingsSection {
+.navSpacer {
+  flex: 1;
+  min-height: 8px;
+}
+
+.portalFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 0;
   padding-top: 12px;
-  margin-top: 4px;
+  border-top: 1px solid var(--sb-separator, var(--msp-border-light, #b0bfd0));
+}
+
+.settingsSection {
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-}
-
-:global(.sidebarCollapsed) .settingsSection {
-  align-items: center;
+  width: 100%;
 }
 
 .settingsBtnRow {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 12px;
-  padding: 4px 2px 10px;
+  justify-content: flex-start;
+  gap: var(--sb-util-gap, 8px);
+  width: 100%;
+  padding: 0 var(--sb-icon-inset, 10px);
+  box-sizing: border-box;
 }
 
-:global(.sidebarCollapsed) .settingsBtnRow {
-  flex-direction: column;
+.settingsBtnSlot {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-}
-
-.portalSidebar :global(.userSection) {
-  padding-top: 12px;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--sb-util-btn-size, 36px);
+  height: var(--sb-util-btn-size, 36px);
+  line-height: 0;
 }
 
 .settingsSquareBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: var(--sb-util-btn-size, 36px);
+  height: var(--sb-util-btn-size, 36px);
   padding: 0;
+  margin: 0;
   border: 1px solid var(--sb-btn-border, var(--msp-border, var(--portal-border, #e4e8ee)));
   border-radius: 10px;
   background: var(--sb-btn-bg, var(--msp-surface-2, #f7f9fc));
@@ -93,6 +121,8 @@
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .settingsSquareBtn:hover {
@@ -108,13 +138,30 @@
   box-shadow: var(--sb-active-btn-shadow, 0 2px 8px rgba(43, 95, 171, 0.16));
 }
 
+.accountBtn {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  padding: 0;
+}
+
+.accountBtn:hover {
+  border-color: var(--msp-accent-dark, #1a3d75);
+  background: var(--msp-accent-dark, #1a3d75);
+  color: #fff;
+}
+
+.accountBtnActive {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
+}
+
 .settingsSquareBtnIcon {
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   flex-shrink: 0;
 }
 
 .settingsSquareBtnFlag {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   line-height: 1;
 }
 
@@ -122,6 +169,15 @@
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1;
+}
+
+.userMenuEmail {
+  padding: 0 14px 8px;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #9ca3af);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .langMenuDropdown {
@@ -178,18 +234,14 @@
   line-height: 1;
 }
 
-.navSpacer {
-  flex: 1;
-  min-height: 8px;
-}
-
 .contextFilters {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
-  padding: 0 2px;
+  padding: 0 var(--sb-icon-inset, 10px);
+  box-sizing: border-box;
 }
 
 .companySwitch {
@@ -267,4 +319,43 @@
   border-right: 4px solid transparent;
   border-top: 5px solid var(--sb-muted, #6e8098);
   pointer-events: none;
+}
+
+/* Drawer mobile : liste verticale avec libellés (pas la grille icônes agent) */
+.portalSidebar:global(.mobileSidebar) {
+  width: min(var(--sidebar-drawer-width, 300px), 88vw);
+  padding: 16px 14px 18px;
+}
+
+.portalSidebar:global(.mobileSidebar) :global(.navList) {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  gap: 6px;
+}
+
+.portalSidebar:global(.mobileSidebar) :global(.navItem) {
+  justify-content: flex-start !important;
+  padding: 10px 12px !important;
+  min-height: 44px;
+}
+
+.portalSidebar:global(.mobileSidebar) .navLabel {
+  display: inline !important;
+}
+
+.portalSidebar:global(.mobileSidebar) .settingsBtnRow {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 0 2px;
+}
+
+@media (max-width: 1023px) {
+  .portalSidebar:not(:global(.mobileSidebar)) {
+    width: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    overflow: hidden;
+  }
 }
