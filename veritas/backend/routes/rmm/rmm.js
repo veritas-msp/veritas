@@ -10,7 +10,7 @@ import { enableMonitoringAlertsForEquipment } from "../../utils/equipmentInvento
 import { isCommunity } from "../../utils/edition.js";
 import { requirePro } from "../../middleware/edition.js";
 import { agentMsiAvailable, streamWindowsSetupMsi, streamWindowsAgentUpdateMsi, WINDOWS_INSTALLER_VERSION, getWindowsInstallerFilenames, isAgentVersionOlderThan } from "../../utils/rmmAgentPackage.js";
-import { mergeRmmInventoryData } from "../../utils/rmmInventory.js";
+import { mergeRmmInventoryData, readRmmInventoryMode } from "../../utils/rmmInventory.js";
 import { fetchRmmMetricHistory, metricIdToName, recordRmmMetricsFromHeartbeat, resolveDimId, resolveMetricId, dimIdToDrive } from "../../utils/rmmMetrics.js";
 import { estimateRmmMetricsStorage, fetchRmmMetricsStorageStats } from "../../utils/rmmMetricsStorage.js";
 import { maybeLogRmmAgentVersionChange, logRmmHeartbeatActivity, logRmmAgentEquipmentActivity } from "../../utils/rmmEquipmentLog.js";
@@ -526,6 +526,11 @@ router.get("/agent/commands", verifyAgentAuth, async (req, res) => {
     const syncRequestedAt = req.agent?.config?.syncRequestedAt || null;
     const updateRequestedAt = req.agent?.config?.updateRequestedAt || null;
     const heartbeatRequestedAt = req.agent?.config?.heartbeatRequestedAt || null;
+    pool.query(`UPDATE v_b_rmm_agents
+       SET last_seen_at = NOW(), updated_at = NOW()
+       WHERE id = $1`, [req.agent.id]).catch(err => {
+      console.error("[rmm] command poll last_seen:", err.message);
+    });
     const settings = await fetchRmmSettingsForAgent(req.agent);
     const agentVersion = req.agent?.agent_version || null;
     const updateNeeded = isAgentVersionOlderThan(agentVersion, WINDOWS_INSTALLER_VERSION);
@@ -565,6 +570,8 @@ router.post("/heartbeat", verifyAgentAuth, async (req, res) => {
        WHERE id = $3`, [agentVersion || null, hostname || null, agent.id]);
     let equipmentId = agent.ordinateur_id || agent.serveur_id || null;
     let logEquipmentName = resolvedHostname;
+    const inventoryMode = readRmmInventoryMode(inventory);
+    const acceptedFullSync = inventoryMode === "full";
     const syncRequested = Boolean(agent.config?.syncRequestedAt);
     const updateRequested = Boolean(agent.config?.updateRequestedAt);
     const heartbeatRequested = Boolean(agent.config?.heartbeatRequestedAt);
@@ -608,7 +615,7 @@ router.post("/heartbeat", verifyAgentAuth, async (req, res) => {
       } catch (metricsErr) {
         console.error("[rmm] metrics:", metricsErr.message);
       }
-      if (inventory.inventoryMode === "full") {
+      if (acceptedFullSync) {
         await pool.query(`UPDATE v_b_rmm_agents
            SET config = COALESCE(config, '{}'::jsonb) - 'syncRequestedAt',
                updated_at = NOW()
@@ -628,7 +635,7 @@ router.post("/heartbeat", verifyAgentAuth, async (req, res) => {
              updated_at = NOW()
          WHERE id = $1 AND (config ? 'updateRequestedAt')`, [agent.id]);
     }
-    const fullSyncRequested = syncRequested;
+    const fullSyncRequested = syncRequested && !acceptedFullSync;
     const forceUpdateRequested = updateRequested && isAgentVersionOlderThan(agentVersion || previousVersion, WINDOWS_INSTALLER_VERSION);
     res.json({
       ok: true,

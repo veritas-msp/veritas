@@ -260,7 +260,15 @@ public sealed class AgentWorker : BackgroundService
 
                 _logger.LogInformation("Full sync requested via command poll — running immediately");
                 WriteEvent("Full sync requested (command poll)");
-                await RunFullSyncAsync(config, ct);
+                try
+                {
+                    await RunFullSyncAsync(config, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogWarning(ex, "Full sync failed");
+                    WriteEvent($"Full sync failed: {ex.Message}", EventLogEntryType.Warning);
+                }
                 // Resume normal heartbeat cadence on the next loop iteration.
                 return;
             }

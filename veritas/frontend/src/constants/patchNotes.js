@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.18",
+    date: "2026-11-19",
+    highlights: [
+      "Fiche entreprise : scroll vertical dans les tables de périphériques (barre d’outils et pagination restent visibles).",
+      "Sync RMM : message clair si l’agent est hors ligne ; inventaire agent plus résilient (collecteurs isolés, timeout WMI).",
+      "Backend RMM : détection du mode d’inventaire normalisée et last_seen mis à jour au poll des commandes."
+    ]
+  },
+  {
     version: "2.0.17",
     date: "2026-11-19",
     highlights: [

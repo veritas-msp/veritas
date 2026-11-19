@@ -28,7 +28,8 @@ export function repairRmmTextEncoding(value) {
     tryDecode("utf-8");
     tryDecode("windows-1252");
   }
-  return repairOsAccentLookalikes(repairKnownWindowsOsWords(best));
+  const repaired = repairOsAccentLookalikes(repairKnownWindowsOsWords(best));
+  return typeof repaired === "string" ? repaired.replace(/\u0000/g, "") : repaired;
 }
 function repairOsAccentLookalikes(text) {
   if (typeof text !== "string" || !text) return text;

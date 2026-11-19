@@ -3399,14 +3399,20 @@
 .mainColumnMap .mapTabStack {
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
   gap: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .mainColumnMap .mapUnifiedCard {
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .mainColumnMap .mapEquipmentSection {
@@ -3425,7 +3431,8 @@
   flex-direction: column;
 }
 
-.mainColumnMap .panel[data-guide="enterprise-equipment"] {
+.mainColumnMap .panel[data-guide="enterprise-equipment"],
+.mainColumnMap .mapEquipmentSection[data-guide="enterprise-equipment"] {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
@@ -3433,7 +3440,8 @@
   overflow: hidden;
 }
 
-.mainColumnMap .panel[data-guide="enterprise-equipment"] .panelBody {
+.mainColumnMap .panel[data-guide="enterprise-equipment"] .panelBody,
+.mainColumnMap .mapEquipmentSection[data-guide="enterprise-equipment"] .panelBody {
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;

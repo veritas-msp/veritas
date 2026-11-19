@@ -462,7 +462,8 @@ export default function EquipmentDetailPage({
       syncConfirmedOnAgentRef.current = false;
       setSyncRequestOverride(syncAt);
       onUpdate?.(patchEquipmentRmmSyncRequest(equipment, syncAt));
-      toast.success(agentSupportsImmediateFullSync(equipment) ? copy.toasts.fullSyncRequestedFast : (() => {
+      const agentOffline = resolveRmmAgentOnline(equipmentWithRmmLive) === false;
+      toast.success(agentOffline ? copy.toasts.fullSyncRequestedOffline : agentSupportsImmediateFullSync(equipment) ? copy.toasts.fullSyncRequestedFast : (() => {
         const expectedLabel = formatRmmExpectedCollectionLabel(equipment, rmmHeartbeatMinutes, {
           withAbsolute: false
         });
@@ -2048,7 +2049,7 @@ export default function EquipmentDetailPage({
       {rmmManaged && rmmSyncPending ? (
         <RmmSyncPendingNotice
           variant="float"
-          equipment={equipment}
+          equipment={equipmentWithRmmLive}
           syncRequestedAt={rmmSyncRequestedAt}
           heartbeatIntervalMinutes={rmmHeartbeatMinutes}
           onCancel={handleRmmCancelSync}
@@ -2132,7 +2133,7 @@ export default function EquipmentDetailPage({
                   {rmmManaged && rmmSyncPending ? (
                     <RmmSyncPendingNotice
                       variant="hero"
-                      equipment={equipment}
+                      equipment={equipmentWithRmmLive}
                       syncRequestedAt={rmmSyncRequestedAt}
                       heartbeatIntervalMinutes={rmmHeartbeatMinutes}
                     />

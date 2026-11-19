@@ -84,6 +84,7 @@
 
 .hardwarePageEmbedded .paginationEmbedded {
   flex: 0 0 auto;
+  margin-top: 0.35rem;
 }
 
 /* Enterprise cartographie: force fill + scroll inside table body */
@@ -104,17 +105,40 @@
 }
 
 .hardwarePageEmbeddedFill .tablesContainerEmbedded {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   height: 100%;
   overflow: hidden;
 }
 
 .hardwarePageEmbeddedFill .tablesContainerEmbeddedSidebar {
+  display: grid;
   grid-template-columns: minmax(10.5rem, 12.5rem) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
+}
+
+/* Portal / passthrough : vrai flex box (pas display:contents) pour borner la hauteur
+   et permettre le scroll Y du viewport UiKit. */
+.hardwarePageEmbeddedFill .embeddedMainPassthrough {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hardwarePageEmbeddedFill .embeddedMainPassthrough > .embeddedFilterBar,
+.hardwarePageEmbeddedFill .embeddedMainPassthrough > .embeddedFilterBarToolbar {
+  flex: 0 0 auto;
+}
+
+.hardwarePageEmbeddedFill .embeddedMainPassthrough > .equipmentTableSectionEmbedded {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 /* Mode sidebar : scrollbar collée au bord (pas de gouttière / padding blanc) */
@@ -401,21 +425,29 @@
 }
 
 .hardwarePageEmbeddedFill .equipmentTableSectionEmbedded {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
   min-height: 0;
   height: 100%;
   overflow: hidden;
+  gap: 0;
 }
 
 /* Shell table UI Kit (fiche entreprise / embedded) */
 .equipmentUiKitTable {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.equipmentUiKitTable :global([class*="tableShell"]) {
+.equipmentUiKitTable :global([class*="tableShell"]),
+.equipmentUiKitTable :global([class*="scrollShell"]) {
+  flex: 1 1 0;
+  min-height: 0;
   height: 100%;
   max-height: none;
 }
@@ -2131,8 +2163,11 @@
 
 /* Scroll masqué — fondu bas via .tableScrollFade */
 
-.hardwarePageEmbeddedFill .equipmentTableSectionEmbedded > .tableScrollShell {
+.hardwarePageEmbeddedFill .equipmentTableSectionEmbedded > .tableScrollShell,
+.hardwarePageEmbeddedFill .equipmentTableSectionEmbedded > .equipmentUiKitTable {
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 :global(html.dark) .tableScrollShell,

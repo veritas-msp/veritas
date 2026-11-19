@@ -523,7 +523,8 @@ export function RmmSyncPendingNotice({
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
   const syncCopy = copy.rmm.syncPending;
-  const immediate = agentSupportsImmediateFullSync(equipment);
+  const agentOffline = resolveRmmAgentOnline(equipment) === false;
+  const immediate = !agentOffline && agentSupportsImmediateFullSync(equipment);
   const [expectedCollectionLabel, setExpectedCollectionLabel] = useState(() => !immediate && equipment ? formatRmmExpectedCollectionLabel(equipment, heartbeatIntervalMinutes, {
     withAbsolute: false
   }) : null);
@@ -540,7 +541,7 @@ export function RmmSyncPendingNotice({
     return () => clearInterval(interval);
   }, [equipment, heartbeatIntervalMinutes, immediate]);
   const whenLabel = syncRequestedAt ? formatEquipmentDetailRelative(syncRequestedAt, locale) : null;
-  const detailHint = immediate ? syncCopy.bannerDetailFast : expectedCollectionLabel ? interpolate(syncCopy.bannerDetailLegacyWithCollection, {
+  const detailHint = agentOffline ? syncCopy.bannerDetailOffline : immediate ? syncCopy.bannerDetailFast : expectedCollectionLabel ? interpolate(syncCopy.bannerDetailLegacyWithCollection, {
     when: expectedCollectionLabel
   }) : syncCopy.bannerDetailLegacy;
   const detailTitle = [immediate ? syncCopy.bannerDetailFast : equipment ? `${formatRmmExpectedCollectionLabel(equipment, heartbeatIntervalMinutes)}` : null, syncRequestedAt ? `${formatRmmDateTime(syncRequestedAt)}` : null].filter(Boolean).join("\n");

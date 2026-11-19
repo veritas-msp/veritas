@@ -42,22 +42,36 @@ public sealed class InventoryCollector
             return LightCollectors.Contains(key);
         }
 
-        if (Include("os")) CollectOs(inventory);
-        if (Include("domain")) CollectDomain(inventory);
-        if (Include("session")) CollectSession(inventory);
-        if (Include("network")) CollectNetwork(inventory, isFull);
-        if (Include("chassis")) CollectChassis(inventory);
-        if (Include("hardware")) CollectHardware(inventory, isFull);
-        if (Include("updates")) CollectUpdates(inventory, isFull);
-        if (Include("license")) CollectLicense(inventory);
-        if (Include("performance")) CollectPerformance(inventory);
-        if (Include("sensors")) CollectSensors(inventory);
-        if (Include("security")) CollectSecurity(inventory);
-        if (isFull && Include("printers")) CollectPrinters(inventory);
-        if (isFull && Include("shares")) CollectShares(inventory);
-        if (isFull && Include("services")) CollectServices(inventory);
-        if (isFull && Include("peripherals")) CollectPeripherals(inventory);
-        if (isFull && Include("software")) CollectSoftware(inventory);
+        void TryCollect(string key, Action collect, bool fullOnly = false)
+        {
+            if (fullOnly && !isFull) return;
+            if (!Include(key)) return;
+            try
+            {
+                collect();
+            }
+            catch
+            {
+                // one collector must not abort the inventory post
+            }
+        }
+
+        TryCollect("os", () => CollectOs(inventory));
+        TryCollect("domain", () => CollectDomain(inventory));
+        TryCollect("session", () => CollectSession(inventory));
+        TryCollect("network", () => CollectNetwork(inventory, isFull));
+        TryCollect("chassis", () => CollectChassis(inventory));
+        TryCollect("hardware", () => CollectHardware(inventory, isFull));
+        TryCollect("updates", () => CollectUpdates(inventory, isFull));
+        TryCollect("license", () => CollectLicense(inventory));
+        TryCollect("performance", () => CollectPerformance(inventory));
+        TryCollect("sensors", () => CollectSensors(inventory));
+        TryCollect("security", () => CollectSecurity(inventory));
+        TryCollect("printers", () => CollectPrinters(inventory), fullOnly: true);
+        TryCollect("shares", () => CollectShares(inventory), fullOnly: true);
+        TryCollect("services", () => CollectServices(inventory), fullOnly: true);
+        TryCollect("peripherals", () => CollectPeripherals(inventory), fullOnly: true);
+        TryCollect("software", () => CollectSoftware(inventory), fullOnly: true);
 
         return inventory;
     }
@@ -660,24 +674,51 @@ public sealed class InventoryCollector
         }
     }
 
+    private static readonly TimeSpan WmiQueryTimeout = TimeSpan.FromSeconds(12);
+
     private static List<ManagementObject> QueryObjects(string wql) => QueryObjects(null, wql);
 
+    /// <summary>
+    /// WMI queries (Win32_Printer, licensing, USB) can ignore the searcher timeout and block the service.
+    /// Abandon the call after WmiQueryTimeout so a full sync can still be posted.
+    /// </summary>
     private static List<ManagementObject> QueryObjects(string? scope, string wql)
     {
-        var list = new List<ManagementObject>();
+        var done = new TaskCompletionSource<List<ManagementObject>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var thread = new Thread(() =>
+        {
+            var list = new List<ManagementObject>();
+            try
+            {
+                using var searcher = string.IsNullOrWhiteSpace(scope)
+                    ? new ManagementObjectSearcher(wql)
+                    : new ManagementObjectSearcher(scope, wql);
+                searcher.Options.Timeout = WmiQueryTimeout;
+                searcher.Options.ReturnImmediately = true;
+                foreach (ManagementObject obj in searcher.Get())
+                    list.Add(obj);
+                done.TrySetResult(list);
+            }
+            catch (Exception ex)
+            {
+                done.TrySetException(ex);
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "VeritasWmiQuery"
+        };
+        thread.Start();
+        if (!done.Task.Wait(WmiQueryTimeout + TimeSpan.FromSeconds(3)))
+            return new List<ManagementObject>();
         try
         {
-            using var searcher = string.IsNullOrWhiteSpace(scope)
-                ? new ManagementObjectSearcher(wql)
-                : new ManagementObjectSearcher(scope, wql);
-            foreach (ManagementObject obj in searcher.Get())
-                list.Add(obj);
+            return done.Task.Result;
         }
         catch
         {
-            // collector best-effort
+            return new List<ManagementObject>();
         }
-        return list;
     }
 
     private static string? Str(ManagementBaseObject? obj, string prop)

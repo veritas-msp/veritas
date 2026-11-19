@@ -343,6 +343,11 @@ function preserveUserSiteFields(merged, existingData = {}) {
   }
 }
 const AGENT_SYNC_REQUEST_KEYS = ["syncRequestedAt", "sync_requested_at", "Sync_requested_at", "SyncRequestedAt"];
+export function readRmmInventoryMode(inventory) {
+  if (!inventory || typeof inventory !== "object") return "";
+  const raw = inventory.inventoryMode ?? inventory.InventoryMode ?? inventory.inventory_mode ?? "";
+  return String(raw).trim().toLowerCase();
+}
 function stripAgentSyncRequestFields(data = {}) {
   if (!data || typeof data !== "object") return;
   for (const key of AGENT_SYNC_REQUEST_KEYS) {
@@ -350,7 +355,7 @@ function stripAgentSyncRequestFields(data = {}) {
   }
 }
 export function mergeRmmInventoryData(existingData = {}, inventory = {}, meta = {}, collectors = {}) {
-  const isLight = inventory.inventoryMode === "light";
+  const isLight = readRmmInventoryMode(inventory) === "light";
   const netbios = resolveRmmNetbiosName(inventory, meta, existingData);
   let merged;
   if (isLight) {

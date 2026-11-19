@@ -1,3 +1,4 @@
+import { readRmmInventoryMode } from "./rmmInventory.js";
 export function normalizeRmmAgentVersion(value) {
   if (value == null || value === "") return null;
   const normalized = String(value).trim();
@@ -183,7 +184,7 @@ export async function logRmmHeartbeatActivity(pool, {
   machineId = null,
   syncRequested = false
 }) {
-  const mode = inventory.inventoryMode === "full" ? "full" : "light";
+  const mode = readRmmInventoryMode(inventory) === "full" ? "full" : "light";
   const isFullSync = mode === "full";
   const summary = summarizeRmmInventoryForLog(inventory);
   if (isFullSync) {

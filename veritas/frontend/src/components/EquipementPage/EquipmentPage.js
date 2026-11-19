@@ -3994,6 +3994,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                     <UiKitTable
                       fill
                       className={styles.equipmentUiKitTable}
+                      fadeTopInset={embedded ? "2.85rem" : null}
                       deps={[visibleList.length, tableSort[type]?.key, tableSort[type]?.direction, getTablePage(type), pageSize, columns.map(col => col.key).join("|")]}
                     >
                       <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
@@ -4513,6 +4514,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   <UiKitTable
                     fill
                     className={styles.equipmentUiKitTable}
+                    fadeTopInset="2.85rem"
                     deps={[pagedList.length, tableSort[sectionKey]?.key, tableSort[sectionKey]?.direction, getTablePage(sectionKey), pageSize, customColumns.map(col => col.id).join("|")]}
                   >
                     <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
