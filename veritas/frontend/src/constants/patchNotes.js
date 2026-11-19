@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.19",
+    date: "2026-11-19",
+    highlights: [
+      "Rapport d’intervention : interface épurée (sans cartes imbriquées), tables opérations / matériel en lignes éditables, aperçu à droite en validation.",
+      "Audit d’infrastructure : constats techniques décomposés en sous-sections (état, photos, constats ciblés) avec scroll corrigé."
+    ]
+  },
+  {
     version: "2.0.18",
     date: "2026-11-19",
     highlights: [

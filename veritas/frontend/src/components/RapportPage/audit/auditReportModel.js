@@ -1,6 +1,8 @@
 import {
   AUDIT_BUILDER_STEP_KEYS,
   AUDIT_FINDING_SEVERITIES,
+  AUDIT_SECTION_SUBSECTION_KEYS,
+  AUDIT_SUBSECTION_STATUSES,
   AUDIT_SUBTYPE_IDS,
   AUDIT_SUBTYPE_SECTION_KEYS
 } from "./auditReportConstants";
@@ -9,6 +11,8 @@ import { serializeInterventionClient } from "../intervention/interventionReportM
 function uid(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+const MAX_SECTION_IMAGES = 8;
 
 export function formatClientAddress(client) {
   if (!client || typeof client !== "object") return "";
@@ -30,6 +34,33 @@ export function createFinding({ title = "", severity = "info", detail = "" } = {
   };
 }
 
+export function createSectionImage({ dataUrl = "", name = "", caption = "" } = {}) {
+  return {
+    id: uid("img"),
+    dataUrl,
+    name,
+    caption
+  };
+}
+
+export function createSubsection({
+  key = "",
+  title = "",
+  content = "",
+  status = "",
+  images = []
+} = {}) {
+  const safeStatus = AUDIT_SUBSECTION_STATUSES.includes(status) ? status : "";
+  return {
+    id: uid("sub"),
+    key: key || "",
+    title,
+    content,
+    status: safeStatus,
+    images: normalizeImages(images)
+  };
+}
+
 export function createActionItem({ title = "", priority = "medium", owner = "", dueDate = "", detail = "" } = {}) {
   return {
     id: uid("action"),
@@ -41,11 +72,31 @@ export function createActionItem({ title = "", priority = "medium", owner = "", 
   };
 }
 
-export function createSection(key, title = "") {
+function defaultSubsectionsForSection(sectionKey, copy) {
+  const keys = AUDIT_SECTION_SUBSECTION_KEYS[sectionKey];
+  const titles = copy?.subsectionTitles || {};
+  if (Array.isArray(keys) && keys.length) {
+    return keys.map(key =>
+      createSubsection({
+        key,
+        title: titles[key] || key
+      })
+    );
+  }
+  return [
+    createSubsection({
+      key: "overview",
+      title: copy?.fields?.subsectionDefaultTitle || "Détail"
+    })
+  ];
+}
+
+export function createSection(key, title = "", copy = null) {
   return {
     key,
     title,
     content: "",
+    subsections: defaultSubsectionsForSection(key, copy),
     findings: []
   };
 }
@@ -66,7 +117,7 @@ export function getAuditBuilderSteps(subtypeId, copy) {
 export function buildSectionsForSubtype(subtypeId, copy) {
   const keys = AUDIT_SUBTYPE_SECTION_KEYS[subtypeId] || AUDIT_SUBTYPE_SECTION_KEYS[AUDIT_SUBTYPE_IDS.INFRASTRUCTURE];
   const titles = copy?.sectionTitles || {};
-  return keys.map(key => createSection(key, titles[key] || key));
+  return keys.map(key => createSection(key, titles[key] || key, copy));
 }
 
 export function buildDefaultAuditData({
@@ -127,6 +178,72 @@ function normalizeFindings(list) {
   }));
 }
 
+function normalizeImages(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter(item => item && String(item.dataUrl || "").trim())
+    .slice(0, MAX_SECTION_IMAGES)
+    .map((item, index) => ({
+      ...createSectionImage({
+        dataUrl: item.dataUrl || "",
+        name: item.name || "",
+        caption: item.caption || ""
+      }),
+      id: item.id || uid("img")
+    }));
+}
+
+function normalizeSubsections(list, sectionKey, copy) {
+  const defaults = defaultSubsectionsForSection(sectionKey, copy);
+  if (!Array.isArray(list) || !list.length) {
+    // Migration : ancienne section avec seulement `content` → première sous-section
+    return defaults;
+  }
+  const byKey = new Map(
+    list.filter(item => item?.key).map(item => [item.key, item])
+  );
+  const merged = defaults.map(def => {
+    const existing = byKey.get(def.key);
+    if (!existing) return def;
+    return {
+      ...createSubsection({
+        key: def.key,
+        title: existing.title || def.title,
+        content: existing.content || "",
+        status: existing.status || "",
+        images: existing.images
+      }),
+      id: existing.id || def.id
+    };
+  });
+  list.forEach(item => {
+    if (!item) return;
+    if (item.key && defaults.some(def => def.key === item.key)) return;
+    merged.push({
+      ...createSubsection({
+        key: item.key || "",
+        title: item.title || copy?.fields?.subsectionCustomTitle || "Sous-section",
+        content: item.content || "",
+        status: item.status || "",
+        images: item.images
+      }),
+      id: item.id || uid("sub")
+    });
+  });
+  return merged;
+}
+
+function migrateLegacySectionContent(section, subsections) {
+  const legacy = String(section?.content || "").trim();
+  if (!legacy) return subsections;
+  const first = subsections[0];
+  if (!first) return subsections;
+  if (String(first.content || "").trim()) return subsections;
+  return subsections.map((sub, index) =>
+    index === 0 ? { ...sub, content: legacy } : sub
+  );
+}
+
 function normalizeActionPlan(list) {
   if (!Array.isArray(list) || !list.length) return [createActionItem()];
   return list.map(item => ({
@@ -148,10 +265,15 @@ function normalizeSections(list, subtypeId, copy) {
   const merged = defaults.map(def => {
     const existing = byKey.get(def.key);
     if (!existing) return def;
+    const subsections = migrateLegacySectionContent(
+      existing,
+      normalizeSubsections(existing.subsections, def.key, copy)
+    );
     return {
       ...def,
       title: existing.title || def.title,
       content: existing.content || "",
+      subsections,
       findings: normalizeFindings(existing.findings)
     };
   });
@@ -161,20 +283,24 @@ function normalizeSections(list, subtypeId, copy) {
       key: section.key,
       title: section.title || section.key,
       content: section.content || "",
+      subsections: migrateLegacySectionContent(
+        section,
+        normalizeSubsections(section.subsections, section.key, copy)
+      ),
       findings: normalizeFindings(section.findings)
     });
   });
   return merged;
 }
 
-export function mergeAuditData(defaults, initial) {
+export function mergeAuditData(defaults, initial, copy = null) {
   if (!initial || typeof initial !== "object") return defaults;
   const subtypeId = initial.subtypeId || defaults.subtypeId;
   return {
     ...defaults,
     ...initial,
     subtypeId,
-    sections: normalizeSections(initial.sections, subtypeId, null),
+    sections: normalizeSections(initial.sections, subtypeId, copy),
     actionPlan: normalizeActionPlan(initial.actionPlan)
   };
 }
@@ -189,6 +315,10 @@ export function rebuildSectionsKeepingContent(data, subtypeId, copy) {
     return {
       ...def,
       content: existing.content || "",
+      subsections: migrateLegacySectionContent(
+        existing,
+        normalizeSubsections(existing.subsections, def.key, copy)
+      ),
       findings: normalizeFindings(existing.findings)
     };
   });
@@ -204,7 +334,19 @@ export function validateAuditStep(stepKey, data) {
     case AUDIT_BUILDER_STEP_KEYS.OBJECT:
       return Boolean(String(data.objectText || "").trim());
     case AUDIT_BUILDER_STEP_KEYS.SECTIONS:
-      return Array.isArray(data.sections) && data.sections.some(section => String(section?.content || "").trim() || (section?.findings || []).some(f => String(f?.title || "").trim()));
+      return (
+        Array.isArray(data.sections) &&
+        data.sections.some(section => {
+          const hasContent = String(section?.content || "").trim();
+          const hasSub = (section?.subsections || []).some(
+            sub =>
+              String(sub?.content || "").trim() ||
+              (Array.isArray(sub?.images) && sub.images.length > 0)
+          );
+          const hasFinding = (section?.findings || []).some(f => String(f?.title || "").trim());
+          return hasContent || hasSub || hasFinding;
+        })
+      );
     case AUDIT_BUILDER_STEP_KEYS.SYNTHESIS:
       return Boolean(String(data.synthesis || "").trim());
     case AUDIT_BUILDER_STEP_KEYS.ACTION_PLAN:
@@ -266,6 +408,14 @@ function serializeAuditPayload(payload) {
           key: section.key,
           title: section.title || "",
           content: section.content || "",
+          subsections: (Array.isArray(section.subsections) ? section.subsections : []).map(sub => ({
+            id: sub.id || uid("sub"),
+            key: sub.key || "",
+            title: sub.title || "",
+            content: sub.content || "",
+            status: AUDIT_SUBSECTION_STATUSES.includes(sub.status) ? sub.status : "",
+            images: normalizeImages(sub.images)
+          })),
           findings: normalizeFindings(section.findings)
         }))
       : [],

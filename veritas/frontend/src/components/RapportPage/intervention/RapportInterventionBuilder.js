@@ -1041,7 +1041,7 @@ export default function ReportInterventionBuilder({
   );
 
   const renderOperationsStep = () => (
-    <div className={formStyles.formStack}>
+    <div className={`${formStyles.formStack} ${formStyles.formStackFill}`.trim()}>
       <div className={styles.opsMatColumns}>
         <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill} ${styles.opsMatPanel}`.trim()}>
           <header className={formStyles.sectionHead}>
@@ -1071,13 +1071,13 @@ export default function ReportInterventionBuilder({
                   {opsCopy.observations}
                 </span>
                 <span className={`${styles.operationsHeadStatus} ${styles.statusOk}`} role="columnheader" title={opsCopy.statusOk}>
-                  {opsCopy.statusOk}
+                  OK
                 </span>
                 <span className={styles.operationsHeadStatus} role="columnheader" title={opsCopy.statusPending}>
-                  Att.
+                  ANL
                 </span>
                 <span className={`${styles.operationsHeadStatus} ${styles.statusPb}`} role="columnheader" title={opsCopy.statusKo}>
-                  {opsCopy.statusKo}
+                  KO
                 </span>
                 <span className={styles.operationsHeadStatus} role="columnheader" aria-hidden>
                   {" "}
@@ -1127,7 +1127,7 @@ export default function ReportInterventionBuilder({
                           })
                         }
                       >
-                        {option.value === "ok" ? "OK" : option.value === "pending" ? "Att." : "KO"}
+                        {option.value === "ok" ? "OK" : option.value === "pending" ? "ANL" : "KO"}
                       </button>
                     ))}
                     <button
@@ -1293,7 +1293,7 @@ export default function ReportInterventionBuilder({
   );
 
   const renderRemarksStep = () => (
-    <div className={formStyles.formStack}>
+    <div className={`${formStyles.formStack} ${formStyles.formStackFill}`.trim()}>
       <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill} ${styles.remarksFill}`.trim()}>
         <header className={formStyles.sectionHead}>
           <h3 className={formStyles.sectionTitle}>{rem.title}</h3>
@@ -1598,7 +1598,9 @@ export default function ReportInterventionBuilder({
                 </span>
               </div>
 
-              <div className={styles.formBody}>{renderStepContent()}</div>
+              <div className={stepIndex === 3 ? styles.validationBody : styles.formBody}>
+                {renderStepContent()}
+              </div>
 
               {stepIndex < 3 ? (
                 <div className={shellStyles.stepActions}>

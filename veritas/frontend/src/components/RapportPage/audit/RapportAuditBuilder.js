@@ -19,13 +19,19 @@ import ReportValidationLayout, {
 } from "../ReportValidationLayout";
 import InterventionSaveModal from "../intervention/InterventionSaveModal";
 import { getAuditReportCopy } from "./auditReportI18n";
-import { AUDIT_BUILDER_STEP_KEYS, AUDIT_FINDING_SEVERITIES } from "./auditReportConstants";
+import {
+  AUDIT_BUILDER_STEP_KEYS,
+  AUDIT_FINDING_SEVERITIES,
+  AUDIT_SUBSECTION_STATUSES
+} from "./auditReportConstants";
 import {
   buildAuditReportPeriod,
   buildDefaultAuditData,
   buildDefaultAuditSaveName,
   createActionItem,
   createFinding,
+  createSectionImage,
+  createSubsection,
   getAuditBuilderSteps,
   isDuplicateMonitoringSaveResult,
   mergeAuditData,
@@ -34,13 +40,17 @@ import {
 } from "./auditReportModel";
 import styles from "./RapportAuditBuilder.module.css";
 
-function Field({ label, children, full = false, required = false }) {
+const MAX_SUBSECTION_IMAGES = 8;
+const MAX_IMAGE_BYTES = 2.5 * 1024 * 1024;
+
+function Field({ label, children, full = false, required = false, hint = null }) {
   return (
     <label className={`${formStyles.field} ${full ? formStyles.formGridFull : ""}`.trim()}>
       <span className={formStyles.fieldLabel}>
         {label}
         {required ? <span className={formStyles.requiredMark} aria-hidden>*</span> : null}
       </span>
+      {hint ? <span className={formStyles.fieldHint}>{hint}</span> : null}
       {children}
     </label>
   );
@@ -84,19 +94,17 @@ export default function RapportAuditBuilder({
   );
   const steps = useMemo(() => getAuditBuilderSteps(subtypeId, auditCopy), [subtypeId, auditCopy]);
   const [stepIndex, setStepIndex] = useState(0);
-  const [formData, setFormData] = useState(() =>
-    mergeAuditData(
-      buildDefaultAuditData({
-        client,
-        subtypeId,
-        organizationName: settings?.app_organization_name || "",
-        organizationAddress: settings?.app_organization_address || "",
-        authorName: settings?.app_default_author || "",
-        copy: auditCopy
-      }),
-      initialData
-    )
-  );
+  const [formData, setFormData] = useState(() => {
+    const defaults = buildDefaultAuditData({
+      client,
+      subtypeId,
+      organizationName: settings?.app_organization_name || "",
+      organizationAddress: settings?.app_organization_address || "",
+      authorName: settings?.app_default_author || "",
+      copy: auditCopy
+    });
+    return mergeAuditData(defaults, initialData, auditCopy);
+  });
   const [saveName, setSaveName] = useState(documentName || "");
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -136,6 +144,46 @@ export default function RapportAuditBuilder({
       )
     }));
   };
+
+  const patchSubsection = (sectionKey, subsectionId, updater) => {
+    patchSection(sectionKey, current => ({
+      ...current,
+      subsections: (current.subsections || []).map(sub =>
+        sub.id === subsectionId ? updater(sub) : sub
+      )
+    }));
+  };
+
+  const statusLabel = status => {
+    if (status === "ok") return auditCopy.statusOk;
+    if (status === "watch") return auditCopy.statusWatch;
+    if (status === "critical") return auditCopy.statusCritical;
+    if (status === "na") return auditCopy.statusNa;
+    return "";
+  };
+
+  const readFilesAsImages = files =>
+    Promise.all(
+      Array.from(files || []).map(
+        file =>
+          new Promise(resolve => {
+            if (!file?.type?.startsWith("image/") || file.size > MAX_IMAGE_BYTES) {
+              resolve(null);
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve(
+                createSectionImage({
+                  dataUrl: String(reader.result || ""),
+                  name: file.name || ""
+                })
+              );
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+          })
+      )
+    ).then(list => list.filter(Boolean));
 
   const goNext = () => {
     if (!validateAuditStep(currentStep.key, formData)) {
@@ -379,101 +427,283 @@ export default function RapportAuditBuilder({
 
   const renderSections = () => (
     <div className={formStyles.formStack}>
-      {(formData.sections || []).map(section => (
-        <Section key={section.key} title={section.title || auditCopy.sectionTitles?.[section.key] || section.key}>
-          <Field label={auditCopy.fields.sectionContent} required>
-            <textarea
-              className={formStyles.fieldTextarea}
-              rows={5}
-              value={section.content}
-              onChange={e => patchSection(section.key, current => ({ ...current, content: e.target.value }))}
-            />
-          </Field>
-          <div className={formStyles.listStack}>
-            {(section.findings || []).map((finding, findingIndex) => (
-              <div key={finding.id} className={formStyles.findingRow}>
-                <input
-                  className={formStyles.fieldInput}
-                  placeholder={auditCopy.fields.findingTitle}
-                  value={finding.title}
-                  onChange={e =>
-                    patchSection(section.key, current => ({
-                      ...current,
-                      findings: current.findings.map((item, index) =>
-                        index === findingIndex ? { ...item, title: e.target.value } : item
-                      )
-                    }))
-                  }
-                />
-                <select
-                  className={formStyles.fieldSelect}
-                  value={finding.severity}
-                  aria-label={auditCopy.fields.findingSeverity}
-                  onChange={e =>
-                    patchSection(section.key, current => ({
-                      ...current,
-                      findings: current.findings.map((item, index) =>
-                        index === findingIndex ? { ...item, severity: e.target.value } : item
-                      )
-                    }))
-                  }
-                >
-                  {AUDIT_FINDING_SEVERITIES.map(severity => (
-                    <option key={severity} value={severity}>
-                      {severity === "info"
-                        ? auditCopy.severityInfo
-                        : severity === "watch"
-                          ? auditCopy.severityWatch
-                          : auditCopy.severityCritical}
-                    </option>
-                  ))}
-                </select>
-                <span />
+      {(formData.sections || []).map(section => {
+        const sectionTitle =
+          section.title || auditCopy.sectionTitles?.[section.key] || section.key;
+        const subsections = Array.isArray(section.subsections) ? section.subsections : [];
+        return (
+          <Section
+            key={section.key}
+            title={sectionTitle}
+            hint={auditCopy.subsectionsHint}
+            actions={
+              <button
+                type="button"
+                className={formStyles.addBtn}
+                onClick={() =>
+                  patchSection(section.key, current => ({
+                    ...current,
+                    subsections: [
+                      ...(current.subsections || []),
+                      createSubsection({
+                        title: auditCopy.fields.subsectionCustomTitle
+                      })
+                    ]
+                  }))
+                }
+              >
+                <Icon icon="mdi:plus" aria-hidden />
+                {auditCopy.addSubsection}
+              </button>
+            }
+          >
+            <Field label={auditCopy.fields.sectionContent} hint={auditCopy.fields.sectionContentHint}>
+              <textarea
+                className={`${formStyles.fieldTextarea} ${styles.sectionOverview}`}
+                rows={3}
+                value={section.content}
+                onChange={e =>
+                  patchSection(section.key, current => ({ ...current, content: e.target.value }))
+                }
+              />
+            </Field>
+
+            <div className={styles.subsectionStack}>
+              {subsections.map((sub, subIndex) => {
+                const subTitle =
+                  sub.title ||
+                  auditCopy.subsectionTitles?.[sub.key] ||
+                  `${auditCopy.fields.subsectionTitle} ${subIndex + 1}`;
+                const images = Array.isArray(sub.images) ? sub.images : [];
+                return (
+                  <div key={sub.id} className={styles.subsectionBlock}>
+                    <div className={styles.subsectionHead}>
+                      <input
+                        className={`${formStyles.fieldInput} ${styles.subsectionTitleInput}`}
+                        value={sub.title}
+                        onChange={e =>
+                          patchSubsection(section.key, sub.id, current => ({
+                            ...current,
+                            title: e.target.value
+                          }))
+                        }
+                        placeholder={subTitle}
+                        aria-label={auditCopy.fields.subsectionTitle}
+                      />
+                      <div className={styles.statusToggle} role="group" aria-label={auditCopy.fields.subsectionStatus}>
+                        {AUDIT_SUBSECTION_STATUSES.map(status => (
+                          <button
+                            key={status}
+                            type="button"
+                            className={`${styles.statusChip} ${
+                              sub.status === status ? styles[`statusChip_${status}`] : ""
+                            }`.trim()}
+                            aria-pressed={sub.status === status}
+                            onClick={() =>
+                              patchSubsection(section.key, sub.id, current => ({
+                                ...current,
+                                status: current.status === status ? "" : status
+                              }))
+                            }
+                          >
+                            {statusLabel(status)}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        className={formStyles.iconBtn}
+                        title={auditCopy.remove}
+                        aria-label={auditCopy.remove}
+                        onClick={() =>
+                          patchSection(section.key, current => ({
+                            ...current,
+                            subsections: (current.subsections || []).filter(item => item.id !== sub.id)
+                          }))
+                        }
+                      >
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button>
+                    </div>
+
+                    <textarea
+                      className={`${formStyles.fieldTextarea} ${styles.subsectionTextarea}`}
+                      rows={5}
+                      value={sub.content}
+                      placeholder={auditCopy.fields.subsectionContent}
+                      aria-label={auditCopy.fields.subsectionContent}
+                      onChange={e =>
+                        patchSubsection(section.key, sub.id, current => ({
+                          ...current,
+                          content: e.target.value
+                        }))
+                      }
+                    />
+
+                    <div className={styles.photoBlock}>
+                      <div className={styles.photoBlockHead}>
+                        <span className={formStyles.fieldLabel}>{auditCopy.fields.subsectionPhotos}</span>
+                        <label className={formStyles.addBtn}>
+                          <Icon icon="mdi:camera-outline" aria-hidden />
+                          {auditCopy.addPhoto}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className={formStyles.srOnly}
+                            disabled={images.length >= MAX_SUBSECTION_IMAGES}
+                            onChange={async e => {
+                              const files = e.target.files;
+                              e.target.value = "";
+                              const nextImages = await readFilesAsImages(files);
+                              if (!nextImages.length) return;
+                              patchSubsection(section.key, sub.id, current => ({
+                                ...current,
+                                images: [...(current.images || []), ...nextImages].slice(
+                                  0,
+                                  MAX_SUBSECTION_IMAGES
+                                )
+                              }));
+                            }}
+                          />
+                        </label>
+                      </div>
+                      {images.length ? (
+                        <div className={styles.photoGrid}>
+                          {images.map(photo => (
+                            <div key={photo.id} className={styles.photoTile}>
+                              <img src={photo.dataUrl} alt={photo.caption || photo.name || subTitle} />
+                              <input
+                                className={styles.photoCaption}
+                                value={photo.caption || ""}
+                                placeholder={auditCopy.fields.photoCaption}
+                                aria-label={auditCopy.fields.photoCaption}
+                                onChange={e =>
+                                  patchSubsection(section.key, sub.id, current => ({
+                                    ...current,
+                                    images: (current.images || []).map(item =>
+                                      item.id === photo.id
+                                        ? { ...item, caption: e.target.value }
+                                        : item
+                                    )
+                                  }))
+                                }
+                              />
+                              <button
+                                type="button"
+                                className={styles.photoRemove}
+                                aria-label={auditCopy.removePhoto}
+                                onClick={() =>
+                                  patchSubsection(section.key, sub.id, current => ({
+                                    ...current,
+                                    images: (current.images || []).filter(item => item.id !== photo.id)
+                                  }))
+                                }
+                              >
+                                <Icon icon="mdi:close" aria-hidden />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className={styles.findingsBlock}>
+              <div className={styles.findingsHead}>
+                <h4 className={styles.findingsTitle}>{auditCopy.findingsHeading}</h4>
                 <button
                   type="button"
-                  className={formStyles.iconBtn}
-                  title={auditCopy.remove}
+                  className={formStyles.addBtn}
                   onClick={() =>
                     patchSection(section.key, current => ({
                       ...current,
-                      findings: current.findings.filter((_, index) => index !== findingIndex)
+                      findings: [...(current.findings || []), createFinding()]
                     }))
                   }
                 >
-                  <Icon icon="mdi:delete-outline" />
+                  <Icon icon="mdi:plus" aria-hidden />
+                  {auditCopy.addFinding}
                 </button>
-                <textarea
-                  className={`${formStyles.fieldTextarea} ${formStyles.rowDetail}`}
-                  placeholder={auditCopy.fields.findingDetail}
-                  rows={2}
-                  value={finding.detail}
-                  onChange={e =>
-                    patchSection(section.key, current => ({
-                      ...current,
-                      findings: current.findings.map((item, index) =>
-                        index === findingIndex ? { ...item, detail: e.target.value } : item
-                      )
-                    }))
-                  }
-                />
               </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            className={formStyles.addBtn}
-            onClick={() =>
-              patchSection(section.key, current => ({
-                ...current,
-                findings: [...(current.findings || []), createFinding()]
-              }))
-            }
-          >
-            <Icon icon="mdi:plus" aria-hidden />
-            {auditCopy.addFinding}
-          </button>
-        </Section>
-      ))}
+              <div className={formStyles.listStack}>
+                {(section.findings || []).map((finding, findingIndex) => (
+                  <div key={finding.id} className={styles.findingCard}>
+                    <div className={styles.findingCardTop}>
+                      <input
+                        className={formStyles.fieldInput}
+                        placeholder={auditCopy.fields.findingTitle}
+                        value={finding.title}
+                        onChange={e =>
+                          patchSection(section.key, current => ({
+                            ...current,
+                            findings: current.findings.map((item, index) =>
+                              index === findingIndex ? { ...item, title: e.target.value } : item
+                            )
+                          }))
+                        }
+                      />
+                      <select
+                        className={formStyles.fieldSelect}
+                        value={finding.severity}
+                        aria-label={auditCopy.fields.findingSeverity}
+                        onChange={e =>
+                          patchSection(section.key, current => ({
+                            ...current,
+                            findings: current.findings.map((item, index) =>
+                              index === findingIndex ? { ...item, severity: e.target.value } : item
+                            )
+                          }))
+                        }
+                      >
+                        {AUDIT_FINDING_SEVERITIES.map(severity => (
+                          <option key={severity} value={severity}>
+                            {severity === "info"
+                              ? auditCopy.severityInfo
+                              : severity === "watch"
+                                ? auditCopy.severityWatch
+                                : auditCopy.severityCritical}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className={formStyles.iconBtn}
+                        title={auditCopy.remove}
+                        onClick={() =>
+                          patchSection(section.key, current => ({
+                            ...current,
+                            findings: current.findings.filter((_, index) => index !== findingIndex)
+                          }))
+                        }
+                      >
+                        <Icon icon="mdi:delete-outline" />
+                      </button>
+                    </div>
+                    <textarea
+                      className={formStyles.fieldTextarea}
+                      placeholder={auditCopy.fields.findingDetail}
+                      rows={3}
+                      value={finding.detail}
+                      onChange={e =>
+                        patchSection(section.key, current => ({
+                          ...current,
+                          findings: current.findings.map((item, index) =>
+                            index === findingIndex ? { ...item, detail: e.target.value } : item
+                          )
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Section>
+        );
+      })}
     </div>
   );
 
@@ -675,11 +905,48 @@ export default function RapportAuditBuilder({
 
         {(formData.sections || []).map(section => {
           const findings = (section.findings || []).filter(f => String(f?.title || "").trim());
-          if (!String(section.content || "").trim() && !findings.length) return null;
+          const subsections = (section.subsections || []).filter(
+            sub =>
+              String(sub?.content || "").trim() ||
+              String(sub?.title || "").trim() ||
+              (Array.isArray(sub?.images) && sub.images.length > 0)
+          );
+          if (!String(section.content || "").trim() && !findings.length && !subsections.length) {
+            return null;
+          }
           return (
             <ReportPreviewBlock key={section.key} title={section.title}>
               <div className={valStyles.previewBox}>
                 {section.content ? <p className={valStyles.previewText}>{section.content}</p> : null}
+                {subsections.map(sub => (
+                  <div key={sub.id} className={styles.previewSubsection}>
+                    <div className={styles.previewSubsectionTitle}>
+                      <strong>
+                        {sub.title || auditCopy.subsectionTitles?.[sub.key] || auditCopy.fields.subsectionTitle}
+                      </strong>
+                      {sub.status ? (
+                        <span className={valStyles.severity}> · {statusLabel(sub.status)}</span>
+                      ) : null}
+                    </div>
+                    {sub.content ? <p className={valStyles.previewText}>{sub.content}</p> : null}
+                    {Array.isArray(sub.images) && sub.images.length ? (
+                      <div className={styles.previewPhotoGrid}>
+                        {sub.images.map(photo => (
+                          <figure key={photo.id} className={styles.previewPhotoFigure}>
+                            <img
+                              src={photo.dataUrl}
+                              alt={photo.caption || photo.name || ""}
+                              className={valStyles.previewPhoto}
+                            />
+                            {photo.caption ? (
+                              <figcaption className={styles.previewPhotoCaption}>{photo.caption}</figcaption>
+                            ) : null}
+                          </figure>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
                 {findings.map(finding => (
                   <div key={finding.id} className={valStyles.findingRow}>
                     <div>

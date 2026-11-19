@@ -1,17 +1,19 @@
 .validationLayout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
-  gap: 0.85rem;
-  flex: 1;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 0;
+  flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
   overflow: hidden;
+  align-items: stretch;
 }
 
 .previewPanel {
   min-height: 0;
   overflow: auto;
-  padding: 1rem;
-  background: var(--msp-surface-2, #f7f9fc);
+  padding: 0.85rem 1rem;
+  background: var(--msp-surface-2, #f4f7fb);
 }
 
 .previewDocBranded {
@@ -22,26 +24,34 @@
 }
 
 .previewSection {
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.95rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.previewSection:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 .previewSectionTitle {
-  margin: 0 0 0.35rem;
-  font-size: 0.78rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: var(--msp-accent, #2b5fab);
 }
 
 .previewBox {
-  padding: 0.65rem;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .previewBox > * {
@@ -82,10 +92,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 0.65rem;
-  border-radius: 8px;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  background: #ffffff;
+  padding: 0.45rem 0 0;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  background: transparent;
 }
 
 .previewSignatureImage {
@@ -110,10 +121,12 @@
 .actionsPanel {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.85rem;
+  gap: 0.7rem;
+  padding: 1rem 1.05rem;
   border-left: 1px solid var(--msp-border-light, #e2e8f0);
   background: var(--msp-surface, #fff);
+  min-height: 0;
+  overflow: auto;
 }
 
 .actionsTitle {
@@ -206,6 +219,6 @@
 
 :global(html.dark) .previewBox,
 :global(html.dark) .previewSignatureBox {
-  background: var(--msp-surface-2, #152038);
+  background: transparent;
   border-color: var(--msp-border, #2f4260);
 }

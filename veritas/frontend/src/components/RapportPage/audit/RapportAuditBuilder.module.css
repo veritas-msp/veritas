@@ -8,12 +8,14 @@
 .formBody {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 1.25rem 1.35rem 1.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 1.1rem 1.25rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  background: var(--msp-surface-2, #f4f7fb);
+  gap: 1.5rem;
+  background: var(--msp-surface, #fff);
+  -webkit-overflow-scrolling: touch;
 }
 
 .validationBody {
@@ -23,7 +25,7 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  background: var(--msp-surface-2, #f4f7fb);
+  background: var(--msp-surface, #fff);
 }
 
 .formGrid {
@@ -79,11 +81,11 @@
 .sectionCard {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.85rem;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+  gap: 0.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .sectionTitle {
@@ -195,10 +197,236 @@
   gap: 0.5rem;
 }
 
+.sectionOverview {
+  min-height: 4.5rem;
+}
+
+.subsectionStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.subsectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 0 1rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.subsectionBlock:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.subsectionHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.subsectionTitleInput {
+  font-weight: 650;
+}
+
+.statusToggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.statusChip {
+  min-height: 2rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.statusChip_ok {
+  border-color: color-mix(in srgb, #27ae60 55%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #27ae60 14%, var(--msp-surface, #fff));
+  color: #168a3c;
+}
+
+.statusChip_watch {
+  border-color: color-mix(in srgb, #e67e22 55%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #e67e22 14%, var(--msp-surface, #fff));
+  color: #b9770e;
+}
+
+.statusChip_critical {
+  border-color: color-mix(in srgb, #c0392b 55%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #c0392b 12%, var(--msp-surface, #fff));
+  color: #c0392b;
+}
+
+.statusChip_na {
+  border-color: color-mix(in srgb, #64748b 45%, var(--msp-border, #c5d0df));
+  background: color-mix(in srgb, #64748b 10%, var(--msp-surface, #fff));
+  color: #475569;
+}
+
+.subsectionTextarea {
+  min-height: 7.5rem;
+}
+
+.photoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.photoBlockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.65rem;
+}
+
+.photoTile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--msp-surface-2, #f4f7fb);
+}
+
+.photoTile img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  background: #fff;
+}
+
+.photoCaption {
+  width: 100%;
+  border: none;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  background: transparent;
+  padding: 0.4rem 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--msp-text, #0f1c2e);
+  box-sizing: border-box;
+}
+
+.photoCaption:focus {
+  outline: none;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 6%, #fff);
+}
+
+.photoRemove {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: none;
+  border-radius: 8px;
+  background: rgba(15, 28, 46, 0.65);
+  color: #fff;
+  cursor: pointer;
+}
+
+.findingsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.35rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.findingsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.findingsTitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.findingCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.15rem 0 0.35rem;
+}
+
+.findingCardTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 9rem auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.previewSubsection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.previewSubsection:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.previewSubsectionTitle {
+  font-size: 0.8rem;
+}
+
+.previewPhotoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.previewPhotoFigure {
+  margin: 0;
+}
+
+.previewPhotoCaption {
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
 @media (max-width: 900px) {
   .formGrid,
   .findingRow,
-  .actionRow {
+  .actionRow,
+  .subsectionHead,
+  .findingCardTop {
     grid-template-columns: 1fr;
   }
 
@@ -206,10 +434,15 @@
   .actionDetail {
     grid-column: auto;
   }
+
+  .statusToggle {
+    justify-content: flex-start;
+  }
 }
 
-:global(html.dark) .formBody {
-  background: color-mix(in srgb, var(--msp-surface, #1a2540) 88%, #000);
+:global(html.dark) .formBody,
+:global(html.dark) .validationBody {
+  background: var(--msp-surface, #1a2540);
 }
 
 :global(html.dark) .saveDialog {

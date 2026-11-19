@@ -66,6 +66,30 @@ export const AUDIT_SUBTYPE_DEFS = [{
 
 export const AUDIT_FINDING_SEVERITIES = ["info", "watch", "critical"];
 
+export const AUDIT_SUBSECTION_STATUSES = ["ok", "watch", "critical", "na"];
+
+/**
+ * Sous-rubriques suggérées par section technique (audit infrastructure / global).
+ * Les autres sous-types démarrent avec une sous-section « analyse » générique.
+ */
+export const AUDIT_SECTION_SUBSECTION_KEYS = {
+  internet: ["link", "firewall", "vpn", "dnsDhcp"],
+  network: ["switching", "wifi", "cabling", "monitoring"],
+  internalNetworks: ["vlan", "domainAd", "dhcpDnsInternal", "segmentation"],
+  servers: ["physical", "virtual", "roles", "patching"],
+  fleet: ["workstations", "osPatch", "rmm", "lifecycle"],
+  securityBackup: ["backupPlan", "antivirusEdr", "mfa", "logging"],
+  protections: ["perimeter", "endpoint", "email"],
+  identities: ["directory", "privileges", "mfaAccess"],
+  vulnerabilities: ["scan", "exposures", "remediation"],
+  recommendations: ["shortTerm", "midTerm", "governance"],
+  antivirus: ["product", "coveragePolicy", "exceptions"],
+  antispam: ["gateway", "policies", "quarantine"],
+  backup: ["jobs", "retention", "restoreTests"],
+  coverage: ["scope", "exclusions"],
+  externalization: ["offsite", "cloudProvider"]
+};
+
 export const AUDIT_BUILDER_STEP_KEYS = {
   COVER: "cover",
   CLIENT: "client",
