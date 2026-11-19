@@ -79,6 +79,8 @@ export default {
     themeDark: "Dunkel",
     themeSwitchLight: "Zum hellen Modus wechseln",
     themeSwitchDark: "Zum dunklen Modus wechseln",
+    expandSidebar: "Bezeichnungen anzeigen",
+    collapseSidebar: "Menü einklappen",
     logout: "Abmelden",
     impersonationPrefix: "Sie sehen das Portal als",
     impersonationFallback: "Kundenkontakt",

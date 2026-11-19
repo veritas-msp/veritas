@@ -544,13 +544,29 @@ export function RmmSyncPendingNotice({
     when: expectedCollectionLabel
   }) : syncCopy.bannerDetailLegacy;
   const detailTitle = [immediate ? syncCopy.bannerDetailFast : equipment ? `${formatRmmExpectedCollectionLabel(equipment, heartbeatIntervalMinutes)}` : null, syncRequestedAt ? `${formatRmmDateTime(syncRequestedAt)}` : null].filter(Boolean).join("\n");
-  if (variant === "chip") {
-    return <span className={styles.syncPendingChip} title={[detailTitle, whenLabel ? interpolate(syncCopy.requested, {
+  if (variant === "chip" || variant === "hero") {
+    return <span className={variant === "hero" ? styles.syncPendingHero : styles.syncPendingChip} title={[detailTitle, whenLabel ? interpolate(syncCopy.requested, {
       when: whenLabel
-    }) : null].filter(Boolean).join("\n") || detailHint}>
+    }) : null].filter(Boolean).join("\n") || detailHint} role="status">
         <Icon icon="mdi:sync" className={`${styles.syncPendingChipIcon} ${styles.syncPendingSpin}`} aria-hidden />
-        {syncCopy.title}
+        {variant === "hero" ? syncCopy.bannerTitle : syncCopy.title}
       </span>;
+  }
+  if (variant === "float") {
+    return <div className={styles.syncPendingFloat} role="status">
+        <Icon icon="mdi:sync" className={`${styles.syncPendingBannerIcon} ${styles.syncPendingSpin}`} aria-hidden />
+        <div className={styles.syncPendingBannerCopy}>
+          <p className={styles.syncPendingBannerTitle}>{syncCopy.bannerTitle}</p>
+          <p className={styles.syncPendingBannerText}>
+            {detailHint}
+            {whenLabel ? ` · ${interpolate(syncCopy.requested, { when: whenLabel })}` : null}
+          </p>
+        </div>
+        {onCancel ? <button type="button" className={styles.syncPendingCancelBtn} onClick={onCancel} disabled={cancelling}>
+            <Icon icon="mdi:close" aria-hidden />
+            {syncCopy.cancel}
+          </button> : null}
+      </div>;
   }
   return <div className={styles.syncPendingBanner} role="status">
       <Icon icon="mdi:sync" className={`${styles.syncPendingBannerIcon} ${styles.syncPendingSpin}`} aria-hidden />

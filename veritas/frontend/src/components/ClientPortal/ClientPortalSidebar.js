@@ -1,10 +1,23 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import sidebarStyles from "../Misc/Sidebar/Sidebar.module.css";
 import SidebarTooltip from "../Misc/Sidebar/SidebarTooltip";
+import {
+  BookTextIcon,
+  ChartColumnIncreasingIcon,
+  CircleHelpIcon,
+  CloudIcon,
+  FileTextIcon,
+  LaptopMinimalCheckIcon,
+  MoonIcon,
+  ShieldCheckIcon,
+  SunIcon,
+  TicketIcon,
+  VaultIcon
+} from "../Misc/Sidebar/lucideAnimated";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { buildClientPortalGuideSteps } from "../PageGuide/clientPortalGuideI18n";
@@ -14,79 +27,128 @@ import { useSidebarGuide } from "../../hooks/useSidebarGuide";
 import { useAppLocale, setUserLocaleOverride } from "../../hooks/useAppGeneralSettings";
 import { APP_LOCALES } from "../../i18n/locales";
 import portalStyles from "./ClientPortalSidebar.module.css";
-const NAV_ITEMS = [{
-  to: "/client",
-  end: true,
-  icon: "mdi:view-dashboard-outline",
-  labelKey: "navDashboard"
-}, {
-  to: "/client/tickets",
-  icon: "mdi:ticket-outline",
-  labelKey: "navSupport",
-  badgeKey: "actionRequired"
-}, {
-  to: "/client/devices",
-  icon: "mdi:devices",
-  labelKey: "navDevices"
-}, {
-  to: "/client/services",
-  icon: "mdi:cloud-outline",
-  labelKey: "navServices"
-}, {
-  to: "/client/cybersecurity",
-  icon: "mdi:shield-lock-outline",
-  labelKey: "navCybersecurity"
-}, {
-  to: "/client/contract",
-  icon: "mdi:file-document-outline",
-  labelKey: "navContract"
-}, {
-  to: "/client/knowledge-base",
-  icon: "mdi:book-open-page-variant-outline",
-  labelKey: "navKnowledgeBase"
-}, {
-  to: "/client/documents",
-  icon: "mdi:safe-square-outline",
-  labelKey: "navVault"
-}];
-function PortalNavItem({
-  item,
-  t,
-  showTooltip,
-  isCollapsed,
-  isMobile,
-  badge,
-  onNavigate
-}) {
+
+const PORTAL_RAIL_COLLAPSED_KEY = "veritas_portal_sidebar_rail_collapsed";
+const PORTAL_RAIL_COLLAPSED_EVENT = "veritas-portal-sidebar-rail-collapsed-change";
+
+function readPortalRailCollapsed() {
+  try {
+    const raw = localStorage.getItem(PORTAL_RAIL_COLLAPSED_KEY);
+    if (raw == null) return false;
+    return raw === "1" || raw === "true";
+  } catch {
+    return false;
+  }
+}
+
+function applyPortalRailCollapsed(collapsed) {
+  const next = Boolean(collapsed);
+  try {
+    localStorage.setItem(PORTAL_RAIL_COLLAPSED_KEY, next ? "1" : "0");
+  } catch {}
+  window.dispatchEvent(
+    new CustomEvent(PORTAL_RAIL_COLLAPSED_EVENT, {
+      detail: { collapsed: next }
+    })
+  );
+  return next;
+}
+
+const NAV_ITEMS = [
+  {
+    to: "/client",
+    end: true,
+    Icon: ChartColumnIncreasingIcon,
+    labelKey: "navDashboard"
+  },
+  {
+    to: "/client/tickets",
+    Icon: TicketIcon,
+    labelKey: "navSupport",
+    badgeKey: "actionRequired"
+  },
+  {
+    to: "/client/devices",
+    Icon: LaptopMinimalCheckIcon,
+    labelKey: "navDevices"
+  },
+  {
+    to: "/client/services",
+    Icon: CloudIcon,
+    labelKey: "navServices"
+  },
+  {
+    to: "/client/cybersecurity",
+    Icon: ShieldCheckIcon,
+    labelKey: "navCybersecurity"
+  },
+  {
+    to: "/client/contract",
+    Icon: FileTextIcon,
+    labelKey: "navContract"
+  },
+  {
+    to: "/client/knowledge-base",
+    Icon: BookTextIcon,
+    labelKey: "navKnowledgeBase"
+  },
+  {
+    to: "/client/documents",
+    Icon: VaultIcon,
+    labelKey: "navVault"
+  }
+];
+
+function PortalNavItem({ item, t, showTooltip, isCollapsed, isMobile, badge, onNavigate }) {
+  const iconRef = useRef(null);
   const label = t[item.labelKey];
-  const linkClass = ({
-    isActive
-  }) => `${sidebarStyles.navItem} ${portalStyles.navLink} ${isActive ? `${sidebarStyles.active} ${portalStyles.navLinkActive}` : ""}`.trim();
-  const content = <>
-      <Icon icon={item.icon} className={sidebarStyles.itemIcon} aria-hidden />
+  const AnimatedIcon = item.Icon;
+  const linkClass = ({ isActive }) =>
+    `${sidebarStyles.navItem} ${portalStyles.navLink} ${
+      isActive ? `${sidebarStyles.active} ${portalStyles.navLinkActive}` : ""
+    }`.trim();
+  const content = (
+    <>
+      <span className={sidebarStyles.accessNavIcon}>
+        <AnimatedIcon ref={iconRef} className={sidebarStyles.itemIcon} size={22} />
+      </span>
       {(!isCollapsed || isMobile) && <span className={portalStyles.navLabel}>{label}</span>}
       {badge > 0 ? <span className={portalStyles.navBadge}>{badge > 99 ? "99+" : badge}</span> : null}
-    </>;
+    </>
+  );
   const closeMobile = () => {
     if (isMobile) onNavigate();
   };
+  const hoverProps = {
+    onMouseEnter: () => iconRef.current?.startAnimation?.(),
+    onMouseLeave: () => iconRef.current?.stopAnimation?.()
+  };
   if (showTooltip) {
-    return <li style={{
-      listStyle: "none"
-    }}>
-        <SidebarTooltip as={NavLink} content={label} to={item.to} end={item.end} className={linkClass} onClick={closeMobile}>
+    return (
+      <li style={{ listStyle: "none" }}>
+        <SidebarTooltip
+          as={NavLink}
+          content={label}
+          to={item.to}
+          end={item.end}
+          className={linkClass}
+          onClick={closeMobile}
+          {...hoverProps}
+        >
           {content}
         </SidebarTooltip>
-      </li>;
+      </li>
+    );
   }
-  return <li style={{
-    listStyle: "none"
-  }}>
-      <NavLink to={item.to} end={item.end} className={linkClass} onClick={closeMobile}>
+  return (
+    <li style={{ listStyle: "none" }}>
+      <NavLink to={item.to} end={item.end} className={linkClass} onClick={closeMobile} {...hoverProps}>
         {content}
       </NavLink>
-    </li>;
+    </li>
+  );
 }
+
 export default function ClientPortalSidebar({
   copy,
   user,
@@ -99,7 +161,8 @@ export default function ClientPortalSidebar({
   switching = false,
   onSwitchCompany,
   actionRequiredCount,
-  onLogout
+  onLogout,
+  onCollapseChange
 }) {
   const t = copy.layout;
   const location = useLocation();
@@ -134,14 +197,58 @@ export default function ClientPortalSidebar({
   const userMenuDropdownRef = useRef(null);
   const langMenuRef = useRef(null);
   const langMenuDropdownRef = useRef(null);
-  const isCollapsed = false;
-  const showIconTooltip = false;
-  const openMenuToRight = false;
+  const themeIconRef = useRef(null);
+  const helpIconRef = useRef(null);
+  const [railCollapsed, setRailCollapsed] = useState(() => readPortalRailCollapsed());
+  const [footerIconsReady, setFooterIconsReady] = useState(true);
+  const prevRailCollapsedRef = useRef(railCollapsed);
+  const isCollapsed = isMobile ? false : railCollapsed;
+  const showRailToggle = !isMobile;
+  const showIconTooltip = isCollapsed || isMobile;
+  const openMenuToRight = isCollapsed && !isMobile;
   const isDarkTheme = theme === "dark";
   const themeTooltip = isDarkTheme ? t.themeSwitchLight : t.themeSwitchDark;
-  const themeMenuIcon = isDarkTheme ? "mdi:weather-sunny" : "mdi:weather-night";
+  const ThemeMenuIcon = isDarkTheme ? SunIcon : MoonIcon;
   const currentLocale = useMemo(() => APP_LOCALES.find(entry => entry.code === locale) ?? APP_LOCALES[0], [locale]);
   const isProfileActive = location.pathname.startsWith("/client/profile");
+  const collapseToggleLabel = isCollapsed
+    ? t.expandSidebar || "Afficher les noms"
+    : t.collapseSidebar || "Réduire le menu";
+
+  useEffect(() => {
+    const onPrefChange = event => {
+      if (typeof event?.detail?.collapsed === "boolean") {
+        setRailCollapsed(event.detail.collapsed);
+      } else {
+        setRailCollapsed(readPortalRailCollapsed());
+      }
+    };
+    window.addEventListener(PORTAL_RAIL_COLLAPSED_EVENT, onPrefChange);
+    return () => window.removeEventListener(PORTAL_RAIL_COLLAPSED_EVENT, onPrefChange);
+  }, []);
+
+  const toggleRailCollapsed = useCallback(() => {
+    setFooterIconsReady(false);
+    setRailCollapsed(prev => applyPortalRailCollapsed(!prev));
+  }, []);
+
+  useEffect(() => {
+    onCollapseChange?.(isCollapsed);
+  }, [onCollapseChange, isCollapsed]);
+
+  useLayoutEffect(() => {
+    if (isMobile) {
+      setFooterIconsReady(true);
+      prevRailCollapsedRef.current = isCollapsed;
+      return undefined;
+    }
+    if (prevRailCollapsedRef.current === isCollapsed) return undefined;
+    prevRailCollapsedRef.current = isCollapsed;
+    setFooterIconsReady(false);
+    const showTimer = window.setTimeout(() => setFooterIconsReady(true), 320);
+    return () => window.clearTimeout(showTimer);
+  }, [isCollapsed, isMobile]);
+
   useEffect(() => {
     if (!isMobile) setShowMenu(false);
   }, [isMobile]);
@@ -276,8 +383,10 @@ export default function ClientPortalSidebar({
         className={portalStyles.settingsSquareBtn}
         onClick={toggleTheme}
         aria-label={themeTooltip}
+        onMouseEnter={() => themeIconRef.current?.startAnimation?.()}
+        onMouseLeave={() => themeIconRef.current?.stopAnimation?.()}
       >
-        <Icon icon={themeMenuIcon} className={portalStyles.settingsSquareBtnIcon} aria-hidden />
+        <ThemeMenuIcon ref={themeIconRef} className={portalStyles.settingsSquareBtnIcon} size={20} />
       </button>
     );
     if (showIconTooltip) {
@@ -326,10 +435,10 @@ export default function ClientPortalSidebar({
         className={`${portalStyles.settingsSquareBtn} ${portalGuideOpen ? portalStyles.settingsSquareBtnActive : ""}`.trim()}
         onClick={startPortalGuide}
         aria-label={helpAria}
+        onMouseEnter={() => helpIconRef.current?.startAnimation?.()}
+        onMouseLeave={() => helpIconRef.current?.stopAnimation?.()}
       >
-        <span className={portalStyles.helpBtnLabel} aria-hidden>
-          ?
-        </span>
+        <CircleHelpIcon ref={helpIconRef} className={portalStyles.settingsSquareBtnIcon} size={20} />
       </button>
     );
     if (showIconTooltip) {
@@ -372,30 +481,50 @@ export default function ClientPortalSidebar({
           ☰
         </button> : null}
 
-      {(showMenu || !isMobile) && <motion.nav className={`${sidebarStyles.sidebar} ${portalStyles.portalSidebar} ${isMobile ? sidebarStyles.mobileSidebar : ""}`.trim()} data-portal-guide="sidebar-root" initial={{
-      x: isMobile ? "-100%" : 0,
-      opacity: 1
-    }} animate={{
-      x: 0,
-      opacity: 1
-    }} exit={{
-      x: isMobile ? "-100%" : -50,
-      opacity: isMobile ? 1 : 0
-    }} transition={{
-      duration: 0.4,
-      ease: "easeOut"
-    }} aria-label={t.navAria}>
+      {(showMenu || !isMobile) && <motion.nav
+        className={[
+          sidebarStyles.sidebar,
+          portalStyles.portalSidebar,
+          isMobile ? sidebarStyles.mobileSidebar : "",
+          !isMobile && isCollapsed ? `${sidebarStyles.sidebarCollapsed} ${portalStyles.portalSidebarCollapsed}` : ""
+        ].filter(Boolean).join(" ")}
+        data-portal-guide="sidebar-root"
+        data-sidebar-rail="1"
+        initial={{
+          x: isMobile ? "-100%" : 0,
+          opacity: 1
+        }}
+        animate={{
+          x: 0,
+          opacity: 1
+        }}
+        exit={{
+          x: isMobile ? "-100%" : -50,
+          opacity: isMobile ? 1 : 0
+        }}
+        transition={{
+          duration: 0.35,
+          ease: "easeOut"
+        }}
+        aria-label={t.navAria}
+      >
           <div className={sidebarStyles.sidebarContent}>
             <div className={sidebarStyles.logoHeader} data-portal-guide="brand">
-              {showIconTooltip ? <SidebarTooltip as="span" content={t.brandSub} className={sidebarStyles.sidebarTooltipHost}>
+              <div className={`${sidebarStyles.logoHeaderRow} ${isCollapsed ? sidebarStyles.logoHeaderRowCollapsed : ""}`.trim()}>
+                {showIconTooltip ? (
+                  <SidebarTooltip as="span" content={t.brandSub} className={sidebarStyles.sidebarTooltipHost}>
+                    <NavLink to="/client" end className={sidebarStyles.logoWrapper} onClick={closeMobileMenu}>
+                      <div className={sidebarStyles.brandMark}>V</div>
+                      {!isCollapsed ? <span className={sidebarStyles.logoText}>Veritas</span> : null}
+                    </NavLink>
+                  </SidebarTooltip>
+                ) : (
                   <NavLink to="/client" end className={sidebarStyles.logoWrapper} onClick={closeMobileMenu}>
                     <div className={sidebarStyles.brandMark}>V</div>
-                    {!isCollapsed && <span className={sidebarStyles.logoText}>Veritas</span>}
+                    {!isCollapsed ? <span className={sidebarStyles.logoText}>Veritas</span> : null}
                   </NavLink>
-                </SidebarTooltip> : <NavLink to="/client" end className={sidebarStyles.logoWrapper} onClick={closeMobileMenu}>
-                  <div className={sidebarStyles.brandMark}>V</div>
-                  {!isCollapsed && <span className={sidebarStyles.logoText}>Veritas</span>}
-                </NavLink>}
+                )}
+              </div>
               {(!isCollapsed || isMobile) && (companies.length > 0 || clientName || sites.length > 0) ? (
                 <div className={portalStyles.contextFilters} data-portal-guide="context">
                   {(companies.length > 0 || clientName) ? (
@@ -459,15 +588,67 @@ export default function ClientPortalSidebar({
               ) : null}
             </div>
 
-            <hr className={sidebarStyles.separator} />
+            <hr className={isCollapsed ? sidebarStyles.sectionDividerCollapsed : sidebarStyles.separator} />
 
             <ul className={sidebarStyles.navList} data-portal-guide="nav">
-              {NAV_ITEMS.map(item => <PortalNavItem key={item.to} item={item} t={t} showTooltip={showIconTooltip} isCollapsed={isCollapsed} isMobile={isMobile} badge={item.badgeKey === "actionRequired" ? actionRequiredCount : 0} onNavigate={closeMobileMenu} />)}
+              {NAV_ITEMS.map(item => (
+                <PortalNavItem
+                  key={item.to}
+                  item={item}
+                  t={t}
+                  showTooltip={showIconTooltip}
+                  isCollapsed={isCollapsed}
+                  isMobile={isMobile}
+                  badge={item.badgeKey === "actionRequired" ? actionRequiredCount : 0}
+                  onNavigate={closeMobileMenu}
+                />
+              ))}
             </ul>
 
             <div className={portalStyles.navSpacer} aria-hidden />
 
-            <div className={`${sidebarStyles.sidebarFooter} ${portalStyles.portalFooter}`}>
+            {showRailToggle ? (
+              <div className={sidebarStyles.railCollapseSlot}>
+                {showIconTooltip ? (
+                  <SidebarTooltip
+                    as="button"
+                    type="button"
+                    content={collapseToggleLabel}
+                    className={sidebarStyles.railCollapseToggle}
+                    onClick={toggleRailCollapsed}
+                    aria-label={collapseToggleLabel}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <Icon
+                      icon={isCollapsed ? "mdi:chevron-double-right" : "mdi:chevron-double-left"}
+                      className={sidebarStyles.railCollapseChevron}
+                      aria-hidden
+                    />
+                  </SidebarTooltip>
+                ) : (
+                  <button
+                    type="button"
+                    className={sidebarStyles.railCollapseToggle}
+                    onClick={toggleRailCollapsed}
+                    aria-label={collapseToggleLabel}
+                    aria-expanded={!isCollapsed}
+                    title={collapseToggleLabel}
+                  >
+                    <Icon
+                      icon={isCollapsed ? "mdi:chevron-double-right" : "mdi:chevron-double-left"}
+                      className={sidebarStyles.railCollapseChevron}
+                      aria-hidden
+                    />
+                  </button>
+                )}
+              </div>
+            ) : null}
+
+            <div
+              className={`${sidebarStyles.sidebarFooter} ${portalStyles.portalFooter} ${
+                footerIconsReady ? sidebarStyles.sidebarFooterReady : sidebarStyles.sidebarFooterHidden
+              }`.trim()}
+            >
               <div className={portalStyles.settingsSection} data-portal-guide="utilities">
                 <div className={portalStyles.settingsBtnRow} role="group" aria-label={t.themeAria}>
                   {renderThemeToggleBtn()}

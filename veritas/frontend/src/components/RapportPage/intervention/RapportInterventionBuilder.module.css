@@ -6,11 +6,20 @@
 }
 
 .formBody {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: auto;
   padding: 1.25rem 1.35rem 1.5rem;
   background: var(--msp-surface-2, #f4f7fb);
+}
+
+.formBody > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .cardStack {
@@ -1149,34 +1158,92 @@
   line-height: 1.45;
 }
 
+.opsMatColumns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.opsMatPanel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.opsMatPanel .tableScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.remarksFill {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.remarksFill > :global(label) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.remarksTextarea {
+  flex: 1 1 auto !important;
+  min-height: 8rem !important;
+  height: auto !important;
+  resize: vertical;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+}
+
+.tableEmpty {
+  margin: 0;
+  padding: 0.85rem 0.9rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
 .operationsTable {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--msp-border, #c5d0df);
-  border-radius: 10px;
-  overflow: hidden;
+  min-width: 520px;
   background: var(--msp-surface, #fff);
 }
 
 .operationsHead {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px 64px 40px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 2.55rem 2.55rem 2.55rem 2rem;
   gap: 0;
+  align-items: stretch;
   background: var(--msp-accent, #2b5fab);
   color: #fff;
 }
 
 .operationsHeadLabel {
-  padding: 0.7rem 0.85rem;
-  font-size: 0.8rem;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .operationsHeadStatus {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-style: italic;
   font-weight: 700;
   border-left: 1px solid rgba(255, 255, 255, 0.25);
@@ -1192,16 +1259,90 @@
 
 .operationsRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px 64px 40px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 2.55rem 2.55rem 2.55rem 2rem;
+  align-items: stretch;
   border-top: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface-2, #f7f9fc);
+  background: var(--msp-surface, #fff);
+  min-height: 2.55rem;
+}
+
+.operationsRow:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 4%, var(--msp-surface, #fff));
 }
 
 .operationsRow .movementCellInput {
   border: none;
   border-radius: 0;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
   background: transparent;
   color: var(--msp-text, #0f1c2e);
+  min-height: 2.55rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.operationsRow .movementRowRemove,
+.materialRow .movementRowRemove {
+  width: 100%;
+  height: 100%;
+  min-height: 2.55rem;
+  border-radius: 0;
+  border-left: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.materialTable {
+  min-width: 480px;
+}
+
+.materialTableHead,
+.materialRow {
+  display: grid;
+  grid-template-columns: 3.25rem minmax(0, 1fr) minmax(0, 1fr) 4.1rem 5.1rem 2rem;
+  gap: 0;
+  align-items: stretch;
+  min-height: 2.55rem;
+}
+
+.materialTableHead {
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.materialTableHead > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.35rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.materialTableHead > span:first-child {
+  border-left: none;
+  justify-content: flex-start;
+  padding-left: 0.65rem;
+}
+
+.materialRow {
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+}
+
+.materialRow:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 4%, var(--msp-surface, #fff));
+}
+
+.materialRow .movementCellInput {
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
+  background: transparent;
+  min-height: 2.55rem;
+  padding: 0.45rem 0.55rem;
 }
 
 .statusBtn {
@@ -1210,10 +1351,13 @@
   border-left: 1px solid var(--msp-border-light, #e2e8f0);
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
   font-style: italic;
   cursor: pointer;
+  min-height: 2.55rem;
+  padding: 0.2rem 0.25rem;
+  line-height: 1.15;
 }
 
 .statusBtn:hover {
@@ -1223,6 +1367,11 @@
 .statusBtnActiveOk {
   background: rgba(34, 140, 70, 0.12);
   color: #168a3c;
+}
+
+.statusBtnActivePending {
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
 }
 
 .statusBtnActivePb {
@@ -1298,12 +1447,15 @@
   color: #f87171;
 }
 
-:global(html.dark) .operationsRow {
-  background: var(--msp-surface-2, #152038);
+:global(html.dark) .operationsRow,
+:global(html.dark) .materialRow {
+  background: var(--msp-surface, #1a2540);
 }
 
+:global(html.dark) .tableScroll,
 :global(html.dark) .statusBtn,
 :global(html.dark) .operationsTable,
+:global(html.dark) .materialTable,
 :global(html.dark) .movementCellInput,
 :global(html.dark) .signatureCanvas,
 :global(html.dark) .previewDoc,
@@ -1355,6 +1507,12 @@
   border-color: var(--msp-border, #2f4260);
 }
 
+@media (max-width: 1100px) {
+  .opsMatColumns {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .formGrid,
   .materialRowGrid,
@@ -1380,23 +1538,13 @@
     min-width: 2.75rem;
   }
 
-  .infoRow,
-  .operationsHead,
-  .operationsRow {
+  .infoRow {
     grid-template-columns: 1fr;
   }
 
   .infoLabel {
     border-right: none;
     border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  }
-
-  .operationsHeadStatus,
-  .statusBtn,
-  .movementRowRemove {
-    border-left: none;
-    border-top: 1px solid var(--msp-border-light, #e2e8f0);
-    min-height: 2.4rem;
   }
 
   .actionsPanel {

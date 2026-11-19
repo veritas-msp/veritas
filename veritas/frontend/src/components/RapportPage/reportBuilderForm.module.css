@@ -4,6 +4,13 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.formStackFill {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .formGrid {
@@ -31,6 +38,12 @@
   border-radius: 14px;
   background: var(--msp-surface, #fff);
   box-shadow: 0 1px 0 rgba(15, 28, 46, 0.03);
+  min-height: 0;
+}
+
+.sectionCardFill {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .sectionHead {

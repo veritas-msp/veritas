@@ -70,6 +70,19 @@ import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { invalidateEquipmentInventoryCache } from "../../utils/equipmentInventoryDataCache";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { formatExtensionFieldValue, readExtensionFieldValue } from "../../utils/systemFamilyExtensions";
+import { getUserSetting, saveUserSetting } from "../../api/userSettings";
+import EquipmentColumnsModal from "./EquipmentColumnsModal";
+import {
+  EQUIPMENT_INFRA_COLUMNS_SETTING_KEY,
+  buildDefaultColumnLayout,
+  columnFromLogicalKey,
+  customFamilyColumnId,
+  customFamilyFieldKeyFromColumnId,
+  editorStateFromPrefs,
+  isCustomFamilyDataField,
+  normalizeEquipmentColumnPrefs,
+  resolveVisibleColumnKeys
+} from "./equipmentTableColumns";
 function formatComputerTypeDisplay(value, locale) {
   const key = canonicalizeComputerType(value);
   if (!key) return "";
@@ -782,15 +795,15 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       key: "agentVersion"
     },
     ssidCount: {
-      label: "SSID",
+      label: label("ssidCount"),
       key: "ssidCount"
     },
     disksUsage: {
-      label: "Disques",
+      label: label("disksUsage"),
       key: "disksUsage"
     },
     powerRating: {
-      label: "Puissance VA / W",
+      label: label("powerRating"),
       key: "powerRating"
     },
     computerType: {
@@ -1020,6 +1033,19 @@ function getEmbeddedCellClassName(colKey, styles) {
       return styles.embeddedColFlex;
   }
 }
+const NATIVE_CATALOG_COLUMN_KEYS = {
+  Internet: INTERNET_COLUMN_KEYS,
+  Firewalls: FIREWALL_COLUMN_KEYS,
+  Routeur: SWITCH_COLUMN_KEYS,
+  Servers: SERVER_COLUMN_KEYS,
+  Storage: STORAGE_COLUMN_KEYS,
+  Ordinateurs: ORDINATEUR_COLUMN_KEYS,
+  Switch: SWITCH_COLUMN_KEYS,
+  BorneWifi: BORNE_WIFI_COLUMN_KEYS,
+  TOIP: SWITCH_COLUMN_KEYS,
+  Alimentation: SWITCH_COLUMN_KEYS,
+  Backup: SAUVEGARDE_COLUMN_KEYS
+};
 const EMBEDDED_DEFAULT_TYPE = "Internet";
 const MK_CRITICAL_STATUSES = new Set(["critical", "down", "offline"]);
 function normalizeMkAlertStatus(status) {
@@ -1138,6 +1164,21 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     isOpen: false
   });
   const [columnsComingSoonModal, setColumnsComingSoonModal] = useState(false);
+  const [columnPrefs, setColumnPrefs] = useState({});
+  const [columnsModalType, setColumnsModalType] = useState(null);
+  const [columnsSaving, setColumnsSaving] = useState(false);
+  const [columnsSaveError, setColumnsSaveError] = useState("");
+  useEffect(() => {
+    if (!embedded) return undefined;
+    let cancelled = false;
+    getUserSetting(EQUIPMENT_INFRA_COLUMNS_SETTING_KEY).then(res => {
+      if (cancelled) return;
+      setColumnPrefs(normalizeEquipmentColumnPrefs(res?.value));
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [embedded]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [viewMode, setViewMode] = useState({});
   const [tableSort, setTableSort] = useState(() => {
@@ -1967,71 +2008,86 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (!embedded || !fixedClientId) return 0;
     return allEquipment.filter(eq => eq.clientId === fixedClientId).length;
   }, [embedded, fixedClientId, allEquipment]);
-  const getColumnsForType = type => {
-    const baseColumns = buildEquipmentBaseColumns(locale, pageCopy, type);
-    const typeColumns = {
-      Ordinateurs: ORDINATEUR_COLUMN_KEYS,
-      Servers: SERVER_COLUMN_KEYS,
-      Storage: STORAGE_COLUMN_KEYS,
-      Firewalls: FIREWALL_COLUMN_KEYS,
-      Switch: SWITCH_COLUMN_KEYS,
-      BorneWifi: BORNE_WIFI_COLUMN_KEYS,
-      Alimentation: SWITCH_COLUMN_KEYS,
-      Routeur: SWITCH_COLUMN_KEYS,
-      TOIP: SWITCH_COLUMN_KEYS,
-      Internet: INTERNET_COLUMN_KEYS,
-      Backup: SAUVEGARDE_COLUMN_KEYS
+  const labelForNativeColumn = (type, key, extensionFields) => {
+    if (key === "brandIcon") return pageCopy.columns?.brandIcon || "Icône";
+    if (key === "mapping") return pageCopy.actionsColumn;
+    if (String(key).startsWith("ext:")) {
+      const fieldKey = String(key).slice(4);
+      const field = (extensionFields || []).find(entry => entry?.fieldKey === fieldKey);
+      return field?.label || fieldKey;
+    }
+    const fromColumns = getEquipmentColumnLabel(locale, type, key);
+    if (fromColumns && fromColumns !== key) return fromColumns;
+    return getSharedEquipmentFieldLabel(key, locale) || fromColumns || key;
+  };
+  const getFamilyColumnModel = type => {
+    if (!type) return null;
+    if (String(type).startsWith("Custom:")) {
+      const familyKey = type.slice("Custom:".length);
+      const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey) || null;
+      const fields = (family?.fields || []).filter(isCustomFamilyDataField);
+      const customFieldKeys = fields.map(field => customFamilyColumnId(field.fieldKey || field.key)).filter(Boolean);
+      const layout = buildDefaultColumnLayout({ type, isCustom: true, customFieldKeys });
+      const saved = columnPrefs[type] || null;
+      const visible = resolveVisibleColumnKeys(layout.available, layout.visible, saved);
+      const fieldById = new Map(fields.map(field => [customFamilyColumnId(field.fieldKey || field.key), field]));
+      const labels = {
+        activeStatus: pageCopy.columns?.activeStatus || "Statut",
+        brandIcon: pageCopy.columns?.brandIcon || "Icône",
+        name: pageCopy.columns?.name || "Nom",
+        mapping: pageCopy.actionsColumn
+      };
+      fields.forEach(field => {
+        const id = customFamilyColumnId(field.fieldKey || field.key);
+        labels[id] = field.label || field.fieldKey || field.key;
+      });
+      return {
+        familyId: type,
+        familyLabel: family?.label || familyKey,
+        available: layout.available,
+        defaultVisible: layout.visible,
+        visible,
+        saved,
+        fields,
+        descriptors: layout.available.map(id => ({
+          id,
+          label: labels[id] || id,
+          field: fieldById.get(id) || null
+        }))
+      };
+    }
+    const extensionFields = (fieldsFor(type) || []).filter(field => field?.fieldType !== "section");
+    const extensionKeys = extensionFields.map(field => `ext:${field.fieldKey}`).filter(key => key !== "ext:");
+    const layout = buildDefaultColumnLayout({
+      type,
+      embeddedDefaults: EMBEDDED_TYPE_COLUMNS[type] || EMBEDDED_TYPE_COLUMNS.Servers,
+      typeKeys: NATIVE_CATALOG_COLUMN_KEYS[type] || NATIVE_CATALOG_COLUMN_KEYS.Servers || [],
+      extensionKeys
+    });
+    const saved = columnPrefs[type] || null;
+    const visible = embedded
+      ? resolveVisibleColumnKeys(layout.available, layout.visible, saved)
+      : (visibleColumns[type] || layout.visible);
+    return {
+      familyId: type,
+      familyLabel: getEmbeddedTypeLabel(type),
+      available: layout.available,
+      defaultVisible: layout.visible,
+      visible,
+      saved,
+      extensionFields,
+      descriptors: layout.available.map(id => ({
+        id,
+        label: labelForNativeColumn(type, id, extensionFields)
+      }))
     };
-    const defaultColumns = embedded ? EMBEDDED_TYPE_COLUMNS[type] || EMBEDDED_TYPE_COLUMNS.Servers : typeColumns[type] || typeColumns.Servers;
-    let visibleCols = embedded ? defaultColumns : visibleColumns[type] || defaultColumns;
-    if (embedded || embeddedClient) {
-      visibleCols = visibleCols.filter(colKey => colKey !== "client");
-      if (type !== "Backup" && !visibleCols.includes("mapping")) {
-        visibleCols = [...visibleCols, "mapping"];
-      }
-    }
-    // Serveurs : pas de Site par défaut (vCPU / RAM / Stockage à la place de marque / modèle / SN / HA)
-    if (type !== "Backup" && type !== "Servers" && !visibleCols.includes("location")) {
-      const ipIndex = visibleCols.indexOf("ip");
-      const insertAt = ipIndex >= 0 ? ipIndex + 1 : Math.min(1, visibleCols.length);
-      visibleCols = [...visibleCols.slice(0, insertAt), "location", ...visibleCols.slice(insertAt)];
-    }
-    const columns = visibleCols.map(colKey => {
-      const col = baseColumns[colKey];
-      if (!col) return null;
-      if (embedded && colKey === "mapping") {
-        return {
-          ...col,
-          label: pageCopy.actionsColumn
-        };
-      }
-      return col;
-    }).filter(Boolean);
-    const extraColumns = (fieldsFor(type) || []).filter(field => field?.fieldType !== "section").map(field => ({
-      key: `ext:${field.fieldKey}`,
-      label: field.label || field.fieldKey,
-      field
-    }));
-    const mappingIndex = columns.findIndex(col => col.key === "mapping" || col.key === "checkmkMapping");
-    const withExtra = mappingIndex >= 0
-      ? [...columns.slice(0, mappingIndex), ...extraColumns, ...columns.slice(mappingIndex)]
-      : [...columns, ...extraColumns];
-    if (embedded) {
-      // Serveurs : pas de colonne marque (logo) — focus specs runtime
-      if (type === "Servers") return withExtra;
-      const brandCol = { label: "", key: "brandIcon" };
-      // Statut d'abord, puis logo marque, puis le reste
-      const statusIdx = withExtra.findIndex(col => col.key === "activeStatus");
-      if (statusIdx >= 0) {
-        return [
-          ...withExtra.slice(0, statusIdx + 1),
-          brandCol,
-          ...withExtra.slice(statusIdx + 1)
-        ];
-      }
-      return [brandCol, ...withExtra];
-    }
-    return withExtra;
+  };
+  const getColumnsForType = type => {
+    if (String(type || "").startsWith("Custom:")) return [];
+    const model = getFamilyColumnModel(type);
+    const baseColumns = buildEquipmentBaseColumns(locale, pageCopy, type);
+    const extensionFields = model?.extensionFields || fieldsFor(type) || [];
+    return (model?.visible || []).map(key => columnFromLogicalKey(key, baseColumns, extensionFields, pageCopy.actionsColumn)).filter(Boolean);
   };
   const getAllAvailableColumnsForType = type => {
     const baseColumns = buildEquipmentBaseColumns(locale, pageCopy, type);
@@ -2180,21 +2236,22 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return toSortScalar(rawExt);
     }
     if (String(type || "").startsWith("Custom:")) {
-      if (colKey === "name") {
+      const lookupKey = customFamilyFieldKeyFromColumnId(colKey);
+      if (lookupKey === "name") {
         return toSortScalar(equipment?.name || equipment?.fields?.name || equipment?.data?.name);
       }
-      if (colKey === "activeStatus") {
+      if (lookupKey === "activeStatus") {
         if (getEquipmentMaintenance(equipment)) return 1;
         return readEquipmentIsActive(equipment) ? 2 : 0;
       }
-      if (colKey === "location" || colKey === "site") {
-        return getEquipmentLocationSortValue(equipment) || toSortScalar(readCustomFieldRaw(equipment, colKey));
+      if (lookupKey === "location" || lookupKey === "site") {
+        return getEquipmentLocationSortValue(equipment) || toSortScalar(readCustomFieldRaw(equipment, lookupKey));
       }
-      if (["purchaseDate", "installDate", "expirationGarantie", "date_facturation", "dateFacturation"].includes(colKey)) {
-        const rawDate = readSharedEquipmentFieldValue(equipment, colKey) || readCustomFieldRaw(equipment, colKey);
+      if (["purchaseDate", "installDate", "expirationGarantie", "date_facturation", "dateFacturation"].includes(lookupKey)) {
+        const rawDate = readSharedEquipmentFieldValue(equipment, lookupKey) || readCustomFieldRaw(equipment, lookupKey);
         return coerceCustomSortValue(rawDate, "date");
       }
-      return coerceCustomSortValue(readCustomFieldRaw(equipment, colKey), fieldType);
+      return coerceCustomSortValue(readCustomFieldRaw(equipment, lookupKey), fieldType);
     }
     const raw = equipment?.[colKey];
     const rawData = equipment?.rawData || {};
@@ -3669,7 +3726,24 @@ const EquipmentPage = forwardRef(function EquipmentPage({
             </button>
           ) : null}
         </div>
-        {embeddedToolbarEnd ? <div className={styles.embeddedSearchActions}>{embeddedToolbarEnd}</div> : null}
+        <div className={styles.embeddedSearchActions}>
+          {embeddedActiveType ? (
+            <SmartTooltip as="span" content={pageCopy.columnsModal?.customize || "Personnaliser les colonnes"}>
+              <button
+                type="button"
+                className={`${layoutKit.btnSquare} ${layoutKit.btnSquareSecondary}`}
+                onClick={() => {
+                  setColumnsSaveError("");
+                  setColumnsModalType(embeddedActiveType);
+                }}
+                aria-label={pageCopy.columnsModal?.customize || "Personnaliser les colonnes"}
+              >
+                <Icon icon="mdi:table-column" width={16} height={16} aria-hidden />
+              </button>
+            </SmartTooltip>
+          ) : null}
+          {embeddedToolbarEnd}
+        </div>
       </div>
     </>
   );
@@ -3706,6 +3780,51 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       ) : null}
     </nav>
   );
+  const columnsModalModel = columnsModalType ? getFamilyColumnModel(columnsModalType) : null;
+  const columnsModalEditor = columnsModalModel
+    ? editorStateFromPrefs(columnsModalModel.available, columnsModalModel.defaultVisible, columnsModalModel.saved)
+    : { order: [], enabled: [] };
+  const columnsModalSeed = columnsModalModel
+    ? `${columnsModalModel.familyId}|${columnsModalEditor.order.join("\u0001")}|${columnsModalEditor.enabled.join("\u0001")}`
+    : "";
+  const persistColumnPrefs = async next => {
+    await saveUserSetting(EQUIPMENT_INFRA_COLUMNS_SETTING_KEY, { families: next });
+    setColumnPrefs(next);
+  };
+  const handleSaveEquipmentColumns = async ({ order, hidden }) => {
+    if (!columnsModalType) return;
+    const next = {
+      ...columnPrefs,
+      [columnsModalType]: { order, hidden }
+    };
+    setColumnsSaving(true);
+    setColumnsSaveError("");
+    try {
+      await persistColumnPrefs(next);
+      toast.success(pageCopy.columnsModal?.saveSuccess || "Colonnes enregistrées");
+      setColumnsModalType(null);
+    } catch (err) {
+      setColumnsSaveError(pageCopy.columnsModal?.saveError || "Impossible d’enregistrer vos colonnes.");
+    } finally {
+      setColumnsSaving(false);
+    }
+  };
+  const handleResetEquipmentColumns = async () => {
+    if (!columnsModalType) return;
+    const next = { ...columnPrefs };
+    delete next[columnsModalType];
+    setColumnsSaving(true);
+    setColumnsSaveError("");
+    try {
+      await persistColumnPrefs(next);
+      toast.success(pageCopy.columnsModal?.resetSuccess || "Colonnes réinitialisées");
+      setColumnsModalType(null);
+    } catch (err) {
+      setColumnsSaveError(pageCopy.columnsModal?.saveError || "Impossible d’enregistrer vos colonnes.");
+    } finally {
+      setColumnsSaving(false);
+    }
+  };
   const typeNavPortal = useEmbeddedTypePortal
     ? createPortal(renderEmbeddedTypeSidebarNav(), typeNavPortalTarget)
     : null;
@@ -3827,6 +3946,21 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                         <h2>{embedded ? getEmbeddedTypeLabel(type) : type}</h2>
                         <span className={styles.tableSectionCount}>({equipmentList.length})</span>
                       </div>
+                      {embedded && showAllMkFamilies ? <div className={styles.tableHeaderActions}>
+                        <SmartTooltip as="span" content={pageCopy.columnsModal?.customize || "Personnaliser les colonnes"}>
+                          <button
+                            type="button"
+                            className={`${layoutKit.btnSquare} ${layoutKit.btnSquareSecondary}`}
+                            onClick={() => {
+                              setColumnsSaveError("");
+                              setColumnsModalType(type);
+                            }}
+                            aria-label={pageCopy.columnsModal?.customize || "Personnaliser les colonnes"}
+                          >
+                            <Icon icon="mdi:table-column" width={16} height={16} aria-hidden />
+                          </button>
+                        </SmartTooltip>
+                      </div> : null}
                       {!embedded ? <div className={styles.tableHeaderActions}>
                         <SmartTooltip as="span" content="Export to CSV">
                           <button className={styles.exportButton} onClick={() => exportToCSV(sortedList, type, columns)}>
@@ -3860,7 +3994,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                     <UiKitTable
                       fill
                       className={styles.equipmentUiKitTable}
-                      deps={[visibleList.length, tableSort[type]?.key, tableSort[type]?.direction, getTablePage(type), pageSize]}
+                      deps={[visibleList.length, tableSort[type]?.key, tableSort[type]?.direction, getTablePage(type), pageSize, columns.map(col => col.key).join("|")]}
                     >
                       <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
                       <colgroup>
@@ -3919,8 +4053,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             }
                             if (col.key === 'uptime') {
                               return <td key={col.key}>{formatUptime(value)}</td>;
-                            } else if (col.key === 'installDate') {
-                              return <td key={col.key}>{formatDate(value)}</td>;
+                            } else if (col.key === 'installDate' || col.key === 'purchaseDate') {
+                              const rawDate = value || readSharedEquipmentFieldValue(equipment, col.key);
+                              return <td key={col.key}>{formatDate(rawDate) || formatValue(rawDate)}</td>;
                             } else if (col.key === 'nbDisques') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
                               return <td key={col.key} className={[isStorage ? styles.internetCellBold : undefined, embedded ? styles.embeddedColCount : undefined].filter(Boolean).join(" ") || undefined}>
@@ -4173,7 +4308,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key} className={[styles.internetCellBold, embedded ? styles.embeddedColModel : undefined].filter(Boolean).join(" ") || undefined}>{formatValue(value)}</td>;
                             } else {
                               const embeddedCellClass = embedded ? getEmbeddedCellClassName(col.key, styles) : undefined;
-                              return <td key={col.key} className={embeddedCellClass}>{formatValue(value)}</td>;
+                              const display = col.key === "commentaire" || col.key === "invoiceNumber"
+                                ? value || readSharedEquipmentFieldValue(equipment, col.key)
+                                : value;
+                              return <td key={col.key} className={embeddedCellClass}>{formatValue(display)}</td>;
                             }
                           })}
                             </tr>;
@@ -4344,12 +4482,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
               const family = activeCustomFamily;
               const sectionKey = `Custom:${family.familyKey}`;
               const items = getCustomFamilyItems(family);
-              const fields = (family.fields || []).filter(field => {
-                if (["actif", "active", "is_active", "isActive", "name", "nom"].includes(field.fieldKey)) return false;
-                if (field.fieldType === "section") return false;
-                return true;
-              });
-              const fieldTypes = Object.fromEntries(fields.map(field => [field.fieldKey, field.fieldType]));
+              const columnModel = getFamilyColumnModel(sectionKey);
+              const descriptorById = new Map((columnModel?.descriptors || []).map(col => [col.id, col]));
+              const customColumns = (columnModel?.visible || []).map(id => descriptorById.get(id)).filter(Boolean);
+              const fieldTypes = Object.fromEntries(customColumns.filter(col => col.field?.fieldType).map(col => [col.id, col.field.fieldType]));
               const mappedItems = items.map(item => buildCustomEquipmentDetailItem(family, item));
               const sortedItems = getSortedEquipmentList(sectionKey, mappedItems, fieldTypes);
               const {
@@ -4377,60 +4513,66 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   <UiKitTable
                     fill
                     className={styles.equipmentUiKitTable}
-                    deps={[pagedList.length, tableSort[sectionKey]?.key, tableSort[sectionKey]?.direction, getTablePage(sectionKey), pageSize]}
+                    deps={[pagedList.length, tableSort[sectionKey]?.key, tableSort[sectionKey]?.direction, getTablePage(sectionKey), pageSize, customColumns.map(col => col.id).join("|")]}
                   >
                     <table className={`${tableKit.table} ${styles.equipmentTableEmbedded}`}>
                       <colgroup>
-                        <col className={styles.embeddedColDot} />
-                        <col className={styles.embeddedColBrand} />
-                        <col className={styles.embeddedColName} />
-                        {fields.map(field => (
-                          <col key={field.fieldKey} className={styles.embeddedColFlex} />
+                        {customColumns.map(col => (
+                          <col key={col.id} className={getEmbeddedCellClassName(col.id === "mapping" ? "mapping" : col.id, styles)} />
                         ))}
-                        <col className={styles.embeddedColActions} />
                       </colgroup>
                       <thead>
                         <tr>
-                          {renderCustomSortableTh("activeStatus", pageCopy.columns?.activeStatus || "Statut", styles.embeddedColDot)}
-                          <th className={styles.embeddedColBrand} aria-label={pageCopy.columns?.icon || "Icône"} />
-                          {renderCustomSortableTh("name", pageCopy.columns?.name || "Nom", styles.embeddedColName)}
-                          {fields.map(field => renderCustomSortableTh(field.fieldKey, field.label, styles.embeddedColFlex))}
-                          {renderCustomSortableTh("mapping", pageCopy.actionsColumn, styles.embeddedColActions)}
+                          {customColumns.map(col => col.id === "brandIcon" ? (
+                            <th key={col.id} className={styles.embeddedColBrand} aria-label={col.label || pageCopy.columns?.brandIcon || "Icône"} />
+                          ) : renderCustomSortableTh(col.id, col.label, getEmbeddedCellClassName(col.id, styles)))}
                         </tr>
                       </thead>
                       <tbody>
                         {mappedItems.length === 0 ? <tr>
-                            <td colSpan={fields.length + 4} className={styles.equipmentEmptyCell}>
+                            <td colSpan={Math.max(customColumns.length, 1)} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
                           </tr> : pagedList.map(item => <tr key={item.id} className={`${styles.equipmentRowEmbedded} ${tableKit.tableRowClickable}`} onClick={() => handleEquipmentOpen(item)} style={{
                       cursor: "pointer"
                     }}>
-                              <td className={styles.embeddedColDot}>{renderActiveStatusIcon(item)}</td>
-                              <td className={styles.embeddedColBrand}>
-                                <span className={styles.embeddedBrandSlot}>
-                                  <Icon
-                                    icon={family.icon || getEmbeddedTypeIcon(sectionKey) || "mdi:devices"}
-                                    className={`${styles.typeIconSmall} ${styles.typeBrandIconSmall}`}
-                                    width={16}
-                                    height={16}
-                                    aria-hidden
-                                  />
-                                </span>
-                              </td>
-                              <td className={styles.embeddedColName}>
-                                <div className={styles.nameCell}>
-                                  <span className={styles.internetCellBold}>{item.name || "-"}</span>
-                                </div>
-                              </td>
-                              {fields.map(field => <td key={field.fieldKey} className={styles.embeddedColFlex}>
-                                  {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey] ?? readCustomFieldRaw(item, field.fieldKey), pageCopy)}
-                                </td>)}
-                              <td className={styles.embeddedColActions} onClick={event => event.stopPropagation()}>
-                                <div className={styles.embeddedRowActions}>
-                                  <EmbeddedEquipmentActionsMenu menuKey={`custom:${family.familyKey}:${item.id}`} openMenuKey={embeddedRowMenuKey} onOpenChange={setEmbeddedRowMenuKey} items={buildCustomEmbeddedMenuItems(family, item)} />
-                                </div>
-                              </td>
+                              {customColumns.map(col => {
+                                if (col.id === "activeStatus") {
+                                  return <td key={col.id} className={styles.embeddedColDot}>{renderActiveStatusIcon(item)}</td>;
+                                }
+                                if (col.id === "brandIcon") {
+                                  return <td key={col.id} className={styles.embeddedColBrand}>
+                                    <span className={styles.embeddedBrandSlot}>
+                                      <Icon
+                                        icon={family.icon || getEmbeddedTypeIcon(sectionKey) || "mdi:devices"}
+                                        className={`${styles.typeIconSmall} ${styles.typeBrandIconSmall}`}
+                                        width={16}
+                                        height={16}
+                                        aria-hidden
+                                      />
+                                    </span>
+                                  </td>;
+                                }
+                                if (col.id === "name") {
+                                  return <td key={col.id} className={styles.embeddedColName}>
+                                    <div className={styles.nameCell}>
+                                      <span className={styles.internetCellBold}>{item.name || "-"}</span>
+                                    </div>
+                                  </td>;
+                                }
+                                if (col.id === "mapping") {
+                                  return <td key={col.id} className={styles.embeddedColActions} onClick={event => event.stopPropagation()}>
+                                    <div className={styles.embeddedRowActions}>
+                                      <EmbeddedEquipmentActionsMenu menuKey={`custom:${family.familyKey}:${item.id}`} openMenuKey={embeddedRowMenuKey} onOpenChange={setEmbeddedRowMenuKey} items={buildCustomEmbeddedMenuItems(family, item)} />
+                                    </div>
+                                  </td>;
+                                }
+                                const field = col.field;
+                                const fieldKey = field?.fieldKey || field?.key || customFamilyFieldKeyFromColumnId(col.id);
+                                return <td key={col.id} className={styles.embeddedColFlex}>
+                                  {formatCustomFamilyFieldValue(field, item.fields?.[fieldKey] ?? item.data?.[fieldKey] ?? readCustomFieldRaw(item, fieldKey), pageCopy)}
+                                </td>;
+                              })}
                             </tr>)}
                       </tbody>
                     </table>
@@ -4447,7 +4589,24 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       </div>
     </div> : <SupervisionCenterPage onEquipmentOpen={handleEquipmentOpen} onNavigate={onNavigate} />}
 
-      {}
+      <EquipmentColumnsModal
+        open={Boolean(columnsModalModel)}
+        familyLabel={columnsModalModel?.familyLabel || ""}
+        columns={columnsModalModel?.descriptors || []}
+        initialOrder={columnsModalEditor.order}
+        initialEnabled={columnsModalEditor.enabled}
+        seedKey={columnsModalSeed}
+        saving={columnsSaving}
+        error={columnsSaveError}
+        copy={pageCopy.columnsModal || {}}
+        onClose={() => {
+          if (columnsSaving) return;
+          setColumnsModalType(null);
+          setColumnsSaveError("");
+        }}
+        onSave={handleSaveEquipmentColumns}
+        onReset={handleResetEquipmentColumns}
+      />
       {columnsComingSoonModal && <div className={styles.modalOverlay} onClick={() => setColumnsComingSoonModal(false)}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>

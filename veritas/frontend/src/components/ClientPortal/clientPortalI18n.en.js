@@ -79,6 +79,8 @@ export default {
     themeDark: "Dark",
     themeSwitchLight: "Switch to light mode",
     themeSwitchDark: "Switch to dark mode",
+    expandSidebar: "Show labels",
+    collapseSidebar: "Collapse menu",
     logout: "Sign out",
     impersonationPrefix: "You are viewing the portal as",
     impersonationFallback: "client contact",

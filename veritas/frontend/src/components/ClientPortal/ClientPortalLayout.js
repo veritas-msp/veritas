@@ -18,6 +18,18 @@ import {
 } from "./portalSiteFilter";
 import styles from "./ClientDashboard.module.css";
 
+const PORTAL_RAIL_COLLAPSED_KEY = "veritas_portal_sidebar_rail_collapsed";
+
+function readPortalRailCollapsed() {
+  try {
+    const raw = localStorage.getItem(PORTAL_RAIL_COLLAPSED_KEY);
+    if (raw == null) return false;
+    return raw === "1" || raw === "true";
+  } catch {
+    return false;
+  }
+}
+
 function companyKey(company) {
   const id = company?.client_id ?? company?.id;
   return id == null ? null : String(id);
@@ -68,6 +80,7 @@ export default function ClientPortalLayout() {
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
+  const [mainRailCollapsed, setMainRailCollapsed] = useState(() => readPortalRailCollapsed());
 
   const reloadPortal = async () => {
     const dashboard = await fetchPortalDashboard();
@@ -182,9 +195,10 @@ export default function ClientPortalLayout() {
         onSwitchCompany={handleSwitchCompany}
         actionRequiredCount={actionRequiredCount}
         onLogout={handleLogout}
+        onCollapseChange={setMainRailCollapsed}
       />
 
-      <div className={styles.main}>
+      <div className={`${styles.main} ${mainRailCollapsed ? styles.mainRailCollapsed : ""}`.trim()}>
         {impersonating ? <div className={styles.impersonationBanner} role="status">
             <div className={styles.impersonationBannerText}>
               <Icon icon="mdi:incognito" aria-hidden />

@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.17",
+    date: "2026-11-19",
+    highlights: [
+      "Infrastructure : colonnes des tables de périphériques personnalisables (visibilité et ordre) pour chaque utilisateur, familles natives et champs personnalisés.",
+      "Fiche matériel : ouverture sur Informations matériel ; la demande de sync complet n’occupe plus le contenu (indicateur dans l’en-tête et notification flottante).",
+      "Portail client : le menu latéral peut se replier.",
+      "Rapport d’intervention : opérations et mouvements de matériel saisis en tableaux compacts."
+    ]
+  },
+  {
     version: "2.0.16",
     date: "2026-11-18",
     highlights: [

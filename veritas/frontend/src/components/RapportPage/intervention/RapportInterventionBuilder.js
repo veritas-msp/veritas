@@ -850,7 +850,7 @@ export default function ReportInterventionBuilder({
 
   const renderContextStep = () => (
     <div className={formStyles.formStack}>
-      <section className={formStyles.sectionCard}>
+      <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill}`.trim()}>
         <header className={formStyles.sectionHead}>
           <h3 className={formStyles.sectionTitle}>{ctx.sectionClient}</h3>
         </header>
@@ -889,7 +889,7 @@ export default function ReportInterventionBuilder({
         </div>
       </section>
 
-      <section className={formStyles.sectionCard}>
+      <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill}`.trim()}>
         <header className={formStyles.sectionHead}>
           <h3 className={formStyles.sectionTitle}>{ctx.sectionDetails}</h3>
         </header>
@@ -1042,151 +1042,162 @@ export default function ReportInterventionBuilder({
 
   const renderOperationsStep = () => (
     <div className={formStyles.formStack}>
-      <section className={formStyles.sectionCard}>
-        <header className={formStyles.sectionHead}>
-          <div className={formStyles.sectionHeadRow}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h3 className={formStyles.sectionTitle}>
-                {opsCopy.title}
-                <span className={formStyles.requiredMark} aria-hidden>
-                  *
-                </span>
-              </h3>
-              {opsCopy.hint ? <p className={formStyles.sectionHint}>{opsCopy.hint}</p> : null}
+      <div className={styles.opsMatColumns}>
+        <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill} ${styles.opsMatPanel}`.trim()}>
+          <header className={formStyles.sectionHead}>
+            <div className={formStyles.sectionHeadRow}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <h3 className={formStyles.sectionTitle}>
+                  {opsCopy.title}
+                  <span className={formStyles.requiredMark} aria-hidden>
+                    *
+                  </span>
+                </h3>
+                {opsCopy.hint ? <p className={formStyles.sectionHint}>{opsCopy.hint}</p> : null}
+              </div>
+              <button type="button" className={formStyles.addBtn} onClick={addOperation}>
+                <Icon icon="mdi:plus" aria-hidden />
+                {opsCopy.add}
+              </button>
             </div>
-            <button type="button" className={formStyles.addBtn} onClick={addOperation}>
-              <Icon icon="mdi:plus" aria-hidden />
-              {opsCopy.add}
-            </button>
-          </div>
-        </header>
-        <div className={styles.cardStack}>
-          {operations.length === 0 ? (
-            <p className={formStyles.sectionHint}>{opsCopy.empty}</p>
-          ) : (
-            operations.map((op, index) => (
-              <article key={op.id || `op-${index}`} className={styles.opCard}>
-                <div className={styles.cardTop}>
-                  <span className={styles.cardIndex}>{index + 1}</span>
-                  <button
-                    type="button"
-                    className={styles.cardRemove}
-                    onClick={() => removeOperation(index)}
-                    aria-label={opsCopy.remove}
-                  >
-                    <Icon icon="mdi:close" aria-hidden />
-                  </button>
-                </div>
-                <Field label={opsCopy.description} required>
-                  <textarea
-                    className={formStyles.fieldTextarea}
-                    value={op.description || ""}
-                    onChange={e => handleOperationChange(index, { description: e.target.value })}
-                    placeholder={opsCopy.descriptionPlaceholder}
-                    rows={3}
-                  />
-                </Field>
-                <Field label={opsCopy.status}>
-                  <div className={styles.statusToggle} role="group" aria-label={opsCopy.status}>
+          </header>
+          <div className={styles.tableScroll}>
+            <div className={styles.operationsTable} role="table" aria-label={opsCopy.title}>
+              <div className={styles.operationsHead} role="row">
+                <span className={styles.operationsHeadLabel} role="columnheader">
+                  {opsCopy.description}
+                </span>
+                <span className={styles.operationsHeadLabel} role="columnheader">
+                  {opsCopy.observations}
+                </span>
+                <span className={`${styles.operationsHeadStatus} ${styles.statusOk}`} role="columnheader" title={opsCopy.statusOk}>
+                  {opsCopy.statusOk}
+                </span>
+                <span className={styles.operationsHeadStatus} role="columnheader" title={opsCopy.statusPending}>
+                  Att.
+                </span>
+                <span className={`${styles.operationsHeadStatus} ${styles.statusPb}`} role="columnheader" title={opsCopy.statusKo}>
+                  {opsCopy.statusKo}
+                </span>
+                <span className={styles.operationsHeadStatus} role="columnheader" aria-hidden>
+                  {" "}
+                </span>
+              </div>
+              {operations.length === 0 ? (
+                <p className={styles.tableEmpty}>{opsCopy.empty}</p>
+              ) : (
+                operations.map((op, index) => (
+                  <div key={op.id || `op-${index}`} className={styles.operationsRow} role="row">
+                    <input
+                      className={styles.movementCellInput}
+                      value={op.description || ""}
+                      onChange={e => handleOperationChange(index, { description: e.target.value })}
+                      placeholder={opsCopy.descriptionPlaceholder}
+                      aria-label={`${opsCopy.description} ${index + 1}`}
+                    />
+                    <input
+                      className={styles.movementCellInput}
+                      value={op.observations || ""}
+                      onChange={e => handleOperationChange(index, { observations: e.target.value })}
+                      placeholder={opsCopy.observationsPlaceholder}
+                      aria-label={`${opsCopy.observations} ${index + 1}`}
+                    />
                     {[
-                      { value: "ok", label: opsCopy.statusOk },
-                      { value: "pending", label: opsCopy.statusPending },
-                      { value: "ko", label: opsCopy.statusKo }
+                      { value: "ok", activeClass: styles.statusBtnActiveOk },
+                      { value: "pending", activeClass: styles.statusBtnActivePending },
+                      { value: "ko", activeClass: styles.statusBtnActivePb }
                     ].map(option => (
                       <button
                         key={option.value}
                         type="button"
-                        className={`${styles.statusChip} ${
-                          op.status === option.value
-                            ? styles[`statusChip_${option.value}`]
-                            : ""
+                        className={`${styles.statusBtn} ${
+                          op.status === option.value ? option.activeClass : ""
                         }`.trim()}
                         aria-pressed={op.status === option.value}
+                        aria-label={
+                          option.value === "ok"
+                            ? opsCopy.statusOk
+                            : option.value === "pending"
+                              ? opsCopy.statusPending
+                              : opsCopy.statusKo
+                        }
                         onClick={() =>
                           handleOperationChange(index, {
                             status: op.status === option.value ? "" : option.value
                           })
                         }
                       >
-                        {option.label}
+                        {option.value === "ok" ? "OK" : option.value === "pending" ? "Att." : "KO"}
                       </button>
                     ))}
-                  </div>
-                </Field>
-                <Field label={opsCopy.observations}>
-                  <textarea
-                    className={formStyles.fieldTextarea}
-                    value={op.observations || ""}
-                    onChange={e => handleOperationChange(index, { observations: e.target.value })}
-                    placeholder={opsCopy.observationsPlaceholder}
-                    rows={2}
-                  />
-                </Field>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className={formStyles.sectionCard}>
-        <header className={formStyles.sectionHead}>
-          <div className={formStyles.sectionHeadRow}>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h3 className={formStyles.sectionTitle}>{matCopy.title}</h3>
-              {matCopy.hint ? <p className={formStyles.sectionHint}>{matCopy.hint}</p> : null}
-            </div>
-            <button type="button" className={formStyles.addBtn} onClick={addMovement}>
-              <Icon icon="mdi:plus" aria-hidden />
-              {matCopy.add}
-            </button>
-          </div>
-        </header>
-        <div className={styles.cardStack}>
-          {mouvements.length === 0 ? (
-            <p className={formStyles.sectionHint}>{matCopy.empty}</p>
-          ) : null}
-          {mouvements.map((mov, index) => (
-            <article key={mov.id || `mov-${index}`} className={styles.matCard}>
-              <div className={styles.cardTop}>
-                <span className={styles.cardIndex}>{index + 1}</span>
-                <button
-                  type="button"
-                  className={styles.cardRemove}
-                  onClick={() => removeMovement(index)}
-                  aria-label={matCopy.remove}
-                >
-                  <Icon icon="mdi:close" aria-hidden />
-                </button>
-              </div>
-              <div className={styles.matGrid}>
-                <Field label={matCopy.qte}>
-                  <input
-                    className={formStyles.fieldInput}
-                    inputMode="numeric"
-                    value={mov.qte || ""}
-                    onChange={e => handleMovementChange(index, { qte: e.target.value })}
-                  />
-                </Field>
-                <Field label={matCopy.reference}>
-                  <input
-                    className={formStyles.fieldInput}
-                    value={mov.reference || ""}
-                    onChange={e => handleMovementChange(index, { reference: e.target.value })}
-                  />
-                </Field>
-                <Field label={matCopy.serial}>
-                  <input
-                    className={formStyles.fieldInput}
-                    value={mov.serial || ""}
-                    onChange={e => handleMovementChange(index, { serial: e.target.value })}
-                  />
-                </Field>
-                <Field label={matCopy.operation}>
-                  <div className={styles.contractToggleButtons} role="group">
                     <button
                       type="button"
-                      className={`${styles.contractToggleBtn} ${
-                        mov.operation === "depot" ? styles.contractToggleBtnActive : ""
+                      className={styles.movementRowRemove}
+                      onClick={() => removeOperation(index)}
+                      aria-label={opsCopy.remove}
+                    >
+                      <Icon icon="mdi:close" aria-hidden />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill} ${styles.opsMatPanel}`.trim()}>
+          <header className={formStyles.sectionHead}>
+            <div className={formStyles.sectionHeadRow}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <h3 className={formStyles.sectionTitle}>{matCopy.title}</h3>
+                {matCopy.hint ? <p className={formStyles.sectionHint}>{matCopy.hint}</p> : null}
+              </div>
+              <button type="button" className={formStyles.addBtn} onClick={addMovement}>
+                <Icon icon="mdi:plus" aria-hidden />
+                {matCopy.add}
+              </button>
+            </div>
+          </header>
+          <div className={styles.tableScroll}>
+            <div className={`${styles.movementTable} ${styles.materialTable}`} role="table" aria-label={matCopy.title}>
+              <div className={styles.materialTableHead} role="row">
+                <span role="columnheader">{matCopy.qte}</span>
+                <span role="columnheader">{matCopy.reference}</span>
+                <span role="columnheader">{matCopy.serial}</span>
+                <span role="columnheader">{matCopy.depot}</span>
+                <span role="columnheader">{matCopy.recuperation}</span>
+                <span role="columnheader" aria-hidden>
+                  {" "}
+                </span>
+              </div>
+              {mouvements.length === 0 ? (
+                <p className={styles.tableEmpty}>{matCopy.empty}</p>
+              ) : (
+                mouvements.map((mov, index) => (
+                  <div key={mov.id || `mov-${index}`} className={styles.materialRow} role="row">
+                    <input
+                      className={styles.movementCellInput}
+                      inputMode="numeric"
+                      value={mov.qte || ""}
+                      onChange={e => handleMovementChange(index, { qte: e.target.value })}
+                      aria-label={`${matCopy.qte} ${index + 1}`}
+                    />
+                    <input
+                      className={styles.movementCellInput}
+                      value={mov.reference || ""}
+                      onChange={e => handleMovementChange(index, { reference: e.target.value })}
+                      aria-label={`${matCopy.reference} ${index + 1}`}
+                    />
+                    <input
+                      className={styles.movementCellInput}
+                      value={mov.serial || ""}
+                      onChange={e => handleMovementChange(index, { serial: e.target.value })}
+                      aria-label={`${matCopy.serial} ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className={`${styles.statusBtn} ${
+                        mov.operation === "depot" ? styles.statusBtnActiveOk : ""
                       }`.trim()}
                       aria-pressed={mov.operation === "depot"}
                       onClick={() =>
@@ -1199,8 +1210,8 @@ export default function ReportInterventionBuilder({
                     </button>
                     <button
                       type="button"
-                      className={`${styles.contractToggleBtn} ${
-                        mov.operation === "recuperation" ? styles.contractToggleBtnActive : ""
+                      className={`${styles.statusBtn} ${
+                        mov.operation === "recuperation" ? styles.statusBtnActivePb : ""
                       }`.trim()}
                       aria-pressed={mov.operation === "recuperation"}
                       onClick={() =>
@@ -1211,13 +1222,21 @@ export default function ReportInterventionBuilder({
                     >
                       {matCopy.recuperation}
                     </button>
+                    <button
+                      type="button"
+                      className={styles.movementRowRemove}
+                      onClick={() => removeMovement(index)}
+                      aria-label={matCopy.remove}
+                    >
+                      <Icon icon="mdi:close" aria-hidden />
+                    </button>
                   </div>
-                </Field>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
 
       <section className={formStyles.sectionCard}>
         <header className={formStyles.sectionHead}>
@@ -1275,13 +1294,13 @@ export default function ReportInterventionBuilder({
 
   const renderRemarksStep = () => (
     <div className={formStyles.formStack}>
-      <section className={formStyles.sectionCard}>
+      <section className={`${formStyles.sectionCard} ${formStyles.sectionCardFill} ${styles.remarksFill}`.trim()}>
         <header className={formStyles.sectionHead}>
           <h3 className={formStyles.sectionTitle}>{rem.title}</h3>
         </header>
         <Field label={rem.reservesClient}>
           <textarea
-            className={formStyles.fieldTextarea}
+            className={`${formStyles.fieldTextarea} ${styles.remarksTextarea}`.trim()}
             name="reservesClient"
             value={formData.reservesClient || ""}
             onChange={handleChange}

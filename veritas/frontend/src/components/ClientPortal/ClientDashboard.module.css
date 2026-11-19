@@ -469,6 +469,10 @@
   box-sizing: border-box;
 }
 
+.mainRailCollapsed {
+  margin-left: 64px;
+}
+
 .mainScroll {
   --portal-scroll-pad-top: 1.25rem;
   --portal-scroll-pad-x: 1.5rem;
@@ -548,7 +552,7 @@
 .portalShell {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 0;
   gap: 16px;
   max-width: none;
@@ -568,11 +572,11 @@
 .portalPage {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   align-self: stretch;
   min-height: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   background: transparent;
   color: var(--portal-text);
   font-family: inherit;
@@ -1349,7 +1353,8 @@
 }
 
 @media (max-width: 1023px) {
-  .main {
+  .main,
+  .mainRailCollapsed {
     margin-left: 0;
   }
 

@@ -103,6 +103,8 @@ import {
   normalizeEquipmentDetailTab,
   normalizeEquipmentRmmPane,
   normalizeEquipmentSupervisionPane,
+  resolveEquipmentDetailEntryTab,
+  isEquipmentRmmDetailTab,
   readEquipmentDetailUi,
   writeEquipmentDetailUi,
   writeEquipmentDetailUiScroll,
@@ -208,11 +210,9 @@ export default function EquipmentDetailPage({
   const [globalSSIDs, setGlobalSSIDs] = useState([]);
   const [loadingSSIDs, setLoadingSSIDs] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState(() =>
-    normalizeEquipmentDetailTab(
-      equipment?.detailTab === "metrics" || initialEquipmentUi?.activityPane === "metrics"
-        ? "metrics"
-        : initialEquipmentUi?.rightPanelTab
-    )
+    resolveEquipmentDetailEntryTab(equipment, initialEquipmentUi, {
+      rmmManaged: isRmmManagedEquipment(equipment)
+    })
   );
   const [supervisionPane, setSupervisionPane] = useState(() =>
     normalizeEquipmentSupervisionPane(
@@ -869,14 +869,15 @@ export default function EquipmentDetailPage({
   useEffect(() => {
     if (!equipmentDbId) return;
     const prev = equipmentUiIdRef.current;
-    if (prev != null && String(prev) !== String(equipmentDbId)) {
+    const idArrived = prev == null;
+    const idChanged = prev != null && String(prev) !== String(equipmentDbId);
+    if (idArrived || idChanged) {
       skipEquipmentUiPersistRef.current = true;
       const saved = readEquipmentDetailUi(equipmentDbId);
       const savedTab = saved?.rightPanelTab;
-      const migratedMetrics =
-        saved?.activityPane === "metrics" &&
-        (savedTab === "activity" || savedTab === "events" || savedTab === "stats" || savedTab === "metrics");
-      const nextTab = normalizeEquipmentDetailTab(migratedMetrics ? "metrics" : savedTab);
+      const nextTab = resolveEquipmentDetailEntryTab(equipment, saved, {
+        rmmManaged: isRmmManagedEquipment(equipment)
+      });
       setRightPanelTab(nextTab);
       const nextSupervisionPane = normalizeEquipmentSupervisionPane(
         savedTab === "history" || savedTab === "maintenance"
@@ -887,7 +888,7 @@ export default function EquipmentDetailPage({
       setVisitedSupervisionPanes({
         [nextSupervisionPane]: true
       });
-      setRmmPane(normalizeEquipmentRmmPane(nextTab === "metrics" ? "metrics" : nextTab));
+      setRmmPane(normalizeEquipmentRmmPane(isEquipmentRmmDetailTab(nextTab) ? nextTab : saved?.rmmPane));
       setActivityDatePreset(saved?.activityDatePreset || "30d");
       const cached = getDetailCache(DETAIL_CACHE_NS.equipment, equipmentDbId);
       if (Array.isArray(cached?.tags)) {
@@ -2044,6 +2045,16 @@ export default function EquipmentDetailPage({
   }
 
   return <div ref={pageRootRef} className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${enterpriseDetailStyles.equipmentDetailPage} ${styles.equipmentDetailPage} ${inMaintenance ? styles.heroInMaintenance : ""} msp-page-grid`.trim()}>
+      {rmmManaged && rmmSyncPending ? (
+        <RmmSyncPendingNotice
+          variant="float"
+          equipment={equipment}
+          syncRequestedAt={rmmSyncRequestedAt}
+          heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+          onCancel={handleRmmCancelSync}
+          cancelling={rmmSyncRequesting}
+        />
+      ) : null}
       <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
         <div className={enterpriseDetailStyles.heroTop}>
           <div className={enterpriseDetailStyles.heroIdentityBlock}>
@@ -2118,6 +2129,14 @@ export default function EquipmentDetailPage({
                 aria-label={copy.hero.metaAria}
               >
                 <div className={styles.heroMetaPrimary}>
+                  {rmmManaged && rmmSyncPending ? (
+                    <RmmSyncPendingNotice
+                      variant="hero"
+                      equipment={equipment}
+                      syncRequestedAt={rmmSyncRequestedAt}
+                      heartbeatIntervalMinutes={rmmHeartbeatMinutes}
+                    />
+                  ) : null}
                   {inMaintenance ? (
                     <span
                       className={`${styles.heroMaintenanceBadge} ${styles.heroMaintenanceBadgeMeta} ${enterpriseDetailStyles.heroMetaBlock}`.trim()}
@@ -2491,11 +2510,9 @@ export default function EquipmentDetailPage({
           </aside>
 
           <div className={`${finderKit.finderContent} ${styles.equipmentFinderContent}`.trim()}>
-        {(rmmManaged && rmmSyncPending) ||
-        (rightPanelTab === "synthese" && showRmmHeroStatus && (rmmDeviceHealth || deviceNote)) ? (
+        {rightPanelTab === "synthese" && showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? (
           <div className={styles.rmmTopBanners}>
-            {rightPanelTab === "synthese" && showRmmHeroStatus && (rmmDeviceHealth || deviceNote) ? (
-              <ScoreBanner
+            <ScoreBanner
                 health={rmmDeviceHealth}
                 note={deviceNote}
                 noteTitle={copy.hero.factNote || copy.specs?.notesTitle || "Note"}
@@ -2513,17 +2530,7 @@ export default function EquipmentDetailPage({
                       points: String(points)
                     })
                 }}
-              />
-            ) : null}
-            {rmmManaged && rmmSyncPending ? (
-              <RmmSyncPendingNotice
-                equipment={equipment}
-                syncRequestedAt={rmmSyncRequestedAt}
-                heartbeatIntervalMinutes={rmmHeartbeatMinutes}
-                onCancel={handleRmmCancelSync}
-                cancelling={rmmSyncRequesting}
-              />
-            ) : null}
+            />
           </div>
         ) : null}
 

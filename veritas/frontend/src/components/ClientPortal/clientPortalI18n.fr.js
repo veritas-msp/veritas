@@ -79,6 +79,8 @@ export default {
     themeDark: "Sombre",
     themeSwitchLight: "Passer en mode clair",
     themeSwitchDark: "Passer en mode sombre",
+    expandSidebar: "Afficher les noms",
+    collapseSidebar: "Réduire le menu",
     logout: "Déconnexion",
     impersonationPrefix: "Vous visualisez le portail en tant que",
     impersonationFallback: "contact client",

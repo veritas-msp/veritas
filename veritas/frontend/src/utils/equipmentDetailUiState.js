@@ -15,6 +15,7 @@ const DETAIL_TABS = new Set([
   "metrics"
 ]);
 const SUPERVISION_PANES = new Set(["main", "history"]);
+const RMM_DETAIL_TABS = new Set(["synthese", "operations", "peripherals", "metrics", "historique"]);
 const SCROLL_DEBOUNCE_MS = 250;
 
 const memoryCache = new Map();
@@ -25,15 +26,29 @@ function storageKey(equipmentId) {
   return `${KEY_PREFIX}${equipmentId}`;
 }
 
+export function isEquipmentRmmDetailTab(tab) {
+  return RMM_DETAIL_TABS.has(tab);
+}
+
 export function normalizeEquipmentDetailTab(tab) {
   if (tab === "events" || tab === "stats") return "activity";
   if (tab === "metrics") return "metrics";
   if (tab === "notes" || tab === "fiche" || tab === "hardware") return "fiche";
   if (tab === "historique") return "historique";
   if (tab === "history" || tab === "maintenance") return "supervision";
-  if (tab === "dashboard" || tab === "overview" || tab === "general") return "synthese";
+  if (tab === "dashboard" || tab === "overview" || tab === "general") return "fiche";
   if (tab === "synthese" || tab === "summary") return "synthese";
-  return DETAIL_TABS.has(tab) ? tab : "synthese";
+  return DETAIL_TABS.has(tab) ? tab : "fiche";
+}
+
+/** Onglet à l’ouverture : Informations matériel, sauf lien explicite ou section RMM déjà choisie sur un poste géré. */
+export function resolveEquipmentDetailEntryTab(equipment, savedUi, { rmmManaged = false } = {}) {
+  if (equipment?.detailTab === "metrics" || savedUi?.activityPane === "metrics") {
+    return "metrics";
+  }
+  const tab = normalizeEquipmentDetailTab(savedUi?.rightPanelTab);
+  if (isEquipmentRmmDetailTab(tab) && !rmmManaged) return "fiche";
+  return tab;
 }
 
 export function normalizeEquipmentActivityPane(pane) {

@@ -1,11 +1,11 @@
 /* Tables portail — alignées UI Kit / CRM agent (tableList) */
 
 .tablePanel {
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
   border-radius: var(--msp-radius-sm, 10px);
   background: var(--msp-surface, var(--portal-surface, #fff));
@@ -13,9 +13,10 @@
 }
 
 .tableScroll {
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
 }
 
