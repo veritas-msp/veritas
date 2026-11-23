@@ -115,7 +115,7 @@ export function sanitizeSupervisionAlertTitle(raw) {
  */
 export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
   const fallbackName = labels.noName || "—";
-  return (Array.isArray(alerts) ? alerts : [])
+  const items = (Array.isArray(alerts) ? alerts : [])
     .filter(alert => {
       const status = String(alert?.status || "open");
       return status === "open" || status === "acked" || status === "linked";
@@ -199,17 +199,65 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
         hostName: alert.hostName || alert.meta?.hostName || null,
         checkmkSite: alert.checkmkSite || null,
         ruleEnabled: alert.ruleEnabled,
-        alertId: alert.id || null
+        alertId: alert.id || null,
+        parentAlertId: alert.parentAlertId || null,
+        parentQueueItemId: alert.parentQueueItemId || null,
+        parentTitle: alert.parentTitle || null,
+        childCount: Number(alert.childCount) || 0,
+        mergedAt: alert.mergedAt || null,
+        isMergeChild: Boolean(alert.parentAlertId),
+        isMergeParent: Number(alert.childCount) > 0 && !alert.parentAlertId
       };
-    })
-    .sort((a, b) => {
-      const sev = (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9);
-      if (sev !== 0) return sev;
-      const ta = a.sortTime ?? Number.POSITIVE_INFINITY;
-      const tb = b.sortTime ?? Number.POSITIVE_INFINITY;
-      if (ta !== tb) return ta - tb;
-      return (a.priority ?? 9) - (b.priority ?? 9);
     });
+
+  const byAlertId = new Map(items.map(item => [String(item.alertId || ""), item]));
+  const mergeRootKey = item => {
+    if (item.parentAlertId && byAlertId.has(String(item.parentAlertId))) {
+      return `p:${item.parentAlertId}`;
+    }
+    if (item.alertId) return `p:${item.alertId}`;
+    return `q:${item.queueItemId || item.id}`;
+  };
+  const rootSortMeta = new Map();
+  for (const item of items) {
+    const key = mergeRootKey(item);
+    if (item.isMergeChild) continue;
+    const prev = rootSortMeta.get(key);
+    const sev = SEVERITY_RANK[item.severity] ?? 9;
+    const time = item.sortTime ?? Number.POSITIVE_INFINITY;
+    if (!prev || sev < prev.sev || (sev === prev.sev && time < prev.time)) {
+      rootSortMeta.set(key, { sev, time, priority: item.priority ?? 9 });
+    }
+  }
+  for (const item of items) {
+    const key = mergeRootKey(item);
+    if (rootSortMeta.has(key)) continue;
+    rootSortMeta.set(key, {
+      sev: SEVERITY_RANK[item.severity] ?? 9,
+      time: item.sortTime ?? Number.POSITIVE_INFINITY,
+      priority: item.priority ?? 9
+    });
+  }
+
+  return items.sort((a, b) => {
+    const ka = mergeRootKey(a);
+    const kb = mergeRootKey(b);
+    const ra = rootSortMeta.get(ka) || { sev: 9, time: Number.POSITIVE_INFINITY, priority: 9 };
+    const rb = rootSortMeta.get(kb) || { sev: 9, time: Number.POSITIVE_INFINITY, priority: 9 };
+    if (ra.sev !== rb.sev) return ra.sev - rb.sev;
+    if (ra.time !== rb.time) return ra.time - rb.time;
+    if (ka !== kb) return ka.localeCompare(kb);
+    // Parent before children within the same merge group
+    const aChild = a.isMergeChild ? 1 : 0;
+    const bChild = b.isMergeChild ? 1 : 0;
+    if (aChild !== bChild) return aChild - bChild;
+    const sev = (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9);
+    if (sev !== 0) return sev;
+    const ta = a.sortTime ?? Number.POSITIVE_INFINITY;
+    const tb = b.sortTime ?? Number.POSITIVE_INFINITY;
+    if (ta !== tb) return ta - tb;
+    return (a.priority ?? 9) - (b.priority ?? 9);
+  });
 }
 
 /** Texte searchable d’une alerte file / historique (titre, client, IP, hôte…). */

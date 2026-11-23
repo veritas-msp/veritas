@@ -272,6 +272,34 @@ export async function purgeSupervisionAlert(alert) {
   return handleResponse(response);
 }
 
+/** Fusionne des alertes enfants sur une alerte parente. */
+export async function mergeSupervisionAlerts({
+  parentAlertId = null,
+  parentQueueItemId = null,
+  childAlertIds = [],
+  childQueueItemIds = []
+} = {}) {
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/merge`, {
+    method: "POST",
+    body: JSON.stringify({
+      parentAlertId,
+      parentQueueItemId,
+      childAlertIds,
+      childQueueItemIds
+    })
+  });
+  return handleResponse(response);
+}
+
+/** Détache une alerte enfant de son parent. */
+export async function unmergeSupervisionAlert({ alertId = null, queueItemId = null } = {}) {
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/unmerge`, {
+    method: "POST",
+    body: JSON.stringify({ alertId, queueItemId })
+  });
+  return handleResponse(response);
+}
+
 /** Bulk history actions: trash | restore | purge | reopen */
 export async function bulkActOnSupervisionAlerts(action, alertIds = []) {
   const ids = (Array.isArray(alertIds) ? alertIds : []).map(id => String(id || "").trim()).filter(Boolean);

@@ -30,8 +30,10 @@ import {
   fetchSupervisionAlertsActive,
   fetchSupervisionAlertsHistory,
   fetchSupervisionExclusions,
+  mergeSupervisionAlerts,
   resolveSupervisionAlert,
-  subscribeSupervisionAlertStream
+  subscribeSupervisionAlertStream,
+  unmergeSupervisionAlert
 } from "../../api/supervisionAlerts";
 import { toast } from "react-toastify";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
@@ -76,6 +78,7 @@ export default function MonitoringCenterPage({
   const [maintenanceItem, setMaintenanceItem] = useState(null);
   const [triageModalBusy, setTriageModalBusy] = useState(false);
   const [alertActionBusyId, setAlertActionBusyId] = useState(null);
+  const [mergeBusy, setMergeBusy] = useState(false);
   const [historyAlerts, setHistoryAlerts] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
@@ -433,7 +436,13 @@ export default function MonitoringCenterPage({
         if (payload.alert.status === "closed" || payload.action === "reopen" || payload.action === "resolved" || payload.action === "dismissed") {
           refreshHistory();
         }
-        if (payload.action === "reopen" || payload.action === "opened") {
+        if (
+          payload.action === "reopen" ||
+          payload.action === "opened" ||
+          payload.action === "merged" ||
+          payload.action === "unmerged" ||
+          payload.action === "merge_parent"
+        ) {
           loadActiveAlerts();
         }
       },
@@ -708,6 +717,50 @@ export default function MonitoringCenterPage({
       setAlertActionBusyId(null);
     }
   }, [alertRules, applyAlertResult, onNavigate, pageCopy.ops?.toasts]);
+
+  const handleMergeAlerts = useCallback(async ({ parent, children }) => {
+    if (!parent || !Array.isArray(children) || !children.length || mergeBusy) return;
+    setMergeBusy(true);
+    try {
+      const result = await mergeSupervisionAlerts({
+        parentAlertId: parent.alertId || null,
+        parentQueueItemId: parent.queueItemId || parent.id || null,
+        childAlertIds: children.map(item => item.alertId).filter(Boolean),
+        childQueueItemIds: children.map(item => item.queueItemId || item.id).filter(Boolean)
+      });
+      if (result?.parent) applyAlertResult({ alert: result.parent });
+      (result?.children || []).forEach(alert => applyAlertResult({ alert }));
+      await loadActiveAlerts();
+      toast.success(
+        interpolate(pageCopy.ops?.toasts?.merged || "{count} alert(s) merged", {
+          count: String(result?.children?.length || children.length)
+        })
+      );
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.mergeFailed || "Merge failed");
+    } finally {
+      setMergeBusy(false);
+    }
+  }, [applyAlertResult, loadActiveAlerts, mergeBusy, pageCopy.ops?.toasts]);
+
+  const handleUnmergeAlert = useCallback(async item => {
+    if (!item?.alertId && !item?.queueItemId && !item?.id) return;
+    setAlertActionBusyId(item.id);
+    try {
+      const result = await unmergeSupervisionAlert({
+        alertId: item.alertId || null,
+        queueItemId: item.queueItemId || item.id || null
+      });
+      if (result?.alert) applyAlertResult(result);
+      await loadActiveAlerts();
+      toast.success(pageCopy.ops?.toasts?.unmerged || "Unmerged");
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.unmergeFailed || "Unmerge failed");
+    } finally {
+      setAlertActionBusyId(null);
+    }
+  }, [applyAlertResult, loadActiveAlerts, pageCopy.ops?.toasts]);
+
   const handleOpenQueueItem = useCallback((item, options = {}) => {
     const equipment =
       item?.equipment ||
@@ -948,6 +1001,8 @@ export default function MonitoringCenterPage({
                             onResolve={handleResolveAlert}
                             onIgnore={item => setIgnoreItem(item)}
                             onMaintenance={item => setMaintenanceItem(item)}
+                            onMerge={handleMergeAlerts}
+                            onUnmerge={handleUnmergeAlert}
                             onResync={handleResyncHost}
                             onDiagnose={item => setDiagnoseAlertId(item.alertId)}
                             onEndExclusion={handleEndExclusion}
@@ -955,6 +1010,7 @@ export default function MonitoringCenterPage({
                             canDiagnose={canManageAlertRules}
                             resyncBusyId={resyncBusyId}
                             busyId={alertActionBusyId}
+                            mergeBusy={mergeBusy}
                             localeTag={localeTag}
                             copy={pageCopy.ops}
                             showDomain={false}

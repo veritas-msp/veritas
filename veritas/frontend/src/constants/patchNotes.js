@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.21",
+    date: "2026-11-23",
+    highlights: [
+      "Centre de supervision : fusion d’alertes (plusieurs enfants sur un parent / ticket) avec indicateurs de branche dans À traiter et En cours.",
+      "Export PDF des tâches prestation compressé (JPEG découpé par page) pour éviter les fichiers trop volumineux."
+    ]
+  },
+  {
     version: "2.0.20",
     date: "2026-11-23",
     highlights: [

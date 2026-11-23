@@ -153,6 +153,12 @@ function mapAlert(row) {
           ? String(row.meta.linkedTicketNumber).trim() || null
           : null,
     linkedEventId: row.linked_event_id,
+    parentAlertId: row.parent_alert_id || null,
+    parentQueueItemId: row.parent_queue_item_id || null,
+    parentTitle: row.parent_title ? sanitizeSupervisionAlertTitle(row.parent_title) : null,
+    childCount: Number(row.child_count) || 0,
+    mergedAt: row.merged_at || null,
+    mergedBy: row.merged_by || null,
     note: row.note,
     meta: row.meta || {},
     deletedAt: row.deleted_at || null,
@@ -161,6 +167,31 @@ function mapAlert(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+/** Enrichit une liste d’alertes mappées avec parent / nombre d’enfants (actifs). */
+function attachMergeRelations(alerts = []) {
+  const list = Array.isArray(alerts) ? alerts.filter(Boolean) : [];
+  if (!list.length) return list;
+  const byId = new Map(list.map(alert => [String(alert.id), alert]));
+  const childCountByParent = new Map();
+  for (const alert of list) {
+    const parentId = String(alert.parentAlertId || "").trim();
+    if (!parentId) continue;
+    childCountByParent.set(parentId, (childCountByParent.get(parentId) || 0) + 1);
+  }
+  return list.map(alert => {
+    const id = String(alert.id);
+    const parentId = String(alert.parentAlertId || "").trim() || null;
+    const parent = parentId ? byId.get(parentId) : null;
+    return {
+      ...alert,
+      parentAlertId: parentId,
+      parentQueueItemId: parent?.queueItemId || alert.parentQueueItemId || null,
+      parentTitle: parent?.title || alert.parentTitle || null,
+      childCount: childCountByParent.get(id) || Number(alert.childCount) || 0
+    };
+  });
 }
 
 function clip(value, max) {
@@ -277,7 +308,8 @@ export async function listActiveSupervisionAlerts() {
     await autoResolveRetiredSupervisionAlerts(retired).catch(() => 0);
   }
   const active = mapped.filter(a => !isRetiredCentreAlert(a));
-  return enrichSupervisionAlertsLiveContext(active);
+  const enriched = await enrichSupervisionAlertsLiveContext(active);
+  return attachMergeRelations(enriched);
 }
 
 function inferLifecycleCriterionKey(alert) {
@@ -1480,6 +1512,44 @@ export async function upsertAndActOnSupervisionAlert({
       event: result.event,
       actorUserId: actorUserId || null
     });
+
+    // Cascade link / resolve / dismiss to merged children (outside the parent transaction).
+    if ((action === "link" || action === "resolve" || action === "dismiss") && mappedAlert?.id) {
+      try {
+        const children = await pool.query(
+          `SELECT queue_item_id, domain, status
+             FROM v_b_supervision_alerts
+            WHERE parent_alert_id = $1
+              AND deleted_at IS NULL
+              AND status = ANY($2)`,
+          [mappedAlert.id, ["open", "acked", "linked"]]
+        );
+        for (const child of children.rows) {
+          try {
+            await upsertAndActOnSupervisionAlert({
+              queueItemId: child.queue_item_id,
+              domain: child.domain,
+              action,
+              actorUserId,
+              note: note || null,
+              closedReason: patch.closed_reason || closedReason || null,
+              linkedTicketId: action === "link" ? linkedTicketId || mappedAlert.linkedTicketId : null,
+              linkedTicketKind: action === "link" ? linkedTicketKind || mappedAlert.linkedTicketKind : null,
+              linkedEventId: action === "link" ? linkedEventId || mappedAlert.linkedEventId : null,
+              meta:
+                action === "link" && resolvedLinkedTicketNumber
+                  ? { linkedTicketNumber: resolvedLinkedTicketNumber }
+                  : undefined
+            });
+          } catch {
+            /* keep going for remaining children */
+          }
+        }
+      } catch {
+        /* ignore cascade lookup failures */
+      }
+    }
+
     return result;
   } catch (err) {
     await client.query("ROLLBACK");
@@ -1661,6 +1731,317 @@ function normalizeBulkAlertIds(alertIds = []) {
       .map(id => String(id || "").trim())
       .filter(Boolean)
   )].slice(0, BULK_MAX_IDS);
+}
+
+async function loadAlertRowWithActors(client, alertId) {
+  const result = await client.query(
+    `SELECT ${ALERT_SELECT_WITH_ACTORS}
+     FROM v_b_supervision_alerts a
+     ${ALERT_ACTOR_JOINS}
+     WHERE a.id = $1
+     LIMIT 1`,
+    [alertId]
+  );
+  return result.rows[0] || null;
+}
+
+/**
+ * Fusionne plusieurs alertes enfants sur une alerte parente.
+ * Si le parent a un ticket, les enfants sont aussi liés à ce ticket.
+ */
+export async function mergeSupervisionAlerts({
+  parentAlertId = null,
+  parentQueueItemId = null,
+  childAlertIds = [],
+  childQueueItemIds = [],
+  actorUserId = null
+} = {}) {
+  await ensureSupervisionAlertsSchema();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    let parentRow = null;
+    if (parentAlertId && isUuid(String(parentAlertId))) {
+      parentRow = await loadAlertRowWithActors(client, String(parentAlertId).trim());
+    } else if (parentQueueItemId) {
+      const byQueue = await client.query(
+        `SELECT ${ALERT_SELECT_WITH_ACTORS}
+         FROM v_b_supervision_alerts a
+         ${ALERT_ACTOR_JOINS}
+         WHERE a.queue_item_id = $1 AND a.deleted_at IS NULL
+         LIMIT 1`,
+        [String(parentQueueItemId).trim()]
+      );
+      parentRow = byQueue.rows[0] || null;
+    }
+    if (!parentRow) {
+      const err = new Error("Parent alert not found");
+      err.status = 404;
+      throw err;
+    }
+    if (parentRow.parent_alert_id) {
+      const err = new Error("Cannot merge onto a child alert — pick the root parent");
+      err.status = 400;
+      throw err;
+    }
+    if (!ACTIVE_STATUSES.has(String(parentRow.status || ""))) {
+      const err = new Error("Parent alert must be active");
+      err.status = 400;
+      throw err;
+    }
+
+    const childIdSet = new Set(
+      (Array.isArray(childAlertIds) ? childAlertIds : [])
+        .map(id => String(id || "").trim())
+        .filter(id => isUuid(id) && id !== String(parentRow.id))
+    );
+    const childQueueIds = [
+      ...new Set(
+        (Array.isArray(childQueueItemIds) ? childQueueItemIds : [])
+          .map(id => String(id || "").trim())
+          .filter(Boolean)
+      )
+    ];
+    if (childQueueIds.length) {
+      const byQueue = await client.query(
+        `SELECT id FROM v_b_supervision_alerts
+          WHERE queue_item_id = ANY($1) AND deleted_at IS NULL`,
+        [childQueueIds]
+      );
+      byQueue.rows.forEach(row => {
+        if (String(row.id) !== String(parentRow.id)) childIdSet.add(String(row.id));
+      });
+    }
+    if (!childIdSet.size) {
+      const err = new Error("childAlertIds required");
+      err.status = 400;
+      throw err;
+    }
+
+    const childRowsResult = await client.query(
+      `SELECT ${ALERT_SELECT_WITH_ACTORS}
+       FROM v_b_supervision_alerts a
+       ${ALERT_ACTOR_JOINS}
+       WHERE a.id = ANY($1::uuid[])
+         AND a.deleted_at IS NULL`,
+      [[...childIdSet]]
+    );
+    if (!childRowsResult.rows.length) {
+      const err = new Error("Child alerts not found");
+      err.status = 404;
+      throw err;
+    }
+
+    const existingChildren = await client.query(
+      `SELECT id FROM v_b_supervision_alerts
+        WHERE parent_alert_id = ANY($1::uuid[])
+          AND deleted_at IS NULL
+          AND status = ANY($2)`,
+      [[...childIdSet], ["open", "acked", "linked"]]
+    );
+    if (existingChildren.rows.length) {
+      const err = new Error("Cannot merge an alert that already has children — unmerge them first");
+      err.status = 400;
+      throw err;
+    }
+
+    const parentTicketId = parentRow.linked_ticket_id ? String(parentRow.linked_ticket_id) : null;
+    const parentTicketKind = parentRow.linked_ticket_kind || null;
+    const parentTicketNumber =
+      parentRow.meta && typeof parentRow.meta === "object" && parentRow.meta.linkedTicketNumber != null
+        ? String(parentRow.meta.linkedTicketNumber).trim() || null
+        : null;
+    const now = new Date();
+    const mergedChildren = [];
+
+    for (const child of childRowsResult.rows) {
+      if (!ACTIVE_STATUSES.has(String(child.status || ""))) {
+        const err = new Error(`Child alert ${child.queue_item_id} is not active`);
+        err.status = 400;
+        throw err;
+      }
+      if (String(child.parent_alert_id || "") === String(parentRow.id)) {
+        mergedChildren.push(mapAlert(child));
+        continue;
+      }
+
+      const childMeta = child.meta && typeof child.meta === "object" ? { ...child.meta } : {};
+      if (parentTicketNumber) childMeta.linkedTicketNumber = parentTicketNumber;
+
+      const nextStatus = parentTicketId ? "linked" : child.status === "open" ? "acked" : child.status;
+      const patchValues = [
+        parentRow.id,
+        actorUserId || null,
+        nextStatus,
+        parentTicketId,
+        parentTicketKind,
+        JSON.stringify(childMeta),
+        child.id
+      ];
+      const updated = await client.query(
+        `UPDATE v_b_supervision_alerts SET
+           parent_alert_id = $1,
+           merged_at = NOW(),
+           merged_by = $2,
+           status = $3,
+           acked_at = COALESCE(acked_at, NOW()),
+           acked_by = COALESCE(acked_by, $2),
+           linked_ticket_id = COALESCE($4::uuid, linked_ticket_id),
+           linked_ticket_kind = COALESCE($5, linked_ticket_kind),
+           meta = $6::jsonb,
+           updated_at = NOW()
+         WHERE id = $7
+         RETURNING *`,
+        patchValues
+      );
+      const updatedRow = updated.rows[0];
+      await insertEvent(client, {
+        alertId: updatedRow.id,
+        action: "merged",
+        actorUserId,
+        oldStatus: child.status,
+        newStatus: updatedRow.status,
+        note: null,
+        meta: {
+          parentAlertId: parentRow.id,
+          parentQueueItemId: parentRow.queue_item_id,
+          linkedTicketId: parentTicketId,
+          linkedTicketKind: parentTicketKind,
+          linkedTicketNumber: parentTicketNumber
+        }
+      });
+      const enrichedChild = await loadAlertRowWithActors(client, updatedRow.id);
+      mergedChildren.push(mapAlert(enrichedChild || updatedRow));
+    }
+
+    await insertEvent(client, {
+      alertId: parentRow.id,
+      action: "merge_parent",
+      actorUserId,
+      oldStatus: parentRow.status,
+      newStatus: parentRow.status,
+      note: null,
+      meta: {
+        childAlertIds: mergedChildren.map(c => c.id),
+        childCount: mergedChildren.length
+      }
+    });
+
+    await client.query("COMMIT");
+
+    const parentAlert = attachMergeRelations([
+      {
+        ...mapAlert(parentRow),
+        childCount: mergedChildren.length
+      },
+      ...mergedChildren
+    ]).find(a => String(a.id) === String(parentRow.id));
+
+    for (const child of mergedChildren) {
+      broadcastSupervisionAlertUpdate({
+        type: "alert",
+        action: "merged",
+        alert: { ...child, parentAlertId: parentRow.id, parentQueueItemId: parentRow.queue_item_id },
+        actorUserId: actorUserId || null
+      });
+    }
+    broadcastSupervisionAlertUpdate({
+      type: "alert",
+      action: "merge_parent",
+      alert: parentAlert || mapAlert(parentRow),
+      actorUserId: actorUserId || null
+    });
+
+    return {
+      parent: parentAlert || mapAlert(parentRow),
+      children: attachMergeRelations(mergedChildren.map(c => ({
+        ...c,
+        parentAlertId: parentRow.id,
+        parentQueueItemId: parentRow.queue_item_id,
+        parentTitle: sanitizeSupervisionAlertTitle(parentRow.title)
+      }))),
+      mergedAt: now.toISOString()
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Détache une alerte enfant de son parent. */
+export async function unmergeSupervisionAlert({
+  alertId = null,
+  queueItemId = null,
+  actorUserId = null
+} = {}) {
+  await ensureSupervisionAlertsSchema();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let row = null;
+    if (alertId && isUuid(String(alertId))) {
+      row = await loadAlertRowWithActors(client, String(alertId).trim());
+    } else if (queueItemId) {
+      const byQueue = await client.query(
+        `SELECT ${ALERT_SELECT_WITH_ACTORS}
+         FROM v_b_supervision_alerts a
+         ${ALERT_ACTOR_JOINS}
+         WHERE a.queue_item_id = $1 AND a.deleted_at IS NULL
+         LIMIT 1`,
+        [String(queueItemId).trim()]
+      );
+      row = byQueue.rows[0] || null;
+    }
+    if (!row) {
+      const err = new Error("Alert not found");
+      err.status = 404;
+      throw err;
+    }
+    if (!row.parent_alert_id) {
+      const err = new Error("Alert is not merged");
+      err.status = 400;
+      throw err;
+    }
+    const parentId = row.parent_alert_id;
+    const oldStatus = row.status;
+    const updated = await client.query(
+      `UPDATE v_b_supervision_alerts SET
+         parent_alert_id = NULL,
+         merged_at = NULL,
+         merged_by = NULL,
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [row.id]
+    );
+    await insertEvent(client, {
+      alertId: row.id,
+      action: "unmerged",
+      actorUserId,
+      oldStatus,
+      newStatus: updated.rows[0]?.status || oldStatus,
+      note: null,
+      meta: { previousParentAlertId: parentId }
+    });
+    const enriched = await loadAlertRowWithActors(client, row.id);
+    await client.query("COMMIT");
+    const alert = mapAlert(enriched || updated.rows[0]);
+    broadcastSupervisionAlertUpdate({
+      type: "alert",
+      action: "unmerged",
+      alert,
+      actorUserId: actorUserId || null
+    });
+    return { alert };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**

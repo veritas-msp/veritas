@@ -11,10 +11,12 @@ import {
   getSupervisionAlertDiagnostic,
   listSupervisionAlertsByQueueItemIds,
   bulkActOnSupervisionAlerts,
+  mergeSupervisionAlerts,
   purgeSupervisionAlert,
   removeSupervisionAlertStreamClient,
   restoreSupervisionAlert,
   trashSupervisionAlert,
+  unmergeSupervisionAlert,
   upsertAndActOnSupervisionAlert
 } from "../../utils/supervisionAlerts.js";
 import { isCheckmkIntegrationEnabled } from "../../utils/checkmkIntegrationStatus.js";
@@ -292,6 +294,44 @@ router.post("/bulk", verifyJWT, requireAnyPermission("supervision.manage", "supe
     const status = err.status && err.status >= 400 && err.status < 600
       ? err.status
       : /required|Unknown bulk/i.test(err.message) ? 400 : 500;
+    res.status(status).json({ error: err.message || "Server error" });
+  }
+});
+
+router.post("/merge", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = await mergeSupervisionAlerts({
+      parentAlertId: body.parentAlertId || body.parent_alert_id || null,
+      parentQueueItemId: body.parentQueueItemId || body.parent_queue_item_id || null,
+      childAlertIds: body.childAlertIds || body.child_alert_ids || body.alertIds || [],
+      childQueueItemIds: body.childQueueItemIds || body.child_queue_item_ids || [],
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[supervision-alerts] POST merge:", err.message);
+    const status = err.status && err.status >= 400 && err.status < 600
+      ? err.status
+      : /required|Cannot merge|not found|not active/i.test(err.message) ? 400 : 500;
+    res.status(status).json({ error: err.message || "Server error" });
+  }
+});
+
+router.post("/unmerge", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const result = await unmergeSupervisionAlert({
+      alertId: body.alertId || body.alert_id || body.id || null,
+      queueItemId: body.queueItemId || body.queue_item_id || null,
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[supervision-alerts] POST unmerge:", err.message);
+    const status = err.status && err.status >= 400 && err.status < 600
+      ? err.status
+      : /not found|not merged/i.test(err.message) ? 400 : 500;
     res.status(status).json({ error: err.message || "Server error" });
   }
 });

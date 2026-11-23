@@ -176,6 +176,22 @@ const SUPERVISION_COPY = {
         unmute: "Réactiver",
         diagnose: "Diagnostic"
       },
+      merge: {
+        bulkAria: "Sélection pour fusion d'alertes",
+        bulkSelected: "{count} sélectionnée(s)",
+        bulkClear: "Effacer",
+        bulkSelectPage: "Sélectionner la page",
+        bulkSelectRow: "Sélectionner {title}",
+        parentLabel: "Fusionner sur",
+        merge: "Fusionner",
+        merging: "Fusion…",
+        mergeHint: "Rattache les alertes sélectionnées à l’alerte parente (ticket partagé si présent).",
+        parentBadge: "+{count}",
+        parentBadgeHint: "Alertes fusionnées sous celle-ci",
+        childBadge: "Fusionnée",
+        childOf: "Fusionnée dans « {title} »",
+        unmerge: "Détacher du merge"
+      },
       actionHints: {
         ack: "Prendre en charge cette alerte",
         unack: "Rendre cette alerte et me retirer de la prise en charge",
@@ -226,6 +242,7 @@ const SUPERVISION_COPY = {
         ignore: "Ignorer",
         maintenance: "Mettre en maintenance",
         unack: "Rendre",
+        unmerge: "Détacher du merge",
         technical: "Actions techniques",
         resync: "Relancer la synchronisation",
         diagnose: "Diagnostic",
@@ -396,7 +413,11 @@ const SUPERVISION_COPY = {
         resyncFail: "Resync impossible",
         muted: "Alertes suspendues pour ce périphérique",
         unmuted: "Alertes réactivées pour ce périphérique",
-        muteFail: "Impossible de modifier le mute"
+        muteFail: "Impossible de modifier le mute",
+        merged: "{count} alerte(s) fusionnée(s)",
+        mergeFailed: "Impossible de fusionner les alertes",
+        unmerged: "Alerte détachée du merge",
+        unmergeFailed: "Impossible de détacher l’alerte"
       },
       detailBackups: "Détail sauvegardes",
       detailContracts: "Détail contrats & licences",
@@ -839,6 +860,22 @@ const SUPERVISION_COPY = {
         unmute: "Unmute",
         diagnose: "Diagnose"
       },
+      merge: {
+        bulkAria: "Alert merge selection",
+        bulkSelected: "{count} selected",
+        bulkClear: "Clear",
+        bulkSelectPage: "Select page",
+        bulkSelectRow: "Select {title}",
+        parentLabel: "Merge onto",
+        merge: "Merge",
+        merging: "Merging…",
+        mergeHint: "Attach selected alerts to the parent (shared ticket when available).",
+        parentBadge: "+{count}",
+        parentBadgeHint: "Alerts merged under this one",
+        childBadge: "Merged",
+        childOf: "Merged into “{title}”",
+        unmerge: "Detach from merge"
+      },
       actionHints: {
         ack: "Acknowledge this alert — mark that you are handling it",
         unack: "Release this alert and unassign yourself",
@@ -889,6 +926,7 @@ const SUPERVISION_COPY = {
         ignore: "Ignore",
         maintenance: "Put in maintenance",
         unack: "Release",
+        unmerge: "Detach from merge",
         technical: "Technical actions",
         resync: "Re-run CheckMK sync",
         diagnose: "Diagnostic",
@@ -1059,7 +1097,11 @@ const SUPERVISION_COPY = {
         resyncFail: "Unable to resync host",
         muted: "Alerts suspended for this device",
         unmuted: "Alerts re-enabled for this device",
-        muteFail: "Unable to change mute"
+        muteFail: "Unable to change mute",
+        merged: "{count} alert(s) merged",
+        mergeFailed: "Unable to merge alerts",
+        unmerged: "Alert detached from merge",
+        unmergeFailed: "Unable to detach alert"
       },
       detailBackups: "Backup details",
       detailContracts: "Contracts & licenses details",
@@ -1446,6 +1488,22 @@ const SUPERVISION_COPY = {
         resolve: "Lösen",
         dismiss: "Ignorieren"
       },
+      merge: {
+        bulkAria: "Auswahl zum Zusammenführen",
+        bulkSelected: "{count} ausgewählt",
+        bulkClear: "Löschen",
+        bulkSelectPage: "Seite auswählen",
+        bulkSelectRow: "{title} auswählen",
+        parentLabel: "Zusammenführen auf",
+        merge: "Zusammenführen",
+        merging: "Zusammenführen…",
+        mergeHint: "Ausgewählte Alarme an den Eltern-Alarm anhängen (gemeinsames Ticket falls vorhanden).",
+        parentBadge: "+{count}",
+        parentBadgeHint: "Zusammengeführte Alarme unter diesem",
+        childBadge: "Zusammengeführt",
+        childOf: "Zusammengeführt in „{title}“",
+        unmerge: "Vom Merge lösen"
+      },
       actionHints: {
         ack: "Diesen Alarm bestätigen (übernehmen)",
         unack: "Diesen Alarm freigeben und sich selbst entfernen",
@@ -1495,7 +1553,11 @@ const SUPERVISION_COPY = {
         supportFormRequired: "Konfigurieren Sie ein Support-Formular in der Alarmregel, bevor Sie ein Ticket erstellen.",
         ticketCreated: "Ticket #{number} erstellt",
         openTicket: "Öffnen",
-        ticketNeedsForm: "Formular ausfüllen, um das Ticket zu erstellen."
+        ticketNeedsForm: "Formular ausfüllen, um das Ticket zu erstellen.",
+        merged: "{count} Alarm(e) zusammengeführt",
+        mergeFailed: "Zusammenführen nicht möglich",
+        unmerged: "Alarm vom Merge gelöst",
+        unmergeFailed: "Lösen vom Merge nicht möglich"
       },
       detailBackups: "Backup-Details",
       detailContracts: "Verträge & Lizenzen",
@@ -1851,6 +1913,22 @@ const SUPERVISION_COPY = {
         resolve: "Risolvi",
         dismiss: "Ignora"
       },
+      merge: {
+        bulkAria: "Selezione per unione allarmi",
+        bulkSelected: "{count} selezionat(i)",
+        bulkClear: "Cancella",
+        bulkSelectPage: "Seleziona pagina",
+        bulkSelectRow: "Seleziona {title}",
+        parentLabel: "Unisci su",
+        merge: "Unisci",
+        merging: "Unione…",
+        mergeHint: "Collega gli allarmi selezionati al genitore (ticket condiviso se presente).",
+        parentBadge: "+{count}",
+        parentBadgeHint: "Allarmi uniti sotto questo",
+        childBadge: "Unito",
+        childOf: "Unito in « {title} »",
+        unmerge: "Scollega dal merge"
+      },
       actionHints: {
         ack: "Prendi in carico questo allarme (ack)",
         unack: "Rilascia questo allarme e rimuoviti dall'assegnazione",
@@ -1900,7 +1978,11 @@ const SUPERVISION_COPY = {
         supportFormRequired: "Configura un modulo support nella regola di allarme prima di creare un ticket.",
         ticketCreated: "Ticket #{number} creato",
         openTicket: "Apri",
-        ticketNeedsForm: "Completa il modulo per creare il ticket."
+        ticketNeedsForm: "Completa il modulo per creare il ticket.",
+        merged: "{count} allarme/i uniti",
+        mergeFailed: "Impossibile unire gli allarmi",
+        unmerged: "Allarme scollegato dal merge",
+        unmergeFailed: "Impossibile scollegare l'allarme"
       },
       detailBackups: "Dettaglio backup",
       detailContracts: "Dettaglio contratti e licenze",
@@ -2255,6 +2337,22 @@ const SUPERVISION_COPY = {
         resolve: "Resolver",
         dismiss: "Ignorar"
       },
+      merge: {
+        bulkAria: "Selección para fusionar alertas",
+        bulkSelected: "{count} seleccionada(s)",
+        bulkClear: "Borrar",
+        bulkSelectPage: "Seleccionar página",
+        bulkSelectRow: "Seleccionar {title}",
+        parentLabel: "Fusionar en",
+        merge: "Fusionar",
+        merging: "Fusionando…",
+        mergeHint: "Adjunta las alertas seleccionadas a la alerta padre (ticket compartido si existe).",
+        parentBadge: "+{count}",
+        parentBadgeHint: "Alertas fusionadas bajo esta",
+        childBadge: "Fusionada",
+        childOf: "Fusionada en « {title} »",
+        unmerge: "Separar del merge"
+      },
       actionHints: {
         ack: "Acusar recibo de esta alerta (tomar cargo)",
         unack: "Liberar esta alerta y quitarme de la asignación",
@@ -2304,7 +2402,11 @@ const SUPERVISION_COPY = {
         supportFormRequired: "Configure un formulario de soporte en la regla de alerta antes de crear un ticket.",
         ticketCreated: "Ticket #{number} creado",
         openTicket: "Abrir",
-        ticketNeedsForm: "Complete el formulario para crear el ticket."
+        ticketNeedsForm: "Complete el formulario para crear el ticket.",
+        merged: "{count} alerta(s) fusionada(s)",
+        mergeFailed: "No se pudieron fusionar las alertas",
+        unmerged: "Alerta separada del merge",
+        unmergeFailed: "No se pudo separar la alerta"
       },
       detailBackups: "Detalle backups",
       detailContracts: "Detalle contratos y licencias",

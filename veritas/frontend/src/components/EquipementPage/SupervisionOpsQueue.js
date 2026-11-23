@@ -173,6 +173,48 @@ function FilterChip({
     </button>;
 }
 
+function stabilizeMergeGroups(list = []) {
+  const items = Array.isArray(list) ? list : [];
+  if (items.length < 2) return items;
+  const alertIdsInList = new Set(items.map(item => String(item.alertId || "")).filter(Boolean));
+  const childrenByParent = new Map();
+  const roots = [];
+  for (const item of items) {
+    const parentId = String(item.parentAlertId || "").trim();
+    if (parentId && alertIdsInList.has(parentId)) {
+      if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+      childrenByParent.get(parentId).push(item);
+    } else {
+      roots.push(item);
+    }
+  }
+  const out = [];
+  const seen = new Set();
+  for (const root of roots) {
+    out.push(root);
+    seen.add(root.id);
+    const kids = childrenByParent.get(String(root.alertId || "")) || [];
+    kids.forEach(child => {
+      out.push(child);
+      seen.add(child.id);
+    });
+  }
+  items.forEach(item => {
+    if (!seen.has(item.id)) out.push(item);
+  });
+  return out;
+}
+
+function pickDefaultMergeParent(selectedItems = []) {
+  const list = Array.isArray(selectedItems) ? selectedItems.filter(item => !item?.isMergeChild) : [];
+  if (!list.length) return null;
+  const withTicket = list.find(item => item.linkedTicketId || item.workflowStatus === "linked");
+  if (withTicket) return withTicket;
+  const acked = list.find(item => item.workflowStatus === "acked");
+  if (acked) return acked;
+  return list[0];
+}
+
 function MoreMenu({
   item,
   copy,
@@ -183,6 +225,7 @@ function MoreMenu({
   onIgnore,
   onMaintenance,
   onUnack,
+  onUnmerge,
   onResync,
   onDiagnose,
   onOpenItem,
@@ -228,6 +271,11 @@ function MoreMenu({
           </button>
         </>
       ) : null}
+      {item?.isMergeChild ? (
+        <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onUnmerge?.(item); }}>
+          {more.unmerge || copy?.merge?.unmerge || "Unmerge"}
+        </button>
+      ) : null}
       <p className={styles.muteMenuHint}>{more.technical || "Technical"}</p>
       <button type="button" className={styles.muteMenuItem} disabled={busy || resyncBusy} onClick={() => { onClose?.(); onResync?.(item); }}>
         {more.resync || copy?.actions?.resync || "Resync"}
@@ -266,6 +314,8 @@ export default function SupervisionOpsQueue({
   onResolve,
   onIgnore,
   onMaintenance,
+  onMerge,
+  onUnmerge,
   onResync,
   onDiagnose,
   onEndExclusion,
@@ -273,6 +323,7 @@ export default function SupervisionOpsQueue({
   canDiagnose = false,
   resyncBusyId = null,
   busyId = null,
+  mergeBusy = false,
   localeTag,
   copy,
   showDomain = true,
@@ -280,6 +331,7 @@ export default function SupervisionOpsQueue({
   toolbarActions = null
 }) {
   const columns = copy.columns || {};
+  const mergeCopy = copy.merge || {};
   const common = useCommonCopy();
   const locale = useAppLocale();
   const [sortKey, setSortKey] = useState(null);
@@ -290,6 +342,8 @@ export default function SupervisionOpsQueue({
   const primedRef = useRef(false);
   const [enteringIds, setEnteringIds] = useState(() => new Set());
   const [moreMenuId, setMoreMenuId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [mergeParentId, setMergeParentId] = useState(null);
   const enterTimersRef = useRef(new Map());
 
   useEffect(() => {
@@ -345,7 +399,7 @@ export default function SupervisionOpsQueue({
     setSortDir(next.sortDirection);
   };
   const sortedItems = useMemo(() => {
-    if (!sortKey) return items;
+    if (!sortKey) return stabilizeMergeGroups(items);
     const factor = sortDir === "asc" ? 1 : -1;
     const severityRank = {
       critical: 0,
@@ -368,7 +422,7 @@ export default function SupervisionOpsQueue({
       const ms = typeof raw === "number" ? raw : new Date(raw).getTime();
       return Number.isNaN(ms) ? 0 : ms;
     };
-    return [...items].sort((a, b) => {
+    const sorted = [...items].sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
         case "alert":
@@ -405,18 +459,95 @@ export default function SupervisionOpsQueue({
       }
       return cmp * factor;
     });
+    return stabilizeMergeGroups(sorted);
   }, [items, sortKey, sortDir]);
   const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize) || 1);
   const pagedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedItems.slice(start, start + pageSize);
   }, [sortedItems, currentPage, pageSize]);
+  const itemById = useMemo(() => {
+    const map = new Map();
+    sortedItems.forEach(item => map.set(String(item.id), item));
+    return map;
+  }, [sortedItems]);
+  const selectedItems = useMemo(
+    () => [...selectedIds].map(id => itemById.get(String(id))).filter(Boolean),
+    [selectedIds, itemById]
+  );
+  const selectableParents = useMemo(
+    () => selectedItems.filter(item => !item.isMergeChild),
+    [selectedItems]
+  );
+  const canMergeSelection = selectableParents.length >= 1 && selectedItems.length >= 2;
+
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds(new Set());
+    setMergeParentId(null);
   }, [searchQuery, severityFilter, domainFilter, triageView, sortKey, sortDir, pageSize]);
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+  useEffect(() => {
+    const valid = new Set(sortedItems.map(item => String(item.id)));
+    setSelectedIds(prev => {
+      const next = new Set([...prev].filter(id => valid.has(String(id))));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [sortedItems]);
+  useEffect(() => {
+    if (!canMergeSelection) {
+      setMergeParentId(null);
+      return;
+    }
+    const stillValid = selectableParents.some(item => String(item.id) === String(mergeParentId));
+    if (stillValid) return;
+    const def = pickDefaultMergeParent(selectableParents);
+    setMergeParentId(def?.id || null);
+  }, [canMergeSelection, selectableParents, mergeParentId]);
+
+  const toggleSelect = itemId => {
+    const id = String(itemId);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectPage = () => {
+    const pageIds = pagedItems.map(item => String(item.id));
+    const allSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) pageIds.forEach(id => next.delete(id));
+      else pageIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setMergeParentId(null);
+  };
+  const handleMergeClick = async () => {
+    if (!canMergeSelection || mergeBusy) return;
+    const parent =
+      selectableParents.find(item => String(item.id) === String(mergeParentId)) ||
+      pickDefaultMergeParent(selectableParents);
+    if (!parent) return;
+    const children = selectedItems.filter(item => String(item.id) !== String(parent.id));
+    if (!children.length) return;
+    try {
+      await onMerge?.({ parent, children });
+      clearSelection();
+    } catch {
+      /* toasts handled by parent */
+    }
+  };
+  const pageAllSelected =
+    pagedItems.length > 0 && pagedItems.every(item => selectedIds.has(String(item.id)));
+  const pageSomeSelected = pagedItems.some(item => selectedIds.has(String(item.id)));
   const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
     label
   });
@@ -628,8 +759,51 @@ export default function SupervisionOpsQueue({
           className={styles.tableWrap}
           deps={[pagedItems.length, sortKey, sortDir, triageView, severityFilter, searchQuery]}
         >
+          {selectedIds.size > 0 ? (
+            <div className={styles.bulkBar} role="region" aria-label={mergeCopy.bulkAria || "Merge selection"}>
+              <div className={styles.bulkInfo}>
+                <span>
+                  {interpolate(mergeCopy.bulkSelected || "{count} selected", {
+                    count: String(selectedIds.size)
+                  })}
+                </span>
+                <button type="button" className={styles.bulkLink} onClick={clearSelection}>
+                  {mergeCopy.bulkClear || "Clear"}
+                </button>
+                {canMergeSelection ? (
+                  <label className={styles.mergeParentPick}>
+                    <span>{mergeCopy.parentLabel || "Parent"}</span>
+                    <select
+                      value={mergeParentId || ""}
+                      onChange={e => setMergeParentId(e.target.value || null)}
+                      disabled={mergeBusy}
+                    >
+                      {selectableParents.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {(item.linkedTicketNumber ? `#${item.linkedTicketNumber} · ` : "") + (item.title || item.id)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+              <div className={styles.bulkActions}>
+                <button
+                  type="button"
+                  className={styles.bulkBtn}
+                  disabled={!canMergeSelection || mergeBusy}
+                  onClick={handleMergeClick}
+                  title={mergeCopy.mergeHint || ""}
+                >
+                  <Icon icon={mergeBusy ? "mdi:loading" : "mdi:source-merge"} aria-hidden />
+                  {mergeBusy ? mergeCopy.merging || "Merging…" : mergeCopy.merge || "Merge"}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <table className={styles.table}>
             <colgroup>
+              <col className={styles.colSelect} />
               <col className={styles.colSev} />
               <col className={styles.colAlert} />
               <col className={styles.colDevice} />
@@ -642,6 +816,18 @@ export default function SupervisionOpsQueue({
             </colgroup>
             <thead>
               <tr>
+                <th className={styles.selectCol}>
+                  <input
+                    type="checkbox"
+                    className={styles.selectCheck}
+                    checked={pageAllSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = pageSomeSelected && !pageAllSelected;
+                    }}
+                    onChange={toggleSelectPage}
+                    aria-label={mergeCopy.bulkSelectPage || "Select page"}
+                  />
+                </th>
                 <th className={styles.sevCol} aria-hidden />
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
                 <SortableHeader column="device" label={columns.device || "Périphérique"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.device || "Périphérique")} />
@@ -720,35 +906,83 @@ export default function SupervisionOpsQueue({
                   ...options
                 });
               };
+              const isSelected = selectedIds.has(String(item.id));
+              const isChild = Boolean(item.isMergeChild);
+              const isParent = Boolean(item.isMergeParent) || Number(item.childCount) > 0;
+              const siblings = isChild
+                ? sortedItems.filter(row => String(row.parentAlertId) === String(item.parentAlertId))
+                : [];
+              const siblingIndex = siblings.findIndex(row => String(row.id) === String(item.id));
+              const isLastChild = isChild && siblingIndex === siblings.length - 1;
               return <tr
                 key={item.id}
-                className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""}`}
+                className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""} ${isSelected ? styles.dataRowSelected : ""} ${isChild ? styles.rowMergeChild : ""} ${isParent ? styles.rowMergeParent : ""}`}
               >
+                    <td className={styles.selectCol} onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className={styles.selectCheck}
+                        checked={isSelected}
+                        onChange={() => toggleSelect(item.id)}
+                        aria-label={interpolate(mergeCopy.bulkSelectRow || "Select {title}", {
+                          title: item.title || item.id
+                        })}
+                      />
+                    </td>
                     <td className={styles.sevCol}>
                       <span className={`${styles.sevIcon} ${toneClass(item.tone, item.severity)}`} aria-hidden title={severityLabel}>
                         <Icon icon={alertRowIcon(item)} />
                       </span>
                     </td>
                     <td className={styles.alertCell}>
-                      <div className={styles.alertBody}>
-                        <span className={styles.rowTitleRow}>
-                          <span className={styles.rowTitle}>{item.title}</span>
-                          <FreshnessBadge item={item} copy={copy} locale={locale} />
-                          {item.muted ? (
-                            <span className={styles.muteBadge}>
-                              {item.muteStatus === "disabled"
-                                ? copy.mute?.disabledBadge
-                                : item.muteStatus === "client_suspended"
-                                  ? copy.mute?.client
-                                  : copy.mute?.muted}
+                      <div className={`${styles.alertBody} ${isChild ? styles.alertBodyChild : ""}`.trim()}>
+                        {isChild || isParent ? (
+                          <span
+                            className={`${styles.branchRail} ${isChild ? styles.branchRailChild : styles.branchRailParent} ${isLastChild ? styles.branchRailLast : ""}`.trim()}
+                            aria-hidden
+                          >
+                            {isChild ? (isLastChild ? "└" : "├") : "┌"}
+                          </span>
+                        ) : null}
+                        <div className={styles.alertBodyMain}>
+                          <span className={styles.rowTitleRow}>
+                            <span className={styles.rowTitle}>{item.title}</span>
+                            {isParent ? (
+                              <span className={styles.mergeBadge} title={mergeCopy.parentBadgeHint || ""}>
+                                {interpolate(mergeCopy.parentBadge || "+{count}", {
+                                  count: String(item.childCount || 0)
+                                })}
+                              </span>
+                            ) : null}
+                            {isChild ? (
+                              <span className={styles.mergeChildBadge} title={item.parentTitle || mergeCopy.childBadge || ""}>
+                                {mergeCopy.childBadge || "Merged"}
+                              </span>
+                            ) : null}
+                            <FreshnessBadge item={item} copy={copy} locale={locale} />
+                            {item.muted ? (
+                              <span className={styles.muteBadge}>
+                                {item.muteStatus === "disabled"
+                                  ? copy.mute?.disabledBadge
+                                  : item.muteStatus === "client_suspended"
+                                    ? copy.mute?.client
+                                    : copy.mute?.muted}
+                              </span>
+                            ) : null}
+                          </span>
+                          {isChild && item.parentTitle ? (
+                            <span className={styles.rowMeta}>
+                              {interpolate(mergeCopy.childOf || "Merged into {title}", {
+                                title: item.parentTitle
+                              })}
                             </span>
                           ) : null}
-                        </span>
-                        {showHostMeta ? <span className={styles.rowMeta}>{hostName}</span> : null}
-                        {collabBits.length ? <span className={styles.rowCollab}>
-                            <Icon icon="mdi:account-outline" aria-hidden />
-                            {collabBits.join(" · ")}
-                          </span> : null}
+                          {showHostMeta ? <span className={styles.rowMeta}>{hostName}</span> : null}
+                          {collabBits.length ? <span className={styles.rowCollab}>
+                              <Icon icon="mdi:account-outline" aria-hidden />
+                              {collabBits.join(" · ")}
+                            </span> : null}
+                        </div>
                       </div>
                     </td>
                     <td
@@ -881,6 +1115,7 @@ export default function SupervisionOpsQueue({
                               onIgnore={onIgnore}
                               onMaintenance={onMaintenance}
                               onUnack={onUnack}
+                              onUnmerge={onUnmerge}
                               onResync={onResync}
                               onDiagnose={onDiagnose}
                               onOpenItem={onOpenItem}

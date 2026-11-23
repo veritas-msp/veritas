@@ -4,6 +4,10 @@ const PDF_CAPTURE_WIDTH_PORTRAIT = 794;
 const PDF_CAPTURE_WIDTH_LANDSCAPE = 1123;
 /** Seuil (mm) sous lequel on n'ajoute pas de page quasi vide. */
 const BLANK_PAGE_SLACK_MM = 3;
+/** Échelle html2canvas : 1.5 ≈ 144 dpi sur A4 — lisible sans canvas monstrueux. */
+const DEFAULT_CAPTURE_SCALE = 1.5;
+/** JPEG : quasi imperceptible sur UI/texte, bien plus léger que PNG. */
+const DEFAULT_JPEG_QUALITY = 0.86;
 
 function waitForImages(root) {
   const images = Array.from(root.querySelectorAll("img"));
@@ -108,9 +112,10 @@ function trimCanvasBottom(canvas) {
     const { width, height } = canvas;
     if (!width || !height) return canvas;
     const { data } = ctx.getImageData(0, 0, width, height);
+    const xStep = width > 1200 ? 4 : 2;
     let bottom = height - 1;
     outer: for (; bottom >= 0; bottom -= 1) {
-      for (let x = 0; x < width; x += 1) {
+      for (let x = 0; x < width; x += xStep) {
         const i = (bottom * width + x) * 4;
         const a = data[i + 3];
         if (a < 8) continue;
@@ -132,39 +137,74 @@ function trimCanvasBottom(canvas) {
   }
 }
 
-function canvasToPdf(sourceCanvas, { asBlob, fileName, orientation = "portrait" }) {
+function canvasSliceToJpeg(source, sx, sy, sw, sh, quality) {
+  const slice = document.createElement("canvas");
+  slice.width = Math.max(1, Math.floor(sw));
+  slice.height = Math.max(1, Math.floor(sh));
+  const ctx = slice.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, slice.width, slice.height);
+  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, slice.width, slice.height);
+  return slice.toDataURL("image/jpeg", quality);
+}
+
+/**
+ * Découpe le canvas en bandes = 1 page PDF, JPEG compressé.
+ * Évite d’embarquer une unique image PNG géante (cause des PDF à 100+ Mo).
+ */
+function canvasToPdf(
+  sourceCanvas,
+  {
+    asBlob,
+    fileName,
+    orientation = "portrait",
+    jpegQuality = DEFAULT_JPEG_QUALITY
+  } = {}
+) {
   const canvas = trimCanvasBottom(sourceCanvas);
   const pdf = new jsPDF({
     orientation: orientation === "landscape" ? "landscape" : "portrait",
     unit: "mm",
-    format: "a4"
+    format: "a4",
+    compress: true
   });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const imgWidth = pageWidth;
   const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  let imgData;
-  try {
-    imgData = canvas.toDataURL("image/png");
-  } catch (err) {
-    throw new Error(
-      err?.message
-        ? `Export PDF bloqué (image): ${err.message}`
-        : "Export PDF bloqué (canvas sécurisé)"
-    );
-  }
+  const pageHeightPx = (pageHeight / imgWidth) * canvas.width;
+  const quality = Math.min(0.95, Math.max(0.5, Number(jpegQuality) || DEFAULT_JPEG_QUALITY));
 
   let heightLeft = imgHeight;
-  let position = 0;
-  pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
+  let sourceY = 0;
+  let pageIndex = 0;
 
-  while (heightLeft > BLANK_PAGE_SLACK_MM) {
-    position = heightLeft - imgHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
+  while (heightLeft > BLANK_PAGE_SLACK_MM || pageIndex === 0) {
+    const sliceHeightPx = Math.min(pageHeightPx, canvas.height - sourceY);
+    if (sliceHeightPx <= 0) break;
+    const sliceHeightMm = (sliceHeightPx * imgWidth) / canvas.width;
+    if (pageIndex > 0 && sliceHeightMm <= BLANK_PAGE_SLACK_MM) break;
+
+    let imgData;
+    try {
+      imgData = canvasSliceToJpeg(canvas, 0, sourceY, canvas.width, sliceHeightPx, quality);
+    } catch (err) {
+      throw new Error(
+        err?.message
+          ? `Export PDF bloqué (image): ${err.message}`
+          : "Export PDF bloqué (canvas sécurisé)"
+      );
+    }
+
+    if (pageIndex > 0) pdf.addPage();
+    pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, sliceHeightMm, undefined, "FAST");
+
+    sourceY += sliceHeightPx;
+    heightLeft -= sliceHeightMm;
+    pageIndex += 1;
+
+    // Garde-fou : une capture aberrante ne doit pas boucler.
+    if (pageIndex > 80) break;
   }
 
   if (asBlob) return pdf.output("blob");
@@ -174,17 +214,30 @@ function canvasToPdf(sourceCanvas, { asBlob, fileName, orientation = "portrait" 
 
 /**
  * Capture simple de la preview brandée → PDF A4 (même mise en page).
- * @param {{ asBlob?: boolean, fileName?: string, orientation?: "portrait"|"landscape" }} [options]
+ * @param {{
+ *   asBlob?: boolean,
+ *   fileName?: string,
+ *   orientation?: "portrait"|"landscape",
+ *   scale?: number,
+ *   jpegQuality?: number
+ * }} [options]
  */
 export async function exportBrandedReportPdfFromElement(
   sourceEl,
-  { asBlob = false, fileName = "rapport.pdf", orientation = "portrait" } = {}
+  {
+    asBlob = false,
+    fileName = "rapport.pdf",
+    orientation = "portrait",
+    scale = DEFAULT_CAPTURE_SCALE,
+    jpegQuality = DEFAULT_JPEG_QUALITY
+  } = {}
 ) {
   if (!sourceEl || typeof document === "undefined") {
     throw new Error("Preview element missing");
   }
   const captureWidth =
     orientation === "landscape" ? PDF_CAPTURE_WIDTH_LANDSCAPE : PDF_CAPTURE_WIDTH_PORTRAIT;
+  const captureScale = Math.min(2, Math.max(1, Number(scale) || DEFAULT_CAPTURE_SCALE));
   if (sourceEl.getAttribute("data-loading") === "true") {
     await new Promise(resolve => {
       const started = Date.now();
@@ -232,7 +285,7 @@ export async function exportBrandedReportPdfFromElement(
     await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
 
     const canvas = await html2canvas(clone, {
-      scale: 2,
+      scale: captureScale,
       useCORS: true,
       allowTaint: false,
       backgroundColor: "#ffffff",
@@ -246,7 +299,7 @@ export async function exportBrandedReportPdfFromElement(
         prepareCloneForPdf(el, captureWidth);
       }
     });
-    return canvasToPdf(canvas, { asBlob, fileName, orientation });
+    return canvasToPdf(canvas, { asBlob, fileName, orientation, jpegQuality });
   } finally {
     wrap.remove();
   }

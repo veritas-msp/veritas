@@ -9,6 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const MIGRATION_FILE = "schema/patches/20260801_supervision_alerts.sql";
 const TRASH_MIGRATION_FILE = "schema/patches/20261001_supervision_alerts_trash.sql";
+const MERGE_MIGRATION_FILE = "schema/patches/20261123_supervision_alerts_merge.sql";
 let ensured = false;
 
 async function tableExists(client, tableName) {
@@ -42,6 +43,7 @@ export async function ensureSupervisionAlertsSchema() {
     }
     if (await tableExists(client, "v_b_supervision_alerts")) {
       await runPatch(client, TRASH_MIGRATION_FILE);
+      await runPatch(client, MERGE_MIGRATION_FILE);
     }
     ensured = true;
   } catch (err) {
