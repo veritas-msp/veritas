@@ -22,6 +22,166 @@
   color: #64748b;
 }
 
+.stats {
+  margin: 0 0 1.15rem;
+  padding: 0.85rem 0.9rem 0.95rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.statsTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #334155;
+}
+
+.statsCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.statsHint {
+  margin: 0 0 0.65rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #64748b;
+}
+
+.statsEmpty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.statsHero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.7rem 0.75rem;
+  margin-bottom: 0.55rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.02));
+  border: 1px solid rgba(37, 99, 235, 0.18);
+}
+
+.statsHeroLabel {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.statsHeroValue {
+  font-size: 1.25rem;
+  font-weight: 760;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.statsHeroSub {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.statsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.statsCardLabel {
+  font-size: 0.65rem;
+  font-weight: 650;
+  color: #64748b;
+}
+
+.statsCardValue {
+  font-size: 0.92rem;
+  font-weight: 720;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.statsCardWarn .statsCardValue {
+  color: #c2410c;
+}
+
+.statsSectionTitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.statsAssigneeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.statsAssigneeItem {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.statsAssigneeName {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.statsAssigneeMeta {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.statsAssigneeHours {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .empty {
   margin: 0;
   padding: 0.85rem 0.95rem;

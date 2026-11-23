@@ -155,14 +155,6 @@ function buildPmTasksFromTicket(ticket, formDataOverride) {
   return attachDocumentsToTasks(normalizePmTasks(formData), ticket?.attachments);
 }
 
-function formatTaskSchedule(task, formatDateTime, rangeJoiner) {
-  if (!task?.startAt && !task?.endAt) return null;
-  if (task.startAt && task.endAt) {
-    return `${formatDateTime(task.startAt)} ${rangeJoiner} ${formatDateTime(task.endAt)}`;
-  }
-  return formatDateTime(task.startAt || task.endAt);
-}
-
 function userLabel(user) {
   if (!user || typeof user !== "object") return "";
   return (
@@ -932,16 +924,6 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const tasksTotal = pmTasks.length;
   const progressValue = tasksTotal === 0 ? 0 : clampProgress((tasksDone / tasksTotal) * 100);
   const taskStats = useMemo(() => computeSalesTaskStats(pmTasks), [pmTasks]);
-  const scheduledTasks = useMemo(() => {
-    return pmTasks
-      .filter(task => task.startAt || task.planningEventId)
-      .slice()
-      .sort((a, b) => {
-        const aTime = a.startAt ? new Date(a.startAt).getTime() : Number.POSITIVE_INFINITY;
-        const bTime = b.startAt ? new Date(b.startAt).getTime() : Number.POSITIVE_INFINITY;
-        return aTime - bTime;
-      });
-  }, [pmTasks]);
   const tags = Array.isArray(ticket?.tags) ? ticket.tags : [];
 
   const updateTicketLive = async (patch, successMessage) => {
@@ -1791,15 +1773,6 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     } finally {
       setTeamBusy(false);
     }
-  };
-
-  const openPlanning = () => {
-    const firstTaskStart = pmTasks.find(task => task.startAt)?.startAt || null;
-    onNavigate?.("Planning", {
-      ticketId,
-      clientId,
-      focusDate: firstTaskStart || planningEvent?.start || null
-    });
   };
 
   const buildTaskReportModel = useCallback(() => {
@@ -3090,61 +3063,6 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                       </button>
                     </div>
                   ) : null}
-
-                  <RightPaneStaticSection title={copy.planning.title} titleId="ticket-sales-planning-title">
-                    {scheduledTasks.length > 0 ? (
-                      <ul className={styles.planningRecapList}>
-                        {scheduledTasks.map(task => {
-                          const assigneeList =
-                            Array.isArray(task.assignees) && task.assignees.length > 0
-                              ? task.assignees
-                              : task.assigneeId
-                                ? [{ id: task.assigneeId, label: task.assigneeLabel }]
-                                : [];
-                          const assignee =
-                            assigneeList.length === 0
-                              ? copy.tasks.assigneeNone
-                              : assigneeList
-                                  .map(entry =>
-                                    (entry.id && users.find(u => String(u.id) === String(entry.id))
-                                      ? userLabel(users.find(u => String(u.id) === String(entry.id)))
-                                      : entry.label) || entry.id
-                                  )
-                                  .filter(Boolean)
-                                  .join(", ");
-                          const schedule = formatTaskSchedule(task, copy.formatDateTime, copy.tasks.rangeJoiner);
-                          return (
-                            <li key={String(task.id)} className={`${styles.planningRecapItem} ${task.done ? styles.planningRecapDone : ""}`}>
-                              <div className={styles.planningRecapTitle}>
-                                <Icon icon={task.done ? "mdi:check-circle" : "mdi:calendar-clock"} aria-hidden />
-                                <span>{task.label}</span>
-                              </div>
-                              <div className={styles.planningRecapMeta}>
-                                <span className={styles.planningRecapAssignee}>
-                                  <Icon icon="mdi:account-outline" aria-hidden />
-                                  {assignee}
-                                </span>
-                                {schedule ? (
-                                  <span className={styles.planningRecapSchedule}>
-                                    <Icon icon="mdi:clock-outline" aria-hidden />
-                                    {schedule}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <p className={td.emptyText}>
-                        {copy.planning.notPlanned}. {copy.planning.noEventHint}
-                      </p>
-                    )}
-                    <button type="button" className={styles.secondaryBtn} onClick={openPlanning}>
-                      <Icon icon="mdi:calendar-month-outline" />
-                      {copy.planning.openPlanning}
-                    </button>
-                  </RightPaneStaticSection>
                 </>
               )}
             </aside>

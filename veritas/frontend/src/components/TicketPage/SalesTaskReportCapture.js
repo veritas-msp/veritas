@@ -39,6 +39,8 @@ export default function SalesTaskReportCapture({
   if (!model || typeof document === "undefined") return null;
   const none = copy.report.noValue;
   const tasksCopy = copy.tasks || {};
+  const statsCopy = copy.taskStats || {};
+  const stats = model.stats || null;
   const doneCount = model.rows.filter(row => row.done).length;
 
   const body = (
@@ -59,6 +61,83 @@ export default function SalesTaskReportCapture({
             total: String(model.rows.length)
           })}
         </p>
+
+        {stats ? (
+          <section className={styles.stats}>
+            <h2 className={styles.statsTitle}>
+              {statsCopy.title || "Statistiques des tâches"}
+              <span className={styles.statsCount}>{stats.total}</span>
+            </h2>
+            {stats.total === 0 ? (
+              <p className={styles.statsEmpty}>{statsCopy.empty}</p>
+            ) : (
+              <>
+                {statsCopy.hoursHint ? <p className={styles.statsHint}>{statsCopy.hoursHint}</p> : null}
+                <div className={styles.statsHero}>
+                  <span className={styles.statsHeroLabel}>{statsCopy.hoursPlanned}</span>
+                  <span className={styles.statsHeroValue}>{formatDurationMs(stats.plannedMs)}</span>
+                  <span className={styles.statsHeroSub}>
+                    {statsCopy.hoursDone}: {formatDurationMs(stats.doneMs)}
+                    {" · "}
+                    {statsCopy.hoursRemaining}: {formatDurationMs(stats.remainingMs)}
+                  </span>
+                </div>
+                <div className={styles.statsGrid}>
+                  <div className={styles.statsCard}>
+                    <span className={styles.statsCardLabel}>{statsCopy.progress}</span>
+                    <span className={styles.statsCardValue}>{stats.progress}%</span>
+                  </div>
+                  <div className={styles.statsCard}>
+                    <span className={styles.statsCardLabel}>{statsCopy.done}</span>
+                    <span className={styles.statsCardValue}>
+                      {stats.done}/{stats.total}
+                    </span>
+                  </div>
+                  <div className={styles.statsCard}>
+                    <span className={styles.statsCardLabel}>{statsCopy.todo}</span>
+                    <span className={styles.statsCardValue}>{stats.todo}</span>
+                  </div>
+                  <div className={`${styles.statsCard} ${stats.overdue > 0 ? styles.statsCardWarn : ""}`.trim()}>
+                    <span className={styles.statsCardLabel}>{statsCopy.overdue}</span>
+                    <span className={styles.statsCardValue}>{stats.overdue}</span>
+                  </div>
+                  <div className={styles.statsCard}>
+                    <span className={styles.statsCardLabel}>{statsCopy.unassigned}</span>
+                    <span className={styles.statsCardValue}>{stats.unassigned}</span>
+                  </div>
+                  <div className={styles.statsCard}>
+                    <span className={styles.statsCardLabel}>{statsCopy.unscheduled}</span>
+                    <span className={styles.statsCardValue}>{stats.unscheduled}</span>
+                  </div>
+                </div>
+                {Array.isArray(stats.byAssignee) && stats.byAssignee.length > 0 ? (
+                  <>
+                    <h3 className={styles.statsSectionTitle}>{statsCopy.byAssignee}</h3>
+                    <ul className={styles.statsAssigneeList}>
+                      {stats.byAssignee.map(row => (
+                        <li key={row.key} className={styles.statsAssigneeItem}>
+                          <div>
+                            <div className={styles.statsAssigneeName}>
+                              {row.key === "__none__" ? statsCopy.noAssignee : row.label || statsCopy.noAssignee}
+                            </div>
+                            <div className={styles.statsAssigneeMeta}>
+                              {interpolate(statsCopy.tasksCount || "{done}/{total}", {
+                                done: String(row.done),
+                                total: String(row.total)
+                              })}
+                            </div>
+                          </div>
+                          <span className={styles.statsAssigneeHours}>{formatDurationMs(row.plannedMs)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+              </>
+            )}
+          </section>
+        ) : null}
+
         {model.rows.length === 0 ? (
           <p className={styles.empty}>{copy.report.empty}</p>
         ) : (

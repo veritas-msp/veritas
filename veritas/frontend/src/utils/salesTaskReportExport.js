@@ -1,5 +1,6 @@
 import { getTaskCreditBalance } from "../components/TicketPage/SalesCreditDebitFields";
 import { getEquipmentPickerLabel } from "../components/TicketPage/ticketEquipmentUtils";
+import { computeSalesTaskStats } from "./salesTicketUtils";
 
 function isoOrEmpty(value) {
   if (!value) return "";
@@ -140,6 +141,17 @@ export function buildSalesTaskReportModel({
 
   const number = ticket?.ticket_number || ticket?.id || "";
   const title = String(ticket?.title || "").trim();
+  const rawStats = computeSalesTaskStats(tasks);
+  const stats = {
+    ...rawStats,
+    byAssignee: (rawStats.byAssignee || []).map(row => ({
+      ...row,
+      label:
+        row.key === "__none__"
+          ? ""
+          : resolvePerson(row.key, row.label) || String(row.label || "").trim()
+    }))
+  };
   return {
     fileBase: salesTaskReportFileBase(number),
     ticketId: ticket?.id || null,
@@ -149,6 +161,7 @@ export function buildSalesTaskReportModel({
     clientId: clientId || ticket?.client_id || ticket?.clientId || null,
     clientName: String(clientName || "").trim(),
     periodLabel: [ticketNumberLabel, title].filter(Boolean).join(" — "),
+    stats,
     rows
   };
 }

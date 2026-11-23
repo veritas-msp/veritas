@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.24",
+    date: "2026-11-23",
+    highlights: [
+      "Rapport PDF des tâches prestation : inclusion des KPI (heures, avancement, retard, répartition par assigné).",
+      "Panneau droit : section Planification retirée de la vue classique."
+    ]
+  },
+  {
     version: "2.0.23",
     date: "2026-11-23",
     highlights: [
