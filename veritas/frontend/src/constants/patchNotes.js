@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.20",
+    date: "2026-11-23",
+    highlights: [
+      "Tickets prestation : export des tâches en PDF brandé (thème Administration → Rapports) ou en CSV brut, depuis le panneau de droite.",
+      "Le bouton « Créer un rapport » ne redirige plus vers le module Rapports."
+    ]
+  },
+  {
     version: "2.0.19",
     date: "2026-11-19",
     highlights: [

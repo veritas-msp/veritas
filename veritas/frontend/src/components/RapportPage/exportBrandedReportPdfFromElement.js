@@ -58,9 +58,9 @@ async function inlineImagesAsDataUrls(root) {
   await waitForImages(root);
 }
 
-function prepareCloneForPdf(clone) {
-  clone.style.width = `${PDF_CAPTURE_WIDTH}px`;
-  clone.style.maxWidth = `${PDF_CAPTURE_WIDTH}px`;
+function prepareCloneForPdf(clone, width = PDF_CAPTURE_WIDTH_PORTRAIT) {
+  clone.style.width = `${width}px`;
+  clone.style.maxWidth = `${width}px`;
   clone.style.margin = "0";
   clone.style.borderRadius = "0";
   clone.style.boxShadow = "none";
@@ -219,7 +219,7 @@ export async function exportBrandedReportPdfFromElement(
   ].join(";");
 
   const clone = sourceEl.cloneNode(true);
-  prepareCloneForPdf(clone);
+  prepareCloneForPdf(clone, captureWidth);
   clone.style.width = `${captureWidth}px`;
   clone.style.maxWidth = `${captureWidth}px`;
   await inlineImagesAsDataUrls(clone);
@@ -243,7 +243,7 @@ export async function exportBrandedReportPdfFromElement(
         el.style.width = `${captureWidth}px`;
         el.style.maxWidth = `${captureWidth}px`;
         el.style.opacity = "1";
-        prepareCloneForPdf(el);
+        prepareCloneForPdf(el, captureWidth);
       }
     });
     return canvasToPdf(canvas, { asBlob, fileName, orientation });

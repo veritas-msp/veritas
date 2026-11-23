@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaPlus, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -54,6 +55,12 @@ import fs from "./TicketCreatePage.module.css";
 import heroStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import styles from "./TicketSalesDetailPage.module.css";
 import TicketDetailPageSkeleton from "./TicketDetailPageSkeleton";
+import SalesTaskReportCapture from "./SalesTaskReportCapture";
+import { fetchReportBranding } from "../../api/reportBranding";
+import { exportBrandedReportPdfFromElement } from "../RapportPage/exportBrandedReportPdfFromElement";
+import { buildSalesTaskReportModel, downloadSalesTasksCsv } from "../../utils/salesTaskReportExport";
+import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
+import { getPlanningEventFormCopy } from "../PlanningPage/planningEventFormI18n";
 
 function normalizeStatus(status) {
   return status === "open" ? "new" : status;
@@ -471,6 +478,10 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const [titleEditing, setTitleEditing] = useState(false);
   const [clientEquipments, setClientEquipments] = useState([]);
   const [loadingEquipments, setLoadingEquipments] = useState(false);
+  const [exportingReport, setExportingReport] = useState(null);
+  const [reportCapture, setReportCapture] = useState(null);
+  const reportCaptureRef = useRef(null);
+  const planningEventTypes = usePlanningEventTypes();
 
   const [requesterSearch, setRequesterSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -1821,7 +1832,62 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     });
   };
 
-  const openReport = () => onNavigate?.("Report", clientId ? { clientId, name: ticket?.client_name || ticket?.client_nom || "" } : null);
+  const buildTaskReportModel = useCallback(() => {
+    const planningCopy = getPlanningEventFormCopy(locale, planningEventTypes);
+    return buildSalesTaskReportModel({
+      ticket,
+      clientId,
+      clientName: clientDisplayName,
+      ticketNumberLabel: copy.formatTicketNumber(ticket?.ticket_number || ticket?.id),
+      tasks: pmTasks,
+      users,
+      userLabel,
+      equipments: clientEquipments,
+      locale,
+      eventTypes: planningCopy.planningTypes
+    });
+  }, [ticket, clientId, clientDisplayName, copy, pmTasks, users, clientEquipments, locale, planningEventTypes]);
+
+  const handleExportTasksCsv = () => {
+    if (exportingReport) return;
+    setExportingReport("csv");
+    try {
+      downloadSalesTasksCsv(buildTaskReportModel());
+      toast.success(copy.report.csvDone);
+    } catch (error) {
+      toast.error(error?.message || copy.report.csvError);
+    } finally {
+      setExportingReport(null);
+    }
+  };
+
+  const handleExportTasksPdf = async () => {
+    if (exportingReport) return;
+    setExportingReport("pdf");
+    try {
+      const branding = await fetchReportBranding().catch(() => null);
+      const model = buildTaskReportModel();
+      flushSync(() => {
+        setReportCapture({ branding, model });
+      });
+      const element = reportCaptureRef.current;
+      if (!element) throw new Error(copy.report.pdfError);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (document.fonts?.ready) {
+        await Promise.race([
+          document.fonts.ready,
+          new Promise(resolve => setTimeout(resolve, 1500))
+        ]);
+      }
+      await exportBrandedReportPdfFromElement(element, { fileName: `${model.fileBase}.pdf` });
+      toast.success(copy.report.pdfDone);
+    } catch (error) {
+      toast.error(error?.message || copy.report.pdfError);
+    } finally {
+      setExportingReport(null);
+      setReportCapture(null);
+    }
+  };
 
   useEffect(() => {
     setRightPaneView("context");
@@ -3040,10 +3106,28 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                   {canReport ? (
                     <RightPaneStaticSection title={copy.report.title} titleId="ticket-sales-report-title">
                       <p className={td.emptyText}>{copy.report.hint}</p>
-                      <button type="button" className={styles.primaryBtn} onClick={openReport}>
-                        <Icon icon="mdi:file-document-edit-outline" />
-                        {copy.report.cta}
-                      </button>
+                      <div className={styles.reportActions}>
+                        <button
+                          type="button"
+                          className={styles.primaryBtn}
+                          onClick={handleExportTasksPdf}
+                          disabled={Boolean(exportingReport)}
+                          title={copy.report.pdfTitle}
+                        >
+                          <Icon icon={exportingReport === "pdf" ? "mdi:loading" : "mdi:file-pdf-box"} className={exportingReport === "pdf" ? td.historyRefreshSpin : undefined} />
+                          {exportingReport === "pdf" ? copy.report.exporting : copy.report.pdf}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.secondaryBtn}
+                          onClick={handleExportTasksCsv}
+                          disabled={Boolean(exportingReport)}
+                          title={copy.report.csvTitle}
+                        >
+                          <Icon icon="mdi:file-delimited-outline" />
+                          {exportingReport === "csv" ? copy.report.exporting : copy.report.csv}
+                        </button>
+                      </div>
                     </RightPaneStaticSection>
                   ) : null}
                 </>
@@ -3108,6 +3192,17 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
           </div>
         </div>
       </div>
+
+      {reportCapture ? (
+        <SalesTaskReportCapture
+          captureRef={reportCaptureRef}
+          branding={reportCapture.branding}
+          model={reportCapture.model}
+          copy={copy}
+          formatDateTime={copy.formatDateTime}
+          formatDurationMs={copy.formatDurationMs}
+        />
+      ) : null}
 
       <TicketConfirmModal
         open={Boolean(deleteConfirmConfig)}
