@@ -367,11 +367,15 @@
   justify-content: space-between;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding: 0.55rem 0.85rem;
+  margin-top: 0.55rem;
+  padding: 0.6rem 0.9rem;
   border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, var(--msp-border, #2f4260));
-  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, var(--msp-surface, #1a2540));
+  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 32%, var(--msp-border-light, #c5d0de));
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, var(--msp-surface, #fff));
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .bulkInfo {
@@ -381,13 +385,13 @@
   gap: 0.55rem;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--msp-text, #e8edf5);
+  color: var(--msp-text, #0f1c2e);
 }
 
 .bulkLink {
   border: 0;
   background: transparent;
-  color: #93c5fd;
+  color: var(--msp-accent, #2b5fab);
   font: inherit;
   font-size: 0.74rem;
   font-weight: 650;
@@ -429,16 +433,16 @@
   gap: 0.35rem;
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--msp-muted, #8fa8c4);
+  color: var(--msp-muted, #5c6b82);
 }
 
 .mergeParentPick select {
-  max-width: 16rem;
-  padding: 0.22rem 0.4rem;
+  max-width: min(22rem, 55vw);
+  padding: 0.28rem 0.45rem;
   border-radius: 8px;
-  border: 1px solid var(--msp-border, #2f4260);
-  background: var(--msp-surface, #1a2540);
-  color: var(--msp-text, #e8edf5);
+  border: 1px solid var(--msp-border-light, #c5d0de);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
   font: inherit;
   font-size: 0.72rem;
 }
@@ -1315,6 +1319,34 @@
 :global(html:not(.dark)) .tableWrap {
   background: var(--msp-surface, #fff);
   border-color: var(--msp-border-light, #c5d0de);
+}
+
+:global(html:not(.dark)) .bulkBar {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, #fff);
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 28%, #c5d0de);
+}
+
+:global(html.dark) .bulkBar {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, var(--msp-surface, #1a2540));
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, var(--msp-border, #2f4260));
+}
+
+:global(html.dark) .bulkInfo {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .bulkLink {
+  color: #93c5fd;
+}
+
+:global(html.dark) .mergeParentPick {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .mergeParentPick select {
+  border-color: var(--msp-border, #2f4260);
+  background: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #e8edf5);
 }
 
 :global(html:not(.dark)) .searchBox {

@@ -150,6 +150,11 @@ export default function MonitoringCenterPage({
     }
     return base;
   }, [visibleQueue, opsSeverityFilter, opsSearchQuery, triageView]);
+  /** Cibles de fusion : toute alerte active non-enfant (y compris ticket / autre onglet). */
+  const mergeTargetItems = useMemo(
+    () => visibleQueue.filter(item => !item.isMergeChild),
+    [visibleQueue]
+  );
   const severityCounts = useMemo(
     () => countQueueBySeverity(visibleQueue.filter(item => (item.workflowStatus || "open") === "open")),
     [visibleQueue]
@@ -984,6 +989,7 @@ export default function MonitoringCenterPage({
                         {activeTab === "operations" ? (
                           <SupervisionOpsQueue
                             items={filteredQueue}
+                            mergeTargetItems={mergeTargetItems}
                             kpi={severityCounts}
                             triageCounts={{ ...triageCounts, history: historyAlerts.length }}
                             severityFilter={opsSeverityFilter}

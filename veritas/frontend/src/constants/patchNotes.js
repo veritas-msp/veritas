@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.22",
+    date: "2026-11-23",
+    highlights: [
+      "Rapport PDF tâches prestation : les cartes ne sont plus coupées en bas de page, et le pied de page est collé en bas de la dernière page.",
+      "Supervision : fusion vers une alerte déjà listée, barre d’actions groupées sous le tableau, et correction SQL sur le lien ticket."
+    ]
+  },
+  {
     version: "2.0.21",
     date: "2026-11-23",
     highlights: [

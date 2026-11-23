@@ -79,7 +79,7 @@ export default function SalesTaskReportCapture({
               const created = [formatDateTime(row.createdAt), row.createdByLabel].filter(value => value && value !== none);
               const updated = [formatDateTime(row.updatedAt), row.updatedByLabel].filter(value => value && value !== none);
               return (
-                <article key={row.id || row.index} className={styles.card}>
+                <article key={row.id || row.index} className={styles.card} data-pdf-keep-together="true">
                   <header className={styles.cardHead}>
                     <span className={styles.index}>{row.index}</span>
                     <h3 className={styles.title}>{row.label || none}</h3>

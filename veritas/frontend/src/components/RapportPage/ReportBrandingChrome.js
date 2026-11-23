@@ -142,7 +142,7 @@ const ReportBrandingChrome = forwardRef(function ReportBrandingChrome(
       style={cssVars}
       data-loading={loading ? "true" : undefined}
     >
-      <header className={styles.header}>
+      <header className={styles.header} data-pdf-keep-together="true">
         <div className={styles.headerInner}>
           <div className={styles.brandRow}>
             <div className={styles.brandIdentity}>
@@ -166,7 +166,7 @@ const ReportBrandingChrome = forwardRef(function ReportBrandingChrome(
 
       <div className={styles.body}>{children}</div>
 
-      <footer className={styles.footer}>
+      <footer className={styles.footer} data-pdf-footer="true">
         <div className={styles.footerInner}>
           {showFooterLogo && footerLogoUrl ? (
             <img src={footerLogoUrl} alt="" className={styles.footerLogo} />

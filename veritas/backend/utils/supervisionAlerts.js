@@ -1870,6 +1870,7 @@ export async function mergeSupervisionAlerts({
       if (parentTicketNumber) childMeta.linkedTicketNumber = parentTicketNumber;
 
       const nextStatus = parentTicketId ? "linked" : child.status === "open" ? "acked" : child.status;
+      // linked_ticket_id / linked_event_id sont VARCHAR en base — ne pas caster en uuid (COALESCE uuid/varchar).
       const patchValues = [
         parentRow.id,
         actorUserId || null,
@@ -1887,7 +1888,7 @@ export async function mergeSupervisionAlerts({
            status = $3,
            acked_at = COALESCE(acked_at, NOW()),
            acked_by = COALESCE(acked_by, $2),
-           linked_ticket_id = COALESCE($4::uuid, linked_ticket_id),
+           linked_ticket_id = COALESCE($4, linked_ticket_id),
            linked_ticket_kind = COALESCE($5, linked_ticket_kind),
            meta = $6::jsonb,
            updated_at = NOW()
