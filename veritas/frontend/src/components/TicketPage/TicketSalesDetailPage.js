@@ -391,15 +391,6 @@ const SALES_TYPE_OPTIONS = [
   { key: "installation", icon: "mdi:tools" }
 ];
 
-const RIGHT_PANE_COLLAPSED_KEY = "veritas.salesTicket.rightPaneCollapsed";
-
-function readRightPaneCollapsed() {
-  try {
-    return localStorage.getItem(RIGHT_PANE_COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
 
 export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const locale = useAppLocale();
@@ -460,7 +451,6 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const [tagAddOpen, setTagAddOpen] = useState(false);
   const [tagBusy, setTagBusy] = useState(false);
   const [rightPaneView, setRightPaneView] = useState("context");
-  const [rightPaneCollapsed, setRightPaneCollapsed] = useState(readRightPaneCollapsed);
   const [centerTab, setCenterTab] = useState("chat");
   const [refreshingHistory, setRefreshingHistory] = useState(false);
   const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
@@ -512,30 +502,10 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const taskPlanningBackfillRef = useRef(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(RIGHT_PANE_COLLAPSED_KEY, rightPaneCollapsed ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  }, [rightPaneCollapsed]);
-
-  const openRightPaneView = useCallback(view => {
-    setRightPaneView(view);
-    setRightPaneCollapsed(false);
-  }, []);
-
-  const toggleRightPaneCollapsed = useCallback(() => {
-    setRightPaneCollapsed(prev => !prev);
-  }, []);
-
-  useEffect(() => {
     if (!canTasks && centerTab === "tasks") {
       setCenterTab("chat");
     }
-    if (!canTasks && rightPaneView === "taskStats") {
-      setRightPaneView("context");
-    }
-  }, [canTasks, centerTab, rightPaneView]);
+  }, [canTasks, centerTab]);
 
   useEffect(() => {
     if (!titleEditing) return;
@@ -2060,7 +2030,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         </header>
 
         <div className={td.workspace}>
-          <div className={`${td.layout} ${styles.layout} ${rightPaneCollapsed ? styles.layoutRightCollapsed : ""}`.trim()}>
+          <div className={`${td.layout} ${styles.layout}`.trim()}>
             <aside className={`${td.leftPane} ${heroStyles.rightSidebarContent}`}>
               <RightPaneStaticSection
                 title={detailCopy.leftPane.properties}
@@ -2926,10 +2896,49 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
               </div>
             </section>
 
-            <aside
-              className={`${td.rightPane} ${heroStyles.rightSidebarContent} ${styles.rightPane} ${rightPaneCollapsed ? styles.rightPaneHidden : ""}`.trim()}
-              aria-hidden={rightPaneCollapsed}
-            >
+            <aside className={`${td.rightPane} ${heroStyles.rightSidebarContent} ${styles.rightPane}`.trim()}>
+              <section
+                className={styles.sidebarActionToolbarSection}
+                aria-label={detailCopy.sidebar.classicViewTitle}
+              >
+                <div className={styles.sidebarActionToolbar}>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarActionIconBtn} ${rightPaneView === "context" ? styles.sidebarActionIconBtnActive : ""}`.trim()}
+                    title={detailCopy.sidebar.classicViewTitle}
+                    aria-label={detailCopy.sidebar.classicViewAria}
+                    aria-pressed={rightPaneView === "context"}
+                    onClick={() => setRightPaneView("context")}
+                  >
+                    <Icon icon="mdi:chart-timeline-variant" />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarActionIconBtn} ${rightPaneView === "history" ? styles.sidebarActionIconBtnActive : ""}`.trim()}
+                    title={detailCopy.rightPane.historyToggleTitle}
+                    aria-label={detailCopy.rightPane.historyToggleAria}
+                    aria-pressed={rightPaneView === "history"}
+                    onClick={() => {
+                      setRightPaneView("history");
+                      void refreshTicketHistory({ showSpinner: true });
+                    }}
+                  >
+                    <Icon icon="mdi:history" />
+                  </button>
+                  {canDeleteTicket ? (
+                    <button
+                      type="button"
+                      className={styles.sidebarActionIconBtn}
+                      title={detailCopy.sidebar.deleteTitle}
+                      aria-label={detailCopy.sidebar.deleteTitle}
+                      onClick={softDeleteCurrentTicket}
+                    >
+                      <Icon icon="mdi:trash-can-outline" />
+                    </button>
+                  ) : null}
+                </div>
+              </section>
+
               {rightPaneView === "history" ? (
                 <RightPaneStaticSection
                   title={detailCopy.rightPane.historyToggleTitle}
@@ -2976,83 +2985,112 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                     </div>
                   )}
                 </RightPaneStaticSection>
-              ) : rightPaneView === "taskStats" ? (
-                <RightPaneStaticSection title={copy.taskStats.title} titleId="ticket-sales-task-stats-title" count={taskStats.total}>
-                  {taskStats.total === 0 ? (
-                    <p className={td.emptyText}>{copy.taskStats.empty}</p>
-                  ) : (
-                    <>
-                      <p className={styles.taskStatsHint}>{copy.taskStats.hoursHint}</p>
-
-                      <div className={styles.taskStatsHero}>
-                        <span className={styles.taskStatsHeroLabel}>{copy.taskStats.hoursPlanned}</span>
-                        <span className={styles.taskStatsHeroValue}>{copy.formatDurationMs(taskStats.plannedMs)}</span>
-                        <span className={styles.taskStatsHeroSub}>
-                          {copy.taskStats.hoursDone}: {copy.formatDurationMs(taskStats.doneMs)}
-                          {" · "}
-                          {copy.taskStats.hoursRemaining}: {copy.formatDurationMs(taskStats.remainingMs)}
-                        </span>
-                      </div>
-
-                      <div className={styles.taskStatsGrid}>
-                        <div className={styles.taskStatsCard}>
-                          <span className={styles.taskStatsCardLabel}>{copy.taskStats.progress}</span>
-                          <span className={styles.taskStatsCardValue}>{taskStats.progress}%</span>
-                        </div>
-                        <div className={styles.taskStatsCard}>
-                          <span className={styles.taskStatsCardLabel}>{copy.taskStats.done}</span>
-                          <span className={styles.taskStatsCardValue}>
-                            {taskStats.done}/{taskStats.total}
-                          </span>
-                        </div>
-                        <div className={styles.taskStatsCard}>
-                          <span className={styles.taskStatsCardLabel}>{copy.taskStats.todo}</span>
-                          <span className={styles.taskStatsCardValue}>{taskStats.todo}</span>
-                        </div>
-                        <div className={`${styles.taskStatsCard} ${taskStats.overdue > 0 ? styles.taskStatsCardWarn : ""}`.trim()}>
-                          <span className={styles.taskStatsCardLabel}>{copy.taskStats.overdue}</span>
-                          <span className={styles.taskStatsCardValue}>{taskStats.overdue}</span>
-                        </div>
-                        <div className={styles.taskStatsCard}>
-                          <span className={styles.taskStatsCardLabel}>{copy.taskStats.unassigned}</span>
-                          <span className={styles.taskStatsCardValue}>{taskStats.unassigned}</span>
-                        </div>
-                        <div className={styles.taskStatsCard}>
-                          <span className={styles.taskStatsCardLabel}>{copy.taskStats.unscheduled}</span>
-                          <span className={styles.taskStatsCardValue}>{taskStats.unscheduled}</span>
-                        </div>
-                      </div>
-
-                      {taskStats.byAssignee.length > 0 ? (
-                        <>
-                          <h3 className={styles.taskStatsSectionTitle}>{copy.taskStats.byAssignee}</h3>
-                          <ul className={styles.taskStatsAssigneeList}>
-                            {taskStats.byAssignee.map(row => (
-                              <li key={row.key} className={styles.taskStatsAssigneeItem}>
-                                <div>
-                                  <div className={styles.taskStatsAssigneeName}>
-                                    {row.key === "__none__"
-                                      ? copy.taskStats.noAssignee
-                                      : row.label || userLabel(users.find(u => String(u.id) === String(row.key))) || copy.taskStats.noAssignee}
-                                  </div>
-                                  <div className={styles.taskStatsAssigneeMeta}>
-                                    {interpolate(copy.taskStats.tasksCount, {
-                                      done: String(row.done),
-                                      total: String(row.total)
-                                    })}
-                                  </div>
-                                </div>
-                                <span className={styles.taskStatsAssigneeHours}>{copy.formatDurationMs(row.plannedMs)}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </>
-                      ) : null}
-                    </>
-                  )}
-                </RightPaneStaticSection>
               ) : (
                 <>
+                  {canTasks ? (
+                    <RightPaneStaticSection title={copy.taskStats.title} titleId="ticket-sales-task-stats-title" count={taskStats.total}>
+                      {taskStats.total === 0 ? (
+                        <p className={td.emptyText}>{copy.taskStats.empty}</p>
+                      ) : (
+                        <>
+                          <p className={styles.taskStatsHint}>{copy.taskStats.hoursHint}</p>
+
+                          <div className={styles.taskStatsHero}>
+                            <span className={styles.taskStatsHeroLabel}>{copy.taskStats.hoursPlanned}</span>
+                            <span className={styles.taskStatsHeroValue}>{copy.formatDurationMs(taskStats.plannedMs)}</span>
+                            <span className={styles.taskStatsHeroSub}>
+                              {copy.taskStats.hoursDone}: {copy.formatDurationMs(taskStats.doneMs)}
+                              {" · "}
+                              {copy.taskStats.hoursRemaining}: {copy.formatDurationMs(taskStats.remainingMs)}
+                            </span>
+                          </div>
+
+                          <div className={styles.taskStatsGrid}>
+                            <div className={styles.taskStatsCard}>
+                              <span className={styles.taskStatsCardLabel}>{copy.taskStats.progress}</span>
+                              <span className={styles.taskStatsCardValue}>{taskStats.progress}%</span>
+                            </div>
+                            <div className={styles.taskStatsCard}>
+                              <span className={styles.taskStatsCardLabel}>{copy.taskStats.done}</span>
+                              <span className={styles.taskStatsCardValue}>
+                                {taskStats.done}/{taskStats.total}
+                              </span>
+                            </div>
+                            <div className={styles.taskStatsCard}>
+                              <span className={styles.taskStatsCardLabel}>{copy.taskStats.todo}</span>
+                              <span className={styles.taskStatsCardValue}>{taskStats.todo}</span>
+                            </div>
+                            <div className={`${styles.taskStatsCard} ${taskStats.overdue > 0 ? styles.taskStatsCardWarn : ""}`.trim()}>
+                              <span className={styles.taskStatsCardLabel}>{copy.taskStats.overdue}</span>
+                              <span className={styles.taskStatsCardValue}>{taskStats.overdue}</span>
+                            </div>
+                            <div className={styles.taskStatsCard}>
+                              <span className={styles.taskStatsCardLabel}>{copy.taskStats.unassigned}</span>
+                              <span className={styles.taskStatsCardValue}>{taskStats.unassigned}</span>
+                            </div>
+                            <div className={styles.taskStatsCard}>
+                              <span className={styles.taskStatsCardLabel}>{copy.taskStats.unscheduled}</span>
+                              <span className={styles.taskStatsCardValue}>{taskStats.unscheduled}</span>
+                            </div>
+                          </div>
+
+                          {taskStats.byAssignee.length > 0 ? (
+                            <>
+                              <h3 className={styles.taskStatsSectionTitle}>{copy.taskStats.byAssignee}</h3>
+                              <ul className={styles.taskStatsAssigneeList}>
+                                {taskStats.byAssignee.map(row => (
+                                  <li key={row.key} className={styles.taskStatsAssigneeItem}>
+                                    <div>
+                                      <div className={styles.taskStatsAssigneeName}>
+                                        {row.key === "__none__"
+                                          ? copy.taskStats.noAssignee
+                                          : row.label || userLabel(users.find(u => String(u.id) === String(row.key))) || copy.taskStats.noAssignee}
+                                      </div>
+                                      <div className={styles.taskStatsAssigneeMeta}>
+                                        {interpolate(copy.taskStats.tasksCount, {
+                                          done: String(row.done),
+                                          total: String(row.total)
+                                        })}
+                                      </div>
+                                    </div>
+                                    <span className={styles.taskStatsAssigneeHours}>{copy.formatDurationMs(row.plannedMs)}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : null}
+                        </>
+                      )}
+                    </RightPaneStaticSection>
+                  ) : null}
+
+                  {canReport ? (
+                    <div className={styles.reportActions} role="group" aria-label={copy.report.title}>
+                      <button
+                        type="button"
+                        className={styles.primaryBtn}
+                        onClick={handleExportTasksPdf}
+                        disabled={Boolean(exportingReport)}
+                        title={copy.report.pdfTitle}
+                        aria-label={copy.report.pdfTitle}
+                      >
+                        <Icon icon={exportingReport === "pdf" ? "mdi:loading" : "mdi:file-pdf-box"} className={exportingReport === "pdf" ? td.historyRefreshSpin : undefined} />
+                        {exportingReport === "pdf" ? copy.report.exporting : copy.report.pdf}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={handleExportTasksCsv}
+                        disabled={Boolean(exportingReport)}
+                        title={copy.report.csvTitle}
+                        aria-label={copy.report.csvTitle}
+                      >
+                        <Icon icon="mdi:file-delimited-outline" />
+                        {exportingReport === "csv" ? copy.report.exporting : copy.report.csv}
+                      </button>
+                    </div>
+                  ) : null}
+
                   <RightPaneStaticSection title={copy.planning.title} titleId="ticket-sales-planning-title">
                     {scheduledTasks.length > 0 ? (
                       <ul className={styles.planningRecapList}>
@@ -3107,92 +3145,8 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                       {copy.planning.openPlanning}
                     </button>
                   </RightPaneStaticSection>
-
-                  {canReport ? (
-                    <RightPaneStaticSection title={copy.report.title} titleId="ticket-sales-report-title">
-                      <p className={td.emptyText}>{copy.report.hint}</p>
-                      <div className={styles.reportActions}>
-                        <button
-                          type="button"
-                          className={styles.primaryBtn}
-                          onClick={handleExportTasksPdf}
-                          disabled={Boolean(exportingReport)}
-                          title={copy.report.pdfTitle}
-                        >
-                          <Icon icon={exportingReport === "pdf" ? "mdi:loading" : "mdi:file-pdf-box"} className={exportingReport === "pdf" ? td.historyRefreshSpin : undefined} />
-                          {exportingReport === "pdf" ? copy.report.exporting : copy.report.pdf}
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={handleExportTasksCsv}
-                          disabled={Boolean(exportingReport)}
-                          title={copy.report.csvTitle}
-                        >
-                          <Icon icon="mdi:file-delimited-outline" />
-                          {exportingReport === "csv" ? copy.report.exporting : copy.report.csv}
-                        </button>
-                      </div>
-                    </RightPaneStaticSection>
-                  ) : null}
                 </>
               )}
-            </aside>
-
-            <aside className={td.rightSidebar}>
-              <button
-                type="button"
-                className={td.sidebarActionBtn}
-                title={rightPaneCollapsed ? copy.rightPaneToggle.expandTitle : copy.rightPaneToggle.collapseTitle}
-                aria-label={rightPaneCollapsed ? copy.rightPaneToggle.expandAria : copy.rightPaneToggle.collapseAria}
-                aria-expanded={!rightPaneCollapsed}
-                onClick={toggleRightPaneCollapsed}
-              >
-                <Icon icon={rightPaneCollapsed ? "mdi:chevron-left" : "mdi:chevron-right"} />
-              </button>
-              <button
-                type="button"
-                className={`${td.sidebarActionBtn} ${!rightPaneCollapsed && rightPaneView === "context" ? td.sidebarActionBtnActive : ""}`.trim()}
-                title={detailCopy.sidebar.classicViewTitle}
-                aria-label={detailCopy.sidebar.classicViewAria}
-                aria-pressed={!rightPaneCollapsed && rightPaneView === "context"}
-                onClick={() => openRightPaneView("context")}
-              >
-                <Icon icon="mdi:view-dashboard-outline" />
-              </button>
-              <button
-                type="button"
-                className={`${td.sidebarActionBtn} ${!rightPaneCollapsed && rightPaneView === "history" ? td.sidebarActionBtnActive : ""}`.trim()}
-                title={detailCopy.rightPane.historyToggleTitle}
-                aria-label={detailCopy.rightPane.historyToggleAria}
-                aria-pressed={!rightPaneCollapsed && rightPaneView === "history"}
-                onClick={() => {
-                  openRightPaneView("history");
-                  void refreshTicketHistory({ showSpinner: true });
-                }}
-              >
-                <Icon icon="mdi:history" />
-              </button>
-              {canTasks ? (
-                <button
-                  type="button"
-                  className={`${td.sidebarActionBtn} ${!rightPaneCollapsed && rightPaneView === "taskStats" ? td.sidebarActionBtnActive : ""}`.trim()}
-                  title={copy.taskStats.toggleTitle}
-                  aria-label={copy.taskStats.toggleAria}
-                  aria-pressed={!rightPaneCollapsed && rightPaneView === "taskStats"}
-                  onClick={() => openRightPaneView("taskStats")}
-                >
-                  <Icon icon="mdi:chart-timeline-variant" />
-                </button>
-              ) : null}
-              {canDeleteTicket ? (
-                <>
-                  <span className={td.sidebarSeparator} aria-hidden />
-                  <button type="button" className={td.sidebarActionBtn} title={detailCopy.sidebar.deleteTitle} onClick={softDeleteCurrentTicket}>
-                    <Icon icon="mdi:trash-can-outline" />
-                  </button>
-                </>
-              ) : null}
             </aside>
           </div>
         </div>

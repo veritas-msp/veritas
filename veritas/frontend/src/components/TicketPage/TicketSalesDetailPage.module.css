@@ -5,12 +5,8 @@
 }
 
 .layout {
-  /* Left | Center | Right context/history | icon rail */
-  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr) minmax(240px, 300px) 56px !important;
-}
-
-.layoutRightCollapsed {
-  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr) 56px !important;
+  /* Left | Center | Right */
+  grid-template-columns: minmax(230px, 280px) minmax(0, 1fr) minmax(240px, 300px) !important;
 }
 
 .centerPane {
@@ -22,8 +18,83 @@
   overflow-y: auto;
 }
 
-.rightPaneHidden {
-  display: none !important;
+.sidebarActionToolbarSection {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.sidebarActionToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 0.15rem;
+  padding: 0.55rem 0.45rem;
+  box-sizing: border-box;
+}
+
+.sidebarActionIconBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  min-width: 2.1rem;
+  min-height: 2.1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #808890;
+  font-size: 1.15rem;
+  line-height: 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebarActionIconBtn > svg,
+.sidebarActionIconBtn :global(svg) {
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  min-width: 1.15rem;
+  min-height: 1.15rem;
+  display: block;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.sidebarActionIconBtn:hover:not(:disabled) {
+  background: var(--msp-surface-2, #f1f4f8);
+  color: var(--msp-text, #1e293b);
+}
+
+.sidebarActionIconBtn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.sidebarActionIconBtnActive {
+  color: var(--msp-accent, #2b5fab);
+}
+
+:global(html.dark) .sidebarActionToolbarSection {
+  border-bottom-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .sidebarActionIconBtn {
+  color: #94a3b8;
+}
+
+:global(html.dark) .sidebarActionIconBtn:hover:not(:disabled) {
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .sidebarActionIconBtnActive {
+  color: var(--msp-accent, #7aa2e3);
 }
 
 .formInChat {
@@ -1363,14 +1434,16 @@
 
 .reportActions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0.45rem;
-  margin-top: 0.65rem;
+  margin: 0.15rem 0 0.75rem;
+  padding: 0.55rem 0.65rem 0;
 }
 
 .reportActions .primaryBtn,
 .reportActions .secondaryBtn {
-  width: 100%;
+  flex: 1;
+  width: auto;
   margin-top: 0;
 }
 
@@ -1593,23 +1666,14 @@
 
 @media (max-width: 1280px) {
   .layout {
-    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(220px, 270px) 52px !important;
-  }
-
-  .layoutRightCollapsed {
-    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) 52px !important;
+    grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(220px, 270px) !important;
   }
 }
 
 @media (max-width: 1024px) {
-  .layout,
-  .layoutRightCollapsed {
+  .layout {
     grid-template-columns: 1fr !important;
     overflow-y: auto;
-  }
-
-  .rightPaneHidden {
-    display: flex !important;
   }
 }
 

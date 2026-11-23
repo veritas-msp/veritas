@@ -8,8 +8,6 @@ const BLANK_PAGE_SLACK_MM = 3;
 const DEFAULT_CAPTURE_SCALE = 1.5;
 /** JPEG : quasi imperceptible sur UI/texte, bien plus léger que PNG. */
 const DEFAULT_JPEG_QUALITY = 0.86;
-/** Marge mini (px canvas) avant de considérer qu'on peut pousser un bloc à la page suivante. */
-const MIN_PAGE_CONTENT_PX = 48;
 
 function waitForImages(root) {
   const images = Array.from(root.querySelectorAll("img"));
@@ -74,12 +72,14 @@ function prepareCloneForPdf(clone, width = PDF_CAPTURE_WIDTH_PORTRAIT) {
   clone.style.background = "#ffffff";
   clone.style.color = "#0f172a";
 
+  // Évite les fonds imbriqués moche (gris puis blanc) sur les lignes de champs.
   clone.querySelectorAll('[class*="previewBox"] > *, [class*="previewSignatureBox"] > *').forEach(el => {
     el.style.background = "transparent";
     el.style.backgroundColor = "transparent";
     el.style.boxShadow = "none";
   });
 
+  // Les images de signature gardent un fond blanc propre.
   clone.querySelectorAll('[class*="previewSignatureImage"], [class*="previewSignatureEmpty"]').forEach(el => {
     el.style.background = "#ffffff";
     el.style.backgroundColor = "#ffffff";
@@ -148,112 +148,9 @@ function canvasSliceToJpeg(source, sx, sy, sw, sh, quality) {
   return slice.toDataURL("image/jpeg", quality);
 }
 
-function measureLayoutRanges(root, scale) {
-  if (!root || typeof root.getBoundingClientRect !== "function") {
-    return { keeps: [], footer: null };
-  }
-  const rootRect = root.getBoundingClientRect();
-  const toRange = el => {
-    const rect = el.getBoundingClientRect();
-    return {
-      top: Math.max(0, (rect.top - rootRect.top) * scale),
-      bottom: Math.max(0, (rect.bottom - rootRect.top) * scale)
-    };
-  };
-
-  const keeps = Array.from(root.querySelectorAll("[data-pdf-keep-together='true']"))
-    .map(toRange)
-    .filter(range => range.bottom > range.top + 1)
-    .sort((a, b) => a.top - b.top);
-
-  const footerEl =
-    root.querySelector("[data-pdf-footer='true']") ||
-    root.querySelector("footer");
-  const footer = footerEl ? toRange(footerEl) : null;
-
-  return { keeps, footer };
-}
-
 /**
- * Fin de bande sans couper un bloc keep-together (cartes tâches, etc.).
- */
-function findSliceEnd(startY, pageHeightPx, limitY, keeps = []) {
-  const hardEnd = Math.min(startY + pageHeightPx, limitY);
-  if (hardEnd <= startY) return startY;
-
-  let end = hardEnd;
-  for (const keep of keeps) {
-    if (keep.bottom <= startY + 1 || keep.top >= hardEnd - 1) continue;
-    // La bande coupe ce bloc.
-    if (keep.top >= startY + MIN_PAGE_CONTENT_PX) {
-      // Assez de contenu avant : on termine avant la carte.
-      end = Math.min(end, keep.top);
-      continue;
-    }
-    // La carte a déjà commencé sur cette page.
-    if (keep.bottom - startY <= pageHeightPx + 0.5) {
-      // Elle tient entière → on l’inclut.
-      end = Math.max(end, Math.min(keep.bottom, limitY));
-    }
-    // Sinon carte plus haute qu’une page : coupe dure (cas rare).
-  }
-  return Math.max(startY + 1, Math.min(end, limitY));
-}
-
-function composePageWithFooterAtBottom(source, {
-  contentStart,
-  contentEnd,
-  footerStart,
-  footerEnd,
-  pageHeightPx,
-  quality
-}) {
-  const width = source.width;
-  const page = document.createElement("canvas");
-  page.width = width;
-  page.height = Math.max(1, Math.floor(pageHeightPx));
-  const ctx = page.getContext("2d");
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, page.width, page.height);
-
-  const contentH = Math.max(0, contentEnd - contentStart);
-  if (contentH > 0.5) {
-    ctx.drawImage(
-      source,
-      0,
-      contentStart,
-      width,
-      contentH,
-      0,
-      0,
-      width,
-      contentH
-    );
-  }
-
-  const footerH = Math.max(0, footerEnd - footerStart);
-  if (footerH > 0.5) {
-    const destY = Math.max(0, page.height - footerH);
-    ctx.drawImage(
-      source,
-      0,
-      footerStart,
-      width,
-      footerH,
-      0,
-      destY,
-      width,
-      footerH
-    );
-  }
-
-  return page.toDataURL("image/jpeg", quality);
-}
-
-/**
- * Découpe le canvas en pages JPEG.
- * - Respecte data-pdf-keep-together (pas de cartes coupées).
- * - Place le footer (data-pdf-footer) en bas de la dernière page.
+ * Découpe le canvas en bandes = 1 page PDF, JPEG compressé.
+ * Évite d’embarquer une unique image PNG géante (cause des PDF à 100+ Mo).
  */
 function canvasToPdf(
   sourceCanvas,
@@ -261,8 +158,7 @@ function canvasToPdf(
     asBlob,
     fileName,
     orientation = "portrait",
-    jpegQuality = DEFAULT_JPEG_QUALITY,
-    layout = null
+    jpegQuality = DEFAULT_JPEG_QUALITY
   } = {}
 ) {
   const canvas = trimCanvasBottom(sourceCanvas);
@@ -275,82 +171,40 @@ function canvasToPdf(
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
   const pageHeightPx = (pageHeight / imgWidth) * canvas.width;
   const quality = Math.min(0.95, Math.max(0.5, Number(jpegQuality) || DEFAULT_JPEG_QUALITY));
-  const keeps = Array.isArray(layout?.keeps) ? layout.keeps : [];
-  const footer = layout?.footer && layout.footer.bottom > layout.footer.top
-    ? {
-        top: Math.min(layout.footer.top, canvas.height),
-        bottom: Math.min(layout.footer.bottom, canvas.height)
-      }
-    : null;
-  const contentLimit = footer ? Math.max(0, footer.top) : canvas.height;
 
+  let heightLeft = imgHeight;
   let sourceY = 0;
   let pageIndex = 0;
 
-  const addJpegPage = (imgData, heightMm) => {
-    if (pageIndex > 0) pdf.addPage();
-    pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, heightMm, undefined, "FAST");
-    pageIndex += 1;
-  };
-
-  while (sourceY < canvas.height - 1 && pageIndex < 80) {
-    // Page footer seule (contenu déjà paginé).
-    if (footer && sourceY >= contentLimit - 0.5) {
-      const footerH = footer.bottom - footer.top;
-      if (footerH <= 1) break;
-      const imgData = composePageWithFooterAtBottom(canvas, {
-        contentStart: sourceY,
-        contentEnd: sourceY,
-        footerStart: footer.top,
-        footerEnd: footer.bottom,
-        pageHeightPx,
-        quality
-      });
-      addJpegPage(imgData, pageHeight);
-      break;
-    }
-
-    const remainingContent = contentLimit - sourceY;
-    const footerH = footer ? footer.bottom - footer.top : 0;
-
-    // Dernière page : contenu restant + footer collé en bas.
-    if (footer && remainingContent + footerH <= pageHeightPx + 0.5) {
-      const imgData = composePageWithFooterAtBottom(canvas, {
-        contentStart: sourceY,
-        contentEnd: contentLimit,
-        footerStart: footer.top,
-        footerEnd: footer.bottom,
-        pageHeightPx,
-        quality
-      });
-      addJpegPage(imgData, pageHeight);
-      break;
-    }
-
-    const sliceEnd = findSliceEnd(
-      sourceY,
-      pageHeightPx,
-      footer ? contentLimit : canvas.height,
-      keeps
-    );
-    const sliceHeightPx = Math.max(1, sliceEnd - sourceY);
+  while (heightLeft > BLANK_PAGE_SLACK_MM || pageIndex === 0) {
+    const sliceHeightPx = Math.min(pageHeightPx, canvas.height - sourceY);
+    if (sliceHeightPx <= 0) break;
     const sliceHeightMm = (sliceHeightPx * imgWidth) / canvas.width;
     if (pageIndex > 0 && sliceHeightMm <= BLANK_PAGE_SLACK_MM) break;
 
-    const imgData = canvasSliceToJpeg(
-      canvas,
-      0,
-      sourceY,
-      canvas.width,
-      sliceHeightPx,
-      quality
-    );
-    addJpegPage(imgData, sliceHeightMm);
-    sourceY = sliceEnd;
+    let imgData;
+    try {
+      imgData = canvasSliceToJpeg(canvas, 0, sourceY, canvas.width, sliceHeightPx, quality);
+    } catch (err) {
+      throw new Error(
+        err?.message
+          ? `Export PDF bloqué (image): ${err.message}`
+          : "Export PDF bloqué (canvas sécurisé)"
+      );
+    }
 
-    if (!footer && sourceY >= canvas.height - 1) break;
+    if (pageIndex > 0) pdf.addPage();
+    pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, sliceHeightMm, undefined, "FAST");
+
+    sourceY += sliceHeightPx;
+    heightLeft -= sliceHeightMm;
+    pageIndex += 1;
+
+    // Garde-fou : une capture aberrante ne doit pas boucler.
+    if (pageIndex > 80) break;
   }
 
   if (asBlob) return pdf.output("blob");
@@ -427,9 +281,8 @@ export async function exportBrandedReportPdfFromElement(
 
   try {
     await waitForImages(wrap);
+    // Laisser le layout se stabiliser à largeur A4.
     await new Promise(resolve => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
-
-    const layout = measureLayoutRanges(clone, captureScale);
 
     const canvas = await html2canvas(clone, {
       scale: captureScale,
@@ -446,7 +299,7 @@ export async function exportBrandedReportPdfFromElement(
         prepareCloneForPdf(el, captureWidth);
       }
     });
-    return canvasToPdf(canvas, { asBlob, fileName, orientation, jpegQuality, layout });
+    return canvasToPdf(canvas, { asBlob, fileName, orientation, jpegQuality });
   } finally {
     wrap.remove();
   }

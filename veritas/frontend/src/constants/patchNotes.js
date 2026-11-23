@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.23",
+    date: "2026-11-23",
+    highlights: [
+      "Ticket prestation : barre d’actions en haut du panneau droit (vue classique / historique / supprimer), KPI des tâches intégrés à la vue classique, boutons PDF et CSV simplifiés.",
+      "Export PDF des tâches : découpe simple rétablie pour éviter une tâche par page."
+    ]
+  },
+  {
     version: "2.0.22",
     date: "2026-11-23",
     highlights: [
