@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.29",
+    date: "2026-11-24",
+    highlights: [
+      "Cartographie : graphe réseau, nœuds regroupés par VLAN et liaisons tracées en trait plein.",
+      "Le bandeau Ajouter un élément se replie pour laisser la place à la carte."
+    ]
+  },
+  {
     version: "2.0.28",
     date: "2026-11-24",
     highlights: [

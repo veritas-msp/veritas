@@ -253,6 +253,7 @@ function ImpactMapCanvas({
   const sheetRef = useRef(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [drawing, setDrawing] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(true);
   const [drawBox, setDrawBox] = useState(null);
   const [composer, setComposer] = useState(null);
   const drawRef = useRef(null);
@@ -1091,7 +1092,7 @@ function ImpactMapCanvas({
             className={`${styles.viewBtn} ${viewMode === "visual" ? styles.viewBtnActive : ""}`.trim()}
             onClick={() => setViewMode("visual")}
           >
-            <Icon icon="mdi:view-grid-outline" />
+            <Icon icon="mdi:hub" />
             {copy.viewVisual}
           </button>
         </div>
@@ -1131,6 +1132,7 @@ function ImpactMapCanvas({
       {viewMode === "visual" ? (
         <ImpactVisualMap
           nodes={visibleNodes}
+          edges={viewEdges}
           clientName={clientName}
           copy={copy}
           locale={locale}
@@ -1388,18 +1390,32 @@ function ImpactMapCanvas({
         ) : null}
       </div>
       {canEdit ? (
-        <aside className={styles.palette} aria-label={copy.addTitle}>
+        <aside className={`${styles.palette} ${paletteOpen ? "" : styles.paletteCollapsed}`.trim()} aria-label={copy.addTitle}>
           <div className={styles.paletteHead}>
-            <h2>{copy.addTitle}</h2>
-            <input
-              className={styles.search}
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder={copy.searchPlaceholder}
-              aria-label={copy.searchAria}
-            />
+            <div className={styles.paletteTitleRow}>
+              {paletteOpen ? <h2>{copy.addTitle}</h2> : null}
+              <button
+                type="button"
+                className={styles.paletteToggle}
+                aria-expanded={paletteOpen}
+                title={paletteOpen ? copy.collapsePalette : copy.expandPalette}
+                aria-label={paletteOpen ? copy.collapsePalette : copy.expandPalette}
+                onClick={() => setPaletteOpen(open => !open)}
+              >
+                <Icon icon={paletteOpen ? "mdi:chevron-right" : "mdi:chevron-left"} />
+              </button>
+            </div>
+            {paletteOpen ? (
+              <input
+                className={styles.search}
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder={copy.searchPlaceholder}
+                aria-label={copy.searchAria}
+              />
+            ) : null}
           </div>
-          <div className={styles.paletteBody}>
+          {paletteOpen ? <div className={styles.paletteBody}>
             {inventoryError ? <p className={styles.paletteHint}>{copy.inventoryError}</p> : null}
             <p className={styles.groupTitle}>{copy.inventory}</p>
             {inventoryGroups.map(group => (
@@ -1458,7 +1474,7 @@ function ImpactMapCanvas({
                 </button>
               ))}
             </section>
-          </div>
+          </div> : null}
         </aside>
       ) : null}
       </div>
