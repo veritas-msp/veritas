@@ -14,7 +14,8 @@ export default function ConfirmModal({
   icon = "mdi:alert-circle-outline",
   loading = false,
   onClose,
-  onConfirm
+  onConfirm,
+  container
 }) {
   const copy = useCommonCopy();
   const isDanger = variant === "danger";
@@ -64,5 +65,5 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>, document.body);
+    </div>, container || document.body);
 }

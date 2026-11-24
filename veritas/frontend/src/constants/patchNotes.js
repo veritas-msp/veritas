@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.30",
+    date: "2026-11-24",
+    highlights: [
+      "Analyse et cartographie : export PNG et PDF paysage du schéma complet.",
+      "Clic droit pour aligner la sélection, ou la disposer en grille, cercle ou ovale. Serveur physique et virtuel ont une icône différente.",
+      "Une liaison se retire au clic droit, ou toutes celles de la sélection. Ctrl+clic retire un élément de la sélection multiple.",
+      "Plein écran de l’analyse, avec le bandeau Ajouter un élément à droite."
+    ]
+  },
+  {
     version: "2.0.29",
     date: "2026-11-24",
     highlights: [

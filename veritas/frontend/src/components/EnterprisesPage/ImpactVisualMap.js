@@ -393,17 +393,38 @@ export default function ImpactVisualMap({
       {model.list.length ? (
         <div
           className={styles.viewport}
+          data-impact-export="viewport"
           ref={viewportRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
         >
-          <div className={styles.world} style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
-            <svg className={styles.canvas} viewBox="0 0 1100 700">
+          <div
+            className={styles.world}
+            data-impact-export="world"
+            style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
+          >
+            <svg className={styles.canvas} viewBox="0 0 1100 700" overflow="visible">
               {clusters.map(cluster => (
                 <g key={cluster.key}>
-                  <path className={styles.hull} d={cluster.d} />
-                  <text className={styles.hullLabel} x={cluster.label.x} y={cluster.label.y - 8}>{cluster.title}</text>
+                  <path
+                    className={styles.hull}
+                    d={cluster.d}
+                    fill="rgba(125, 211, 252, 0.05)"
+                    stroke="rgba(148, 163, 184, 0.35)"
+                    strokeWidth="1.2"
+                    strokeDasharray="5 6"
+                  />
+                  <text
+                    className={styles.hullLabel}
+                    x={cluster.label.x}
+                    y={cluster.label.y - 8}
+                    fill="#94a3b8"
+                    fontSize="12"
+                    fontWeight="700"
+                  >
+                    {cluster.title.toLocaleUpperCase(locale)}
+                  </text>
                 </g>
               ))}
               {model.links.map(link => {
@@ -411,11 +432,20 @@ export default function ImpactVisualMap({
                 const b = byId.get(link.target);
                 if (!a || !b) return null;
                 const dim = focusLinks && !focusLinks.has(link.id);
+                const paint = link.separated
+                  ? { stroke: "#fbbf24", strokeWidth: 1.7, strokeDasharray: "5 4" }
+                  : link.soft
+                    ? { stroke: "rgba(125, 211, 252, 0.38)", strokeWidth: 1.2 }
+                    : { stroke: "#7dd3fc", strokeWidth: 1.7 };
                 return (
                   <path
                     key={link.id}
                     d={curve(a, b)}
-                    className={`${styles.link} ${link.separated ? styles.linkSeparated : ""} ${link.soft ? styles.linkSoft : ""} ${dim ? styles.dim : ""}`.trim()}
+                    fill="none"
+                    strokeLinecap="round"
+                    opacity={dim ? 0.22 : 1}
+                    className={`${styles.link} ${link.separated ? styles.linkSeparated : ""} ${link.soft ? styles.linkSoft : ""}`.trim()}
+                    {...paint}
                   />
                 );
               })}
@@ -432,6 +462,10 @@ export default function ImpactVisualMap({
                   type="button"
                   className={`${styles.node} ${body.hub ? styles.nodeHub : ""} ${focusId === node.id ? styles.nodeFocus : ""} ${dim ? styles.dim : ""}`.trim()}
                   style={{ left: body.x, top: body.y, "--node": color }}
+                  title={[
+                    node.data?.label,
+                    node.data?.serverForm === "virtuel" ? copy.serverVirtual : node.data?.serverForm === "physique" ? copy.serverPhysical : ""
+                  ].filter(Boolean).join(" · ")}
                   onPointerDown={event => {
                     event.stopPropagation();
                     const current = byId.get(node.id);
@@ -484,7 +518,7 @@ export default function ImpactVisualMap({
         </div>
       ) : <p className={styles.empty}>{copy.visualEmpty}</p>}
       {families.length ? (
-        <ul className={styles.legend}>
+        <ul className={styles.legend} data-impact-export="legend">
           {families.slice(0, 8).map(item => (
             <li key={item.label}>
               <i style={{ background: item.color }} />

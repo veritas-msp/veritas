@@ -1,4 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -26,13 +27,20 @@ import { buildSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites }
 import ImpactElementDialog from "./ImpactElementDialog";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { showError } from "../../utils/toast";
-import { exportBrandedReportPdfFromElement } from "../RapportPage/exportBrandedReportPdfFromElement";
 import ImpactVisualMap from "./ImpactVisualMap";
+import {
+  captureAnalysisCanvas,
+  captureVisualStage,
+  downloadCanvasPdf,
+  downloadCanvasPng,
+  impactFileSlug
+} from "./impactMapExport";
 import ImpactHaBadge, { haTitle } from "./ImpactHaBadge";
 import ImpactStatusMarks from "./ImpactStatusMarks";
 import { rememberSupervisionFocus } from "./supervisionFocus";
 import { buildSignalIndex, describeImpact, suggestImpactLinks } from "./impactSignals";
 import { getImpactMapCopy } from "./impactMapI18n";
+import { arrangeSelection } from "./impactArrange";
 import {
   GROUP_COLORS,
   IMPACT_FAMILY_ORDER,
@@ -74,7 +82,11 @@ const ImpactNode = memo(function ImpactNode({ data, selected }) {
       style={data.ha?.color ? { "--ha": data.ha.color } : undefined}
     >
       {!data.readOnly ? <Handle type="target" position={Position.Left} className={styles.handle} isConnectable /> : null}
-      <span className={styles.nodeIcon} aria-hidden>
+      <span
+        className={styles.nodeIcon}
+        aria-hidden
+        title={data.serverForm === "virtuel" ? copy.serverVirtual : data.serverForm === "physique" ? copy.serverPhysical : undefined}
+      >
         {data.photo ? <img src={data.photo} alt="" className={styles.nodePhoto} /> : <Icon icon={data.icon || "mdi:devices"} />}
         {data.agent ? <ImpactStatusMarks agent={data.agent} copy={copy} pinAgent /> : null}
       </span>
@@ -189,7 +201,8 @@ function enrichNode(node, catalog, inventoryReady, haIndex, signals) {
         location: "",
         supervision: null,
         agent: null,
-        backups: []
+        backups: [],
+        serverForm: ""
       }
     };
   }
@@ -199,7 +212,8 @@ function enrichNode(node, catalog, inventoryReady, haIndex, signals) {
       ...node.data,
       label: item.name || node.data.label,
       subtitle: item.subtitle || "",
-      icon: resolveImpactIcon(node.data.nodeType, item.icon),
+      icon: resolveImpactIcon(node.data.nodeType, item.icon, item.serverForm),
+      serverForm: item.serverForm || "",
       missing: false,
       inactive: item.isActive === false,
       groupLabel: item.groupLabel || node.data.groupLabel || "",
@@ -254,8 +268,11 @@ function ImpactMapCanvas({
   const [pendingDelete, setPendingDelete] = useState(null);
   const [drawing, setDrawing] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const hostRef = useRef(null);
   const [drawBox, setDrawBox] = useState(null);
   const [composer, setComposer] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   const drawRef = useRef(null);
   const siteOptions = useMemo(() => normalizeClientSites(sites).map(site => ({
     id: String(getSiteId(site)),
@@ -275,7 +292,18 @@ function ImpactMapCanvas({
     setDrawBox(null);
     drawRef.current = null;
     setComposer(null);
+    setContextMenu(null);
   }, [viewMode]);
+
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+    const close = event => {
+      if (event.target?.closest?.(`.${styles.contextMenu}`)) return;
+      setContextMenu(null);
+    };
+    window.addEventListener("pointerdown", close);
+    return () => window.removeEventListener("pointerdown", close);
+  }, [contextMenu]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -459,6 +487,36 @@ function ImpactMapCanvas({
   }, [clientId]);
 
   useEffect(() => {
+    const sync = () => {
+      if (document.fullscreenElement === hostRef.current) setFullscreen(true);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  const toggleFullscreen = () => {
+    const node = hostRef.current;
+    const active = fullscreen || document.fullscreenElement === node;
+    if (active) {
+      setFullscreen(false);
+      if (document.fullscreenElement === node) document.exitFullscreen?.().catch(() => {});
+      return;
+    }
+    setFullscreen(true);
+    node?.requestFullscreen?.().catch(() => {});
+  };
+
+  const skipFullscreenFit = useRef(true);
+  useEffect(() => {
+    if (skipFullscreenFit.current) {
+      skipFullscreenFit.current = false;
+      return undefined;
+    }
+    const timer = window.setTimeout(() => fitViewRef.current?.({ padding: 0.2, duration: 200 }), 80);
+    return () => window.clearTimeout(timer);
+  }, [fullscreen]);
+
+  useEffect(() => {
     if (!active) {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
@@ -469,11 +527,14 @@ function ImpactMapCanvas({
     }
     const onKey = event => {
       if (event.key === "Escape") {
+        setFullscreen(false);
+        if (document.fullscreenElement === hostRef.current) document.exitFullscreen?.().catch(() => {});
         setDrawing(false);
         setDrawBox(null);
         drawRef.current = null;
         setComposer(null);
         setPendingDelete(null);
+        setContextMenu(null);
         setNodes(current => current.map(node => (node.selected ? { ...node, selected: false } : node)));
         setEdges(current => current.map(edge => (edge.selected ? { ...edge, selected: false } : edge)));
         return;
@@ -482,12 +543,13 @@ function ImpactMapCanvas({
       if (event.key !== "Delete" && event.key !== "Backspace") return;
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
-      const selectedEdge = edgesRef.current.find(edge => edge.selected);
+      const selectedEdgeIds = edgesRef.current.filter(edge => edge.selected).map(edge => edge.id);
       const selectedNode = nodesRef.current.find(node => node.selected);
-      if (selectedEdge && !selectedNode) {
+      if (selectedEdgeIds.length) {
         event.preventDefault();
+        const drop = new Set(selectedEdgeIds);
         setEdges(current => {
-          const next = current.filter(edge => edge.id !== selectedEdge.id);
+          const next = current.filter(edge => !drop.has(edge.id));
           edgesRef.current = next;
           return next;
         });
@@ -500,12 +562,25 @@ function ImpactMapCanvas({
       }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onModifier = event => {
+      if (event.key !== "Control") return;
+      wrapperRef.current?.classList.toggle(styles.multiKey, event.type === "keydown");
+    };
+    const clearModifier = () => wrapperRef.current?.classList.remove(styles.multiKey);
+    window.addEventListener("keydown", onModifier);
+    window.addEventListener("keyup", onModifier);
+    window.addEventListener("blur", clearModifier);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onModifier);
+      window.removeEventListener("keyup", onModifier);
+      window.removeEventListener("blur", clearModifier);
+    };
   }, [active, canEdit, flushSave, pendingDelete, scheduleSave, setEdges, setNodes]);
 
   const selectedCount = nodes.reduce((count, node) => count + (node.selected ? 1 : 0), 0);
   const focusId = selectedCount === 1 ? nodes.find(node => node.selected)?.id || null : null;
-  const selectedEdge = selectedCount === 0 ? edges.find(edge => edge.selected) : null;
+  const selectedEdges = edges.filter(edge => edge.selected);
   const haIndex = useMemo(() => buildHaIndex(inventory), [inventory]);
   const signalIndex = useMemo(
     () => buildSignalIndex(inventory, alerts, summaries, backupJobs),
@@ -630,7 +705,7 @@ function ImpactMapCanvas({
         : groups.find(group => nodesInsideGroup(group, [node]).length) || null;
       return {
         ...node,
-        className,
+        className: className ? `${className} nokey` : "nokey",
         zIndex: node.data?.nodeType === "group" ? 0 : 2,
         hidden: hiddenIds.has(node.id),
         ariaLabel: node.data?.label || "",
@@ -655,9 +730,17 @@ function ImpactMapCanvas({
       const separated = classifyNetworkLink(source, target) === "separated";
       const touches = !focusId || edge.source === focusId || edge.target === focusId;
       let className = "";
-      if (separated) className = "impactEdgeSeparated";
-      else if (focusId) className = touches ? "impactEdgeFocus" : "impactEdgeDim";
-      return { ...edge, hidden, className };
+      let style = { fill: "none", stroke: "#b1b1b7", strokeWidth: 1.5 };
+      if (separated) {
+        className = "impactEdgeSeparated";
+        style = { fill: "none", stroke: "#b45309", strokeWidth: 1.8, strokeDasharray: "5 4" };
+      } else if (focusId && touches) {
+        className = "impactEdgeFocus";
+        style = { fill: "none", stroke: "#2b5fab", strokeWidth: 2.2 };
+      } else if (focusId) {
+        style = { fill: "none", stroke: "#b1b1b7", strokeWidth: 1.5, opacity: 0.16 };
+      }
+      return { ...edge, hidden, className: className ? `${className} nokey` : "nokey", style };
     });
   }, [edges, enrichedNodes, focusId, hiddenIds]);
 
@@ -721,7 +804,8 @@ function ImpactMapCanvas({
         nodeType: item.nodeType,
         label: item.name,
         subtitle: item.subtitle || "",
-        icon: resolveImpactIcon(item.nodeType, item.icon),
+        icon: resolveImpactIcon(item.nodeType, item.icon, item.serverForm),
+        serverForm: item.serverForm || "",
         missing: false,
         inactive: item.isActive === false,
         groupLabel: item.groupLabel || ""
@@ -1053,26 +1137,108 @@ function ImpactMapCanvas({
       ? (copy.manualTypes[node.data.nodeType] || node.data.nodeType)
       : resolveFamilyLabel(node?.data?.nodeType, node?.data?.groupLabel, infraCopy.honeycombTypes)
   );
-  const exportPdf = async () => {
-    if (!sheetRef.current || exporting) return;
-    setExporting(true);
+  const exportableCount = viewMode === "visual"
+    ? visibleNodes.filter(node => node.data?.nodeType !== "group").length
+    : visibleCount;
+  const exportView = async format => {
+    if (exporting || !exportableCount) return;
+    setExporting(format);
     try {
-      const safeName = String(clientName || "client").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "client";
-      await exportBrandedReportPdfFromElement(sheetRef.current, {
-        fileName: `cartographie-${safeName}.pdf`,
-        orientation: "landscape"
-      });
+      const slug = impactFileSlug(clientName);
+      const kind = viewMode === "visual" ? "cartographie" : "analyse-impact";
+      const canvas = viewMode === "visual"
+        ? await captureVisualStage(sheetRef.current)
+        : await captureAnalysisCanvas(wrapperRef.current, viewNodes);
+      const fileBase = `${kind}-${slug}`;
+      if (format === "pdf") {
+        downloadCanvasPdf(canvas, {
+          fileName: `${fileBase}.pdf`,
+          title: viewMode === "visual" ? copy.visualKicker : copy.viewAnalysis,
+          subtitle: [clientName, new Date().toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })].filter(Boolean).join(" · ")
+        });
+      } else {
+        downloadCanvasPng(canvas, `${fileBase}.png`);
+      }
     } catch {
       showError(copy.exportError);
     } finally {
       setExporting(false);
     }
   };
+  const arrangeCount = viewNodes.filter(node => node.selected && !node.hidden).length;
+  const openContextMenu = (event, node) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!canEdit || drawing) return;
+    if (node && !node.selected) {
+      setNodes(current => {
+        const next = current.map(entry => ({ ...entry, selected: entry.id === node.id }));
+        nodesRef.current = next;
+        return next;
+      });
+    }
+    const width = 248;
+    const height = 268;
+    setContextMenu({
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8)),
+      edgeId: ""
+    });
+  };
+  const openEdgeMenu = (event, edge) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!canEdit || drawing || !edge) return;
+    setEdges(current => {
+      const next = current.map(entry => ({ ...entry, selected: entry.id === edge.id }));
+      edgesRef.current = next;
+      return next;
+    });
+    setContextMenu({
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 248 - 8)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 120 - 8)),
+      edgeId: edge.id
+    });
+  };
+  const removeEdges = ids => {
+    const drop = new Set(ids);
+    if (!drop.size) return;
+    setEdges(current => {
+      const next = current.filter(edge => !drop.has(edge.id));
+      edgesRef.current = next;
+      return next;
+    });
+    scheduleSave();
+    setContextMenu(null);
+  };
+  const selectionIds = new Set(viewNodes.filter(node => node.selected && !node.hidden).map(node => node.id));
+  viewNodes.forEach(node => {
+    if (node.data?.nodeType !== "group" || !selectionIds.has(node.id)) return;
+    nodesInsideGroup(node, viewNodes.filter(entry => !entry.hidden && entry.data?.nodeType !== "group"))
+      .forEach(entry => selectionIds.add(entry.id));
+  });
+  const selectionEdgeIds = edges
+    .filter(edge => !edge.hidden && (selectionIds.has(edge.source) || selectionIds.has(edge.target)))
+    .map(edge => edge.id);
+  const arrangeSelected = mode => {
+    const selected = viewNodes.filter(node => node.selected && !node.hidden);
+    const positions = arrangeSelection(selected, mode);
+    if (!positions.size) return;
+    setNodes(current => {
+      const next = current.map(node => (
+        positions.has(node.id) ? { ...node, position: positions.get(node.id) } : node
+      ));
+      nodesRef.current = next;
+      return next;
+    });
+    scheduleSave();
+    setContextMenu(null);
+  };
   const showEmpty = !loading && !loadError && nodes.length === 0;
   const showFilteredEmpty = !loading && !loadError && nodes.length > 0 && visibleCount === 0;
 
-  return (
-    <div className={styles.host}>
+  const workspace = (
+    <div className={`${styles.host} ${fullscreen ? styles.hostFullscreen : ""}`.trim()} ref={hostRef}>
       <div className={styles.viewBar}>
         <div className={styles.viewSwitch} role="tablist" aria-label={copy.viewSwitchAria}>
           <button
@@ -1096,12 +1262,28 @@ function ImpactMapCanvas({
             {copy.viewVisual}
           </button>
         </div>
-        {viewMode === "visual" ? (
-          <button type="button" className={styles.exportBtn} onClick={exportPdf} disabled={exporting || !visibleCount}>
-            <Icon icon={exporting ? "mdi:loading" : "mdi:file-pdf-box"} />
-            {exporting ? copy.exportingPdf : copy.exportPdf}
+        <div className={styles.exportGroup} role="group" aria-label={copy.exportAria}>
+          <button
+            type="button"
+            className={styles.exportBtn}
+            title={copy.exportPngTitle}
+            onClick={() => exportView("png")}
+            disabled={Boolean(exporting) || !exportableCount}
+          >
+            <Icon icon={exporting === "png" ? "mdi:loading" : "mdi:file-png-box"} />
+            {exporting === "png" ? copy.exporting : copy.exportPng}
           </button>
-        ) : null}
+          <button
+            type="button"
+            className={`${styles.exportBtn} ${styles.exportBtnPdf}`.trim()}
+            title={copy.exportPdfTitle}
+            onClick={() => exportView("pdf")}
+            disabled={Boolean(exporting) || !exportableCount}
+          >
+            <Icon icon={exporting === "pdf" ? "mdi:loading" : "mdi:file-pdf-box"} />
+            {exporting === "pdf" ? copy.exporting : copy.exportPdf}
+          </button>
+        </div>
       </div>
       {viewMode === "analysis" && suggestions.length ? (
         <div className={styles.suggestBar}>
@@ -1153,6 +1335,16 @@ function ImpactMapCanvas({
           <button type="button" className={styles.toolBtn} aria-label={copy.fit} onClick={() => fitView({ padding: 0.2, duration: 200 })}>
             <Icon icon="mdi:fit-to-screen-outline" />
           </button>
+          <button
+            type="button"
+            className={`${styles.toolBtn} ${fullscreen ? styles.toolBtnActive : ""}`.trim()}
+            aria-label={fullscreen ? copy.fullscreenExit : copy.fullscreen}
+            aria-pressed={fullscreen}
+            title={fullscreen ? copy.fullscreenExit : copy.fullscreen}
+            onClick={toggleFullscreen}
+          >
+            <Icon icon={fullscreen ? "mdi:fullscreen-exit" : "mdi:fullscreen"} />
+          </button>
         </div>
         {!canEdit ? <span className={styles.readOnlyChip}>{copy.readOnly}</span> : null}
         {mapVlans.length ? (
@@ -1198,6 +1390,14 @@ function ImpactMapCanvas({
           onDrop={onDrop}
           onDragOver={onDragOver}
           onNodeDoubleClick={(_, node) => openEditor(node)}
+          onNodeContextMenu={(event, node) => openContextMenu(event, node)}
+          onEdgeContextMenu={(event, edge) => openEdgeMenu(event, edge)}
+          onPaneContextMenu={event => openContextMenu(event)}
+          onPaneClick={event => {
+            if (event?.button === 2) return;
+            setContextMenu(null);
+          }}
+          onMoveStart={() => setContextMenu(null)}
           onNodeDragStop={(_, __, dragged) => {
             const moved = new Map((Array.isArray(dragged) ? dragged : []).map(node => [node.id, node.position]));
             if (!moved.size) return;
@@ -1222,6 +1422,55 @@ function ImpactMapCanvas({
           defaultEdgeOptions={{ style: { stroke: "#8aa0bd", strokeWidth: 1.6 }, interactionWidth: 18 }}
           aria-label={copy.canvasAria}
         />
+        {contextMenu && canEdit ? (
+          <div
+            className={styles.contextMenu}
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            role="menu"
+            aria-label={copy.contextAria}
+            onContextMenu={event => event.preventDefault()}
+          >
+            {contextMenu.edgeId ? null : (
+              <>
+                <p className={styles.contextLabel}>{copy.arrangeAlign}</p>
+                <button type="button" role="menuitem" className={styles.contextItem} disabled={arrangeCount < 2} onClick={() => arrangeSelected("horizontal")}>
+                  <Icon icon="mdi:align-horizontal-center" />
+                  {copy.arrangeHorizontal}
+                </button>
+                <button type="button" role="menuitem" className={styles.contextItem} disabled={arrangeCount < 2} onClick={() => arrangeSelected("vertical")}>
+                  <Icon icon="mdi:align-vertical-center" />
+                  {copy.arrangeVertical}
+                </button>
+                <p className={styles.contextLabel}>{copy.arrangePatterns}</p>
+                <button type="button" role="menuitem" className={styles.contextItem} disabled={arrangeCount < 2} onClick={() => arrangeSelected("grid")}>
+                  <Icon icon="mdi:grid" />
+                  {copy.arrangeGrid}
+                </button>
+                <button type="button" role="menuitem" className={styles.contextItem} disabled={arrangeCount < 2} onClick={() => arrangeSelected("circle")}>
+                  <Icon icon="mdi:circle-outline" />
+                  {copy.arrangeCircle}
+                </button>
+                <button type="button" role="menuitem" className={styles.contextItem} disabled={arrangeCount < 2} onClick={() => arrangeSelected("oval")}>
+                  <Icon icon="mdi:ellipse-outline" />
+                  {copy.arrangeOval}
+                </button>
+                {arrangeCount < 2 ? <p className={styles.contextHint}>{copy.arrangeNeedTwo}</p> : null}
+              </>
+            )}
+            {contextMenu.edgeId ? (
+              <button type="button" role="menuitem" className={styles.contextItem} onClick={() => removeEdges([contextMenu.edgeId])}>
+                <Icon icon="mdi:link-variant-off" />
+                {copy.deleteEdge}
+              </button>
+            ) : null}
+            {!contextMenu.edgeId && selectionEdgeIds.length ? (
+              <button type="button" role="menuitem" className={styles.contextItem} onClick={() => removeEdges(selectionEdgeIds)}>
+                <Icon icon="mdi:link-variant-off" />
+                {copy.deleteSelectionEdges}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {drawing ? (
           <div
             className={styles.drawLayer}
@@ -1370,22 +1619,15 @@ function ImpactMapCanvas({
             </div>
           </aside>
         ) : null}
-        {selectedEdge && canEdit ? (
+        {selectedEdges.length && canEdit ? (
           <button
             type="button"
             className={styles.edgeDelete}
             style={{ position: "absolute", zIndex: 5, left: 12, bottom: 12 }}
-            onClick={() => {
-              setEdges(current => {
-                const next = current.filter(edge => edge.id !== selectedEdge.id);
-                edgesRef.current = next;
-                return next;
-              });
-              scheduleSave();
-            }}
+            onClick={() => removeEdges(selectedEdges.map(edge => edge.id))}
           >
             <Icon icon="mdi:link-variant-off" />
-            {copy.deleteEdge}
+            {selectedEdges.length > 1 ? copy.deleteSelectionEdges : copy.deleteEdge}
           </button>
         ) : null}
       </div>
@@ -1440,7 +1682,7 @@ function ImpactMapCanvas({
                         event.dataTransfer.effectAllowed = "move";
                       }}
                     >
-                      <Icon icon={resolveImpactIcon(item.nodeType, item.icon)} className={styles.itemIcon} />
+                      <Icon icon={resolveImpactIcon(item.nodeType, item.icon, item.serverForm)} className={styles.itemIcon} />
                       <span className={styles.itemText}>
                         <span className={styles.itemName}>{item.name}</span>
                         <span className={styles.itemMeta}>
@@ -1495,9 +1737,11 @@ function ImpactMapCanvas({
         icon="mdi:delete-outline"
         onClose={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
+        container={fullscreen ? hostRef.current : undefined}
       />
     </div>
   );
+  return fullscreen ? createPortal(workspace, document.body) : workspace;
 }
 
 function centerOf(element) {

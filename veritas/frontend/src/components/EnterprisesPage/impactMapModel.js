@@ -52,6 +52,14 @@ const ICON_ALIAS = {
   Firewall: "Firewalls"
 };
 
+function serverFormOf(item, nodeType) {
+  if (nodeType !== "Servers" && nodeType !== "Serveurs") return "";
+  const raw = String(item?.typeServer || item?.rawData?.type || item?.data?.type || "").trim().toLowerCase();
+  if (["physique", "physical", "hardware", "bare-metal", "baremetal"].includes(raw)) return "physique";
+  if (["virtuel", "virtual", "vm", "vms"].includes(raw)) return "virtuel";
+  return "";
+}
+
 function isUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 }
@@ -95,6 +103,7 @@ export function normalizeInventoryRow(item) {
     checkmkMapped: Boolean((item.checkmkMapping || item.rawData?.checkmkMapping)?.checkmk_host_name && (item.checkmkMapping || item.rawData?.checkmkMapping)?.is_active !== false),
     vlans: parseVlanList(firstText(item, ["vlan", "vlans"])),
     icon: item.familyIcon || item.customFamily?.icon || null,
+    serverForm: serverFormOf(item, nodeType.slice(0, 80)),
     groupLabel: item.familyLabel || item.customFamily?.label || null,
     isActive: item.is_active !== false && item.isActive !== false,
     source: item
@@ -145,7 +154,11 @@ export function buildHaIndex(items) {
   return index;
 }
 
-export function resolveImpactIcon(nodeType, explicitIcon) {
+export function resolveImpactIcon(nodeType, explicitIcon, serverForm) {
+  if (nodeType === "Servers" || nodeType === "Serveurs") {
+    if (serverForm === "virtuel") return "mdi:cloud-outline";
+    if (serverForm === "physique") return "mdi:server";
+  }
   if (explicitIcon) return explicitIcon;
   const manual = MANUAL_NODE_TYPES.find(entry => entry.id === nodeType);
   if (manual) return manual.icon;
