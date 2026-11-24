@@ -251,6 +251,79 @@
   }
 }
 
+.historyDrawerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.historyDrawerOverlay {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(10, 22, 40, 0.38);
+  cursor: pointer;
+}
+
+.historyDrawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(56rem, 100vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-bg, #f4f7fb);
+  box-shadow: -16px 0 40px rgba(10, 22, 40, 0.18);
+}
+
+.historyDrawerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--msp-border, #d7e0ec);
+  background: var(--msp-surface, #fff);
+}
+
+.historyDrawerHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.historyDrawerLink,
+.historyDrawerClose {
+  border: 1px solid var(--msp-border, #d7e0ec);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #1c2b42);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.35rem 0.65rem;
+  cursor: pointer;
+}
+
+.historyDrawerLink {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.historyDrawerBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0.75rem;
+}
+
+.historyDrawerBody > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .brandMarkSupervision {
   background: var(--msp-accent, #2b5fab) !important;
   box-shadow: 0 6px 18px rgba(43, 95, 171, 0.28) !important;

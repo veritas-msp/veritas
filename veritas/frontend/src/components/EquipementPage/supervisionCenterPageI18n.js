@@ -79,11 +79,11 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Vues principales",
-          content: "Alertes = triage (À traiter / En cours / En attente). Historique = alertes terminées. Règles = critères par famille de matériel."
+          content: "Alertes = une seule file, filtrée par À traiter ou En cours. Historique = recherche et corbeille. Règles = critères par famille. Les maintenances restent dans le panneau de droite."
         },
         kpis: {
-          title: "Vues de triage",
-          content: "À traiter = décisions du matin. En cours = prises en charge. En attente = maintenances actives. Critiques / Warnings filtrent la vue À traiter."
+          title: "Filtres de la file",
+          content: "À traiter et En cours filtrent la même liste sans perdre la sélection. Critiques et Warnings s'appliquent à toute la file. Le matin, les critiques non prises en charge arrivent en premier."
         },
         filters: {
           title: "Recherche",
@@ -91,11 +91,11 @@ const SUPERVISION_COPY = {
         },
         queue: {
           title: "File d’alertes",
-          content: "Sur À traiter : Prendre en charge, maintenance ou Plus (Ignorer). Sur En cours : Résoudre, maintenance ou Créer un ticket. La resynchronisation reste dans Plus. Une alerte fusionnée se détache depuis la colonne Actions."
+          content: "Prendre en charge, ticket, résoudre, ignorer et maintenance restent sur la ligne. Le statut décide ce qui est actif. Le menu Plus ne garde que la resynchronisation. Résoudre ou ignorer laisse quelques secondes pour annuler."
         },
         history: {
           title: "Historique",
-          content: "Alertes résolues, ignorées ou auto-fermées après retour OK CheckMK, avec la timeline des actions."
+          content: "L'historique complet s'ouvre aussi en tiroir depuis la file, sans quitter le triage. L'onglet sert à la recherche et à la corbeille."
         }
       }
     },
@@ -152,6 +152,16 @@ const SUPERVISION_COPY = {
       },
       emptyTitle: "Zzz... tout est calme",
       emptyText: "Aucune alerte pour le moment. On peut souffler un peu.",
+      historyLink: "Historique",
+      historyDrawerTitle: "Historique des alertes",
+      historyDrawerClose: "Fermer",
+      historyDrawerOpenTab: "Ouvrir l'onglet Historique",
+      undo: {
+        resolved: "Résolue",
+        dismissed: "Ignorée",
+        action: "Annuler",
+        hint: "Quelques secondes pour annuler"
+      },
       actionsAria: "Actions sur l'alerte",
       severityInfo: "Info",
       collab: {
@@ -402,6 +412,7 @@ const SUPERVISION_COPY = {
         unacked: "Alerte rendue — plus personne n'est assigné",
         resolved: "Alerte résolue — déplacée dans l'historique",
         dismissed: "Alerte ignorée — déplacée dans l'historique",
+        reopened: "Alerte rétablie dans la file",
         resolvedSuspended: "Alerte résolue et périphérique suspendu",
         dismissedSuspended: "Alerte ignorée et périphérique suspendu",
         ignored: "Alerte ignorée",
@@ -770,11 +781,11 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Main views",
-          content: "Alerts = triage (To handle / In progress / Waiting). History = closed alerts. Rules = criteria per device family."
+          content: "Alerts = one queue, filtered by To handle or In progress. History = search and trash. Rules = criteria per device family. Maintenances stay in the right panel."
         },
         kpis: {
-          title: "Triage views",
-          content: "To handle = morning decisions. In progress = acknowledged. Waiting = active maintenances. Critical / Warning filter the To handle view."
+          title: "Queue filters",
+          content: "To handle and In progress filter the same list without clearing the selection. Critical and Warning apply to the whole queue. In the morning, unacknowledged criticals come first."
         },
         filters: {
           title: "Search",
@@ -782,11 +793,11 @@ const SUPERVISION_COPY = {
         },
         queue: {
           title: "Alert queue",
-          content: "On To handle: Acknowledge, maintenance, or More (Ignore). On In progress: Resolve, maintenance, or Create ticket. Resync stays under More. Detach a merged alert from the Actions column."
+          content: "Acknowledge, ticket, resolve, ignore and maintenance stay on the row. Status decides which are active. More only keeps resync. Resolve or ignore leaves a few seconds to undo."
         },
         history: {
           title: "History",
-          content: "Resolved, ignored, or auto-closed alerts after CheckMK returns to OK, with the action timeline."
+          content: "Full history also opens as a drawer from the queue, without leaving triage. The tab is for search and trash."
         }
       }
     },
@@ -843,6 +854,16 @@ const SUPERVISION_COPY = {
       },
       emptyTitle: "Zzz... all quiet",
       emptyText: "No alerts right now. Time for a little break.",
+      historyLink: "History",
+      historyDrawerTitle: "Alert history",
+      historyDrawerClose: "Close",
+      historyDrawerOpenTab: "Open the History tab",
+      undo: {
+        resolved: "Resolved",
+        dismissed: "Dismissed",
+        action: "Undo",
+        hint: "A few seconds to undo"
+      },
       actionsAria: "Alert actions",
       severityInfo: "Info",
       collab: {
@@ -1093,6 +1114,7 @@ const SUPERVISION_COPY = {
         unacked: "Alert released — no longer assigned",
         resolved: "Alert resolved — moved to history",
         dismissed: "Alert dismissed — moved to history",
+        reopened: "Alert restored to the queue",
         resolvedSuspended: "Alert resolved and device suspended",
         dismissedSuspended: "Alert dismissed and device suspended",
         ignored: "Alert ignored",
@@ -1482,6 +1504,16 @@ const SUPERVISION_COPY = {
       },
       emptyTitle: "Zzz... alles ruhig",
       emptyText: "Keine Alarme im Moment. Zeit für eine kleine Pause.",
+      historyLink: "Verlauf",
+      historyDrawerTitle: "Alarmverlauf",
+      historyDrawerClose: "Schließen",
+      historyDrawerOpenTab: "Verlauf-Tab öffnen",
+      undo: {
+        resolved: "Gelöst",
+        dismissed: "Ignoriert",
+        action: "Rückgängig",
+        hint: "Ein paar Sekunden zum Rückgängigmachen"
+      },
       actionsAria: "Alarmaktionen",
       severityInfo: "Info",
       collab: {
@@ -1567,6 +1599,7 @@ const SUPERVISION_COPY = {
         unacked: "Alarm freigegeben — niemand mehr zugewiesen",
         resolved: "Alarm gelöst — in den Verlauf verschoben",
         dismissed: "Alarm ignoriert — in den Verlauf verschoben",
+        reopened: "Alarm wieder in der Warteschlange",
         linked: "Maßnahme mit Alarm verknüpft",
         actionFailed: "Alarm konnte nicht aktualisiert werden",
         supportFormRequired: "Konfigurieren Sie ein Support-Formular in der Alarmregel, bevor Sie ein Ticket erstellen.",
@@ -1912,6 +1945,16 @@ const SUPERVISION_COPY = {
       },
       emptyTitle: "Zzz... tutto calmo",
       emptyText: "Nessun allarme al momento. Si può tirare il fiato.",
+      historyLink: "Cronologia",
+      historyDrawerTitle: "Cronologia allarmi",
+      historyDrawerClose: "Chiudi",
+      historyDrawerOpenTab: "Apri la scheda Cronologia",
+      undo: {
+        resolved: "Risolta",
+        dismissed: "Ignorata",
+        action: "Annulla",
+        hint: "Qualche secondo per annullare"
+      },
       actionsAria: "Azioni sull'allarme",
       severityInfo: "Info",
       collab: {
@@ -1997,6 +2040,7 @@ const SUPERVISION_COPY = {
         unacked: "Allarme rilasciato — nessuno più assegnato",
         resolved: "Allarme risolto — spostato in cronologia",
         dismissed: "Allarme ignorato — spostato in cronologia",
+        reopened: "Allarme ripristinato in coda",
         linked: "Rimedio collegato all'allarme",
         actionFailed: "Impossibile aggiornare l'allarme",
         supportFormRequired: "Configura un modulo support nella regola di allarme prima di creare un ticket.",
@@ -2341,6 +2385,16 @@ const SUPERVISION_COPY = {
       },
       emptyTitle: "Zzz... todo en calma",
       emptyText: "Ninguna alerta por ahora. Se puede descansar un poco.",
+      historyLink: "Historial",
+      historyDrawerTitle: "Historial de alertas",
+      historyDrawerClose: "Cerrar",
+      historyDrawerOpenTab: "Abrir la pestaña Historial",
+      undo: {
+        resolved: "Resuelta",
+        dismissed: "Ignorada",
+        action: "Deshacer",
+        hint: "Unos segundos para deshacer"
+      },
       actionsAria: "Acciones sobre la alerta",
       severityInfo: "Info",
       collab: {
@@ -2426,6 +2480,7 @@ const SUPERVISION_COPY = {
         unacked: "Alerta liberada — ya no hay nadie asignado",
         resolved: "Alerta resuelta — movida al historial",
         dismissed: "Alerta ignorada — movida al historial",
+        reopened: "Alerta devuelta a la cola",
         linked: "Remediación vinculada a la alerta",
         actionFailed: "No se pudo actualizar la alerta",
         supportFormRequired: "Configure un formulario de soporte en la regla de alerta antes de crear un ticket.",

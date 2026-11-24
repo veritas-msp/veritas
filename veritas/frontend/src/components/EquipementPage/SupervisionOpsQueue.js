@@ -289,17 +289,12 @@ function selectionSharesClient(items = []) {
 }
 
 function MoreMenu({
-  item,
   copy,
-  triageView,
   busy,
   resyncBusy,
-  onIgnore,
-  onUnack,
-  onMergeHere,
-  canMergeHere = false,
   onResync,
-  onClose
+  onClose,
+  item
 }) {
   const menuRef = useRef(null);
   useEffect(() => {
@@ -321,22 +316,6 @@ function MoreMenu({
   const more = copy?.moreMenu || {};
   return (
     <div ref={menuRef} className={styles.moreMenu} role="menu" onClick={e => e.stopPropagation()}>
-      {triageView === "todo" ? (
-        <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onIgnore?.(item); }}>
-          {more.ignore || copy?.actions?.dismiss || "Ignore"}
-        </button>
-      ) : null}
-      {triageView === "in_progress" ? (
-        <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onUnack?.(item); }}>
-          {more.unack || copy?.actions?.unack || "Release"}
-        </button>
-      ) : null}
-      {canMergeHere && !item?.isMergeChild ? (
-        <button type="button" className={styles.muteMenuItem} disabled={busy} onClick={() => { onClose?.(); onMergeHere?.(item); }}>
-          {more.mergeHere || copy?.merge?.mergeHere || "Merge selection here"}
-        </button>
-      ) : null}
-      <p className={styles.muteMenuHint}>{more.technical || "Technical"}</p>
       <button type="button" className={styles.muteMenuItem} disabled={busy || resyncBusy} onClick={() => { onClose?.(); onResync?.(item); }}>
         {more.resync || copy?.actions?.resync || "Resync"}
       </button>
@@ -346,6 +325,9 @@ function MoreMenu({
 
 export default function SupervisionOpsQueue({
   items = [],
+  /** File complète (hors filtre) pour garder une sélection quand un filtre masque des lignes. */
+  selectionItems = null,
+  undoHolds = [],
   kpi = {},
   domainCounts = {},
   triageCounts = {},
@@ -358,8 +340,8 @@ export default function SupervisionOpsQueue({
   onTriageView,
   onSearchChange,
   onOpenItem,
-  onOpenExclusionDevice,
   onOpenTicket,
+  onOpenHistory,
   onTicketSupport,
   onAck,
   onUnack,
@@ -369,8 +351,7 @@ export default function SupervisionOpsQueue({
   onMerge,
   onUnmerge,
   onResync,
-  onEndExclusion,
-  exclusions = [],
+  onUndo,
   resyncBusyId = null,
   busyId = null,
   mergeBusy = false,
@@ -449,7 +430,21 @@ export default function SupervisionOpsQueue({
     setSortDir(next.sortDirection);
   };
   const sortedItems = useMemo(() => {
-    if (!sortKey) return stabilizeMergeGroups(items);
+    if (!sortKey) {
+      const byAlertId = new Map();
+      items.forEach(item => {
+        if (item?.alertId) byAlertId.set(String(item.alertId), item);
+      });
+      const bucket = item => {
+        const parent = item?.isMergeChild ? byAlertId.get(String(item.parentAlertId || "")) : null;
+        const root = parent || item;
+        const wf = root?.workflowStatus || "open";
+        if (wf === "open" && root?.severity === "critical") return 0;
+        if (wf === "open") return 1;
+        return 2;
+      };
+      return stabilizeMergeGroups([...items].sort((a, b) => bucket(a) - bucket(b)));
+    }
     const factor = sortDir === "asc" ? 1 : -1;
     const severityRank = {
       critical: 0,
@@ -519,9 +514,11 @@ export default function SupervisionOpsQueue({
   const pagedItems = mergePages[currentPage - 1] || mergePages[0] || [];
   const itemById = useMemo(() => {
     const map = new Map();
+    const source = Array.isArray(selectionItems) && selectionItems.length ? selectionItems : sortedItems;
+    source.forEach(item => map.set(String(item.id), item));
     sortedItems.forEach(item => map.set(String(item.id), item));
     return map;
-  }, [sortedItems]);
+  }, [selectionItems, sortedItems]);
   const selectedItems = useMemo(
     () => [...selectedIds].map(id => itemById.get(String(id))).filter(Boolean),
     [selectedIds, itemById]
@@ -567,21 +564,20 @@ export default function SupervisionOpsQueue({
 
   useEffect(() => {
     setCurrentPage(1);
-    setSelectedIds(new Set());
-    setMergeParentId(null);
   }, [searchQuery, severityFilter, domainFilter, triageView, sortKey, sortDir, pageSize]);
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
   useEffect(() => {
+    const source = Array.isArray(selectionItems) && selectionItems.length ? selectionItems : sortedItems;
     const valid = new Set(
-      sortedItems.filter(item => !item?.isMergeChild).map(item => String(item.id))
+      source.filter(item => !item?.isMergeChild).map(item => String(item.id))
     );
     setSelectedIds(prev => {
       const next = new Set([...prev].filter(id => valid.has(String(id))));
       return next.size === prev.size ? prev : next;
     });
-  }, [sortedItems]);
+  }, [selectionItems, sortedItems]);
   useEffect(() => {
     if (selectedRoots.length === 0) {
       setMergeParentId(null);
@@ -644,11 +640,6 @@ export default function SupervisionOpsQueue({
       pickDefaultMergeParent(selectedRoots, mergeParentCandidates);
     await runMerge(parent);
   };
-  const handleMergeHere = async parent => {
-    if (!parent || parent.isMergeChild || mergeBusy) return;
-    if (!selectedIds.has(String(parent.id))) return;
-    await runMerge(parent);
-  };
   const pageAllSelected =
     pageSelectableIds.length > 0 && pageSelectableIds.every(id => selectedIds.has(id));
   const pageSomeSelected = pageSelectableIds.some(id => selectedIds.has(id));
@@ -667,15 +658,9 @@ export default function SupervisionOpsQueue({
     count: triageCounts.inProgress || 0,
     icon: "mdi:account-check",
     kpiTone: "blue"
-  }, {
-    id: "waiting",
-    label: copy.triage?.waiting || "Waiting",
-    count: triageCounts.waiting || 0,
-    icon: "mdi:wrench-clock",
-    kpiTone: "amber"
   }];
 
-  const severityChips = triageView === "todo" ? [{
+  const severityChips = [{
     id: "critical",
     label: copy?.kpi?.critical || "Critical",
     count: kpi.critical || 0,
@@ -687,12 +672,23 @@ export default function SupervisionOpsQueue({
     count: kpi.warning || 0,
     icon: "mdi:alert",
     kpiTone: "amber"
-  }] : [];
-
-  const waitingCopy = copy.waitingPanel || {};
+  }];
+  const undoById = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(undoHolds) ? undoHolds : []).forEach(hold => {
+      if (hold?.id) map.set(String(hold.id), hold);
+    });
+    return map;
+  }, [undoHolds]);
+  const ghostRows = useMemo(() => {
+    const visible = new Set((Array.isArray(items) ? items : []).map(item => String(item.id)));
+    return (Array.isArray(undoHolds) ? undoHolds : [])
+      .filter(hold => hold?.item && !visible.has(String(hold.id)))
+      .map(hold => hold.item);
+  }, [undoHolds, items]);
 
   return <>
-    <div className={`${layout.panelCard} ${styles.root}`}>
+    <div className={`${layout.panelCard} ${styles.root}`} data-guide="supervision-queue">
       <div data-guide="supervision-filters">
         <UiKitCrmListToolbar
           searchValue={searchQuery}
@@ -712,153 +708,59 @@ export default function SupervisionOpsQueue({
                   icon={chip.icon}
                   kpiTone={chip.kpiTone}
                   active={triageView === chip.id}
-                  onClick={() => onTriageView?.(chip.id)}
+                  onClick={() => onTriageView?.(triageView === chip.id ? "all" : chip.id)}
                 />
               ))}
-              {severityChips.length ? (
-                <>
-                  <span className={layout.statusChipSeparator} aria-hidden />
-                  {severityChips.map(chip => (
-                    <FilterChip
-                      key={chip.id}
-                      label={chip.label}
-                      count={chip.count}
-                      icon={chip.icon}
-                      kpiTone={chip.kpiTone}
-                      active={severityFilter === chip.id}
-                      onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)}
-                    />
-                  ))}
-                </>
-              ) : null}
+              <span className={layout.statusChipSeparator} aria-hidden />
+              {severityChips.map(chip => (
+                <FilterChip
+                  key={chip.id}
+                  label={chip.label}
+                  count={chip.count}
+                  icon={chip.icon}
+                  kpiTone={chip.kpiTone}
+                  active={severityFilter === chip.id}
+                  onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)}
+                />
+              ))}
+              <button type="button" className={styles.historyLink} onClick={() => onOpenHistory?.("")}>
+                <Icon icon="mdi:history" aria-hidden />
+                {copy.historyLink || "Historique"}
+              </button>
             </div>
           }
           extraActions={toolbarActions}
         />
       </div>
 
-      {triageView === "waiting" ? (
-        <UiKitScrollFadeShell className={styles.tableWrap} deps={[exclusions?.length || 0, triageView]}>
-          {(exclusions || []).length === 0 ? (
-            <div className={styles.emptyWrap}>
-              <UiKitEmptyState
-                bare
-                className={styles.emptyStateFill}
-                icon="mdi:wrench-clock"
-                title={waitingCopy.emptyTitle || "No active maintenances"}
-                text={waitingCopy.emptyText || "Device or service exclusions appear here."}
-              />
-            </div>
-          ) : (
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>{waitingCopy.colDevice || "Device"}</th>
-                  <th>{waitingCopy.colServices || "Services"}</th>
-                  <th>{waitingCopy.colReason || "Reason"}</th>
-                  <th>{waitingCopy.colUntil || "Ends"}</th>
-                  <th>{waitingCopy.colActions || "Actions"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {exclusions.map(row => {
-                  const equipmentId = row.equipmentId || row.equipment_id;
-                  const deviceLabel = row.equipmentName || row.equipment_name || equipmentId || "—";
-                  const canOpenDevice = Boolean(equipmentId && (onOpenExclusionDevice || onOpenItem));
-                  const openDevice = (options = {}) => {
-                    if (!canOpenDevice) return;
-                    if (onOpenExclusionDevice) {
-                      onOpenExclusionDevice(row, options);
-                      return;
-                    }
-                    onOpenItem?.(
-                      {
-                        equipmentId,
-                        clientId: row.clientId ?? row.client_id ?? null,
-                        equipmentName: row.equipmentName || row.equipment_name || null,
-                        equipment: {
-                          id: equipmentId,
-                          dbId: equipmentId,
-                          clientId: row.clientId ?? row.client_id ?? null,
-                          name: row.equipmentName || row.equipment_name || null,
-                          type: row.equipmentFamily || row.equipment_family || null
-                        }
-                      },
-                      options
-                    );
-                  };
-                  return (
-                  <tr key={row.id} className={styles.dataRow}>
-                    <td
-                      className={`${styles.deviceCell} ${canOpenDevice ? styles.deviceCellInteractive : ""}`}
-                      onClick={e => {
-                        e.stopPropagation();
-                        openDevice();
-                      }}
-                      onMouseDown={e => {
-                        if (e.button === 1 && canOpenDevice) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          openDevice({ background: true });
-                        }
-                      }}
-                      onAuxClick={e => {
-                        if (e.button === 1 && canOpenDevice) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          openDevice({ background: true });
-                        }
-                      }}
-                    >
-                      {canOpenDevice ? (
-                        <button type="button" className={styles.deviceLink} onClick={e => { e.stopPropagation(); openDevice(); }}>
-                          {deviceLabel}
-                        </button>
-                      ) : (
-                        deviceLabel
-                      )}
-                    </td>
-                    <td>
-                      {row.scope === "device"
-                        ? waitingCopy.allServices || "All"
-                        : row.serviceName || row.serviceKey || "—"}
-                    </td>
-                    <td>{row.reason || "—"}</td>
-                    <td>
-                      {row.excludedUntil
-                        ? new Date(row.excludedUntil).toLocaleString(localeTag, {
-                            day: "2-digit",
-                            month: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })
-                        : waitingCopy.indefinite || "Indefinite"}
-                    </td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className={styles.waitingEndBtn}
-                        onClick={() => onEndExclusion?.(row)}
-                      >
-                        {waitingCopy.end || "End"}
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </UiKitScrollFadeShell>
-      ) : items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
+      {ghostRows.length ? (
+        <div className={styles.undoStrip} role="status">
+          {ghostRows.map(item => {
+            const hold = undoById.get(String(item.id));
+            const label = hold?.kind === "dismissed"
+              ? (copy.undo?.dismissed || "Ignorée")
+              : (copy.undo?.resolved || "Résolue");
+            return (
+              <div key={item.id} className={styles.undoStripRow}>
+                <span className={styles.undoStripTitle}>{item.title}</span>
+                <span className={styles.undoStripLabel}>{label}</span>
+                <button type="button" className={styles.undoBtn} onClick={() => onUndo?.(item)}>
+                  {copy.undo?.action || "Annuler"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      {items.length === 0 ? (ghostRows.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
           <UiKitEmptyState
             bare
             className={styles.emptyStateFill}
             icon="mdi:sleep"
-            title={triageView === "todo" ? (copy.emptyTodoTitle || copy.emptyTitle) : (copy.emptyInProgressTitle || copy.emptyTitle)}
-            text={triageView === "todo" ? (copy.emptyTodoText || copy.emptyText) : (copy.emptyInProgressText || copy.emptyText)}
+            title={triageView === "todo" ? (copy.emptyTodoTitle || copy.emptyTitle) : triageView === "in_progress" ? (copy.emptyInProgressTitle || copy.emptyTitle) : (copy.emptyTitle)}
+            text={triageView === "todo" ? (copy.emptyTodoText || copy.emptyText) : triageView === "in_progress" ? (copy.emptyInProgressText || copy.emptyText) : (copy.emptyText)}
           />
-        </div> : <>
+        </div> : null) : <>
         <UiKitScrollFadeShell
           className={styles.tableWrap}
           deps={[pagedItems.length, sortKey, sortDir, triageView, severityFilter, searchQuery]}
@@ -971,6 +873,11 @@ export default function SupervisionOpsQueue({
               };
               const isSelected = selectedIds.has(String(item.id));
               const isChild = Boolean(item.isMergeChild);
+              const canAck = !isChild && wf === "open";
+              const canRelease = !isChild && wf === "acked";
+              const canTicket = !isChild && wf === "acked";
+              const canResolve = !isChild && (wf === "acked" || wf === "linked");
+              const canIgnore = !isChild;
               const isParent = Boolean(item.isMergeParent) || Number(item.childCount) > 0;
               const nextItem = pagedItems[index + 1];
               const nextIsOwnChild = Boolean(
@@ -995,11 +902,6 @@ export default function SupervisionOpsQueue({
               const inMergeBlock = showParentRail || showChildRail;
               const mergeBlockStart = showParentRail || (showChildRail && !continuesFromPrev);
               const mergeBlockEnd = showChildRail && !childContinues;
-              const canReceiveMerge = isSelected && !isChild && !mergeClientBlocked && selectedRoots.some(row => (
-                String(row.id) !== String(item.id) &&
-                !isExistingMergeParent(row) &&
-                mergeClientKey(row) === mergeClientKey(item)
-              ));
               return <tr
                 key={item.id}
                 className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""} ${isSelected ? styles.dataRowSelected : ""} ${isChild ? styles.rowMergeChild : ""} ${isParent ? styles.rowMergeParent : ""} ${inMergeBlock ? styles.rowMergeBlock : ""} ${mergeBlockStart ? styles.rowMergeStart : ""} ${mergeBlockEnd ? styles.rowMergeEnd : ""}`.trim()}
@@ -1154,80 +1056,97 @@ export default function SupervisionOpsQueue({
                     </td>
                     <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                       <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>
-                        {((!isChild && (triageView === "todo" || wf === "open")) || (isChild && wf === "open")) ? (
-                          <QueueActionButton
-                            hint={actionHint(copy, "ack")}
-                            label={copy?.actions?.ack || "Ack"}
-                            icon="mdi:eye-check-outline"
-                            disabled={busy}
-                            primary
-                            onClick={() => onAck?.(item)}
-                          />
-                        ) : null}
-                        {((!isChild && (triageView === "in_progress" || wf === "acked" || wf === "linked")) || (isChild && (wf === "acked" || wf === "linked"))) ? (
+                        {undoById.has(String(item.id)) ? (
+                          <button type="button" className={styles.undoBtn} onClick={() => onUndo?.(item)}>
+                            {copy.undo?.action || "Annuler"}
+                          </button>
+                        ) : (
                           <>
+                            {canRelease ? (
+                              <QueueActionButton
+                                hint={actionHint(copy, "unack")}
+                                label={copy?.actions?.unack || "Release"}
+                                icon="mdi:eye-remove-outline"
+                                disabled={busy}
+                                onClick={() => onUnack?.(item)}
+                              />
+                            ) : (
+                              <QueueActionButton
+                                hint={actionHint(copy, "ack")}
+                                label={copy?.actions?.ack || "Ack"}
+                                icon="mdi:eye-check-outline"
+                                disabled={busy || !canAck}
+                                primary={canAck}
+                                onClick={() => onAck?.(item)}
+                              />
+                            )}
+                            <QueueActionButton
+                              hint={actionHint(copy, "support")}
+                              label={copy?.actions?.support || "Support"}
+                              icon="mdi:message-processing-outline"
+                              disabled={busy || !canTicket}
+                              onClick={() => onTicketSupport?.(item)}
+                            />
                             <QueueActionButton
                               hint={actionHint(copy, "resolve")}
                               label={copy?.actions?.resolve || "Resolve"}
                               icon="mdi:check-circle-outline"
-                              disabled={busy}
-                              primary
+                              disabled={busy || !canResolve}
+                              primary={canResolve}
                               onClick={() => onResolve?.(item)}
                             />
-                            {wf !== "linked" ? (
+                            <QueueActionButton
+                              hint={actionHint(copy, "dismiss")}
+                              label={copy?.actions?.dismiss || "Ignore"}
+                              icon="mdi:bell-off-outline"
+                              disabled={busy || !canIgnore}
+                              onClick={() => onIgnore?.(item)}
+                            />
+                            <QueueActionButton
+                              hint={actionHint(copy, "maintenance") || copy.moreMenu?.maintenance || "Maintenance"}
+                              label={copy.moreMenu?.maintenance || "Maintenance"}
+                              icon="mdi:traffic-cone"
+                              tone="maintenance"
+                              disabled={busy}
+                              onClick={() => onMaintenance?.(item)}
+                            />
+                            {isChild ? (
                               <QueueActionButton
-                                hint={actionHint(copy, "support")}
-                                label={copy?.actions?.support || "Support"}
-                                icon="mdi:message-processing-outline"
+                                hint={actionHint(copy, "unmerge") || mergeCopy.unmerge || "Unmerge"}
+                                label={mergeCopy.unmerge || "Unmerge"}
+                                icon="mdi:source-branch-minus"
                                 disabled={busy}
-                                onClick={() => onTicketSupport?.(item)}
+                                onClick={() => onUnmerge?.(item)}
                               />
                             ) : null}
-                          </>
-                        ) : null}
-                        {isChild ? (
-                          <QueueActionButton
-                            hint={actionHint(copy, "unmerge") || mergeCopy.unmerge || "Unmerge"}
-                            label={mergeCopy.unmerge || "Unmerge"}
-                            icon="mdi:source-branch-minus"
-                            disabled={busy}
-                            onClick={() => onUnmerge?.(item)}
-                          />
-                        ) : null}
-                        {triageView === "todo" || triageView === "in_progress" ? (
-                          <QueueActionButton
-                            hint={actionHint(copy, "maintenance") || copy.moreMenu?.maintenance || "Maintenance"}
-                            label={copy.moreMenu?.maintenance || "Maintenance"}
-                            icon="mdi:traffic-cone"
-                            tone="maintenance"
-                            disabled={busy}
-                            onClick={() => onMaintenance?.(item)}
-                          />
-                        ) : null}
-                        <span className={styles.muteWrap}>
-                          <QueueActionButton
-                            hint={copy.moreMenu?.open || "More"}
-                            label={copy.moreMenu?.open || "More"}
-                            icon="mdi:dots-horizontal"
-                            disabled={busy}
-                            onClick={() => setMoreMenuId(id => (id === item.id ? null : item.id))}
-                          />
-                          {moreMenuId === item.id ? (
-                            <MoreMenu
-                              item={item}
-                              copy={copy}
-                              triageView={triageView}
-                              busy={busy}
-                              resyncBusy={resyncBusyId === item.id}
-                              onIgnore={onIgnore}
-                              onUnack={onUnack}
-                              onMergeHere={handleMergeHere}
-                              canMergeHere={canReceiveMerge}
-                              onResync={onResync}
-                              onClose={() => setMoreMenuId(null)}
+                            <QueueActionButton
+                              hint={copy.historyLink || "Historique"}
+                              label={copy.historyLink || "Historique"}
+                              icon="mdi:history"
+                              disabled={busy}
+                              onClick={() => onOpenHistory?.(item.title || "")}
                             />
-                          ) : null}
-                        </span>
+                            <span className={styles.muteWrap}>
+                              <QueueActionButton
+                                hint={copy.moreMenu?.open || "More"}
+                                label={copy.moreMenu?.open || "More"}
+                                icon="mdi:dots-horizontal"
+                                disabled={busy}
+                                onClick={() => setMoreMenuId(id => (id === item.id ? null : item.id))}
+                              />
+                              {moreMenuId === item.id ? (
+                                <MoreMenu
+                                  item={item}
+                                  copy={copy}
+                                  busy={busy}
+                                  resyncBusy={resyncBusyId === item.id}
+                                  onResync={onResync}
+                                  onClose={() => setMoreMenuId(null)}
+                                />
+                              ) : null}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>;

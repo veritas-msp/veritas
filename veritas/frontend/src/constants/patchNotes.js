@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.31",
+    date: "2026-11-24",
+    highlights: [
+      "Centre de supervision : une seule file d’alertes, filtrée par À traiter ou En cours, sans perdre la sélection.",
+      "Les critiques non prises en charge passent en premier. Critiques et Warnings filtrent toute la file.",
+      "Prendre en charge, ticket, résoudre, ignorer et maintenance restent sur la ligne. Résoudre ou ignorer laisse quelques secondes pour annuler.",
+      "L’historique s’ouvre en tiroir depuis la file. L’onglet Historique sert à la recherche et à la corbeille."
+    ]
+  },
+  {
     version: "2.0.30",
     date: "2026-11-24",
     highlights: [

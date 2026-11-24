@@ -31,6 +31,7 @@ import {
   fetchSupervisionAlertsHistory,
   fetchSupervisionExclusions,
   mergeSupervisionAlerts,
+  reopenSupervisionAlert,
   resolveSupervisionAlert,
   subscribeSupervisionAlertStream,
   unmergeSupervisionAlert
@@ -71,7 +72,14 @@ export default function MonitoringCenterPage({
   const [alertsError, setAlertsError] = useState(null);
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
   const [opsSearchQuery, setOpsSearchQuery] = useState(() => consumeSupervisionFocus()?.query || "");
-  const [triageView, setTriageView] = useState("todo");
+  const [triageView, setTriageView] = useState("all");
+  const [undoHolds, setUndoHolds] = useState([]);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [historyDrawerSearch, setHistoryDrawerSearch] = useState("");
+  const [historyDrawerStatus, setHistoryDrawerStatus] = useState("all");
+  const [historyDrawerTrash, setHistoryDrawerTrash] = useState(false);
+  const [historyDrawerAlerts, setHistoryDrawerAlerts] = useState([]);
+  const [historyDrawerLoading, setHistoryDrawerLoading] = useState(false);
   const [exclusions, setExclusions] = useState([]);
   const [resyncBusyId, setResyncBusyId] = useState(null);
   const [diagnoseAlertId, setDiagnoseAlertId] = useState(null);
@@ -93,6 +101,9 @@ export default function MonitoringCenterPage({
   const [fleetSyncCancelling, setFleetSyncCancelling] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null);
   const fleetSyncRefreshAtRef = useRef(0);
+  const undoTimersRef = useRef(new Map());
+  const undoHoldsRef = useRef([]);
+  const visibleQueueRef = useRef([]);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
   const { user } = useAuthContext();
@@ -137,19 +148,15 @@ export default function MonitoringCenterPage({
     [enrichedQueue, exclusions]
   );
   const filteredQueue = useMemo(() => {
-    if (triageView === "waiting") return [];
     const matched = filterSupervisionQueue(visibleQueue, {
-      severity: triageView === "todo" ? opsSeverityFilter : "all",
+      severity: opsSeverityFilter,
       query: "",
-      workflowStatus: triageView === "todo" ? "open" : "all"
+      workflowStatus: "active"
     });
-    const pool = triageView === "in_progress"
-      ? matched.filter(item => {
-        const wf = item.workflowStatus || "open";
-        return wf === "acked" || wf === "linked";
-      })
-      : matched;
-    const expanded = expandMergeBranches(pool, visibleQueue, triageView);
+    const view = triageView === "todo" || triageView === "in_progress" ? triageView : "all";
+    const expanded = expandMergeBranches(matched, visibleQueue, view, {
+      includeFamilyFromChild: opsSeverityFilter !== "all"
+    });
     const query = String(opsSearchQuery || "").trim();
     if (!query) return expanded;
     const byAlertId = new Map(
@@ -167,9 +174,11 @@ export default function MonitoringCenterPage({
     return expanded.filter(item => matchingRoots.has(rootKeyOf(item)));
   }, [visibleQueue, opsSeverityFilter, opsSearchQuery, triageView]);
   const severityCounts = useMemo(
-    () => countQueueBySeverity(visibleQueue.filter(item => (item.workflowStatus || "open") === "open")),
+    () => countQueueBySeverity(visibleQueue),
     [visibleQueue]
   );
+  visibleQueueRef.current = visibleQueue;
+  undoHoldsRef.current = undoHolds;
   const loadActiveAlerts = useCallback(async signal => {
     setAlertsLoading(true);
     setAlertsError(null);
@@ -468,11 +477,78 @@ export default function MonitoringCenterPage({
     });
     return unsubscribe;
   }, [applyAlertResult, refreshHistory, loadActiveAlerts]);
+  const dropUndoHold = useCallback(id => {
+    const key = String(id || "");
+    const timer = undoTimersRef.current.get(key);
+    if (timer) clearTimeout(timer);
+    undoTimersRef.current.delete(key);
+    setUndoHolds(prev => prev.filter(hold => String(hold.id) !== key));
+  }, []);
+  const collectUndoFamily = useCallback(item => {
+    if (!item?.id) return [];
+    const id = String(item.id);
+    const alertId = item.alertId ? String(item.alertId) : "";
+    const family = [item];
+    if (alertId) {
+      (visibleQueueRef.current || []).forEach(row => {
+        if (row?.isMergeChild && String(row.parentAlertId) === alertId && String(row.id) !== id) {
+          family.push(row);
+        }
+      });
+    }
+    return family;
+  }, []);
+  const scheduleUndoHold = useCallback((item, kind, family) => {
+    if (!item?.id) return;
+    const id = String(item.id);
+    const previous = undoTimersRef.current.get(id);
+    if (previous) clearTimeout(previous);
+    const members = Array.isArray(family) && family.length ? family : [item];
+    const timer = setTimeout(() => {
+      undoTimersRef.current.delete(id);
+      setUndoHolds(prev => prev.filter(hold => String(hold.id) !== id));
+    }, 6000);
+    undoTimersRef.current.set(id, timer);
+    setUndoHolds(prev => [...prev.filter(hold => String(hold.id) !== id), { id, item, kind, family: members }]);
+  }, []);
+  useEffect(() => () => {
+    undoTimersRef.current.forEach(timer => clearTimeout(timer));
+    undoTimersRef.current.clear();
+  }, []);
+  const handleUndoHold = useCallback(async item => {
+    const id = String(item?.id || "");
+    const hold = undoHoldsRef.current.find(row => String(row.id) === id);
+    dropUndoHold(id);
+    const family = hold?.family?.length ? hold.family : (item ? [item] : []);
+    if (!family.length) return;
+    try {
+      for (let index = 0; index < family.length; index += 1) {
+        try {
+          const result = await reopenSupervisionAlert(family[index]);
+          applyAlertResult(result);
+        } catch (err) {
+          if (index === 0) throw err;
+        }
+      }
+      toast.success(pageCopy.ops?.toasts?.reopened || "Alerte rétablie dans la file");
+      refreshHistory();
+      loadActiveAlerts();
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
+      loadActiveAlerts();
+    }
+  }, [applyAlertResult, dropUndoHold, loadActiveAlerts, pageCopy.ops?.toasts, refreshHistory]);
   const runAlertAction = useCallback(async (item, actionFn, successKey) => {
     if (!item?.id) return;
     setAlertActionBusyId(item.id);
+    const undoFamily = successKey === "resolved" || successKey === "dismissed"
+      ? collectUndoFamily(item)
+      : null;
     try {
       const result = await actionFn(item);
+      if (undoFamily) {
+        scheduleUndoHold(item, successKey === "resolved" ? "resolved" : "dismissed", undoFamily);
+      }
       applyAlertResult(result);
       const msg = pageCopy.ops?.toasts?.[successKey];
       if (msg) toast.success(msg);
@@ -484,7 +560,7 @@ export default function MonitoringCenterPage({
     } finally {
       setAlertActionBusyId(null);
     }
-  }, [applyAlertResult, pageCopy.ops, refreshHistory]);
+  }, [applyAlertResult, collectUndoFamily, pageCopy.ops, refreshHistory, scheduleUndoHold]);
   const handleAckAlert = useCallback(item => runAlertAction(item, i => ackSupervisionAlert(i), "acked"), [runAlertAction]);
   const handleUnackAlert = useCallback(item => runAlertAction(item, i => unackSupervisionAlert(i), "unacked"), [runAlertAction]);
 
@@ -576,6 +652,7 @@ export default function MonitoringCenterPage({
     if (!item) return;
     setTriageModalBusy(true);
     setAlertActionBusyId(item.id);
+    const undoFamily = collectUndoFamily(item);
     try {
       if (payload?.exclusion) {
         await upsertExclusionFromPayload(payload.exclusion);
@@ -584,6 +661,7 @@ export default function MonitoringCenterPage({
         ignoreReason: payload?.ignoreReason,
         closureDetail: payload?.closureDetail
       });
+      scheduleUndoHold(item, "dismissed", undoFamily);
       applyAlertResult(result);
       toast.success(pageCopy.ops?.toasts?.ignored || pageCopy.ops?.toasts?.dismissed || "Ignored");
       refreshHistory();
@@ -595,7 +673,7 @@ export default function MonitoringCenterPage({
       setTriageModalBusy(false);
       setAlertActionBusyId(null);
     }
-  }, [applyAlertResult, ignoreItem, loadExclusions, pageCopy.ops?.toasts, refreshHistory, upsertExclusionFromPayload]);
+  }, [applyAlertResult, collectUndoFamily, ignoreItem, loadExclusions, pageCopy.ops?.toasts, refreshHistory, scheduleUndoHold, upsertExclusionFromPayload]);
 
   const handleConfirmMaintenance = useCallback(async payload => {
     const item = maintenanceItem;
@@ -616,7 +694,6 @@ export default function MonitoringCenterPage({
       toast.success(pageCopy.ops?.toasts?.maintenanceOk || "Maintenance recorded");
       await loadExclusions();
       setMaintenanceItem(null);
-      setTriageView("waiting");
     } catch (err) {
       toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
     } finally {
@@ -791,20 +868,44 @@ export default function MonitoringCenterPage({
     if (!equipment) return;
     onEquipmentOpen?.(equipment, options);
   }, [onEquipmentOpen]);
-  const handleOpenExclusionDevice = useCallback((row, options = {}) => {
-    const equipmentId = row?.equipmentId || row?.equipment_id;
-    if (!equipmentId) return;
-    onEquipmentOpen?.(
-      {
-        id: equipmentId,
-        dbId: equipmentId,
-        clientId: row.clientId ?? row.client_id ?? null,
-        name: row.equipmentName || row.equipment_name || null,
-        type: row.equipmentFamily || row.equipment_family || null
-      },
-      options
-    );
-  }, [onEquipmentOpen]);
+  const refreshHistoryDrawer = useCallback(async signal => {
+    setHistoryDrawerLoading(true);
+    try {
+      const alerts = await fetchSupervisionAlertsHistory({
+        domain: "devices",
+        status: historyDrawerTrash || historyDrawerStatus === "all" ? undefined : historyDrawerStatus,
+        q: historyDrawerSearch || undefined,
+        trash: historyDrawerTrash ? "1" : undefined,
+        limit: 150,
+        signal
+      });
+      if (signal?.aborted) return;
+      setHistoryDrawerAlerts(Array.isArray(alerts) ? alerts : []);
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      setHistoryDrawerAlerts([]);
+    } finally {
+      if (!signal?.aborted) setHistoryDrawerLoading(false);
+    }
+  }, [historyDrawerSearch, historyDrawerStatus, historyDrawerTrash]);
+  useEffect(() => {
+    if (!historyDrawerOpen) return undefined;
+    const controller = createTrackedAbortController();
+    const timer = setTimeout(() => refreshHistoryDrawer(controller.signal), 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [historyDrawerOpen, refreshHistoryDrawer]);
+  useEffect(() => {
+    if (activeTab !== "operations") setHistoryDrawerOpen(false);
+  }, [activeTab]);
+  const openHistoryDrawer = useCallback(query => {
+    setHistoryDrawerSearch(typeof query === "string" ? query : "");
+    setHistoryDrawerStatus("all");
+    setHistoryDrawerTrash(false);
+    setHistoryDrawerOpen(true);
+  }, []);
   const handleOpenLinkedTicket = useCallback((item, payload = {}) => {
     const ticketId = payload.ticketId || item?.linkedTicketId || item?.alertState?.linkedTicketId;
     if (!ticketId) return;
@@ -1000,6 +1101,8 @@ export default function MonitoringCenterPage({
                         {activeTab === "operations" ? (
                           <SupervisionOpsQueue
                             items={filteredQueue}
+                            selectionItems={visibleQueue}
+                            undoHolds={undoHolds}
                             kpi={severityCounts}
                             triageCounts={{ ...triageCounts, history: historyAlerts.length }}
                             severityFilter={opsSeverityFilter}
@@ -1009,7 +1112,6 @@ export default function MonitoringCenterPage({
                             onTriageView={setTriageView}
                             onSearchChange={setOpsSearchQuery}
                             onOpenItem={handleOpenQueueItem}
-                            onOpenExclusionDevice={handleOpenExclusionDevice}
                             onOpenTicket={handleOpenLinkedTicket}
                             onTicketSupport={handleTicketSupport}
                             onAck={handleAckAlert}
@@ -1020,8 +1122,8 @@ export default function MonitoringCenterPage({
                             onMerge={handleMergeAlerts}
                             onUnmerge={handleUnmergeAlert}
                             onResync={handleResyncHost}
-                            onEndExclusion={handleEndExclusion}
-                            exclusions={exclusions}
+                            onUndo={handleUndoHold}
+                            onOpenHistory={openHistoryDrawer}
                             resyncBusyId={resyncBusyId}
                             busyId={alertActionBusyId}
                             mergeBusy={mergeBusy}
@@ -1117,6 +1219,70 @@ export default function MonitoringCenterPage({
           setMaintenanceItem(null);
         }}
       />
+      {historyDrawerOpen ? (
+        <div className={styles.historyDrawerRoot}>
+          <button
+            type="button"
+            className={styles.historyDrawerOverlay}
+            aria-label={pageCopy.ops?.historyDrawerClose || "Fermer"}
+            onClick={() => setHistoryDrawerOpen(false)}
+          />
+          <aside className={styles.historyDrawer} role="dialog" aria-label={pageCopy.ops?.historyDrawerTitle || "Historique"}>
+            <div className={styles.historyDrawerHead}>
+              <strong>{pageCopy.ops?.historyDrawerTitle || "Historique"}</strong>
+              <div className={styles.historyDrawerHeadActions}>
+                <button
+                  type="button"
+                  className={styles.historyDrawerLink}
+                  onClick={() => {
+                    setHistorySearch(historyDrawerSearch);
+                    setHistoryStatus(historyDrawerStatus);
+                    setHistoryTrashMode(historyDrawerTrash);
+                    setActiveTab("history");
+                    setHistoryDrawerOpen(false);
+                  }}
+                >
+                  {pageCopy.ops?.historyDrawerOpenTab || "Ouvrir l'onglet Historique"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.historyDrawerClose}
+                  onClick={() => setHistoryDrawerOpen(false)}
+                >
+                  {pageCopy.ops?.historyDrawerClose || "Fermer"}
+                </button>
+              </div>
+            </div>
+            <div className={styles.historyDrawerBody}>
+              <SupervisionAlertHistory
+                alerts={historyDrawerAlerts}
+                loading={historyDrawerLoading}
+                searchQuery={historyDrawerSearch}
+                statusFilter={historyDrawerStatus}
+                trashMode={historyDrawerTrash}
+                onSearchChange={setHistoryDrawerSearch}
+                onStatusFilter={setHistoryDrawerStatus}
+                onTrashModeChange={setHistoryDrawerTrash}
+                onChanged={() => {
+                  loadActiveAlerts();
+                  refreshHistory();
+                  refreshHistoryDrawer();
+                }}
+                onReopened={() => {
+                  loadActiveAlerts();
+                  refreshHistory();
+                  refreshHistoryDrawer();
+                }}
+                onOpenTicket={handleOpenLinkedTicket}
+                localeTag={localeTag}
+                copy={pageCopy.history}
+                showDomain={false}
+                toolbarActions={null}
+              />
+            </div>
+          </aside>
+        </div>
+      ) : null}
       <PageGuideTour open={pageGuideOpen} steps={guideSteps} title={pageCopy.guide?.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
       <SupervisionFleetSyncModal
         active={fleetSyncActive}
