@@ -5507,6 +5507,7 @@ export default function ClientDetailPage({
                 active={overviewTab === "impact"}
                 canEdit={can("infrastructure.edit") || canManageDevices}
                 siteFilter={activeSiteFilter}
+                backupJobs={backupJobs}
                 onNavigate={onNavigate}
               />
             </div>

@@ -15,7 +15,8 @@ import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppLocale";
 import { interpolate } from "../../i18n/translate";
 import { getClientImpactMap, saveClientImpactMap } from "../../api/impactMap";
-import { getEquipmentInventoryList, getClientHardwareEquipment } from "../../api/equipment";
+import { getEquipmentInventoryList, getClientHardwareEquipment, getEquipmentMonitoringSummaries } from "../../api/equipment";
+import { fetchSupervisionAlertsActive } from "../../api/supervisionAlerts";
 import { fetchClientCustomEquipment } from "../../api/clients";
 import { getInfraMapCopy } from "./infraMapI18n";
 import { matchesSiteFilter } from "../../utils/siteFilterUtils";
@@ -24,6 +25,9 @@ import { showError } from "../../utils/toast";
 import { exportBrandedReportPdfFromElement } from "../RapportPage/exportBrandedReportPdfFromElement";
 import ImpactVisualMap from "./ImpactVisualMap";
 import ImpactHaBadge, { haTitle } from "./ImpactHaBadge";
+import ImpactStatusMarks from "./ImpactStatusMarks";
+import { rememberSupervisionFocus } from "./supervisionFocus";
+import { buildSignalIndex, describeImpact, suggestImpactLinks } from "./impactSignals";
 import { getImpactMapCopy } from "./impactMapI18n";
 import {
   IMPACT_FAMILY_ORDER,
@@ -66,6 +70,7 @@ const ImpactNode = memo(function ImpactNode({ data, selected }) {
       {!data.readOnly ? <Handle type="target" position={Position.Left} className={styles.handle} isConnectable /> : null}
       <span className={styles.nodeIcon} aria-hidden>
         <Icon icon={data.icon || "mdi:devices"} />
+        {data.agent ? <ImpactStatusMarks agent={data.agent} copy={copy} pinAgent /> : null}
       </span>
       <span className={styles.nodeText}>
         <span className={styles.nodeLabel}>{data.label}</span>
@@ -79,6 +84,12 @@ const ImpactNode = memo(function ImpactNode({ data, selected }) {
           </span>
         ) : null}
       </span>
+      <ImpactStatusMarks
+        supervision={data.supervision}
+        backups={data.backups}
+        copy={copy}
+        onOpenAlert={data.onOpenAlert}
+      />
       {data.ha ? <ImpactHaBadge ha={data.ha} copy={copy} /> : null}
       {!data.readOnly ? <Handle type="source" position={Position.Right} className={styles.handle} isConnectable /> : null}
     </div>
@@ -106,7 +117,7 @@ function newId() {
   });
 }
 
-function enrichNode(node, catalog, inventoryReady, haIndex) {
+function enrichNode(node, catalog, inventoryReady, haIndex, signals) {
   if (node.data?.kind === "manual") {
     return {
       ...node,
@@ -117,7 +128,13 @@ function enrichNode(node, catalog, inventoryReady, haIndex) {
         inactive: false,
         subtitle: "",
         vlans: [],
-        ha: null
+        ha: null,
+        location: "",
+        hostServerName: "",
+        gateway: "",
+        supervision: null,
+        agent: null,
+        backups: []
       }
     };
   }
@@ -131,7 +148,11 @@ function enrichNode(node, catalog, inventoryReady, haIndex) {
         missing: inventoryReady,
         inactive: false,
         vlans: [],
-        ha: null
+        ha: null,
+        location: "",
+        supervision: null,
+        agent: null,
+        backups: []
       }
     };
   }
@@ -146,7 +167,13 @@ function enrichNode(node, catalog, inventoryReady, haIndex) {
       inactive: item.isActive === false,
       groupLabel: item.groupLabel || node.data.groupLabel || "",
       vlans: item.vlans || [],
-      ha: haIndex?.get(inventoryKey(node.data?.kind, node.data?.refId)) || null
+      location: item.location || "",
+      hostServerName: item.hostServerName || "",
+      gateway: item.gateway || "",
+      ha: haIndex?.get(inventoryKey(node.data?.kind, node.data?.refId)) || null,
+      supervision: signals?.get(inventoryKey(node.data?.kind, node.data?.refId))?.supervision || null,
+      agent: signals?.get(inventoryKey(node.data?.kind, node.data?.refId))?.agent || null,
+      backups: signals?.get(inventoryKey(node.data?.kind, node.data?.refId))?.backups || []
     }
   };
 }
@@ -157,6 +184,7 @@ function ImpactMapCanvas({
   active = true,
   canEdit = false,
   siteFilter = null,
+  backupJobs = [],
   onNavigate
 }) {
   const locale = useAppLocale();
@@ -173,6 +201,9 @@ function ImpactMapCanvas({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [inventory, setInventory] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [summaries, setSummaries] = useState({});
+  const [dismissedSuggestions, setDismissedSuggestions] = useState(() => new Set());
   const [inventoryReady, setInventoryReady] = useState(false);
   const [inventoryError, setInventoryError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -235,6 +266,34 @@ function ImpactMapCanvas({
       flushSave();
     }, SAVE_DELAY_MS);
   }, [canEdit, flushSave]);
+
+  useEffect(() => {
+    if (!active || !clientId) return undefined;
+    const controller = new AbortController();
+    fetchSupervisionAlertsActive({ signal: controller.signal })
+      .then(rows => {
+        if (!controller.signal.aborted) setAlerts(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAlerts([]);
+      });
+    getEquipmentMonitoringSummaries({ clientId }, { signal: controller.signal })
+      .then(data => {
+        if (!controller.signal.aborted) setSummaries(data?.summaries || {});
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSummaries({});
+      });
+    return () => controller.abort();
+  }, [active, clientId]);
+
+  const openSupervision = useCallback(supervision => {
+    rememberSupervisionFocus({
+      query: supervision?.equipmentName || supervision?.title || "",
+      alertId: supervision?.alertId || ""
+    });
+    if (typeof onNavigate === "function") onNavigate("Equipment");
+  }, [onNavigate]);
 
   useEffect(() => {
     if (!clientId) return undefined;
@@ -381,9 +440,13 @@ function ImpactMapCanvas({
   const focusId = nodes.find(node => node.selected)?.id || null;
   const selectedEdge = !focusId ? edges.find(edge => edge.selected) : null;
   const haIndex = useMemo(() => buildHaIndex(inventory), [inventory]);
+  const signalIndex = useMemo(
+    () => buildSignalIndex(inventory, alerts, summaries, backupJobs),
+    [alerts, backupJobs, inventory, summaries]
+  );
   const enrichedNodes = useMemo(
-    () => nodes.map(node => enrichNode(node, catalog, inventoryReady, haIndex)),
-    [catalog, haIndex, inventoryReady, nodes]
+    () => nodes.map(node => enrichNode(node, catalog, inventoryReady, haIndex, signalIndex)),
+    [catalog, haIndex, inventoryReady, nodes, signalIndex]
   );
   const focusNode = enrichedNodes.find(node => node.id === focusId) || null;
   const impactIds = useMemo(() => {
@@ -441,9 +504,9 @@ function ImpactMapCanvas({
       className,
       hidden: hiddenIds.has(node.id),
       ariaLabel: node.data?.label || "",
-      data: { ...node.data, readOnly: !canEdit, separated }
+      data: { ...node.data, readOnly: !canEdit, separated, onOpenAlert: openSupervision }
     };
-  }), [canEdit, edges, enrichedNodes, focusId, focusNode, hiddenIds, impactIds]);
+  }), [canEdit, edges, enrichedNodes, focusId, focusNode, hiddenIds, impactIds, openSupervision]);
 
   const viewEdges = useMemo(() => {
     const byId = new Map(enrichedNodes.map(node => [node.id, node]));
@@ -680,6 +743,30 @@ function ImpactMapCanvas({
     : "";
   const visibleNodes = viewNodes.filter(node => !node.hidden);
   const visibleCount = visibleNodes.length;
+  const impactInfo = describeImpact(focused, viewNodes, impactIds);
+  const suggestions = useMemo(() => {
+    if (!canEdit) return [];
+    return suggestImpactLinks(viewNodes, edges).filter(item => !dismissedSuggestions.has(item.id));
+  }, [canEdit, dismissedSuggestions, edges, viewNodes]);
+  const suggestionText = item => {
+    const values = { source: item.sourceLabel, target: item.targetLabel };
+    if (item.kind === "host") return interpolate(copy.suggestHost, values);
+    if (item.kind === "gateway") return interpolate(copy.suggestGateway, values);
+    return interpolate(copy.suggestHa, values);
+  };
+  const impactText = (() => {
+    if (!impactInfo) return "";
+    let base = copy.impactSummaryNone;
+    if (impactInfo.count) {
+      const key = impactInfo.vlan
+        ? (impactInfo.count > 1 ? copy.impactSummaryVlanMany : copy.impactSummaryVlanOne)
+        : (impactInfo.count > 1 ? copy.impactSummaryPlainMany : copy.impactSummaryPlainOne);
+      base = interpolate(key, { count: impactInfo.count, vlan: impactInfo.vlan });
+    }
+    if (impactInfo.backup === "safe") return `${base}, ${copy.impactBackupSafe}`;
+    if (impactInfo.backup === "hit") return `${base}, ${copy.impactBackupHit}`;
+    return base;
+  })();
   const typeLabelFor = node => (
     node?.data?.kind === "manual"
       ? (copy.manualTypes[node.data.nodeType] || node.data.nodeType)
@@ -735,6 +822,32 @@ function ImpactMapCanvas({
           </button>
         ) : null}
       </div>
+      {viewMode === "analysis" && suggestions.length ? (
+        <div className={styles.suggestBar}>
+          <p className={styles.suggestTitle}>{copy.suggestTitle}</p>
+          <ul className={styles.suggestList}>
+            {suggestions.slice(0, 4).map(item => (
+              <li key={item.id}>
+                <span>{suggestionText(item)}</span>
+                <button type="button" className={styles.suggestAccept} onClick={() => onConnect({ source: item.sourceId, target: item.targetId })}>
+                  {copy.suggestAccept}
+                </button>
+                <button
+                  type="button"
+                  className={styles.suggestDismiss}
+                  onClick={() => setDismissedSuggestions(current => {
+                    const next = new Set(current);
+                    next.add(item.id);
+                    return next;
+                  })}
+                >
+                  {copy.suggestDismiss}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {viewMode === "visual" ? (
         <ImpactVisualMap
           nodes={visibleNodes}
@@ -742,6 +855,7 @@ function ImpactMapCanvas({
           copy={copy}
           locale={locale}
           typeLabelFor={typeLabelFor}
+          onOpenAlert={openSupervision}
           sheetRef={sheetRef}
         />
       ) : null}
@@ -837,6 +951,23 @@ function ImpactMapCanvas({
                 <ImpactHaBadge ha={focused.data.ha} copy={copy} />
                 <span>{haTitle(focused.data.ha, copy)}</span>
               </p>
+            ) : null}
+            {impactText ? <p className={styles.impactSummary}>{impactText}</p> : null}
+            {focused.data.supervision && focused.data.supervision.level !== "ok" ? (
+              <p className={styles.alertLine}>
+                <span>{focused.data.supervision.title || (focused.data.supervision.level === "critical" ? copy.supervisionCritical : copy.supervisionWarning)}</span>
+                <button type="button" className={styles.linkBtn} onClick={() => openSupervision(focused.data.supervision)}>
+                  {copy.openAlert}
+                </button>
+              </p>
+            ) : null}
+            {focused.data.backups?.length ? (
+              <div className={styles.sameNetwork}>
+                <p className={styles.listTitle}>{focused.data.backups.length > 1 ? interpolate(copy.backupJobsMany, { count: focused.data.backups.length }) : interpolate(copy.backupJobsOne, { count: focused.data.backups.length })}</p>
+                <ul className={styles.list}>
+                  {focused.data.backups.slice(0, 6).map(job => <li key={job.id || job.name}>{job.name}</li>)}
+                </ul>
+              </div>
             ) : null}
             <p className={styles.meta}>{linkCount > 1 ? interpolate(copy.linksMany, { count: linkCount }) : interpolate(copy.linksOne, { count: linkCount })}</p>
             {focused.data.vlans?.length ? (

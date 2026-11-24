@@ -1,0 +1,67 @@
+.dot,
+.agent {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  padding: 0;
+}
+
+.dot {
+  border: 0;
+  cursor: pointer;
+}
+
+.dot[data-level="ok"] {
+  background: #059669;
+}
+
+.dot[data-level="warning"] {
+  background: #d97706;
+}
+
+.dot[data-level="critical"] {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18);
+}
+
+.agent {
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+.agentPin {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+}
+
+.agent[data-state="online"] {
+  background: #059669;
+}
+
+.agent[data-state="offline"] {
+  background: #94a3b8;
+}
+
+.agent[data-state="unknown"] {
+  background: #cbd5e1;
+}
+
+.backup {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.backup svg {
+  font-size: 12px;
+}

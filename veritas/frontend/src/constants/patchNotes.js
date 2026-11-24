@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.27",
+    date: "2026-11-24",
+    highlights: [
+      "Analyse d’impact : point de statut Checkmk (ok, avertissement, critique) et résumé du voisinage. Un clic ouvre l’alerte.",
+      "Voyant d’agent en ligne ou hors ligne sur les serveurs et les postes.",
+      "Liaisons proposées (hôte, paire HA, passerelle internet) à confirmer avant de les tracer.",
+      "Cartographie séparée par site, et sauvegardes portées par un serveur visibles sur la carte."
+    ]
+  },
+  {
     version: "2.0.26",
     date: "2026-11-24",
     highlights: [

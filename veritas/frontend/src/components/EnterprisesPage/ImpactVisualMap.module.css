@@ -55,6 +55,19 @@
   margin-top: 12px;
 }
 
+.site .zones {
+  margin-top: 0;
+}
+
+.siteTitle {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #334155;
+}
+
 .zones {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

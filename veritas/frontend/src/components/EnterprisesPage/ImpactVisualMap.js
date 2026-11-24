@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import { interpolate } from "../../i18n/translate";
 import ImpactHaBadge from "./ImpactHaBadge";
+import ImpactStatusMarks from "./ImpactStatusMarks";
 import { isRoutingNodeType, resolveImpactIcon } from "./impactMapModel";
 import styles from "./ImpactVisualMap.module.css";
 
@@ -11,6 +12,26 @@ function vlanTone(id) {
     "--zone": `hsl(${hue} 42% 42%)`,
     "--zone-soft": `hsl(${hue} 70% 96%)`
   };
+}
+
+function buildSiteGroups(nodes, copy) {
+  const groups = new Map();
+  nodes.forEach(node => {
+    const key = String(node.data?.location || "").trim();
+    const list = groups.get(key) || [];
+    list.push(node);
+    groups.set(key, list);
+  });
+  const named = [...groups.keys()].filter(Boolean);
+  const split = named.length > 1 || (named.length === 1 && groups.has(""));
+  const entries = split
+    ? [...groups.entries()].sort((left, right) => (left[0] || "￿").localeCompare(right[0] || "￿", "fr"))
+    : [["", nodes]];
+  return entries.map(([key, items]) => ({
+    id: key || "site-none",
+    title: split ? (key || copy.visualNoSite) : "",
+    zones: buildZones(items, copy)
+  }));
 }
 
 function buildZones(nodes, copy) {
@@ -75,7 +96,7 @@ function sortZoneItems(items) {
   });
 }
 
-function Tile({ node, typeLabel, copy }) {
+function Tile({ node, typeLabel, copy, onOpenAlert }) {
   const vlans = node.data?.vlans || [];
   return (
     <article
@@ -91,6 +112,13 @@ function Tile({ node, typeLabel, copy }) {
         {vlans.length > 1 ? <span className={styles.tileVlans}>{vlans.map(id => `VLAN ${id}`).join(" · ")}</span> : null}
         {node.data?.inactive ? <span className={styles.tileFlag}>{node.data.inactiveLabel}</span> : null}
       </span>
+      <ImpactStatusMarks
+        supervision={node.data?.supervision}
+        agent={node.data?.agent}
+        backups={node.data?.backups}
+        copy={copy}
+        onOpenAlert={onOpenAlert}
+      />
       {node.data?.ha ? <ImpactHaBadge ha={node.data.ha} copy={copy} className={styles.tileHaBadge} /> : null}
     </article>
   );
@@ -102,9 +130,10 @@ export default function ImpactVisualMap({
   copy,
   locale,
   typeLabelFor,
+  onOpenAlert,
   sheetRef
 }) {
-  const zones = buildZones(nodes, copy);
+  const siteGroups = buildSiteGroups(nodes, copy);
   const printedAt = new Date().toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
   const total = nodes.length;
 
@@ -125,30 +154,36 @@ export default function ImpactVisualMap({
         ) : (
           <p className={styles.empty}>{copy.visualEmpty}</p>
         )}
-        <div className={styles.zones}>
-          {zones.map(zone => (
-            <section
-              key={zone.id}
-              className={`${styles.zone} ${zone.wide ? styles.zoneWide : ""}`.trim()}
-              style={zone.vlan ? vlanTone(zone.vlan) : undefined}
-            >
-              <header className={styles.zoneHead}>
-                <h3>{zone.title}</h3>
-                <span>{zone.items.length}</span>
-              </header>
-              <div className={zone.wide ? styles.tileRow : styles.tileGrid}>
-                {sortZoneItems(zone.items).map(node => (
-                  <Tile
-                    key={node.id}
-                    node={{ ...node, data: { ...node.data, inactiveLabel: copy.inactive } }}
-                    typeLabel={typeLabelFor(node)}
-                    copy={copy}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        {siteGroups.map(group => (
+          <section key={group.id} className={styles.site}>
+            {group.title ? <h3 className={styles.siteTitle}>{group.title}</h3> : null}
+            <div className={styles.zones}>
+              {group.zones.map(zone => (
+                <section
+                  key={`${group.id}-${zone.id}`}
+                  className={`${styles.zone} ${zone.wide ? styles.zoneWide : ""}`.trim()}
+                  style={zone.vlan ? vlanTone(zone.vlan) : undefined}
+                >
+                  <header className={styles.zoneHead}>
+                    <h3>{zone.title}</h3>
+                    <span>{zone.items.length}</span>
+                  </header>
+                  <div className={zone.wide ? styles.tileRow : styles.tileGrid}>
+                    {sortZoneItems(zone.items).map(node => (
+                      <Tile
+                        key={node.id}
+                        node={{ ...node, data: { ...node.data, inactiveLabel: copy.inactive } }}
+                        typeLabel={typeLabelFor(node)}
+                        copy={copy}
+                        onOpenAlert={onOpenAlert}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );

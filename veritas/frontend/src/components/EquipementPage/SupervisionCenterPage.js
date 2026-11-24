@@ -47,6 +47,7 @@ import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import styles from "./SupervisionCenterPage.module.css";
 import SupervisionFleetSyncModal, { getFleetSyncProgress } from "./SupervisionFleetSyncModal";
+import { consumeSupervisionFocus } from "../EnterprisesPage/supervisionFocus";
 import {
   cancelCheckmkFleetSync,
   fetchActiveCheckmkSyncRun,
@@ -69,7 +70,7 @@ export default function MonitoringCenterPage({
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [alertsError, setAlertsError] = useState(null);
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
-  const [opsSearchQuery, setOpsSearchQuery] = useState("");
+  const [opsSearchQuery, setOpsSearchQuery] = useState(() => consumeSupervisionFocus()?.query || "");
   const [triageView, setTriageView] = useState("todo");
   const [exclusions, setExclusions] = useState([]);
   const [resyncBusyId, setResyncBusyId] = useState(null);
