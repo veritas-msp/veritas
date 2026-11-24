@@ -130,6 +130,116 @@
   display: none;
 }
 
+.canvas :global(.react-flow__pane.selection) {
+  cursor: crosshair;
+}
+
+.canvas :global(.react-flow__nodesselection-rect) {
+  cursor: grab;
+}
+
+.canvas :global(.react-flow__node-impactGroup) {
+  pointer-events: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.groupBox {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 2px solid #5b7cfa;
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.groupBoxSelected {
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.2);
+}
+
+.groupLabel {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+  margin: 8px 10px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: grab;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.groupLabel span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas :global(.react-flow__node-impactGroup) :global(.react-flow__resize-control) {
+  pointer-events: auto;
+}
+
+.groupResizeLine {
+  border-color: #2b5fab;
+}
+
+.groupResizeHandle {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #fff;
+  border: 1px solid #2b5fab;
+}
+
+.drawLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: crosshair;
+}
+
+.drawHint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  pointer-events: none;
+}
+
+.drawPreview {
+  position: absolute;
+  border: 2px dashed #5b7cfa;
+  border-radius: 16px;
+  background: rgba(91, 124, 250, 0.16);
+  pointer-events: none;
+}
+
+.inspectorPhoto {
+  width: 100%;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #d5deea);
+}
+
+.itemActive {
+  outline: 2px solid var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
 .node {
   display: flex;
   align-items: center;
@@ -170,6 +280,13 @@
   box-shadow:
     inset 3px 0 0 var(--ha, #0d9488),
     0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 22%, transparent);
+}
+
+.nodePhoto {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 8px;
 }
 
 .nodeIcon {

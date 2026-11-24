@@ -1,36 +1,84 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import { pool } from "../database/db.js";
-import { canRunAutoSchemaMigrations } from "../utils/setupState.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, "..");
-const MIGRATION_FILE = "schema/patches/20261124_client_impact_map.sql";
+import { hasCoreSchema } from "../utils/setupState.js";
 
 let ensured = false;
 
-async function tableExists(client) {
-  const { rows } = await client.query(
-    `SELECT 1 FROM information_schema.tables
-     WHERE table_schema = 'public' AND table_name = 'v_b_client_impact_nodes'
-     LIMIT 1`
-  );
-  return rows.length > 0;
+const STATEMENTS = [
+  `CREATE TABLE IF NOT EXISTS v_b_client_impact_nodes (
+    id UUID PRIMARY KEY,
+    client_id INTEGER NOT NULL,
+    kind VARCHAR(32) NOT NULL,
+    ref_id TEXT,
+    node_type VARCHAR(80) NOT NULL,
+    label TEXT NOT NULL,
+    x DOUBLE PRECISION NOT NULL,
+    y DOUBLE PRECISION NOT NULL,
+    width DOUBLE PRECISION,
+    height DOUBLE PRECISION,
+    meta JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT v_b_client_impact_nodes_kind_check
+      CHECK (kind IN ('equipment', 'custom_equipment', 'manual')),
+    CONSTRAINT v_b_client_impact_nodes_ref_check
+      CHECK (
+        (kind = 'manual' AND ref_id IS NULL)
+        OR (
+          kind IN ('equipment', 'custom_equipment')
+          AND ref_id IS NOT NULL
+          AND length(btrim(ref_id)) > 0
+        )
+      )
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_client_impact_nodes_ref
+    ON v_b_client_impact_nodes (client_id, kind, ref_id)
+    WHERE ref_id IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_client_impact_nodes_client
+    ON v_b_client_impact_nodes (client_id)`,
+  `CREATE TABLE IF NOT EXISTS v_b_client_impact_edges (
+    id UUID PRIMARY KEY,
+    client_id INTEGER NOT NULL,
+    source_node_id UUID NOT NULL,
+    target_node_id UUID NOT NULL,
+    label TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT v_b_client_impact_edges_no_self
+      CHECK (source_node_id <> target_node_id)
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_client_impact_edges_pair
+    ON v_b_client_impact_edges (client_id, source_node_id, target_node_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_client_impact_edges_client
+    ON v_b_client_impact_edges (client_id)`,
+  `ALTER TABLE v_b_client_impact_nodes ADD COLUMN IF NOT EXISTS width DOUBLE PRECISION`,
+  `ALTER TABLE v_b_client_impact_nodes ADD COLUMN IF NOT EXISTS height DOUBLE PRECISION`,
+  `ALTER TABLE v_b_client_impact_nodes ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb`
+];
+
+async function grantToAppRole(client) {
+  await client.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'veritas_user') THEN
+        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_client_impact_nodes TO veritas_user;
+        GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_client_impact_edges TO veritas_user;
+      END IF;
+    END $$;
+  `);
 }
 
 export async function ensureClientImpactMapSchema() {
   if (ensured) return true;
-  if (!(await canRunAutoSchemaMigrations())) return false;
+  if (!(await hasCoreSchema())) return false;
   const client = await pool.connect();
   try {
-    if (!(await tableExists(client))) {
-      const filePath = path.join(root, MIGRATION_FILE);
-      if (!fs.existsSync(filePath)) {
-        console.warn("[impact-map] Migration not found:", MIGRATION_FILE);
-        return false;
-      }
-      await client.query(fs.readFileSync(filePath, "utf8"));
+    for (const statement of STATEMENTS) {
+      await client.query(statement);
+    }
+    try {
+      await grantToAppRole(client);
+    } catch (err) {
+      console.warn("[impact-map] Grant skipped:", err.message);
     }
     ensured = true;
     return true;
@@ -43,7 +91,7 @@ export async function ensureClientImpactMapSchema() {
 }
 
 export async function hasClientImpactMapTable() {
-  await ensureClientImpactMapSchema();
+  if (!(await ensureClientImpactMapSchema())) return false;
   try {
     const { rows } = await pool.query(
       `SELECT 1 FROM information_schema.tables

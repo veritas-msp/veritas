@@ -347,29 +347,42 @@
   display: contents;
 }
 
-.embeddedFilterBarToolbar {
+.embeddedFilterBar.embeddedFilterBarToolbar {
   width: 100%;
   justify-content: flex-start;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 0.5rem;
-  padding: 0;
+  gap: 0.65rem;
+  padding: 0 0 0.85rem;
   flex: 0 0 auto;
   min-height: var(--msp-btn-h, 2.15rem);
   box-sizing: border-box;
 }
 
-/* Recherche à gauche, actions à droite (comme onglet Activité) */
+/* Recherche à gauche, filtres Checkmk à droite */
 .embeddedFilterBarToolbar .embeddedSearchWrap {
+  order: 1;
   margin-left: 0;
   flex: 1 1 auto;
-  width: 100%;
+  width: auto;
   min-width: 0;
   justify-content: flex-start;
 }
 
+.embeddedFilterBarToolbar .embeddedSearchBox {
+  flex: 1 1 auto;
+  width: auto;
+  max-width: none;
+  min-width: 160px;
+}
+
+.embeddedFilterBarToolbar .embeddedMonitorInline {
+  order: 2;
+  margin-left: 0;
+}
+
 .embeddedFilterBarToolbar .embeddedSearchActions {
-  margin-left: auto;
+  margin-left: 0.35rem;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;

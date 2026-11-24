@@ -103,12 +103,22 @@ function Tile({ node, typeLabel, copy, onOpenAlert }) {
       className={`${styles.tile} ${node.data?.ha ? styles.tileHa : ""}`.trim()}
       style={node.data?.ha?.color ? { borderLeftColor: node.data.ha.color } : undefined}
     >
-      <span className={styles.tileIcon} aria-hidden>
-        <Icon icon={node.data?.icon || resolveImpactIcon(node.data?.nodeType)} />
-      </span>
+      {node.data?.photo ? (
+        <img className={styles.tilePhoto} src={node.data.photo} alt="" />
+      ) : (
+        <span className={styles.tileIcon} aria-hidden>
+          <Icon icon={node.data?.icon || resolveImpactIcon(node.data?.nodeType)} />
+        </span>
+      )}
       <span className={styles.tileBody}>
         <strong className={styles.tileName}>{node.data?.label || "—"}</strong>
-        <span className={styles.tileMeta}>{[typeLabel, node.data?.subtitle].filter(Boolean).join(" · ")}</span>
+        <span className={styles.tileMeta}>
+          {[
+            node.data?.containerGroup?.label,
+            typeLabel,
+            node.data?.nodeType === "rack" ? "" : node.data?.subtitle
+          ].filter(Boolean).join(" · ")}
+        </span>
         {vlans.length > 1 ? <span className={styles.tileVlans}>{vlans.map(id => `VLAN ${id}`).join(" · ")}</span> : null}
         {node.data?.inactive ? <span className={styles.tileFlag}>{node.data.inactiveLabel}</span> : null}
       </span>
@@ -133,9 +143,10 @@ export default function ImpactVisualMap({
   onOpenAlert,
   sheetRef
 }) {
-  const siteGroups = buildSiteGroups(nodes, copy);
+  const contentNodes = nodes.filter(node => node.data?.nodeType !== "group");
+  const siteGroups = buildSiteGroups(contentNodes, copy);
   const printedAt = new Date().toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
-  const total = nodes.length;
+  const total = contentNodes.length;
 
   return (
     <div className={styles.scroll}>

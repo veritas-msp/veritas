@@ -58,6 +58,13 @@
   box-sizing: border-box;
 }
 
+.enterpriseDetailPage :global([class*="embeddedFilterBarToolbar"]) :global([class*="embeddedSearchBox"]) {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 160px;
+  max-width: none;
+}
+
 .enterpriseDetailPage :global([class*="logsPanelBodyEmbedded"]),
 .contratDetailPage :global([class*="logsPanelBodyEmbedded"]) {
   padding: var(--crm-section-content-pad) !important;

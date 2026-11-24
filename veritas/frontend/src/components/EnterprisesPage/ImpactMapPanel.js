@@ -5,8 +5,10 @@ import {
   Handle,
   Position,
   ConnectionMode,
+  SelectionMode,
   addEdge,
   useEdgesState,
+  NodeResizer,
   useNodesState,
   useReactFlow
 } from "@xyflow/react";
@@ -20,6 +22,8 @@ import { fetchSupervisionAlertsActive } from "../../api/supervisionAlerts";
 import { fetchClientCustomEquipment } from "../../api/clients";
 import { getInfraMapCopy } from "./infraMapI18n";
 import { matchesSiteFilter } from "../../utils/siteFilterUtils";
+import { buildSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites } from "../../utils/clientSites";
+import ImpactElementDialog from "./ImpactElementDialog";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { showError } from "../../utils/toast";
 import { exportBrandedReportPdfFromElement } from "../RapportPage/exportBrandedReportPdfFromElement";
@@ -30,6 +34,7 @@ import { rememberSupervisionFocus } from "./supervisionFocus";
 import { buildSignalIndex, describeImpact, suggestImpactLinks } from "./impactSignals";
 import { getImpactMapCopy } from "./impactMapI18n";
 import {
+  GROUP_COLORS,
   IMPACT_FAMILY_ORDER,
   MANUAL_NODE_TYPES,
   buildHaIndex,
@@ -39,6 +44,7 @@ import {
   flowNodeFromRecord,
   inventoryKey,
   isManualNodeType,
+  nodesInsideGroup,
   normalizeInventoryRow,
   placeWithoutOverlap,
   resolveFamilyLabel,
@@ -69,7 +75,7 @@ const ImpactNode = memo(function ImpactNode({ data, selected }) {
     >
       {!data.readOnly ? <Handle type="target" position={Position.Left} className={styles.handle} isConnectable /> : null}
       <span className={styles.nodeIcon} aria-hidden>
-        <Icon icon={data.icon || "mdi:devices"} />
+        {data.photo ? <img src={data.photo} alt="" className={styles.nodePhoto} /> : <Icon icon={data.icon || "mdi:devices"} />}
         {data.agent ? <ImpactStatusMarks agent={data.agent} copy={copy} pinAgent /> : null}
       </span>
       <span className={styles.nodeText}>
@@ -96,7 +102,36 @@ const ImpactNode = memo(function ImpactNode({ data, selected }) {
   );
 });
 
-const nodeTypes = { impact: ImpactNode };
+function groupFill(color) {
+  const hex = String(color || "#5b7cfa").replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return "rgba(91, 124, 250, 0.16)";
+  return `rgba(${parseInt(hex.slice(0, 2), 16)}, ${parseInt(hex.slice(2, 4), 16)}, ${parseInt(hex.slice(4, 6), 16)}, 0.16)`;
+}
+
+const ImpactGroupNode = memo(function ImpactGroupNode({ data, selected }) {
+  const color = data.color || "#5b7cfa";
+  return (
+    <div
+      className={`${styles.groupBox} ${selected ? styles.groupBoxSelected : ""}`.trim()}
+      style={{ background: groupFill(color), borderColor: color }}
+    >
+      <NodeResizer
+        isVisible={selected && !data.readOnly}
+        minWidth={160}
+        minHeight={110}
+        lineClassName={styles.groupResizeLine}
+        handleClassName={styles.groupResizeHandle}
+        onResizeEnd={(_, params) => data.onResize?.(params)}
+      />
+      <div className={styles.groupLabel}>
+        <Icon icon="mdi:folder-multiple-outline" />
+        <span>{data.label}</span>
+      </div>
+    </div>
+  );
+});
+
+const nodeTypes = { impact: ImpactNode, impactGroup: ImpactGroupNode };
 
 function dedupeInventory(items) {
   const seen = new Set();
@@ -119,17 +154,19 @@ function newId() {
 
 function enrichNode(node, catalog, inventoryReady, haIndex, signals) {
   if (node.data?.kind === "manual") {
+    const description = node.data.description || "";
     return {
       ...node,
       data: {
         ...node.data,
         icon: resolveImpactIcon(node.data.nodeType),
-        missing: false,
+        missing: node.data.missing === true,
         inactive: false,
-        subtitle: "",
+        subtitle: node.data.nodeType === "application" ? description : (node.data.subtitle || ""),
+        description,
         vlans: [],
         ha: null,
-        location: "",
+        location: node.data.nodeType === "site" ? (node.data.label || "") : "",
         hostServerName: "",
         gateway: "",
         supervision: null,
@@ -185,6 +222,7 @@ function ImpactMapCanvas({
   canEdit = false,
   siteFilter = null,
   backupJobs = [],
+  sites = [],
   onNavigate
 }) {
   const locale = useAppLocale();
@@ -214,6 +252,29 @@ function ImpactMapCanvas({
   const [exporting, setExporting] = useState(false);
   const sheetRef = useRef(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [drawing, setDrawing] = useState(false);
+  const [drawBox, setDrawBox] = useState(null);
+  const [composer, setComposer] = useState(null);
+  const drawRef = useRef(null);
+  const siteOptions = useMemo(() => normalizeClientSites(sites).map(site => ({
+    id: String(getSiteId(site)),
+    name: getSiteDisplayName(site),
+    address: buildSiteAddress(site)
+  })), [sites]);
+
+  useEffect(() => {
+    if (!composer?.photoError) return;
+    showError(copy.dialogPhotoError);
+    setComposer(current => (current ? { ...current, photoError: false } : current));
+  }, [composer, copy.dialogPhotoError]);
+
+  useEffect(() => {
+    if (viewMode === "analysis") return;
+    setDrawing(false);
+    setDrawBox(null);
+    drawRef.current = null;
+    setComposer(null);
+  }, [viewMode]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -407,6 +468,10 @@ function ImpactMapCanvas({
     }
     const onKey = event => {
       if (event.key === "Escape") {
+        setDrawing(false);
+        setDrawBox(null);
+        drawRef.current = null;
+        setComposer(null);
         setPendingDelete(null);
         setNodes(current => current.map(node => (node.selected ? { ...node, selected: false } : node)));
         setEdges(current => current.map(edge => (edge.selected ? { ...edge, selected: false } : edge)));
@@ -437,16 +502,26 @@ function ImpactMapCanvas({
     return () => window.removeEventListener("keydown", onKey);
   }, [active, canEdit, flushSave, pendingDelete, scheduleSave, setEdges, setNodes]);
 
-  const focusId = nodes.find(node => node.selected)?.id || null;
-  const selectedEdge = !focusId ? edges.find(edge => edge.selected) : null;
+  const selectedCount = nodes.reduce((count, node) => count + (node.selected ? 1 : 0), 0);
+  const focusId = selectedCount === 1 ? nodes.find(node => node.selected)?.id || null : null;
+  const selectedEdge = selectedCount === 0 ? edges.find(edge => edge.selected) : null;
   const haIndex = useMemo(() => buildHaIndex(inventory), [inventory]);
   const signalIndex = useMemo(
     () => buildSignalIndex(inventory, alerts, summaries, backupJobs),
     [alerts, backupJobs, inventory, summaries]
   );
   const enrichedNodes = useMemo(
-    () => nodes.map(node => enrichNode(node, catalog, inventoryReady, haIndex, signalIndex)),
-    [catalog, haIndex, inventoryReady, nodes, signalIndex]
+    () => nodes.map(node => {
+      const enriched = enrichNode(node, catalog, inventoryReady, haIndex, signalIndex);
+      if (enriched.data?.nodeType !== "site" || !enriched.data.siteId) return enriched;
+      const site = siteOptions.find(entry => entry.id === String(enriched.data.siteId));
+      if (!site) return { ...enriched, data: { ...enriched.data, missing: true } };
+      return {
+        ...enriched,
+        data: { ...enriched.data, label: site.name, subtitle: site.address, missing: false }
+      };
+    }),
+    [catalog, haIndex, inventoryReady, nodes, signalIndex, siteOptions]
   );
   const focusNode = enrichedNodes.find(node => node.id === focusId) || null;
   const impactIds = useMemo(() => {
@@ -456,6 +531,13 @@ function ImpactMapCanvas({
     if (pairKey) {
       enrichedNodes.forEach(node => {
         if (node.data?.ha?.pairKey === pairKey) ids.add(node.id);
+      });
+    }
+    if (focusNode.data?.nodeType === "group") {
+      nodesInsideGroup(focusNode, enrichedNodes).forEach(node => ids.add(node.id));
+    } else {
+      enrichedNodes.forEach(node => {
+        if (node.data?.nodeType === "group" && nodesInsideGroup(node, [focusNode]).length) ids.add(node.id);
       });
     }
     return ids;
@@ -474,6 +556,10 @@ function ImpactMapCanvas({
     const hidden = new Set();
     enrichedNodes.forEach(node => {
       const item = catalog.get(inventoryKey(node.data?.kind, node.data?.refId));
+      if (siteFilter && node.data?.nodeType === "site" && node.data.label && node.data.label !== siteFilter) {
+        hidden.add(node.id);
+        return;
+      }
       if (siteFilter && node.data?.kind !== "manual" && item && !matchesSiteFilter(item.source, siteFilter)) {
         hidden.add(node.id);
         return;
@@ -484,29 +570,80 @@ function ImpactMapCanvas({
     return hidden;
   }, [catalog, enrichedNodes, siteFilter, vlanFilter]);
 
-  const viewNodes = useMemo(() => enrichedNodes.map(node => {
-    let className = "";
-    if (focusId && impactIds) {
-      if (node.id === focusId) className = "impactFocus";
-      else if (impactIds.has(node.id)) className = "impactNeighbor";
-      else className = "impactDim";
-    }
-    const separated = Boolean(
-      focusNode
-      && node.id !== focusId
-      && edges.some(edge => (
-        (edge.source === focusId && edge.target === node.id) || (edge.target === focusId && edge.source === node.id)
-      ))
-      && classifyNetworkLink(focusNode, node) === "separated"
-    );
-    return {
-      ...node,
-      className,
-      hidden: hiddenIds.has(node.id),
-      ariaLabel: node.data?.label || "",
-      data: { ...node.data, readOnly: !canEdit, separated, onOpenAlert: openSupervision }
-    };
-  }), [canEdit, edges, enrichedNodes, focusId, focusNode, hiddenIds, impactIds, openSupervision]);
+  const resizeGroup = useCallback((id, params) => {
+    if (!params) return;
+    setNodes(current => {
+      const next = current.map(node => (
+        node.id === id
+          ? {
+            ...node,
+            position: { x: params.x, y: params.y },
+            width: params.width,
+            height: params.height,
+            style: { ...(node.style || {}), width: params.width, height: params.height },
+            data: { ...node.data, width: params.width, height: params.height }
+          }
+          : node
+      ));
+      nodesRef.current = next;
+      return next;
+    });
+    scheduleSave();
+  }, [scheduleSave, setNodes]);
+
+  const openEditor = useCallback(node => {
+    if (!canEdit || node?.data?.kind !== "manual") return;
+    setDrawing(false);
+    setComposer({
+      mode: "edit",
+      nodeId: node.id,
+      nodeType: node.data.nodeType,
+      name: node.data.label || "",
+      color: node.data.color || "#5b7cfa",
+      description: node.data.description || "",
+      siteId: node.data.siteId || "",
+      photo: node.data.photo || "",
+      geometry: null
+    });
+  }, [canEdit]);
+
+  const viewNodes = useMemo(() => {
+    const groups = enrichedNodes.filter(node => node.data?.nodeType === "group");
+    return enrichedNodes.map(node => {
+      let className = "";
+      if (focusId && impactIds) {
+        if (node.id === focusId) className = "impactFocus";
+        else if (impactIds.has(node.id)) className = "impactNeighbor";
+        else className = "impactDim";
+      }
+      const separated = Boolean(
+        focusNode
+        && node.id !== focusId
+        && edges.some(edge => (
+          (edge.source === focusId && edge.target === node.id) || (edge.target === focusId && edge.source === node.id)
+        ))
+        && classifyNetworkLink(focusNode, node) === "separated"
+      );
+      const container = node.data?.nodeType === "group"
+        ? null
+        : groups.find(group => nodesInsideGroup(group, [node]).length) || null;
+      return {
+        ...node,
+        className,
+        zIndex: node.data?.nodeType === "group" ? 0 : 2,
+        hidden: hiddenIds.has(node.id),
+        ariaLabel: node.data?.label || "",
+        data: {
+          ...node.data,
+          readOnly: !canEdit,
+          separated,
+          onOpenAlert: openSupervision,
+          onResize: params => resizeGroup(node.id, params),
+          containerGroup: container ? { label: container.data?.label || "", color: container.data?.color || "" } : null
+        }
+      };
+    });
+  }, [canEdit, edges, enrichedNodes, focusId, focusNode, hiddenIds, impactIds, openSupervision, resizeGroup]);
 
   const viewEdges = useMemo(() => {
     const byId = new Map(enrichedNodes.map(node => [node.id, node]));
@@ -597,32 +734,185 @@ function ImpactMapCanvas({
     scheduleSave();
   }, [canEdit, scheduleSave, screenToFlowPosition, setNodes]);
 
-  const addManual = useCallback(typeId => {
+  const beginManual = useCallback((typeId, position) => {
     if (!canEdit || !isManualNodeType(typeId)) return;
-    const label = copy.manualTypes[typeId] || typeId;
+    if (typeId === "group" && !position) {
+      setComposer(null);
+      setDrawing(current => !current);
+      return;
+    }
     const same = nodesRef.current.filter(node => node.data?.nodeType === typeId).length;
+    const base = copy.manualTypes[typeId] || typeId;
+    const spot = position || placeWithoutOverlap(
+      screenToFlowPosition(centerOf(wrapperRef.current)),
+      nodesRef.current
+    );
+    setDrawing(false);
+    setComposer({
+      mode: "create",
+      nodeId: null,
+      nodeType: typeId,
+      name: typeId === "group" || typeId === "application" ? "" : (same ? `${base} ${same + 1}` : base),
+      color: GROUP_COLORS[same % GROUP_COLORS.length],
+      description: "",
+      siteId: typeId === "site" && siteOptions.length === 1 ? siteOptions[0].id : "",
+      photo: "",
+      geometry: { x: spot.x, y: spot.y, width: 420, height: 240 }
+    });
+  }, [canEdit, copy.manualTypes, screenToFlowPosition, siteOptions]);
+
+  const commitComposer = useCallback(() => {
+    const draft = composer;
+    if (!draft) return;
+    let fields = null;
+    if (draft.nodeType === "site") {
+      const site = siteOptions.find(entry => entry.id === draft.siteId);
+      if (!site) return;
+      fields = { label: site.name, subtitle: site.address, description: "", siteId: site.id, photo: "", color: "" };
+    } else {
+      const label = String(draft.name || "").trim();
+      if (!label) return;
+      const description = draft.nodeType === "application" ? String(draft.description || "").trim() : "";
+      fields = {
+        label,
+        subtitle: description,
+        description,
+        siteId: "",
+        photo: draft.nodeType === "rack" ? (draft.photo || "") : "",
+        color: draft.nodeType === "group" ? (draft.color || "#5b7cfa") : ""
+      };
+    }
+    if (draft.mode === "edit" && draft.nodeId) {
+      setNodes(current => {
+        const next = current.map(node => (
+          node.id === draft.nodeId ? { ...node, data: { ...node.data, ...fields } } : node
+        ));
+        nodesRef.current = next;
+        return next;
+      });
+    } else {
+      const isGroup = draft.nodeType === "group";
+      const width = Math.max(160, Number(draft.geometry?.width) || 420);
+      const height = Math.max(110, Number(draft.geometry?.height) || 240);
+      const node = {
+        id: newId(),
+        type: isGroup ? "impactGroup" : "impact",
+        position: { x: Number(draft.geometry?.x) || 80, y: Number(draft.geometry?.y) || 80 },
+        selected: true,
+        ...(isGroup ? { width, height, style: { width, height }, zIndex: 0, connectable: false } : {}),
+        data: {
+          kind: "manual",
+          refId: null,
+          nodeType: draft.nodeType,
+          icon: resolveImpactIcon(draft.nodeType),
+          missing: false,
+          inactive: false,
+          width: isGroup ? width : undefined,
+          height: isGroup ? height : undefined,
+          ...fields
+        }
+      };
+      setNodes(current => {
+        const next = [...current.map(entry => ({ ...entry, selected: false })), node];
+        nodesRef.current = next;
+        return next;
+      });
+    }
+    setComposer(null);
+    scheduleSave();
+  }, [composer, scheduleSave, setNodes, siteOptions]);
+
+  const onDrawDown = event => {
+    if (event.button !== 0) return;
+    const bounds = wrapperRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    drawRef.current = { startX: event.clientX, startY: event.clientY, bounds };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrawBox({
+      left: event.clientX - bounds.left,
+      top: event.clientY - bounds.top,
+      width: 0,
+      height: 0
+    });
+  };
+
+  const onDrawMove = event => {
+    const drag = drawRef.current;
+    if (!drag) return;
+    setDrawBox({
+      left: Math.min(drag.startX, event.clientX) - drag.bounds.left,
+      top: Math.min(drag.startY, event.clientY) - drag.bounds.top,
+      width: Math.abs(event.clientX - drag.startX),
+      height: Math.abs(event.clientY - drag.startY)
+    });
+  };
+
+  const onDrawUp = event => {
+    const drag = drawRef.current;
+    drawRef.current = null;
+    setDrawBox(null);
+    if (!drag) return;
+    if (Math.abs(event.clientX - drag.startX) < 36 || Math.abs(event.clientY - drag.startY) < 36) return;
+    const origin = screenToFlowPosition({
+      x: Math.min(drag.startX, event.clientX),
+      y: Math.min(drag.startY, event.clientY)
+    });
+    const end = screenToFlowPosition({
+      x: Math.max(drag.startX, event.clientX),
+      y: Math.max(drag.startY, event.clientY)
+    });
+    const same = nodesRef.current.filter(node => node.data?.nodeType === "group").length;
+    const color = GROUP_COLORS[same % GROUP_COLORS.length];
+    const width = Math.max(160, end.x - origin.x);
+    const height = Math.max(110, end.y - origin.y);
+    const id = newId();
+    const label = same ? `${copy.manualTypes.group} ${same + 1}` : copy.manualTypes.group;
     const node = {
-      id: newId(),
-      type: "impact",
-      position: placeWithoutOverlap(screenToFlowPosition(centerOf(wrapperRef.current)), nodesRef.current),
+      id,
+      type: "impactGroup",
+      position: { x: origin.x, y: origin.y },
+      selected: true,
+      width,
+      height,
+      style: { width, height },
+      zIndex: 0,
+      connectable: false,
       data: {
         kind: "manual",
         refId: null,
-        nodeType: typeId,
-        label: same ? `${label} ${same + 1}` : label,
+        nodeType: "group",
+        label,
         subtitle: "",
-        icon: resolveImpactIcon(typeId),
+        description: "",
+        color,
+        siteId: "",
+        photo: "",
+        icon: resolveImpactIcon("group"),
         missing: false,
-        inactive: false
+        inactive: false,
+        width,
+        height
       }
     };
     setNodes(current => {
-      const next = [...current, node];
+      const next = [...current.map(entry => ({ ...entry, selected: false })), node];
       nodesRef.current = next;
       return next;
     });
+    setDrawing(false);
+    setComposer({
+      mode: "edit",
+      nodeId: id,
+      nodeType: "group",
+      name: "",
+      color,
+      description: "",
+      siteId: "",
+      photo: "",
+      geometry: null
+    });
     scheduleSave();
-  }, [canEdit, copy.manualTypes, scheduleSave, screenToFlowPosition, setNodes]);
+  };
 
   const onConnect = useCallback(connection => {
     if (!canEdit || !connection?.source || !connection?.target || connection.source === connection.target) return;
@@ -654,34 +944,12 @@ function ImpactMapCanvas({
     }
     const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
     if (payload.manual) {
-      const label = copy.manualTypes[payload.id] || payload.id;
-      const same = nodesRef.current.filter(node => node.data?.nodeType === payload.id).length;
-      const node = {
-        id: newId(),
-        type: "impact",
-        position: placeWithoutOverlap(position, nodesRef.current),
-        data: {
-          kind: "manual",
-          refId: null,
-          nodeType: payload.id,
-          label: same ? `${label} ${same + 1}` : label,
-          subtitle: "",
-          icon: resolveImpactIcon(payload.id),
-          missing: false,
-          inactive: false
-        }
-      };
-      setNodes(current => {
-        const next = [...current, node];
-        nodesRef.current = next;
-        return next;
-      });
-      scheduleSave();
+      beginManual(payload.id, placeWithoutOverlap(position, nodesRef.current));
       return;
     }
     const item = catalog.get(inventoryKey(payload.kind, payload.refId));
     if (item) addEquipment(item, placeWithoutOverlap(position, nodesRef.current));
-  }, [addEquipment, canEdit, catalog, copy.manualTypes, scheduleSave, screenToFlowPosition, setNodes]);
+  }, [addEquipment, beginManual, canEdit, catalog, screenToFlowPosition]);
 
   const renameFocused = event => {
     const value = event.target.value;
@@ -736,6 +1004,18 @@ function ImpactMapCanvas({
     ? edges.filter(edge => edge.source === focused.id).map(edge => viewNodes.find(node => node.id === edge.target)).filter(Boolean)
     : [];
   const linkCount = upstream.length + downstream.length;
+  const groupMembers = focused?.data?.nodeType === "group"
+    ? nodesInsideGroup(focused, viewNodes.filter(node => !node.hidden && node.data?.nodeType !== "group"))
+    : [];
+  const groupAlerts = groupMembers.filter(node => node.data?.supervision && node.data.supervision.level !== "ok").length;
+  const groupImpactText = focused?.data?.nodeType === "group"
+    ? [
+      groupMembers.length > 1
+        ? interpolate(copy.groupMembersMany, { count: groupMembers.length })
+        : interpolate(copy.groupMembersOne, { count: groupMembers.length }),
+      groupAlerts ? interpolate(copy.groupAlerts, { count: groupAlerts }) : ""
+    ].filter(Boolean).join(" · ")
+    : "";
   const typeLabel = focused
     ? (focused.data.kind === "manual"
       ? (copy.manualTypes[focused.data.nodeType] || focused.data.nodeType)
@@ -915,9 +1195,12 @@ function ImpactMapCanvas({
           onConnect={onConnect}
           onDrop={onDrop}
           onDragOver={onDragOver}
-          onNodeDragStop={(_, node) => {
+          onNodeDoubleClick={(_, node) => openEditor(node)}
+          onNodeDragStop={(_, __, dragged) => {
+            const moved = new Map((Array.isArray(dragged) ? dragged : []).map(node => [node.id, node.position]));
+            if (!moved.size) return;
             nodesRef.current = nodesRef.current.map(entry => (
-              entry.id === node.id ? { ...entry, position: node.position } : entry
+              moved.has(entry.id) ? { ...entry, position: moved.get(entry.id) } : entry
             ));
             scheduleSave();
           }}
@@ -930,12 +1213,29 @@ function ImpactMapCanvas({
           nodesFocusable
           edgesFocusable
           deleteKeyCode={null}
-          selectionKeyCode={null}
-          multiSelectionKeyCode={null}
+          selectionKeyCode="Control"
+          multiSelectionKeyCode="Control"
+          selectionMode={SelectionMode.Partial}
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{ style: { stroke: "#8aa0bd", strokeWidth: 1.6 }, interactionWidth: 18 }}
           aria-label={copy.canvasAria}
         />
+        {drawing ? (
+          <div
+            className={styles.drawLayer}
+            onPointerDown={onDrawDown}
+            onPointerMove={onDrawMove}
+            onPointerUp={onDrawUp}
+          >
+            <p className={styles.drawHint}>{copy.drawGroupHint}</p>
+            {drawBox ? (
+              <div
+                className={styles.drawPreview}
+                style={{ left: drawBox.left, top: drawBox.top, width: drawBox.width, height: drawBox.height }}
+              />
+            ) : null}
+          </div>
+        ) : null}
         {focused ? (
           <aside className={styles.inspector} aria-label={focused.data.label}>
             <div className={styles.inspectorHead}>
@@ -943,16 +1243,21 @@ function ImpactMapCanvas({
                 <h3 className={styles.inspectorTitle}>{focused.data.label || "—"}</h3>
                 <p className={styles.inspectorType}>{typeLabel}</p>
               </div>
-              {focused.data.missing ? <span className={`${styles.badge} ${styles.badgeMissing}`}>{copy.missing}</span> : null}
+              {focused.data.nodeType === "site" && focused.data.missing ? <span className={`${styles.badge} ${styles.badgeMissing}`}>{copy.siteRemoved}</span> : null}
+              {focused.data.nodeType !== "site" && focused.data.missing ? <span className={`${styles.badge} ${styles.badgeMissing}`}>{copy.missing}</span> : null}
               {!focused.data.missing && focused.data.inactive ? <span className={styles.badge}>{copy.inactive}</span> : null}
             </div>
+            {focused.data.containerGroup ? <p className={styles.muted}>{interpolate(copy.inGroup, { name: focused.data.containerGroup.label })}</p> : null}
+            {focused.data.nodeType === "application" && focused.data.description ? <p className={styles.meta}>{focused.data.description}</p> : null}
+            {focused.data.photo ? <img className={styles.inspectorPhoto} src={focused.data.photo} alt="" /> : null}
+            {focused.data.nodeType === "site" && focused.data.subtitle ? <p className={styles.muted}>{focused.data.subtitle}</p> : null}
             {focused.data.ha ? (
               <p className={styles.haLine}>
                 <ImpactHaBadge ha={focused.data.ha} copy={copy} />
                 <span>{haTitle(focused.data.ha, copy)}</span>
               </p>
             ) : null}
-            {impactText ? <p className={styles.impactSummary}>{impactText}</p> : null}
+            {(groupImpactText || impactText) ? <p className={styles.impactSummary}>{groupImpactText || impactText}</p> : null}
             {focused.data.supervision && focused.data.supervision.level !== "ok" ? (
               <p className={styles.alertLine}>
                 <span>{focused.data.supervision.title || (focused.data.supervision.level === "critical" ? copy.supervisionCritical : copy.supervisionWarning)}</span>
@@ -969,7 +1274,9 @@ function ImpactMapCanvas({
                 </ul>
               </div>
             ) : null}
-            <p className={styles.meta}>{linkCount > 1 ? interpolate(copy.linksMany, { count: linkCount }) : interpolate(copy.linksOne, { count: linkCount })}</p>
+            {focused.data.nodeType === "group" ? null : (
+              <p className={styles.meta}>{linkCount > 1 ? interpolate(copy.linksMany, { count: linkCount }) : interpolate(copy.linksOne, { count: linkCount })}</p>
+            )}
             {focused.data.vlans?.length ? (
               <div className={styles.vlanRow}>
                 {focused.data.vlans.map(id => (
@@ -992,13 +1299,25 @@ function ImpactMapCanvas({
                 </ul>
               </div>
             ) : null}
-            {canEdit && focused.data.kind === "manual" ? (
+            {groupMembers.length ? (
+              <div className={styles.sameNetwork}>
+                <p className={styles.listTitle}>{copy.manualTypes.group}</p>
+                <ul className={styles.list}>
+                  {groupMembers.slice(0, 8).map(node => (
+                    <li key={node.id}>
+                      <button type="button" className={styles.linkBtn} onClick={() => selectNode(node.id)}>{node.data.label}</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {canEdit && focused.data.kind === "manual" && focused.data.nodeType !== "group" && focused.data.nodeType !== "site" ? (
               <label className={styles.rename}>
                 {copy.renameLabel}
                 <input value={focused.data.label || ""} onChange={renameFocused} />
               </label>
             ) : null}
-            <div className={styles.lists}>
+            {focused.data.nodeType === "group" ? null : <div className={styles.lists}>
               <div>
                 <p className={styles.listTitle}>{copy.upstream}</p>
                 {upstream.length ? (
@@ -1029,8 +1348,13 @@ function ImpactMapCanvas({
                   </ul>
                 ) : <p className={styles.muted}>{copy.noLinks}</p>}
               </div>
-            </div>
+            </div>}
             <div className={styles.actions}>
+              {canEdit && focused.data.kind === "manual" ? (
+                <button type="button" className={styles.textBtn} onClick={() => openEditor(focused)}>
+                  {copy.editElement}
+                </button>
+              ) : null}
               {focusedItem && !focused.data.missing ? (
                 <button type="button" className={styles.textBtn} onClick={() => onNavigate?.("EquipmentDetail", focusedItem.source)}>
                   {copy.openEquipment}
@@ -1119,9 +1443,9 @@ function ImpactMapCanvas({
                 <button
                   key={type.id}
                   type="button"
-                  className={styles.item}
+                  className={`${styles.item} ${drawing && type.id === "group" ? styles.itemActive : ""}`.trim()}
                   draggable
-                  onClick={() => addManual(type.id)}
+                  onClick={() => beginManual(type.id)}
                   onDragStart={event => {
                     const payload = JSON.stringify({ manual: true, id: type.id });
                     event.dataTransfer.setData("application/veritas-impact", payload);
@@ -1138,6 +1462,14 @@ function ImpactMapCanvas({
         </aside>
       ) : null}
       </div>
+      <ImpactElementDialog
+        draft={composer}
+        copy={copy}
+        sites={siteOptions}
+        onChange={setComposer}
+        onCancel={() => setComposer(null)}
+        onConfirm={commitComposer}
+      />
       <ConfirmModal
         open={Boolean(pendingDelete)}
         title={copy.confirmDeleteTitle}

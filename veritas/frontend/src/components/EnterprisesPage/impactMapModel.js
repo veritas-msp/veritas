@@ -222,17 +222,62 @@ export function placeWithoutOverlap(origin, nodes) {
   return start;
 }
 
+export const GROUP_COLORS = ["#5b7cfa", "#0d9488", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#65a30d", "#be185d"];
+
+export function groupSize(node) {
+  const width = Number(node?.measured?.width || node?.width || node?.data?.width || node?.style?.width);
+  const height = Number(node?.measured?.height || node?.height || node?.data?.height || node?.style?.height);
+  return {
+    width: Number.isFinite(width) && width > 0 ? width : 360,
+    height: Number.isFinite(height) && height > 0 ? height : 220
+  };
+}
+
+export function nodesInsideGroup(group, nodes) {
+  if (!group || group.data?.nodeType !== "group") return [];
+  const { width, height } = groupSize(group);
+  const left = Number(group.position?.x) || 0;
+  const top = Number(group.position?.y) || 0;
+  return (Array.isArray(nodes) ? nodes : []).filter(node => {
+    if (!node || node.id === group.id || node.data?.nodeType === "group") return false;
+    const centerX = (Number(node.position?.x) || 0) + 80;
+    const centerY = (Number(node.position?.y) || 0) + 28;
+    return centerX >= left && centerX <= left + width && centerY >= top && centerY <= top + height;
+  });
+}
+
+function impactMeta(data = {}) {
+  const meta = {};
+  if (data.nodeType === "group" && /^#[0-9a-fA-F]{6}$/.test(String(data.color || ""))) {
+    meta.color = String(data.color).toLowerCase();
+  }
+  const description = String(data.description || "").trim().slice(0, 800);
+  if (description) meta.description = description;
+  if (data.siteId) meta.siteId = String(data.siteId).slice(0, 80);
+  if (data.nodeType === "site" && data.subtitle) meta.address = String(data.subtitle).slice(0, 240);
+  if (data.nodeType === "rack" && String(data.photo || "").startsWith("data:image/")) {
+    meta.photo = String(data.photo).slice(0, 180000);
+  }
+  return meta;
+}
+
 export function serializeImpactGraph(nodes, edges) {
   return {
-    nodes: (Array.isArray(nodes) ? nodes : []).map(node => ({
-      id: node.id,
-      kind: node.data?.kind,
-      refId: node.data?.refId || null,
-      nodeType: node.data?.nodeType,
-      label: String(node.data?.label || "").trim() || "—",
-      x: Number(node.position?.x) || 0,
-      y: Number(node.position?.y) || 0
-    })),
+    nodes: (Array.isArray(nodes) ? nodes : []).map(node => {
+      const size = node.data?.nodeType === "group" ? groupSize(node) : { width: null, height: null };
+      return {
+        id: node.id,
+        kind: node.data?.kind,
+        refId: node.data?.refId || null,
+        nodeType: node.data?.nodeType,
+        label: String(node.data?.label || "").trim() || "—",
+        x: Number(node.position?.x) || 0,
+        y: Number(node.position?.y) || 0,
+        width: size.width,
+        height: size.height,
+        meta: impactMeta(node.data)
+      };
+    }),
     edges: (Array.isArray(edges) ? edges : []).map(edge => ({
       id: edge.id,
       sourceId: edge.source,
@@ -243,16 +288,31 @@ export function serializeImpactGraph(nodes, edges) {
 }
 
 export function flowNodeFromRecord(record) {
+  const meta = record.meta && typeof record.meta === "object" ? record.meta : {};
+  const isGroup = record.nodeType === "group";
+  const width = Number(record.width) || (isGroup ? 360 : undefined);
+  const height = Number(record.height) || (isGroup ? 220 : undefined);
+  const description = String(meta.description || "");
+  const subtitle = record.nodeType === "site"
+    ? String(meta.address || "")
+    : (record.nodeType === "application" ? description : "");
   return {
     id: record.id,
-    type: "impact",
+    type: isGroup ? "impactGroup" : "impact",
     position: { x: Number(record.x) || 0, y: Number(record.y) || 0 },
+    ...(isGroup ? { width, height, style: { width, height }, zIndex: 0, connectable: false } : {}),
     data: {
       kind: record.kind,
       refId: record.refId || null,
       nodeType: record.nodeType,
       label: record.label || "—",
-      subtitle: "",
+      subtitle,
+      description,
+      color: meta.color || "#5b7cfa",
+      siteId: meta.siteId || "",
+      photo: meta.photo || "",
+      width: isGroup ? width : undefined,
+      height: isGroup ? height : undefined,
       icon: resolveImpactIcon(record.nodeType),
       missing: false,
       inactive: false

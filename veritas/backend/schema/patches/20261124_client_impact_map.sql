@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS v_b_client_impact_nodes (
   label TEXT NOT NULL,
   x DOUBLE PRECISION NOT NULL,
   y DOUBLE PRECISION NOT NULL,
+  width DOUBLE PRECISION,
+  height DOUBLE PRECISION,
+  meta JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT v_b_client_impact_nodes_kind_check
@@ -49,7 +52,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_client_impact_edges_pair
 CREATE INDEX IF NOT EXISTS idx_client_impact_edges_client
   ON v_b_client_impact_edges (client_id);
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_client_impact_nodes TO veritas_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_client_impact_edges TO veritas_user;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'veritas_user') THEN
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_client_impact_nodes TO veritas_user;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_client_impact_edges TO veritas_user;
+  END IF;
+END $$;
 
 COMMIT;

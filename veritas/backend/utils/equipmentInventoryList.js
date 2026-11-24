@@ -877,8 +877,14 @@ export async function bulkUpdateEquipmentInventory({
 export async function fetchEquipmentInventoryList() {
   const [standard, custom, video, extensionsByKey] = await Promise.all([
     fetchStandardHardwarePurgeList(),
-    fetchCustomEquipmentRows(),
-    fetchVideoSurveillanceRows(),
+    fetchCustomEquipmentRows().catch(err => {
+      console.warn("[equipment-inventory] custom rows:", err?.message || err);
+      return [];
+    }),
+    fetchVideoSurveillanceRows().catch(err => {
+      console.warn("[equipment-inventory] cameras:", err?.message || err);
+      return [];
+    }),
     listSystemFamilyExtensionsByKey().catch(() => ({}))
   ]);
   const items = [
@@ -896,5 +902,11 @@ export async function fetchEquipmentInventoryList() {
     ...custom,
     ...video
   ];
-  return enrichInventoryWithAlerts(sortInventory(items));
+  const sorted = sortInventory(items);
+  try {
+    return await enrichInventoryWithAlerts(sorted);
+  } catch (err) {
+    console.warn("[equipment-inventory] alert enrichment:", err?.message || err);
+    return sorted;
+  }
 }

@@ -289,11 +289,8 @@ export async function fetchStandardHardwarePurgeList() {
         const result = await pool.query(buildLeanSelect(familyMeta.table));
         return result.rows.map(row => mapLeanRow(row, familyMeta));
       } catch (err) {
-        if (err?.code === "42P01") {
-          console.warn(`[equipment-purge] table missing: ${familyMeta.table}`);
-          return [];
-        }
-        throw err;
+        console.warn(`[equipment-purge] ${familyMeta.table}:`, err?.code || "", err?.message || err);
+        return [];
       }
     })
   );

@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.28",
+    date: "2026-11-24",
+    highlights: [
+      "Analyse d’impact : tracez un groupe (nom et couleur). Ctrl+glisser sélectionne plusieurs éléments pour les déplacer ensemble.",
+      "Le lieu se choisit parmi les sites de l’entreprise. L’applicatif a une description, la baie peut porter une photo.",
+      "La cartographie se crée sur une installation déjà en service. L’inventaire ne s’interrompt plus si une famille d’équipements est incomplète.",
+      "Infrastructure : filtres de supervision à droite de la recherche, avec un espace sous la barre."
+    ]
+  },
+  {
     version: "2.0.27",
     date: "2026-11-24",
     highlights: [

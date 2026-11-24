@@ -9,6 +9,8 @@ const MAX_NODES = 400;
 const MAX_EDGES = 800;
 const MAX_LABEL = 240;
 const MAX_COORD = 1e6;
+const MAX_PHOTO = 180000;
+const COLOR_RE = /^#[0-9a-f]{6}$/i;
 
 const viewImpact = requireAnyPermission("infrastructure.view", "clients.view");
 const editImpact = requireAnyPermission("infrastructure.edit", "clients_detail.devices");
@@ -31,7 +33,10 @@ function mapNodeRow(row) {
     nodeType: row.node_type,
     label: row.label,
     x: Number(row.x),
-    y: Number(row.y)
+    y: Number(row.y),
+    width: row.width == null ? null : Number(row.width),
+    height: row.height == null ? null : Number(row.height),
+    meta: row.meta && typeof row.meta === "object" ? row.meta : {}
   };
 }
 
@@ -47,6 +52,36 @@ function mapEdgeRow(row) {
 function asTrimmed(value, max) {
   if (value == null) return "";
   return String(value).trim().slice(0, max);
+}
+
+function parseMeta(raw, nodeType) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const meta = {};
+  if (nodeType === "group" && COLOR_RE.test(String(raw.color || ""))) {
+    meta.color = String(raw.color).toLowerCase();
+  }
+  const description = asTrimmed(raw.description, 800);
+  if (description) meta.description = description;
+  const siteId = asTrimmed(raw.siteId, 80);
+  if (siteId) meta.siteId = siteId;
+  const address = asTrimmed(raw.address, 240);
+  if (nodeType === "site" && address) meta.address = address;
+  if (
+    nodeType === "rack"
+    && typeof raw.photo === "string"
+    && raw.photo.startsWith("data:image/")
+    && raw.photo.length <= MAX_PHOTO
+  ) {
+    meta.photo = raw.photo;
+  }
+  return meta;
+}
+
+function parseSize(value) {
+  if (value == null || value === "") return null;
+  const size = Number(value);
+  if (!Number.isFinite(size) || size < 40 || size > 8000) return undefined;
+  return size;
 }
 
 function parseGraph(body) {
@@ -71,6 +106,9 @@ function parseGraph(body) {
     const x = Number(raw?.x);
     const y = Number(raw?.y);
     const refId = raw?.refId == null || raw?.refId === "" ? null : asTrimmed(raw.refId, 80);
+    const width = parseSize(raw?.width);
+    const height = parseSize(raw?.height);
+    if (width === undefined || height === undefined) return { error: "Invalid node size" };
 
     if (!UUID_RE.test(id) || seenIds.has(id)) {
       return { error: "Invalid node id" };
@@ -92,7 +130,18 @@ function parseGraph(body) {
     }
 
     seenIds.add(id);
-    nodes.push({ id, kind, refId, nodeType, label, x, y });
+    nodes.push({
+      id,
+      kind,
+      refId,
+      nodeType,
+      label,
+      x,
+      y,
+      width: nodeType === "group" ? width : null,
+      height: nodeType === "group" ? height : null,
+      meta: kind === "manual" ? parseMeta(raw?.meta, nodeType) : {}
+    });
   }
 
   const edges = [];
@@ -121,7 +170,7 @@ function parseGraph(body) {
 async function loadGraph(clientId) {
   const [nodesResult, edgesResult] = await Promise.all([
     pool.query(
-      `SELECT id, kind, ref_id, node_type, label, x, y
+      `SELECT id, kind, ref_id, node_type, label, x, y, width, height, meta
        FROM v_b_client_impact_nodes
        WHERE client_id = $1
        ORDER BY created_at ASC`,
@@ -172,9 +221,21 @@ export function registerImpactMapRoutes(router, resolveNumericClientId) {
       for (const node of parsed.nodes) {
         await db.query(
           `INSERT INTO v_b_client_impact_nodes
-            (id, client_id, kind, ref_id, node_type, label, x, y)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [node.id, clientId, node.kind, node.refId, node.nodeType, node.label, node.x, node.y]
+            (id, client_id, kind, ref_id, node_type, label, x, y, width, height, meta)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
+          [
+            node.id,
+            clientId,
+            node.kind,
+            node.refId,
+            node.nodeType,
+            node.label,
+            node.x,
+            node.y,
+            node.width,
+            node.height,
+            JSON.stringify(node.meta || {})
+          ]
         );
       }
       for (const edge of parsed.edges) {

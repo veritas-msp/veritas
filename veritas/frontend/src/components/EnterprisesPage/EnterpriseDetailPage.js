@@ -5508,6 +5508,7 @@ export default function ClientDetailPage({
                 canEdit={can("infrastructure.edit") || canManageDevices}
                 siteFilter={activeSiteFilter}
                 backupJobs={backupJobs}
+                sites={clientSites}
                 onNavigate={onNavigate}
               />
             </div>
