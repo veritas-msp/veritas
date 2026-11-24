@@ -104,7 +104,7 @@ export function sanitizeSupervisionAlertTitle(raw) {
   t = t.replace(/\bBattery to monitor\b/gi, "Batterie à surveiller");
   // « … expirée — depuis le DATE » → « … expirée depuis le DATE »
   t = t.replace(/\s*[—–-]\s*(depuis le)\s+/gi, " $1 ");
-  t = t.replace(/\s+[—–-]\s+/g, " — ");
+  t = t.replace(/\s+[—–-]\s+/g, " - ");
   t = t.replace(/\s{2,}/g, " ").trim();
   if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
   return t;
@@ -346,6 +346,61 @@ export function filterSupervisionQueue(items = [], {
     if (item.ruleEnabled === false) return false;
     return matchesSupervisionAlertSearch(item, query);
   });
+}
+
+/**
+ * Garde les alertes fusionnées sous leur alerte principale, dans la vue de cette principale.
+ * Les enfants ne forment pas une ligne autonome dans l’autre onglet.
+ * Une recherche qui touche un enfant ramène toute la branche.
+ */
+export function expandMergeBranches(pool = [], universe = [], triageView = "todo", {
+  includeFamilyFromChild = false
+} = {}) {
+  const byAlertId = new Map();
+  for (const item of universe) {
+    if (item?.alertId) byAlertId.set(String(item.alertId), item);
+  }
+  const rootInView = root => {
+    const wf = root?.workflowStatus || "open";
+    if (triageView === "todo") return wf === "open";
+    if (triageView === "in_progress") return wf === "acked" || wf === "linked";
+    return true;
+  };
+  const rootIds = new Set();
+  const mark = root => {
+    if (!root || !rootInView(root)) return;
+    if (root.alertId) rootIds.add(String(root.alertId));
+    else rootIds.add(`row:${root.id}`);
+  };
+  for (const item of pool) {
+    if (!item?.isMergeChild) {
+      mark(item);
+      continue;
+    }
+    if (!includeFamilyFromChild) continue;
+    const parent = byAlertId.get(String(item.parentAlertId || ""));
+    if (parent) mark(parent);
+    else mark(item);
+  }
+  const out = [];
+  const seen = new Set();
+  const push = item => {
+    const id = String(item?.id || "");
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    out.push(item);
+  };
+  for (const item of universe) {
+    if (item?.isMergeChild) {
+      const parent = byAlertId.get(String(item.parentAlertId || ""));
+      if (parent?.alertId && rootIds.has(String(parent.alertId))) push(item);
+      else if (!parent && rootIds.has(`row:${item.id}`)) push(item);
+      continue;
+    }
+    const key = item?.alertId ? String(item.alertId) : `row:${item?.id}`;
+    if (rootIds.has(key)) push(item);
+  }
+  return out;
 }
 
 export function countQueueByWorkflow(items = []) {

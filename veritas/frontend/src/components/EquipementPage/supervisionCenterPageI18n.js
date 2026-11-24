@@ -91,7 +91,7 @@ const SUPERVISION_COPY = {
         },
         queue: {
           title: "File d’alertes",
-          content: "Sur À traiter : Prendre en charge ou Plus (Ignorer / Maintenance). Sur En cours : Résoudre ou Créer un ticket. Resync et diagnostic restent dans Plus."
+          content: "Sur À traiter : Prendre en charge, maintenance ou Plus (Ignorer). Sur En cours : Résoudre, maintenance ou Créer un ticket. La resynchronisation reste dans Plus. Une alerte fusionnée se détache depuis la colonne Actions."
         },
         history: {
           title: "Historique",
@@ -185,12 +185,15 @@ const SUPERVISION_COPY = {
         parentLabel: "Fusionner vers",
         merge: "Fusionner",
         merging: "Fusion…",
-        mergeHint: "Sélectionnez les alertes à rattacher, puis choisissez l’alerte existante cible (ticket partagé si présent).",
+        mergeHint: "Cochez au moins deux alertes principales du même client, puis choisissez celle qui reste la principale. Les alertes déjà fusionnées ne se sélectionnent pas.",
         mergeHere: "Fusionner la sélection ici",
         parentBadge: "+{count}",
         parentBadgeHint: "Alertes fusionnées sous celle-ci",
         childBadge: "Fusionnée",
         childOf: "Fusionnée dans « {title} »",
+        childNotSelectable: "Alerte fusionnée : seule l’alerte principale est sélectionnable",
+        multipleParents: "Une seule alerte qui a déjà des branches peut recevoir la fusion.",
+        differentClients: "La fusion est limitée aux alertes d’un même client.",
         unmerge: "Détacher du merge"
       },
       actionHints: {
@@ -206,7 +209,9 @@ const SUPERVISION_COPY = {
         resync: "Relancer la sync CheckMK de cet hôte",
         mute: "Suspendre les alertes de ce périphérique",
         unmute: "Réactiver les alertes de ce périphérique",
-        diagnose: "Voir le diagnostic admin de cette alerte"
+        diagnose: "Voir le diagnostic admin de cette alerte",
+        maintenance: "Mettre cette alerte en maintenance",
+        unmerge: "Détacher cette alerte de la fusion"
       },
       freshness: {
         fresh: "Sync récente",
@@ -777,7 +782,7 @@ const SUPERVISION_COPY = {
         },
         queue: {
           title: "Alert queue",
-          content: "On To handle: Acknowledge or More (Ignore / Maintenance). On In progress: Resolve or Create ticket. Resync and diagnostic stay under More."
+          content: "On To handle: Acknowledge, maintenance, or More (Ignore). On In progress: Resolve, maintenance, or Create ticket. Resync stays under More. Detach a merged alert from the Actions column."
         },
         history: {
           title: "History",
@@ -871,12 +876,15 @@ const SUPERVISION_COPY = {
         parentLabel: "Merge onto",
         merge: "Merge",
         merging: "Merging…",
-        mergeHint: "Select alerts to attach, then pick the existing target alert (shared ticket when available).",
+        mergeHint: "Select at least two main alerts from the same client, then choose which one stays the main alert. Merged alerts cannot be selected.",
         mergeHere: "Merge selection here",
         parentBadge: "+{count}",
         parentBadgeHint: "Alerts merged under this one",
         childBadge: "Merged",
         childOf: "Merged into “{title}”",
+        childNotSelectable: "Merged alert: only the main alert can be selected",
+        multipleParents: "Only one alert that already has branches can receive the merge.",
+        differentClients: "Merge is limited to alerts from the same client.",
         unmerge: "Detach from merge"
       },
       actionHints: {
@@ -892,7 +900,9 @@ const SUPERVISION_COPY = {
         resync: "Re-run CheckMK sync for this host",
         mute: "Suspend alerts for this device",
         unmute: "Re-enable alerts for this device",
-        diagnose: "Open admin diagnostic for this alert"
+        diagnose: "Open admin diagnostic for this alert",
+        maintenance: "Put this alert into maintenance",
+        unmerge: "Detach this alert from the merge"
       },
       freshness: {
         fresh: "Fresh sync",
@@ -1506,6 +1516,9 @@ const SUPERVISION_COPY = {
         parentBadgeHint: "Zusammengeführte Alarme unter diesem",
         childBadge: "Zusammengeführt",
         childOf: "Zusammengeführt in „{title}“",
+        childNotSelectable: "Zusammengeführter Alarm: nur der Hauptalarm ist auswählbar",
+        multipleParents: "Nur ein Alarm mit bestehenden Zweigen kann die Zusammenführung aufnehmen.",
+        differentClients: "Die Zusammenführung ist auf Alarme desselben Kunden beschränkt.",
         unmerge: "Vom Merge lösen"
       },
       actionHints: {
@@ -1517,7 +1530,9 @@ const SUPERVISION_COPY = {
         plan: "Termin zu diesem Alarm planen",
         resolve: "Als gelöst markieren und in den Verlauf verschieben",
         dismiss: "Alarm ignorieren und in den Verlauf verschieben",
-        open: "Zugehörigen Datensatz oder Details öffnen"
+        open: "Zugehörigen Datensatz oder Details öffnen",
+        maintenance: "Diesen Alarm in Wartung setzen",
+        unmerge: "Diesen Alarm aus der Zusammenführung lösen"
       },
       createModal: {
         title: "Maßnahme erstellen",
@@ -1931,6 +1946,9 @@ const SUPERVISION_COPY = {
         parentBadgeHint: "Allarmi uniti sotto questo",
         childBadge: "Unito",
         childOf: "Unito in « {title} »",
+        childNotSelectable: "Allarme unito: è selezionabile solo l’allarme principale",
+        multipleParents: "Solo un allarme che ha già dei rami può ricevere l’unione.",
+        differentClients: "L’unione è limitata agli allarmi dello stesso cliente.",
         unmerge: "Scollega dal merge"
       },
       actionHints: {
@@ -1942,7 +1960,9 @@ const SUPERVISION_COPY = {
         plan: "Pianifica un evento collegato a questo allarme",
         resolve: "Segna come risolto e sposta in cronologia",
         dismiss: "Ignora l'allarme e spostalo in cronologia",
-        open: "Apri la scheda o il dettaglio collegato"
+        open: "Apri la scheda o il dettaglio collegato",
+        maintenance: "Metti questo allarme in manutenzione",
+        unmerge: "Scollega questo allarme dall’unione"
       },
       createModal: {
         title: "Crea un rimedio",
@@ -2355,6 +2375,9 @@ const SUPERVISION_COPY = {
         parentBadgeHint: "Alertas fusionadas bajo esta",
         childBadge: "Fusionada",
         childOf: "Fusionada en « {title} »",
+        childNotSelectable: "Alerta fusionada: solo se puede seleccionar la alerta principal",
+        multipleParents: "Solo una alerta que ya tiene ramas puede recibir la fusión.",
+        differentClients: "La fusión se limita a las alertas de un mismo cliente.",
         unmerge: "Separar del merge"
       },
       actionHints: {
@@ -2366,7 +2389,9 @@ const SUPERVISION_COPY = {
         plan: "Planificar un evento vinculado a esta alerta",
         resolve: "Marcar como resuelta y enviar al historial",
         dismiss: "Ignorar la alerta y enviarla al historial",
-        open: "Abrir la ficha o el detalle vinculado"
+        open: "Abrir la ficha o el detalle vinculado",
+        maintenance: "Poner esta alerta en mantenimiento",
+        unmerge: "Separar esta alerta de la fusión"
       },
       createModal: {
         title: "Crear una remediación",

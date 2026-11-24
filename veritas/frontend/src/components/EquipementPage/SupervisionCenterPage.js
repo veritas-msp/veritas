@@ -11,7 +11,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getLocaleTag } from "../../i18n/locales";
 import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
-import { buildQueueItemsFromSupervisionAlerts, filterSupervisionQueue, countQueueBySeverity, createSupervisionSupportTicket } from "./supervisionQueueUtils";
+import { buildQueueItemsFromSupervisionAlerts, filterSupervisionQueue, expandMergeBranches, matchesSupervisionAlertSearch, countQueueBySeverity, createSupervisionSupportTicket } from "./supervisionQueueUtils";
 import { interpolate } from "../../i18n/translate";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
 import SupervisionMaintenanceSidebar from "./SupervisionMaintenanceSidebar";
@@ -137,24 +137,34 @@ export default function MonitoringCenterPage({
   );
   const filteredQueue = useMemo(() => {
     if (triageView === "waiting") return [];
-    const base = filterSupervisionQueue(visibleQueue, {
+    const matched = filterSupervisionQueue(visibleQueue, {
       severity: triageView === "todo" ? opsSeverityFilter : "all",
-      query: opsSearchQuery,
+      query: "",
       workflowStatus: triageView === "todo" ? "open" : "all"
     });
-    if (triageView === "in_progress") {
-      return base.filter(item => {
+    const pool = triageView === "in_progress"
+      ? matched.filter(item => {
         const wf = item.workflowStatus || "open";
         return wf === "acked" || wf === "linked";
-      });
-    }
-    return base;
+      })
+      : matched;
+    const expanded = expandMergeBranches(pool, visibleQueue, triageView);
+    const query = String(opsSearchQuery || "").trim();
+    if (!query) return expanded;
+    const byAlertId = new Map(
+      visibleQueue.filter(item => item?.alertId).map(item => [String(item.alertId), item])
+    );
+    const rootKeyOf = item => {
+      if (item?.isMergeChild && item.parentAlertId && byAlertId.has(String(item.parentAlertId))) {
+        return String(item.parentAlertId);
+      }
+      return String(item?.alertId || item?.id || "");
+    };
+    const matchingRoots = new Set(
+      expanded.filter(item => matchesSupervisionAlertSearch(item, query)).map(rootKeyOf)
+    );
+    return expanded.filter(item => matchingRoots.has(rootKeyOf(item)));
   }, [visibleQueue, opsSeverityFilter, opsSearchQuery, triageView]);
-  /** Cibles de fusion : toute alerte active non-enfant (y compris ticket / autre onglet). */
-  const mergeTargetItems = useMemo(
-    () => visibleQueue.filter(item => !item.isMergeChild),
-    [visibleQueue]
-  );
   const severityCounts = useMemo(
     () => countQueueBySeverity(visibleQueue.filter(item => (item.workflowStatus || "open") === "open")),
     [visibleQueue]
@@ -989,7 +999,6 @@ export default function MonitoringCenterPage({
                         {activeTab === "operations" ? (
                           <SupervisionOpsQueue
                             items={filteredQueue}
-                            mergeTargetItems={mergeTargetItems}
                             kpi={severityCounts}
                             triageCounts={{ ...triageCounts, history: historyAlerts.length }}
                             severityFilter={opsSeverityFilter}
@@ -1010,10 +1019,8 @@ export default function MonitoringCenterPage({
                             onMerge={handleMergeAlerts}
                             onUnmerge={handleUnmergeAlert}
                             onResync={handleResyncHost}
-                            onDiagnose={item => setDiagnoseAlertId(item.alertId)}
                             onEndExclusion={handleEndExclusion}
                             exclusions={exclusions}
-                            canDiagnose={canManageAlertRules}
                             resyncBusyId={resyncBusyId}
                             busyId={alertActionBusyId}
                             mergeBusy={mergeBusy}

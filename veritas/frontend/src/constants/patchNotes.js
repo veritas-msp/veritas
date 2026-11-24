@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.25",
+    date: "2026-11-24",
+    highlights: [
+      "Centre de supervision : fusion limitée à un même client, affichée comme un bloc, avec le périphérique dans « Fusionner vers ».",
+      "Les alertes fusionnées ne se cochent plus en masse et se détachent depuis la colonne Actions.",
+      "Maintenance en icône de plot ; diagnostic et ouverture du périphérique retirés du menu Plus. Titres d’alerte avec un tiret simple."
+    ]
+  },
+  {
     version: "2.0.24",
     date: "2026-11-23",
     highlights: [

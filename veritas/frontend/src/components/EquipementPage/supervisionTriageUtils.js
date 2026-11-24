@@ -91,11 +91,20 @@ export const IGNORE_REASON_IDS = [
 
 export function countTriageBuckets(items = [], exclusions = []) {
   const list = Array.isArray(items) ? items : [];
+  const byAlertId = new Map();
+  for (const item of list) {
+    if (item?.alertId) byAlertId.set(String(item.alertId), item);
+  }
   let todo = 0;
   let inProgress = 0;
   for (const item of list) {
     if (item?.muted) continue;
-    const wf = item?.workflowStatus || "open";
+    let bucketItem = item;
+    if (item.isMergeChild && item.parentAlertId) {
+      const parent = byAlertId.get(String(item.parentAlertId));
+      if (parent && !parent.muted) bucketItem = parent;
+    }
+    const wf = bucketItem?.workflowStatus || "open";
     if (wf === "open") todo += 1;
     else if (wf === "acked" || wf === "linked") inProgress += 1;
   }

@@ -81,7 +81,7 @@ export function sanitizeSupervisionAlertTitle(raw) {
   t = t.replace(/\bBattery to replace\b/gi, "Batterie à remplacer");
   t = t.replace(/\bBattery to monitor\b/gi, "Batterie à surveiller");
   t = t.replace(/\s*[—–-]\s*(depuis le)\s+/gi, " $1 ");
-  t = t.replace(/\s+[—–-]\s+/g, " — ");
+  t = t.replace(/\s+[—–-]\s+/g, " - ");
   t = t.replace(/\s{2,}/g, " ").trim();
   if (t) t = t.charAt(0).toUpperCase() + t.slice(1);
   return t;
@@ -1855,9 +1855,22 @@ export async function mergeSupervisionAlerts({
     const now = new Date();
     const mergedChildren = [];
 
+    const parentClientKey = parentRow.client_id == null ? "" : String(parentRow.client_id).trim();
+    if (!parentClientKey) {
+      const err = new Error("Parent alert must belong to a client");
+      err.status = 400;
+      throw err;
+    }
+
     for (const child of childRowsResult.rows) {
       if (!ACTIVE_STATUSES.has(String(child.status || ""))) {
         const err = new Error(`Child alert ${child.queue_item_id} is not active`);
+        err.status = 400;
+        throw err;
+      }
+      const childClientKey = child.client_id == null ? "" : String(child.client_id).trim();
+      if (childClientKey !== parentClientKey) {
+        const err = new Error("Alerts must belong to the same client");
         err.status = 400;
         throw err;
       }
@@ -1867,8 +1880,13 @@ export async function mergeSupervisionAlerts({
       }
 
       const childMeta = child.meta && typeof child.meta === "object" ? { ...child.meta } : {};
-      if (parentTicketNumber) childMeta.linkedTicketNumber = parentTicketNumber;
+      // Ticket de la principale : il remplace celui déjà lié sur l’enfant.
+      if (parentTicketId) {
+        if (parentTicketNumber) childMeta.linkedTicketNumber = parentTicketNumber;
+        else delete childMeta.linkedTicketNumber;
+      }
 
+      // Sans ticket parent, une alerte ouverte passe « en cours ». Avec ticket, elle devient liée.
       const nextStatus = parentTicketId ? "linked" : child.status === "open" ? "acked" : child.status;
       // linked_ticket_id / linked_event_id sont VARCHAR en base — ne pas caster en uuid (COALESCE uuid/varchar).
       const patchValues = [
@@ -1888,8 +1906,8 @@ export async function mergeSupervisionAlerts({
            status = $3,
            acked_at = COALESCE(acked_at, NOW()),
            acked_by = COALESCE(acked_by, $2),
-           linked_ticket_id = COALESCE($4, linked_ticket_id),
-           linked_ticket_kind = COALESCE($5, linked_ticket_kind),
+           linked_ticket_id = CASE WHEN $4::varchar IS NOT NULL THEN $4::varchar ELSE linked_ticket_id END,
+           linked_ticket_kind = CASE WHEN $4::varchar IS NOT NULL THEN $5::varchar ELSE linked_ticket_kind END,
            meta = $6::jsonb,
            updated_at = NOW()
          WHERE id = $7
@@ -2008,6 +2026,7 @@ export async function unmergeSupervisionAlert({
     }
     const parentId = row.parent_alert_id;
     const oldStatus = row.status;
+    // Détacher ne rend ni l’ancien statut ni l’ancien ticket : seul le lien de fusion saute.
     const updated = await client.query(
       `UPDATE v_b_supervision_alerts SET
          parent_alert_id = NULL,
