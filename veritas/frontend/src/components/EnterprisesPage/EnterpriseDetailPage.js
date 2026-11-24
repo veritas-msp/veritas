@@ -61,6 +61,7 @@ import { normalizeLegalIdentifier } from "../../utils/siret";
 import { normalizeContactCommunications, getCommunicationTypeDef, buildContactApiPayload } from "../../utils/contactCommunications";
 import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
+import ImpactMapPanel from "./ImpactMapPanel";
 import { INFRA_BRICK_GROUPS, buildInfraBrickGroups } from "./infraHoneycombLayout";
 import { getInfraTypeIcon, INFRA_TYPE_ICONS } from "./infraMapUtils";
 import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "./EnterpriseFinderTabIcon";
@@ -68,6 +69,7 @@ import { EnterpriseOverviewTabButton, EnterpriseQuickActionButton } from "./Ente
 const ENTERPRISE_FINDER_ICONS = [
   ...Object.values(INFRA_TYPE_ICONS),
   "mdi:lan",
+  "mdi:graph-outline",
   "mdi:shield-lock-outline",
   "mdi:backup-restore",
   "mdi:ticket-confirmation-outline",
@@ -714,6 +716,9 @@ export default function ClientDetailPage({
   const [overviewTab, setOverviewTab] = useState(() => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab));
   // Keep-alive des onglets lourds : montés une fois (hidden) pour éviter flash / re-fetch.
   const [mapTabMounted, setMapTabMounted] = useState(false);
+  const [impactTabMounted, setImpactTabMounted] = useState(
+    () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "impact"
+  );
   const [cyberTabMounted, setCyberTabMounted] = useState(
     () => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab) === "cyber"
   );
@@ -1344,6 +1349,7 @@ export default function ClientDetailPage({
   }, []);
   useEffect(() => {
     if (overviewTab === "map") setMapTabMounted(true);
+    if (overviewTab === "impact") setImpactTabMounted(true);
     if (overviewTab === "cyber") setCyberTabMounted(true);
     if (overviewTab === "backup") setBackupTabMounted(true);
     if (overviewTab === "activity") setActivityTabMounted(true);
@@ -5067,9 +5073,9 @@ export default function ClientDetailPage({
           )
         : null}
 
-      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "cyber" || overviewTab === "backup" || overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
+      <div className={`${styles.pageBody} ${overviewTab === "vault" || overviewTab === "map" || overviewTab === "impact" || overviewTab === "cyber" || overviewTab === "backup" || overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.pageBodyFill : ""}`.trim()}>
           <div className={styles.pageGrid}>
-          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" || overviewTab === "backup" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
+          <main className={`${styles.mainColumn} ${styles.mainColumnFinder} ${overviewTab === "vault" ? styles.mainColumnVault : ""} ${overviewTab === "map" || overviewTab === "impact" ? styles.mainColumnMap : ""} ${overviewTab === "cyber" || overviewTab === "backup" ? styles.mainColumnCyber : ""} ${overviewTab === "activity" || overviewTab === "events" || overviewTab === "logs" ? styles.mainColumnActivity : ""} ${overviewTab === "logs" ? styles.mainColumnLogs : ""}`.trim()}>
             <div className={`${finderKit.finderLayout} ${styles.enterpriseFinderLayout}`}>
               <aside className={`${finderKit.finderSidebar} ${styles.enterpriseFinderSidebar}`} aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
                 <nav
@@ -5098,6 +5104,17 @@ export default function ClientDetailPage({
                     iconClassName={finderKit.finderItemIcon}
                     labelClassName={finderKit.finderItemLabel}
                     data-guide="enterprise-infra-map-tab"
+                  />
+                  <EnterpriseOverviewTabButton
+                    tabId="impact"
+                    iconify="mdi:graph-outline"
+                    label={copy.overviewTabImpact || "Analyse d'impact"}
+                    active={overviewTab === "impact"}
+                    onClick={() => setOverviewTab("impact")}
+                    className={`${finderKit.finderItem} ${overviewTab === "impact" ? finderKit.finderItemActive : ""}`}
+                    iconClassName={finderKit.finderItemIcon}
+                    labelClassName={finderKit.finderItemLabel}
+                    data-guide="enterprise-impact-tab"
                   />
                   <EnterpriseOverviewTabButton
                     tabId="cyber"
@@ -5475,6 +5492,23 @@ export default function ClientDetailPage({
             </section>
             </div>
             </div>
+            </div>
+            ) : null}
+
+            {impactTabMounted ? (
+            <div
+              className={`${overviewTabPanelClass("impact")} ${styles.impactMapHost}`}
+              hidden={overviewTab !== "impact"}
+              style={overviewTab === "impact" ? undefined : { display: "none" }}
+            >
+              <ImpactMapPanel
+                clientId={client.id}
+                clientName={clientNameWithoutCode}
+                active={overviewTab === "impact"}
+                canEdit={can("infrastructure.edit") || canManageDevices}
+                siteFilter={activeSiteFilter}
+                onNavigate={onNavigate}
+              />
             </div>
             ) : null}
 

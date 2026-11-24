@@ -1,0 +1,27 @@
+.badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  padding: 0 5px 0 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.badge svg {
+  font-size: 12px;
+}
+
+.primary {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.secondary {
+  background: #ffedd5;
+  color: #c2410c;
+}

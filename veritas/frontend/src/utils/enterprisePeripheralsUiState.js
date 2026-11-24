@@ -1,5 +1,5 @@
 const KEY_PREFIX = "veritas_enterprise_peripherals_ui_v1_";
-const OVERVIEW_TABS = new Set(["map", "cyber", "backup", "activity", "events", "vault", "logs"]);
+const OVERVIEW_TABS = new Set(["map", "impact", "cyber", "backup", "activity", "events", "vault", "logs"]);
 const SCROLL_DEBOUNCE_MS = 250;
 
 const memoryCache = new Map();

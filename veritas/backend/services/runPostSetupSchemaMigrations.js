@@ -30,6 +30,7 @@ import { ensureAzureMfaSchema } from "./ensureAzureMfaSchema.js";
 import { ensurePrestatairesSchema } from "./ensurePrestatairesSchema.js";
 import { ensureEntitySubscriptionsSchema } from "./ensureEntitySubscriptionsSchema.js";
 import { ensurePortalLoginEventsSchema } from "./ensurePortalLoginEventsSchema.js";
+import { ensureClientImpactMapSchema } from "./ensureClientImpactMapSchema.js";
 import { runIncrementalAvrilMigrations } from "../utils/incrementalAvrilMigrations.js";
 export async function runPostSetupSchemaMigrations() {
   await ensureProfilesSchema();
@@ -42,6 +43,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureUserNotificationsSchema();
   await ensureEntitySubscriptionsSchema();
   await ensurePortalLoginEventsSchema();
+  await ensureClientImpactMapSchema();
   await ensureTicketEmailThreadSchema();
   await ensureTicketSideConversationsSchema();
   await ensureTicketCommentUpdatedAtSchema();

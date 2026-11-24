@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.26",
+    date: "2026-11-24",
+    highlights: [
+      "Fiche entreprise : analyse d’impact pour placer les équipements et tracer leurs liaisons.",
+      "Les VLAN mettent en évidence le même réseau ; une liaison entre réseaux séparés est signalée et ne propage pas l’impact.",
+      "Vue Cartographie, sans liaisons, classée par réseau, avec export PDF en paysage.",
+      "Repère de haute disponibilité (lien principal / secours, paires pare-feu, serveur et stockage)."
+    ]
+  },
+  {
     version: "2.0.25",
     date: "2026-11-24",
     highlights: [

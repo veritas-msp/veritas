@@ -24,6 +24,7 @@ import { propagateClientSiteRenames } from '../../services/propagateClientSiteRe
 import { pruneOrphanSiteLinksForClient } from '../../services/contactSiteLinks.js';
 import { enableMonitoringAlertsForEquipment, SUPERVISION_SCAN_FAMILIES } from '../../utils/equipmentInventoryScan.js';
 import { resolveEquipmentFamilyKey } from '../../utils/equipmentMonitoringAlerts.js';
+import { registerImpactMapRoutes } from './impactMap.js';
 const router = express.Router();
 router.use(requireProForClientInfra);
 router.use(verifyJWT);
@@ -4592,5 +4593,6 @@ router.delete('/contacts/:id', verifyJWT, requirePermission('contacts_detail.del
     });
   }
 });
+registerImpactMapRoutes(router, resolveNumericClientId);
 export const modulesRouterExport = modulesRouter;
 export default router;

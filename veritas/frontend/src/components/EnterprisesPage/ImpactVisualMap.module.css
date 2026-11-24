@@ -1,0 +1,182 @@
+.scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.35) 1px, transparent 0) 0 0 / 18px 18px,
+    #f4f7fb;
+}
+
+.sheet {
+  margin: 16px;
+  padding: 22px 22px 28px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e6edf5;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e8eef5;
+}
+
+.kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2b5fab;
+}
+
+.title {
+  margin: 4px 0 0;
+  font-size: 22px;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.date,
+.summary,
+.empty {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.summary,
+.empty {
+  margin-top: 12px;
+}
+
+.zones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.zone {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #e6edf5;
+  background: var(--zone-soft, #f8fafc);
+  border-top: 3px solid var(--zone, #94a3b8);
+}
+
+.zoneWide {
+  grid-column: 1 / -1;
+  background: #f8fafc;
+  border-top-color: #2b5fab;
+}
+
+.zoneHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.zoneHead h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.zoneHead span {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tileGrid,
+.tileRow {
+  display: grid;
+  gap: 8px;
+}
+
+.tileGrid {
+  grid-template-columns: 1fr;
+}
+
+.tileRow {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.tileIcon {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: #eef3fb;
+  color: var(--zone, #2b5fab);
+  font-size: 18px;
+}
+
+.tileBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tileName,
+.tileMeta,
+.tileVlans {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tileName {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.tileMeta,
+.tileVlans,
+.tileFlag {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.tileFlag {
+  color: #9a6700;
+  font-weight: 650;
+}
+
+.tileHa {
+  border-left: 3px solid #0d9488;
+}
+
+.tileHaBadge {
+  margin-left: auto;
+}

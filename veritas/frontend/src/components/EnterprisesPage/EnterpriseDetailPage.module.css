@@ -3386,6 +3386,12 @@
   background: transparent;
 }
 
+.mainColumnMap .impactMapHost {
+  gap: 0;
+  padding: 0;
+}
+
+.mainColumnMap .impactMapHost,
 .mainColumnMap .overviewTabPanel {
   flex: 1 1 0;
   min-height: 0;

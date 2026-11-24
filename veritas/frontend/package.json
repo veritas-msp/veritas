@@ -1,6 +1,6 @@
 {
   "name": "veritas-frontend",
-  "version": "2.0.25",
+  "version": "2.0.26",
   "license": "AGPL-3.0-or-later",
   "description": "Web UI for the Veritas MSP platform",
   "homepage": "/",
@@ -39,6 +39,7 @@
     "@tiptap/pm": "^2.27.2",
     "@tiptap/react": "^2.27.2",
     "@tiptap/starter-kit": "^2.27.2",
+    "@xyflow/react": "^12.12.1",
     "chart.js": "^4.5.0",
     "chartjs-plugin-datalabels": "^2.2.0",
     "dompurify": "^3.4.11",
