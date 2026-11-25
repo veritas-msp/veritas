@@ -167,6 +167,31 @@
   opacity: 0.72;
 }
 
+.columnRowLocked {
+  background: var(--msp-surface, #fff);
+}
+
+.columnRowLocked:hover {
+  border-color: var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+}
+
+.lockMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  flex-shrink: 0;
+  font-size: 0.95rem;
+}
+
+.columnRowLocked .columnCheck,
+.columnRowLocked .columnCheck input {
+  cursor: default;
+}
+
 .dragHandle {
   display: inline-flex;
   align-items: center;

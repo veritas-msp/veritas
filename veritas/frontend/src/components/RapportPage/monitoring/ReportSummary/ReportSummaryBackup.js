@@ -348,7 +348,8 @@ export default function ReportSummaryBackup({
 
   return (
     <div className={execStyles.executiveRoot}>
-      <section className={execStyles.sectionBlock}>
+      <section className={execStyles.reportChapter}>
+        <h3 className={execStyles.reportSectionTitle}>Sauvegardes</h3>
         <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs sauvegarde">
           <div className={execStyles.kpiItem} role="listitem">
             <span className={execStyles.kpiLabel}>Instances</span>
@@ -368,53 +369,53 @@ export default function ReportSummaryBackup({
             </span>
           </div>
         </div>
-      </section>
 
-      <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Synthèse</h4>
-        <div
-          className={
-            typeof onSynthesisChange === "function"
-              ? execStyles.synthesisEditorHost
-              : execStyles.synthesisPanel
-          }
-        >
-          {typeof onSynthesisChange === "function" ? (
-            <ReportSynthesisEditor
-              value={synthesisHtml != null ? synthesisHtml : synthesis}
-              onChange={onSynthesisChange}
-              placeholder="Rédigez la synthèse des sauvegardes…"
-            />
-          ) : (
-            <p className={execStyles.synthesis}>{synthesis}</p>
-          )}
-        </div>
-      </section>
-
-      <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Instances</h4>
+        <div className={execStyles.sectionBlock}>
+        <h4 className={execStyles.reportSubsectionTitle}>Instances</h4>
         <ReportTableBlock
           title={null}
           columns={INSTANCE_COLUMNS}
           rows={instanceRows}
           emptyMessage="Aucune instance de sauvegarde."
         />
-      </section>
+        </div>
 
-      <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Jobs de sauvegarde</h4>
+        <div className={execStyles.sectionBlock}>
+        <h4 className={execStyles.reportSubsectionTitle}>Jobs de sauvegarde</h4>
         <ReportTableBlock
           title={null}
           columns={JOB_COLUMNS}
           rows={activeJobs}
           emptyMessage="Aucun job de sauvegarde à afficher."
         />
+        </div>
+
+        <div className={execStyles.sectionBlock}>
+          <h4 className={execStyles.reportSynthesisLabel}>Synthèse</h4>
+          <div
+            className={
+              typeof onSynthesisChange === "function"
+                ? execStyles.synthesisEditorHost
+                : execStyles.synthesisPanel
+            }
+          >
+            {typeof onSynthesisChange === "function" ? (
+              <ReportSynthesisEditor
+                value={synthesisHtml != null ? synthesisHtml : synthesis}
+                onChange={onSynthesisChange}
+                placeholder="Rédigez la synthèse des sauvegardes…"
+              />
+            ) : (
+              <p className={execStyles.synthesis}>{synthesis}</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className={execStyles.sectionBlock} data-export-comments="true">
         <div className={execStyles.commentsHeader}>
           <IconifyIcon icon="mdi:comment-text-outline" width={18} height={18} aria-hidden />
-          <h4 className={execStyles.sectionHeading}>Commentaires</h4>
+          <h4 className={execStyles.reportSubsectionTitle}>Commentaires</h4>
           {reportComments.length > 0 ? (
             <span className={execStyles.commentsCount}>{reportComments.length}</span>
           ) : null}

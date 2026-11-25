@@ -202,7 +202,8 @@ export default function ReportSummarySupervision({
 
   return (
     <div className={styles.executiveRoot}>
-      <section className={styles.sectionBlock}>
+      <section className={styles.reportChapter}>
+        <h3 className={styles.reportSectionTitle}>Infrastructure</h3>
         <div className={`${styles.kpiStrip} ${styles.kpiStripTriple}`} role="list" aria-label="Couverture de supervision">
           {overviewCards.map(card => (
             <div key={card.key} className={styles.kpiItem} role="listitem">
@@ -212,31 +213,9 @@ export default function ReportSummarySupervision({
             </div>
           ))}
         </div>
-      </section>
 
-      <section className={styles.sectionBlock}>
-        <h4 className={styles.sectionHeading}>Synthèse</h4>
-        <div
-          className={
-            typeof onSynthesisChange === "function"
-              ? styles.synthesisEditorHost
-              : styles.synthesisPanel
-          }
-        >
-          {typeof onSynthesisChange === "function" ? (
-            <ReportSynthesisEditor
-              value={synthesisHtml != null ? synthesisHtml : synthesis}
-              onChange={onSynthesisChange}
-              placeholder="Rédigez la synthèse de supervision…"
-            />
-          ) : (
-            <p className={styles.synthesis}>{synthesis}</p>
-          )}
-        </div>
-      </section>
-
-      <section className={styles.sectionBlock}>
-        <h4 className={styles.sectionHeading}>Santé par famille</h4>
+        <div className={styles.sectionBlock}>
+        <h4 className={styles.reportSubsectionTitle}>Santé par famille</h4>
         {infraModules.length === 0 ? (
           <p className={styles.emptyHint}>Aucune famille d&apos;équipements matériel.</p>
         ) : (
@@ -305,9 +284,9 @@ export default function ReportSummarySupervision({
             })}
           </div>
         )}
-      </section>
+        </div>
 
-      <section className={styles.sectionBlock} data-export-hide="true">
+        <div className={styles.sectionBlock} data-export-hide="true">
         <button
           type="button"
           className={styles.moreToggle}
@@ -376,12 +355,34 @@ export default function ReportSummarySupervision({
             })}
           </div>
         ) : null}
+        </div>
+
+        <div className={styles.sectionBlock}>
+          <h4 className={styles.reportSynthesisLabel}>Synthèse</h4>
+          <div
+            className={
+              typeof onSynthesisChange === "function"
+                ? styles.synthesisEditorHost
+                : styles.synthesisPanel
+            }
+          >
+            {typeof onSynthesisChange === "function" ? (
+              <ReportSynthesisEditor
+                value={synthesisHtml != null ? synthesisHtml : synthesis}
+                onChange={onSynthesisChange}
+                placeholder="Rédigez la synthèse de supervision…"
+              />
+            ) : (
+              <p className={styles.synthesis}>{synthesis}</p>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className={styles.sectionBlock} data-export-comments="true">
         <div className={styles.commentsHeader}>
           <IconifyIcon icon="mdi:comment-text-outline" width={18} height={18} aria-hidden />
-          <h4 className={styles.sectionHeading}>Commentaires</h4>
+          <h4 className={styles.reportSubsectionTitle}>Commentaires</h4>
           {reportComments.length > 0 ? (
             <span className={styles.commentsCount}>{reportComments.length}</span>
           ) : null}

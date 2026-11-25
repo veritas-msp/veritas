@@ -779,7 +779,7 @@ export default function TenantDetailPage({
   }
 
   return <SolutionDetailPageLayout accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
-      <div className={styles.tenantVars} key={viewMode}>
+      <div className={`${styles.tenantVars} ${styles.tenantPane}`} key={viewMode}>
         {renderSectionContent()}
       </div>
     </SolutionDetailPageLayout>;

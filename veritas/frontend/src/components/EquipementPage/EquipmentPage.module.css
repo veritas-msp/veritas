@@ -2252,11 +2252,28 @@
   );
 }
 
+.hardwarePageEmbedded .equipmentUiKitTable {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Barre horizontale dès que les colonnes dépassent le panneau. */
+.hardwarePageEmbedded .equipmentUiKitTable :global([class*="scrollViewport"]) {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  min-width: 0;
+}
+
+.hardwarePageEmbedded .equipmentUiKitTable :global([class*="scrollFade"]:not([class*="scrollFadeTop"])) {
+  bottom: 0.7rem;
+}
+
 .hardwarePageEmbedded .equipmentTableEmbedded {
-  width: 100%;
+  width: max-content;
   min-width: 100%;
-  /* fixed : les largeurs .embeddedCol* sont respectées (auto redistribuait le vide sur Statut, etc.) */
-  table-layout: fixed;
+  /* auto : la table grandit avec les colonnes, le viewport scrolle.
+     Les max-width des colonnes étroites (statut, HA, actions) empêchent qu’elles absorbent le vide. */
+  table-layout: auto;
 }
 
 .hardwarePageEmbedded .equipmentTableEmbedded thead {

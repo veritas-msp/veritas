@@ -62,12 +62,27 @@ function SortableColumnRow({ columnId, label, checked, disabled, dragAria, onTog
   );
 }
 
+function LockedColumnRow({ label }) {
+  return (
+    <div className={`${styles.columnRow} ${styles.columnRowLocked}`}>
+      <span className={styles.lockMark} aria-hidden>
+        <Icon icon="mdi:lock-outline" />
+      </span>
+      <label className={styles.columnCheck}>
+        <input type="checkbox" checked disabled readOnly />
+        <span className={styles.columnLabel}>{label}</span>
+      </label>
+    </div>
+  );
+}
+
 export default function EquipmentColumnsModal({
   open,
   familyLabel = "",
   columns = [],
   initialOrder = [],
   initialEnabled = [],
+  lockedColumnIds = [],
   saving = false,
   error = "",
   seedKey = "",
@@ -121,11 +136,17 @@ export default function EquipmentColumnsModal({
 
   if (!open) return null;
 
-  const visibleCount = columnOrder.filter(id => enabled.has(id)).length;
+  const lockedSet = new Set(lockedColumnIds);
+  const movableOrder = columnOrder.filter(id => !lockedSet.has(id));
+  const lockedOrder = [
+    ...columnOrder.filter(id => lockedSet.has(id)),
+    ...lockedColumnIds.filter(id => !columnOrder.includes(id))
+  ];
+  const visibleCount = [...movableOrder, ...lockedOrder].filter(id => lockedSet.has(id) || enabled.has(id)).length;
   const shownError = localError || error;
 
   const handleToggle = (columnId, checked) => {
-    if (saving) return;
+    if (saving || lockedSet.has(columnId)) return;
     setEnabled(prev => {
       const next = new Set(prev);
       if (checked) next.add(columnId);
@@ -144,21 +165,27 @@ export default function EquipmentColumnsModal({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setColumnOrder(prev => {
-      const oldIndex = prev.indexOf(active.id);
-      const newIndex = prev.indexOf(over.id);
+      const movable = prev.filter(id => !lockedSet.has(id));
+      const locked = [
+        ...prev.filter(id => lockedSet.has(id)),
+        ...lockedColumnIds.filter(id => !prev.includes(id))
+      ];
+      const oldIndex = movable.indexOf(active.id);
+      const newIndex = movable.indexOf(over.id);
       if (oldIndex < 0 || newIndex < 0) return prev;
-      return arrayMove(prev, oldIndex, newIndex);
+      return [...arrayMove(movable, oldIndex, newIndex), ...locked];
     });
   };
 
   const handleSave = () => {
-    const hidden = columnOrder.filter(id => !enabled.has(id));
-    const visible = columnOrder.filter(id => enabled.has(id));
+    const order = [...movableOrder, ...lockedOrder];
+    const hidden = movableOrder.filter(id => !enabled.has(id));
+    const visible = order.filter(id => lockedSet.has(id) || enabled.has(id));
     if (!visible.length) {
       setLocalError(copy.atLeastOne || "Sélectionnez au moins une colonne.");
       return;
     }
-    onSave?.({ order: columnOrder, hidden });
+    onSave?.({ order, hidden });
   };
 
   return createPortal(
@@ -195,9 +222,9 @@ export default function EquipmentColumnsModal({
             <span className={styles.reorderHint}>{copy.reorderHint || "Glisser pour réordonner"}</span>
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={columnOrder} strategy={verticalListSortingStrategy}>
-              <div className={styles.columnList}>
-                {columnOrder.map(columnId => (
+            <div className={styles.columnList}>
+              <SortableContext items={movableOrder} strategy={verticalListSortingStrategy}>
+                {movableOrder.map(columnId => (
                   <SortableColumnRow
                     key={columnId}
                     columnId={columnId}
@@ -208,8 +235,14 @@ export default function EquipmentColumnsModal({
                     onToggle={handleToggle}
                   />
                 ))}
-              </div>
-            </SortableContext>
+              </SortableContext>
+              {lockedOrder.map(columnId => (
+                <LockedColumnRow
+                  key={columnId}
+                  label={labelById.get(columnId) || columnId}
+                />
+              ))}
+            </div>
           </DndContext>
           {shownError ? <p className={styles.error}>{shownError}</p> : null}
         </div>

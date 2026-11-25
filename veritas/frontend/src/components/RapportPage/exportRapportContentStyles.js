@@ -103,6 +103,78 @@ export function buildExportContentStyles() {
       margin-top: 0.35rem !important;
     }
 
+    .vex-report [class*="reportChapter"] {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.95rem !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+    }
+
+    .vex-report [class*="reportChapter"] + [class*="reportChapter"] {
+      margin-top: 1.75rem !important;
+      padding-top: 1.85rem !important;
+      border-top: 1px solid var(--vex-border) !important;
+    }
+
+    .vex-report [class*="reportSectionTitle"] {
+      margin: 0 !important;
+      padding: 0.05rem 0 0.05rem 0.75rem !important;
+      border: none !important;
+      border-left: 3px solid var(--vex-accent) !important;
+      border-bottom: none !important;
+      width: auto !important;
+      display: block !important;
+      font-family: var(--vex-font-serif) !important;
+      font-size: 1.45rem !important;
+      font-weight: 560 !important;
+      letter-spacing: -0.02em !important;
+      line-height: 1.2 !important;
+      color: var(--vex-navy) !important;
+      text-transform: none !important;
+    }
+
+    .vex-report [class*="reportSubsectionTitle"] {
+      margin: 0.2rem 0 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      width: auto !important;
+      display: block !important;
+      font-family: var(--vex-font-sans) !important;
+      font-size: 0.74rem !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.07em !important;
+      line-height: 1.3 !important;
+      text-transform: uppercase !important;
+      color: var(--vex-text-muted) !important;
+    }
+
+    .vex-report [class*="reportSynthesisLabel"] {
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      width: auto !important;
+      display: block !important;
+      font-family: var(--vex-font-sans) !important;
+      font-size: 0.7rem !important;
+      font-weight: 650 !important;
+      letter-spacing: 0.08em !important;
+      line-height: 1.3 !important;
+      text-transform: uppercase !important;
+      color: var(--vex-accent-dark) !important;
+    }
+
+    .vex-report [class*="commentsHeader"] {
+      border: none !important;
+      padding: 0 !important;
+      font-size: inherit !important;
+      font-weight: inherit !important;
+      width: auto !important;
+      color: var(--vex-text-muted) !important;
+    }
+
     /* KPI */
     .vex-report [class*="kpiStrip"] {
       display: grid !important;
@@ -476,8 +548,10 @@ export function buildExportContentStyles() {
       align-items: center !important;
       gap: 0.4rem !important;
       font-size: 0.9rem !important;
-      font-weight: 650 !important;
-      color: var(--vex-navy) !important;
+      font-weight: 500 !important;
+      letter-spacing: 0 !important;
+      text-transform: none !important;
+      color: var(--vex-text) !important;
     }
 
     .vex-report [class*="serviceSubtitle"] {

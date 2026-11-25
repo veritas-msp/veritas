@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.34",
+    date: "2026-11-25",
+    highlights: [
+      "Rapports de supervision : sections plus lisibles, services inutilisés masqués, et plus d’espace après chaque synthèse.",
+      "Infrastructure : la colonne Actions reste affichée, tout à droite. Les tableaux défilent horizontalement si besoin.",
+      "Stockage : l’adresse QuickConnect s’ouvre d’un clic.",
+      "Tenant Microsoft : la liste des utilisateurs défile dans le tableau."
+    ]
+  },
+  {
     version: "2.0.33",
     date: "2026-11-25",
     highlights: [

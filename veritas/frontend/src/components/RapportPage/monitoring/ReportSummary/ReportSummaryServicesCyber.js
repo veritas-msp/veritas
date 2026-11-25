@@ -133,7 +133,6 @@ export default function ReportSummaryServicesCyber({
   const [showTechnicalDetail, setShowTechnicalDetail] = useState(false);
   const [mfaDetailsFromApi, setMfaDetailsFromApi] = useState([]);
   const clientId = client?.id ?? client?.uuid ?? null;
-  const modules = client?.modules_monitoring || {};
 
   useEffect(() => {
     if (!clientId) return undefined;
@@ -310,10 +309,15 @@ export default function ReportSummaryServicesCyber({
 
   const endpointRows = useMemo(() => buildAntivirusEndpointRowsForClient(antivirusSolutions), [antivirusSolutions]);
 
-  const hasAntivirus = !!modules.Antivirus || antivirusSolutions.length > 0;
-  const hasAntispam = !!modules.Antispam || antispamSolutions.length > 0;
-  const hasOffice = !!modules.Office365 || Boolean(client?.equipements?.Office365);
-  const hasDomains = !!modules.NDD || domains.length > 0;
+  const hasAntivirus = antivirusSolutions.length > 0;
+  const hasAntispam = antispamSolutions.length > 0;
+  const hasDomains = domains.length > 0;
+  const hasOffice = Boolean(
+    client?.has_azure_credentials ||
+      client?.hasAzureCredentials ||
+      client?.azureHasCredentials ||
+      (o365Data && (o365Data.usersCount > 0 || o365Data.licenseTypes > 0))
+  );
 
   const showAgentConsistencyNote =
     hasAntivirus &&
@@ -407,8 +411,8 @@ export default function ReportSummaryServicesCyber({
         ? value => onSynthesisChange(serviceKey, value)
         : null;
     return (
-      <section className={execStyles.sectionBlock}>
-        <h4 className={execStyles.sectionHeading}>Synthèse</h4>
+      <div className={execStyles.sectionBlock}>
+        <h4 className={execStyles.reportSynthesisLabel}>Synthèse</h4>
         <div
           className={
             typeof onChange === "function"
@@ -426,7 +430,7 @@ export default function ReportSummaryServicesCyber({
             <p className={execStyles.synthesis}>{fallback}</p>
           )}
         </div>
-      </section>
+      </div>
     );
   }
 
@@ -486,10 +490,13 @@ export default function ReportSummaryServicesCyber({
 
   return (
     <div className={execStyles.executiveRoot}>
+      {!hasOffice && !hasAntivirus && !hasAntispam && !hasDomains ? (
+        <p className={execStyles.emptyHint}>Aucun de ces services n&apos;est utilisé par cette entreprise.</p>
+      ) : null}
       {hasOffice && o365Data ? (
-        <>
-          <section className={execStyles.sectionBlock}>
-            <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs Microsoft 365">
+        <section className={execStyles.reportChapter}>
+          <h3 className={execStyles.reportSectionTitle}>Tenant Microsoft</h3>
+          <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs Microsoft 365">
               <div className={execStyles.kpiItem} role="listitem">
                 <span className={execStyles.kpiLabel}>Utilisateurs</span>
                 <span className={execStyles.kpiValue}>{formatInt(o365Data.usersCount)}</span>
@@ -518,14 +525,9 @@ export default function ReportSummaryServicesCyber({
                 </span>
               </div>
             </div>
-          </section>
 
-          {renderSynthesis("microsoft", microsoftSynthesis, "Rédigez la synthèse Microsoft 365…")}
-
-          <section className={execStyles.sectionBlock}>
-            <h4 className={execStyles.sectionHeading}>Microsoft 365</h4>
             <div className={styles.serviceCard}>
-              <h5 className={execStyles.detailSectionTitle}>Licences</h5>
+              <h4 className={execStyles.reportSubsectionTitle}>Licences</h4>
               <ReportTableBlock
                 title={null}
                 columns={[
@@ -566,7 +568,7 @@ export default function ReportSummaryServicesCyber({
 
               {o365Data.microsoftDomains.length > 0 ? (
                 <>
-                  <h5 className={execStyles.detailSectionTitle}>Domaines Microsoft 365</h5>
+                  <h4 className={execStyles.reportSubsectionTitle}>Domaines Microsoft 365</h4>
                   <ul className={styles.simpleList}>
                     {o365Data.microsoftDomains.map(domain => (
                       <li key={domain}>{domain}</li>
@@ -577,7 +579,7 @@ export default function ReportSummaryServicesCyber({
             </div>
 
             <div className={styles.serviceCard}>
-              <h5 className={execStyles.detailSectionTitle}>Usage des services</h5>
+              <h4 className={execStyles.reportSubsectionTitle}>Usage des services</h4>
 
               {exchange ? (
                 <div className={styles.usageBlock}>
@@ -666,7 +668,7 @@ export default function ReportSummaryServicesCyber({
             </div>
 
             <div className={styles.serviceCard}>
-              <h5 className={execStyles.detailSectionTitle}>Sécurité</h5>
+              <h4 className={execStyles.reportSubsectionTitle}>Sécurité</h4>
               <div className={`${styles.metricGrid} ${styles.metricGrid4}`}>
                 <Metric
                   label="Secure Score"
@@ -699,167 +701,158 @@ export default function ReportSummaryServicesCyber({
                 </p>
               ) : null}
             </div>
-          </section>
-        </>
-      ) : null}
 
-      {hasAntispam ? (
-        <>
-          <section className={execStyles.sectionBlock}>
-            <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs antispam">
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Solution</span>
-                <span className={execStyles.kpiValue}>{antispamStats.solutionName}</span>
-                <span className={execStyles.kpiHint}>protection messagerie</span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Utilisateurs protégés</span>
-                <span className={execStyles.kpiValue}>{formatInt(antispamStats.protectedUsers)}</span>
-                <span className={execStyles.kpiHint}>comptes couverts</span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Domaines / licences</span>
-                <span className={execStyles.kpiValue}>{formatInt(antispamStats.domainsOrLicenses)}</span>
-                <span className={execStyles.kpiHint}>
-                  {antispamStats.hasStats ? "stats disponibles" : "stats non disponibles"}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {renderSynthesis("antispam", antispamSynthesis, "Rédigez la synthèse antispam…")}
-
-          <section className={execStyles.sectionBlock}>
-            <h4 className={execStyles.sectionHeading}>Antispam</h4>
-            <div className={styles.serviceCard}>
-              <p className={styles.serviceSubtitle}>
-                {antispamStats.solutionName} — protection des messageries
-              </p>
-              {!antispamStats.hasStats ? (
-                <p className={execStyles.sectionFootnote}>
-                  Les statistiques de filtrage des e-mails ne sont pas disponibles sur la période.
-                </p>
-              ) : (
-                <p className={execStyles.sectionFootnote}>Suivi antispam actif sur la période.</p>
-              )}
-            </div>
-          </section>
-        </>
+            {renderSynthesis("microsoft", microsoftSynthesis, "Rédigez la synthèse Microsoft 365…")}
+        </section>
       ) : null}
 
       {hasAntivirus ? (
-        <>
-          <section className={execStyles.sectionBlock}>
-            <div className={execStyles.kpiStrip} role="list" aria-label="Indicateurs antivirus">
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Postes</span>
-                <span className={execStyles.kpiValue}>{formatInt(antivirusStats.totalEndpoints)}</span>
-                <span className={execStyles.kpiHint}>{antivirusStats.solutionName}</span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Gérés</span>
-                <span className={execStyles.kpiValue}>{formatInt(antivirusStats.managed)}</span>
-                <span className={execStyles.kpiHint}>
-                  {formatInt(antivirusStats.unmanaged)} non géré{antivirusStats.unmanaged > 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Couverture</span>
-                <span
-                  className={`${execStyles.kpiValue} ${antivirusStats.unmanaged > 0 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
-                >
-                  {formatPct(antivirusStats.managementRate)}
-                </span>
-                <span className={execStyles.kpiHint}>postes gérés</span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Agents 24 h</span>
-                <span
-                  className={`${execStyles.kpiValue} ${antivirusStats.disconnected > 0 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
-                >
-                  {formatInt(antivirusStats.connected)}
-                </span>
-                <span className={execStyles.kpiHint}>
-                  {formatInt(antivirusStats.disconnected)} sans remontée
-                </span>
-              </div>
+        <section className={execStyles.reportChapter}>
+          <h3 className={execStyles.reportSectionTitle}>Tenant antivirus</h3>
+          <div className={execStyles.kpiStrip} role="list" aria-label="Indicateurs antivirus">
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Postes</span>
+              <span className={execStyles.kpiValue}>{formatInt(antivirusStats.totalEndpoints)}</span>
+              <span className={execStyles.kpiHint}>{antivirusStats.solutionName}</span>
             </div>
-          </section>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Gérés</span>
+              <span className={execStyles.kpiValue}>{formatInt(antivirusStats.managed)}</span>
+              <span className={execStyles.kpiHint}>
+                {formatInt(antivirusStats.unmanaged)} non géré{antivirusStats.unmanaged > 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Couverture</span>
+              <span
+                className={`${execStyles.kpiValue} ${antivirusStats.unmanaged > 0 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
+              >
+                {formatPct(antivirusStats.managementRate)}
+              </span>
+              <span className={execStyles.kpiHint}>postes gérés</span>
+            </div>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Agents 24 h</span>
+              <span
+                className={`${execStyles.kpiValue} ${antivirusStats.disconnected > 0 ? execStyles.kpiValueWarn : execStyles.kpiValueOk}`}
+              >
+                {formatInt(antivirusStats.connected)}
+              </span>
+              <span className={execStyles.kpiHint}>
+                {formatInt(antivirusStats.disconnected)} sans remontée
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.serviceCard}>
+            <h4 className={execStyles.reportSubsectionTitle}>État des agents</h4>
+            <div className={styles.metricGrid}>
+              <Metric label="Agents vus depuis moins de 24 h" value={formatInt(antivirusStats.connected)} />
+              <Metric
+                label="Agents sans remontée depuis plus de 24 h"
+                value={formatInt(antivirusStats.disconnected)}
+              />
+            </div>
+            {antivirusStats.licenseTotal > 0 ? (
+              <>
+                <h4 className={execStyles.reportSubsectionTitle}>Licences</h4>
+                <div className={styles.metricGrid}>
+                  <Metric
+                    label={antivirusStats.solutionName}
+                    value={`${formatInt(antivirusStats.licenseUsed)} / ${formatInt(antivirusStats.licenseTotal)}`}
+                    hint={`${formatInt(antivirusStats.licenseUsed)} licences utilisées sur ${formatInt(antivirusStats.licenseTotal)} disponibles.`}
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
 
           {renderSynthesis("antivirus", antivirusSynthesis, "Rédigez la synthèse antivirus…")}
+        </section>
+      ) : null}
 
-          <section className={execStyles.sectionBlock}>
-            <h4 className={execStyles.sectionHeading}>Antivirus</h4>
-            <div className={styles.serviceCard}>
-              <h5 className={execStyles.detailSectionTitle}>État des agents</h5>
-              <div className={styles.metricGrid}>
-                <Metric label="Agents vus depuis moins de 24 h" value={formatInt(antivirusStats.connected)} />
-                <Metric
-                  label="Agents sans remontée depuis plus de 24 h"
-                  value={formatInt(antivirusStats.disconnected)}
-                />
-              </div>
-              {antivirusStats.licenseTotal > 0 ? (
-                <>
-                  <h5 className={execStyles.detailSectionTitle}>Licences</h5>
-                  <div className={styles.metricGrid}>
-                    <Metric
-                      label={antivirusStats.solutionName}
-                      value={`${formatInt(antivirusStats.licenseUsed)} / ${formatInt(antivirusStats.licenseTotal)}`}
-                      hint={`${formatInt(antivirusStats.licenseUsed)} licences utilisées sur ${formatInt(antivirusStats.licenseTotal)} disponibles.`}
-                    />
-                  </div>
-                </>
-              ) : null}
+      {hasAntispam ? (
+        <section className={execStyles.reportChapter}>
+          <h3 className={execStyles.reportSectionTitle}>Tenant antispam</h3>
+          <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs antispam">
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Solution</span>
+              <span className={execStyles.kpiValue}>{antispamStats.solutionName}</span>
+              <span className={execStyles.kpiHint}>protection messagerie</span>
             </div>
-          </section>
-        </>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Utilisateurs protégés</span>
+              <span className={execStyles.kpiValue}>{formatInt(antispamStats.protectedUsers)}</span>
+              <span className={execStyles.kpiHint}>comptes couverts</span>
+            </div>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Domaines / licences</span>
+              <span className={execStyles.kpiValue}>{formatInt(antispamStats.domainsOrLicenses)}</span>
+              <span className={execStyles.kpiHint}>
+                {antispamStats.hasStats ? "stats disponibles" : "stats non disponibles"}
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.serviceCard}>
+            <h4 className={execStyles.reportSubsectionTitle}>Protection</h4>
+            <p className={styles.serviceSubtitle}>
+              {antispamStats.solutionName} — protection des messageries
+            </p>
+            {!antispamStats.hasStats ? (
+              <p className={execStyles.sectionFootnote}>
+                Les statistiques de filtrage des e-mails ne sont pas disponibles sur la période.
+              </p>
+            ) : (
+              <p className={execStyles.sectionFootnote}>Suivi antispam actif sur la période.</p>
+            )}
+          </div>
+
+          {renderSynthesis("antispam", antispamSynthesis, "Rédigez la synthèse antispam…")}
+        </section>
       ) : null}
 
       {hasDomains ? (
-        <>
-          <section className={execStyles.sectionBlock}>
-            <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs domaines">
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Domaines</span>
-                <span className={execStyles.kpiValue}>{formatInt(domains.length)}</span>
-                <span className={execStyles.kpiHint}>noms de domaine suivis</span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>Échéances &lt; 90 j</span>
-                <span className={execStyles.kpiValue}>
-                  {formatInt(
-                    domains.filter(domain => {
-                      const remaining = daysUntil(
-                        domain.expiration || domain.expiry || domain.dateExpiration
-                      );
-                      return remaining != null && remaining <= 90;
-                    }).length
-                  )}
-                </span>
-                <span className={execStyles.kpiHint}>à renouveler</span>
-              </div>
-              <div className={execStyles.kpiItem} role="listitem">
-                <span className={execStyles.kpiLabel}>État</span>
-                <span className={execStyles.kpiValue}>
-                  {domains.some(domain => {
+        <section className={execStyles.reportChapter}>
+          <h3 className={execStyles.reportSectionTitle}>Nom de domaine</h3>
+          <div className={`${execStyles.kpiStrip} ${execStyles.kpiStripTriple}`} role="list" aria-label="Indicateurs domaines">
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Domaines</span>
+              <span className={execStyles.kpiValue}>{formatInt(domains.length)}</span>
+              <span className={execStyles.kpiHint}>noms de domaine suivis</span>
+            </div>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>Échéances &lt; 90 j</span>
+              <span className={execStyles.kpiValue}>
+                {formatInt(
+                  domains.filter(domain => {
                     const remaining = daysUntil(
                       domain.expiration || domain.expiry || domain.dateExpiration
                     );
-                    return remaining != null && remaining < 0;
-                  })
-                    ? "Expiré"
-                    : "Actif"}
-                </span>
-                <span className={execStyles.kpiHint}>suivi DNS / registrar</span>
-              </div>
+                    return remaining != null && remaining <= 90;
+                  }).length
+                )}
+              </span>
+              <span className={execStyles.kpiHint}>à renouveler</span>
             </div>
-          </section>
+            <div className={execStyles.kpiItem} role="listitem">
+              <span className={execStyles.kpiLabel}>État</span>
+              <span className={execStyles.kpiValue}>
+                {domains.some(domain => {
+                  const remaining = daysUntil(
+                    domain.expiration || domain.expiry || domain.dateExpiration
+                  );
+                  return remaining != null && remaining < 0;
+                })
+                  ? "Expiré"
+                  : "Actif"}
+              </span>
+              <span className={execStyles.kpiHint}>suivi DNS / registrar</span>
+            </div>
+          </div>
 
-          {renderSynthesis("domains", domainsSynthesis, "Rédigez la synthèse des domaines…")}
-
-          <section className={execStyles.sectionBlock}>
-            <h4 className={execStyles.sectionHeading}>Noms de domaine</h4>
+          <div className={styles.serviceCard}>
+            <h4 className={execStyles.reportSubsectionTitle}>Domaines suivis</h4>
             {domains.length === 0 ? (
               <p className={execStyles.sectionFootnote}>Aucun nom de domaine enregistré.</p>
             ) : (
@@ -885,10 +878,13 @@ export default function ReportSummaryServicesCyber({
                 );
               })
             )}
-          </section>
-        </>
+          </div>
+
+          {renderSynthesis("domains", domainsSynthesis, "Rédigez la synthèse des domaines…")}
+        </section>
       ) : null}
 
+      {hasAntivirus || (hasOffice && sharepointSites.length > 0) ? (
       <section className={execStyles.sectionBlock} data-export-hide="true">
         <button
           type="button"
@@ -929,6 +925,7 @@ export default function ReportSummaryServicesCyber({
           </div>
         ) : null}
       </section>
+      ) : null}
     </div>
   );
 }

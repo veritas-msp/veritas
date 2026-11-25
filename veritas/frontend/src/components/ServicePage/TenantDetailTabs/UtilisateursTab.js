@@ -556,7 +556,7 @@ export default function UsersTab({
   const usersList = Array.isArray(users) ? users : [];
   const showUserContent = embedded || usersList.length > 0;
 
-  return <section className={`${styles.kpiSection} ${embedded ? styles.tabFill : ""}`}>
+  return <section className={`${styles.kpiSection} ${embedded ? styles.tabFill : styles.usersPane}`}>
       {!embedded ? <h2 className={styles.sectionTitle}>Users</h2> : null}
       {showUserContent ? <>
           {}
@@ -768,10 +768,7 @@ export default function UsersTab({
             </SmartTooltip>
           </div> : null}
           {(() => {
-            const buildTableEl = tableRows => <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : ""}`} style={embedded ? undefined : {
-        overflowY: 'hidden',
-        maxHeight: 'none'
-      }}>
+            const buildTableEl = tableRows => <div className={`${styles.licensesTableContainer} ${embedded ? styles.tablePlain : styles.usersTableScroll}`}>
             <table className={styles.licensesTable}>
               <thead>
                 <tr>

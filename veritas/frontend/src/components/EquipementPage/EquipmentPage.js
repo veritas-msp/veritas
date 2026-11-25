@@ -4571,6 +4571,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         columns={columnsModalModel?.descriptors || []}
         initialOrder={columnsModalEditor.order}
         initialEnabled={columnsModalEditor.enabled}
+        lockedColumnIds={(columnsModalModel?.available || []).includes("mapping") ? ["mapping"] : []}
         seedKey={columnsModalSeed}
         saving={columnsSaving}
         error={columnsSaveError}

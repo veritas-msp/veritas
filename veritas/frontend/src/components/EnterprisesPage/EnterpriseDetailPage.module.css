@@ -7093,10 +7093,10 @@ button.sidebarOptionIcon:hover {
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto;
   font-size: 0.8125rem;
 }
 

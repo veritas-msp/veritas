@@ -43,6 +43,15 @@
   min-width: 0;
 }
 
+.tenantPane {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .tenantVarsFill {
   flex: 1;
   min-height: 0;
@@ -805,8 +814,25 @@
 }
 
 
-.kpiSection {
-  margin-bottom: 1rem;
+.kpiSection.usersPane {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.usersTableScroll {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 0.75rem;
+  overflow: auto;
+}
+
+.usersTableScroll .licensesTable thead th {
+  background: var(--msp-surface, #fff);
 }
 
 .kpiSection.tabFill {

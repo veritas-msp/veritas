@@ -6,6 +6,7 @@ import { buildEquipmentDetailSections } from "./equipmentDetailConfig";
 import { buildBorneWifiSsidFormState, collectEquipmentAssignedSsids } from "./wifiApSsidUtils";
 import { getFirewallDisplayName, resolveFirewallHaPeer, getServerDisplayName, resolveHostServerPeer, resolveServerHaPeer, getStorageDisplayName, resolveStorageHaPeer, getStorageFormProfile } from "./equipmentFormConfig";
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
+import { buildQuickConnectUrl } from "./synologyEquipmentUtils";
 import StorageDiskBayDisplay from "./StorageDiskBayDisplay";
 import { getEquipmentFormOptionsCopy } from "./equipmentFormOptionsI18n";
 import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
@@ -98,6 +99,14 @@ function SpecField({
   copy
 }) {
   const renderValue = () => {
+    if (field.key === "quickConnect") {
+      const url = buildQuickConnectUrl(field.value);
+      if (url) {
+        return <a className={`${styles.fieldValue} ${styles.fieldLink} ${field.mono ? styles.fieldValueMono : ""}`} href={url} target="_blank" rel="noopener noreferrer">
+            {field.value}
+          </a>;
+      }
+    }
     if (equipmentLink) {
       if (field.key === "firewallHAName" || field.key === "serverHAName" || field.key === "storageHAName") {
         return <button type="button" className={styles.haPeerLink} onClick={equipmentLink.onClick} title={equipmentLink.title}>

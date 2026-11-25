@@ -88,6 +88,58 @@
   gap: 0.55rem;
 }
 
+.reportChapter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.reportChapter + .reportChapter {
+  margin-top: 1.75rem;
+  padding-top: 1.85rem;
+  border-top: 1px solid var(--msp-border-light, #e8edf5);
+}
+
+.reportSectionTitle {
+  margin: 0;
+  padding: 0.05rem 0 0.05rem 0.7rem;
+  border: none;
+  border-left: 3px solid var(--msp-accent, #2b5fab);
+  font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+  font-size: 1.38rem;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.reportSubsectionTitle {
+  margin: 0.15rem 0 0;
+  padding: 0;
+  border: none;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.reportSynthesisLabel {
+  margin: 0;
+  padding: 0;
+  border: none;
+  width: auto;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--msp-accent, #2b5fab);
+}
+
 .sectionTitle,
 .sectionHeading {
   margin: 0;
@@ -835,8 +887,13 @@
 :global(html.dark) .detailSectionTitle,
 :global(html.dark) .executiveTitle,
 :global(html.dark) .executiveClient,
-:global(html.dark) .sectionHeading {
+:global(html.dark) .sectionHeading,
+:global(html.dark) .reportSectionTitle {
   color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .reportChapter + .reportChapter {
+  border-top-color: var(--msp-border, #2f4260);
 }
 
 :global(html.dark) .synthesisPanel,

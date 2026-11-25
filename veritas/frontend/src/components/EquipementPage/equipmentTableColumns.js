@@ -90,27 +90,37 @@ function insertBeforeActions(order, key) {
   else order.push(key);
 }
 
+/** La colonne Actions reste toujours visible, en dernière position. */
+export function pinActionsColumnLast(order, availableSet = null) {
+  const keys = uniqueColumnKeys(order).filter(key => key !== "mapping");
+  const canPin = !availableSet || availableSet.has("mapping");
+  if (!canPin) return keys;
+  return [...keys, "mapping"];
+}
+
 /** Colonnes affichées : ordre sauvegardé, masquées retirées, nouvelles colonnes insérées avant Actions. */
 export function resolveVisibleColumnKeys(available, defaultVisible, saved) {
   const availableSet = new Set(uniqueColumnKeys(available));
   const defaults = uniqueColumnKeys(defaultVisible).filter(key => availableSet.has(key));
   if (!saved || typeof saved !== "object") return defaults;
 
-  const hidden = new Set(uniqueColumnKeys(saved.hidden).filter(key => availableSet.has(key)));
+  const hidden = new Set(
+    uniqueColumnKeys(saved.hidden).filter(key => availableSet.has(key) && key !== "mapping")
+  );
   const known = new Set([...uniqueColumnKeys(saved.order), ...uniqueColumnKeys(saved.hidden)]);
   const order = [];
   const seen = new Set();
   for (const key of uniqueColumnKeys(saved.order)) {
-    if (!availableSet.has(key) || seen.has(key)) continue;
+    if (!availableSet.has(key) || seen.has(key) || key === "mapping") continue;
     seen.add(key);
     order.push(key);
   }
   for (const key of defaults) {
-    if (known.has(key) || seen.has(key)) continue;
+    if (key === "mapping" || known.has(key) || seen.has(key)) continue;
     insertBeforeActions(order, key);
     seen.add(key);
   }
-  const visible = order.filter(key => !hidden.has(key));
+  const visible = pinActionsColumnLast(order.filter(key => !hidden.has(key)), availableSet);
   if (visible.length) return visible;
   if (defaults.length) return [defaults[0]];
   const first = uniqueColumnKeys(available)[0];
@@ -123,7 +133,10 @@ export function editorStateFromPrefs(available, defaultVisible, saved) {
   const availableSet = new Set(catalog);
   const visible = resolveVisibleColumnKeys(catalog, defaultVisible, saved);
   if (!saved?.order?.length) {
-    return { order: uniqueColumnKeys([...visible, ...catalog]), enabled: visible };
+    return {
+      order: pinActionsColumnLast([...visible, ...catalog], availableSet),
+      enabled: pinActionsColumnLast(visible, availableSet)
+    };
   }
   const known = new Set([...uniqueColumnKeys(saved.order), ...uniqueColumnKeys(saved.hidden)]);
   const order = [];
@@ -139,10 +152,13 @@ export function editorStateFromPrefs(available, defaultVisible, saved) {
     seen.add(key);
   }
   for (const key of catalog) {
-    if (seen.has(key)) continue;
+    if (seen.has(key) || key === "mapping") continue;
     order.push(key);
   }
-  return { order, enabled: visible };
+  return {
+    order: pinActionsColumnLast(order, availableSet),
+    enabled: pinActionsColumnLast(visible, availableSet)
+  };
 }
 
 export function normalizeEquipmentColumnPrefs(raw) {
