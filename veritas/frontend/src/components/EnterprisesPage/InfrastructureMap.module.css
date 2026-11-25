@@ -103,6 +103,35 @@
   min-width: 0;
 }
 
+.detailHeaderTabs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: var(--msp-btn-h, 2.15rem);
+}
+
+.detailHeaderTabsEnd {
+  margin-left: auto;
+}
+
+.detailHeader:has(.detailHeaderTabsEnd) .detailHeaderActions {
+  margin-left: 0.55rem;
+}
+
+.tenantTablePane {
+  flex: 1 1 auto;
+  min-height: 16rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tenantTablePane > .metricsTableHost {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .detailTitleIcon {
   display: inline-flex;
   align-items: center;
@@ -777,8 +806,7 @@
 
 .metricsBoard :global([class*="kpiGrid"]) {
   flex: 0 0 auto;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.55rem;
+  gap: 0.65rem;
 }
 
 .metricsBoard :global([class*="kpiCard"]) {
@@ -821,17 +849,6 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-@media (max-width: 1100px) {
-  .metricsBoard :global([class*="kpiGrid"]) {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .metricsBoard :global([class*="kpiGrid"]) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 
 :global(html.dark) .metricsBoard :global([class*="kpiCard"]) {
   background: var(--msp-surface, #1a2540);

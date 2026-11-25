@@ -180,6 +180,9 @@ function CyberIntegrationDashboard({
 
   const titleAnimRef = useRef(null);
   const TitleAnimated = CYBER_BRICK_ANIMATED[brick?.type] || null;
+  const [headerSlot, setHeaderSlot] = useState(null);
+  const showHistoryTabs = (isAntivirus || isAntispam) && hasItems && hasLiveIntegration && !isComingSoon && !isProLocked;
+  const showTenantTabs = isMicrosoftTenant && hasItems && hasLiveIntegration && !isComingSoon && !isProLocked;
 
   const emptyCard = !isComingSoon && !isProLocked ? (
     <div className={styles.detailEmptyCard}>
@@ -229,7 +232,28 @@ function CyberIntegrationDashboard({
   return (
     <div className={`${styles.detailPanel} ${styles.detailPanelMetrics} ${styles.detailPanelMetricsBare}`.trim()}>
       <header className={styles.detailHeader}>
-        {!hideHeaderTitle ? (
+        {showHistoryTabs ? (
+          <div ref={setHeaderSlot} className={styles.detailHeaderTabs} />
+        ) : showTenantTabs ? (
+          <>
+            <div
+              className={styles.detailHeaderTitleRow}
+              onMouseEnter={() => titleAnimRef.current?.startAnimation?.()}
+              onMouseLeave={() => titleAnimRef.current?.stopAnimation?.()}
+            >
+              <span className={styles.detailTitleIcon} aria-hidden>
+                <EquipmentHoverIcon
+                  Animated={TitleAnimated}
+                  iconify={icon}
+                  size={20}
+                  animRef={titleAnimRef}
+                />
+              </span>
+              <h3 className={styles.detailTitle}>{brick.label}</h3>
+            </div>
+            <div ref={setHeaderSlot} className={`${styles.detailHeaderTabs} ${styles.detailHeaderTabsEnd}`} />
+          </>
+        ) : !hideHeaderTitle ? (
           <div
             className={styles.detailHeaderTitleRow}
             onMouseEnter={() => titleAnimRef.current?.startAnimation?.()}
@@ -261,6 +285,7 @@ function CyberIntegrationDashboard({
             <AntivirusOverviewPanel
               active={active}
               embed
+              headerSlot={headerSlot}
               client={client}
               antivirusItem={selectedItem}
               onSynced={onSynced}
@@ -270,6 +295,7 @@ function CyberIntegrationDashboard({
             <AntispamOverviewPanel
               active={active}
               embed
+              headerSlot={headerSlot}
               client={client}
               antispamItem={selectedItem}
               onSynced={onSynced}
@@ -279,6 +305,7 @@ function CyberIntegrationDashboard({
             <MicrosoftTenantOverviewPanel
               active={active}
               embed
+              headerSlot={headerSlot}
               client={client}
               tenantItem={selectedItem}
               onSynced={onSynced}

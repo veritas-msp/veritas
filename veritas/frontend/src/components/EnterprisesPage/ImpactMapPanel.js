@@ -142,6 +142,7 @@ const ImpactGroupNode = memo(function ImpactGroupNode({ data, selected }) {
         handleClassName={styles.groupResizeHandle}
         onResizeEnd={(_, params) => data.onResize?.(params)}
       />
+      <Handle type="source" position={Position.Top} className={styles.groupHandle} isConnectable={false} />
       <div className={styles.groupLabel}>
         <Icon icon="mdi:folder-multiple-outline" />
         <span>{data.label}</span>
@@ -595,7 +596,7 @@ function ImpactMapCanvas({
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable) return;
       const selectedEdgeIds = edgesRef.current.filter(edge => edge.selected).map(edge => edge.id);
-      const selectedNode = nodesRef.current.find(node => node.selected);
+      const selectedNodes = nodesRef.current.filter(node => node.selected);
       if (selectedEdgeIds.length) {
         event.preventDefault();
         const drop = new Set(selectedEdgeIds);
@@ -607,9 +608,14 @@ function ImpactMapCanvas({
         scheduleSave();
         return;
       }
-      if (selectedNode) {
+      if (selectedNodes.length > 1) {
         event.preventDefault();
-        setPendingDelete(selectedNode);
+        setPendingDelete({ ids: selectedNodes.map(node => node.id), count: selectedNodes.length });
+        return;
+      }
+      if (selectedNodes.length === 1) {
+        event.preventDefault();
+        setPendingDelete(selectedNodes[0]);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -1101,20 +1107,29 @@ function ImpactMapCanvas({
   };
 
   const confirmDelete = () => {
-    const node = pendingDelete;
+    const pending = pendingDelete;
     setPendingDelete(null);
-    if (!node) return;
+    if (!pending) return;
+    const ids = Array.isArray(pending.ids) ? pending.ids : [pending.id];
+    const drop = new Set(ids.filter(Boolean));
+    if (!drop.size) return;
     setNodes(current => {
-      const next = current.filter(entry => entry.id !== node.id);
+      const next = current.filter(entry => !drop.has(entry.id));
       nodesRef.current = next;
       return next;
     });
     setEdges(current => {
-      const next = current.filter(edge => edge.source !== node.id && edge.target !== node.id);
+      const next = current.filter(edge => !drop.has(edge.source) && !drop.has(edge.target));
       edgesRef.current = next;
       return next;
     });
     scheduleSave();
+  };
+  const askDeleteSelection = () => {
+    const ids = viewNodes.filter(node => node.selected && !node.hidden).map(node => node.id);
+    if (ids.length < 2) return;
+    setContextMenu(null);
+    setPendingDelete({ ids, count: ids.length });
   };
 
   const selectNode = id => {
@@ -1244,7 +1259,7 @@ function ImpactMapCanvas({
       });
     }
     const width = 248;
-    const height = 268;
+    const height = 312;
     setContextMenu({
       x: Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8)),
       y: Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8)),
@@ -1485,6 +1500,7 @@ function ImpactMapCanvas({
           deleteKeyCode={null}
           panOnDrag={false}
           selectionOnDrag
+          paneClickDistance={12}
           panActivationKeyCode="Control"
           selectionKeyCode={null}
           multiSelectionKeyCode={null}
@@ -1527,6 +1543,12 @@ function ImpactMapCanvas({
                   {copy.arrangeOval}
                 </button>
                 {arrangeCount < 2 ? <p className={styles.contextHint}>{copy.arrangeNeedTwo}</p> : null}
+                {arrangeCount > 1 ? (
+                  <button type="button" role="menuitem" className={`${styles.contextItem} ${styles.contextItemDanger}`} onClick={askDeleteSelection}>
+                    <Icon icon="mdi:delete-outline" />
+                    {copy.deleteSelection}
+                  </button>
+                ) : null}
               </>
             )}
             {contextMenu.edgeId ? (
@@ -1695,8 +1717,12 @@ function ImpactMapCanvas({
                 </button>
               ) : null}
               {canEdit ? (
-                <button type="button" className={styles.dangerBtn} onClick={() => setPendingDelete(focused)}>
-                  {copy.deleteNode}
+                <button
+                  type="button"
+                  className={styles.dangerBtn}
+                  onClick={() => (arrangeCount > 1 ? askDeleteSelection() : setPendingDelete(focused))}
+                >
+                  {arrangeCount > 1 ? copy.deleteSelection : copy.deleteNode}
                 </button>
               ) : null}
             </div>
@@ -1813,9 +1839,11 @@ function ImpactMapCanvas({
       />
       <ConfirmModal
         open={Boolean(pendingDelete)}
-        title={copy.confirmDeleteTitle}
-        message={interpolate(copy.confirmDeleteMessage, { name: pendingDelete?.data?.label || "" })}
-        confirmLabel={copy.deleteNode}
+        title={pendingDelete?.ids ? copy.confirmDeleteSelectionTitle : copy.confirmDeleteTitle}
+        message={pendingDelete?.ids
+          ? interpolate(copy.confirmDeleteSelectionMessage, { count: String(pendingDelete.count || pendingDelete.ids.length) })
+          : interpolate(copy.confirmDeleteMessage, { name: pendingDelete?.data?.label || "" })}
+        confirmLabel={pendingDelete?.ids ? copy.deleteSelection : copy.deleteNode}
         variant="danger"
         icon="mdi:delete-outline"
         onClose={() => setPendingDelete(null)}

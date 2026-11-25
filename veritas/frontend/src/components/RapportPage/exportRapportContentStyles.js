@@ -280,6 +280,13 @@ export function buildExportContentStyles() {
       border-radius: 12px !important;
     }
 
+    .vex-report [class*="synthesisField"] {
+      padding: 0 !important;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
     /* Familles — une seule carte externe (pas de cartes imbriquées) */
     .vex-report [class*="familyGrid"] {
       display: grid !important;

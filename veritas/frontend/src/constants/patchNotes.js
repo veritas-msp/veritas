@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.35",
+    date: "2026-11-25",
+    highlights: [
+      "Antivirus, antispam et tenant Microsoft : les statistiques sont présentées en cartes, avec un titre, un sous-titre et des indicateurs.",
+      "Antivirus et antispam : Statistiques et Historique sont sur la même ligne que les actions, et le contenu apparaît en fondu.",
+      "Tenant Microsoft : Licences et Utilisateurs se consultent un par un, en pleine largeur.",
+      "Cartographie : une sélection multiple peut être retirée en une fois.",
+      "Rapports : la synthèse à rédiger est plus lisible, et n’apparaît plus comme une carte à l’export."
+    ]
+  },
+  {
     version: "2.0.34",
     date: "2026-11-25",
     highlights: [

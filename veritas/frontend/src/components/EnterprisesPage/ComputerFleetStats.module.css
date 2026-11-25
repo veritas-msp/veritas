@@ -58,6 +58,86 @@
   min-height: 0;
 }
 
+.statsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: min-content;
+}
+
+.statsSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+  gap: 0.9rem;
+  flex: 1 1 auto;
+  min-height: 18rem;
+  overflow: hidden;
+}
+
+.statsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--msp-border-light, #dde5ef);
+  background: var(--msp-surface-2, #f7f9fc);
+  box-shadow:
+    0 1px 2px rgba(15, 28, 46, 0.04),
+    0 8px 20px rgba(15, 28, 46, 0.04);
+  min-width: 0;
+}
+
+.statsCardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.statsCardTitle {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.statsCardSubtitle {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.statsCardBody {
+  min-width: 0;
+}
+
+.statsCardFill {
+  min-height: 0;
+  height: 100%;
+}
+
+.statsCardFill > .statsCardBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.statsCard .panelTitle {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+}
+
 .sectionBlock {
   display: flex;
   flex-direction: column;
@@ -1005,6 +1085,12 @@
   --fleet-metric-bad: #d08888;
 }
 
+:global(html.dark) .statsCard {
+  background: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border, #3d5478);
+  box-shadow: none;
+}
+
 :global(html.dark) .kpiCard,
 :global(html.dark) .panel {
   box-shadow: none;
@@ -1054,6 +1140,13 @@
 
 :global(html.dark) :global(.recharts-cartesian-grid line) {
   stroke: var(--msp-border-light, #2c3d5a) !important;
+}
+
+@media (max-width: 1100px) {
+  .statsSplit {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
 }
 
 @media (max-width: 1200px) {

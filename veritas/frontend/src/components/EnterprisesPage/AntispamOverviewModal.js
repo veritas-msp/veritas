@@ -11,7 +11,7 @@ import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
-import { KpiCard, StatsDashboardBody, StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import { KpiCard, StatsDashboardBody, StatsPanel, StatsSection, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
 import AntispamOverviewCharts from "./AntispamOverviewCharts";
 import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
 import SolutionHistoryPane from "./SolutionHistoryPane";
@@ -257,6 +257,7 @@ export function AntispamOverviewPanel({
   cachedOnly = false,
   embed = false,
   embedded = false,
+  headerSlot = null,
   activeSection: controlledSection,
   onSectionChange
 }) {
@@ -513,132 +514,63 @@ export function AntispamOverviewPanel({
     const serversTotal = sections.servers?.total ?? 0;
     const sendersTotal = sections.senders?.total ?? 0;
     const spoolsTotal = sections.spools?.total ?? 0;
-    if (asPage || embedded || embed) {
-      const clientPanel = customer ? <StatsPanel title="Information client">
-          <ul className={dashStyles.metricList}>
-            <li>
-              <span>ID client</span>
-              <strong className={dashStyles.metricMono}>{customer.id}</strong>
-            </li>
-            {customer.domain ? <li>
-                <span>Domaine principal</span>
-                <strong>{customer.domain}</strong>
-              </li> : null}
-            {customer.status ? <li>
-                <span>Statut</span>
-                <strong>{customer.status}</strong>
-              </li> : null}
-            {licenseTotal != null || licenseUsed != null ? <li>
-                <span>Licences</span>
-                <strong>{licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed}</strong>
-              </li> : null}
-          </ul>
-        </StatsPanel> : <StatsPanel title="Information client">
-          <p className={dashStyles.panelDesc}>Aucune information client disponible.</p>
-        </StatsPanel>;
-      return <StatsDashboardBody>
-          <div>
-            <section className={dashStyles.sectionBlock}>
-              <div className={dashStyles.kpiDualRow}>
-                <div className={dashStyles.kpiDualGroup}>
-                  <h3 className={dashStyles.sectionBlockTitle}>KPI globales</h3>
-                  <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
-                    <KpiCard icon="mdi:account-group-outline" label="Utilisateurs" value={usersTotal || 0} sub="Comptes protégés" />
-                    <KpiCard icon="mdi:web" label="Domaines" value={domainsTotal || 0} sub="Domaines surveillés" />
-                    <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || 0} sub="Adresses admin" />
-                    <KpiCard icon="mdi:email-arrow-right-outline" label="Expéditeurs" value={sendersTotal || 0} sub="Liste Protect" />
-                    <KpiCard icon="mdi:email-multiple-outline" label="Files d’attente" value={spoolsTotal || 0} sub="Messages en file" />
-                  </div>
-                </div>
-                <div className={dashStyles.kpiDualGroup}>
-                  <h3 className={dashStyles.sectionBlockTitle}>KPI licences</h3>
-                  <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid3}`}>
-                    <KpiCard icon="mdi:license" label="Total" value={licenseTotal ?? 0} sub="Sièges achetés" />
-                    <KpiCard icon="mdi:account-check-outline" label="Utilisées" value={licenseUsed ?? 0} sub="Sièges attribués" />
-                    <KpiCard
-                      icon="mdi:gauge"
-                      label="Disponibles"
-                      value={licenseTotal != null && licenseUsed != null ? Math.max(0, Number(licenseTotal) - Number(licenseUsed)) : 0}
-                      sub="Restantes"
-                    />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className={dashStyles.sectionBlock}>
-              <h3 className={dashStyles.sectionBlockTitle}>Graphiques</h3>
-              <AntispamOverviewCharts
-                usersTotal={usersTotal}
-                domainsTotal={domainsTotal}
-                emailsTotal={emailsTotal}
-                serversTotal={serversTotal}
-                sendersTotal={sendersTotal}
-                spoolsTotal={spoolsTotal}
-                clientPanel={clientPanel}
-              />
-            </section>
-          </div>
-        </StatsDashboardBody>;
-    }
-    return <>
-        <div className={formStyles.sectionHead}>
-          <h3 className={formStyles.sectionTitle}>{customerName}</h3>
-          <p className={formStyles.sectionDesc}>
-            Client Mailinblack Protect lié à {client?.name}. Dernière mise à jour :{" "}
-            {formatDate(dashboard?.fetchedAt)}
-            {lastPersistedAt ? <> · Dernier enregistrement : {formatDate(lastPersistedAt)}</> : null}
-          </p>
-        </div>
-
-        <div className={styles.kpiGrid}>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Utilisateurs</span>
-            <span className={styles.kpiValue}>
-              {sections.users?.total ?? antispamItem?.utilisateursProteges ?? "-"}
-            </span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Licences</span>
-            <span className={styles.kpiValue}>
-              {licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed ?? "-"}
-            </span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Domaines</span>
-            <span className={styles.kpiValue}>
-              {sections.domains?.total ?? antispamItem?.domainesSurveilles ?? "-"}
-            </span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>E-mails</span>
-            <span className={styles.kpiValue}>{sectionViews.emails?.total ?? sections.emails?.total ?? "-"}</span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Expéditeurs</span>
-            <span className={styles.kpiValue}>{sections.senders?.total ?? "-"}</span>
-          </div>
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Files d’attente</span>
-            <span className={styles.kpiValue}>{sections.spools?.total ?? "-"}</span>
-          </div>
-        </div>
-
-        {customer ? <div className={styles.metaPanel}>
-            <div>
-              <strong>ID client</strong>
-              <span className={styles.mono}>{customer.id}</span>
+    const licenseAvailable = licenseTotal != null && licenseUsed != null ? Math.max(0, Number(licenseTotal) - Number(licenseUsed)) : null;
+    const syncAt = lastPersistedAt || dashboard?.fetchedAt;
+    const clientPanel = customer ? <StatsPanel title="Information client">
+        <ul className={dashStyles.metricList}>
+          <li>
+            <span>ID client</span>
+            <strong className={dashStyles.metricMono}>{customer.id}</strong>
+          </li>
+          {customer.domain ? <li>
+              <span>Domaine principal</span>
+              <strong>{customer.domain}</strong>
+            </li> : null}
+          {customer.status ? <li>
+              <span>Statut</span>
+              <strong>{customer.status}</strong>
+            </li> : null}
+          {licenseTotal != null || licenseUsed != null ? <li>
+              <span>Licences</span>
+              <strong>{licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed}</strong>
+            </li> : null}
+        </ul>
+      </StatsPanel> : <StatsPanel title="Information client">
+        <p className={dashStyles.panelDesc}>Aucune information client disponible.</p>
+      </StatsPanel>;
+    return <StatsDashboardBody>
+        <div className={dashStyles.statsStack}>
+          <StatsSection title="Protection messagerie" subtitle={`${client?.name || customerName} · dernière lecture ${formatDate(syncAt)}. Volumes protégés par Mailinblack.`}>
+            <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
+              <KpiCard icon="mdi:account-group-outline" label="Utilisateurs" value={usersTotal || 0} sub="Comptes protégés" />
+              <KpiCard icon="mdi:web" label="Domaines" value={domainsTotal || 0} sub="Domaines surveillés" />
+              <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || 0} sub="Adresses admin" />
+              <KpiCard icon="mdi:email-arrow-right-outline" label="Expéditeurs" value={sendersTotal || 0} sub="Liste Protect" />
+              <KpiCard icon="mdi:email-multiple-outline" label="Files d’attente" value={spoolsTotal || 0} sub="Messages en file" />
             </div>
-            {customer.domain ? <div>
-                <strong>Domaine principal</strong>
-                <span>{customer.domain}</span>
-              </div> : null}
-            {customer.status ? <div>
-                <strong>Status</strong>
-                <span>{customer.status}</span>
-              </div> : null}
-          </div> : null}
-      </>;
+          </StatsSection>
+
+          <StatsSection title="Licences" subtitle="Sièges achetés, attribués et restants.">
+            <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid3}`}>
+              <KpiCard icon="mdi:license" label="Total" value={licenseTotal ?? "—"} sub="Sièges achetés" />
+              <KpiCard icon="mdi:account-check-outline" label="Utilisées" value={licenseUsed ?? "—"} sub="Sièges attribués" />
+              <KpiCard icon="mdi:gauge" label="Disponibles" value={licenseAvailable ?? "—"} sub="Sièges restants" tone={licenseAvailable === 0 ? "warn" : "neutral"} />
+            </div>
+          </StatsSection>
+
+          <StatsSection title="Répartition" subtitle="Volumes par module et fiche du client Protect.">
+            <AntispamOverviewCharts
+              usersTotal={usersTotal}
+              domainsTotal={domainsTotal}
+              emailsTotal={emailsTotal}
+              serversTotal={serversTotal}
+              sendersTotal={sendersTotal}
+              spoolsTotal={spoolsTotal}
+              clientPanel={clientPanel}
+            />
+          </StatsSection>
+        </div>
+      </StatsDashboardBody>;
   };
   const fillTables = asPage || embedded;
   const renderSectionContent = () => {
@@ -684,7 +616,14 @@ export function AntispamOverviewPanel({
     }
     const dataLabel = activeSection === "overview" ? "Statistiques" : "Annuaire";
     return (
-      <SolutionHistoryPane sectionId={activeSection} dataLabel={dataLabel} rows={historyRows} columns={eventColumns}>
+      <SolutionHistoryPane
+        sectionId={activeSection}
+        dataLabel={dataLabel}
+        rows={historyRows}
+        columns={eventColumns}
+        headerSlot={headerSlot}
+        placeSwitchInHeader={embed}
+      >
         {content}
       </SolutionHistoryPane>
     );

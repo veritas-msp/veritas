@@ -11,8 +11,7 @@ import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
-import { KpiCard, StatsDashboardBody, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
-import { UiKitKpiStrip } from "../UiKit";
+import { KpiCard, StatsDashboardBody, StatsSection, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
 import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
 import SolutionHistoryPane from "./SolutionHistoryPane";
 import { getOsIconName } from "../EquipementPage/osIconUtils";
@@ -203,6 +202,7 @@ export function AntivirusOverviewPanel({
   cachedOnly = false,
   embed = false,
   embedded = false,
+  headerSlot = null,
   activeSection: controlledSection,
   onSectionChange
 }) {
@@ -585,125 +585,52 @@ export function AntivirusOverviewPanel({
     const licenseUsed = license?.used ?? 0;
     const licenseAvailable = license?.total != null && license?.used != null ? Math.max(0, license.total - license.used) : 0;
     const expirationDate = license?.expirationDate || antivirusItem?.expiration || antivirusItem?.syncData?.license?.expirationDate;
-    if (asPage || embedded || embed) {
-      const byType = statistics?.endpoints?.byType;
-      const physical = byType?.physical || 0;
-      const virtual = byType?.virtual || 0;
-      const other = byType?.other || 0;
-      const typeTotal = physical + virtual + other;
-      const typePct = count => typeTotal > 0 ? Math.round(count / typeTotal * 100) : 0;
-      return <StatsDashboardBody>
-          <div>
-            <section className={dashStyles.sectionBlock}>
-              <div className={dashStyles.kpiDualRow}>
-                <div className={dashStyles.kpiDualGroup}>
-                  <h3 className={dashStyles.sectionBlockTitle}>KPI globales</h3>
-                  <UiKitKpiStrip
-                    variant="pills"
-                    ariaLabel="KPI globales"
-                    cards={[
-                      { key: "endpoints", value: endpoints?.total ?? 0, label: "Postes" },
-                      { key: "incidents", value: sections.incidents?.total ?? 0, label: "Incidents" },
-                      { key: "quarantine", value: sections.quarantine?.total ?? 0, label: "Quarantaine" },
-                      {
-                        key: "health",
-                        value: enrichedSummary?.total
-                          ? `${Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0))}/${enrichedSummary.total}`
-                          : "0/0",
-                        label: "Santé"
-                      }
-                    ]}
-                  />
-                </div>
-                <div className={dashStyles.kpiDualGroup}>
-                  <h3 className={dashStyles.sectionBlockTitle}>KPI licences</h3>
-                  <UiKitKpiStrip
-                    variant="pills"
-                    ariaLabel="KPI licences"
-                    cards={[
-                      { key: "license-total", value: licenseTotal, label: "Total" },
-                      { key: "license-used", value: licenseUsed, label: "Utilisées" },
-                      { key: "license-available", value: licenseAvailable, label: "Disponibles" },
-                      { key: "license-exp", value: formatDateShort(expirationDate), label: "Expiration" }
-                    ]}
-                  />
-                </div>
-              </div>
-            </section>
+    const byType = statistics?.endpoints?.byType;
+    const physical = byType?.physical || 0;
+    const virtual = byType?.virtual || 0;
+    const other = byType?.other || 0;
+    const typeTotal = physical + virtual + other;
+    const typePct = count => typeTotal > 0 ? Math.round(count / typeTotal * 100) : 0;
+    const incidentCount = sections.incidents?.total ?? 0;
+    const quarantineCount = sections.quarantine?.total ?? 0;
+    const healthyCount = enrichedSummary?.total ? Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0)) : 0;
+    const healthTotal = enrichedSummary?.total || 0;
+    const healthPct = healthTotal > 0 ? Math.round(healthyCount / healthTotal * 100) : null;
+    const healthTone = healthPct == null ? "neutral" : healthPct >= 95 ? "good" : healthPct >= 80 ? "warn" : "bad";
+    const syncAt = lastPersistedAt || dashboard?.fetchedAt;
+    return <StatsDashboardBody>
+        <div className={dashStyles.statsStack}>
+          <StatsSection title="Parc protégé" subtitle={`${companyName} · dernière lecture ${formatDate(syncAt)}. Postes, incidents et santé du tenant.`}>
+            <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid4}`}>
+              <KpiCard icon="mdi:desktop-classic" label="Postes" value={endpoints?.total ?? 0} sub="Inventaire réseau" />
+              <KpiCard icon="mdi:alert-circle-outline" label="Incidents" value={incidentCount} sub="Ouverts" tone={incidentCount > 0 ? "warn" : "good"} />
+              <KpiCard icon="mdi:virus-outline" label="Quarantaine" value={quarantineCount} sub="Fichiers isolés" tone={quarantineCount > 0 ? "warn" : "neutral"} />
+              <KpiCard icon="mdi:shield-check-outline" label="Santé" value={healthTotal ? `${healthyCount}/${healthTotal}` : "0/0"} sub={healthPct != null ? `${healthPct} % sains` : "Postes sains"} tone={healthTone} />
+            </div>
+          </StatsSection>
 
-            <section className={dashStyles.sectionBlock}>
-              <h3 className={dashStyles.sectionBlockTitle}>Types de postes</h3>
-              <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid3}`}>
-                <KpiCard icon="mdi:desktop-classic" label="Physiques" value={physical} sub={`${typePct(physical)} %`} />
-                <KpiCard icon="mdi:cloud-outline" label="Virtuels" value={virtual} sub={`${typePct(virtual)} %`} />
-                <KpiCard icon="mdi:devices" label="Autres" value={other} sub={`${typePct(other)} %`} />
-              </div>
-            </section>
+          <StatsSection title="Licences" subtitle="Sièges achetés, consommés et date d’expiration.">
+            <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid4}`}>
+              <KpiCard icon="mdi:license" label="Total" value={licenseTotal} sub="Sièges achetés" />
+              <KpiCard icon="mdi:account-check-outline" label="Utilisées" value={licenseUsed} sub="Sièges attribués" />
+              <KpiCard icon="mdi:license-outline" label="Disponibles" value={licenseAvailable} sub="Sièges restants" tone={licenseTotal > 0 && licenseAvailable === 0 ? "warn" : "neutral"} />
+              <KpiCard icon="mdi:calendar-end" label="Expiration" value={formatDateShort(expirationDate)} sub={expirationDate ? "Date de fin" : "Non renseignée"} />
+            </div>
+          </StatsSection>
 
-            <section className={dashStyles.sectionBlock}>
-              <h3 className={dashStyles.sectionBlockTitle}>Graphiques</h3>
-              <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} hideEndpointTypes />
-            </section>
-          </div>
-        </StatsDashboardBody>;
-    }
-    return <>
-        <div className={formStyles.sectionHead}>
-          <h3 className={formStyles.sectionTitle}>{companyName}</h3>
-          <p className={formStyles.sectionDesc}>
-            Société GravityZone liée à {client?.name}. Dernière lecture API :{" "}
-            {formatDate(dashboard?.fetchedAt)}
-            {lastPersistedAt ? <>
-                {" "}
-                · Dernier enregistrement : {formatDate(lastPersistedAt)}
-              </> : null}
-            .
-          </p>
+          <StatsSection title="Types de postes" subtitle="Répartition physique, virtuelle et autre.">
+            <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid3}`}>
+              <KpiCard icon="mdi:desktop-classic" label="Physiques" value={physical} sub={`${typePct(physical)} % du parc`} />
+              <KpiCard icon="mdi:cloud-outline" label="Virtuels" value={virtual} sub={`${typePct(virtual)} % du parc`} />
+              <KpiCard icon="mdi:devices" label="Autres" value={other} sub={`${typePct(other)} % du parc`} />
+            </div>
+          </StatsSection>
+
+          <StatsSection title="Activité" subtitle="Statut des postes, santé et menaces détectées.">
+            <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} hideEndpointTypes />
+          </StatsSection>
         </div>
-
-        <div className={styles.kpiGrid}>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{endpoints?.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Postes inventoriés</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{sections.policies?.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Politiques</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{sections.incidents?.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Incidents</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{sections.quarantine?.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Quarantaine</div>
-          </div>
-        </div>
-
-        <div className={formStyles.sectionHead}>
-          <h3 className={formStyles.sectionTitle}>Licences</h3>
-        </div>
-        <div className={styles.kpiGridLicense}>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{licenseTotal}</div>
-            <div className={styles.kpiLabel}>Total</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{licenseUsed}</div>
-            <div className={styles.kpiLabel}>Utilisées</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{licenseAvailable}</div>
-            <div className={styles.kpiLabel}>Disponibles</div>
-          </div>
-          <div className={styles.kpiCard}>
-            <div className={styles.kpiValue}>{formatDateShort(expirationDate)}</div>
-            <div className={styles.kpiLabel}>Expiration</div>
-          </div>
-        </div>
-
-        <AntivirusOverviewCharts statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
-      </>;
+      </StatsDashboardBody>;
   };
   const renderSectionContent = () => {
     if (!asPage && !embedded && loading) {
@@ -753,7 +680,14 @@ export function AntivirusOverviewPanel({
             ? "Quarantaine"
             : "Statistiques";
     return (
-      <SolutionHistoryPane sectionId={activeSection} dataLabel={dataLabel} rows={historyRows} columns={eventColumns}>
+      <SolutionHistoryPane
+        sectionId={activeSection}
+        dataLabel={dataLabel}
+        rows={historyRows}
+        columns={eventColumns}
+        headerSlot={headerSlot}
+        placeSwitchInHeader={embed}
+      >
         {content}
       </SolutionHistoryPane>
     );

@@ -150,7 +150,11 @@ export default function ReportSynthesisEditor({
   );
 
   return (
-    <div className={styles.root}>
+    <div className={styles.synthesisField}>
+      <p className={styles.prompt} data-export-hide="true">
+        <Icon icon="mdi:pencil" width={16} height={16} aria-hidden />
+        <span>À compléter. Rédigez ici la synthèse publiée dans le rapport.</span>
+      </p>
       <div className={`${ticketStyles.replyTools} ${styles.tools}`} data-export-hide="true">
         <button
           type="button"

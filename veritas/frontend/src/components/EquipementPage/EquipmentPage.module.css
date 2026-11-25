@@ -2276,6 +2276,11 @@
   table-layout: auto;
 }
 
+.hardwarePageEmbedded .equipmentTableEmbedded.equipmentTableBackupJobs {
+  width: 100%;
+  min-width: max(100%, 62rem) !important;
+}
+
 .hardwarePageEmbedded .equipmentTableEmbedded thead {
   position: sticky;
   top: 0;
@@ -2637,8 +2642,8 @@
 }
 
 .equipmentTableBackupJobs {
-  /* Largeur mini pour respecter les .embeddedColJob* (scroll horizontal si panneau étroit) */
-  min-width: 62rem !important;
+  /* Au moins 62rem pour les colonnes ; la règle embedded l’étire à 100% du panneau. */
+  min-width: 62rem;
 }
 
 .embeddedColJobInstance {

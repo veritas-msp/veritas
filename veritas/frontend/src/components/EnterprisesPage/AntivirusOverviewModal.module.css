@@ -966,6 +966,12 @@
   box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
 }
 
+.paneHistoryLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .paneCount {
   min-width: 1.25rem;
   padding: 0 0.35rem;

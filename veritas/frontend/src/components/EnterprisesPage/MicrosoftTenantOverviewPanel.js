@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
+import ActivityStatusSegmented from "../shared/ActivityStatusSegmented/ActivityStatusSegmented";
 import API_BASE_URL from "../../config";
 import { formatMicrosoftTenantSummary } from "./microsoftTenantSolutionUtils";
 import { buildTenantReport } from "../ServicePage/tenantReportUtils";
@@ -12,6 +14,7 @@ import {
 import {
   KpiCard,
   StatsDashboardBody,
+  StatsSection,
   statsDashboardStyles as dashStyles
 } from "./StatsDashboardWidgets";
 import CyberBrickItemsTable from "./CyberBrickItemsTable";
@@ -53,12 +56,14 @@ export function MicrosoftTenantOverviewPanel({
   client,
   tenantItem,
   embed = false,
+  headerSlot = null,
   onSynced,
   toolbar = null
 }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
+  const [directoryView, setDirectoryView] = useState("licenses");
   const [lastUpdate, setLastUpdate] = useState(null);
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
@@ -105,6 +110,10 @@ export function MicrosoftTenantOverviewPanel({
       abortRef.current?.abort();
     };
   }, [active, clientId, tenantId, credentialId, loadDashboard]);
+
+  useEffect(() => {
+    setDirectoryView("licenses");
+  }, [tenantId, credentialId]);
 
   const summary = useMemo(
     () => formatMicrosoftTenantSummary(tenantItem, client),
@@ -238,110 +247,127 @@ export function MicrosoftTenantOverviewPanel({
   const tenantIdLabel = summary.shortTenantId && summary.shortTenantId !== "-"
     ? summary.shortTenantId
     : (tenantId ? `${String(tenantId).slice(0, 8)}…${String(tenantId).slice(-4)}` : "—");
+  const tenantName = summary.label || summary.name || "Tenant Microsoft";
+
+  const directorySwitch = (
+    <ActivityStatusSegmented
+      value={directoryView}
+      onChange={setDirectoryView}
+      ariaLabel="Annuaire du tenant"
+      options={[
+        {
+          id: "licenses",
+          label: (
+            <span className={styles.paneHistoryLabel}>
+              Licences
+              <span className={styles.paneCount}>{licenseRows.length}</span>
+            </span>
+          )
+        },
+        {
+          id: "users",
+          label: (
+            <span className={styles.paneHistoryLabel}>
+              Utilisateurs
+              <span className={styles.paneCount}>{userRows.length}</span>
+            </span>
+          )
+        }
+      ]}
+    />
+  );
+  const placeSwitchInHeader = Boolean(embed);
+  const parkedSwitch = placeSwitchInHeader && !headerSlot;
 
   return (
     <StatsDashboardBody>
-      <div className={mapStyles.metricsTopBar}>
-        <div className={mapStyles.metricsTopBarLeft}>
-          <div className={mapStyles.metricsTopBarMeta} title={`Tenant ${tenantId || "—"} · Sync ${formatDate(lastUpdate)}`}>
-            <span>
-              <Icon icon="mdi:identifier" aria-hidden />
-              {tenantIdLabel}
-            </span>
-            <span>
-              <Icon icon="mdi:clock-outline" aria-hidden />
-              {formatDate(lastUpdate)}
-            </span>
-          </div>
-        </div>
+      <div className={dashStyles.statsStack}>
         {toolbar ? <div className={mapStyles.metricsTopBarActions}>{toolbar}</div> : null}
-      </div>
+        {headerSlot ? createPortal(directorySwitch, headerSlot) : parkedSwitch ? null : directorySwitch}
+        <StatsSection
+          title="Sécurité du tenant"
+          subtitle={`${tenantName} · ${tenantIdLabel} · dernière sync ${formatDate(lastUpdate)}.`}
+        >
+          <div className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
+            <KpiCard
+              icon="mdi:account-group-outline"
+              label="Utilisateurs"
+              value={kpis.users ?? "—"}
+              sub="Comptes Entra ID"
+            />
+            <KpiCard
+              icon="mdi:license"
+              label="Licences"
+              value={licenseLabel}
+              sub={licensePct != null ? `${licensePct} % utilisées` : "Consommation"}
+              tone={licensePct == null ? "neutral" : licensePct >= 95 ? "bad" : licensePct >= 80 ? "warn" : "good"}
+            />
+            <KpiCard
+              icon="mdi:shield-check-outline"
+              label="Secure Score"
+              value={scoreLabel}
+              sub={scorePct != null ? `${scorePct} % obtenus` : "Microsoft Secure Score"}
+              tone={scorePct == null ? "neutral" : scorePct < 40 ? "bad" : scorePct < 60 ? "warn" : "good"}
+            />
+            <KpiCard
+              icon="mdi:shield-account"
+              label="MFA admin"
+              value={securityStats.mfaAdminPct != null ? `${securityStats.mfaAdminPct} %` : "—"}
+              sub={
+                securityStats.adminsTotal
+                  ? `${securityStats.adminsWithMfa} / ${securityStats.adminsTotal} admins`
+                  : "Utilisateurs admin"
+              }
+              tone={
+                securityStats.mfaAdminPct == null
+                  ? "neutral"
+                  : securityStats.mfaAdminPct < 50
+                    ? "bad"
+                    : securityStats.mfaAdminPct < 80
+                      ? "warn"
+                      : "good"
+              }
+            />
+            <KpiCard
+              icon="mdi:account-key-outline"
+              label="MFA non admin"
+              value={securityStats.mfaNonAdminPct != null ? `${securityStats.mfaNonAdminPct} %` : "—"}
+              sub={
+                securityStats.nonAdminTotal
+                  ? `${securityStats.nonAdminWithMfa} / ${securityStats.nonAdminTotal} utilisateurs`
+                  : "Utilisateurs non admin"
+              }
+              tone={
+                securityStats.mfaNonAdminPct == null
+                  ? "neutral"
+                  : securityStats.mfaNonAdminPct < 50
+                    ? "bad"
+                    : securityStats.mfaNonAdminPct < 80
+                      ? "warn"
+                      : "good"
+              }
+            />
+          </div>
+        </StatsSection>
 
-      <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
-        <KpiCard
-          icon="mdi:account-group-outline"
-          label="Utilisateurs totaux"
-          value={kpis.users ?? "-"}
-          sub="Comptes Entra ID"
-        />
-        <KpiCard
-          icon="mdi:license"
-          label="Licences"
-          value={licenseLabel}
-          sub={licensePct != null ? `${licensePct} % utilisées` : "Consommation"}
-          tone={licensePct == null ? "neutral" : licensePct >= 95 ? "bad" : licensePct >= 80 ? "warn" : "good"}
-        />
-        <KpiCard
-          icon="mdi:shield-check-outline"
-          label="Secure Score"
-          value={scoreLabel}
-          sub={scorePct != null ? `${scorePct} % obtenus` : "Microsoft Secure Score"}
-          tone={scorePct == null ? "neutral" : scorePct < 40 ? "bad" : scorePct < 60 ? "warn" : "good"}
-        />
-        <KpiCard
-          icon="mdi:shield-account"
-          label="MFA admin"
-          value={securityStats.mfaAdminPct != null ? `${securityStats.mfaAdminPct} %` : "-"}
-          sub={
-            securityStats.adminsTotal
-              ? `${securityStats.adminsWithMfa} / ${securityStats.adminsTotal} admins`
-              : "Utilisateurs admin"
-          }
-          tone={
-            securityStats.mfaAdminPct == null
-              ? "neutral"
-              : securityStats.mfaAdminPct < 50
-                ? "bad"
-                : securityStats.mfaAdminPct < 80
-                  ? "warn"
-                  : "good"
-          }
-        />
-        <KpiCard
-          icon="mdi:account-key-outline"
-          label="MFA non admin"
-          value={securityStats.mfaNonAdminPct != null ? `${securityStats.mfaNonAdminPct} %` : "-"}
-          sub={
-            securityStats.nonAdminTotal
-              ? `${securityStats.nonAdminWithMfa} / ${securityStats.nonAdminTotal} utilisateurs`
-              : "Utilisateurs non admin"
-          }
-          tone={
-            securityStats.mfaNonAdminPct == null
-              ? "neutral"
-              : securityStats.mfaNonAdminPct < 50
-                ? "bad"
-                : securityStats.mfaNonAdminPct < 80
-                  ? "warn"
-                  : "good"
-          }
-        />
-      </section>
-
-      <div className={mapStyles.metricsSplit}>
-        <section className={mapStyles.metricsTableHost} aria-label="Licences">
-          <h3 className={styles.dualTableTitle}>
-            <Icon icon="mdi:license" width={14} height={14} aria-hidden />
-            Licences
-          </h3>
-          <CyberBrickItemsTable
-            brickType="Office365Licenses"
-            items={licenseRows}
-            emptyLabel="Aucune licence synchronisée"
-            searchPlaceholder="Rechercher une licence…"
-          />
-        </section>
-        <section className={mapStyles.metricsTableHost} aria-label="Utilisateurs">
-          <h3 className={styles.dualTableTitle}>
-            <Icon icon="mdi:account-group-outline" width={14} height={14} aria-hidden />
-            Utilisateurs
-          </h3>
-          <CyberBrickItemsTable
-            brickType="Office365Users"
-            items={userRows}
-            emptyLabel="Aucun utilisateur synchronisé"
-            searchPlaceholder="Rechercher un utilisateur…"
-          />
+        <section className={mapStyles.tenantTablePane} aria-label={directoryView === "licenses" ? "Licences" : "Utilisateurs"}>
+          <div key={directoryView} className={`${mapStyles.metricsTableHost} ${mapStyles.contentFadeUp}`}>
+            {directoryView === "licenses" ? (
+              <CyberBrickItemsTable
+                brickType="Office365Licenses"
+                items={licenseRows}
+                emptyLabel="Aucune licence synchronisée"
+                searchPlaceholder="Rechercher une licence…"
+              />
+            ) : (
+              <CyberBrickItemsTable
+                brickType="Office365Users"
+                items={userRows}
+                emptyLabel="Aucun utilisateur synchronisé"
+                searchPlaceholder="Rechercher un utilisateur…"
+              />
+            )}
+          </div>
         </section>
       </div>
     </StatsDashboardBody>

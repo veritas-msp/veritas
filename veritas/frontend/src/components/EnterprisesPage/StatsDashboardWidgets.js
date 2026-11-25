@@ -376,6 +376,21 @@ export function StatsDashboardBody({
   return <div className={`${styles.root} ${styles.body} ${className}`.trim()}>{children}</div>;
 }
 
+export function StatsSection({
+  title,
+  subtitle,
+  children,
+  className = ""
+}) {
+  return <section className={`${styles.statsCard} ${className}`.trim()}>
+      {title || subtitle ? <header className={styles.statsCardHead}>
+          {title ? <h3 className={styles.statsCardTitle}>{title}</h3> : null}
+          {subtitle ? <p className={styles.statsCardSubtitle}>{subtitle}</p> : null}
+        </header> : null}
+      <div className={styles.statsCardBody}>{children}</div>
+    </section>;
+}
+
 export function StatsPanel({
   title,
   icon,

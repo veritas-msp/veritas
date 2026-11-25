@@ -141,6 +141,14 @@
   cursor: default;
 }
 
+.contextItemDanger {
+  color: #b42318;
+}
+
+.contextItemDanger:hover:not(:disabled) {
+  background: rgba(180, 35, 24, 0.08);
+}
+
 .contextHint {
   margin: 4px 8px 6px;
   font-size: 12px;
@@ -253,6 +261,17 @@
 
 .groupBoxSelected {
   box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.2);
+}
+
+.groupHandle {
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  min-height: 0;
+  opacity: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
 .groupLabel {
