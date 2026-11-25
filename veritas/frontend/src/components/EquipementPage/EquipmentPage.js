@@ -3678,32 +3678,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   });
   const renderEmbeddedMonitorAndSearch = () => (
     <>
-      {checkmkIntegrationEnabled && mkAlertStats.mapped > 0 ? (
-        <>
-          {!useEmbeddedTypeExternalNav ? <span className={styles.embeddedFilterDivider} aria-hidden /> : null}
-          <div className={styles.embeddedMonitorInline}>
-            <span className={styles.embeddedMonitorMapped} title={embeddedCopy.mkMappedTitle}>
-              <Icon icon="simple-icons:checkmk" className={styles.embeddedMonitorIcon} aria-hidden />
-              {mkAlertStats.mapped}
-            </span>
-            <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillCritical} ${mkStatusFilter === "critical" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("critical")} disabled={mkAlertStats.critical === 0} title={embeddedCopy.mkCriticalTitle}>
-              {embeddedCopy.mkCriticalLabel} {mkAlertStats.critical}
-            </button>
-            <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillWarning} ${mkStatusFilter === "warning" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("warning")} disabled={mkAlertStats.warning === 0} title={embeddedCopy.mkWarningTitle}>
-              {embeddedCopy.mkWarningLabel} {mkAlertStats.warning}
-            </button>
-            {mkStatusFilter ? (
-              <button type="button" className={styles.embeddedMonitorClear} onClick={() => setMkStatusFilter(null)} title={embeddedCopy.mkClearFilterTitle}>
-                <FaTimes aria-hidden />
-              </button>
-            ) : null}
-            <button type="button" className={styles.embeddedMonitorSync} onClick={handleBulkMkSync} disabled={mkBulkSyncing} title={embeddedCopy.mkSyncTitle}>
-              <FaSync className={mkBulkSyncing ? styles.mkAlertSyncSpin : undefined} aria-hidden />
-              {mkBulkSyncing ? `${mkBulkSyncProgress.done}/${mkBulkSyncProgress.total}` : embeddedCopy.mkSyncLabel}
-            </button>
-          </div>
-        </>
-      ) : null}
       <div className={styles.embeddedSearchWrap}>
         <div className={styles.embeddedSearchBox}>
           <Icon icon="mdi:magnify" className={styles.embeddedSearchIcon} aria-hidden />

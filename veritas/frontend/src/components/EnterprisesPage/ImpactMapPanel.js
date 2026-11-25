@@ -38,6 +38,13 @@ import {
 import ImpactHaBadge, { haTitle } from "./ImpactHaBadge";
 import ImpactStatusMarks from "./ImpactStatusMarks";
 import { rememberSupervisionFocus } from "./supervisionFocus";
+import { resolveEquipmentRemoteAccessAction } from "../EquipementPage/equipmentDetailRemoteAccess";
+import { getEquipmentPageCopy } from "../EquipementPage/equipmentPageI18n";
+import {
+  getQuickConnectValue,
+  hasQuickConnectConfigured,
+  openQuickConnectUrl
+} from "../EquipementPage/synologyEquipmentUtils";
 import { buildSignalIndex, describeImpact, suggestImpactLinks } from "./impactSignals";
 import { getImpactMapCopy } from "./impactMapI18n";
 import { arrangeSelection } from "./impactArrange";
@@ -175,7 +182,15 @@ const HARDWARE_SIGNAL_KEYS = [
   "vlans",
   "gateway",
   "hostServerName",
-  "serveurHote"
+  "serveurHote",
+  "quickConnect",
+  "remoteAccessSolution",
+  "remoteAccessId",
+  "anydeskId",
+  "adminUrl",
+  "urlAdministration",
+  "stormshieldWanUrl",
+  "manageable"
 ];
 
 function overlayHardwareSignals(row, hardwareById) {
@@ -1145,6 +1160,21 @@ function ImpactMapCanvas({
   const visibleNodes = viewNodes.filter(node => !node.hidden);
   const visibleCount = visibleNodes.length;
   const impactInfo = describeImpact(focused, viewNodes, impactIds);
+  const quickConnect = (() => {
+    const equipment = focusedItem?.source;
+    if (!equipment || focused?.data?.missing || focused?.data?.kind === "manual") return null;
+    const remote = resolveEquipmentRemoteAccessAction(equipment, {}, locale);
+    if (remote) return remote;
+    if (!hasQuickConnectConfigured(equipment)) return null;
+    const value = getQuickConnectValue(equipment);
+    const actions = getEquipmentPageCopy(locale).actions;
+    return {
+      label: actions.quickConnect,
+      tooltip: interpolate(actions.quickConnectOpen, { value }),
+      icon: "mdi:remote-desktop",
+      launch: () => openQuickConnectUrl(equipment)
+    };
+  })();
   const suggestions = useMemo(() => {
     if (!canEdit) return [];
     return suggestImpactLinks(viewNodes, edges).filter(item => !dismissedSuggestions.has(item.id));
@@ -1428,6 +1458,7 @@ function ImpactMapCanvas({
           onDragOver={onDragOver}
           onNodeDoubleClick={(_, node) => openEditor(node)}
           onNodeContextMenu={(event, node) => openContextMenu(event, node)}
+          onSelectionContextMenu={event => openContextMenu(event)}
           onEdgeContextMenu={(event, edge) => openEdgeMenu(event, edge)}
           onPaneContextMenu={event => openContextMenu(event)}
           onPaneClick={event => {
@@ -1642,6 +1673,17 @@ function ImpactMapCanvas({
               </div>
             </div>}
             <div className={styles.actions}>
+              {quickConnect ? (
+                <button
+                  type="button"
+                  className={`${styles.textBtn} ${styles.connectBtn}`.trim()}
+                  title={quickConnect.tooltip}
+                  onClick={() => quickConnect.launch()}
+                >
+                  <Icon icon={quickConnect.icon || "mdi:remote-desktop"} width={14} height={14} />
+                  {quickConnect.label}
+                </button>
+              ) : null}
               {canEdit && focused.data.kind === "manual" ? (
                 <button type="button" className={styles.textBtn} onClick={() => openEditor(focused)}>
                   {copy.editElement}

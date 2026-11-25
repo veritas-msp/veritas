@@ -3297,8 +3297,8 @@ export default function ClientDetailPage({
       { id: "closed", label: copy.activityFilterClosed || "Clos" }
     ];
     return (
-      <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.activityToolbar}`}>
-        <div className={equipStyles.embeddedSearchWrap}>
+      <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${equipStyles.embeddedToolbarGrid} ${styles.activityToolbar}`}>
+        <div className={equipStyles.embeddedToolbarSlotStart}>
           <div className={equipStyles.embeddedSearchBox}>
             <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
             <input
@@ -3320,15 +3320,17 @@ export default function ClientDetailPage({
               </button>
             ) : null}
           </div>
-          <div className={`${equipStyles.embeddedSearchActions} ${styles.activityToolbarActions}`}>
-            <ActivityStatusSegmented
-              value={statusFilter}
-              onChange={onStatusFilterChange}
-              options={statusOptions}
-              ariaLabel={copy.activityFilterStatusAria || "Filtrer par statut"}
-            />
-            {extraActions}
-          </div>
+        </div>
+        <div className={equipStyles.embeddedToolbarSlotCenter}>
+          <ActivityStatusSegmented
+            value={statusFilter}
+            onChange={onStatusFilterChange}
+            options={statusOptions}
+            ariaLabel={copy.activityFilterStatusAria || "Filtrer par statut"}
+          />
+        </div>
+        <div className={`${equipStyles.embeddedToolbarSlotEnd} ${styles.activityToolbarActions}`}>
+          {extraActions}
         </div>
       </div>
     );

@@ -923,3 +923,80 @@
   border-color: color-mix(in srgb, #f87171 35%, transparent);
   color: #fecaca;
 }
+
+.paneFrame {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  gap: 0.75rem;
+}
+
+.paneSwitch {
+  display: inline-flex;
+  align-self: flex-start;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--msp-bg, #eef3f9);
+  border: 1px solid var(--msp-border, #dde3ed);
+}
+
+.paneSwitchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  padding: 0.38rem 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.paneSwitchBtnActive {
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+}
+
+.paneCount {
+  min-width: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.35rem;
+  text-align: center;
+}
+
+.paneBody {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.paneBodyScroll,
+.paneBodyFill {
+  overflow: hidden;
+}
+
+:global(html.dark) .paneSwitch {
+  background: #152033;
+  border-color: #2c3d5a;
+}
+
+:global(html.dark) .paneSwitchBtnActive {
+  background: #1c2b44;
+  color: #e8edf5;
+  box-shadow: none;
+}

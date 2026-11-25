@@ -245,12 +245,13 @@ export default function ActivityJournalPanel({
     <div
       className={
         embedded
-          ? `${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.embeddedToolbar}`
+          ? `${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${equipStyles.embeddedToolbarGrid} ${styles.embeddedToolbar}`
           : styles.toolbar
       }
     >
       {embedded ? (
-        <div className={equipStyles.embeddedSearchWrap}>
+        <>
+        <div className={equipStyles.embeddedToolbarSlotStart}>
           <div className={equipStyles.embeddedSearchBox}>
             <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
             <input
@@ -272,7 +273,9 @@ export default function ActivityJournalPanel({
               </button>
             ) : null}
           </div>
-          <div className={`${equipStyles.embeddedSearchActions} ${styles.embeddedToolbarActions}`}>
+        </div>
+        <div className={equipStyles.embeddedToolbarSlotCenter} />
+          <div className={`${equipStyles.embeddedToolbarSlotEnd} ${styles.embeddedToolbarActions}`}>
             <button
               type="button"
               className={styles.columnsPillBtn}
@@ -295,7 +298,7 @@ export default function ActivityJournalPanel({
               </button>
             ) : null}
           </div>
-        </div>
+        </>
       ) : (
         <>
           <div className={styles.searchWrap}>

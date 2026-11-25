@@ -389,6 +389,46 @@
   gap: 0.45rem;
 }
 
+/* Recherche à gauche, onglets au centre, boutons à droite. */
+.embeddedFilterBar.embeddedToolbarGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.embeddedToolbarSlotStart {
+  justify-self: start;
+  min-width: 0;
+  width: min(280px, 100%);
+  max-width: 100%;
+}
+
+.embeddedToolbarSlotStart > .embeddedSearchBox {
+  width: 100%;
+  max-width: none;
+  flex: none;
+  margin: 0;
+}
+
+.embeddedToolbarSlotCenter {
+  justify-self: center;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.embeddedToolbarSlotEnd {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
 .embeddedTypeSidebar > * {
   width: 100%;
   min-width: 0;

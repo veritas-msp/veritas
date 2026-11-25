@@ -803,6 +803,12 @@
   padding: 6px 8px;
 }
 
+.connectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .dangerBtn {
   color: #b42318;
 }

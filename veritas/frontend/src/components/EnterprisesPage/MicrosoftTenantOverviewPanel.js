@@ -18,7 +18,6 @@ import CyberBrickItemsTable from "./CyberBrickItemsTable";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import mapStyles from "./InfrastructureMap.module.css";
-import equipStyles from "../EquipementPage/EquipmentPage.module.css";
 
 function formatDate(value) {
   if (!value) return "-";
@@ -61,7 +60,6 @@ export function MicrosoftTenantOverviewPanel({
   const [loadError, setLoadError] = useState(null);
   const [snapshot, setSnapshot] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [licenseSearch, setLicenseSearch] = useState("");
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
   const clientId = client?.id;
@@ -173,6 +171,17 @@ export function MicrosoftTenantOverviewPanel({
     };
   }, [snapshot, mfaDetails]);
 
+  const userRows = useMemo(() => {
+    const users = Array.isArray(snapshot?.users) ? snapshot.users : [];
+    return users
+      .slice()
+      .sort((a, b) =>
+        String(a?.name || a?.displayName || "").localeCompare(String(b?.name || b?.displayName || ""), "fr", {
+          sensitivity: "base"
+        })
+      );
+  }, [snapshot]);
+
   const licenseRows = useMemo(() => {
     const licences = snapshot?.licences || snapshot?.licenses || [];
     if (!Array.isArray(licences)) return [];
@@ -234,27 +243,6 @@ export function MicrosoftTenantOverviewPanel({
     <StatsDashboardBody>
       <div className={mapStyles.metricsTopBar}>
         <div className={mapStyles.metricsTopBarLeft}>
-          <div className={equipStyles.embeddedSearchBox}>
-            <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
-            <input
-              type="search"
-              className={equipStyles.embeddedSearchInput}
-              value={licenseSearch}
-              onChange={event => setLicenseSearch(event.target.value)}
-              placeholder="Rechercher"
-              aria-label="Rechercher"
-            />
-            {licenseSearch ? (
-              <button
-                type="button"
-                className={equipStyles.embeddedSearchClear}
-                onClick={() => setLicenseSearch("")}
-                aria-label="Effacer la recherche"
-              >
-                <Icon icon="mdi:close" aria-hidden />
-              </button>
-            ) : null}
-          </div>
           <div className={mapStyles.metricsTopBarMeta} title={`Tenant ${tenantId || "—"} · Sync ${formatDate(lastUpdate)}`}>
             <span>
               <Icon icon="mdi:identifier" aria-hidden />
@@ -330,15 +318,31 @@ export function MicrosoftTenantOverviewPanel({
         />
       </section>
 
-      <div className={mapStyles.metricsTableHost}>
-        <CyberBrickItemsTable
-          brickType="Office365Licenses"
-          items={licenseRows}
-          emptyLabel="Aucune licence synchronisée"
-          hideSearchBar
-          search={licenseSearch}
-          onSearchChange={setLicenseSearch}
-        />
+      <div className={mapStyles.metricsSplit}>
+        <section className={mapStyles.metricsTableHost} aria-label="Licences">
+          <h3 className={styles.dualTableTitle}>
+            <Icon icon="mdi:license" width={14} height={14} aria-hidden />
+            Licences
+          </h3>
+          <CyberBrickItemsTable
+            brickType="Office365Licenses"
+            items={licenseRows}
+            emptyLabel="Aucune licence synchronisée"
+            searchPlaceholder="Rechercher une licence…"
+          />
+        </section>
+        <section className={mapStyles.metricsTableHost} aria-label="Utilisateurs">
+          <h3 className={styles.dualTableTitle}>
+            <Icon icon="mdi:account-group-outline" width={14} height={14} aria-hidden />
+            Utilisateurs
+          </h3>
+          <CyberBrickItemsTable
+            brickType="Office365Users"
+            items={userRows}
+            emptyLabel="Aucun utilisateur synchronisé"
+            searchPlaceholder="Rechercher un utilisateur…"
+          />
+        </section>
       </div>
     </StatsDashboardBody>
   );

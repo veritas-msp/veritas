@@ -965,8 +965,8 @@ export default forwardRef(function EnterpriseVaultPanel({
             if (e.target === e.currentTarget) openContextMenu(e, { kind: "blank", folderId: currentFolderId });
           }}
         >
-          <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${styles.vaultToolbar}`}>
-            <div className={equipStyles.embeddedSearchWrap}>
+          <div className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${equipStyles.embeddedToolbarGrid} ${styles.vaultToolbar}`}>
+            <div className={equipStyles.embeddedToolbarSlotStart}>
               <div className={equipStyles.embeddedSearchBox}>
                 <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
                 <input
@@ -988,8 +988,11 @@ export default forwardRef(function EnterpriseVaultPanel({
                   </button>
                 ) : null}
               </div>
+            </div>
+            <div className={equipStyles.embeddedToolbarSlotCenter}>
               {pathBreadcrumb}
-              <div className={`${equipStyles.embeddedSearchActions} ${styles.vaultToolbarActions}`}>
+            </div>
+            <div className={`${equipStyles.embeddedToolbarSlotEnd} ${styles.vaultToolbarActions}`}>
                 <div className={styles.macosPillSelectWrap}>
                   <button
                     type="button"
@@ -1052,7 +1055,6 @@ export default forwardRef(function EnterpriseVaultPanel({
                   <Icon icon="mdi:table-cog" aria-hidden />
                 </button>
               </div>
-            </div>
           </div>
 
           {isEmpty ? <VaultDropTarget

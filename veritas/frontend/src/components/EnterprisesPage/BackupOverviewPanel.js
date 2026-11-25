@@ -35,9 +35,12 @@ export default function BackupOverviewPanel({
 }) {
   const [search, setSearch] = useState("");
   const [choiceOpen, setChoiceOpen] = useState(false);
+  const [view, setView] = useState("jobs");
   const instanceList = Array.isArray(instances) ? instances : [];
   const jobList = Array.isArray(jobs) ? jobs : [];
   const canAddAnything = Boolean(onAddInstance || onAddJob);
+
+  const jobSearchLabel = searchPlaceholder === "Rechercher…" ? "Rechercher une sauvegarde…" : searchPlaceholder;
 
   const filteredJobs = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -85,9 +88,9 @@ export default function BackupOverviewPanel({
   return (
     <div className={`${mapStyles.backupOverview} ${mapStyles.backupOverviewInfraSearch}`.trim()}>
       <div
-        className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${mapStyles.backupInfraToolbar}`.trim()}
+        className={`${equipStyles.hardwarePageEmbedded} ${equipStyles.embeddedFilterBar} ${equipStyles.embeddedFilterBarToolbar} ${equipStyles.embeddedToolbarGrid} ${mapStyles.backupInfraToolbar}`.trim()}
       >
-        <div className={equipStyles.embeddedSearchWrap}>
+        <div className={equipStyles.embeddedToolbarSlotStart}>
           <div className={equipStyles.embeddedSearchBox}>
             <Icon icon="mdi:magnify" className={equipStyles.embeddedSearchIcon} aria-hidden />
             <input
@@ -95,8 +98,8 @@ export default function BackupOverviewPanel({
               className={equipStyles.embeddedSearchInput}
               value={search}
               onChange={event => setSearch(event.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
+              placeholder={view === "instances" ? "Rechercher une instance…" : jobSearchLabel}
+              aria-label={view === "instances" ? "Rechercher une instance…" : jobSearchLabel}
             />
             {search ? (
               <button
@@ -109,7 +112,32 @@ export default function BackupOverviewPanel({
               </button>
             ) : null}
           </div>
-          <div className={equipStyles.embeddedSearchActions}>
+        </div>
+        <div className={equipStyles.embeddedToolbarSlotCenter}>
+          <div className={mapStyles.backupViewSwitch} role="tablist" aria-label="Affichage de la sauvegarde">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "instances"}
+              className={`${mapStyles.backupViewBtn} ${view === "instances" ? mapStyles.backupViewBtnActive : ""}`}
+              onClick={() => setView("instances")}
+            >
+              Instances
+              <span className={mapStyles.backupTableCount}>{instanceList.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === "jobs"}
+              className={`${mapStyles.backupViewBtn} ${view === "jobs" ? mapStyles.backupViewBtnActive : ""}`}
+              onClick={() => setView("jobs")}
+            >
+              Sauvegardes
+              <span className={mapStyles.backupTableCount}>{jobList.length}</span>
+            </button>
+          </div>
+        </div>
+        <div className={equipStyles.embeddedToolbarSlotEnd}>
             {toolbar}
             {canAddAnything ? (
               <button
@@ -122,19 +150,15 @@ export default function BackupOverviewPanel({
                 <Icon icon="mdi:plus" aria-hidden />
               </button>
             ) : null}
-          </div>
         </div>
       </div>
 
-      <div className={mapStyles.backupTablesSplit}>
-        <section className={mapStyles.backupTableBlock} aria-label="Instances de sauvegarde">
-          <div className={mapStyles.backupTableHead}>
-            <h3 className={mapStyles.backupTableTitle}>
-              Instances
-              <span className={mapStyles.backupTableCount}>{filteredInstances.length}</span>
-            </h3>
-          </div>
-          <div className={mapStyles.backupTableHost}>
+      <section
+        className={`${mapStyles.backupTableBlock} ${mapStyles.backupTableSolo}`}
+        aria-label={view === "instances" ? "Instances de sauvegarde" : "Sauvegardes"}
+      >
+        <div className={mapStyles.backupTableHost}>
+          {view === "instances" ? (
             <CyberBrickItemsTable
               brickType="Backup"
               items={filteredInstances}
@@ -144,30 +168,20 @@ export default function BackupOverviewPanel({
               onEditItem={onEditInstance}
               editLabel={editLabel}
             />
-          </div>
-        </section>
-
-        <section className={mapStyles.backupTableBlock} aria-label="Jobs de sauvegarde">
-          <div className={mapStyles.backupTableHead}>
-            <h3 className={mapStyles.backupTableTitle}>
-              Jobs
-              <span className={mapStyles.backupTableCount}>{filteredJobs.length}</span>
-            </h3>
-          </div>
-          <div className={mapStyles.backupTableHost}>
+          ) : (
             <CyberBrickItemsTable
               brickType="BackupJobs"
               items={filteredJobs}
-              emptyLabel={!canAddJob ? "Ajoutez d’abord une instance" : "Aucun job"}
+              emptyLabel={!canAddJob ? "Ajoutez d’abord une instance" : "Aucune sauvegarde"}
               hideSearchBar
               sortable
               onEditItem={typeof getJobActionMenuItems === "function" ? null : onEditJob}
               getActionMenuItems={getJobActionMenuItems}
               editLabel={editLabel}
             />
-          </div>
-        </section>
-      </div>
+          )}
+        </div>
+      </section>
 
       <BackupAddChoiceModal
         open={choiceOpen}

@@ -344,6 +344,38 @@ function getColumns(brickType) {
         { key: "days", label: "Jours", get: item => formatDaysRemaining(item) },
         { key: "notes", label: "Notes", get: item => item?.notes || "—" }
       ];
+    case "Office365Users":
+      return [
+        {
+          key: "name",
+          label: "Nom",
+          get: item => item?.name || item?.displayName || item?.userPrincipalName || "—"
+        },
+        {
+          key: "email",
+          label: "E-mail",
+          get: item => item?.email || item?.userPrincipalName || "—"
+        },
+        {
+          key: "status",
+          label: "Statut",
+          get: item => (item?.accountEnabled === false ? "Bloqué" : "Actif")
+        },
+        {
+          key: "lastLogin",
+          label: "Dernière connexion",
+          get: item => formatDateValue(item?.lastLoginDate),
+          sortValue: item => {
+            const ms = item?.lastLoginDate ? new Date(item.lastLoginDate).getTime() : 0;
+            return Number.isFinite(ms) ? ms : 0;
+          }
+        },
+        {
+          key: "licenses",
+          label: "Licences",
+          get: item => item?.licenses || "—"
+        }
+      ];
     case "Office365Licenses":
       return [
         {
@@ -740,7 +772,7 @@ export default function CyberBrickItemsTable({
                 <tbody>
                   {sorted.length ? (
                     sorted.map((item, index) => {
-                      const id = rowKey(item, index);
+                      const id = `${rowKey(item, index)}:${index}`;
                       const isSelected = selectedIds instanceof Set && selectedIds.has(cyberBrickItemKey(item, index));
                       return (
                         <tr

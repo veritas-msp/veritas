@@ -65,6 +65,14 @@
   max-width: none;
 }
 
+.enterpriseDetailPage :global([class*="embeddedToolbarSlotStart"]) :global([class*="embeddedSearchBox"]),
+.contratDetailPage :global([class*="embeddedToolbarSlotStart"]) :global([class*="embeddedSearchBox"]) {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
 .enterpriseDetailPage :global([class*="logsPanelBodyEmbedded"]),
 .contratDetailPage :global([class*="logsPanelBodyEmbedded"]) {
   padding: var(--crm-section-content-pad) !important;

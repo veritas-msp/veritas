@@ -14,6 +14,7 @@ import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
 import { KpiCard, StatsDashboardBody, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
 import { UiKitKpiStrip } from "../UiKit";
 import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
+import SolutionHistoryPane from "./SolutionHistoryPane";
 import { getOsIconName } from "../EquipementPage/osIconUtils";
 
 function formatDate(value) {
@@ -570,6 +571,13 @@ export function AntivirusOverviewPanel({
     []
   );
 
+  const historyRows = useMemo(() => {
+    if (activeSection === "quarantine") {
+      return eventLog.filter(row => row.type === "infected" || row.type === "cleaned");
+    }
+    return eventLog;
+  }, [activeSection, eventLog]);
+
   const renderOverview = () => {
     const license = sections.license?.data;
     const endpoints = sections.endpoints;
@@ -584,8 +592,8 @@ export function AntivirusOverviewPanel({
       const other = byType?.other || 0;
       const typeTotal = physical + virtual + other;
       const typePct = count => typeTotal > 0 ? Math.round(count / typeTotal * 100) : 0;
-      return <StatsDashboardBody className={dashStyles.bodyFill}>
-          <div className={dashStyles.bodyFillTop}>
+      return <StatsDashboardBody>
+          <div>
             <section className={dashStyles.sectionBlock}>
               <div className={dashStyles.kpiDualRow}>
                 <div className={dashStyles.kpiDualGroup}>
@@ -637,21 +645,6 @@ export function AntivirusOverviewPanel({
               <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} hideEndpointTypes />
             </section>
           </div>
-
-          <section className={`${dashStyles.sectionBlock} ${dashStyles.bodyFillSection}`}>
-            <h3 className={dashStyles.sectionBlockTitle}>Événements</h3>
-            <div className={styles.listSectionFill}>
-              <SolutionOverviewDataTable
-                fillHeight
-                searchable
-                searchPlaceholder="Rechercher un événement…"
-                emptyLabel="Aucun événement enregistré pour l’instant."
-                emptyIcon="mdi:history"
-                rows={eventLog}
-                columns={eventColumns}
-              />
-            </div>
-          </section>
         </StatsDashboardBody>;
     }
     return <>
@@ -751,7 +744,19 @@ export function AntivirusOverviewPanel({
       default:
         content = renderOverview();
     }
-    return content;
+    const dataLabel =
+      activeSection === "endpoints"
+        ? "Postes"
+        : activeSection === "policies"
+          ? "Politiques"
+          : activeSection === "quarantine"
+            ? "Quarantaine"
+            : "Statistiques";
+    return (
+      <SolutionHistoryPane sectionId={activeSection} dataLabel={dataLabel} rows={historyRows} columns={eventColumns}>
+        {content}
+      </SolutionHistoryPane>
+    );
   };
   const navEntries = useMemo(() => ANTIVIRUS_OVERVIEW_SECTIONS.map(section => ({
     type: "section",

@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.33",
+    date: "2026-11-25",
+    highlights: [
+      "Antivirus et antispam : un onglet pour passer des statistiques à l’historique, sur chaque sous-section.",
+      "Tenant Microsoft : les utilisateurs s’affichent à côté des licences, chacun avec sa recherche.",
+      "Sauvegarde : Instances et Sauvegardes se consultent par onglet.",
+      "Infrastructure : les filtres Checkmk quittent la barre. Recherche à gauche, actions à droite. Même disposition sur Sauvegarde, Tickets, Événements, Coffre-fort et Logs.",
+      "Analyse : le clic droit sur une sélection multiple ouvre le menu. Un bouton de connexion rapide apparaît lorsqu’elle est configurée."
+    ]
+  },
+  {
     version: "2.0.32",
     date: "2026-11-25",
     highlights: [

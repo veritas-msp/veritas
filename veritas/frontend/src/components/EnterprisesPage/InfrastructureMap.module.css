@@ -389,10 +389,61 @@
   color: var(--msp-muted-light);
 }
 
-.backupTablesSplit {
-  display: grid;
-  grid-template-rows: minmax(0, 3fr) minmax(0, 7fr);
-  gap: 0.65rem;
+.backupViewSwitch {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  height: var(--msp-btn-h, 2.15rem);
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--msp-bg, #eef3f9);
+  border: 1px solid var(--msp-border, #dde3ed);
+}
+
+.backupViewBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backupViewBtnActive {
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+}
+
+.backupViewBtnActive .backupTableCount {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+  color: var(--msp-accent, #2b5fab);
+}
+
+:global(html.dark) .backupViewSwitch,
+:global(body.dark) .backupViewSwitch {
+  background: #152033;
+  border-color: #2c3d5a;
+}
+
+:global(html.dark) .backupViewBtnActive,
+:global(body.dark) .backupViewBtnActive {
+  background: #1c2b44;
+  color: #e8edf5;
+  box-shadow: none;
+}
+
+.backupTableSolo {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -584,12 +635,37 @@
   margin-left: auto;
 }
 
+.metricsSplit {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+  gap: 0.85rem;
+  overflow: hidden;
+}
+
+.metricsSplit > .metricsTableHost {
+  height: 100%;
+  min-height: 0;
+}
+
 .metricsTableHost {
   flex: 1 1 auto;
   min-height: 14rem;
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+@media (max-width: 1100px) {
+  .metricsSplit {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .metricsSplit > .metricsTableHost {
+    min-height: 18rem;
+  }
 }
 
 .metricsTableHost :global([class*="hardwarePageEmbedded"]) {

@@ -14,6 +14,7 @@ import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
 import { KpiCard, StatsDashboardBody, StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
 import AntispamOverviewCharts from "./AntispamOverviewCharts";
 import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
+import SolutionHistoryPane from "./SolutionHistoryPane";
 function formatDate(value) {
   if (value == null || value === "" || value === 0 || value === "0") return "-";
   try {
@@ -495,6 +496,13 @@ export function AntispamOverviewPanel({
     []
   );
 
+  const historyRows = useMemo(() => {
+    if (activeSection === "directory" || activeSection === "domains" || activeSection === "users") {
+      return eventLog.filter(row => row.type.startsWith("user_") || row.type.startsWith("domain_"));
+    }
+    return eventLog;
+  }, [activeSection, eventLog]);
+
   const renderOverview = () => {
     const customer = sections.customer?.data;
     const usersTotal = sections.users?.total ?? antispamItem?.utilisateursProteges ?? 0;
@@ -528,8 +536,8 @@ export function AntispamOverviewPanel({
         </StatsPanel> : <StatsPanel title="Information client">
           <p className={dashStyles.panelDesc}>Aucune information client disponible.</p>
         </StatsPanel>;
-      return <StatsDashboardBody className={dashStyles.bodyFill}>
-          <div className={dashStyles.bodyFillTop}>
+      return <StatsDashboardBody>
+          <div>
             <section className={dashStyles.sectionBlock}>
               <div className={dashStyles.kpiDualRow}>
                 <div className={dashStyles.kpiDualGroup}>
@@ -571,21 +579,6 @@ export function AntispamOverviewPanel({
               />
             </section>
           </div>
-
-          <section className={`${dashStyles.sectionBlock} ${dashStyles.bodyFillSection}`}>
-            <h3 className={dashStyles.sectionBlockTitle}>Événements</h3>
-            <div className={styles.listSectionFill}>
-              <SolutionOverviewDataTable
-                fillHeight
-                searchable
-                searchPlaceholder="Rechercher un événement…"
-                emptyLabel="Aucun événement enregistré pour l’instant."
-                emptyIcon="mdi:history"
-                rows={eventLog}
-                columns={eventColumns}
-              />
-            </div>
-          </section>
         </StatsDashboardBody>;
     }
     return <>
@@ -689,7 +682,12 @@ export function AntispamOverviewPanel({
       default:
         content = renderOverview();
     }
-    return content;
+    const dataLabel = activeSection === "overview" ? "Statistiques" : "Annuaire";
+    return (
+      <SolutionHistoryPane sectionId={activeSection} dataLabel={dataLabel} rows={historyRows} columns={eventColumns}>
+        {content}
+      </SolutionHistoryPane>
+    );
   };
   const navEntries = useMemo(() => ANTISPAM_OVERVIEW_SECTIONS.map(section => ({
     type: "section",
