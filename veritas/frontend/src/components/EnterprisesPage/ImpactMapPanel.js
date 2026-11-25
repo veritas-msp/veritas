@@ -164,6 +164,35 @@ function newId() {
   });
 }
 
+const HARDWARE_SIGNAL_KEYS = [
+  "modeHA",
+  "roleHA",
+  "firewallHAName",
+  "serverHAName",
+  "storageHAName",
+  "categorie",
+  "vlan",
+  "vlans",
+  "gateway",
+  "hostServerName",
+  "serveurHote"
+];
+
+function overlayHardwareSignals(row, hardwareById) {
+  const extra = hardwareById.get(String(row?.dbId || ""));
+  if (!extra) return row;
+  const overlay = {};
+  const rawData = { ...(row.rawData || {}) };
+  HARDWARE_SIGNAL_KEYS.forEach(key => {
+    const value = extra[key];
+    if (value == null || value === "") return;
+    overlay[key] = value;
+    rawData[key] = value;
+  });
+  if (!Object.keys(overlay).length) return row;
+  return { ...row, ...overlay, rawData };
+}
+
 function enrichNode(node, catalog, inventoryReady, haIndex, signals) {
   if (node.data?.kind === "manual") {
     const description = node.data.description || "";
@@ -447,9 +476,16 @@ function ImpactMapCanvas({
     setInventoryError(false);
     const load = async () => {
       try {
-        const rows = await getEquipmentInventoryList({ signal: controller.signal });
+        const [rows, hardware] = await Promise.all([
+          getEquipmentInventoryList({ signal: controller.signal }),
+          getClientHardwareEquipment(clientId, { signal: controller.signal }).catch(() => [])
+        ]);
+        const hardwareById = new Map((Array.isArray(hardware) ? hardware : [])
+          .filter(item => item?.dbId)
+          .map(item => [String(item.dbId), item]));
         const normalized = dedupeInventory((Array.isArray(rows) ? rows : [])
           .filter(row => String(row.clientId) === String(clientId))
+          .map(row => overlayHardwareSignals(row, hardwareById))
           .map(normalizeInventoryRow)
           .filter(Boolean));
         if (!controller.signal.aborted) {
@@ -1346,6 +1382,7 @@ function ImpactMapCanvas({
             <Icon icon={fullscreen ? "mdi:fullscreen-exit" : "mdi:fullscreen"} />
           </button>
         </div>
+        <p className={styles.gestureHint}>{copy.panHint}</p>
         {!canEdit ? <span className={styles.readOnlyChip}>{copy.readOnly}</span> : null}
         {mapVlans.length ? (
           <div className={styles.vlanBar} role="toolbar" aria-label={copy.vlanFilterAria}>
@@ -1415,8 +1452,12 @@ function ImpactMapCanvas({
           nodesFocusable
           edgesFocusable
           deleteKeyCode={null}
-          selectionKeyCode="Control"
-          multiSelectionKeyCode="Control"
+          panOnDrag={false}
+          selectionOnDrag
+          panActivationKeyCode="Control"
+          selectionKeyCode={null}
+          multiSelectionKeyCode={null}
+          zoomActivationKeyCode={null}
           selectionMode={SelectionMode.Partial}
           proOptions={{ hideAttribution: true }}
           defaultEdgeOptions={{ style: { stroke: "#8aa0bd", strokeWidth: 1.6 }, interactionWidth: 18 }}

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.32",
+    date: "2026-11-25",
+    highlights: [
+      "Cartographie : seules les liaisons tracées dans l’analyse apparaissent.",
+      "En redondance, le secours se place à côté du primaire, avec un trait dédié. Un équipement rattaché à la paire pointe vers le primaire.",
+      "Clic gauche pour sélectionner, ou glisser pour une sélection multiple. Ctrl + clic gauche pour se déplacer dans le schéma."
+    ]
+  },
+  {
     version: "2.0.31",
     date: "2026-11-24",
     highlights: [

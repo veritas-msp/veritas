@@ -127,6 +127,7 @@ export async function captureVisualStage(stage) {
   if (!stage || !world) throw new Error("empty");
   const host = mountHost(VISUAL_WIDTH, "#0c1424");
   const clone = stage.cloneNode(true);
+  clone.querySelectorAll("[data-impact-no-export]").forEach(node => node.remove());
   clone.style.width = `${VISUAL_WIDTH}px`;
   clone.style.maxWidth = `${VISUAL_WIDTH}px`;
   clone.style.height = "auto";

@@ -57,37 +57,65 @@ function pairKey(left, right) {
   return left < right ? `${left}|${right}` : `${right}|${left}`;
 }
 
+function haLayout(list) {
+  const groups = new Map();
+  list.forEach(node => {
+    const key = node.data?.ha?.pairKey;
+    if (!key) return;
+    const bucket = groups.get(key) || [];
+    bucket.push(node);
+    groups.set(key, bucket);
+  });
+  const anchors = new Map();
+  groups.forEach(peers => {
+    if (peers.length < 2) return;
+    const primary = peers.find(peer => peer.data?.ha?.role !== "Secondary") || peers[0];
+    peers.forEach(peer => {
+      if (peer.id !== primary.id) anchors.set(peer.id, primary.id);
+    });
+  });
+  return anchors;
+}
+
 function buildModel(nodes, edges) {
   const list = nodes.filter(node => node.data?.nodeType !== "group");
   const ids = new Set(list.map(node => node.id));
+  const byId = new Map(list.map(node => [node.id, node]));
+  const anchors = haLayout(list);
+  const primaryOf = id => anchors.get(id) || id;
   const links = [];
   const seen = new Set();
   (Array.isArray(edges) ? edges : []).forEach(edge => {
     if (!ids.has(edge.source) || !ids.has(edge.target) || edge.hidden) return;
-    const key = pairKey(edge.source, edge.target);
+    const sourceId = primaryOf(edge.source);
+    const targetId = primaryOf(edge.target);
+    if (sourceId === targetId) return;
+    const key = pairKey(sourceId, targetId);
     if (seen.has(key)) return;
     seen.add(key);
-    const source = list.find(node => node.id === edge.source);
-    const target = list.find(node => node.id === edge.target);
     links.push({
       id: edge.id,
-      source: edge.source,
-      target: edge.target,
+      source: sourceId,
+      target: targetId,
       soft: false,
-      separated: classifyNetworkLink(source, target) === "separated"
+      ha: false,
+      separated: classifyNetworkLink(byId.get(edge.source), byId.get(edge.target)) === "separated"
     });
   });
-  const hubs = list.filter(isHub);
-  list.forEach(node => {
-    if (isHub(node)) return;
-    const vlans = node.data?.vlans || [];
-    const hub = hubs.find(item => vlans.length && (item.data?.vlans || []).some(id => vlans.includes(id)))
-      || hubs.find(item => item.data?.location && item.data.location === node.data?.location);
-    if (!hub) return;
-    const key = pairKey(node.id, hub.id);
+  anchors.forEach((primaryId, secondaryId) => {
+    const key = pairKey(primaryId, secondaryId);
     if (seen.has(key)) return;
     seen.add(key);
-    links.push({ id: `vlan-${key}`, source: node.id, target: hub.id, soft: true, separated: false });
+    const primary = byId.get(primaryId);
+    links.push({
+      id: `ha-${key}`,
+      source: primaryId,
+      target: secondaryId,
+      soft: false,
+      ha: true,
+      separated: false,
+      color: primary?.data?.ha?.color || byId.get(secondaryId)?.data?.ha?.color || "#2dd4bf"
+    });
   });
   const grouped = new Map();
   list.forEach(node => {
@@ -96,21 +124,81 @@ function buildModel(nodes, edges) {
     bucket.push(node);
     grouped.set(key, bucket);
   });
-  grouped.forEach(bucket => {
-    if (bucket.length < 2) return;
-    const anchor = bucket.find(isHub) || bucket[0];
-    bucket.forEach(node => {
-      if (node.id === anchor.id) return;
-      const key = pairKey(node.id, anchor.id);
-      if (seen.has(key)) return;
-      seen.add(key);
-      links.push({ id: `cluster-${key}`, source: node.id, target: anchor.id, soft: true, separated: false });
-    });
-  });
-  return { list, links, grouped };
+  return { list, links, grouped, anchors };
 }
 
-function simulate(list, links) {
+function pinHaPairs(bodies, byId, anchors) {
+  const groups = new Map();
+  anchors.forEach((primaryId, secondaryId) => {
+    const ids = groups.get(primaryId) || [];
+    ids.push(secondaryId);
+    groups.set(primaryId, ids);
+  });
+  const place = () => {
+    groups.forEach((ids, primaryId) => {
+      const primary = byId.get(primaryId);
+      if (!primary) return;
+      ids.forEach((secondaryId, index) => {
+        const secondary = byId.get(secondaryId);
+        if (!secondary) return;
+        secondary.x = primary.x + 128;
+        secondary.y = primary.y + index * 108;
+        secondary.vx = 0;
+        secondary.vy = 0;
+      });
+    });
+  };
+  place();
+  const pinned = new Set([...anchors.keys(), ...anchors.values()]);
+  const rootOf = id => anchors.get(id) || id;
+  const shiftGroup = (rootId, dx, dy) => {
+    const primary = byId.get(rootId);
+    if (primary) {
+      primary.x += dx;
+      primary.y += dy;
+    }
+    anchors.forEach((primaryId, secondaryId) => {
+      if (primaryId !== rootId) return;
+      const secondary = byId.get(secondaryId);
+      if (!secondary) return;
+      secondary.x += dx;
+      secondary.y += dy;
+    });
+  };
+  for (let pass = 0; pass < 8; pass += 1) {
+    for (let i = 0; i < bodies.length; i += 1) {
+      for (let j = i + 1; j < bodies.length; j += 1) {
+        const dx = bodies[j].x - bodies[i].x;
+        const dy = bodies[j].y - bodies[i].y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        const min = 150;
+        if (dist >= min) continue;
+        const shift = min - dist;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const leftRoot = rootOf(bodies[i].id);
+        const rightRoot = rootOf(bodies[j].id);
+        const leftPinned = pinned.has(bodies[i].id);
+        const rightPinned = pinned.has(bodies[j].id);
+        if (leftPinned && rightPinned) {
+          if (leftRoot === rightRoot) continue;
+          shiftGroup(rightRoot, ux * shift, uy * shift);
+          continue;
+        }
+        if (leftPinned) {
+          bodies[j].x += ux * shift;
+          bodies[j].y += uy * shift;
+        } else if (rightPinned) {
+          bodies[i].x -= ux * shift;
+          bodies[i].y -= uy * shift;
+        }
+      }
+    }
+    place();
+  }
+}
+
+function simulate(list, links, anchors = new Map()) {
   const width = 1100;
   const height = 700;
   const keys = [...new Set(list.map(clusterKey))];
@@ -157,11 +245,12 @@ function simulate(list, links) {
       }
     }
     springs.forEach(link => {
+      if (link.ha) return;
       const dx = link.b.x - link.a.x;
       const dy = link.b.y - link.a.y;
       const dist = Math.hypot(dx, dy) || 0.01;
-      const desired = link.soft ? 118 : 168;
-      const pull = ((dist - desired) / dist) * (link.soft ? 0.015 : 0.028);
+      const desired = 168;
+      const pull = ((dist - desired) / dist) * 0.028;
       link.a.vx += dx * pull;
       link.a.vy += dy * pull;
       link.b.vx -= dx * pull;
@@ -194,7 +283,9 @@ function simulate(list, links) {
         bodies[j].y += uy * shift;
       }
     }
+    pinHaPairs(bodies, byId, anchors);
   }
+  pinHaPairs(bodies, byId, anchors);
   return new Map(bodies.map(body => [body.id, body]));
 }
 
@@ -272,13 +363,19 @@ export default function ImpactVisualMap({
 }) {
   const viewportRef = useRef(null);
   const dragRef = useRef(null);
+  const selectedRef = useRef(new Set());
+  const skipClickRef = useRef(false);
   const [box, setBox] = useState({ w: 0, h: 0 });
   const [focusId, setFocusId] = useState("");
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [marquee, setMarquee] = useState(null);
+  const [panKey, setPanKey] = useState(false);
   const [view, setView] = useState({ x: 40, y: 40, zoom: 1 });
+  selectedRef.current = selectedIds;
   const model = useMemo(() => buildModel(nodes, edges), [edges, nodes]);
   const signature = `${model.list.map(node => node.id).join("|")}::${model.links.map(link => link.id).join("|")}`;
   const laidOut = useMemo(
-    () => simulate(model.list, model.links),
+    () => simulate(model.list, model.links, model.anchors),
     // Relancer la simulation seulement quand le graphe change, pas à chaque rendu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [signature]
@@ -288,7 +385,24 @@ export default function ImpactVisualMap({
   useEffect(() => {
     setPositions(laidOut);
     setFocusId("");
+    setSelectedIds(new Set());
   }, [laidOut]);
+
+  useEffect(() => {
+    const sync = event => {
+      if (event.key !== "Control") return;
+      setPanKey(event.type === "keydown");
+    };
+    const clear = () => setPanKey(false);
+    window.addEventListener("keydown", sync);
+    window.addEventListener("keyup", sync);
+    window.addEventListener("blur", clear);
+    return () => {
+      window.removeEventListener("keydown", sync);
+      window.removeEventListener("keyup", sync);
+      window.removeEventListener("blur", clear);
+    };
+  }, []);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -356,22 +470,122 @@ export default function ImpactVisualMap({
   });
 
   const onPointerDown = event => {
+    if (event.button !== 0) return;
+    if (event.ctrlKey) {
+      dragRef.current = { kind: "pan", x: event.clientX, y: event.clientY, view };
+      event.currentTarget.setPointerCapture(event.pointerId);
+      return;
+    }
     if (event.target.closest?.(`.${styles.node}`)) return;
-    dragRef.current = { kind: "pan", x: event.clientX, y: event.clientY, view };
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const left = event.clientX - bounds.left;
+    const top = event.clientY - bounds.top;
+    dragRef.current = { kind: "select", x: event.clientX, y: event.clientY, left, top, rect: { x: left, y: top, w: 0, h: 0 } };
+    setMarquee({ x: left, y: top, w: 0, h: 0 });
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = event => {
     const drag = dragRef.current;
-    if (!drag || drag.kind !== "pan") return;
-    setView({
-      ...drag.view,
-      x: drag.view.x + event.clientX - drag.x,
-      y: drag.view.y + event.clientY - drag.y
-    });
+    if (!drag) return;
+    if (drag.kind === "pan") {
+      setView({
+        ...drag.view,
+        x: drag.view.x + event.clientX - drag.x,
+        y: drag.view.y + event.clientY - drag.y
+      });
+      return;
+    }
+    if (drag.kind !== "select" || !viewportRef.current) return;
+    const bounds = viewportRef.current.getBoundingClientRect();
+    const x2 = event.clientX - bounds.left;
+    const y2 = event.clientY - bounds.top;
+    const rect = {
+      x: Math.min(drag.left, x2),
+      y: Math.min(drag.top, y2),
+      w: Math.abs(x2 - drag.left),
+      h: Math.abs(y2 - drag.top)
+    };
+    drag.rect = rect;
+    setMarquee(rect);
   };
 
   const onPointerUp = () => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (drag?.kind !== "select") return;
+    const rect = drag.rect || { x: drag.left, y: drag.top, w: 0, h: 0 };
+    setMarquee(null);
+    if (rect.w < 4 && rect.h < 4) {
+      setSelectedIds(new Set());
+      setFocusId("");
+      return;
+    }
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const bounds = viewport.getBoundingClientRect();
+    const ids = [];
+    viewport.querySelectorAll(`.${styles.node}`).forEach(element => {
+      const box = element.getBoundingClientRect();
+      const left = box.left - bounds.left;
+      const top = box.top - bounds.top;
+      const right = left + box.width;
+      const bottom = top + box.height;
+      const hit = right >= rect.x && left <= rect.x + rect.w && bottom >= rect.y && top <= rect.y + rect.h;
+      if (hit) ids.push(element.getAttribute("data-id"));
+    });
+    setSelectedIds(new Set(ids.filter(Boolean)));
+    setFocusId(ids.length === 1 ? ids[0] : "");
+  };
+
+  const onNodePointerDown = (event, node) => {
+    if (event.button !== 0 || event.ctrlKey) return;
+    event.stopPropagation();
+    const currentSelected = selectedRef.current;
+    const keepGroup = currentSelected.has(node.id);
+    const ids = keepGroup ? [...currentSelected] : [node.id];
+    if (!keepGroup) {
+      setSelectedIds(new Set(ids));
+      setFocusId(node.id);
+    }
+    const origins = new Map();
+    ids.forEach(id => {
+      const point = byId.get(id);
+      if (point) origins.set(id, { x: point.x, y: point.y });
+    });
+    dragRef.current = {
+      kind: "nodes",
+      id: node.id,
+      ids,
+      x: event.clientX,
+      y: event.clientY,
+      origins,
+      moved: false
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const onNodePointerMove = (event, node) => {
+    const drag = dragRef.current;
+    if (!drag || drag.kind !== "nodes" || drag.id !== node.id) return;
+    if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 3) drag.moved = true;
+    const dx = (event.clientX - drag.x) / view.zoom;
+    const dy = (event.clientY - drag.y) / view.zoom;
+    setPositions(current => {
+      const next = new Map(current);
+      drag.origins.forEach((origin, id) => {
+        const body = next.get(id);
+        if (!body) return;
+        next.set(id, { ...body, x: origin.x + dx, y: origin.y + dy });
+      });
+      return next;
+    });
+  };
+
+  const onNodePointerUp = node => {
+    const drag = dragRef.current;
+    if (!drag || drag.kind !== "nodes" || drag.id !== node.id) return;
+    skipClickRef.current = drag.moved;
     dragRef.current = null;
   };
 
@@ -392,7 +606,7 @@ export default function ImpactVisualMap({
       </header>
       {model.list.length ? (
         <div
-          className={styles.viewport}
+          className={`${styles.viewport} ${panKey ? styles.viewportPan : ""}`.trim()}
           data-impact-export="viewport"
           ref={viewportRef}
           onPointerDown={onPointerDown}
@@ -432,19 +646,19 @@ export default function ImpactVisualMap({
                 const b = byId.get(link.target);
                 if (!a || !b) return null;
                 const dim = focusLinks && !focusLinks.has(link.id);
-                const paint = link.separated
-                  ? { stroke: "#fbbf24", strokeWidth: 1.7, strokeDasharray: "5 4" }
-                  : link.soft
-                    ? { stroke: "rgba(125, 211, 252, 0.38)", strokeWidth: 1.2 }
+                const paint = link.ha
+                  ? { stroke: link.color || "#2dd4bf", strokeWidth: 2.4, strokeDasharray: "1 7" }
+                  : link.separated
+                    ? { stroke: "#fbbf24", strokeWidth: 1.7, strokeDasharray: "5 4" }
                     : { stroke: "#7dd3fc", strokeWidth: 1.7 };
                 return (
                   <path
                     key={link.id}
-                    d={curve(a, b)}
+                    d={link.ha ? `M ${a.x} ${a.y} L ${b.x} ${b.y}` : curve(a, b)}
                     fill="none"
                     strokeLinecap="round"
                     opacity={dim ? 0.22 : 1}
-                    className={`${styles.link} ${link.separated ? styles.linkSeparated : ""} ${link.soft ? styles.linkSoft : ""}`.trim()}
+                    className={`${styles.link} ${link.ha ? styles.linkHa : ""} ${link.separated ? styles.linkSeparated : ""}`.trim()}
                     {...paint}
                   />
                 );
@@ -460,42 +674,24 @@ export default function ImpactVisualMap({
                 <button
                   key={node.id}
                   type="button"
-                  className={`${styles.node} ${body.hub ? styles.nodeHub : ""} ${focusId === node.id ? styles.nodeFocus : ""} ${dim ? styles.dim : ""}`.trim()}
+                  data-id={node.id}
+                  className={`${styles.node} ${body.hub ? styles.nodeHub : ""} ${selectedIds.has(node.id) ? styles.nodeSelected : ""} ${focusId === node.id ? styles.nodeFocus : ""} ${dim ? styles.dim : ""}`.trim()}
                   style={{ left: body.x, top: body.y, "--node": color }}
                   title={[
                     node.data?.label,
                     node.data?.serverForm === "virtuel" ? copy.serverVirtual : node.data?.serverForm === "physique" ? copy.serverPhysical : ""
                   ].filter(Boolean).join(" · ")}
-                  onPointerDown={event => {
-                    event.stopPropagation();
-                    const current = byId.get(node.id);
-                    dragRef.current = {
-                      kind: "node",
-                      id: node.id,
-                      x: event.clientX,
-                      y: event.clientY,
-                      originX: current?.x || 0,
-                      originY: current?.y || 0
-                    };
-                    event.currentTarget.setPointerCapture(event.pointerId);
+                  onPointerDown={event => onNodePointerDown(event, node)}
+                  onPointerMove={event => onNodePointerMove(event, node)}
+                  onPointerUp={() => onNodePointerUp(node)}
+                  onClick={() => {
+                    if (skipClickRef.current) {
+                      skipClickRef.current = false;
+                      return;
+                    }
+                    if (selectedRef.current.size > 1) return;
+                    setFocusId(node.id);
                   }}
-                  onPointerMove={event => {
-                    const drag = dragRef.current;
-                    if (!drag || drag.kind !== "node" || drag.id !== node.id) return;
-                    const dx = (event.clientX - drag.x) / view.zoom;
-                    const dy = (event.clientY - drag.y) / view.zoom;
-                    setPositions(current => {
-                      const next = new Map(current);
-                      const body = next.get(node.id);
-                      if (!body) return current;
-                      next.set(node.id, { ...body, x: drag.originX + dx, y: drag.originY + dy });
-                      return next;
-                    });
-                  }}
-                  onPointerUp={() => {
-                    if (dragRef.current?.id === node.id) dragRef.current = null;
-                  }}
-                  onClick={() => setFocusId(current => (current === node.id ? "" : node.id))}
                 >
                   <span className={styles.orb}>
                     {node.data?.photo ? <img src={node.data.photo} alt="" /> : <Icon icon={node.data?.icon || resolveImpactIcon(node.data?.nodeType)} />}
@@ -515,8 +711,15 @@ export default function ImpactVisualMap({
               );
             })}
           </div>
+          {marquee ? (
+            <div
+              className={styles.marquee}
+              style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }}
+            />
+          ) : null}
         </div>
       ) : <p className={styles.empty}>{copy.visualEmpty}</p>}
+      <p className={styles.gestureHint} data-impact-no-export>{copy.panHint}</p>
       {families.length ? (
         <ul className={styles.legend} data-impact-export="legend">
           {families.slice(0, 8).map(item => (
@@ -526,7 +729,7 @@ export default function ImpactVisualMap({
             </li>
           ))}
           <li><i className={styles.legendLink} />{copy.visualLink}</li>
-          <li><i className={styles.legendSoft} />{copy.visualVlanLink}</li>
+          {model.links.some(link => link.ha) ? <li><i className={styles.legendHa} />{copy.visualHaLink}</li> : null}
         </ul>
       ) : null}
     </div>
