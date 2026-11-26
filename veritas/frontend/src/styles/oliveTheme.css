@@ -1,22 +1,22 @@
 /*
- * Thème Steam olive — clair (fenêtre Valve) et sombre (bibliothèque / console).
+ * Thème Olive — clair (fenêtre) et sombre (bibliothèque).
  * Les pages redéfinissent --msp-* localement : le sélecteur * !important
  * réapplique la palette sur chaque élément (pages, modales, portail, toasts).
  * Les valeurs restent alignées sur styles/themeVariables.js.
  */
 
-html[data-skin="steam"].light {
+html[data-skin="olive"].light {
   color-scheme: dark;
   accent-color: #e6cc62;
 }
 
-html[data-skin="steam"].dark {
+html[data-skin="olive"].dark {
   color-scheme: dark;
   accent-color: #d4c15a;
 }
 
-html[data-skin="steam"].light,
-html[data-skin="steam"].light * {
+html[data-skin="olive"].light,
+html[data-skin="olive"].light * {
   --bg-primary: #5c6a4e !important;
   --bg-secondary: #526246 !important;
   --bg-tertiary: #3e4a36 !important;
@@ -94,8 +94,8 @@ html[data-skin="steam"].light * {
   --portal-theme-option-active-text: #eef3e4 !important;
 }
 
-html[data-skin="steam"].dark,
-html[data-skin="steam"].dark * {
+html[data-skin="olive"].dark,
+html[data-skin="olive"].dark * {
   --bg-primary: #1c2018 !important;
   --bg-secondary: #141814 !important;
   --bg-tertiary: #2a3026 !important;
@@ -173,40 +173,40 @@ html[data-skin="steam"].dark * {
   --portal-theme-option-active-text: #f4ecd0 !important;
 }
 
-html[data-skin="steam"].light,
-html[data-skin="steam"].light body,
-html[data-skin="steam"].light #root,
-html[data-skin="steam"].light .contentWrapper {
+html[data-skin="olive"].light,
+html[data-skin="olive"].light body,
+html[data-skin="olive"].light #root,
+html[data-skin="olive"].light .contentWrapper {
   background-color: #5c6a4e !important;
   color: #eef3e4;
 }
 
-html[data-skin="steam"].dark,
-html[data-skin="steam"].dark body,
-html[data-skin="steam"].dark #root,
-html[data-skin="steam"].dark .contentWrapper,
-html[data-skin="steam"].dark .dark .contentWrapper {
+html[data-skin="olive"].dark,
+html[data-skin="olive"].dark body,
+html[data-skin="olive"].dark #root,
+html[data-skin="olive"].dark .contentWrapper,
+html[data-skin="olive"].dark .dark .contentWrapper {
   background-color: #1c2018 !important;
   color: #dce3d0;
 }
 
-html[data-skin="steam"].light .contentWrapper > * {
+html[data-skin="olive"].light .contentWrapper > * {
   background-color: #5c6a4e !important;
   color: #eef3e4;
 }
 
-html[data-skin="steam"].dark .contentWrapper > * {
+html[data-skin="olive"].dark .contentWrapper > * {
   background-color: #1c2018 !important;
   color: #dce3d0;
 }
 
-html[data-skin="steam"] ::selection {
+html[data-skin="olive"] ::selection {
   background: #e6cc62;
   color: #1c1a10;
 }
 
-html[data-skin="steam"].light [data-sidebar-guide="sidebar-root"],
-html[data-skin="steam"].light [data-portal-guide="sidebar-root"] {
+html[data-skin="olive"].light [data-sidebar-guide="sidebar-root"],
+html[data-skin="olive"].light [data-portal-guide="sidebar-root"] {
   --sb-bg: #4e5c42 !important;
   --sb-border: #3a4432 !important;
   --sb-text: #eef3e4 !important;
@@ -235,8 +235,8 @@ html[data-skin="steam"].light [data-portal-guide="sidebar-root"] {
   box-shadow: none !important;
 }
 
-html[data-skin="steam"].dark [data-sidebar-guide="sidebar-root"],
-html[data-skin="steam"].dark [data-portal-guide="sidebar-root"] {
+html[data-skin="olive"].dark [data-sidebar-guide="sidebar-root"],
+html[data-skin="olive"].dark [data-portal-guide="sidebar-root"] {
   --sb-bg: #141814 !important;
   --sb-border: #3a4232 !important;
   --sb-text: #dce3d0 !important;
@@ -268,103 +268,103 @@ html[data-skin="steam"].dark [data-portal-guide="sidebar-root"] {
   box-shadow: none !important;
 }
 
-html[data-skin="steam"].light [role="presentation"]:has([role="dialog"]) {
+html[data-skin="olive"].light [role="presentation"]:has([role="dialog"]) {
   background-color: rgba(20, 24, 16, 0.55) !important;
   backdrop-filter: blur(6px) saturate(0.9) !important;
 }
 
-html[data-skin="steam"].dark [role="presentation"]:has([role="dialog"]) {
+html[data-skin="olive"].dark [role="presentation"]:has([role="dialog"]) {
   background-color: rgba(10, 12, 8, 0.78) !important;
   backdrop-filter: blur(6px) saturate(0.9) !important;
 }
 
-html[data-skin="steam"] [role="dialog"] {
+html[data-skin="olive"] [role="dialog"] {
   border-radius: 2px;
 }
 
-html[data-skin="steam"].light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
-html[data-skin="steam"].light textarea,
-html[data-skin="steam"].light select {
-  background-color: #2e3428;
-  color: #eef3e4;
-  border-color: #1c2218;
-  border-radius: 0;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+html[data-skin="olive"].light :is(#root, #modal-root) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+html[data-skin="olive"].light :is(#root, #modal-root) textarea,
+html[data-skin="olive"].light :is(#root, #modal-root) select {
+  background-color: #2e3428 !important;
+  color: #eef3e4 !important;
+  border-color: #1c2218 !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45) !important;
 }
 
-html[data-skin="steam"].dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
-html[data-skin="steam"].dark textarea,
-html[data-skin="steam"].dark select {
-  background-color: #161a14;
-  color: #dce3d0;
-  border-color: #2a3026;
-  border-radius: 0;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55);
+html[data-skin="olive"].dark :is(#root, #modal-root) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+html[data-skin="olive"].dark :is(#root, #modal-root) textarea,
+html[data-skin="olive"].dark :is(#root, #modal-root) select {
+  background-color: #161a14 !important;
+  color: #dce3d0 !important;
+  border-color: #2a3026 !important;
+  border-radius: 0 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55) !important;
 }
 
-html[data-skin="steam"] input::placeholder,
-html[data-skin="steam"] textarea::placeholder {
+html[data-skin="olive"] input::placeholder,
+html[data-skin="olive"] textarea::placeholder {
   color: #8f9a80;
 }
 
-html[data-skin="steam"].light {
+html[data-skin="olive"].light {
   scrollbar-color: #3a4432 transparent;
 }
 
-html[data-skin="steam"].dark {
+html[data-skin="olive"].dark {
   scrollbar-color: #3a4232 #141814;
 }
 
-html[data-skin="steam"].light::-webkit-scrollbar-track,
-html[data-skin="steam"].light *::-webkit-scrollbar-track {
+html[data-skin="olive"].light::-webkit-scrollbar-track,
+html[data-skin="olive"].light *::-webkit-scrollbar-track {
   background: transparent;
 }
 
-html[data-skin="steam"].dark::-webkit-scrollbar-track,
-html[data-skin="steam"].dark *::-webkit-scrollbar-track {
+html[data-skin="olive"].dark::-webkit-scrollbar-track,
+html[data-skin="olive"].dark *::-webkit-scrollbar-track {
   background: #141814;
 }
 
-html[data-skin="steam"].light::-webkit-scrollbar-thumb,
-html[data-skin="steam"].light *::-webkit-scrollbar-thumb {
+html[data-skin="olive"].light::-webkit-scrollbar-thumb,
+html[data-skin="olive"].light *::-webkit-scrollbar-thumb {
   background: #3a4432;
   border-radius: 0;
 }
 
-html[data-skin="steam"].dark::-webkit-scrollbar-thumb,
-html[data-skin="steam"].dark *::-webkit-scrollbar-thumb {
+html[data-skin="olive"].dark::-webkit-scrollbar-thumb,
+html[data-skin="olive"].dark *::-webkit-scrollbar-thumb {
   background: #3a4232;
   border-radius: 0;
 }
 
-html[data-skin="steam"].light::-webkit-scrollbar-thumb:hover,
-html[data-skin="steam"].light *::-webkit-scrollbar-thumb:hover {
+html[data-skin="olive"].light::-webkit-scrollbar-thumb:hover,
+html[data-skin="olive"].light *::-webkit-scrollbar-thumb:hover {
   background: #e6cc62;
 }
 
-html[data-skin="steam"].dark::-webkit-scrollbar-thumb:hover,
-html[data-skin="steam"].dark *::-webkit-scrollbar-thumb:hover {
+html[data-skin="olive"].dark::-webkit-scrollbar-thumb:hover,
+html[data-skin="olive"].dark *::-webkit-scrollbar-thumb:hover {
   background: #d4c15a;
 }
 
-html[data-skin="steam"].dark .msp-scrollbar-macos {
+html[data-skin="olive"].dark .msp-scrollbar-macos {
   scrollbar-color: #3a4232 transparent;
 }
 
-html[data-skin="steam"].light .contentWrapper table tbody tr:hover > td,
-html[data-skin="steam"].light .main-content table tbody tr:hover > td {
+html[data-skin="olive"].light .contentWrapper table tbody tr:hover > td,
+html[data-skin="olive"].light .main-content table tbody tr:hover > td {
   box-shadow: inset 0 0 0 999px rgba(230, 204, 98, 0.1);
 }
 
-html[data-skin="steam"].dark .contentWrapper table tbody tr:hover > td,
-html[data-skin="steam"].dark .contentWrapper table tbody tr:focus-visible > td,
-html[data-skin="steam"].dark .main-content table tbody tr:hover > td,
-html[data-skin="steam"].dark .main-content table tbody tr:focus-visible > td {
+html[data-skin="olive"].dark .contentWrapper table tbody tr:hover > td,
+html[data-skin="olive"].dark .contentWrapper table tbody tr:focus-visible > td,
+html[data-skin="olive"].dark .main-content table tbody tr:hover > td,
+html[data-skin="olive"].dark .main-content table tbody tr:focus-visible > td {
   box-shadow: inset 0 0 0 999px rgba(212, 193, 90, 0.12);
   background-color: rgba(212, 193, 90, 0.08);
 }
 
-html[data-skin="steam"].light .Toastify__toast {
+html[data-skin="olive"].light .Toastify__toast {
   background: #526246 !important;
   color: #eef3e4 !important;
   border: 1px solid #3a4432;
@@ -372,7 +372,7 @@ html[data-skin="steam"].light .Toastify__toast {
   box-shadow: 0 10px 24px rgba(20, 24, 16, 0.4);
 }
 
-html[data-skin="steam"].dark .Toastify__toast {
+html[data-skin="olive"].dark .Toastify__toast {
   background: #262b22 !important;
   color: #dce3d0 !important;
   border: 1px solid #4a5440;
@@ -380,95 +380,184 @@ html[data-skin="steam"].dark .Toastify__toast {
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
 }
 
-html[data-skin="steam"].dark .Toastify__toast-body,
-html[data-skin="steam"].dark .Toastify__close-button {
+html[data-skin="olive"].dark .Toastify__toast-body,
+html[data-skin="olive"].dark .Toastify__close-button {
   color: #dce3d0;
 }
 
-html[data-skin="steam"].light .Toastify__progress-bar,
-html[data-skin="steam"].dark .Toastify__progress-bar {
+html[data-skin="olive"].light .Toastify__progress-bar,
+html[data-skin="olive"].dark .Toastify__progress-bar {
   background: #e6cc62;
 }
 
-html[data-skin="steam"] .Toastify__progress-bar--success {
+html[data-skin="olive"] .Toastify__progress-bar--success {
   background: #8fbf4a;
 }
 
-html[data-skin="steam"].dark .Toastify__progress-bar--success {
+html[data-skin="olive"].dark .Toastify__progress-bar--success {
   background: #9ec45a;
 }
 
-html[data-skin="steam"] .Toastify__progress-bar--error {
+html[data-skin="olive"] .Toastify__progress-bar--error {
   background: #d46a5c;
 }
 
-html[data-skin="steam"].light .ql-toolbar,
-html[data-skin="steam"].light .ql-container {
+html[data-skin="olive"].light .ql-toolbar,
+html[data-skin="olive"].light .ql-container {
   border-color: #3a4432 !important;
   background: #2e3428 !important;
   color: #eef3e4 !important;
 }
 
-html[data-skin="steam"].dark .ql-toolbar,
-html[data-skin="steam"].dark .ql-container,
-html[data-skin="steam"].dark .ql-editor {
+html[data-skin="olive"].dark .ql-toolbar,
+html[data-skin="olive"].dark .ql-container,
+html[data-skin="olive"].dark .ql-editor {
   border-color: #4a5440 !important;
   background: #262b22 !important;
   color: #dce3d0 !important;
 }
 
-html[data-skin="steam"].dark .ql-toolbar .ql-stroke {
+html[data-skin="olive"].dark .ql-toolbar .ql-stroke {
   stroke: #dce3d0 !important;
 }
 
-html[data-skin="steam"].dark .ql-toolbar .ql-fill {
+html[data-skin="olive"].dark .ql-toolbar .ql-fill {
   fill: #dce3d0 !important;
 }
 
-html[data-skin="steam"].dark .ql-toolbar .ql-picker-label,
-html[data-skin="steam"].dark .ql-toolbar .ql-picker-item {
+html[data-skin="olive"].dark .ql-toolbar .ql-picker-label,
+html[data-skin="olive"].dark .ql-toolbar .ql-picker-item {
   color: #dce3d0 !important;
 }
 
-html[data-skin="steam"].dark .ql-editor.ql-blank::before {
+html[data-skin="olive"].dark .ql-editor.ql-blank::before {
   color: #93a084 !important;
 }
 
-html[data-skin="steam"].dark .ql-picker-options {
+html[data-skin="olive"].dark .ql-picker-options {
   background: #1c2018 !important;
   border-color: #4a5440 !important;
 }
 
-html[data-skin="steam"].light .ql-toolbar .ql-stroke {
+html[data-skin="olive"].light .ql-toolbar .ql-stroke {
   stroke: #eef3e4 !important;
 }
 
-html[data-skin="steam"].light .ql-toolbar .ql-fill {
+html[data-skin="olive"].light .ql-toolbar .ql-fill {
   fill: #eef3e4 !important;
 }
 
-html[data-skin="steam"].light .ql-toolbar .ql-picker-label,
-html[data-skin="steam"].light .ql-toolbar .ql-picker-item {
+html[data-skin="olive"].light .ql-toolbar .ql-picker-label,
+html[data-skin="olive"].light .ql-toolbar .ql-picker-item {
   color: #eef3e4 !important;
 }
 
-html[data-skin="steam"].light .ql-editor.ql-blank::before {
+html[data-skin="olive"].light .ql-editor.ql-blank::before {
   color: #a8b498 !important;
 }
 
-html[data-skin="steam"].light .ql-picker-options {
+html[data-skin="olive"].light .ql-picker-options {
   background: #526246 !important;
   border-color: #3a4432 !important;
   color: #eef3e4 !important;
 }
 
-/* Les rapports exportés restent sur la palette document, pas sur le thème Steam. */
-html[data-skin="steam"] [data-report-export],
-html[data-skin="steam"] [data-report-export] *,
-html[data-skin="steam"] [data-report-pdf-capture],
-html[data-skin="steam"] [data-report-pdf-capture] *,
-html[data-skin="steam"] [data-vex-report],
-html[data-skin="steam"] [data-vex-report] * {
+/*
+ * Olive : coins droits.
+ * Olive, Miami et Windows XP : les fonds clairs codés en dur suivent la palette du skin.
+ * Avatars et pastilles d'état restent ronds. Les rapports sont exclus.
+ */
+html[data-skin="olive"] :where(body) *:not(
+  :is(
+    [data-report-export],
+    [data-report-export] *,
+    [data-report-pdf-capture],
+    [data-report-pdf-capture] *,
+    [data-vex-report],
+    [data-vex-report] *,
+    [class*="Avatar"],
+    [class*="avatar"],
+    [class*="StatusDot"],
+    [class*="statusDot"]
+  )
+) {
+  border-radius: 2px !important;
+}
+
+html[data-skin="olive"] :is([class*="Avatar"], [class*="avatar"], [class*="StatusDot"], [class*="statusDot"]) {
+  border-radius: 999px !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(
+  [class*="_page__"],
+  [class*="_pageWrapper__"],
+  [class*="_mspPage__"]
+) {
+  background: var(--msp-page-bg) !important;
+  background-color: var(--msp-page-bg) !important;
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(
+  [class*="_panelCard__"],
+  [class*="_dataTableWrap__"],
+  [class*="_emptyStateInCard__"],
+  [class*="_stackBlockBody__"],
+  [class*="_eventsCalendar__"],
+  [class*="_tableShell__"],
+  [class*="_tableBlock__"],
+  [class*="_scrollShell__"]
+) {
+  background: var(--msp-surface) !important;
+  background-color: var(--msp-surface) !important;
+  border-color: var(--msp-border) !important;
+  box-shadow: none !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) .contentWrapper table th,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) .contentWrapper table td {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+  border-color: color-mix(in srgb, var(--msp-border) 65%, transparent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) .contentWrapper table thead th {
+  color: var(--msp-muted) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) .contentWrapper table tbody tr:hover > td,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) .contentWrapper table tbody tr:focus-visible > td {
+  background: var(--msp-surface-3) !important;
+  background-color: var(--msp-surface-3) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [class*="_selectedRow__"] > td,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [class*="_selectedRow__"] td {
+  background: var(--msp-accent-soft) !important;
+  background-color: var(--msp-accent-soft) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is([class*="_primaryBtn__"], [class*="btnPrimary"]) {
+  color: var(--msp-on-accent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [class*="_statusChipActive__"] [class*="_statusChipIcon__"] {
+  background: var(--msp-accent) !important;
+  color: var(--msp-on-accent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is([class*="_pageBtn__"], [class*="_chip__"], [class*="_bulkBtn__"]):hover {
+  border-color: var(--msp-accent) !important;
+  color: var(--msp-accent) !important;
+}
+
+/* Les rapports exportés restent sur la palette document. */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-export],
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-export] *,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-pdf-capture],
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-pdf-capture] *,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-vex-report],
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-vex-report] * {
   --bg-primary: #ffffff !important;
   --bg-secondary: #f3f5f8 !important;
   --bg-tertiary: #e8edf3 !important;
@@ -494,15 +583,15 @@ html[data-skin="steam"] [data-vex-report] * {
   --app-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
 
-html[data-skin="steam"] [data-report-export] input,
-html[data-skin="steam"] [data-report-export] textarea,
-html[data-skin="steam"] [data-report-export] select,
-html[data-skin="steam"] [data-report-pdf-capture] input,
-html[data-skin="steam"] [data-report-pdf-capture] textarea,
-html[data-skin="steam"] [data-report-pdf-capture] select,
-html[data-skin="steam"] [data-vex-report] input,
-html[data-skin="steam"] [data-vex-report] textarea,
-html[data-skin="steam"] [data-vex-report] select {
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-export] input,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-export] textarea,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-export] select,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-pdf-capture] input,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-pdf-capture] textarea,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-report-pdf-capture] select,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-vex-report] input,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-vex-report] textarea,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) [data-vex-report] select {
   background-color: #ffffff;
   color: #0f172a;
   border-color: #d0dae8;

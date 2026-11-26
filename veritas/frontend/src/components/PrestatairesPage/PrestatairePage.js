@@ -45,7 +45,8 @@ const PRESTATAIRES_COLUMN_SORT_KEYS = Object.freeze({
   contact: "contact",
   email: "email",
   phone: "telephone",
-  enterprises: "entreprises"
+  enterprises: "entreprises",
+  notes: "notes"
 });
 
 function prestatairesColumnClass(columnId) {
@@ -56,7 +57,8 @@ function prestatairesColumnClass(columnId) {
     contact: styles.colContact,
     email: styles.colEmail,
     phone: styles.colPhone,
-    enterprises: styles.colEnterprises
+    enterprises: styles.colEnterprises,
+    notes: styles.colNotes
   };
   return map[columnId] || "";
 }
@@ -426,6 +428,7 @@ export default function PrestatairePage({
       email,
       telephone,
       getCompaniesLabel(row, pageCopy.getClientLabel),
+      row.notes,
       ...contactFields,
       ...companyNames
     ]);
@@ -633,6 +636,7 @@ export default function PrestatairePage({
         if (columnId === "email") return email || "";
         if (columnId === "phone") return telephone || "";
         if (columnId === "enterprises") return companies || "";
+        if (columnId === "notes") return row.notes || "";
         return "";
       });
       rows.push(values);
@@ -993,6 +997,18 @@ export default function PrestatairePage({
                                     return (
                                       <td key={columnId} className={`${layout.colMuted} ${styles.colEnterprises}`.trim()}>
                                         {companies}
+                                      </td>
+                                    );
+                                  }
+                                  if (columnId === "notes") {
+                                    const notes = String(row.notes || "").replace(/\s+/g, " ").trim();
+                                    return (
+                                      <td key={columnId} className={`${layout.colMuted} ${styles.colNotes}`.trim()} title={notes || undefined}>
+                                        {notes ? (
+                                          <span className={styles.cellEllipsis}>{notes}</span>
+                                        ) : (
+                                          <span className={layout.colEmpty}>-</span>
+                                        )}
                                       </td>
                                     );
                                   }

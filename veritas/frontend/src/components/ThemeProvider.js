@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useMemo, useCallback } from "react";
-import { applyThemeToRoot } from "../styles/themeVariables";
+import { applyThemeToRoot, normalizeSkin } from "../styles/themeVariables";
 import { getUserSetting, saveUserSetting } from "../api/userSettings";
 import {
   APP_UI_THEME_KEY,
@@ -60,8 +60,8 @@ export function ThemeProvider({
       if (nextTheme === "dark" || nextTheme === "light") {
         setThemeState(nextTheme);
       }
-      if (nextSkin === "steam" || nextSkin === "classic") {
-        setSkinState(nextSkin);
+      if (["classic", "olive", "miami", "xp", "steam", "military"].includes(nextSkin)) {
+        setSkinState(normalizeSkin(nextSkin));
       }
     };
     window.addEventListener("appGeneralSettingsUpdated", onSettingsUpdated);
@@ -104,7 +104,7 @@ export function ThemeProvider({
 
   const setAppearance = useCallback(async (nextSkin, nextMode) => {
     const mode = nextMode === "dark" ? "dark" : "light";
-    const resolvedSkin = nextSkin === "steam" ? "steam" : "classic";
+    const resolvedSkin = normalizeSkin(nextSkin);
     const previousSkin = skin;
     const previousMode = theme;
     markUserThemeChoice();

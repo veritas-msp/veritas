@@ -20,19 +20,47 @@ const PREVIEWS = {
     line: "#3d5478",
     accent: "#5a9de0"
   },
-  "steam-light": {
+  "olive-light": {
     page: "#5c6a4e",
     side: "#4e5c42",
     card: "#667456",
     line: "#3a4432",
     accent: "#e6cc62"
   },
-  "steam-dark": {
+  "olive-dark": {
     page: "#1c2018",
     side: "#141814",
     card: "#262b22",
     line: "#4a5440",
     accent: "#d4c15a"
+  },
+  "miami-light": {
+    page: "#fff0f6",
+    side: "#ffe3f2",
+    card: "#fff7fb",
+    line: "#f0b4ce",
+    accent: "#ff2f92"
+  },
+  "miami-dark": {
+    page: "#120814",
+    side: "#0c0610",
+    card: "#241028",
+    line: "#6b2d78",
+    accent: "#5ce1e6"
+  },
+  "xp-light": {
+    page: "#ece9d8",
+    side: "#245edc",
+    card: "#ffffff",
+    line: "#aca899",
+    accent: "#0054e3"
+  },
+  "xp-dark": {
+    page: "#1a1a1a",
+    side: "#0a246a",
+    card: "#2a2a2a",
+    line: "#5a5a5a",
+    accent: "#3c81f3"
   }
 };
 
@@ -54,17 +82,41 @@ export default function ThemeAppearancePicker() {
     label: copy.classicDark,
     description: copy.classicDarkDesc
   }, {
-    id: "steam-light",
-    skin: "steam",
+    id: "olive-light",
+    skin: "olive",
     mode: "light",
-    label: copy.steamLight,
-    description: copy.steamLightDesc
+    label: copy.oliveLight,
+    description: copy.oliveLightDesc
   }, {
-    id: "steam-dark",
-    skin: "steam",
+    id: "olive-dark",
+    skin: "olive",
     mode: "dark",
-    label: copy.steamDark,
-    description: copy.steamDarkDesc
+    label: copy.oliveDark,
+    description: copy.oliveDarkDesc
+  }, {
+    id: "miami-light",
+    skin: "miami",
+    mode: "light",
+    label: copy.miamiLight,
+    description: copy.miamiLightDesc
+  }, {
+    id: "miami-dark",
+    skin: "miami",
+    mode: "dark",
+    label: copy.miamiDark,
+    description: copy.miamiDarkDesc
+  }, {
+    id: "xp-light",
+    skin: "xp",
+    mode: "light",
+    label: copy.xpLight,
+    description: copy.xpLightDesc
+  }, {
+    id: "xp-dark",
+    skin: "xp",
+    mode: "dark",
+    label: copy.xpDark,
+    description: copy.xpDarkDesc
   }], [copy]);
 
   const select = async option => {
@@ -81,26 +133,24 @@ export default function ThemeAppearancePicker() {
     }
   };
 
-  return <div>
-      <div className={s.grid} role="radiogroup" aria-label={copy.label}>
-        {options.map(option => {
-          const active = skin === option.skin && theme === option.mode;
-          const preview = PREVIEWS[option.id];
-          return <button key={option.id} type="button" role="radio" aria-checked={active} className={`${s.card} ${active ? s.cardActive : ""}`} disabled={saving} onClick={() => select(option)}>
-              <span className={s.swatch} style={{ background: preview.page }} aria-hidden>
-                <span className={s.side} style={{ background: preview.side, border: `1px solid ${preview.line}` }} />
-                <span className={s.main} style={{ background: preview.card, borderColor: preview.line }}>
-                  <span className={s.line} style={{ background: preview.line }} />
-                  <span className={s.dot} style={{ background: preview.accent }} />
-                </span>
+  return <div className={s.list} role="radiogroup" aria-label={copy.label} data-theme-picker="column">
+      {options.map(option => {
+        const active = skin === option.skin && theme === option.mode;
+        const preview = PREVIEWS[option.id];
+        return <button key={option.id} type="button" role="radio" aria-checked={active} className={`${s.row} ${active ? s.rowActive : ""}`} disabled={saving} onClick={() => select(option)}>
+            <span className={s.swatch} style={{ background: preview.page }} aria-hidden>
+              <span className={s.side} style={{ background: preview.side }} />
+              <span className={s.main} style={{ background: preview.card }}>
+                <span className={s.line} style={{ background: preview.accent }} />
               </span>
-              <span className={s.text}>
-                <span className={s.title}>{option.label}</span>
-                <span className={s.desc}>{option.description}</span>
-              </span>
-            </button>;
-        })}
-      </div>
+            </span>
+            <span className={s.text}>
+              <span className={s.title}>{option.label}</span>
+              <span className={s.desc}>{option.description}</span>
+            </span>
+            <span className={s.mark} aria-hidden />
+          </button>;
+      })}
       {saving ? <span className={s.status}>{copy.saving}</span> : null}
     </div>;
 }

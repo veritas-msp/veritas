@@ -1,5 +1,9 @@
 @import url('./styles/theme.css');
-@import url('./styles/steamTheme.css');
+@import url('./styles/oliveTheme.css');
+@import url('./styles/miamiTheme.css');
+@import url('./styles/xpTheme.css');
+@import url('./styles/skinCoverage.css');
+
 @import url('./styles/modal-overlays.css');
 @import url('./styles/msp-page-grid.css');
 @import url('./styles/msp-page-insight.css');
@@ -65,9 +69,9 @@ html.dark select {
 }
 
 
-html.dark,
-body.dark,
-#root.dark {
+html.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"]),
+body.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"]),
+#root.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"]) {
   background-color: #0f0f23 !important;
 }
 

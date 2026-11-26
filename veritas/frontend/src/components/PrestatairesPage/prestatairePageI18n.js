@@ -46,6 +46,7 @@ const PRESTATAIRES_COPY = {
       phone: "Téléphone",
       status: "Statut",
       enterprises: "Entreprises",
+      notes: "Note",
       actions: "Actions"
     },
     export: {
@@ -189,6 +190,7 @@ const PRESTATAIRES_COPY = {
       phone: "Phone",
       status: "Status",
       enterprises: "Companies",
+      notes: "Note",
       actions: "Actions"
     },
     export: {

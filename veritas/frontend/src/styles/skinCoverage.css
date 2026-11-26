@@ -1,0 +1,175 @@
+/*
+ * Couverture Olive, Miami et Windows XP.
+ * Le sélecteur #root / #modal-root passe devant les fonds blancs
+ * écrits en dur dans les pages, sections, sous-sections, tableaux et modales.
+ * Les rapports, la barre latérale, les pastilles et les avatars sont exclus.
+ */
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_page__"],
+  [class*="_pageWrapper__"],
+  [class*="_mspPage__"],
+  [class*="_layout__"],
+  [class*="_Layout__"]
+):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *) {
+  background-color: var(--msp-page-bg) !important;
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  section,
+  article,
+  [role="dialog"],
+  [role="menu"],
+  [role="listbox"],
+  [role="tooltip"],
+  [class*="shell__"],
+  [class*="Shell__"],
+  [class*="section__"],
+  [class*="Section__"],
+  [class*="subsection__"],
+  [class*="Subsection__"],
+  [class*="Panel__"],
+  [class*="panel__"],
+  [class*="Card__"],
+  [class*="card__"],
+  [class*="Block__"],
+  [class*="block__"],
+  [class*="modal__"],
+  [class*="Modal__"],
+  [class*="ModalBody"],
+  [class*="modalBody"],
+  [class*="drawer__"],
+  [class*="Drawer__"],
+  [class*="Menu__"],
+  [class*="menu__"],
+  [class*="dropdown__"],
+  [class*="Dropdown__"],
+  [class*="popover__"],
+  [class*="Popover__"],
+  [class*="tooltip__"],
+  [class*="Tooltip__"],
+  [class*="toolbar__"],
+  [class*="Toolbar__"],
+  [class*="header__"],
+  [class*="Header__"],
+  [class*="footer__"],
+  [class*="Footer__"],
+  [class*="surface__"],
+  [class*="Surface__"],
+  [class*="Wrap__"],
+  [class*="Wrapper__"],
+  [class*="viewport__"],
+  [class*="Viewport__"],
+  [class*="emptyState"],
+  [class*="EmptyState"],
+  [class*="tabBar__"],
+  [class*="TabBar__"],
+  [class*="pagination__"],
+  [class*="Pagination__"],
+  [class*="finder__"],
+  [class*="Finder__"]
+):not([data-sidebar-guide="sidebar-root"]):not([data-portal-guide="sidebar-root"]):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *):not([class*="Badge"]):not([class*="badge"]):not([class*="Chip"]):not([class*="chip"]):not([class*="Pill"]):not([class*="pill"]):not([class*="Icon"]):not([class*="icon"]):not([class*="Avatar"]):not([class*="StatusDot"]) {
+  background-color: var(--msp-surface) !important;
+  border-color: var(--msp-border) !important;
+  color: var(--msp-text) !important;
+  box-shadow: var(--msp-shadow-panel) !important;
+}
+
+html[data-skin="olive"] :is(#root, #modal-root) :is(
+  [class*="overlay__"],
+  [class*="Overlay__"],
+  [class*="backdrop__"],
+  [class*="Backdrop__"]
+) {
+  background-color: rgba(20, 24, 16, 0.62) !important;
+  color: #eef3e4 !important;
+}
+
+html[data-skin="miami"].light :is(#root, #modal-root) :is(
+  [class*="overlay__"],
+  [class*="Overlay__"],
+  [class*="backdrop__"],
+  [class*="Backdrop__"]
+) {
+  background-color: rgba(58, 16, 40, 0.4) !important;
+}
+
+html[data-skin="miami"].dark :is(#root, #modal-root) :is(
+  [class*="overlay__"],
+  [class*="Overlay__"],
+  [class*="backdrop__"],
+  [class*="Backdrop__"]
+) {
+  background-color: rgba(8, 2, 12, 0.72) !important;
+}
+
+html[data-skin="xp"].light :is(#root, #modal-root) :is(
+  [class*="overlay__"],
+  [class*="Overlay__"],
+  [class*="backdrop__"],
+  [class*="Backdrop__"]
+) {
+  background-color: rgba(10, 36, 106, 0.35) !important;
+}
+
+html[data-skin="xp"].dark :is(#root, #modal-root) :is(
+  [class*="overlay__"],
+  [class*="Overlay__"],
+  [class*="backdrop__"],
+  [class*="Backdrop__"]
+) {
+  background-color: rgba(0, 0, 0, 0.62) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(table, thead, tbody) {
+  background-color: var(--msp-surface-2) !important;
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(th, td):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *) {
+  background-color: var(--msp-surface-2) !important;
+  border-color: color-mix(in srgb, var(--msp-border) 70%, transparent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) thead th {
+  color: var(--msp-muted) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) tbody tr:hover > td,
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) tbody tr:focus-visible > td {
+  background-color: var(--msp-surface-3) !important;
+  box-shadow: none !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  h1, h2, h3, h4, h5, h6, label, legend
+):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *) {
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="hint__"],
+  [class*="Hint__"],
+  [class*="desc__"],
+  [class*="Desc__"],
+  [class*="muted__"],
+  [class*="Muted__"],
+  [class*="subtitle__"],
+  [class*="Subtitle__"]
+) {
+  color: var(--msp-muted) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(.contentWrapper, #modal-root) a:not([class*="btn"]):not([class*="Btn"]):not([class*="Button"]) {
+  color: var(--msp-accent);
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_primaryBtn__"],
+  [class*="btnPrimary"]
+) {
+  background-color: var(--msp-accent) !important;
+  border-color: var(--msp-accent) !important;
+  color: var(--msp-on-accent) !important;
+}

@@ -39,6 +39,11 @@
   width: 12%;
 }
 
+.colNotes {
+  width: 18%;
+  max-width: 16rem;
+}
+
 .colActions {
   width: 7.5rem;
   white-space: nowrap;

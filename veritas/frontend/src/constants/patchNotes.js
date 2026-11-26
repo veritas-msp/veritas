@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.39",
+    date: "2026-11-26",
+    highlights: [
+      "Thèmes : Steam devient Olive. Miami et Windows XP s’ajoutent, en clair et en sombre.",
+      "Olive, Miami et Windows XP habillent les pages, tableaux, sections et fenêtres. Le classique ne change pas.",
+      "Prestataires : la note est dans un bloc de la fiche, et peut s’afficher en colonne de la liste."
+    ]
+  },
+  {
     version: "2.0.38",
     date: "2026-11-26",
     highlights: [

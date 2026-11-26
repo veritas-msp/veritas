@@ -280,6 +280,13 @@ export default function CrmListTableSkeleton({
           </td>
         );
       }
+      if (columnId === "notes") {
+        return (
+          <td key={columnId} className={`${layout.colMuted} ${pageStyles?.colNotes || ""}`.trim()}>
+            <Text width={w} delay={delay} />
+          </td>
+        );
+      }
     }
 
     return (

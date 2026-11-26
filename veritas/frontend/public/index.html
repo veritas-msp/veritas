@@ -11,10 +11,14 @@
         try {
           var mode = localStorage.getItem("theme");
           var skin = localStorage.getItem("theme_skin");
+          if (skin === "steam" || skin === "military") {
+            skin = "olive";
+            localStorage.setItem("theme_skin", skin);
+          }
           var root = document.documentElement;
           root.classList.remove("light", "dark");
           root.classList.add(mode === "dark" ? "dark" : "light");
-          if (skin === "steam") root.setAttribute("data-skin", "steam");
+          if (skin === "olive" || skin === "miami" || skin === "xp") root.setAttribute("data-skin", skin);
         } catch (e) {}
       })();
     </script>

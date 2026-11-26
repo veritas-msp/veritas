@@ -1,0 +1,380 @@
+/*
+ * Thème Miami — jour (sable rose) et nuit (néon).
+ * Les jetons sont réappliqués en !important, comme Olive.
+ * Les coins restent ronds : le rabotage à 2 px ne concerne qu’Olive.
+ */
+
+html[data-skin="miami"].light {
+  color-scheme: light;
+  accent-color: #ff2f92;
+}
+
+html[data-skin="miami"].dark {
+  color-scheme: dark;
+  accent-color: #ff3caf;
+}
+
+html[data-skin="miami"].light,
+html[data-skin="miami"].light * {
+  --bg-primary: #fff0f6 !important;
+  --bg-secondary: #ffe3f2 !important;
+  --bg-tertiary: #ffd0e8 !important;
+  --bg-sidebar: #ffe3f2 !important;
+  --text-primary: #3a1230 !important;
+  --text-secondary: #6d3054 !important;
+  --text-muted: #9a5474 !important;
+  --text-inverted: #fff7fb !important;
+  --border-primary: #f0b4ce !important;
+  --border-secondary: #f8d5e4 !important;
+  --accent-primary: #ff2f92 !important;
+  --accent-secondary: #00b7c7 !important;
+  --shadow-color: rgba(255, 47, 146, 0.18) !important;
+  --accent-primary-alpha: rgba(255, 47, 146, 0.16) !important;
+  --accent-primary-faded: rgba(255, 47, 146, 0.1) !important;
+  --accent-primary-rgb: 255, 47, 146 !important;
+  --calendar-picker-filter: none !important;
+  --msp-bg: #fff0f6 !important;
+  --msp-page-bg: #fff0f6 !important;
+  --msp-surface: #fff7fb !important;
+  --msp-surface-2: #ffffff !important;
+  --msp-surface-3: #ffd6ea !important;
+  --msp-surface-muted: #ffe9f4 !important;
+  --msp-border: #f0b4ce !important;
+  --msp-border-light: #f8d5e4 !important;
+  --msp-text: #3a1230 !important;
+  --msp-muted: #9a5474 !important;
+  --msp-text-muted: #9a5474 !important;
+  --msp-muted-light: #c48aa6 !important;
+  --msp-accent: #ff2f92 !important;
+  --msp-accent-dark: #ff6b3d !important;
+  --msp-accent-soft: rgba(255, 47, 146, 0.14) !important;
+  --msp-on-accent: #3a1028 !important;
+  --msp-success: #0f9d8a !important;
+  --msp-success-soft: rgba(15, 157, 138, 0.16) !important;
+  --msp-warn: #f97316 !important;
+  --msp-warn-soft: rgba(249, 115, 22, 0.16) !important;
+  --msp-danger: #e11d48 !important;
+  --msp-danger-soft: rgba(225, 29, 72, 0.14) !important;
+  --msp-radius: 16px !important;
+  --msp-radius-sm: 10px !important;
+  --msp-radius-md: 16px !important;
+  --msp-radius-btn: 999px !important;
+  --msp-shadow: 0 8px 24px rgba(255, 47, 146, 0.12) !important;
+  --msp-shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  --msp-shadow-lg: 0 18px 40px rgba(255, 47, 146, 0.18) !important;
+  --msp-shadow-panel: 0 0 0 1px rgba(255, 47, 146, 0.12) !important;
+  --msp-kpi-active-bg: linear-gradient(135deg, #ffe3f6 0%, #d9fbff 100%) !important;
+  --msp-font: "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif !important;
+  --app-font: "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif !important;
+  --msp-input-s-radius: 12px !important;
+  --msp-input-m-radius: 12px !important;
+  --msp-input-l-radius: 12px !important;
+  --msp-input-xl-radius: 12px !important;
+  --portal-bg: #fff0f6 !important;
+  --portal-sidebar-bg: #ffe3f2 !important;
+  --portal-surface: #fff7fb !important;
+  --portal-surface-alt: #ffffff !important;
+  --portal-border: #f0b4ce !important;
+  --portal-border-light: #f8d5e4 !important;
+  --portal-text: #3a1230 !important;
+  --portal-text-secondary: #6d3054 !important;
+  --portal-text-muted: #9a5474 !important;
+  --portal-accent: #ff2f92 !important;
+  --portal-accent-soft: rgba(255, 47, 146, 0.14) !important;
+  --portal-accent-text: #d41274 !important;
+  --portal-hover: rgba(0, 183, 199, 0.12) !important;
+  --portal-hover-strong: rgba(255, 47, 146, 0.16) !important;
+  --portal-badge-bg: #ffd6ea !important;
+  --portal-theme-option-bg: #ffe3f2 !important;
+  --portal-theme-option-border: #f0b4ce !important;
+  --portal-theme-option-text: #9a5474 !important;
+  --portal-theme-option-active-bg: rgba(255, 47, 146, 0.16) !important;
+  --portal-theme-option-active-border: #ff2f92 !important;
+  --portal-theme-option-active-text: #3a1230 !important;
+}
+
+html[data-skin="miami"].dark,
+html[data-skin="miami"].dark * {
+  --bg-primary: #120814 !important;
+  --bg-secondary: #0c0610 !important;
+  --bg-tertiary: #3d1848 !important;
+  --bg-sidebar: #0c0610 !important;
+  --text-primary: #ffe6f6 !important;
+  --text-secondary: #f3c0de !important;
+  --text-muted: #d4a8c4 !important;
+  --text-inverted: #1a0612 !important;
+  --border-primary: #6b2d78 !important;
+  --border-secondary: #3d1848 !important;
+  --accent-primary: #ff3caf !important;
+  --accent-secondary: #5ce1e6 !important;
+  --shadow-color: rgba(255, 60, 175, 0.28) !important;
+  --accent-primary-alpha: rgba(255, 60, 175, 0.22) !important;
+  --accent-primary-faded: rgba(92, 225, 230, 0.12) !important;
+  --accent-primary-rgb: 255, 60, 175 !important;
+  --calendar-picker-filter: invert(1) hue-rotate(280deg) brightness(0.85) !important;
+  --msp-bg: #120814 !important;
+  --msp-page-bg: #120814 !important;
+  --msp-surface: #241028 !important;
+  --msp-surface-2: #1a0c22 !important;
+  --msp-surface-3: #3d1848 !important;
+  --msp-surface-muted: #180a1e !important;
+  --msp-border: #6b2d78 !important;
+  --msp-border-light: #3d1848 !important;
+  --msp-text: #ffe6f6 !important;
+  --msp-muted: #d4a8c4 !important;
+  --msp-text-muted: #d4a8c4 !important;
+  --msp-muted-light: #a87898 !important;
+  --msp-accent: #ff3caf !important;
+  --msp-accent-dark: #5ce1e6 !important;
+  --msp-accent-soft: rgba(255, 60, 175, 0.18) !important;
+  --msp-on-accent: #1a0612 !important;
+  --msp-success: #3dffe8 !important;
+  --msp-success-soft: rgba(61, 255, 232, 0.14) !important;
+  --msp-warn: #ffb020 !important;
+  --msp-warn-soft: rgba(255, 176, 32, 0.16) !important;
+  --msp-danger: #ff4d6d !important;
+  --msp-danger-soft: rgba(255, 77, 109, 0.16) !important;
+  --msp-radius: 16px !important;
+  --msp-radius-sm: 10px !important;
+  --msp-radius-md: 16px !important;
+  --msp-radius-btn: 999px !important;
+  --msp-shadow: 0 0 0 1px rgba(255, 60, 175, 0.2) !important;
+  --msp-shadow-sm: none !important;
+  --msp-shadow-lg: 0 18px 48px rgba(255, 60, 175, 0.22) !important;
+  --msp-shadow-panel: 0 0 24px rgba(92, 225, 230, 0.08) !important;
+  --msp-kpi-active-bg: linear-gradient(135deg, #3d1848 0%, #12343a 100%) !important;
+  --msp-font: "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif !important;
+  --app-font: "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif !important;
+  --msp-input-s-radius: 12px !important;
+  --msp-input-m-radius: 12px !important;
+  --msp-input-l-radius: 12px !important;
+  --msp-input-xl-radius: 12px !important;
+  --portal-bg: #120814 !important;
+  --portal-sidebar-bg: #0c0610 !important;
+  --portal-surface: #241028 !important;
+  --portal-surface-alt: #1a0c22 !important;
+  --portal-border: #6b2d78 !important;
+  --portal-border-light: #3d1848 !important;
+  --portal-text: #ffe6f6 !important;
+  --portal-text-secondary: #f3c0de !important;
+  --portal-text-muted: #d4a8c4 !important;
+  --portal-accent: #ff3caf !important;
+  --portal-accent-soft: rgba(255, 60, 175, 0.18) !important;
+  --portal-accent-text: #5ce1e6 !important;
+  --portal-hover: rgba(92, 225, 230, 0.1) !important;
+  --portal-hover-strong: rgba(255, 60, 175, 0.18) !important;
+  --portal-badge-bg: #3d1848 !important;
+  --portal-theme-option-bg: rgba(255, 60, 175, 0.08) !important;
+  --portal-theme-option-border: #6b2d78 !important;
+  --portal-theme-option-text: #d4a8c4 !important;
+  --portal-theme-option-active-bg: rgba(255, 60, 175, 0.22) !important;
+  --portal-theme-option-active-border: #5ce1e6 !important;
+  --portal-theme-option-active-text: #ffe6f6 !important;
+}
+
+html[data-skin="miami"].light,
+html[data-skin="miami"].light body,
+html[data-skin="miami"].light #root,
+html[data-skin="miami"].light .contentWrapper {
+  background-color: #fff0f6 !important;
+  color: #3a1230;
+}
+
+html[data-skin="miami"].dark,
+html[data-skin="miami"].dark body,
+html[data-skin="miami"].dark #root,
+html[data-skin="miami"].dark .contentWrapper,
+html[data-skin="miami"].dark .dark .contentWrapper {
+  background-color: #120814 !important;
+  color: #ffe6f6;
+}
+
+html[data-skin="miami"].light .contentWrapper > * {
+  background-color: #fff0f6 !important;
+  color: #3a1230;
+}
+
+html[data-skin="miami"].dark .contentWrapper > * {
+  background-color: #120814 !important;
+  color: #ffe6f6;
+}
+
+html[data-skin="miami"].light ::selection {
+  background: #ffd0ea;
+  color: #3a1230;
+}
+
+html[data-skin="miami"].dark ::selection {
+  background: #ff3caf;
+  color: #1a0612;
+}
+
+html[data-skin="miami"].light [data-sidebar-guide="sidebar-root"],
+html[data-skin="miami"].light [data-portal-guide="sidebar-root"] {
+  --sb-bg: #ffe3f2 !important;
+  --sb-border: #f0b4ce !important;
+  --sb-text: #3a1230 !important;
+  --sb-muted: #9a5474 !important;
+  --sb-muted-light: #c48aa6 !important;
+  --sb-item: #6d3054 !important;
+  --sb-item-hover: #3a1230 !important;
+  --sb-hover-bg: rgba(255, 47, 146, 0.1) !important;
+  --sb-active-bg: rgba(0, 183, 199, 0.16) !important;
+  --sb-active-text: #d41274 !important;
+  --sb-separator: #f8d5e4 !important;
+  --sb-btn-bg: #fff7fb !important;
+  --sb-btn-border: #f0b4ce !important;
+  --sb-glow-1: transparent !important;
+  --sb-glow-2: transparent !important;
+  --sb-shadow: none !important;
+  --sb-active-btn-bg: rgba(255, 47, 146, 0.14) !important;
+  --sb-active-btn-border: #ff2f92 !important;
+  --sb-active-btn-color: #d41274 !important;
+  --sb-active-btn-shadow: none !important;
+  --sb-icon-accent: #ff2f92 !important;
+  --sb-badge-ring: #ffe3f2 !important;
+  background: #ffe3f2 !important;
+  border-color: #f0b4ce !important;
+  color: #3a1230;
+  box-shadow: none !important;
+}
+
+html[data-skin="miami"].dark [data-sidebar-guide="sidebar-root"],
+html[data-skin="miami"].dark [data-portal-guide="sidebar-root"] {
+  --sb-bg: #0c0610 !important;
+  --sb-border: #6b2d78 !important;
+  --sb-text: #ffe6f6 !important;
+  --sb-muted: #d4a8c4 !important;
+  --sb-muted-light: #a87898 !important;
+  --sb-item: #d4a8c4 !important;
+  --sb-item-hover: #ffe6f6 !important;
+  --sb-hover-bg: rgba(255, 60, 175, 0.12) !important;
+  --sb-active-bg: rgba(92, 225, 230, 0.14) !important;
+  --sb-active-text: #5ce1e6 !important;
+  --sb-separator: #3d1848 !important;
+  --sb-btn-bg: #241028 !important;
+  --sb-btn-border: #6b2d78 !important;
+  --sb-glow-1: transparent !important;
+  --sb-glow-2: transparent !important;
+  --sb-shadow: none !important;
+  --sb-upgrade-bg: linear-gradient(180deg, rgba(255, 60, 175, 0.16), rgba(92, 225, 230, 0.08)) !important;
+  --sb-upgrade-border: rgba(92, 225, 230, 0.45) !important;
+  --sb-upgrade-color: #5ce1e6 !important;
+  --sb-active-btn-bg: rgba(255, 60, 175, 0.16) !important;
+  --sb-active-btn-border: #ff3caf !important;
+  --sb-active-btn-color: #5ce1e6 !important;
+  --sb-active-btn-shadow: none !important;
+  --sb-icon-accent: #ff3caf !important;
+  --sb-badge-ring: #0c0610 !important;
+  background: #0c0610 !important;
+  border-color: #6b2d78 !important;
+  color: #ffe6f6;
+  box-shadow: none !important;
+}
+
+html[data-skin="miami"].light [role="presentation"]:has([role="dialog"]) {
+  background-color: rgba(58, 16, 40, 0.35) !important;
+  backdrop-filter: blur(10px) saturate(1.3) !important;
+}
+
+html[data-skin="miami"].dark [role="presentation"]:has([role="dialog"]) {
+  background-color: rgba(8, 2, 12, 0.72) !important;
+  backdrop-filter: blur(12px) saturate(1.4) !important;
+}
+
+html[data-skin="miami"] [role="dialog"] {
+  border-radius: 18px;
+}
+
+html[data-skin="miami"].light :is(#root, #modal-root) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+html[data-skin="miami"].light :is(#root, #modal-root) textarea,
+html[data-skin="miami"].light :is(#root, #modal-root) select {
+  background-color: #ffffff !important;
+  color: #3a1230 !important;
+  border-color: #f0b4ce !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 1px rgba(255, 47, 146, 0.08) !important;
+}
+
+html[data-skin="miami"].dark :is(#root, #modal-root) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+html[data-skin="miami"].dark :is(#root, #modal-root) textarea,
+html[data-skin="miami"].dark :is(#root, #modal-root) select {
+  background-color: #140814 !important;
+  color: #ffe6f6 !important;
+  border-color: #ff3caf !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 1px rgba(92, 225, 230, 0.25) !important;
+}
+
+html[data-skin="miami"].light input::placeholder,
+html[data-skin="miami"].light textarea::placeholder {
+  color: #c48aa6;
+}
+
+html[data-skin="miami"].dark input::placeholder,
+html[data-skin="miami"].dark textarea::placeholder {
+  color: #a87898;
+}
+
+html[data-skin="miami"].light {
+  scrollbar-color: #f0b4ce transparent;
+}
+
+html[data-skin="miami"].dark {
+  scrollbar-color: #6b2d78 #0c0610;
+}
+
+html[data-skin="miami"].light::-webkit-scrollbar-thumb,
+html[data-skin="miami"].light *::-webkit-scrollbar-thumb {
+  background: #f0b4ce;
+  border-radius: 999px;
+}
+
+html[data-skin="miami"].dark::-webkit-scrollbar-thumb,
+html[data-skin="miami"].dark *::-webkit-scrollbar-thumb {
+  background: #6b2d78;
+  border-radius: 999px;
+}
+
+html[data-skin="miami"].light::-webkit-scrollbar-thumb:hover,
+html[data-skin="miami"].light *::-webkit-scrollbar-thumb:hover {
+  background: #ff2f92;
+}
+
+html[data-skin="miami"].dark::-webkit-scrollbar-thumb:hover,
+html[data-skin="miami"].dark *::-webkit-scrollbar-thumb:hover {
+  background: #5ce1e6;
+}
+
+html[data-skin="miami"].light .Toastify__toast {
+  background: #fff7fb !important;
+  color: #3a1230 !important;
+  border: 1px solid #f0b4ce;
+  border-radius: 16px;
+  box-shadow: 0 18px 40px rgba(255, 47, 146, 0.18);
+}
+
+html[data-skin="miami"].dark .Toastify__toast {
+  background: #241028 !important;
+  color: #ffe6f6 !important;
+  border: 1px solid #ff3caf;
+  border-radius: 16px;
+  box-shadow: 0 0 24px rgba(92, 225, 230, 0.16);
+}
+
+html[data-skin="miami"].dark .Toastify__toast-body,
+html[data-skin="miami"].dark .Toastify__close-button {
+  color: #ffe6f6;
+}
+
+html[data-skin="miami"] .Toastify__progress-bar {
+  background: #ff3caf;
+}
+
+html[data-skin="miami"] .Toastify__progress-bar--success {
+  background: #3dffe8;
+}
+
+html[data-skin="miami"] .Toastify__progress-bar--error {
+  background: #ff4d6d;
+}

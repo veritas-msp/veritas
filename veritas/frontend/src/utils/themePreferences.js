@@ -1,4 +1,4 @@
-import { applyThemeToRoot } from "../styles/themeVariables";
+import { applyThemeToRoot, normalizeSkin } from "../styles/themeVariables";
 export const THEME_STORAGE_KEY = "theme";
 export const THEME_SKIN_KEY = "theme_skin";
 export const THEME_USER_CHOICE_KEY = "theme_user_choice";
@@ -11,7 +11,10 @@ export function resolveEffectiveTheme(themeSetting = "light") {
 }
 export function readStoredSkin() {
   try {
-    return localStorage.getItem(THEME_SKIN_KEY) === "steam" ? "steam" : "classic";
+    const raw = localStorage.getItem(THEME_SKIN_KEY);
+    const skin = normalizeSkin(raw);
+    if (raw === "steam" || raw === "military") localStorage.setItem(THEME_SKIN_KEY, "olive");
+    return skin;
   } catch {
     return "classic";
   }
@@ -21,14 +24,16 @@ export function normalizeAppearance(value) {
   if (typeof value === "string") {
     if (value === "dark" || value === "light") return { skin: readStoredSkin(), mode: value };
     const [skinPart, modePart] = value.split(/[-:]/);
-    const skin = skinPart === "steam" ? "steam" : skinPart === "classic" ? "classic" : null;
+    const skin = normalizeSkin(skinPart);
     const mode = modePart === "dark" || modePart === "light" ? modePart : null;
+    if (skinPart && !["classic", "olive", "miami", "xp", "steam", "military"].includes(skinPart)) return null;
     if (!skin || !mode) return null;
     return { skin, mode };
   }
   if (typeof value === "object") {
-    const skin = value.skin === "steam" ? "steam" : value.skin === "classic" ? "classic" : null;
+    const skin = normalizeSkin(value.skin);
     const mode = value.mode === "dark" || value.mode === "light" ? value.mode : null;
+    if (value.skin && !["classic", "olive", "miami", "xp", "steam", "military"].includes(value.skin)) return null;
     if (!skin || !mode) return null;
     return { skin, mode };
   }
@@ -48,7 +53,7 @@ export function markUserThemeChoice() {
 }
 export function applyThemePreference(theme, skin) {
   const effective = theme === "dark" ? "dark" : "light";
-  const resolvedSkin = skin === "steam" || skin === "classic" ? skin : readStoredSkin();
+  const resolvedSkin = skin == null || skin === "" ? readStoredSkin() : normalizeSkin(skin);
   try {
     localStorage.setItem(THEME_STORAGE_KEY, effective);
     localStorage.setItem(THEME_SKIN_KEY, resolvedSkin);

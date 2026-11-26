@@ -159,6 +159,7 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
   const activityLoadedForRef = useRef(null);
   const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(true);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(true);
+  const [notesSectionExpanded, setNotesSectionExpanded] = useState(true);
   const loadControllerRef = useRef(null);
   const activityControllerRef = useRef(null);
   const clientsListControllerRef = useRef(null);
@@ -618,12 +619,6 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                 ) : null}
               </div>
             </div>
-            {prestataire.notes ? (
-              <p className={localStyles.heroNotes}>
-                <Icon icon="mdi:note-text-outline" aria-hidden />
-                <span>{prestataire.notes}</span>
-              </p>
-            ) : null}
           </div>
         </div>
       </header>
@@ -1087,6 +1082,43 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                           );
                         })}
                       </ul>
+                    )}
+                  </div>
+                ) : null}
+              </section>
+
+              <section className={`${styles.sidebarSection} ${localStyles.sidebarCommSection}`} data-guide="prestataire-sidebar-notes">
+                <SidebarSectionHeader
+                  title={copy.notesTitle || copy.fields?.notes || "Notes"}
+                  expanded={notesSectionExpanded}
+                  onToggle={() => setNotesSectionExpanded(prev => !prev)}
+                  controlsId="prestataire-sidebar-notes"
+                  panelStyles={styles}
+                  actions={
+                    canEdit ? (
+                      <button
+                        type="button"
+                        className={styles.editInfoButton}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleOpenEdit();
+                        }}
+                        aria-label={copy.editPrestataire}
+                      >
+                        <FaPlus />
+                      </button>
+                    ) : null
+                  }
+                />
+                {notesSectionExpanded ? (
+                  <div
+                    className={`${styles.sidebarBody} ${localStyles.sidebarCommBodyWrap}`}
+                    id="prestataire-sidebar-notes"
+                  >
+                    {prestataire.notes ? (
+                      <p className={localStyles.sidebarNotes}>{prestataire.notes}</p>
+                    ) : (
+                      <span className={styles.sidebarSummaryValueEmpty}>{copy.noNotes}</span>
                     )}
                   </div>
                 ) : null}

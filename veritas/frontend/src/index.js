@@ -7,4 +7,8 @@ import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
 
-serviceWorkerRegistration.register();
+if (process.env.NODE_ENV === "production") {
+  serviceWorkerRegistration.register();
+} else {
+  serviceWorkerRegistration.unregister();
+}

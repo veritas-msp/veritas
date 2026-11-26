@@ -54,9 +54,9 @@ const CLASSIC_DARK = {
   "--msp-accent-soft": "rgba(90, 157, 224, 0.18)"
 };
 
-const STEAM_FONT = 'Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif';
+const OLIVE_FONT = 'Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif';
 
-const STEAM_LIGHT = {
+const OLIVE_LIGHT = {
   "--bg-primary": "#5c6a4e",
   "--bg-secondary": "#526246",
   "--bg-tertiary": "#3e4a36",
@@ -105,8 +105,8 @@ const STEAM_LIGHT = {
   "--msp-shadow-lg": "0 10px 24px rgba(20, 24, 16, 0.35)",
   "--msp-shadow-panel": "inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px #2c3426",
   "--msp-kpi-active-bg": "linear-gradient(180deg, #6e7c5e 0%, #5c6a4e 100%)",
-  "--msp-font": STEAM_FONT,
-  "--app-font": STEAM_FONT,
+  "--msp-font": OLIVE_FONT,
+  "--app-font": OLIVE_FONT,
   "--msp-input-s-radius": "0px",
   "--msp-input-m-radius": "0px",
   "--msp-input-l-radius": "0px",
@@ -128,7 +128,7 @@ const STEAM_LIGHT = {
   "--portal-badge-bg": "#3e4636"
 };
 
-const STEAM_DARK = {
+const OLIVE_DARK = {
   "--bg-primary": "#1c2018",
   "--bg-secondary": "#141814",
   "--bg-tertiary": "#2a3026",
@@ -177,8 +177,8 @@ const STEAM_DARK = {
   "--msp-shadow-lg": "0 16px 36px rgba(0, 0, 0, 0.45)",
   "--msp-shadow-panel": "0 0 0 1px #2a3026",
   "--msp-kpi-active-bg": "linear-gradient(180deg, #32382c 0%, #262b22 100%)",
-  "--msp-font": STEAM_FONT,
-  "--app-font": STEAM_FONT,
+  "--msp-font": OLIVE_FONT,
+  "--app-font": OLIVE_FONT,
   "--msp-input-s-radius": "0px",
   "--msp-input-m-radius": "0px",
   "--msp-input-l-radius": "0px",
@@ -200,22 +200,329 @@ const STEAM_DARK = {
   "--portal-badge-bg": "#3a4234"
 };
 
+const MIAMI_FONT = '"Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif';
+
+const MIAMI_LIGHT = {
+  "--bg-primary": "#fff0f6",
+  "--bg-secondary": "#ffe3f2",
+  "--bg-tertiary": "#ffd0e8",
+  "--bg-sidebar": "#ffe3f2",
+  "--text-primary": "#3a1230",
+  "--text-secondary": "#6d3054",
+  "--text-muted": "#9a5474",
+  "--text-inverted": "#fff7fb",
+  "--border-primary": "#f0b4ce",
+  "--border-secondary": "#f8d5e4",
+  "--accent-primary": "#ff2f92",
+  "--accent-secondary": "#00b7c7",
+  "--shadow-color": "rgba(255, 47, 146, 0.18)",
+  "--accent-primary-alpha": "rgba(255, 47, 146, 0.16)",
+  "--accent-primary-faded": "rgba(255, 47, 146, 0.1)",
+  "--accent-primary-rgb": "255, 47, 146",
+  "--calendar-picker-filter": "none",
+  "--msp-bg": "#fff0f6",
+  "--msp-page-bg": "#fff0f6",
+  "--msp-surface": "#fff7fb",
+  "--msp-surface-2": "#ffffff",
+  "--msp-surface-3": "#ffd6ea",
+  "--msp-surface-muted": "#ffe9f4",
+  "--msp-border": "#f0b4ce",
+  "--msp-border-light": "#f8d5e4",
+  "--msp-text": "#3a1230",
+  "--msp-muted": "#9a5474",
+  "--msp-text-muted": "#9a5474",
+  "--msp-muted-light": "#c48aa6",
+  "--msp-accent": "#ff2f92",
+  "--msp-accent-dark": "#ff6b3d",
+  "--msp-accent-soft": "rgba(255, 47, 146, 0.14)",
+  "--msp-on-accent": "#3a1028",
+  "--msp-success": "#0f9d8a",
+  "--msp-success-soft": "rgba(15, 157, 138, 0.16)",
+  "--msp-warn": "#f97316",
+  "--msp-warn-soft": "rgba(249, 115, 22, 0.16)",
+  "--msp-danger": "#e11d48",
+  "--msp-danger-soft": "rgba(225, 29, 72, 0.14)",
+  "--msp-radius": "16px",
+  "--msp-radius-sm": "10px",
+  "--msp-radius-md": "16px",
+  "--msp-radius-btn": "999px",
+  "--msp-shadow": "0 8px 24px rgba(255, 47, 146, 0.12)",
+  "--msp-shadow-sm": "0 1px 0 rgba(255, 255, 255, 0.8)",
+  "--msp-shadow-lg": "0 18px 40px rgba(255, 47, 146, 0.18)",
+  "--msp-shadow-panel": "0 0 0 1px rgba(255, 47, 146, 0.12)",
+  "--msp-kpi-active-bg": "linear-gradient(135deg, #ffe3f6 0%, #d9fbff 100%)",
+  "--msp-font": MIAMI_FONT,
+  "--app-font": MIAMI_FONT,
+  "--msp-input-s-radius": "12px",
+  "--msp-input-m-radius": "12px",
+  "--msp-input-l-radius": "12px",
+  "--msp-input-xl-radius": "12px",
+  "--portal-bg": "#fff0f6",
+  "--portal-sidebar-bg": "#ffe3f2",
+  "--portal-surface": "#fff7fb",
+  "--portal-surface-alt": "#ffffff",
+  "--portal-border": "#f0b4ce",
+  "--portal-border-light": "#f8d5e4",
+  "--portal-text": "#3a1230",
+  "--portal-text-secondary": "#6d3054",
+  "--portal-text-muted": "#9a5474",
+  "--portal-accent": "#ff2f92",
+  "--portal-accent-soft": "rgba(255, 47, 146, 0.14)",
+  "--portal-accent-text": "#d41274",
+  "--portal-hover": "rgba(0, 183, 199, 0.12)",
+  "--portal-hover-strong": "rgba(255, 47, 146, 0.16)",
+  "--portal-badge-bg": "#ffd6ea"
+};
+
+const MIAMI_DARK = {
+  "--bg-primary": "#120814",
+  "--bg-secondary": "#0c0610",
+  "--bg-tertiary": "#3d1848",
+  "--bg-sidebar": "#0c0610",
+  "--text-primary": "#ffe6f6",
+  "--text-secondary": "#f3c0de",
+  "--text-muted": "#d4a8c4",
+  "--text-inverted": "#1a0612",
+  "--border-primary": "#6b2d78",
+  "--border-secondary": "#3d1848",
+  "--accent-primary": "#ff3caf",
+  "--accent-secondary": "#5ce1e6",
+  "--shadow-color": "rgba(255, 60, 175, 0.28)",
+  "--accent-primary-alpha": "rgba(255, 60, 175, 0.22)",
+  "--accent-primary-faded": "rgba(92, 225, 230, 0.12)",
+  "--accent-primary-rgb": "255, 60, 175",
+  "--calendar-picker-filter": "invert(1) hue-rotate(280deg) brightness(0.85)",
+  "--msp-bg": "#120814",
+  "--msp-page-bg": "#120814",
+  "--msp-surface": "#241028",
+  "--msp-surface-2": "#1a0c22",
+  "--msp-surface-3": "#3d1848",
+  "--msp-surface-muted": "#180a1e",
+  "--msp-border": "#6b2d78",
+  "--msp-border-light": "#3d1848",
+  "--msp-text": "#ffe6f6",
+  "--msp-muted": "#d4a8c4",
+  "--msp-text-muted": "#d4a8c4",
+  "--msp-muted-light": "#a87898",
+  "--msp-accent": "#ff3caf",
+  "--msp-accent-dark": "#5ce1e6",
+  "--msp-accent-soft": "rgba(255, 60, 175, 0.18)",
+  "--msp-on-accent": "#1a0612",
+  "--msp-success": "#3dffe8",
+  "--msp-success-soft": "rgba(61, 255, 232, 0.14)",
+  "--msp-warn": "#ffb020",
+  "--msp-warn-soft": "rgba(255, 176, 32, 0.16)",
+  "--msp-danger": "#ff4d6d",
+  "--msp-danger-soft": "rgba(255, 77, 109, 0.16)",
+  "--msp-radius": "16px",
+  "--msp-radius-sm": "10px",
+  "--msp-radius-md": "16px",
+  "--msp-radius-btn": "999px",
+  "--msp-shadow": "0 0 0 1px rgba(255, 60, 175, 0.2)",
+  "--msp-shadow-sm": "none",
+  "--msp-shadow-lg": "0 18px 48px rgba(255, 60, 175, 0.22)",
+  "--msp-shadow-panel": "0 0 24px rgba(92, 225, 230, 0.08)",
+  "--msp-kpi-active-bg": "linear-gradient(135deg, #3d1848 0%, #12343a 100%)",
+  "--msp-font": MIAMI_FONT,
+  "--app-font": MIAMI_FONT,
+  "--msp-input-s-radius": "12px",
+  "--msp-input-m-radius": "12px",
+  "--msp-input-l-radius": "12px",
+  "--msp-input-xl-radius": "12px",
+  "--portal-bg": "#120814",
+  "--portal-sidebar-bg": "#0c0610",
+  "--portal-surface": "#241028",
+  "--portal-surface-alt": "#1a0c22",
+  "--portal-border": "#6b2d78",
+  "--portal-border-light": "#3d1848",
+  "--portal-text": "#ffe6f6",
+  "--portal-text-secondary": "#f3c0de",
+  "--portal-text-muted": "#d4a8c4",
+  "--portal-accent": "#ff3caf",
+  "--portal-accent-soft": "rgba(255, 60, 175, 0.18)",
+  "--portal-accent-text": "#5ce1e6",
+  "--portal-hover": "rgba(92, 225, 230, 0.1)",
+  "--portal-hover-strong": "rgba(255, 60, 175, 0.18)",
+  "--portal-badge-bg": "#3d1848"
+};
+
+const XP_FONT = 'Tahoma, "Trebuchet MS", "Segoe UI", sans-serif';
+
+const XP_LIGHT = {
+  "--bg-primary": "#ece9d8",
+  "--bg-secondary": "#ffffff",
+  "--bg-tertiary": "#d6d2c2",
+  "--bg-sidebar": "#245edc",
+  "--text-primary": "#000000",
+  "--text-secondary": "#222222",
+  "--text-muted": "#4d4d4d",
+  "--text-inverted": "#ffffff",
+  "--border-primary": "#aca899",
+  "--border-secondary": "#716f64",
+  "--accent-primary": "#0054e3",
+  "--accent-secondary": "#3c8d0d",
+  "--shadow-color": "rgba(0, 0, 0, 0.25)",
+  "--accent-primary-alpha": "rgba(0, 84, 227, 0.16)",
+  "--accent-primary-faded": "rgba(0, 84, 227, 0.1)",
+  "--accent-primary-rgb": "0, 84, 227",
+  "--calendar-picker-filter": "none",
+  "--msp-bg": "#ece9d8",
+  "--msp-page-bg": "#ece9d8",
+  "--msp-surface": "#ffffff",
+  "--msp-surface-2": "#f6f4ec",
+  "--msp-surface-3": "#d8e4f8",
+  "--msp-surface-muted": "#ece9d8",
+  "--msp-border": "#aca899",
+  "--msp-border-light": "#ffffff",
+  "--msp-text": "#000000",
+  "--msp-muted": "#4d4d4d",
+  "--msp-text-muted": "#4d4d4d",
+  "--msp-muted-light": "#6d6d6d",
+  "--msp-accent": "#0054e3",
+  "--msp-accent-dark": "#003cc8",
+  "--msp-accent-soft": "rgba(0, 84, 227, 0.14)",
+  "--msp-on-accent": "#ffffff",
+  "--msp-success": "#3c8d0d",
+  "--msp-success-soft": "rgba(60, 141, 13, 0.16)",
+  "--msp-warn": "#e6a100",
+  "--msp-warn-soft": "rgba(230, 161, 0, 0.18)",
+  "--msp-danger": "#c00000",
+  "--msp-danger-soft": "rgba(192, 0, 0, 0.12)",
+  "--msp-radius": "3px",
+  "--msp-radius-sm": "2px",
+  "--msp-radius-md": "4px",
+  "--msp-radius-btn": "3px",
+  "--msp-shadow": "inset 1px 1px 0 #ffffff, inset -1px -1px 0 #716f64",
+  "--msp-shadow-sm": "inset 1px 1px 0 #ffffff",
+  "--msp-shadow-lg": "2px 2px 6px rgba(0, 0, 0, 0.28)",
+  "--msp-shadow-panel": "inset 1px 1px 0 #ffffff, 1px 1px 0 #716f64",
+  "--msp-kpi-active-bg": "linear-gradient(180deg, #3c81f3 0%, #245edc 100%)",
+  "--msp-font": XP_FONT,
+  "--app-font": XP_FONT,
+  "--msp-input-s-radius": "2px",
+  "--msp-input-m-radius": "2px",
+  "--msp-input-l-radius": "2px",
+  "--msp-input-xl-radius": "2px",
+  "--portal-bg": "#ece9d8",
+  "--portal-sidebar-bg": "#245edc",
+  "--portal-surface": "#ffffff",
+  "--portal-surface-alt": "#f6f4ec",
+  "--portal-border": "#aca899",
+  "--portal-border-light": "#ffffff",
+  "--portal-text": "#000000",
+  "--portal-text-secondary": "#222222",
+  "--portal-text-muted": "#4d4d4d",
+  "--portal-accent": "#0054e3",
+  "--portal-accent-soft": "rgba(0, 84, 227, 0.14)",
+  "--portal-accent-text": "#003cc8",
+  "--portal-hover": "rgba(0, 84, 227, 0.08)",
+  "--portal-hover-strong": "rgba(0, 84, 227, 0.16)",
+  "--portal-badge-bg": "#d8e4f8"
+};
+
+const XP_DARK = {
+  "--bg-primary": "#1a1a1a",
+  "--bg-secondary": "#101010",
+  "--bg-tertiary": "#3a3a3a",
+  "--bg-sidebar": "#0a246a",
+  "--text-primary": "#f2f2f2",
+  "--text-secondary": "#d8d8d8",
+  "--text-muted": "#b0b0b0",
+  "--text-inverted": "#0a246a",
+  "--border-primary": "#5a5a5a",
+  "--border-secondary": "#2e2e2e",
+  "--accent-primary": "#3c81f3",
+  "--accent-secondary": "#6fbf3a",
+  "--shadow-color": "rgba(0, 0, 0, 0.55)",
+  "--accent-primary-alpha": "rgba(60, 129, 243, 0.2)",
+  "--accent-primary-faded": "rgba(60, 129, 243, 0.12)",
+  "--accent-primary-rgb": "60, 129, 243",
+  "--calendar-picker-filter": "invert(1) brightness(0.85)",
+  "--msp-bg": "#1a1a1a",
+  "--msp-page-bg": "#1a1a1a",
+  "--msp-surface": "#2a2a2a",
+  "--msp-surface-2": "#222222",
+  "--msp-surface-3": "#3a4a72",
+  "--msp-surface-muted": "#161616",
+  "--msp-border": "#5a5a5a",
+  "--msp-border-light": "#3a3a3a",
+  "--msp-text": "#f2f2f2",
+  "--msp-muted": "#b0b0b0",
+  "--msp-text-muted": "#b0b0b0",
+  "--msp-muted-light": "#8a8a8a",
+  "--msp-accent": "#3c81f3",
+  "--msp-accent-dark": "#6aa6ff",
+  "--msp-accent-soft": "rgba(60, 129, 243, 0.2)",
+  "--msp-on-accent": "#ffffff",
+  "--msp-success": "#6fbf3a",
+  "--msp-success-soft": "rgba(111, 191, 58, 0.16)",
+  "--msp-warn": "#ffc83c",
+  "--msp-warn-soft": "rgba(255, 200, 60, 0.16)",
+  "--msp-danger": "#ff5a5a",
+  "--msp-danger-soft": "rgba(255, 90, 90, 0.16)",
+  "--msp-radius": "3px",
+  "--msp-radius-sm": "2px",
+  "--msp-radius-md": "4px",
+  "--msp-radius-btn": "3px",
+  "--msp-shadow": "inset 1px 1px 0 #4a4a4a, inset -1px -1px 0 #111111",
+  "--msp-shadow-sm": "none",
+  "--msp-shadow-lg": "2px 2px 8px rgba(0, 0, 0, 0.55)",
+  "--msp-shadow-panel": "inset 1px 1px 0 #4a4a4a",
+  "--msp-kpi-active-bg": "linear-gradient(180deg, #3c81f3 0%, #0a246a 100%)",
+  "--msp-font": XP_FONT,
+  "--app-font": XP_FONT,
+  "--msp-input-s-radius": "2px",
+  "--msp-input-m-radius": "2px",
+  "--msp-input-l-radius": "2px",
+  "--msp-input-xl-radius": "2px",
+  "--portal-bg": "#1a1a1a",
+  "--portal-sidebar-bg": "#0a246a",
+  "--portal-surface": "#2a2a2a",
+  "--portal-surface-alt": "#222222",
+  "--portal-border": "#5a5a5a",
+  "--portal-border-light": "#3a3a3a",
+  "--portal-text": "#f2f2f2",
+  "--portal-text-secondary": "#d8d8d8",
+  "--portal-text-muted": "#b0b0b0",
+  "--portal-accent": "#3c81f3",
+  "--portal-accent-soft": "rgba(60, 129, 243, 0.2)",
+  "--portal-accent-text": "#6aa6ff",
+  "--portal-hover": "rgba(60, 129, 243, 0.12)",
+  "--portal-hover-strong": "rgba(60, 129, 243, 0.2)",
+  "--portal-badge-bg": "#3a4a72"
+};
+
 export const THEME_VARIABLES = {
   classic: {
     light: CLASSIC_LIGHT,
     dark: CLASSIC_DARK
   },
-  steam: {
-    light: STEAM_LIGHT,
-    dark: STEAM_DARK
+  olive: {
+    light: OLIVE_LIGHT,
+    dark: OLIVE_DARK
+  },
+  miami: {
+    light: MIAMI_LIGHT,
+    dark: MIAMI_DARK
+  },
+  xp: {
+    light: XP_LIGHT,
+    dark: XP_DARK
   }
 };
 
 const MANAGED_KEYS = [...new Set(Object.values(THEME_VARIABLES).flatMap(skin => Object.values(skin).flatMap(mode => Object.keys(mode))))];
 
+const SKINS = ["classic", "olive", "miami", "xp"];
+
+export function normalizeSkin(skin) {
+  if (skin === "steam" || skin === "military") return "olive";
+  return SKINS.includes(skin) ? skin : "classic";
+}
+
 export function resolveThemePalette(theme, skin = "classic") {
   const mode = theme === "dark" ? "dark" : "light";
-  const resolvedSkin = skin === "steam" ? "steam" : "classic";
+  const resolvedSkin = normalizeSkin(skin);
   return {
     mode,
     skin: resolvedSkin,
@@ -226,9 +533,9 @@ export function resolveThemePalette(theme, skin = "classic") {
 export function applyThemeToRoot(theme, skin) {
   const root = document.documentElement;
   let requestedSkin = skin;
-  if (requestedSkin !== "steam" && requestedSkin !== "classic") {
+  if (!SKINS.includes(requestedSkin) && requestedSkin !== "steam" && requestedSkin !== "military") {
     try {
-      requestedSkin = localStorage.getItem("theme_skin") === "steam" ? "steam" : "classic";
+      requestedSkin = localStorage.getItem("theme_skin");
     } catch {
       requestedSkin = "classic";
     }
@@ -237,7 +544,7 @@ export function applyThemeToRoot(theme, skin) {
   root.classList.remove("light", "dark");
   root.classList.add(mode);
   root.dataset.skin = resolvedSkin;
-  root.style.colorScheme = resolvedSkin === "steam" ? "dark" : mode;
+  root.style.colorScheme = resolvedSkin === "olive" || ((resolvedSkin === "miami" || resolvedSkin === "xp") && mode === "dark") ? "dark" : mode;
   MANAGED_KEYS.forEach(property => {
     const value = palette[property];
     if (value == null) root.style.removeProperty(property);

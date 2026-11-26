@@ -67,7 +67,8 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "contact",
     "email",
     "phone",
-    "enterprises"
+    "enterprises",
+    "notes"
   ]),
   enterprise_vault: Object.freeze([
     "name",
@@ -102,7 +103,16 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
     "phone",
     "portal"
   ]),
-  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires]),
+  // Note optionnelle : activable via le modal colonnes.
+  prestataires: Object.freeze([
+    "status",
+    "name",
+    "type",
+    "contact",
+    "email",
+    "phone",
+    "enterprises"
+  ]),
   enterprise_vault: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_vault]),
   enterprise_logs: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_logs])
 });
@@ -171,7 +181,8 @@ export const TICKET_TABLE_COLUMN_SORT_KEYS = Object.freeze({
   support_tickets_total: "support_tickets_total",
   support_tickets_in_progress: "support_tickets_in_progress",
   name: "nom",
-  enterprises: "entreprises"
+  enterprises: "entreprises",
+  notes: "notes"
 });
 
 export const ENTERPRISES_COLUMN_LABEL_KEYS = Object.freeze({
@@ -205,7 +216,8 @@ export const PRESTATAIRES_COLUMN_LABEL_KEYS = Object.freeze({
   contact: "contact",
   email: "email",
   phone: "phone",
-  enterprises: "enterprises"
+  enterprises: "enterprises",
+  notes: "notes"
 });
 
 /** Épingler une colonne en tête (ex. statut à gauche). */

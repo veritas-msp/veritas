@@ -104,30 +104,30 @@ html.dark {
 
 
 
-html.dark,
-body.dark {
+html.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"]),
+body.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"]) {
   background-color: #02050a !important;
 }
 
 
-html.dark::-webkit-scrollbar,
-body.dark::-webkit-scrollbar {
+html.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar,
+body.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar {
   width: 12px;
 }
 
-html.dark::-webkit-scrollbar-track,
-body.dark::-webkit-scrollbar-track {
+html.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar-track,
+body.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar-track {
   background: #0c1220;
 }
 
-html.dark::-webkit-scrollbar-thumb,
-body.dark::-webkit-scrollbar-thumb {
+html.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar-thumb,
+body.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar-thumb {
   background: #3a4f6e;
   border-radius: 6px;
 }
 
-html.dark::-webkit-scrollbar-thumb:hover,
-body.dark::-webkit-scrollbar-thumb:hover {
+html.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar-thumb:hover,
+body.dark:not([data-skin="olive"]):not([data-skin="miami"]):not([data-skin="xp"])::-webkit-scrollbar-thumb:hover {
   background: #4a6185;
 }
 

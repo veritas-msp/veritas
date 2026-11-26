@@ -66,7 +66,8 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "contact",
     "email",
     "phone",
-    "enterprises"
+    "enterprises",
+    "notes"
   ]),
   enterprise_vault: Object.freeze([
     "name",
@@ -96,7 +97,15 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
     "phone",
     "portal"
   ]),
-  prestataires: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.prestataires]),
+  prestataires: Object.freeze([
+    "name",
+    "type",
+    "status",
+    "contact",
+    "email",
+    "phone",
+    "enterprises"
+  ]),
   enterprise_vault: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_vault]),
   enterprise_logs: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprise_logs])
 });

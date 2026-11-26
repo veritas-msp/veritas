@@ -58,6 +58,8 @@ const DETAIL_COPY = {
     noInfo: "Aucune information complémentaire.",
     contactsTitle: "Contacts",
     noContacts: "Aucun contact renseigné.",
+    notesTitle: "Notes",
+    noNotes: "Aucune note.",
     contactFallback: "Contact",
     contactNoCoords: "Aucune coordonnée",
     table: {
@@ -156,6 +158,8 @@ const DETAIL_COPY = {
     noInfo: "No additional information.",
     contactsTitle: "Contacts",
     noContacts: "No contacts yet.",
+    notesTitle: "Notes",
+    noNotes: "No notes.",
     contactFallback: "Contact",
     contactNoCoords: "No contact details",
     table: {
