@@ -616,14 +616,14 @@ export default function PrestataireDetailPage({ onNavigate, prestataireData }) {
                     {prestataire.adresse}
                   </span>
                 ) : null}
-                {prestataire.notes ? (
-                  <span className={`${styles.heroMetaItem} ${styles.heroMetaBlock} ${localStyles.heroMetaNotes}`}>
-                    <Icon icon="mdi:note-text-outline" aria-hidden />
-                    <span>{prestataire.notes}</span>
-                  </span>
-                ) : null}
               </div>
             </div>
+            {prestataire.notes ? (
+              <p className={localStyles.heroNotes}>
+                <Icon icon="mdi:note-text-outline" aria-hidden />
+                <span>{prestataire.notes}</span>
+              </p>
+            ) : null}
           </div>
         </div>
       </header>

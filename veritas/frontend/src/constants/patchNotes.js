@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.37",
+    date: "2026-11-26",
+    highlights: [
+      "Prestataires : une note peut être saisie à la création et à la modification.",
+      "La note s’affiche sur la fiche, sous l’en-tête."
+    ]
+  },
+  {
     version: "2.0.36",
     date: "2026-11-26",
     highlights: [

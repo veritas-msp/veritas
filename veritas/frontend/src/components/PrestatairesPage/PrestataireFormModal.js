@@ -328,6 +328,7 @@ export default function PrestataireFormModal({
       type: form.type?.trim() || null,
       site_web: form.site_web?.trim() || null,
       adresse: form.adresse?.trim() || null,
+      notes: form.notes?.trim() || null,
       statut: form.statut || "actif",
       contacts,
       memberships: nextMemberships
@@ -386,6 +387,15 @@ export default function PrestataireFormModal({
                   value={form.type || ""}
                   onChange={e => patchForm({ type: e.target.value })}
                   placeholder={copy.typePlaceholder}
+                />
+              </UiKitField>
+              <UiKitField label={copy.notesLabel} hint={copy.notesHint} htmlFor="prestataire-form-notes" full className={styles.fieldFull}>
+                <UiKitTextarea
+                  id="prestataire-form-notes"
+                  rows={4}
+                  value={form.notes || ""}
+                  onChange={e => patchForm({ notes: e.target.value })}
+                  placeholder={copy.notesPlaceholder}
                 />
               </UiKitField>
             </div>

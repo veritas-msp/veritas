@@ -26,6 +26,9 @@ const FORM_COPY = {
     websitePlaceholder: "https://…",
     addressLabel: "Adresse",
     addressPlaceholder: "Adresse postale",
+    notesLabel: "Note",
+    notesPlaceholder: "Description, information ou remarque sur ce prestataire",
+    notesHint: "Visible sur la fiche du prestataire.",
     contactsHint: "Ajoutez une ou plusieurs personnes à contacter chez ce prestataire.",
     addContact: "Ajouter un contact",
     removeContactAria: "Retirer le contact",
@@ -54,7 +57,7 @@ const FORM_COPY = {
     sections: {
       identity: {
         label: "Identité",
-        description: "Nom et type du prestataire"
+        description: "Nom, type et note"
       },
       contacts: {
         label: "Contacts",
@@ -98,6 +101,9 @@ const FORM_COPY = {
     websitePlaceholder: "https://…",
     addressLabel: "Address",
     addressPlaceholder: "Postal address",
+    notesLabel: "Note",
+    notesPlaceholder: "Description, information or remark about this provider",
+    notesHint: "Shown on the provider record.",
     contactsHint: "Add one or more people to contact at this provider.",
     addContact: "Add a contact",
     removeContactAria: "Remove contact",
@@ -126,7 +132,7 @@ const FORM_COPY = {
     sections: {
       identity: {
         label: "Identity",
-        description: "Provider name and type"
+        description: "Name, type and note"
       },
       contacts: {
         label: "Contacts",

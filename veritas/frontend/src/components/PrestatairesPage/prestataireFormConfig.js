@@ -31,7 +31,7 @@ export const PRESTATAIRE_FORM_SECTIONS = [{
   id: "identity",
   label: "Identité",
   icon: "mdi:handshake-outline",
-  description: "Nom et type du prestataire"
+  description: "Nom, type et note"
 }, {
   id: "contacts",
   label: "Contacts",
@@ -59,6 +59,7 @@ export const DEFAULT_PRESTATAIRE_FORM = {
   type: "",
   site_web: "",
   adresse: "",
+  notes: "",
   statut: "actif",
   contacts: []
 };
@@ -76,6 +77,7 @@ export function buildPrestataireFormFromInitial(initial) {
     type: initial.type || "",
     site_web: initial.site_web || "",
     adresse: initial.adresse || "",
+    notes: initial.notes || "",
     statut: initial.statut === "inactif" || initial.statut === "inactive" ? "inactif" : "actif",
     contacts: normalizePrestataireContacts(initial.contacts, initial)
   };
@@ -87,6 +89,7 @@ export function clonePrestataireFormSnapshot(form) {
     type: form.type || "",
     site_web: form.site_web || "",
     adresse: form.adresse || "",
+    notes: form.notes || "",
     statut: form.statut || "actif",
     contacts: (Array.isArray(form.contacts) ? form.contacts : []).map(contact => ({
       nom: contact.nom || "",
@@ -109,6 +112,7 @@ export function prestataireFormsEqual(a, b) {
     && (a.type || "") === (b.type || "")
     && (a.site_web || "") === (b.site_web || "")
     && (a.adresse || "") === (b.adresse || "")
+    && (a.notes || "") === (b.notes || "")
     && (a.statut || "actif") === (b.statut || "actif")
     && serializeContacts(a.contacts) === serializeContacts(b.contacts);
 }
