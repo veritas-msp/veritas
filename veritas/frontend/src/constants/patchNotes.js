@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.38",
+    date: "2026-11-26",
+    highlights: [
+      "Thème Steam : palette olive et or, inspirée de l’interface classique.",
+      "Steam clair : fenêtre kaki, champs sombres et accents or.",
+      "Steam sombre : fond olive très sombre, listes grisées et texte or."
+    ]
+  },
+  {
     version: "2.0.37",
     date: "2026-11-26",
     highlights: [

@@ -1,182 +1,184 @@
 /*
- * Thème Steam — clair et sombre.
+ * Thème Steam olive — clair (fenêtre Valve) et sombre (bibliothèque / console).
  * Les pages redéfinissent --msp-* localement : le sélecteur * !important
  * réapplique la palette sur chaque élément (pages, modales, portail, toasts).
  * Les valeurs restent alignées sur styles/themeVariables.js.
  */
 
 html[data-skin="steam"].light {
-  color-scheme: light;
-  accent-color: #1a9fff;
+  color-scheme: dark;
+  accent-color: #e6cc62;
 }
 
 html[data-skin="steam"].dark {
   color-scheme: dark;
-  accent-color: #66c0f4;
+  accent-color: #d4c15a;
 }
 
 html[data-skin="steam"].light,
 html[data-skin="steam"].light * {
-  --bg-primary: #d6e1ea !important;
-  --bg-secondary: #f4f8fb !important;
-  --bg-tertiary: #e4eef5 !important;
-  --bg-sidebar: #eef4f8 !important;
-  --text-primary: #1b2838 !important;
-  --text-secondary: #2a475e !important;
-  --text-muted: #5c7082 !important;
-  --text-inverted: #ffffff !important;
-  --border-primary: #b7c8d6 !important;
-  --border-secondary: #9eb3c4 !important;
-  --accent-primary: #1a9fff !important;
-  --accent-secondary: #67c1f5 !important;
-  --shadow-color: rgba(23, 26, 33, 0.12) !important;
-  --accent-primary-alpha: rgba(26, 159, 255, 0.14) !important;
-  --accent-primary-faded: rgba(26, 159, 255, 0.1) !important;
-  --accent-primary-rgb: 26, 159, 255 !important;
-  --calendar-picker-filter: none !important;
-  --msp-bg: #d6e1ea !important;
-  --msp-page-bg: #d6e1ea !important;
-  --msp-surface: #f7fafc !important;
-  --msp-surface-2: #e7eef4 !important;
-  --msp-surface-3: #d5e3ee !important;
-  --msp-surface-muted: #c9d8e4 !important;
-  --msp-border: #a9bfd0 !important;
-  --msp-border-light: #c5d4e1 !important;
-  --msp-text: #1b2838 !important;
-  --msp-muted: #4e6476 !important;
-  --msp-text-muted: #4e6476 !important;
-  --msp-muted-light: #6d8294 !important;
-  --msp-accent: #1a9fff !important;
-  --msp-accent-dark: #0b7fd4 !important;
-  --msp-accent-soft: rgba(26, 159, 255, 0.14) !important;
-  --msp-success: #4f7c12 !important;
-  --msp-success-soft: rgba(92, 126, 16, 0.16) !important;
-  --msp-warn: #c47a12 !important;
-  --msp-warn-soft: rgba(196, 122, 18, 0.16) !important;
-  --msp-danger: #c23b3b !important;
-  --msp-danger-soft: rgba(194, 59, 59, 0.12) !important;
-  --msp-radius: 4px !important;
-  --msp-radius-sm: 2px !important;
-  --msp-radius-md: 4px !important;
-  --msp-radius-btn: 2px !important;
-  --msp-shadow: 0 1px 0 rgba(23, 26, 33, 0.05) !important;
-  --msp-shadow-sm: none !important;
-  --msp-shadow-lg: 0 12px 32px rgba(23, 26, 33, 0.14) !important;
-  --msp-shadow-panel: 0 0 0 1px rgba(23, 26, 33, 0.06) !important;
-  --msp-kpi-active-bg: linear-gradient(180deg, #f7fafc 0%, #e7eef4 100%) !important;
-  --msp-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
-  --app-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
-  --msp-input-s-radius: 2px !important;
-  --msp-input-m-radius: 2px !important;
-  --msp-input-l-radius: 2px !important;
-  --msp-input-xl-radius: 2px !important;
-  --portal-bg: #d6e1ea !important;
-  --portal-sidebar-bg: #eef4f8 !important;
-  --portal-surface: #f7fafc !important;
-  --portal-surface-alt: #e7eef4 !important;
-  --portal-border: #a9bfd0 !important;
-  --portal-border-light: #c5d4e1 !important;
-  --portal-text: #1b2838 !important;
-  --portal-text-secondary: #2a475e !important;
-  --portal-text-muted: #5c7082 !important;
-  --portal-accent: #1a9fff !important;
-  --portal-accent-soft: rgba(26, 159, 255, 0.14) !important;
-  --portal-accent-text: #0b7fd4 !important;
-  --portal-hover: rgba(26, 159, 255, 0.08) !important;
-  --portal-hover-strong: rgba(26, 159, 255, 0.14) !important;
-  --portal-badge-bg: #d5e3ee !important;
-  --portal-theme-option-bg: #e7eef4 !important;
-  --portal-theme-option-border: #a9bfd0 !important;
-  --portal-theme-option-text: #4e6476 !important;
-  --portal-theme-option-active-bg: rgba(26, 159, 255, 0.22) !important;
-  --portal-theme-option-active-border: #1a9fff !important;
-  --portal-theme-option-active-text: #1b2838 !important;
+  --bg-primary: #5c6a4e !important;
+  --bg-secondary: #526246 !important;
+  --bg-tertiary: #3e4a36 !important;
+  --bg-sidebar: #4e5c42 !important;
+  --text-primary: #e8eedc !important;
+  --text-secondary: #d4dcc8 !important;
+  --text-muted: #b7c2a6 !important;
+  --text-inverted: #1c1a10 !important;
+  --border-primary: #3a4432 !important;
+  --border-secondary: #2c3426 !important;
+  --accent-primary: #e6cc62 !important;
+  --accent-secondary: #f3dc86 !important;
+  --shadow-color: rgba(20, 24, 16, 0.35) !important;
+  --accent-primary-alpha: rgba(230, 204, 98, 0.2) !important;
+  --accent-primary-faded: rgba(230, 204, 98, 0.12) !important;
+  --accent-primary-rgb: 230, 204, 98 !important;
+  --calendar-picker-filter: invert(1) hue-rotate(40deg) brightness(0.9) !important;
+  --msp-bg: #5c6a4e !important;
+  --msp-page-bg: #5c6a4e !important;
+  --msp-surface: #667456 !important;
+  --msp-surface-2: #2e3428 !important;
+  --msp-surface-3: #3e4636 !important;
+  --msp-surface-muted: #526246 !important;
+  --msp-border: #3a4432 !important;
+  --msp-border-light: #7c8a6c !important;
+  --msp-text: #eef3e4 !important;
+  --msp-muted: #c5d0b6 !important;
+  --msp-text-muted: #c5d0b6 !important;
+  --msp-muted-light: #a8b498 !important;
+  --msp-accent: #e6cc62 !important;
+  --msp-accent-dark: #f3dc86 !important;
+  --msp-accent-soft: rgba(230, 204, 98, 0.2) !important;
+  --msp-on-accent: #1c1a10 !important;
+  --msp-success: #c6de78 !important;
+  --msp-success-soft: rgba(198, 222, 120, 0.18) !important;
+  --msp-warn: #e6cc62 !important;
+  --msp-warn-soft: rgba(230, 204, 98, 0.18) !important;
+  --msp-danger: #e08a78 !important;
+  --msp-danger-soft: rgba(224, 138, 120, 0.18) !important;
+  --msp-radius: 2px !important;
+  --msp-radius-sm: 0px !important;
+  --msp-radius-md: 2px !important;
+  --msp-radius-btn: 0px !important;
+  --msp-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+  --msp-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  --msp-shadow-lg: 0 10px 24px rgba(20, 24, 16, 0.35) !important;
+  --msp-shadow-panel: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px #2c3426 !important;
+  --msp-kpi-active-bg: linear-gradient(180deg, #6e7c5e 0%, #5c6a4e 100%) !important;
+  --msp-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
+  --app-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
+  --msp-input-s-radius: 0px !important;
+  --msp-input-m-radius: 0px !important;
+  --msp-input-l-radius: 0px !important;
+  --msp-input-xl-radius: 0px !important;
+  --portal-bg: #5c6a4e !important;
+  --portal-sidebar-bg: #4e5c42 !important;
+  --portal-surface: #667456 !important;
+  --portal-surface-alt: #2e3428 !important;
+  --portal-border: #3a4432 !important;
+  --portal-border-light: #7c8a6c !important;
+  --portal-text: #eef3e4 !important;
+  --portal-text-secondary: #d4dcc8 !important;
+  --portal-text-muted: #b7c2a6 !important;
+  --portal-accent: #e6cc62 !important;
+  --portal-accent-soft: rgba(230, 204, 98, 0.2) !important;
+  --portal-accent-text: #f3dc86 !important;
+  --portal-hover: rgba(230, 204, 98, 0.1) !important;
+  --portal-hover-strong: rgba(230, 204, 98, 0.18) !important;
+  --portal-badge-bg: #3e4636 !important;
+  --portal-theme-option-bg: #526246 !important;
+  --portal-theme-option-border: #3a4432 !important;
+  --portal-theme-option-text: #c5d0b6 !important;
+  --portal-theme-option-active-bg: rgba(230, 204, 98, 0.22) !important;
+  --portal-theme-option-active-border: #e6cc62 !important;
+  --portal-theme-option-active-text: #eef3e4 !important;
 }
 
 html[data-skin="steam"].dark,
 html[data-skin="steam"].dark * {
-  --bg-primary: #1b2838 !important;
-  --bg-secondary: #171a21 !important;
-  --bg-tertiary: #2a475e !important;
-  --bg-sidebar: #171a21 !important;
-  --text-primary: #c7d5e0 !important;
-  --text-secondary: #a9b9c6 !important;
-  --text-muted: #8f98a0 !important;
-  --text-inverted: #171a21 !important;
-  --border-primary: #2a475e !important;
-  --border-secondary: #3d5f7a !important;
-  --accent-primary: #1a9fff !important;
-  --accent-secondary: #66c0f4 !important;
-  --shadow-color: rgba(0, 0, 0, 0.5) !important;
-  --accent-primary-alpha: rgba(102, 192, 244, 0.16) !important;
-  --accent-primary-faded: rgba(102, 192, 244, 0.12) !important;
-  --accent-primary-rgb: 26, 159, 255 !important;
-  --calendar-picker-filter: invert(1) brightness(0.85) !important;
-  --msp-bg: #1b2838 !important;
-  --msp-page-bg: #1b2838 !important;
-  --msp-surface: #16202d !important;
-  --msp-surface-2: #1e2c3d !important;
-  --msp-surface-3: #2a475e !important;
-  --msp-surface-muted: #121a24 !important;
-  --msp-border: #2a475e !important;
-  --msp-border-light: #34526c !important;
-  --msp-text: #c7d5e0 !important;
-  --msp-muted: #8f98a0 !important;
-  --msp-text-muted: #8f98a0 !important;
-  --msp-muted-light: #6d7884 !important;
-  --msp-accent: #1a9fff !important;
-  --msp-accent-dark: #4cb4ff !important;
-  --msp-accent-soft: rgba(102, 192, 244, 0.16) !important;
-  --msp-success: #a4d007 !important;
-  --msp-success-soft: rgba(164, 208, 7, 0.16) !important;
-  --msp-warn: #e5a00d !important;
-  --msp-warn-soft: rgba(229, 160, 13, 0.16) !important;
-  --msp-danger: #d94141 !important;
-  --msp-danger-soft: rgba(217, 65, 65, 0.16) !important;
-  --msp-radius: 4px !important;
-  --msp-radius-sm: 2px !important;
-  --msp-radius-md: 4px !important;
-  --msp-radius-btn: 2px !important;
-  --msp-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) !important;
+  --bg-primary: #1c2018 !important;
+  --bg-secondary: #141814 !important;
+  --bg-tertiary: #2a3026 !important;
+  --bg-sidebar: #141814 !important;
+  --text-primary: #dce3d0 !important;
+  --text-secondary: #c5ceba !important;
+  --text-muted: #93a084 !important;
+  --text-inverted: #141814 !important;
+  --border-primary: #3a4232 !important;
+  --border-secondary: #4a5440 !important;
+  --accent-primary: #d4c15a !important;
+  --accent-secondary: #e8d48a !important;
+  --shadow-color: rgba(0, 0, 0, 0.55) !important;
+  --accent-primary-alpha: rgba(212, 193, 90, 0.18) !important;
+  --accent-primary-faded: rgba(212, 193, 90, 0.12) !important;
+  --accent-primary-rgb: 212, 193, 90 !important;
+  --calendar-picker-filter: invert(1) hue-rotate(40deg) brightness(0.85) !important;
+  --msp-bg: #1c2018 !important;
+  --msp-page-bg: #1c2018 !important;
+  --msp-surface: #262b22 !important;
+  --msp-surface-2: #2e3428 !important;
+  --msp-surface-3: #3a4234 !important;
+  --msp-surface-muted: #161a14 !important;
+  --msp-border: #4a5440 !important;
+  --msp-border-light: #32382c !important;
+  --msp-text: #dce3d0 !important;
+  --msp-muted: #9aa68c !important;
+  --msp-text-muted: #9aa68c !important;
+  --msp-muted-light: #7d8874 !important;
+  --msp-accent: #d4c15a !important;
+  --msp-accent-dark: #e8d48a !important;
+  --msp-accent-soft: rgba(212, 193, 90, 0.16) !important;
+  --msp-on-accent: #1a1810 !important;
+  --msp-success: #9ec45a !important;
+  --msp-success-soft: rgba(158, 196, 90, 0.16) !important;
+  --msp-warn: #e0c45a !important;
+  --msp-warn-soft: rgba(224, 196, 90, 0.16) !important;
+  --msp-danger: #d46a5c !important;
+  --msp-danger-soft: rgba(212, 106, 92, 0.18) !important;
+  --msp-radius: 2px !important;
+  --msp-radius-sm: 0px !important;
+  --msp-radius-md: 2px !important;
+  --msp-radius-btn: 0px !important;
+  --msp-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   --msp-shadow-sm: none !important;
-  --msp-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
-  --msp-shadow-panel: 0 0 0 1px rgba(0, 0, 0, 0.4) !important;
-  --msp-kpi-active-bg: linear-gradient(180deg, #1e2c3d 0%, #16202d 100%) !important;
-  --msp-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
-  --app-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
-  --msp-input-s-radius: 2px !important;
-  --msp-input-m-radius: 2px !important;
-  --msp-input-l-radius: 2px !important;
-  --msp-input-xl-radius: 2px !important;
-  --portal-bg: #1b2838 !important;
-  --portal-sidebar-bg: #171a21 !important;
-  --portal-surface: #16202d !important;
-  --portal-surface-alt: #1e2c3d !important;
-  --portal-border: #2a475e !important;
-  --portal-border-light: #34526c !important;
-  --portal-text: #c7d5e0 !important;
-  --portal-text-secondary: #a9b9c6 !important;
-  --portal-text-muted: #8f98a0 !important;
-  --portal-accent: #66c0f4 !important;
-  --portal-accent-soft: rgba(102, 192, 244, 0.16) !important;
-  --portal-accent-text: #66c0f4 !important;
-  --portal-hover: rgba(102, 192, 244, 0.08) !important;
-  --portal-hover-strong: rgba(102, 192, 244, 0.14) !important;
-  --portal-badge-bg: #2a475e !important;
-  --portal-theme-option-bg: rgba(102, 192, 244, 0.08) !important;
-  --portal-theme-option-border: #2a475e !important;
-  --portal-theme-option-text: #8f98a0 !important;
-  --portal-theme-option-active-bg: rgba(26, 159, 255, 0.28) !important;
-  --portal-theme-option-active-border: #66c0f4 !important;
-  --portal-theme-option-active-text: #ffffff !important;
+  --msp-shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.45) !important;
+  --msp-shadow-panel: 0 0 0 1px #2a3026 !important;
+  --msp-kpi-active-bg: linear-gradient(180deg, #32382c 0%, #262b22 100%) !important;
+  --msp-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
+  --app-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
+  --msp-input-s-radius: 0px !important;
+  --msp-input-m-radius: 0px !important;
+  --msp-input-l-radius: 0px !important;
+  --msp-input-xl-radius: 0px !important;
+  --portal-bg: #1c2018 !important;
+  --portal-sidebar-bg: #141814 !important;
+  --portal-surface: #262b22 !important;
+  --portal-surface-alt: #2e3428 !important;
+  --portal-border: #4a5440 !important;
+  --portal-border-light: #32382c !important;
+  --portal-text: #dce3d0 !important;
+  --portal-text-secondary: #c5ceba !important;
+  --portal-text-muted: #93a084 !important;
+  --portal-accent: #d4c15a !important;
+  --portal-accent-soft: rgba(212, 193, 90, 0.16) !important;
+  --portal-accent-text: #e8d48a !important;
+  --portal-hover: rgba(212, 193, 90, 0.08) !important;
+  --portal-hover-strong: rgba(212, 193, 90, 0.14) !important;
+  --portal-badge-bg: #3a4234 !important;
+  --portal-theme-option-bg: rgba(212, 193, 90, 0.08) !important;
+  --portal-theme-option-border: #3a4232 !important;
+  --portal-theme-option-text: #9aa68c !important;
+  --portal-theme-option-active-bg: rgba(212, 193, 90, 0.22) !important;
+  --portal-theme-option-active-border: #d4c15a !important;
+  --portal-theme-option-active-text: #f4ecd0 !important;
 }
 
 html[data-skin="steam"].light,
 html[data-skin="steam"].light body,
 html[data-skin="steam"].light #root,
 html[data-skin="steam"].light .contentWrapper {
-  background-color: #d6e1ea !important;
-  color: #1b2838;
+  background-color: #5c6a4e !important;
+  color: #eef3e4;
 }
 
 html[data-skin="steam"].dark,
@@ -184,108 +186,133 @@ html[data-skin="steam"].dark body,
 html[data-skin="steam"].dark #root,
 html[data-skin="steam"].dark .contentWrapper,
 html[data-skin="steam"].dark .dark .contentWrapper {
-  background-color: #1b2838 !important;
-  color: #c7d5e0;
+  background-color: #1c2018 !important;
+  color: #dce3d0;
 }
 
 html[data-skin="steam"].light .contentWrapper > * {
-  background-color: #d6e1ea !important;
-  color: #1b2838;
+  background-color: #5c6a4e !important;
+  color: #eef3e4;
 }
 
 html[data-skin="steam"].dark .contentWrapper > * {
-  background-color: #1b2838 !important;
-  color: #c7d5e0;
+  background-color: #1c2018 !important;
+  color: #dce3d0;
 }
 
 html[data-skin="steam"] ::selection {
-  background: #66c0f4;
-  color: #171a21;
+  background: #e6cc62;
+  color: #1c1a10;
 }
 
 html[data-skin="steam"].light [data-sidebar-guide="sidebar-root"],
 html[data-skin="steam"].light [data-portal-guide="sidebar-root"] {
-  --sb-bg: #eef4f8 !important;
-  --sb-border: #a9bfd0 !important;
-  --sb-text: #1b2838 !important;
-  --sb-muted: #4e6476 !important;
-  --sb-muted-light: #6d8294 !important;
-  --sb-item: #4e6476 !important;
-  --sb-item-hover: #1b2838 !important;
-  --sb-hover-bg: rgba(26, 159, 255, 0.1) !important;
-  --sb-active-bg: rgba(26, 159, 255, 0.16) !important;
-  --sb-active-text: #0b7fd4 !important;
-  --sb-separator: #c5d4e1 !important;
-  --sb-btn-bg: #f7fafc !important;
-  --sb-btn-border: #a9bfd0 !important;
+  --sb-bg: #4e5c42 !important;
+  --sb-border: #3a4432 !important;
+  --sb-text: #eef3e4 !important;
+  --sb-muted: #c5d0b6 !important;
+  --sb-muted-light: #a8b498 !important;
+  --sb-item: #c5d0b6 !important;
+  --sb-item-hover: #eef3e4 !important;
+  --sb-hover-bg: rgba(230, 204, 98, 0.12) !important;
+  --sb-active-bg: rgba(230, 204, 98, 0.2) !important;
+  --sb-active-text: #f3dc86 !important;
+  --sb-separator: #3a4432 !important;
+  --sb-btn-bg: #667456 !important;
+  --sb-btn-border: #3a4432 !important;
   --sb-glow-1: transparent !important;
   --sb-glow-2: transparent !important;
   --sb-shadow: none !important;
-  --sb-active-btn-bg: rgba(26, 159, 255, 0.14) !important;
-  --sb-active-btn-border: #1a9fff !important;
-  --sb-active-btn-color: #0b7fd4 !important;
+  --sb-active-btn-bg: rgba(230, 204, 98, 0.18) !important;
+  --sb-active-btn-border: #e6cc62 !important;
+  --sb-active-btn-color: #f3dc86 !important;
   --sb-active-btn-shadow: none !important;
-  --sb-icon-accent: #1a9fff !important;
-  --sb-badge-ring: #eef4f8 !important;
-  background: #eef4f8 !important;
-  border-color: #a9bfd0 !important;
-  color: #1b2838;
+  --sb-icon-accent: #e6cc62 !important;
+  --sb-badge-ring: #4e5c42 !important;
+  background: #4e5c42 !important;
+  border-color: #3a4432 !important;
+  color: #eef3e4;
   box-shadow: none !important;
 }
 
 html[data-skin="steam"].dark [data-sidebar-guide="sidebar-root"],
 html[data-skin="steam"].dark [data-portal-guide="sidebar-root"] {
-  --sb-bg: #171a21 !important;
-  --sb-border: #2a475e !important;
-  --sb-text: #c7d5e0 !important;
-  --sb-muted: #8f98a0 !important;
-  --sb-muted-light: #6d7884 !important;
-  --sb-item: #8f98a0 !important;
-  --sb-item-hover: #c7d5e0 !important;
-  --sb-hover-bg: rgba(102, 192, 244, 0.1) !important;
-  --sb-active-bg: rgba(102, 192, 244, 0.16) !important;
-  --sb-active-text: #66c0f4 !important;
-  --sb-separator: #2a475e !important;
-  --sb-btn-bg: #1b2838 !important;
-  --sb-btn-border: #2a475e !important;
+  --sb-bg: #141814 !important;
+  --sb-border: #3a4232 !important;
+  --sb-text: #dce3d0 !important;
+  --sb-muted: #9aa68c !important;
+  --sb-muted-light: #7d8874 !important;
+  --sb-item: #9aa68c !important;
+  --sb-item-hover: #dce3d0 !important;
+  --sb-hover-bg: rgba(212, 193, 90, 0.1) !important;
+  --sb-active-bg: rgba(212, 193, 90, 0.16) !important;
+  --sb-active-text: #e8d48a !important;
+  --sb-separator: #3a4232 !important;
+  --sb-btn-bg: #1c2018 !important;
+  --sb-btn-border: #3a4232 !important;
   --sb-glow-1: transparent !important;
   --sb-glow-2: transparent !important;
   --sb-shadow: none !important;
-  --sb-upgrade-bg: linear-gradient(180deg, rgba(102, 192, 244, 0.08), rgba(26, 159, 255, 0.05)) !important;
-  --sb-upgrade-border: rgba(102, 192, 244, 0.4) !important;
-  --sb-upgrade-color: #66c0f4 !important;
-  --sb-active-btn-bg: rgba(102, 192, 244, 0.14) !important;
-  --sb-active-btn-border: #66c0f4 !important;
-  --sb-active-btn-color: #66c0f4 !important;
+  --sb-upgrade-bg: linear-gradient(180deg, rgba(212, 193, 90, 0.1), rgba(212, 193, 90, 0.04)) !important;
+  --sb-upgrade-border: rgba(212, 193, 90, 0.4) !important;
+  --sb-upgrade-color: #e8d48a !important;
+  --sb-active-btn-bg: rgba(212, 193, 90, 0.14) !important;
+  --sb-active-btn-border: #d4c15a !important;
+  --sb-active-btn-color: #e8d48a !important;
   --sb-active-btn-shadow: none !important;
-  --sb-icon-accent: #66c0f4 !important;
-  --sb-badge-ring: #171a21 !important;
-  background: #171a21 !important;
-  border-color: #2a475e !important;
-  color: #c7d5e0;
+  --sb-icon-accent: #d4c15a !important;
+  --sb-badge-ring: #141814 !important;
+  background: #141814 !important;
+  border-color: #3a4232 !important;
+  color: #dce3d0;
   box-shadow: none !important;
 }
 
 html[data-skin="steam"].light [role="presentation"]:has([role="dialog"]) {
-  background-color: rgba(23, 26, 33, 0.4) !important;
-  backdrop-filter: blur(8px) saturate(1.05) !important;
+  background-color: rgba(20, 24, 16, 0.55) !important;
+  backdrop-filter: blur(6px) saturate(0.9) !important;
 }
 
 html[data-skin="steam"].dark [role="presentation"]:has([role="dialog"]) {
-  background-color: rgba(14, 20, 27, 0.78) !important;
-  backdrop-filter: blur(8px) saturate(1.05) !important;
+  background-color: rgba(10, 12, 8, 0.78) !important;
+  backdrop-filter: blur(6px) saturate(0.9) !important;
 }
 
 html[data-skin="steam"] [role="dialog"] {
-  border-radius: 4px;
+  border-radius: 2px;
+}
+
+html[data-skin="steam"].light input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+html[data-skin="steam"].light textarea,
+html[data-skin="steam"].light select {
+  background-color: #2e3428;
+  color: #eef3e4;
+  border-color: #1c2218;
+  border-radius: 0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+html[data-skin="steam"].dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+html[data-skin="steam"].dark textarea,
+html[data-skin="steam"].dark select {
+  background-color: #161a14;
+  color: #dce3d0;
+  border-color: #2a3026;
+  border-radius: 0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+html[data-skin="steam"] input::placeholder,
+html[data-skin="steam"] textarea::placeholder {
+  color: #8f9a80;
 }
 
 html[data-skin="steam"].light {
-  scrollbar-color: #9eb3c4 transparent;
+  scrollbar-color: #3a4432 transparent;
 }
 
 html[data-skin="steam"].dark {
-  scrollbar-color: #3d5a73 #171a21;
+  scrollbar-color: #3a4232 #141814;
 }
 
 html[data-skin="steam"].light::-webkit-scrollbar-track,
@@ -295,121 +322,144 @@ html[data-skin="steam"].light *::-webkit-scrollbar-track {
 
 html[data-skin="steam"].dark::-webkit-scrollbar-track,
 html[data-skin="steam"].dark *::-webkit-scrollbar-track {
-  background: #171a21;
+  background: #141814;
 }
 
 html[data-skin="steam"].light::-webkit-scrollbar-thumb,
 html[data-skin="steam"].light *::-webkit-scrollbar-thumb {
-  background: #9eb3c4;
-  border-radius: 6px;
+  background: #3a4432;
+  border-radius: 0;
 }
 
 html[data-skin="steam"].dark::-webkit-scrollbar-thumb,
 html[data-skin="steam"].dark *::-webkit-scrollbar-thumb {
-  background: #3d5a73;
-  border-radius: 6px;
+  background: #3a4232;
+  border-radius: 0;
 }
 
 html[data-skin="steam"].light::-webkit-scrollbar-thumb:hover,
 html[data-skin="steam"].light *::-webkit-scrollbar-thumb:hover {
-  background: #1a9fff;
+  background: #e6cc62;
 }
 
 html[data-skin="steam"].dark::-webkit-scrollbar-thumb:hover,
 html[data-skin="steam"].dark *::-webkit-scrollbar-thumb:hover {
-  background: #66c0f4;
+  background: #d4c15a;
 }
 
 html[data-skin="steam"].dark .msp-scrollbar-macos {
-  scrollbar-color: #3d5a73 transparent;
+  scrollbar-color: #3a4232 transparent;
 }
 
 html[data-skin="steam"].light .contentWrapper table tbody tr:hover > td,
 html[data-skin="steam"].light .main-content table tbody tr:hover > td {
-  box-shadow: inset 0 0 0 999px rgba(26, 159, 255, 0.08);
+  box-shadow: inset 0 0 0 999px rgba(230, 204, 98, 0.1);
 }
 
 html[data-skin="steam"].dark .contentWrapper table tbody tr:hover > td,
 html[data-skin="steam"].dark .contentWrapper table tbody tr:focus-visible > td,
 html[data-skin="steam"].dark .main-content table tbody tr:hover > td,
 html[data-skin="steam"].dark .main-content table tbody tr:focus-visible > td {
-  box-shadow: inset 0 0 0 999px rgba(102, 192, 244, 0.12);
-  background-color: rgba(102, 192, 244, 0.08);
+  box-shadow: inset 0 0 0 999px rgba(212, 193, 90, 0.12);
+  background-color: rgba(212, 193, 90, 0.08);
 }
 
 html[data-skin="steam"].light .Toastify__toast {
-  background: #f7fafc !important;
-  color: #1b2838 !important;
-  border: 1px solid #a9bfd0;
-  border-radius: 4px;
-  box-shadow: 0 12px 32px rgba(23, 26, 33, 0.16);
+  background: #526246 !important;
+  color: #eef3e4 !important;
+  border: 1px solid #3a4432;
+  border-radius: 2px;
+  box-shadow: 0 10px 24px rgba(20, 24, 16, 0.4);
 }
 
 html[data-skin="steam"].dark .Toastify__toast {
-  background: #16202d !important;
-  color: #c7d5e0 !important;
-  border: 1px solid #2a475e;
-  border-radius: 4px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  background: #262b22 !important;
+  color: #dce3d0 !important;
+  border: 1px solid #4a5440;
+  border-radius: 2px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
 }
 
 html[data-skin="steam"].dark .Toastify__toast-body,
 html[data-skin="steam"].dark .Toastify__close-button {
-  color: #c7d5e0;
+  color: #dce3d0;
 }
 
 html[data-skin="steam"].light .Toastify__progress-bar,
 html[data-skin="steam"].dark .Toastify__progress-bar {
-  background: #1a9fff;
+  background: #e6cc62;
 }
 
 html[data-skin="steam"] .Toastify__progress-bar--success {
-  background: #5c7e10;
+  background: #8fbf4a;
 }
 
 html[data-skin="steam"].dark .Toastify__progress-bar--success {
-  background: #a4d007;
+  background: #9ec45a;
 }
 
 html[data-skin="steam"] .Toastify__progress-bar--error {
-  background: #d94141;
+  background: #d46a5c;
 }
 
 html[data-skin="steam"].light .ql-toolbar,
 html[data-skin="steam"].light .ql-container {
-  border-color: #a9bfd0 !important;
-  background: #f7fafc !important;
-  color: #1b2838 !important;
+  border-color: #3a4432 !important;
+  background: #2e3428 !important;
+  color: #eef3e4 !important;
 }
 
 html[data-skin="steam"].dark .ql-toolbar,
 html[data-skin="steam"].dark .ql-container,
 html[data-skin="steam"].dark .ql-editor {
-  border-color: #2a475e !important;
-  background: #16202d !important;
-  color: #c7d5e0 !important;
+  border-color: #4a5440 !important;
+  background: #262b22 !important;
+  color: #dce3d0 !important;
 }
 
 html[data-skin="steam"].dark .ql-toolbar .ql-stroke {
-  stroke: #c7d5e0 !important;
+  stroke: #dce3d0 !important;
 }
 
 html[data-skin="steam"].dark .ql-toolbar .ql-fill {
-  fill: #c7d5e0 !important;
+  fill: #dce3d0 !important;
 }
 
 html[data-skin="steam"].dark .ql-toolbar .ql-picker-label,
 html[data-skin="steam"].dark .ql-toolbar .ql-picker-item {
-  color: #c7d5e0 !important;
+  color: #dce3d0 !important;
 }
 
 html[data-skin="steam"].dark .ql-editor.ql-blank::before {
-  color: #8f98a0 !important;
+  color: #93a084 !important;
 }
 
 html[data-skin="steam"].dark .ql-picker-options {
-  background: #1b2838 !important;
-  border-color: #2a475e !important;
+  background: #1c2018 !important;
+  border-color: #4a5440 !important;
+}
+
+html[data-skin="steam"].light .ql-toolbar .ql-stroke {
+  stroke: #eef3e4 !important;
+}
+
+html[data-skin="steam"].light .ql-toolbar .ql-fill {
+  fill: #eef3e4 !important;
+}
+
+html[data-skin="steam"].light .ql-toolbar .ql-picker-label,
+html[data-skin="steam"].light .ql-toolbar .ql-picker-item {
+  color: #eef3e4 !important;
+}
+
+html[data-skin="steam"].light .ql-editor.ql-blank::before {
+  color: #a8b498 !important;
+}
+
+html[data-skin="steam"].light .ql-picker-options {
+  background: #526246 !important;
+  border-color: #3a4432 !important;
+  color: #eef3e4 !important;
 }
 
 /* Les rapports exportés restent sur la palette document, pas sur le thème Steam. */
@@ -439,6 +489,23 @@ html[data-skin="steam"] [data-vex-report] * {
   --msp-accent: #2b5fab !important;
   --msp-accent-dark: #1a3d75 !important;
   --msp-accent-soft: rgba(43, 95, 171, 0.12) !important;
+  --msp-on-accent: #ffffff !important;
   --msp-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
   --app-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+html[data-skin="steam"] [data-report-export] input,
+html[data-skin="steam"] [data-report-export] textarea,
+html[data-skin="steam"] [data-report-export] select,
+html[data-skin="steam"] [data-report-pdf-capture] input,
+html[data-skin="steam"] [data-report-pdf-capture] textarea,
+html[data-skin="steam"] [data-report-pdf-capture] select,
+html[data-skin="steam"] [data-vex-report] input,
+html[data-skin="steam"] [data-vex-report] textarea,
+html[data-skin="steam"] [data-vex-report] select {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #d0dae8;
+  box-shadow: none;
+  border-radius: 2px;
 }

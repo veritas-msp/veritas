@@ -40,13 +40,14 @@
 .btnPrimary {
   background: var(--msp-accent);
   border-color: var(--msp-accent);
-  color: #fff;
+  color: var(--msp-on-accent, #fff);
   box-shadow: var(--msp-shadow-sm);
 }
 
 .btnPrimary:hover:not(:disabled) {
   background: var(--msp-accent-dark);
   border-color: var(--msp-accent-dark);
+  color: var(--msp-on-accent, #fff);
 }
 
 .btnSecondary {

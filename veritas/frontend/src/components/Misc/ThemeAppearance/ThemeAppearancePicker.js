@@ -21,18 +21,18 @@ const PREVIEWS = {
     accent: "#5a9de0"
   },
   "steam-light": {
-    page: "#d6e1ea",
-    side: "#eef4f8",
-    card: "#f7fafc",
-    line: "#a9bfd0",
-    accent: "#1a9fff"
+    page: "#5c6a4e",
+    side: "#4e5c42",
+    card: "#667456",
+    line: "#3a4432",
+    accent: "#e6cc62"
   },
   "steam-dark": {
-    page: "#1b2838",
-    side: "#171a21",
-    card: "#16202d",
-    line: "#2a475e",
-    accent: "#66c0f4"
+    page: "#1c2018",
+    side: "#141814",
+    card: "#262b22",
+    line: "#4a5440",
+    accent: "#d4c15a"
   }
 };
 
