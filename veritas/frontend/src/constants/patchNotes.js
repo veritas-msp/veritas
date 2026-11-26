@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.36",
+    date: "2026-11-26",
+    highlights: [
+      "Mon compte et Mon profil : choix entre le thème classique et le thème Steam, en clair ou en sombre.",
+      "Le thème Steam habille toute l’interface : pages, menus, fenêtres et notifications.",
+      "Le choix est enregistré sur le compte. Le bouton clair/sombre du menu reste disponible."
+    ]
+  },
+  {
     version: "2.0.35",
     date: "2026-11-25",
     highlights: [

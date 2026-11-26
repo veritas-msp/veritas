@@ -16,7 +16,7 @@ const USER_PROFILE_COPY = {
       },
       preferences: {
         label: "Préférences",
-        desc: "Langue, navigation et planning"
+        desc: "Langue, thème, navigation et planning"
       },
       tickets: {
         label: "Tickets",
@@ -336,7 +336,7 @@ const USER_PROFILE_COPY = {
       },
       preferences: {
         label: "Preferences",
-        desc: "Language, navigation and planning"
+        desc: "Language, theme, navigation and planning"
       },
       tickets: {
         label: "Tickets",
@@ -656,7 +656,7 @@ const USER_PROFILE_COPY = {
       },
       preferences: {
         label: "Einstellungen",
-        desc: "Sprache, Navigation und Planung"
+        desc: "Sprache, Design, Navigation und Planung"
       },
       tickets: {
         label: "Tickets",
@@ -976,7 +976,7 @@ const USER_PROFILE_COPY = {
       },
       preferences: {
         label: "Preferenze",
-        desc: "Lingua, navigazione e planning"
+        desc: "Lingua, tema, navigazione e planning"
       },
       tickets: {
         label: "Ticket",
@@ -1296,7 +1296,7 @@ const USER_PROFILE_COPY = {
       },
       preferences: {
         label: "Preferencias",
-        desc: "Idioma, navegación y planificación"
+        desc: "Idioma, tema, navegación y planificación"
       },
       tickets: {
         label: "Tickets",

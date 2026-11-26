@@ -30,6 +30,8 @@ import s from "./UserProfile.module.css";
 import { useSidebarLayout } from "../../../hooks/useSidebarLayout";
 import { SIDEBAR_LAYOUTS } from "../../../utils/sidebarLayoutPreferences";
 import { formatProfileDate, getLocalizedNotifEventGroups, getLocalizedNotifEventOptions, getMfaStatus, getNotificationsSectionDescription, getUserProfileCopy } from "./userProfileI18n";
+import ThemeAppearancePicker from "../ThemeAppearance/ThemeAppearancePicker";
+import { getThemeAppearanceCopy } from "../ThemeAppearance/themeAppearanceI18n";
 
 const APP_LOCALE_KEY = "app_locale";
 const PLANNING_VISIBILITY_KEY = "planning_visibility";
@@ -54,6 +56,7 @@ const NAV_ITEMS = [{
 export default function UserProfile({ onNavigate } = {}) {
   const locale = useAppLocale();
   const t = useMemo(() => getUserProfileCopy(locale), [locale]);
+  const appearanceCopy = useMemo(() => getThemeAppearanceCopy(locale), [locale]);
   const notifEventOptions = useMemo(() => getLocalizedNotifEventOptions(locale), [locale]);
   const notifEventGroups = useMemo(() => getLocalizedNotifEventGroups(locale), [locale]);
   const notifEventsByKey = useMemo(() => {
@@ -626,6 +629,10 @@ export default function UserProfile({ onNavigate } = {}) {
               </div>}
 
             {activeSection === "preferences" && <div className={kit.settingsGrid}>
+                <UiKitPanel bare title={appearanceCopy.title} description={appearanceCopy.description} className={kit.settingsPanelFull}>
+                  <ThemeAppearancePicker />
+                </UiKitPanel>
+
                 <UiKitPanel bare title={t.sections.locale.title} description={t.sections.locale.description}>
                   <div className={s.localeBlock}>
                     <span className={s.settingLabel}>{t.locale.label}</span>

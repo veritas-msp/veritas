@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { applyThemeToRoot } from "../styles/themeVariables";
+import { readStoredSkin, readStoredTheme } from "../utils/themePreferences";
 export function useForceLightTheme() {
   useEffect(() => {
-    applyThemeToRoot("light");
+    applyThemeToRoot("light", "classic");
     return () => {
-      const savedTheme = localStorage.getItem("theme") || "light";
-      applyThemeToRoot(savedTheme);
+      applyThemeToRoot(readStoredTheme() || "light", readStoredSkin());
     };
   }, []);
 }

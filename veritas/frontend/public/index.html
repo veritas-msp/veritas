@@ -6,6 +6,18 @@
     <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#2b5fab" />
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem("theme");
+          var skin = localStorage.getItem("theme_skin");
+          var root = document.documentElement;
+          root.classList.remove("light", "dark");
+          root.classList.add(mode === "dark" ? "dark" : "light");
+          if (skin === "steam") root.setAttribute("data-skin", "steam");
+        } catch (e) {}
+      })();
+    </script>
     <meta
       name="description"
       content="Veritas MSP · plateforme de supervision, gestion clients et suivi opérationnel."

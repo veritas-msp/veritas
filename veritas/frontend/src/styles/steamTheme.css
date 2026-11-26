@@ -1,0 +1,444 @@
+/*
+ * Thème Steam — clair et sombre.
+ * Les pages redéfinissent --msp-* localement : le sélecteur * !important
+ * réapplique la palette sur chaque élément (pages, modales, portail, toasts).
+ * Les valeurs restent alignées sur styles/themeVariables.js.
+ */
+
+html[data-skin="steam"].light {
+  color-scheme: light;
+  accent-color: #1a9fff;
+}
+
+html[data-skin="steam"].dark {
+  color-scheme: dark;
+  accent-color: #66c0f4;
+}
+
+html[data-skin="steam"].light,
+html[data-skin="steam"].light * {
+  --bg-primary: #d6e1ea !important;
+  --bg-secondary: #f4f8fb !important;
+  --bg-tertiary: #e4eef5 !important;
+  --bg-sidebar: #eef4f8 !important;
+  --text-primary: #1b2838 !important;
+  --text-secondary: #2a475e !important;
+  --text-muted: #5c7082 !important;
+  --text-inverted: #ffffff !important;
+  --border-primary: #b7c8d6 !important;
+  --border-secondary: #9eb3c4 !important;
+  --accent-primary: #1a9fff !important;
+  --accent-secondary: #67c1f5 !important;
+  --shadow-color: rgba(23, 26, 33, 0.12) !important;
+  --accent-primary-alpha: rgba(26, 159, 255, 0.14) !important;
+  --accent-primary-faded: rgba(26, 159, 255, 0.1) !important;
+  --accent-primary-rgb: 26, 159, 255 !important;
+  --calendar-picker-filter: none !important;
+  --msp-bg: #d6e1ea !important;
+  --msp-page-bg: #d6e1ea !important;
+  --msp-surface: #f7fafc !important;
+  --msp-surface-2: #e7eef4 !important;
+  --msp-surface-3: #d5e3ee !important;
+  --msp-surface-muted: #c9d8e4 !important;
+  --msp-border: #a9bfd0 !important;
+  --msp-border-light: #c5d4e1 !important;
+  --msp-text: #1b2838 !important;
+  --msp-muted: #4e6476 !important;
+  --msp-text-muted: #4e6476 !important;
+  --msp-muted-light: #6d8294 !important;
+  --msp-accent: #1a9fff !important;
+  --msp-accent-dark: #0b7fd4 !important;
+  --msp-accent-soft: rgba(26, 159, 255, 0.14) !important;
+  --msp-success: #4f7c12 !important;
+  --msp-success-soft: rgba(92, 126, 16, 0.16) !important;
+  --msp-warn: #c47a12 !important;
+  --msp-warn-soft: rgba(196, 122, 18, 0.16) !important;
+  --msp-danger: #c23b3b !important;
+  --msp-danger-soft: rgba(194, 59, 59, 0.12) !important;
+  --msp-radius: 4px !important;
+  --msp-radius-sm: 2px !important;
+  --msp-radius-md: 4px !important;
+  --msp-radius-btn: 2px !important;
+  --msp-shadow: 0 1px 0 rgba(23, 26, 33, 0.05) !important;
+  --msp-shadow-sm: none !important;
+  --msp-shadow-lg: 0 12px 32px rgba(23, 26, 33, 0.14) !important;
+  --msp-shadow-panel: 0 0 0 1px rgba(23, 26, 33, 0.06) !important;
+  --msp-kpi-active-bg: linear-gradient(180deg, #f7fafc 0%, #e7eef4 100%) !important;
+  --msp-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
+  --app-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
+  --msp-input-s-radius: 2px !important;
+  --msp-input-m-radius: 2px !important;
+  --msp-input-l-radius: 2px !important;
+  --msp-input-xl-radius: 2px !important;
+  --portal-bg: #d6e1ea !important;
+  --portal-sidebar-bg: #eef4f8 !important;
+  --portal-surface: #f7fafc !important;
+  --portal-surface-alt: #e7eef4 !important;
+  --portal-border: #a9bfd0 !important;
+  --portal-border-light: #c5d4e1 !important;
+  --portal-text: #1b2838 !important;
+  --portal-text-secondary: #2a475e !important;
+  --portal-text-muted: #5c7082 !important;
+  --portal-accent: #1a9fff !important;
+  --portal-accent-soft: rgba(26, 159, 255, 0.14) !important;
+  --portal-accent-text: #0b7fd4 !important;
+  --portal-hover: rgba(26, 159, 255, 0.08) !important;
+  --portal-hover-strong: rgba(26, 159, 255, 0.14) !important;
+  --portal-badge-bg: #d5e3ee !important;
+  --portal-theme-option-bg: #e7eef4 !important;
+  --portal-theme-option-border: #a9bfd0 !important;
+  --portal-theme-option-text: #4e6476 !important;
+  --portal-theme-option-active-bg: rgba(26, 159, 255, 0.22) !important;
+  --portal-theme-option-active-border: #1a9fff !important;
+  --portal-theme-option-active-text: #1b2838 !important;
+}
+
+html[data-skin="steam"].dark,
+html[data-skin="steam"].dark * {
+  --bg-primary: #1b2838 !important;
+  --bg-secondary: #171a21 !important;
+  --bg-tertiary: #2a475e !important;
+  --bg-sidebar: #171a21 !important;
+  --text-primary: #c7d5e0 !important;
+  --text-secondary: #a9b9c6 !important;
+  --text-muted: #8f98a0 !important;
+  --text-inverted: #171a21 !important;
+  --border-primary: #2a475e !important;
+  --border-secondary: #3d5f7a !important;
+  --accent-primary: #1a9fff !important;
+  --accent-secondary: #66c0f4 !important;
+  --shadow-color: rgba(0, 0, 0, 0.5) !important;
+  --accent-primary-alpha: rgba(102, 192, 244, 0.16) !important;
+  --accent-primary-faded: rgba(102, 192, 244, 0.12) !important;
+  --accent-primary-rgb: 26, 159, 255 !important;
+  --calendar-picker-filter: invert(1) brightness(0.85) !important;
+  --msp-bg: #1b2838 !important;
+  --msp-page-bg: #1b2838 !important;
+  --msp-surface: #16202d !important;
+  --msp-surface-2: #1e2c3d !important;
+  --msp-surface-3: #2a475e !important;
+  --msp-surface-muted: #121a24 !important;
+  --msp-border: #2a475e !important;
+  --msp-border-light: #34526c !important;
+  --msp-text: #c7d5e0 !important;
+  --msp-muted: #8f98a0 !important;
+  --msp-text-muted: #8f98a0 !important;
+  --msp-muted-light: #6d7884 !important;
+  --msp-accent: #1a9fff !important;
+  --msp-accent-dark: #4cb4ff !important;
+  --msp-accent-soft: rgba(102, 192, 244, 0.16) !important;
+  --msp-success: #a4d007 !important;
+  --msp-success-soft: rgba(164, 208, 7, 0.16) !important;
+  --msp-warn: #e5a00d !important;
+  --msp-warn-soft: rgba(229, 160, 13, 0.16) !important;
+  --msp-danger: #d94141 !important;
+  --msp-danger-soft: rgba(217, 65, 65, 0.16) !important;
+  --msp-radius: 4px !important;
+  --msp-radius-sm: 2px !important;
+  --msp-radius-md: 4px !important;
+  --msp-radius-btn: 2px !important;
+  --msp-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) !important;
+  --msp-shadow-sm: none !important;
+  --msp-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+  --msp-shadow-panel: 0 0 0 1px rgba(0, 0, 0, 0.4) !important;
+  --msp-kpi-active-bg: linear-gradient(180deg, #1e2c3d 0%, #16202d 100%) !important;
+  --msp-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
+  --app-font: "Motiva Sans", "Segoe UI", Arial, Helvetica, sans-serif !important;
+  --msp-input-s-radius: 2px !important;
+  --msp-input-m-radius: 2px !important;
+  --msp-input-l-radius: 2px !important;
+  --msp-input-xl-radius: 2px !important;
+  --portal-bg: #1b2838 !important;
+  --portal-sidebar-bg: #171a21 !important;
+  --portal-surface: #16202d !important;
+  --portal-surface-alt: #1e2c3d !important;
+  --portal-border: #2a475e !important;
+  --portal-border-light: #34526c !important;
+  --portal-text: #c7d5e0 !important;
+  --portal-text-secondary: #a9b9c6 !important;
+  --portal-text-muted: #8f98a0 !important;
+  --portal-accent: #66c0f4 !important;
+  --portal-accent-soft: rgba(102, 192, 244, 0.16) !important;
+  --portal-accent-text: #66c0f4 !important;
+  --portal-hover: rgba(102, 192, 244, 0.08) !important;
+  --portal-hover-strong: rgba(102, 192, 244, 0.14) !important;
+  --portal-badge-bg: #2a475e !important;
+  --portal-theme-option-bg: rgba(102, 192, 244, 0.08) !important;
+  --portal-theme-option-border: #2a475e !important;
+  --portal-theme-option-text: #8f98a0 !important;
+  --portal-theme-option-active-bg: rgba(26, 159, 255, 0.28) !important;
+  --portal-theme-option-active-border: #66c0f4 !important;
+  --portal-theme-option-active-text: #ffffff !important;
+}
+
+html[data-skin="steam"].light,
+html[data-skin="steam"].light body,
+html[data-skin="steam"].light #root,
+html[data-skin="steam"].light .contentWrapper {
+  background-color: #d6e1ea !important;
+  color: #1b2838;
+}
+
+html[data-skin="steam"].dark,
+html[data-skin="steam"].dark body,
+html[data-skin="steam"].dark #root,
+html[data-skin="steam"].dark .contentWrapper,
+html[data-skin="steam"].dark .dark .contentWrapper {
+  background-color: #1b2838 !important;
+  color: #c7d5e0;
+}
+
+html[data-skin="steam"].light .contentWrapper > * {
+  background-color: #d6e1ea !important;
+  color: #1b2838;
+}
+
+html[data-skin="steam"].dark .contentWrapper > * {
+  background-color: #1b2838 !important;
+  color: #c7d5e0;
+}
+
+html[data-skin="steam"] ::selection {
+  background: #66c0f4;
+  color: #171a21;
+}
+
+html[data-skin="steam"].light [data-sidebar-guide="sidebar-root"],
+html[data-skin="steam"].light [data-portal-guide="sidebar-root"] {
+  --sb-bg: #eef4f8 !important;
+  --sb-border: #a9bfd0 !important;
+  --sb-text: #1b2838 !important;
+  --sb-muted: #4e6476 !important;
+  --sb-muted-light: #6d8294 !important;
+  --sb-item: #4e6476 !important;
+  --sb-item-hover: #1b2838 !important;
+  --sb-hover-bg: rgba(26, 159, 255, 0.1) !important;
+  --sb-active-bg: rgba(26, 159, 255, 0.16) !important;
+  --sb-active-text: #0b7fd4 !important;
+  --sb-separator: #c5d4e1 !important;
+  --sb-btn-bg: #f7fafc !important;
+  --sb-btn-border: #a9bfd0 !important;
+  --sb-glow-1: transparent !important;
+  --sb-glow-2: transparent !important;
+  --sb-shadow: none !important;
+  --sb-active-btn-bg: rgba(26, 159, 255, 0.14) !important;
+  --sb-active-btn-border: #1a9fff !important;
+  --sb-active-btn-color: #0b7fd4 !important;
+  --sb-active-btn-shadow: none !important;
+  --sb-icon-accent: #1a9fff !important;
+  --sb-badge-ring: #eef4f8 !important;
+  background: #eef4f8 !important;
+  border-color: #a9bfd0 !important;
+  color: #1b2838;
+  box-shadow: none !important;
+}
+
+html[data-skin="steam"].dark [data-sidebar-guide="sidebar-root"],
+html[data-skin="steam"].dark [data-portal-guide="sidebar-root"] {
+  --sb-bg: #171a21 !important;
+  --sb-border: #2a475e !important;
+  --sb-text: #c7d5e0 !important;
+  --sb-muted: #8f98a0 !important;
+  --sb-muted-light: #6d7884 !important;
+  --sb-item: #8f98a0 !important;
+  --sb-item-hover: #c7d5e0 !important;
+  --sb-hover-bg: rgba(102, 192, 244, 0.1) !important;
+  --sb-active-bg: rgba(102, 192, 244, 0.16) !important;
+  --sb-active-text: #66c0f4 !important;
+  --sb-separator: #2a475e !important;
+  --sb-btn-bg: #1b2838 !important;
+  --sb-btn-border: #2a475e !important;
+  --sb-glow-1: transparent !important;
+  --sb-glow-2: transparent !important;
+  --sb-shadow: none !important;
+  --sb-upgrade-bg: linear-gradient(180deg, rgba(102, 192, 244, 0.08), rgba(26, 159, 255, 0.05)) !important;
+  --sb-upgrade-border: rgba(102, 192, 244, 0.4) !important;
+  --sb-upgrade-color: #66c0f4 !important;
+  --sb-active-btn-bg: rgba(102, 192, 244, 0.14) !important;
+  --sb-active-btn-border: #66c0f4 !important;
+  --sb-active-btn-color: #66c0f4 !important;
+  --sb-active-btn-shadow: none !important;
+  --sb-icon-accent: #66c0f4 !important;
+  --sb-badge-ring: #171a21 !important;
+  background: #171a21 !important;
+  border-color: #2a475e !important;
+  color: #c7d5e0;
+  box-shadow: none !important;
+}
+
+html[data-skin="steam"].light [role="presentation"]:has([role="dialog"]) {
+  background-color: rgba(23, 26, 33, 0.4) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+}
+
+html[data-skin="steam"].dark [role="presentation"]:has([role="dialog"]) {
+  background-color: rgba(14, 20, 27, 0.78) !important;
+  backdrop-filter: blur(8px) saturate(1.05) !important;
+}
+
+html[data-skin="steam"] [role="dialog"] {
+  border-radius: 4px;
+}
+
+html[data-skin="steam"].light {
+  scrollbar-color: #9eb3c4 transparent;
+}
+
+html[data-skin="steam"].dark {
+  scrollbar-color: #3d5a73 #171a21;
+}
+
+html[data-skin="steam"].light::-webkit-scrollbar-track,
+html[data-skin="steam"].light *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-skin="steam"].dark::-webkit-scrollbar-track,
+html[data-skin="steam"].dark *::-webkit-scrollbar-track {
+  background: #171a21;
+}
+
+html[data-skin="steam"].light::-webkit-scrollbar-thumb,
+html[data-skin="steam"].light *::-webkit-scrollbar-thumb {
+  background: #9eb3c4;
+  border-radius: 6px;
+}
+
+html[data-skin="steam"].dark::-webkit-scrollbar-thumb,
+html[data-skin="steam"].dark *::-webkit-scrollbar-thumb {
+  background: #3d5a73;
+  border-radius: 6px;
+}
+
+html[data-skin="steam"].light::-webkit-scrollbar-thumb:hover,
+html[data-skin="steam"].light *::-webkit-scrollbar-thumb:hover {
+  background: #1a9fff;
+}
+
+html[data-skin="steam"].dark::-webkit-scrollbar-thumb:hover,
+html[data-skin="steam"].dark *::-webkit-scrollbar-thumb:hover {
+  background: #66c0f4;
+}
+
+html[data-skin="steam"].dark .msp-scrollbar-macos {
+  scrollbar-color: #3d5a73 transparent;
+}
+
+html[data-skin="steam"].light .contentWrapper table tbody tr:hover > td,
+html[data-skin="steam"].light .main-content table tbody tr:hover > td {
+  box-shadow: inset 0 0 0 999px rgba(26, 159, 255, 0.08);
+}
+
+html[data-skin="steam"].dark .contentWrapper table tbody tr:hover > td,
+html[data-skin="steam"].dark .contentWrapper table tbody tr:focus-visible > td,
+html[data-skin="steam"].dark .main-content table tbody tr:hover > td,
+html[data-skin="steam"].dark .main-content table tbody tr:focus-visible > td {
+  box-shadow: inset 0 0 0 999px rgba(102, 192, 244, 0.12);
+  background-color: rgba(102, 192, 244, 0.08);
+}
+
+html[data-skin="steam"].light .Toastify__toast {
+  background: #f7fafc !important;
+  color: #1b2838 !important;
+  border: 1px solid #a9bfd0;
+  border-radius: 4px;
+  box-shadow: 0 12px 32px rgba(23, 26, 33, 0.16);
+}
+
+html[data-skin="steam"].dark .Toastify__toast {
+  background: #16202d !important;
+  color: #c7d5e0 !important;
+  border: 1px solid #2a475e;
+  border-radius: 4px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+html[data-skin="steam"].dark .Toastify__toast-body,
+html[data-skin="steam"].dark .Toastify__close-button {
+  color: #c7d5e0;
+}
+
+html[data-skin="steam"].light .Toastify__progress-bar,
+html[data-skin="steam"].dark .Toastify__progress-bar {
+  background: #1a9fff;
+}
+
+html[data-skin="steam"] .Toastify__progress-bar--success {
+  background: #5c7e10;
+}
+
+html[data-skin="steam"].dark .Toastify__progress-bar--success {
+  background: #a4d007;
+}
+
+html[data-skin="steam"] .Toastify__progress-bar--error {
+  background: #d94141;
+}
+
+html[data-skin="steam"].light .ql-toolbar,
+html[data-skin="steam"].light .ql-container {
+  border-color: #a9bfd0 !important;
+  background: #f7fafc !important;
+  color: #1b2838 !important;
+}
+
+html[data-skin="steam"].dark .ql-toolbar,
+html[data-skin="steam"].dark .ql-container,
+html[data-skin="steam"].dark .ql-editor {
+  border-color: #2a475e !important;
+  background: #16202d !important;
+  color: #c7d5e0 !important;
+}
+
+html[data-skin="steam"].dark .ql-toolbar .ql-stroke {
+  stroke: #c7d5e0 !important;
+}
+
+html[data-skin="steam"].dark .ql-toolbar .ql-fill {
+  fill: #c7d5e0 !important;
+}
+
+html[data-skin="steam"].dark .ql-toolbar .ql-picker-label,
+html[data-skin="steam"].dark .ql-toolbar .ql-picker-item {
+  color: #c7d5e0 !important;
+}
+
+html[data-skin="steam"].dark .ql-editor.ql-blank::before {
+  color: #8f98a0 !important;
+}
+
+html[data-skin="steam"].dark .ql-picker-options {
+  background: #1b2838 !important;
+  border-color: #2a475e !important;
+}
+
+/* Les rapports exportés restent sur la palette document, pas sur le thème Steam. */
+html[data-skin="steam"] [data-report-export],
+html[data-skin="steam"] [data-report-export] *,
+html[data-skin="steam"] [data-report-pdf-capture],
+html[data-skin="steam"] [data-report-pdf-capture] *,
+html[data-skin="steam"] [data-vex-report],
+html[data-skin="steam"] [data-vex-report] * {
+  --bg-primary: #ffffff !important;
+  --bg-secondary: #f3f5f8 !important;
+  --bg-tertiary: #e8edf3 !important;
+  --text-primary: #0a1422 !important;
+  --text-secondary: #0a1422 !important;
+  --text-muted: #4b5563 !important;
+  --msp-bg: #ffffff !important;
+  --msp-page-bg: #ffffff !important;
+  --msp-surface: #ffffff !important;
+  --msp-surface-2: #f4f7fb !important;
+  --msp-surface-3: #e8eef5 !important;
+  --msp-border: #d0dae8 !important;
+  --msp-border-light: #e2e8f0 !important;
+  --msp-text: #0f172a !important;
+  --msp-muted: #5c6b82 !important;
+  --msp-text-muted: #5c6b82 !important;
+  --msp-muted-light: #7a8aa3 !important;
+  --msp-accent: #2b5fab !important;
+  --msp-accent-dark: #1a3d75 !important;
+  --msp-accent-soft: rgba(43, 95, 171, 0.12) !important;
+  --msp-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  --app-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}

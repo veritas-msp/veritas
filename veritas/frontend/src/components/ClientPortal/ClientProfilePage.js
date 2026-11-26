@@ -22,6 +22,8 @@ import pageStyles from "./ClientPortalPages.module.css";
 import contactStyles from "../ContactsPage/ContactDetailPage.module.css";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import ThemeAppearancePicker from "../Misc/ThemeAppearance/ThemeAppearancePicker";
+import { getThemeAppearanceCopy } from "../Misc/ThemeAppearance/themeAppearanceI18n";
 function normalizePhone(value) {
   let normalized = String(value || "").trim();
   if (normalized.startsWith("00")) {
@@ -48,6 +50,7 @@ export default function ClientProfilePage() {
   } = useAuthContext();
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
+  const appearanceCopy = useMemo(() => getThemeAppearanceCopy(locale), [locale]);
   const t = copy.profile;
   const [profile, setProfile] = useState(null);
   const [contact, setContact] = useState(null);
@@ -267,6 +270,12 @@ export default function ClientProfilePage() {
             </div> : <div className={portalTable.tablePanel}>
               <div className={pageStyles.panelContent}>
                 <div className={pageStyles.profileStack}>
+                  <section className={pageStyles.profileSection}>
+                    <h2 className={pageStyles.profileSectionTitle}>{appearanceCopy.title}</h2>
+                    <p className={pageStyles.profileSectionDesc}>{appearanceCopy.description}</p>
+                    <ThemeAppearancePicker />
+                  </section>
+
                   <section className={pageStyles.profileSection}>
                     <h2 className={pageStyles.profileSectionTitle}>{t.photoSectionTitle}</h2>
                     <p className={pageStyles.profileSectionDesc}>{t.photoSectionDesc}</p>
