@@ -194,6 +194,7 @@ const ReportBrandingChrome = forwardRef(function ReportBrandingChrome(
           ) : null}
           {showFooterSocials && socials.length ? (
             <div
+              data-social-row=""
               className={[
                 styles.footerSocial,
                 socialDisplay === "links"
@@ -212,6 +213,8 @@ const ReportBrandingChrome = forwardRef(function ReportBrandingChrome(
                   title={item.title || ""}
                   aria-label={item.title || "Social"}
                   className={styles.footerSocialItem}
+                  data-social-icon={item.icon || "mdi:link"}
+                  data-social-display={socialDisplay}
                 >
                   {socialDisplay !== "links" ? (
                     <Icon icon={item.icon || "mdi:link"} width={18} height={18} aria-hidden />

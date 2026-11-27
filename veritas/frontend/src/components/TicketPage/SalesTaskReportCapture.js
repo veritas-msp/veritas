@@ -63,7 +63,7 @@ export default function SalesTaskReportCapture({
         </p>
 
         {stats ? (
-          <section className={styles.stats}>
+          <section className={styles.stats} data-pdf-stats="true">
             <h2 className={styles.statsTitle}>
               {statsCopy.title || "Statistiques des tâches"}
               <span className={styles.statsCount}>{stats.total}</span>
@@ -113,7 +113,7 @@ export default function SalesTaskReportCapture({
                 {Array.isArray(stats.byAssignee) && stats.byAssignee.length > 0 ? (
                   <>
                     <h3 className={styles.statsSectionTitle}>{statsCopy.byAssignee}</h3>
-                    <ul className={styles.statsAssigneeList}>
+                    <ul className={styles.statsAssigneeList} data-pdf-assignees="true">
                       {stats.byAssignee.map(row => (
                         <li key={row.key} className={styles.statsAssigneeItem}>
                           <div>
@@ -141,7 +141,7 @@ export default function SalesTaskReportCapture({
         {model.rows.length === 0 ? (
           <p className={styles.empty}>{copy.report.empty}</p>
         ) : (
-          <div className={styles.list}>
+          <div className={styles.list} data-task-list="true">
             {model.rows.map(row => {
               const schedule = row.startAt || row.endAt
                 ? [formatDateTime(row.startAt), formatDateTime(row.endAt)].filter(value => value && value !== none).join(` ${tasksCopy.rangeJoiner || "→"} `)
@@ -156,9 +156,8 @@ export default function SalesTaskReportCapture({
                   ].join(" · ")
                 : copy.report.creditsNone;
               const created = [formatDateTime(row.createdAt), row.createdByLabel].filter(value => value && value !== none);
-              const updated = [formatDateTime(row.updatedAt), row.updatedByLabel].filter(value => value && value !== none);
               return (
-                <article key={row.id || row.index} className={styles.card}>
+                <article key={row.id || row.index} className={styles.card} data-task-card="true">
                   <header className={styles.cardHead}>
                     <span className={styles.index}>{row.index}</span>
                     <h3 className={styles.title}>{row.label || none}</h3>
@@ -174,8 +173,9 @@ export default function SalesTaskReportCapture({
                     <Field label={tasksCopy.equipment || "Périphérique"} value={row.equipmentLabel || tasksCopy.equipmentNone || none} />
                     <Field label={copy.report.planningEvent} value={row.planningEventId ? copy.report.planningLinked : copy.report.planningNone} />
                     <Field label={copy.report.credits} value={creditsText} />
+                  </dl>
+                  <div className={styles.metaRow}>
                     <Field
-                      wide
                       label={tasksCopy.documents || "Documents"}
                       value={
                         row.documents.length === 0 ? (
@@ -196,14 +196,10 @@ export default function SalesTaskReportCapture({
                       }
                     />
                     <Field
-                      label={tasksCopy.createdBy || "Créée"}
+                      label={tasksCopy.createdBy || "Créé"}
                       value={created.length ? created.join(` ${tasksCopy.byAuthor || "·"} `) : none}
                     />
-                    <Field
-                      label={tasksCopy.updatedBy || "Mise à jour"}
-                      value={updated.length ? updated.join(` ${tasksCopy.byAuthor || "·"} `) : none}
-                    />
-                  </dl>
+                  </div>
                 </article>
               );
             })}

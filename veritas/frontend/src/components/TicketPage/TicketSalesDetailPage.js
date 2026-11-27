@@ -57,7 +57,7 @@ import styles from "./TicketSalesDetailPage.module.css";
 import TicketDetailPageSkeleton from "./TicketDetailPageSkeleton";
 import SalesTaskReportCapture from "./SalesTaskReportCapture";
 import { fetchReportBranding } from "../../api/reportBranding";
-import { exportBrandedReportPdfFromElement } from "../RapportPage/exportBrandedReportPdfFromElement";
+import { exportTaskReportPdfFromElement } from "../RapportPage/exportBrandedReportPdfFromElement";
 import { buildSalesTaskReportModel, downloadSalesTasksCsv } from "../../utils/salesTaskReportExport";
 import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
 import { getPlanningEventFormCopy } from "../PlanningPage/planningEventFormI18n";
@@ -1822,11 +1822,8 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
           new Promise(resolve => setTimeout(resolve, 1500))
         ]);
       }
-      await exportBrandedReportPdfFromElement(element, {
-        fileName: `${model.fileBase}.pdf`,
-        // Capture allégée : JPEG découpé par page (évite les PDF 100+ Mo sur longues listes).
-        scale: 1.4,
-        jpegQuality: 0.84
+      await exportTaskReportPdfFromElement(element, {
+        fileName: `${model.fileBase}.pdf`
       });
       toast.success(copy.report.pdfDone);
     } catch (error) {

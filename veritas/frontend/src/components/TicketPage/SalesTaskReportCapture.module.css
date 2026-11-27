@@ -261,6 +261,14 @@
   margin: 0;
 }
 
+.metaRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+  gap: 0.45rem 0.9rem;
+  margin-top: 0.45rem;
+}
+
 .field {
   min-width: 0;
 }

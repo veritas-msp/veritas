@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.42",
+    date: "2026-11-27",
+    highlights: [
+      "Export PDF des tâches : la première page ne montre que les indicateurs.",
+      "Les cartes ne sont plus coupées en bas de page, et le pied de page reste en bas.",
+      "Documents et création sont sur la même ligne. Les icônes des réseaux s’affichent, et le PDF est plus net."
+    ]
+  },
+  {
     version: "2.0.41",
     date: "2026-11-27",
     highlights: [
