@@ -1,15 +1,32 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
 import fetch from "node-fetch";
-import { VERITAS_BILLING_API_URL, VERITAS_BILLING_LICENSE_SECRET } from "../constants/billing.js";
+import {
+  getVeritasBillingApiUrl,
+  getVeritasBillingLicenseSecret,
+} from "../constants/billing.js";
 import {
   clearStoredLicenseLease,
   extractLeaseTokenFromDocument,
   getLeaseSecretDiagnostics,
+  getOrCreateInstanceId,
   hydrateLicenseKeyFromStoredLease,
   isLeaseVerifyConfigured,
+  readLicenseSnapshot,
   resolveOfflineLease,
   storeLicenseLease,
+  storeLicenseSnapshot,
+  verifyLicenseLease,
 } from "./licenseLease.js";
 import { persistBootSecrets } from "./envFile.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Backend .env first, then the compose .env at the repo root (does not override).
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 const LICENSE_KEY_RE = /^VRT-PRO-(?:[A-F0-9]{4}-){3}[A-F0-9]{4}$/;
 const DEFAULT_CACHE_MS = 5000;
@@ -23,9 +40,13 @@ let cache = {
   lastError: null,
   billingConfigured: false,
   customerEmail: null,
+  companyName: null,
   licenseRevision: null,
   leaseExpiresAt: null,
+  subscriptionExpiresAt: null,
   offlineLease: false,
+  billingUrl: null,
+  billingErrorCode: null,
 };
 let refreshInFlight = null;
 
@@ -64,11 +85,58 @@ export function getLicensedMspAgentLimit() {
 }
 
 function getBillingConfig() {
+  const secret = getVeritasBillingLicenseSecret();
   return {
-    billingUrl: VERITAS_BILLING_API_URL,
-    secret: VERITAS_BILLING_LICENSE_SECRET,
-    configured: true,
+    billingUrl: getVeritasBillingApiUrl(),
+    secret,
+    configured: Boolean(secret),
   };
+}
+
+function getAppVersion() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../package.json"), "utf8"));
+    return typeof pkg.version === "string" ? pkg.version : null;
+  } catch {
+    return null;
+  }
+}
+
+const ACTIVE_BILLING_STATUSES = new Set(["active", "trialing", "past_due"]);
+
+function normalizeBillingPayload(data) {
+  const body = data && typeof data === "object" ? data : {};
+  const license = body.license && typeof body.license === "object" ? body.license : {};
+  const status = body.status || license.status || null;
+  const explicitValid = body.valid ?? body.ok ?? license.valid;
+  const valid =
+    explicitValid == null
+      ? ACTIVE_BILLING_STATUSES.has(String(status || "").toLowerCase())
+      : Boolean(explicitValid);
+  return {
+    valid,
+    status,
+    agentCount: body.agentCount ?? license.agentCount ?? null,
+    billingInterval: body.billingInterval ?? license.billingInterval ?? null,
+    customerEmail: body.customerEmail ?? license.customerEmail ?? null,
+    companyName: body.companyName ?? license.companyName ?? null,
+    expiresAt:
+      body.subscriptionExpiresAt ||
+      body.licenseExpiresAt ||
+      license.expiresAt ||
+      body.expiresAt ||
+      null,
+    lease: typeof body.lease === "string" ? body.lease : typeof license.lease === "string" ? license.lease : null,
+    licenseRevision: body.licenseRevision || body.updatedAt || license.updatedAt || null,
+    message: body.message || license.message || null,
+    error: body.error || body.code || license.error || null,
+  };
+}
+
+function billingFailureCode(res, data) {
+  const code = String(data?.error || data?.code || "").toUpperCase();
+  if (res?.status === 401 || code === "UNAUTHORIZED") return "UNAUTHORIZED";
+  return code || (res?.status ? `HTTP_${res.status}` : "error");
 }
 
 function formatBillingFetchError(error, billingUrl) {
@@ -91,9 +159,12 @@ function emptyCacheFields() {
     agentCount: null,
     billingInterval: null,
     customerEmail: null,
+    companyName: null,
     licenseRevision: null,
     leaseExpiresAt: null,
-    offlineLease: false
+    subscriptionExpiresAt: null,
+    offlineLease: false,
+    billingErrorCode: null,
   };
 }
 
@@ -107,7 +178,7 @@ function isCommunityEdition() {
   return String(process.env.VERITAS_EDITION || "community").trim().toLowerCase() === "community";
 }
 
-function applyOfflineLeaseToCache(networkErrorMessage) {
+function applyOfflineLeaseToCache(networkErrorMessage, billingErrorCode = null) {
   hydrateLicenseKeyFromStoredLease();
   let key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
   if (!isLeaseVerifyConfigured()) {
@@ -126,45 +197,39 @@ function applyOfflineLeaseToCache(networkErrorMessage) {
     }
   }
   if (!offline) return null;
+  const snap = readLicenseSnapshot() || {};
+  const payload = offline.payload || {};
   cache = {
     ...cache,
     valid: true,
     status: "offline_lease",
-    agentCount: offline.payload.agentCount ?? null,
-    billingInterval: offline.payload.billingInterval ?? null,
+    agentCount: payload.agentCount ?? snap.agentCount ?? null,
+    billingInterval: payload.billingInterval ?? snap.billingInterval ?? null,
     checkedAt: new Date().toISOString(),
     checkedAtMs: Date.now(),
     lastError: networkErrorMessage || null,
-    customerEmail: offline.payload.customerEmail ?? null,
+    billingErrorCode: billingErrorCode || null,
+    customerEmail: payload.customerEmail ?? snap.customerEmail ?? null,
+    companyName: payload.companyName ?? snap.companyName ?? null,
     licenseRevision: null,
     leaseExpiresAt: offline.expiresAt,
+    subscriptionExpiresAt:
+      payload.subscriptionExpiresAt ?? payload.licenseExpiresAt ?? snap.subscriptionExpiresAt ?? null,
     offlineLease: true,
+    billingUrl: getBillingConfig().billingUrl,
   };
   return cache;
 }
 
 export async function refreshProLicenseState() {
-  cache.billingConfigured = getBillingConfig().configured;
+  const billing = getBillingConfig();
+  cache.billingConfigured = billing.configured;
+  cache.billingUrl = billing.billingUrl;
   if (isDevProBypass()) {
     cache = {
       ...cache,
       valid: true,
       status: "dev_bypass",
-      ...emptyCacheFields(),
-      checkedAt: new Date().toISOString(),
-      checkedAtMs: Date.now(),
-      lastError: null,
-    };
-    return cache;
-  }
-
-  // Community without an explicit key must never wait on billing (would block every /api call).
-  const keyFromEnv = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
-  if (isCommunityEdition() && !keyFromEnv) {
-    cache = {
-      ...cache,
-      valid: false,
-      status: "community",
       ...emptyCacheFields(),
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
@@ -180,7 +245,21 @@ export async function refreshProLicenseState() {
       VERITAS_EDITION: process.env.VERITAS_EDITION || "pro"
     });
   }
+  // Community without an explicit key must never wait on billing (would block every /api call).
   const key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
+  if (isCommunityEdition() && !key) {
+    cache = {
+      ...cache,
+      valid: false,
+      status: "community",
+      ...emptyCacheFields(),
+      checkedAt: new Date().toISOString(),
+      checkedAtMs: Date.now(),
+      lastError: null,
+    };
+    return cache;
+  }
+
   if (!key) {
     // Lease file may still unlock Pro when the key only lived in ephemeral container .env
     const offlineOnly = applyOfflineLeaseToCache(null);
@@ -196,7 +275,29 @@ export async function refreshProLicenseState() {
     };
     return cache;
   }
-  const { billingUrl, secret } = getBillingConfig();
+  const { billingUrl, secret, configured } = billing;
+  if (!configured) {
+    const offline = applyOfflineLeaseToCache(
+      "Billing API secret is not configured (VERITAS_BILLING_LICENSE_SECRET).",
+      "BILLING_UNCONFIGURED"
+    );
+    if (offline) {
+      cache.billingErrorCode = "BILLING_UNCONFIGURED";
+      return cache;
+    }
+    cache = {
+      ...cache,
+      valid: false,
+      status: "billing_unconfigured",
+      ...emptyCacheFields(),
+      billingErrorCode: "BILLING_UNCONFIGURED",
+      billingUrl,
+      checkedAt: new Date().toISOString(),
+      checkedAtMs: Date.now(),
+      lastError: "Billing API secret is not configured (VERITAS_BILLING_LICENSE_SECRET).",
+    };
+    return cache;
+  }
   const timeoutMs = getBillingFetchTimeoutMs();
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -209,20 +310,30 @@ export async function refreshProLicenseState() {
       },
       body: JSON.stringify({
         licenseKey: key,
+        instanceId: getOrCreateInstanceId(),
+        hostname: os.hostname(),
+        version: getAppVersion(),
       }),
       signal: controller?.signal,
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const code = billingFailureCode(res, data);
       const offline = applyOfflineLeaseToCache(
-        data.message || `Billing HTTP error ${res.status}`
+        data.message || `Billing HTTP error ${res.status}`,
+        code
       );
-      if (offline) return offline;
+      if (offline) {
+        cache.billingErrorCode = code;
+        return cache;
+      }
       cache = {
         ...cache,
         valid: false,
-        status: data.error || data.code || "error",
+        status: code === "UNAUTHORIZED" ? "billing_unauthorized" : data.error || data.code || "error",
         ...emptyCacheFields(),
+        billingErrorCode: code,
+        billingUrl,
         checkedAt: new Date().toISOString(),
         checkedAtMs: Date.now(),
         lastError: data.message || `Billing HTTP error ${res.status}`,
@@ -230,53 +341,73 @@ export async function refreshProLicenseState() {
       return cache;
     }
 
-    const valid = Boolean(data.valid);
-    if (valid && data.lease) {
-      storeLicenseLease(data.lease);
+    const normalized = normalizeBillingPayload(data);
+    const valid = normalized.valid;
+    const presented = valid && normalized.lease
+      ? verifyLicenseLease(normalized.lease, { expectedKey: key })
+      : null;
+    if (valid) {
+      if (presented) storeLicenseLease(normalized.lease);
+      storeLicenseSnapshot({
+        companyName: presented?.companyName ?? normalized.companyName,
+        customerEmail: presented?.customerEmail ?? normalized.customerEmail,
+        agentCount: presented?.agentCount ?? normalized.agentCount,
+        billingInterval: presented?.billingInterval ?? normalized.billingInterval,
+        status: presented?.status || normalized.status || "active",
+        subscriptionExpiresAt:
+          presented?.subscriptionExpiresAt || presented?.licenseExpiresAt || normalized.expiresAt,
+      });
       persistBootSecrets({
         VERITAS_LICENSE_KEY: key,
         VERITAS_EDITION: "pro"
       });
-    } else if (!valid) {
-      // Only clear offline grace on explicit revoke/suspend — never on transient
-      // "invalid" responses (wrong billing secret, staging mismatch, etc.).
-      const code = String(data.error || data.code || data.status || "").toLowerCase();
+    } else {
+      const code = String(normalized.error || normalized.status || "").toLowerCase();
       if (/\b(revok|suspend|cancel|expired)\b/.test(code)) {
         clearStoredLicenseLease();
       } else {
         const offline = applyOfflineLeaseToCache(
-          data.message || "Online validation rejected the key; using stored offline lease if available."
+          normalized.message || "Online validation rejected the key; using stored offline lease if available.",
+          String(normalized.error || normalized.status || "invalid").toUpperCase()
         );
         if (offline) return offline;
       }
     }
 
     const stored = valid ? resolveOfflineLease({ expectedKey: key }) : null;
-
     cache = {
       ...cache,
       valid,
-      status: data.status || (valid ? "active" : "invalid"),
-      agentCount: data.agentCount ?? null,
-      billingInterval: data.billingInterval ?? null,
+      status: normalized.status || (valid ? "active" : "invalid"),
+      agentCount: presented?.agentCount ?? normalized.agentCount ?? null,
+      billingInterval: presented?.billingInterval ?? normalized.billingInterval ?? null,
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
-      lastError: valid ? null : data.message || "Invalid license or inactive subscription.",
-      customerEmail: data.customerEmail ?? null,
-      licenseRevision: data.licenseRevision || data.updatedAt || null,
-      leaseExpiresAt: stored?.expiresAt || data.expiresAt || null,
+      lastError: valid ? null : normalized.message || "Invalid license or inactive subscription.",
+      billingErrorCode: valid ? null : String(normalized.error || normalized.status || "invalid").toUpperCase(),
+      customerEmail: presented?.customerEmail ?? normalized.customerEmail ?? null,
+      companyName: presented?.companyName ?? normalized.companyName ?? null,
+      licenseRevision: normalized.licenseRevision,
+      leaseExpiresAt: stored?.expiresAt || null,
+      subscriptionExpiresAt: presented?.subscriptionExpiresAt || presented?.licenseExpiresAt || normalized.expiresAt,
       offlineLease: false,
+      billingUrl,
     };
     return cache;
   } catch (error) {
     const message = formatBillingFetchError(error, billingUrl);
-    const offline = applyOfflineLeaseToCache(message);
-    if (offline) return offline;
+    const offline = applyOfflineLeaseToCache(message, "NETWORK");
+    if (offline) {
+      cache.billingErrorCode = "NETWORK";
+      return cache;
+    }
     cache = {
       ...cache,
       valid: false,
       status: "network_error",
       ...emptyCacheFields(),
+      billingErrorCode: "NETWORK",
+      billingUrl,
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
       lastError: message,
@@ -323,11 +454,15 @@ function buildLicenseDetail({ includePrivate = false } = {}) {
     lastError: cache.lastError,
     billingConfigured: cache.billingConfigured,
     leaseExpiresAt: cache.leaseExpiresAt,
+    subscriptionExpiresAt: cache.subscriptionExpiresAt,
     offlineLease: Boolean(cache.offlineLease),
+    billingUrl: cache.billingUrl || getVeritasBillingApiUrl(),
+    billingErrorCode: cache.billingErrorCode,
     devBypass: isDevProBypass(),
   };
   if (includePrivate) {
     detail.customerEmail = cache.customerEmail;
+    detail.companyName = cache.companyName;
   }
   return detail;
 }

@@ -5,6 +5,7 @@ import { writeEnvFile, writeFrontendEnvFile } from "../../utils/envFile.js";
 import { getEditionPayload } from "../../utils/edition.js";
 import {
   applyOfflineActivation,
+  ensureFreshLicense,
   getLicenseAdminSummary,
   invalidateLicenseCache,
   isValidLicenseKeyFormat,
@@ -14,7 +15,8 @@ import {
 
 const router = express.Router();
 
-router.get("/", verifyJWT, requirePermission("admin_panel.license"), (_req, res) => {
+router.get("/", verifyJWT, requirePermission("admin_panel.license"), async (_req, res) => {
+  await ensureFreshLicense();
   res.json(getLicenseAdminSummary());
 });
 

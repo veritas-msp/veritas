@@ -29,6 +29,8 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
       VERITAS_EDITION: ${VERITAS_EDITION:-community}
+      VERITAS_BILLING_LICENSE_SECRET: ${VERITAS_BILLING_LICENSE_SECRET:-}
+      VERITAS_LICENSE_LEASE_SECRET: ${VERITAS_LICENSE_LEASE_SECRET:-}
     volumes:
       - veritas-uploads:/app/uploads
       # Prebuilt Windows agent MSI (same host). Build on Windows → copy into this tree.

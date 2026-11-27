@@ -130,7 +130,7 @@ export default function AdminLicense() {
     }
     if (license.customerEmail) parts.push(license.customerEmail);
     const leaseAt = formatCheckedAt(license.leaseExpiresAt, appLocale);
-    if (leaseAt) {
+    if (license.offlineLease && leaseAt) {
       parts.push(interpolate(copy.leaseExpiresAt || "Hors ligne jusqu'au {date}", {
         date: leaseAt
       }));
@@ -147,6 +147,18 @@ export default function AdminLicense() {
     copy
   }), [isValid, status, copy]);
   const statusLabel = copy.status?.[status] || status;
+  const billingProblem = useMemo(() => {
+    if (!license) return "";
+    if (license.valid && !license.offlineLease && !license.billingErrorCode) return "";
+    const code = license.billingErrorCode;
+    if (code && copy.statusMessages?.[code]) return copy.statusMessages[code];
+    if (license.lastError) return license.lastError;
+    return "";
+  }, [license, copy]);
+  const clientLabel = license?.companyName || license?.customerEmail || "";
+  const expirationLabel = formatCheckedAt(license?.subscriptionExpiresAt, appLocale);
+  const checkedLabel = formatCheckedAt(license?.checkedAt, appLocale);
+  const showFacts = Boolean(info?.hasLicenseKey || license?.agentCount != null || clientLabel || license?.subscriptionExpiresAt);
   const onActivate = async e => {
     e.preventDefault();
     const key = licenseKey.trim();
@@ -169,8 +181,16 @@ export default function AdminLicense() {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      setInfo(await refreshLicenseStatus());
-      toast.success(copy.refreshed);
+      const next = await refreshLicenseStatus();
+      setInfo(next);
+      const licenseState = next?.license;
+      if (licenseState?.offlineLease && (licenseState?.billingErrorCode || licenseState?.lastError)) {
+        toast.warn(copy.refreshStillOffline || copy.refreshed);
+      } else if (licenseState?.valid && !licenseState?.offlineLease) {
+        toast.success(copy.refreshedOnline || copy.refreshed);
+      } else {
+        toast.success(copy.refreshed);
+      }
     } catch (err) {
       toast.error(resolveLicenseApiError(err, copy, "refreshError"));
     } finally {
@@ -222,10 +242,39 @@ export default function AdminLicense() {
               {statusMessage}
             </p>
 
+            {license?.billingUrl ? <p className={s.metaLine}>{interpolate(copy.billingTarget || "Serveur de licences : {url}", {
+            url: license.billingUrl
+          })}</p> : null}
+
+            {showFacts ? <dl className={s.facts}>
+                <div className={s.fact}>
+                  <dt>{copy.fieldClient || "Client"}</dt>
+                  <dd>{clientLabel || copy.noClient || "—"}</dd>
+                </div>
+                <div className={s.fact}>
+                  <dt>{copy.fieldStatus || "Statut"}</dt>
+                  <dd>{statusLabel}</dd>
+                </div>
+                <div className={s.fact}>
+                  <dt>{copy.fieldAgents || "Agents"}</dt>
+                  <dd>{license?.agentCount != null ? license.agentCount : copy.noClient || "—"}</dd>
+                </div>
+                <div className={s.fact}>
+                  <dt>{copy.fieldExpiration || "Expiration"}</dt>
+                  <dd>{expirationLabel || copy.noExpiration || "—"}</dd>
+                </div>
+                <div className={s.fact}>
+                  <dt>{copy.fieldCheck || "Dernière vérif."}</dt>
+                  <dd>{license?.offlineLease ? copy.status?.offline_lease || statusLabel : copy.onlineCheck || "En ligne"}{checkedLabel ? ` · ${checkedLabel}` : ""}</dd>
+                </div>
+              </dl> : null}
+
             {metaLine ? <p className={s.metaLine}>{metaLine}</p> : null}
 
+            {billingProblem ? <p className={`${s.statusMessage} ${s.statusMessageError}`}>{billingProblem}</p> : null}
+
             {info && !info.leaseSecretConfigured ? <p className={`${s.statusMessage} ${s.statusMessageError}`}>
-                {copy.leaseSecretMissingHint || "Secret de bail hors ligne absent sur CE backend (VERITAS_LICENSE_LEASE_SECRET). Vérifie que le navigateur pointe vers la bonne instance."}
+                {copy.leaseSecretMissingHint || "Secret de bail hors ligne absent sur ce backend (VERITAS_LICENSE_LEASE_SECRET)."}
               </p> : null}
 
             {license?.devBypass ? <p className={s.devHint}>

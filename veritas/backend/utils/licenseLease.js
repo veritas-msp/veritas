@@ -4,6 +4,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LEASE_FILE_PATH = path.join(__dirname, "..", "uploads", ".license-lease");
+const SNAPSHOT_FILE_PATH = path.join(__dirname, "..", "uploads", ".license-snapshot");
+const INSTANCE_ID_PATH = path.join(__dirname, "..", "uploads", ".instance-id");
 const LEASE_VERSION = 1;
 const LICENSE_KEY_RE = /^VRT-PRO-(?:[A-F0-9]{4}-){3}[A-F0-9]{4}$/;
 
@@ -40,8 +42,7 @@ export function getLeaseSecretDiagnostics() {
   const lengths = {};
   for (const key of keys) {
     const raw = process.env[key];
-    const trimmed =
-      typeof raw === "string" ? raw.trim().replace(/^["']|["']$/g, "") : "";
+    const trimmed = typeof raw === "string" ? raw.trim().replace(/^["']|["']$/g, "") : "";
     present[key] = trimmed.length > 0;
     lengths[key] = trimmed.length;
   }
@@ -69,14 +70,13 @@ export function isLeaseVerifyConfigured() {
 }
 
 /**
- * Verify a signed lease token. Returns payload or null.
+ * Verify the HMAC lease currently issued by veritas-billing (v1).
  * @param {string} token
  * @param {{ expectedKey?: string }} [options]
  */
 export function verifyLicenseLease(token, { expectedKey } = {}) {
   if (!token || typeof token !== "string") return null;
-  const secretOk = getLeaseSecret();
-  if (!secretOk) return null;
+  if (!getLeaseSecret()) return null;
 
   const parts = token.trim().split(".");
   if (parts.length !== 2) return null;
@@ -207,6 +207,61 @@ export function clearStoredLicenseLease() {
   } catch {
     /* ignore */
   }
+  clearLicenseSnapshot();
+}
+
+/** Last successful billing payload (client, status, agents, expiration). */
+export function readLicenseSnapshot() {
+  try {
+    if (!fs.existsSync(SNAPSHOT_FILE_PATH)) return null;
+    const raw = JSON.parse(fs.readFileSync(SNAPSHOT_FILE_PATH, "utf8"));
+    return raw && typeof raw === "object" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function storeLicenseSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return false;
+  try {
+    fs.mkdirSync(path.dirname(SNAPSHOT_FILE_PATH), { recursive: true });
+    fs.writeFileSync(
+      SNAPSHOT_FILE_PATH,
+      JSON.stringify({ ...snapshot, savedAt: new Date().toISOString() }, null, 2),
+      "utf8"
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearLicenseSnapshot() {
+  try {
+    if (fs.existsSync(SNAPSHOT_FILE_PATH)) fs.unlinkSync(SNAPSHOT_FILE_PATH);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Stable id sent with each billing check-in so the server can tell instances apart. */
+export function getOrCreateInstanceId() {
+  try {
+    if (fs.existsSync(INSTANCE_ID_PATH)) {
+      const existing = fs.readFileSync(INSTANCE_ID_PATH, "utf8").trim();
+      if (existing) return existing;
+    }
+  } catch {
+    /* regenerate */
+  }
+  const id = crypto.randomUUID();
+  try {
+    fs.mkdirSync(path.dirname(INSTANCE_ID_PATH), { recursive: true });
+    fs.writeFileSync(INSTANCE_ID_PATH, `${id}\n`, "utf8");
+  } catch {
+    /* still return the id for this process */
+  }
+  return id;
 }
 
 /**

@@ -1,4 +1,5 @@
 # Secrets / local env (never commit)
+.license/
 .env
 .env.local
 .env.*.local

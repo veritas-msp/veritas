@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.43",
+    date: "2026-11-27",
+    highlights: [
+      "La licence Pro est vérifiée auprès du serveur Veritas. L'adresse n'est plus modifiable.",
+      "La page Licence affiche le client, le statut, les agents et l'expiration.",
+      "Si le serveur ne répond pas, le bail déjà importé reste utilisé."
+    ]
+  },
+  {
     version: "2.0.42",
     date: "2026-11-27",
     highlights: [

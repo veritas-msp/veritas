@@ -1,6 +1,19 @@
-export const VERITAS_BILLING_API_URL =
-  process.env.VERITAS_BILLING_API_URL || "https://billing.veritas-msp.com";
+import { VERITAS_BILLING_ORIGIN } from "./licenseTrust.js";
 
-/** Client secret for Pro license API calls. Set via env in production builds. */
-export const VERITAS_BILLING_LICENSE_SECRET =
-  process.env.VERITAS_BILLING_LICENSE_SECRET || "";
+function cleanEnv(raw) {
+  if (typeof raw !== "string") return "";
+  return raw.trim().replace(/^["']|["']$/g, "");
+}
+
+/**
+ * Official license server. Not read from the environment: a deployment must not
+ * be able to redirect validation to a server it controls.
+ */
+export function getVeritasBillingApiUrl() {
+  return VERITAS_BILLING_ORIGIN;
+}
+
+/** Shared secret for POST /api/license/validate. Must match BILLING_LICENSE_API_SECRET. */
+export function getVeritasBillingLicenseSecret() {
+  return cleanEnv(process.env.VERITAS_BILLING_LICENSE_SECRET);
+}
