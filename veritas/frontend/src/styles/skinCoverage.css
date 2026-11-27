@@ -201,3 +201,214 @@ html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #
   border-color: var(--msp-accent) !important;
   color: var(--msp-on-accent) !important;
 }
+
+/*
+ * Accueil : ces blocs forcent #fff / #eef3fa / #f9fafd.
+ * Leurs noms (newsItem, kpiPill, familyToggle…) ne matchent pas les cadres génériques.
+ * On ne pose pas de contour en plus : seulement le fond et le texte.
+ */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_newsItem__"],
+  [class*="_eventsCalItem__"],
+  [class*="_modalSummary__"]
+) {
+  background: color-mix(in srgb, var(--msp-surface) 72%, var(--msp-text)) !important;
+  background-color: color-mix(in srgb, var(--msp-surface) 72%, var(--msp-text)) !important;
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_newsPanel__"],
+  [class*="_eventsCalendar__"],
+  [class*="_stackBlock__"],
+  [class*="_modalDialog__"]
+) {
+  background: var(--msp-surface) !important;
+  background-color: var(--msp-surface) !important;
+  border-color: var(--msp-border) !important;
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_stackBlockBody__"],
+  [class*="_stackBlockBody__"] :is(table, thead, tbody),
+  [class*="_stackBlockBody__"] tr:not([class*="tableRowAlert"]) > :is(th, td)
+) {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+  color: var(--msp-text);
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_stackBlockBody__"] tbody tr:not([class*="tableRowAlert"]):hover > td {
+  background: var(--msp-surface-3) !important;
+  background-color: var(--msp-surface-3) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_kpiPill__"],
+  [class*="_eventsWeekToggle__"],
+  [class*="_familyToggle__"]
+) {
+  background: color-mix(in srgb, var(--msp-accent) 16%, var(--msp-surface)) !important;
+  background-color: color-mix(in srgb, var(--msp-accent) 16%, var(--msp-surface)) !important;
+  color: var(--msp-text) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_eventsWeekToggleOn__"] {
+  background: var(--msp-accent) !important;
+  background-color: var(--msp-accent) !important;
+  color: var(--msp-on-accent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_familyToggleThumb__"] {
+  background: var(--msp-surface) !important;
+  background-color: var(--msp-surface) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_familyToggleOptionOn__"] {
+  color: var(--msp-accent) !important;
+}
+
+/* Barre de recherche : le fond clair est écrit en dur ou via --msp-surface local. */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_searchBox__"],
+  [class*="_searchWrap__"]
+) {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+  border-color: var(--msp-border) !important;
+  color: var(--msp-text) !important;
+  box-shadow: none !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_searchBox__"],
+  [class*="_searchWrap__"],
+  [class*="_embeddedSearchBox__"]
+) :is(input, textarea) {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--msp-text) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_searchBox__"],
+  [class*="_searchWrap__"],
+  [class*="_embeddedSearchBox__"]
+) input::placeholder {
+  color: var(--msp-muted) !important;
+}
+
+/* Recherche embarquée (fiche contact / activité) : le champ olive la peignait en puits noir. */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_embeddedSearchBox__"] {
+  background: var(--msp-surface) !important;
+  background-color: var(--msp-surface) !important;
+  border-color: var(--msp-border) !important;
+  color: var(--msp-text) !important;
+  box-shadow: none !important;
+}
+
+/*
+ * Colonne finder (contact, prestataire, entreprise).
+ * Le fond mélange surface-2 (puits des champs) avec du blanc : ça donne un
+ * charbon hors palette. On la cale sur le gris du thème.
+ */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_finderSidebar__"],
+  [class*="_enterpriseFinderSidebar__"],
+  [class*="_settingsSidebar__"]
+) {
+  background: var(--msp-surface-muted) !important;
+  background-color: var(--msp-surface-muted) !important;
+  border-color: var(--msp-border) !important;
+  color: var(--msp-text) !important;
+  box-shadow: none !important;
+  --fade-surface: var(--msp-surface-muted) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_finderItem__"],
+  [class*="_finderPrimaryItem__"],
+  [class*="_finderSecondaryItem__"]
+) {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--msp-text) !important;
+  box-shadow: none !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_finderItem__"],
+  [class*="_finderPrimaryItem__"],
+  [class*="_finderSecondaryItem__"]
+):hover {
+  background: color-mix(in srgb, var(--msp-text) 8%, transparent) !important;
+  background-color: color-mix(in srgb, var(--msp-text) 8%, transparent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_finderItemActive__"],
+  [class*="_finderPrimaryItemActive__"],
+  [class*="_finderSecondaryItemActive__"],
+  [class*="_finderNavIndicator__"]
+),
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_finderItemActive__"],
+  [class*="_finderPrimaryItemActive__"],
+  [class*="_finderSecondaryItemActive__"]
+):hover {
+  background: var(--msp-accent-soft) !important;
+  background-color: var(--msp-accent-soft) !important;
+  color: var(--msp-accent) !important;
+  box-shadow: none !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_finderItemActive__"] [class*="Icon"],
+  [class*="_finderPrimaryItemActive__"] [class*="Icon"],
+  [class*="_finderSecondaryItemActive__"] [class*="Icon"]
+) {
+  color: var(--msp-accent) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_finderSecondaryFade__"] {
+  background: linear-gradient(
+    to top,
+    var(--msp-surface-muted) 0%,
+    color-mix(in srgb, var(--msp-surface-muted) 55%, transparent) 55%,
+    transparent 100%
+  ) !important;
+}
+
+/*
+ * Fondus haut/bas : --fade-surface est souvent #ffffff en dur.
+ * On le cale sur le fond des lignes, et l’en-tête figé suit.
+ */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_dataTableWrap__"],
+  [class*="_scrollShell__"],
+  [class*="_tableShell__"],
+  [class*="_stackBlock__"],
+  [class*="_newsScroll__"],
+  [class*="_scrollFade__"],
+  [class*="_scrollFadeTop__"],
+  [class*="_scrollFrozenHeader__"]
+) {
+  --fade-surface: var(--msp-surface-2) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) [class*="_scrollFrozenHeader__"] {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+}
+
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [class*="_dataTable__"] thead th,
+  [class*="_scrollFrozenHeader__"] th
+) {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+  color: var(--msp-muted) !important;
+}

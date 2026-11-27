@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.41",
+    date: "2026-11-27",
+    highlights: [
+      "Olive, Miami et Windows XP : cartes d’accueil, pastilles et bascule Support suivent le thème.",
+      "La recherche, les fondus de tableau et l’en-tête figé ne restent plus blancs.",
+      "La colonne de gauche des fiches contact, prestataire et entreprise prend le gris du thème.",
+      "Le thème classique ne change pas."
+    ]
+  },
+  {
     version: "2.0.40",
     date: "2026-11-27",
     highlights: [
