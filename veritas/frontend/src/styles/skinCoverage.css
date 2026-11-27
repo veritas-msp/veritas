@@ -2,7 +2,11 @@
  * Couverture Olive, Miami et Windows XP.
  * Le sélecteur #root / #modal-root passe devant les fonds blancs
  * écrits en dur dans les pages, sections, sous-sections, tableaux et modales.
- * Les rapports, la barre latérale, les pastilles et les avatars sont exclus.
+ * Pas de box-shadow ici : --msp-shadow-panel est un contour, et l'appliquer
+ * à chaque bloc dessine un deuxième trait par-dessus la bordure existante.
+ * La barre latérale (et tout ce qu'elle contient) est exclue : ses en-têtes
+ * et pieds matchent Header__/Footer__/Section__ et se retrouvaient encadrés.
+ * Les rapports, les pastilles et les avatars sont exclus.
  */
 
 html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
@@ -69,11 +73,35 @@ html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #
   [class*="Pagination__"],
   [class*="finder__"],
   [class*="Finder__"]
-):not([data-sidebar-guide="sidebar-root"]):not([data-portal-guide="sidebar-root"]):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *):not([class*="Badge"]):not([class*="badge"]):not([class*="Chip"]):not([class*="chip"]):not([class*="Pill"]):not([class*="pill"]):not([class*="Icon"]):not([class*="icon"]):not([class*="Avatar"]):not([class*="StatusDot"]) {
+):not([data-sidebar-guide="sidebar-root"]):not([data-sidebar-guide="sidebar-root"] *):not([data-portal-guide="sidebar-root"]):not([data-portal-guide="sidebar-root"] *):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *):not([class*="Badge"]):not([class*="badge"]):not([class*="Chip"]):not([class*="chip"]):not([class*="Pill"]):not([class*="pill"]):not([class*="Icon"]):not([class*="icon"]):not([class*="Avatar"]):not([class*="StatusDot"]) {
   background-color: var(--msp-surface) !important;
-  border-color: var(--msp-border) !important;
   color: var(--msp-text) !important;
-  box-shadow: var(--msp-shadow-panel) !important;
+}
+
+/* Bordure seulement sur les vrais cadres. Les headers, wrappers et sections
+   n'ont souvent qu'une bordure transparente : la recolorier fait apparaître un trait. */
+html:is([data-skin="olive"], [data-skin="miami"], [data-skin="xp"]) :is(#root, #modal-root) :is(
+  [role="dialog"],
+  [role="menu"],
+  [role="listbox"],
+  [class*="Card__"],
+  [class*="card__"],
+  [class*="Panel__"],
+  [class*="panel__"],
+  [class*="Block__"],
+  [class*="block__"],
+  [class*="shell__"],
+  [class*="Shell__"],
+  [class*="modal__"],
+  [class*="Modal__"],
+  [class*="drawer__"],
+  [class*="Drawer__"],
+  [class*="dropdown__"],
+  [class*="Dropdown__"],
+  [class*="popover__"],
+  [class*="Popover__"]
+):not([data-sidebar-guide="sidebar-root"]):not([data-sidebar-guide="sidebar-root"] *):not([data-portal-guide="sidebar-root"]):not([data-portal-guide="sidebar-root"] *):not([data-report-export] *):not([data-report-pdf-capture] *):not([data-vex-report] *):not([class*="Badge"]):not([class*="badge"]):not([class*="Chip"]):not([class*="chip"]):not([class*="Pill"]):not([class*="pill"]):not([class*="Icon"]):not([class*="icon"]):not([class*="Avatar"]):not([class*="StatusDot"]) {
+  border-color: var(--msp-border) !important;
 }
 
 html[data-skin="olive"] :is(#root, #modal-root) :is(

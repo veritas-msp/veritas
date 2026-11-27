@@ -63,7 +63,7 @@ html[data-skin="olive"].light * {
   --msp-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
   --msp-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   --msp-shadow-lg: 0 10px 24px rgba(20, 24, 16, 0.35) !important;
-  --msp-shadow-panel: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px #2c3426 !important;
+  --msp-shadow-panel: none !important;
   --msp-kpi-active-bg: linear-gradient(180deg, #6e7c5e 0%, #5c6a4e 100%) !important;
   --msp-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
   --app-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
@@ -142,7 +142,7 @@ html[data-skin="olive"].dark * {
   --msp-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   --msp-shadow-sm: none !important;
   --msp-shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.45) !important;
-  --msp-shadow-panel: 0 0 0 1px #2a3026 !important;
+  --msp-shadow-panel: none !important;
   --msp-kpi-active-bg: linear-gradient(180deg, #32382c 0%, #262b22 100%) !important;
   --msp-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
   --app-font: Tahoma, "Trebuchet MS", Verdana, "Segoe UI", sans-serif !important;
@@ -228,6 +228,8 @@ html[data-skin="olive"].light [data-portal-guide="sidebar-root"] {
   --sb-active-btn-color: #f3dc86 !important;
   --sb-active-btn-shadow: none !important;
   --sb-icon-accent: #e6cc62 !important;
+  --sb-mark-bg: #e6cc62 !important;
+  --sb-mark-color: #1c1a10 !important;
   --sb-badge-ring: #4e5c42 !important;
   background: #4e5c42 !important;
   border-color: #3a4432 !important;
@@ -261,6 +263,8 @@ html[data-skin="olive"].dark [data-portal-guide="sidebar-root"] {
   --sb-active-btn-color: #e8d48a !important;
   --sb-active-btn-shadow: none !important;
   --sb-icon-accent: #d4c15a !important;
+  --sb-mark-bg: #d4c15a !important;
+  --sb-mark-color: #1a1810 !important;
   --sb-badge-ring: #141814 !important;
   background: #141814 !important;
   border-color: #3a4232 !important;
@@ -478,7 +482,11 @@ html[data-skin="olive"] :where(body) *:not(
     [class*="Avatar"],
     [class*="avatar"],
     [class*="StatusDot"],
-    [class*="statusDot"]
+    [class*="statusDot"],
+    [data-sidebar-guide="sidebar-root"],
+    [data-sidebar-guide="sidebar-root"] *,
+    [data-portal-guide="sidebar-root"],
+    [data-portal-guide="sidebar-root"] *
   )
 ) {
   border-radius: 2px !important;

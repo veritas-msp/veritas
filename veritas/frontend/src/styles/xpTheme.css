@@ -62,7 +62,7 @@ html[data-skin="xp"].light * {
   --msp-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #716f64 !important;
   --msp-shadow-sm: inset 1px 1px 0 #ffffff !important;
   --msp-shadow-lg: 2px 2px 6px rgba(0, 0, 0, 0.28) !important;
-  --msp-shadow-panel: inset 1px 1px 0 #ffffff, 1px 1px 0 #716f64 !important;
+  --msp-shadow-panel: none !important;
   --msp-kpi-active-bg: linear-gradient(180deg, #3c81f3 0%, #245edc 100%) !important;
   --msp-font: Tahoma, "Trebuchet MS", "Segoe UI", sans-serif !important;
   --app-font: Tahoma, "Trebuchet MS", "Segoe UI", sans-serif !important;
@@ -141,7 +141,7 @@ html[data-skin="xp"].dark * {
   --msp-shadow: inset 1px 1px 0 #4a4a4a, inset -1px -1px 0 #111111 !important;
   --msp-shadow-sm: none !important;
   --msp-shadow-lg: 2px 2px 8px rgba(0, 0, 0, 0.55) !important;
-  --msp-shadow-panel: inset 1px 1px 0 #4a4a4a !important;
+  --msp-shadow-panel: none !important;
   --msp-kpi-active-bg: linear-gradient(180deg, #3c81f3 0%, #0a246a 100%) !important;
   --msp-font: Tahoma, "Trebuchet MS", "Segoe UI", sans-serif !important;
   --app-font: Tahoma, "Trebuchet MS", "Segoe UI", sans-serif !important;
@@ -232,6 +232,8 @@ html[data-skin="xp"].light [data-portal-guide="sidebar-root"] {
   --sb-active-btn-color: #0a246a !important;
   --sb-active-btn-shadow: none !important;
   --sb-icon-accent: #ffffff !important;
+  --sb-mark-bg: #ffffff !important;
+  --sb-mark-color: #0a246a !important;
   --sb-badge-ring: #245edc !important;
   background: linear-gradient(180deg, #3c81f3 0%, #245edc 55%, #0a246a 100%) !important;
   border-color: #0a246a !important;
@@ -262,6 +264,8 @@ html[data-skin="xp"].dark [data-portal-guide="sidebar-root"] {
   --sb-active-btn-color: #ffffff !important;
   --sb-active-btn-shadow: none !important;
   --sb-icon-accent: #6aa6ff !important;
+  --sb-mark-bg: #3c81f3 !important;
+  --sb-mark-color: #ffffff !important;
   --sb-badge-ring: #0a246a !important;
   background: linear-gradient(180deg, #163a86 0%, #0a246a 100%) !important;
   border-color: #06163f !important;
@@ -321,7 +325,7 @@ html[data-skin="xp"] :is(#root, #modal-root) :is(
   [class*="panel__"],
   [class*="modal__"],
   [class*="Modal__"]
-):not([class*="Chip"]):not([class*="chip"]):not([class*="Pill"]):not([class*="pill"]):not([class*="Badge"]):not([class*="badge"]):not([class*="Avatar"]):not([class*="StatusDot"]) {
+):not([data-sidebar-guide="sidebar-root"] *):not([data-portal-guide="sidebar-root"] *):not([class*="Chip"]):not([class*="chip"]):not([class*="Pill"]):not([class*="pill"]):not([class*="Badge"]):not([class*="badge"]):not([class*="Avatar"]):not([class*="StatusDot"]) {
   border-radius: 3px !important;
 }
 

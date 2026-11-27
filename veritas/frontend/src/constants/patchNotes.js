@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "2.0.40",
+    date: "2026-11-27",
+    highlights: [
+      "Olive, Miami et Windows XP : les traits en trop sur les cartes et dans la barre latérale disparaissent.",
+      "Le logo, l’avatar et le menu du compte suivent la couleur du thème choisi.",
+      "Le thème classique ne change pas."
+    ]
+  },
+  {
     version: "2.0.39",
     date: "2026-11-26",
     highlights: [

@@ -62,7 +62,7 @@ html[data-skin="miami"].light * {
   --msp-shadow: 0 8px 24px rgba(255, 47, 146, 0.12) !important;
   --msp-shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.8) !important;
   --msp-shadow-lg: 0 18px 40px rgba(255, 47, 146, 0.18) !important;
-  --msp-shadow-panel: 0 0 0 1px rgba(255, 47, 146, 0.12) !important;
+  --msp-shadow-panel: 0 8px 24px rgba(255, 47, 146, 0.1) !important;
   --msp-kpi-active-bg: linear-gradient(135deg, #ffe3f6 0%, #d9fbff 100%) !important;
   --msp-font: "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif !important;
   --app-font: "Century Gothic", "Trebuchet MS", "Segoe UI", sans-serif !important;
@@ -138,7 +138,7 @@ html[data-skin="miami"].dark * {
   --msp-radius-sm: 10px !important;
   --msp-radius-md: 16px !important;
   --msp-radius-btn: 999px !important;
-  --msp-shadow: 0 0 0 1px rgba(255, 60, 175, 0.2) !important;
+  --msp-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
   --msp-shadow-sm: none !important;
   --msp-shadow-lg: 0 18px 48px rgba(255, 60, 175, 0.22) !important;
   --msp-shadow-panel: 0 0 24px rgba(92, 225, 230, 0.08) !important;
@@ -232,6 +232,8 @@ html[data-skin="miami"].light [data-portal-guide="sidebar-root"] {
   --sb-active-btn-color: #d41274 !important;
   --sb-active-btn-shadow: none !important;
   --sb-icon-accent: #ff2f92 !important;
+  --sb-mark-bg: #ff2f92 !important;
+  --sb-mark-color: #fff7fb !important;
   --sb-badge-ring: #ffe3f2 !important;
   background: #ffe3f2 !important;
   border-color: #f0b4ce !important;
@@ -265,6 +267,8 @@ html[data-skin="miami"].dark [data-portal-guide="sidebar-root"] {
   --sb-active-btn-color: #5ce1e6 !important;
   --sb-active-btn-shadow: none !important;
   --sb-icon-accent: #ff3caf !important;
+  --sb-mark-bg: #ff3caf !important;
+  --sb-mark-color: #1a0612 !important;
   --sb-badge-ring: #0c0610 !important;
   background: #0c0610 !important;
   border-color: #6b2d78 !important;
